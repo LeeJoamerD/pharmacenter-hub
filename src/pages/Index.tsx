@@ -19,7 +19,7 @@ const Index = () => {
 
   useEffect(() => {
     // Update document title
-    document.title = "PharmaCenter - Solution complète de gestion pharmaceutique";
+    document.title = "PharmaSoft - Solution complète de gestion pharmaceutique";
     
     // Smooth scroll for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
