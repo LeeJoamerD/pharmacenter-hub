@@ -86,6 +86,10 @@ export default {
 				sans: ['Inter var', 'sans-serif'],
 				display: ['SF Pro Display', 'Inter var', 'sans-serif'],
 			},
+			backgroundImage: {
+				'radial': 'radial-gradient(circle, var(--tw-gradient-stops))',
+				'conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+			},
 			keyframes: {
 				'accordion-down': {
 					from: {
@@ -172,6 +176,8 @@ export default {
 				'fade-in-right': 'fade-in-right 0.7s ease-out forwards',
 				'scale-up': 'scale-up 0.5s ease-out forwards',
 				'gradient-shift': 'gradient-shift 15s ease infinite',
+				'gradient-shift-slow': 'gradient-shift 25s ease infinite',
+				'gradient-shift-fast': 'gradient-shift 8s ease infinite',
 				'float': 'float 6s ease-in-out infinite',
 			},
 			height: {
