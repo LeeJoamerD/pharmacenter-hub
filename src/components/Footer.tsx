@@ -21,7 +21,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           <FadeIn>
             <div>
-              <h3 className="text-xl font-display font-bold mb-6">PharmaSoft</h3>
+              <h3 className="text-xl font-display font-bold mb-6">PharmaCenter</h3>
               <p className="text-slate-300 mb-6">
                 Une application complète de gestion d'officine pharmaceutique disponible en version web et mobile.
               </p>
@@ -113,7 +113,7 @@ export function Footer() {
         <FadeIn>
           <div className="border-t border-slate-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
             <div className="text-slate-400 text-sm mb-4 md:mb-0">
-              © {currentYear} PharmaSoft. Tous droits réservés.
+              © {currentYear} PharmaCenter. Tous droits réservés.
             </div>
             <div className="flex space-x-6 text-sm">
               <a href="#" className="text-slate-400 hover:text-white transition-colors">Conditions d'utilisation</a>

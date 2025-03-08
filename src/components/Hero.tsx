@@ -30,7 +30,7 @@ export function Hero() {
             
             <FadeIn delay={0.2}>
               <p className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-xl leading-relaxed">
-                PharmaSoft est une application complète de gestion d'officine pharmaceutique disponible en version web et mobile, conçue pour simplifier tous vos processus.
+                Pharmasoft est une application complète de gestion d'officine pharmaceutique disponible en version web et mobile, conçue pour simplifier tous vos processus.
               </p>
             </FadeIn>
             
@@ -61,7 +61,7 @@ export function Hero() {
                   ))}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">+500</span> pharmacies utilisent déjà PharmaSoft
+                  <span className="font-medium text-foreground">+500</span> pharmacies utilisent déjà Pharmasoft
                 </div>
               </div>
             </FadeIn>

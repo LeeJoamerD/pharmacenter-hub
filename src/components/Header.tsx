@@ -31,7 +31,7 @@ export function Header() {
         <div className="flex items-center">
           <a href="/" className="flex items-center gap-2">
             <span className="text-2xl font-display font-bold text-gradient">
-              PharmaSoft
+              PharmaCenter
             </span>
           </a>
         </div>
