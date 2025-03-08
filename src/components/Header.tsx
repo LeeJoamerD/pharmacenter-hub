@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { Menu, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -45,9 +46,11 @@ export function Header() {
           <div className="ml-4">
             <LanguageSelector />
           </div>
-          <Button className="ml-4 button-hover-effect bg-primary hover:bg-primary/90 text-white">
-            Essai Gratuit
-          </Button>
+          <Link to="/dashboard">
+            <Button className="ml-4 button-hover-effect bg-primary hover:bg-primary/90 text-white">
+              Essai Gratuit
+            </Button>
+          </Link>
         </nav>
 
         {/* Mobile Menu Button */}
@@ -104,9 +107,11 @@ export function Header() {
           >
             Contact
           </a>
-          <Button className="mt-4 w-full button-hover-effect bg-primary hover:bg-primary/90 text-white">
-            Essai Gratuit
-          </Button>
+          <Link to="/dashboard">
+            <Button className="mt-4 w-full button-hover-effect bg-primary hover:bg-primary/90 text-white">
+              Essai Gratuit
+            </Button>
+          </Link>
         </nav>
       </div>
     </header>

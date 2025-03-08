@@ -1,8 +1,8 @@
-
 import { FadeIn } from '@/components/FadeIn';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 
 export function Hero() {
   return (
@@ -35,9 +35,11 @@ export function Hero() {
             </FadeIn>
             
             <FadeIn delay={0.3} className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" className="button-hover-effect bg-primary hover:bg-primary/90 text-white">
-                Démarrer gratuitement
-              </Button>
+              <Link to="/dashboard">
+                <Button size="lg" className="button-hover-effect bg-primary hover:bg-primary/90 text-white">
+                  Démarrer gratuitement
+                </Button>
+              </Link>
               <Button size="lg" variant="outline" className="button-hover-effect border-primary/20 text-primary hover:bg-primary/5">
                 <span>Voir la démo</span>
                 <ArrowRight size={16} className="ml-2" />
@@ -82,7 +84,6 @@ export function Hero() {
               </div>
             </FadeIn>
             
-            {/* Floating Features Cards */}
             <FadeIn
               className="absolute -bottom-6 -left-6 z-20 max-w-[200px]"
               delay={0.5}
