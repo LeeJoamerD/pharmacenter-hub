@@ -3,7 +3,7 @@ import { FadeIn } from '@/components/FadeIn';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import pillsImage from '../assets/lovable-uploads/d29edb6e-a6bb-44dc-804f-604e50acfb8b.png';
+import mockupImage from '../assets/mockup.png';
 
 export function Hero() {
   return (
@@ -71,8 +71,8 @@ export function Hero() {
               <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-primary/20 to-purple-500/20 blur-xl opacity-70"></div>
               <div className="relative rounded-xl overflow-hidden shadow-2xl">
                 <img
-                  src={pillsImage}
-                  alt="Pot de médicaments renversant des comprimés" 
+                  src={mockupImage}
+                  alt="PharmaSoft dashboard" 
                   className="w-full h-auto rounded-xl"
                 />
                 
