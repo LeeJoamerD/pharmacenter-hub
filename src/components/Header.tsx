@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { LanguageSelector } from '@/components/LanguageSelector';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Pill } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function Header() {
@@ -31,6 +31,11 @@ export function Header() {
       <div className="container max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
         <div className="flex items-center">
           <a href="/" className="flex items-center gap-2">
+            <img 
+              src="/lovable-uploads/5a6fd8ce-8cb3-48a9-b189-248a07c0124b.png" 
+              alt="Pill Icon" 
+              className="h-6 w-6 text-primary" 
+            />
             <img 
               src="/lovable-uploads/56a92e52-6259-4119-b48e-9d34f2b5988d.png" 
               alt="PharmaSoft Logo" 
