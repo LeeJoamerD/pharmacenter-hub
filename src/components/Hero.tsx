@@ -1,110 +1,122 @@
 
 import { FadeIn } from '@/components/FadeIn';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import mockupImage from '../assets/mockup.png';
+import { cn } from '@/lib/utils';
 
 export function Hero() {
   return (
-    <section className="py-20 md:py-28 relative overflow-hidden">
-      <div className="container mx-auto px-4 sm:px-6 relative z-10">
+    <section className="pt-32 pb-20 relative overflow-hidden">
+      {/* Background Elements */}
+      <div className="absolute inset-0 bg-gradient-to-b from-blue-50 to-white -z-10"></div>
+      <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-gradient-to-b from-blue-100/30 to-transparent rounded-full blur-3xl transform translate-x-1/4 -translate-y-1/4 -z-10"></div>
+      <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-gradient-to-t from-blue-100/30 to-transparent rounded-full blur-3xl transform -translate-x-1/4 translate-y-1/4 -z-10"></div>
+      
+      <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div>
+          <div className="order-2 lg:order-1">
             <FadeIn>
-              <div className="inline-block rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-700 mb-6">
+              <div className="inline-block px-3 py-1 mb-6 rounded-full bg-pharma-100 border border-pharma-200 text-pharma-800 text-sm font-medium">
                 La solution complète pour votre pharmacie
               </div>
             </FadeIn>
             
             <FadeIn delay={0.1}>
-              <h1 className="text-4xl sm:text-5xl font-bold leading-tight mb-3">
-                Transformez la <br />gestion <br />
-                <span className="text-blue-500">de votre officine</span>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold tracking-tight mb-6">
+                <span className="block">Transformez la gestion</span>
+                <span className="block text-gradient">de votre officine</span>
               </h1>
             </FadeIn>
             
             <FadeIn delay={0.2}>
-              <p className="text-lg text-muted-foreground mb-8 max-w-xl leading-relaxed">
+              <p className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-xl leading-relaxed">
                 PharmaSoft est une application complète de gestion d'officine pharmaceutique disponible en version web et mobile, conçue pour simplifier tous vos processus.
               </p>
             </FadeIn>
             
-            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 mb-8">
-              <FadeIn delay={0.3}>
-                <Button size="lg" className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
-                  Démarrer gratuitement
-                </Button>
-              </FadeIn>
-              <FadeIn delay={0.4}>
-                <Link to="/dashboard">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                    Voir la démo 
-                    <ArrowRight className="ml-2 size-4" />
-                  </Button>
-                </Link>
-              </FadeIn>
-            </div>
+            <FadeIn delay={0.3} className="flex flex-col sm:flex-row gap-4">
+              <Button size="lg" className="button-hover-effect bg-primary hover:bg-primary/90 text-white">
+                Démarrer gratuitement
+              </Button>
+              <Button size="lg" variant="outline" className="button-hover-effect border-primary/20 text-primary hover:bg-primary/5">
+                <span>Voir la démo</span>
+                <ArrowRight size={16} className="ml-2" />
+              </Button>
+            </FadeIn>
             
-            <FadeIn delay={0.5}>
-              <div className="flex items-center">
+            <FadeIn delay={0.4}>
+              <div className="mt-10 flex items-center gap-6">
                 <div className="flex -space-x-2">
-                  {[...Array(4)].map((_, i) => (
-                    <div 
-                      key={i} 
-                      className="size-8 rounded-full border-2 border-white" 
-                      style={{ 
-                        backgroundColor: `rgb(${Math.max(0, 15 - i * 20)}, ${Math.max(100, 150 - i * 20)}, ${Math.max(150, 230 - i * 20)})` 
-                      }}
-                    />
+                  {[1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "w-8 h-8 rounded-full border-2 border-white",
+                        i === 1 && "bg-pharma-400",
+                        i === 2 && "bg-pharma-500",
+                        i === 3 && "bg-pharma-600",
+                        i === 4 && "bg-pharma-700"
+                      )}
+                    ></div>
                   ))}
                 </div>
-                <div className="ml-3 text-sm">
-                  <span className="font-medium">+500</span> pharmacies utilisent déjà PharmaSoft
+                <div className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">+500</span> pharmacies utilisent déjà PharmaSoft
                 </div>
               </div>
             </FadeIn>
           </div>
           
-          <FadeIn delay={0.4} className="hidden lg:block">
-            <div className="relative">
-              <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-primary/20 to-purple-500/20 blur-xl opacity-70"></div>
-              <div className="relative rounded-xl overflow-hidden shadow-2xl">
-                <img
-                  src={mockupImage}
-                  alt="PharmaSoft dashboard" 
-                  className="w-full h-auto rounded-xl"
-                />
-                
-                {/* Stats cards overlayed on the image */}
-                <div className="absolute top-8 right-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-4 max-w-[180px]">
-                  <div className="flex justify-between items-center mb-1">
-                    <div className="font-medium">Ventes</div>
-                    <div className="text-xs font-medium text-green-600 bg-green-100 rounded-full px-2 py-0.5">+24%</div>
-                  </div>
-                  <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="bg-blue-500 h-full rounded-full" style={{ width: '75%' }}></div>
-                  </div>
-                </div>
-                
-                <div className="absolute bottom-12 left-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-4 max-w-[180px]">
-                  <div className="flex justify-between items-center mb-1">
-                    <div className="font-medium">Stocks</div>
-                    <div className="text-xs font-medium text-green-600">Optimal</div>
-                  </div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <div>1,234 produits</div>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-xs mr-2">98% disponibilité</span>
-                    <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                      <div className="bg-green-500 h-full rounded-full" style={{ width: '98%' }}></div>
-                    </div>
-                  </div>
+          <div className="order-1 lg:order-2 relative">
+            <FadeIn className="relative z-10" delay={0.2}>
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-primary/5 rounded-2xl transform -rotate-2 scale-[0.98]"></div>
+                <div className="glass-card rounded-2xl overflow-hidden shadow-xl">
+                  <img
+                    src="https://images.unsplash.com/photo-1628771065518-0d82f1938462?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80"
+                    alt="Pharmacie moderne"
+                    className="w-full h-auto aspect-[16/9] object-cover object-center"
+                    loading="lazy"
+                  />
                 </div>
               </div>
-            </div>
-          </FadeIn>
+            </FadeIn>
+            
+            {/* Floating Features Cards */}
+            <FadeIn
+              className="absolute -bottom-6 -left-6 z-20 max-w-[200px]"
+              delay={0.5}
+            >
+              <div className="glass-card p-4 rounded-lg shadow-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Stocks</span>
+                  <span className="text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded-full">
+                    Optimal
+                  </span>
+                </div>
+                <div className="flex gap-2 text-xs text-muted-foreground">
+                  <span>1,234 produits</span>
+                  <span>•</span>
+                  <span>98% disponibilité</span>
+                </div>
+              </div>
+            </FadeIn>
+            
+            <FadeIn
+              className="absolute -top-4 -right-4 z-20 max-w-[180px]"
+              delay={0.6}
+            >
+              <div className="glass-card p-4 rounded-lg shadow-lg">
+                <div className="text-sm font-medium mb-2">Ventes</div>
+                <div className="flex items-center gap-2">
+                  <div className="w-16 h-4 bg-primary/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-primary w-3/4 rounded-full"></div>
+                  </div>
+                  <span className="text-xs font-medium">+24%</span>
+                </div>
+              </div>
+            </FadeIn>
+          </div>
         </div>
       </div>
     </section>
