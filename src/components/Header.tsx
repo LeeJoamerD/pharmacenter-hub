@@ -31,9 +31,11 @@ export function Header() {
       <div className="container max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
         <div className="flex items-center">
           <a href="/" className="flex items-center gap-2">
-            <span className="text-2xl font-display font-bold text-gradient">
-              PharmaSoft
-            </span>
+            <img 
+              src="/lovable-uploads/56a92e52-6259-4119-b48e-9d34f2b5988d.png" 
+              alt="PharmaSoft Logo" 
+              className="h-8" 
+            />
           </a>
         </div>
 
