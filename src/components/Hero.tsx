@@ -3,7 +3,7 @@ import { FadeIn } from '@/components/FadeIn';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
-import mockupImage from '../assets/mockup.png';
+import pillsImage from '../assets/lovable-uploads/d29edb6e-a6bb-44dc-804f-604e50acfb8b.png';
 
 export function Hero() {
   return (
@@ -71,8 +71,8 @@ export function Hero() {
               <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-primary/20 to-purple-500/20 blur-xl opacity-70"></div>
               <div className="relative rounded-xl overflow-hidden shadow-2xl">
                 <img
-                  src={mockupImage}
-                  alt="PharmaSoft dashboard" 
+                  src={pillsImage}
+                  alt="Pot de médicaments renversant des comprimés" 
                   className="w-full h-auto rounded-xl"
                 />
                 
@@ -101,11 +101,6 @@ export function Hero() {
                       <div className="bg-green-500 h-full rounded-full" style={{ width: '98%' }}></div>
                     </div>
                   </div>
-                </div>
-                
-                <div className="absolute bottom-4 right-12 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 max-w-[200px]">
-                  <div className="text-sm font-medium mb-1">Activer Windows</div>
-                  <div className="text-xs text-gray-500">Accédez aux paramètres pour activer Windows</div>
                 </div>
               </div>
             </div>
