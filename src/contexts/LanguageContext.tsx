@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 
 export type Language = {
@@ -71,6 +70,20 @@ const translations: AllTranslations = {
     upcomingAppointments: "Prochains rendez-vous",
     help: "Aide",
     logout: "Déconnexion",
+    // Sales module translations
+    products: "Produits",
+    searchProducts: "Rechercher des produits par nom ou catégorie",
+    searchPlaceholder: "Rechercher un médicament...",
+    noProductsFound: "Aucun produit trouvé",
+    inStock: "En stock",
+    add: "Ajouter",
+    cart: "Panier",
+    emptyCart: "Votre panier est vide",
+    itemsInCart: "articles dans le panier",
+    itemInCart: "article dans le panier",
+    cartEmpty: "Ajoutez des produits à votre panier",
+    total: "Total",
+    checkout: "Finaliser la vente",
   },
   en: {
     // Header
@@ -124,6 +137,20 @@ const translations: AllTranslations = {
     upcomingAppointments: "Upcoming Appointments",
     help: "Help",
     logout: "Logout",
+    // Sales module translations
+    products: "Products",
+    searchProducts: "Search products by name or category",
+    searchPlaceholder: "Search for a medication...",
+    noProductsFound: "No products found",
+    inStock: "In stock",
+    add: "Add",
+    cart: "Cart",
+    emptyCart: "Your cart is empty",
+    itemsInCart: "items in cart",
+    itemInCart: "item in cart",
+    cartEmpty: "Add products to your cart",
+    total: "Total",
+    checkout: "Checkout",
   },
   es: {
     // Header
@@ -144,7 +171,7 @@ const translations: AllTranslations = {
     clientManagement: "Gestión de Clientes",
     clientDesc: "Base de datos de clientes, historial de compras, programa de fidelidad, segmentación.",
     cashManagement: "Gestión de Caja",
-    cashDesc: "Multi-cajas, seguimiento de pagos, cierres diarios, informes detallados.",
+    cashDesc: "Multi-caises, seguimiento de pagos, cierres diarios, informes detallados.",
     analytics: "Análisis e Informes",
     analyticsDesc: "Tableros analíticos, informes personalizados, previsiones y tendencias.",
     security: "Seguridad Avanzada",
@@ -165,7 +192,7 @@ const translations: AllTranslations = {
     pricing: "Precios",
     blog: "Blog",
     termsOfUse: "Términos de Uso",
-    privacyPolicy: "Política de Privacidad",
+    privacyPolicy: "Politica de Privacidad",
     legalNotice: "Aviso Legal",
     allRightsReserved: "Todos los derechos reservados.",
     // Dashboard
@@ -177,6 +204,20 @@ const translations: AllTranslations = {
     upcomingAppointments: "Próximas Citas",
     help: "Ayuda",
     logout: "Cerrar Sesión",
+    // Sales module translations
+    products: "Productos",
+    searchProducts: "Buscar productos por nombre o categoría",
+    searchPlaceholder: "Buscar un medicamento...",
+    noProductsFound: "No se encontraron productos",
+    inStock: "En stock",
+    add: "Añadir",
+    cart: "Carrito",
+    emptyCart: "Tu carrito está vacío",
+    itemsInCart: "artículos en el carrito",
+    itemInCart: "artículo en el carrito",
+    cartEmpty: "Añade productos a tu carrito",
+    total: "Total",
+    checkout: "Finalizar venta",
   },
   ln: {
     // Header
@@ -201,7 +242,7 @@ const translations: AllTranslations = {
     analytics: "Analyse & Rapport",
     analyticsDesc: "Tableau de bord analytique, rapport personalisé, prévision pe tendance.",
     security: "Sécurité ya Niveau Likolo",
-    securityDesc: "Authentification multi-facteur, bobongisi malamu ya droits d'accès, cryptage ya données.",
+    securityDesc: "Autentication multifactor, bobongisi malamu ya droits d'accès, cryptage ya données.",
     webMobile: "Web & Mobile",
     webMobileDesc: "Application web responsive pe applications mobiles natif (iOS pe Android).",
     multilingual: "Minoko Ebele",
@@ -230,6 +271,20 @@ const translations: AllTranslations = {
     upcomingAppointments: "Rendez-vous Ekoya",
     help: "Lisalisi",
     logout: "Kobima",
+    // Sales module translations
+    products: "Biloko",
+    searchProducts: "Koluka biloko na kombo to catégorie",
+    searchPlaceholder: "Koluka monganga...",
+    noProductsFound: "Eloko moko te emonani",
+    inStock: "Ezali",
+    add: "Kobakisa",
+    cart: "Kitunga",
+    emptyCart: "Kitunga na yo ezali mpamba",
+    itemsInCart: "biloko na kitunga",
+    itemInCart: "eloko na kitunga",
+    cartEmpty: "Bakisa biloko na kitunga na yo",
+    total: "Totalé",
+    checkout: "Kosilisa koteka",
   }
 };
 

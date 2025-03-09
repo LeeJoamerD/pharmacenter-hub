@@ -1,12 +1,12 @@
-
 import { useState } from 'react';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { LineChart, BarChart, Calendar, PackageSearch, Users, ShoppingCart, Settings, Pill, LogOut, Home } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import SalesView from '@/components/dashboard/SalesView';
+import { useLanguage } from '@/contexts/LanguageContext';
 
-// Composants pour différentes sections
 const DashboardHome = () => (
   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
     <Card>
@@ -83,16 +83,17 @@ const DashboardHome = () => (
   </div>
 );
 
-const SalesModule = () => (
-  <div className="space-y-4">
-    <h2 className="text-2xl font-bold tracking-tight">Gestion des Ventes</h2>
-    <p className="text-muted-foreground">Gérez vos ventes, ordonnances et transactions clients.</p>
-    <div className="h-[400px] w-full bg-muted/20 rounded-md flex items-center justify-center">
-      <ShoppingCart className="h-12 w-12 text-muted" />
-      <span className="ml-4 text-xl text-muted-foreground">Module de caisse et de vente</span>
+const SalesModule = () => {
+  const { t } = useLanguage();
+  
+  return (
+    <div className="space-y-4">
+      <h2 className="text-2xl font-bold tracking-tight">{t('salesManagement')}</h2>
+      <p className="text-muted-foreground">{t('salesDesc')}</p>
+      <SalesView />
     </div>
-  </div>
-);
+  );
+};
 
 const InventoryModule = () => (
   <div className="space-y-4">
