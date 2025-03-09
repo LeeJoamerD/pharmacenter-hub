@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export function Header() {
+  const { t } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -39,16 +41,16 @@ export function Header() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-1">
-          <a href="#features" className="navbar-item">Fonctionnalités</a>
-          <a href="#modules" className="navbar-item">Modules</a>
-          <a href="#ai" className="navbar-item">Intelligence Artificielle</a>
-          <a href="#contact" className="navbar-item">Contact</a>
+          <a href="#features" className="navbar-item">{t('features')}</a>
+          <a href="#modules" className="navbar-item">{t('modules')}</a>
+          <a href="#ai" className="navbar-item">{t('ai')}</a>
+          <a href="#contact" className="navbar-item">{t('contact')}</a>
           <div className="ml-4">
             <LanguageSelector />
           </div>
           <Link to="/dashboard">
             <Button className="ml-4 button-hover-effect bg-primary hover:bg-primary/90 text-white">
-              Essai Gratuit
+              {t('freeTrial')}
             </Button>
           </Link>
         </nav>
@@ -84,32 +86,32 @@ export function Header() {
             className="py-3 text-lg font-medium border-b border-border/20"
             onClick={() => setIsMobileMenuOpen(false)}
           >
-            Fonctionnalités
+            {t('features')}
           </a>
           <a
             href="#modules"
             className="py-3 text-lg font-medium border-b border-border/20"
             onClick={() => setIsMobileMenuOpen(false)}
           >
-            Modules
+            {t('modules')}
           </a>
           <a
             href="#ai"
             className="py-3 text-lg font-medium border-b border-border/20"
             onClick={() => setIsMobileMenuOpen(false)}
           >
-            Intelligence Artificielle
+            {t('ai')}
           </a>
           <a
             href="#contact"
             className="py-3 text-lg font-medium border-b border-border/20"
             onClick={() => setIsMobileMenuOpen(false)}
           >
-            Contact
+            {t('contact')}
           </a>
           <Link to="/dashboard">
             <Button className="mt-4 w-full button-hover-effect bg-primary hover:bg-primary/90 text-white">
-              Essai Gratuit
+              {t('freeTrial')}
             </Button>
           </Link>
         </nav>

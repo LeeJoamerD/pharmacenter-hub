@@ -11,8 +11,10 @@ import {
   Instagram, 
   Linkedin 
 } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export function Footer() {
+  const { t } = useLanguage();
   const currentYear = new Date().getFullYear();
   
   return (
@@ -44,22 +46,22 @@ export function Footer() {
           
           <FadeIn delay={0.1}>
             <div>
-              <h3 className="text-lg font-medium mb-6">Liens rapides</h3>
+              <h3 className="text-lg font-medium mb-6">{t('quickLinks')}</h3>
               <ul className="space-y-3">
                 <li>
-                  <a href="#features" className="text-slate-300 hover:text-white transition-colors">Fonctionnalités</a>
+                  <a href="#features" className="text-slate-300 hover:text-white transition-colors">{t('features')}</a>
                 </li>
                 <li>
-                  <a href="#modules" className="text-slate-300 hover:text-white transition-colors">Modules</a>
+                  <a href="#modules" className="text-slate-300 hover:text-white transition-colors">{t('modules')}</a>
                 </li>
                 <li>
-                  <a href="#ai" className="text-slate-300 hover:text-white transition-colors">Intelligence Artificielle</a>
+                  <a href="#ai" className="text-slate-300 hover:text-white transition-colors">{t('ai')}</a>
                 </li>
                 <li>
-                  <a href="#" className="text-slate-300 hover:text-white transition-colors">Tarifs</a>
+                  <a href="#" className="text-slate-300 hover:text-white transition-colors">{t('pricing')}</a>
                 </li>
                 <li>
-                  <a href="#" className="text-slate-300 hover:text-white transition-colors">Blog</a>
+                  <a href="#" className="text-slate-300 hover:text-white transition-colors">{t('blog')}</a>
                 </li>
               </ul>
             </div>
@@ -67,7 +69,7 @@ export function Footer() {
           
           <FadeIn delay={0.2}>
             <div>
-              <h3 className="text-lg font-medium mb-6">Contactez-nous</h3>
+              <h3 className="text-lg font-medium mb-6">{t('contactUs')}</h3>
               <ul className="space-y-4">
                 <li className="flex items-start">
                   <MapPin size={18} className="mr-3 mt-0.5 flex-shrink-0 text-primary" />
@@ -91,16 +93,16 @@ export function Footer() {
           
           <FadeIn delay={0.3}>
             <div>
-              <h3 className="text-lg font-medium mb-6">Inscription à la newsletter</h3>
-              <p className="text-slate-300 mb-4">Recevez les dernières mises à jour et offres spéciales.</p>
+              <h3 className="text-lg font-medium mb-6">{t('newsletter')}</h3>
+              <p className="text-slate-300 mb-4">{t('newsletterDesc')}</p>
               <div className="flex flex-col space-y-3">
                 <input
                   type="email"
-                  placeholder="Votre email"
+                  placeholder={t('email')}
                   className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary"
                 />
                 <Button className="w-full button-hover-effect bg-primary hover:bg-primary/90 text-white">
-                  S'abonner
+                  {t('subscribe')}
                 </Button>
               </div>
               <div className="mt-6">
@@ -113,12 +115,12 @@ export function Footer() {
         <FadeIn>
           <div className="border-t border-slate-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
             <div className="text-slate-400 text-sm mb-4 md:mb-0">
-              © {currentYear} PharmaSoft. Tous droits réservés.
+              © {currentYear} PharmaSoft. {t('allRightsReserved')}
             </div>
             <div className="flex space-x-6 text-sm">
-              <a href="#" className="text-slate-400 hover:text-white transition-colors">Conditions d'utilisation</a>
-              <a href="#" className="text-slate-400 hover:text-white transition-colors">Politique de confidentialité</a>
-              <a href="#" className="text-slate-400 hover:text-white transition-colors">Mentions légales</a>
+              <a href="#" className="text-slate-400 hover:text-white transition-colors">{t('termsOfUse')}</a>
+              <a href="#" className="text-slate-400 hover:text-white transition-colors">{t('privacyPolicy')}</a>
+              <a href="#" className="text-slate-400 hover:text-white transition-colors">{t('legalNotice')}</a>
             </div>
           </div>
         </FadeIn>
