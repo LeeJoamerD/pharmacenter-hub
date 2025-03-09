@@ -1,7 +1,7 @@
 
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 
-type Language = {
+export type Language = {
   code: string;
   name: string;
   flag: string;
@@ -25,13 +25,18 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export function LanguageProvider({ children }: { children: ReactNode }) {
   // Try to get the stored language from localStorage, or default to French
   const getStoredLanguage = (): Language => {
-    const storedLang = localStorage.getItem('preferredLanguage');
-    if (storedLang) {
-      try {
-        const parsed = JSON.parse(storedLang);
-        return parsed;
-      } catch (e) {
-        console.error('Failed to parse stored language', e);
+    if (typeof window !== 'undefined') {
+      const storedLang = localStorage.getItem('preferredLanguage');
+      if (storedLang) {
+        try {
+          const parsed = JSON.parse(storedLang);
+          // Validate the parsed object has the right structure
+          if (parsed && parsed.code && parsed.name && parsed.flag) {
+            return parsed;
+          }
+        } catch (e) {
+          console.error('Failed to parse stored language', e);
+        }
       }
     }
     return defaultLanguages[0]; // Default to French
@@ -42,14 +47,18 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   // Function to change the language
   const changeLanguage = (lang: Language) => {
     setCurrentLanguage(lang);
-    localStorage.setItem('preferredLanguage', JSON.stringify(lang));
-    document.documentElement.lang = lang.code; // Update the HTML lang attribute
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('preferredLanguage', JSON.stringify(lang));
+      document.documentElement.lang = lang.code; // Update the HTML lang attribute
+    }
   };
 
   // Set the initial language on first load
   useEffect(() => {
-    document.documentElement.lang = currentLanguage.code;
-  }, []);
+    if (typeof window !== 'undefined') {
+      document.documentElement.lang = currentLanguage.code;
+    }
+  }, [currentLanguage.code]);
 
   return (
     <LanguageContext.Provider value={{ currentLanguage, changeLanguage, languages: defaultLanguages }}>

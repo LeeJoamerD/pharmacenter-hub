@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Check, ChevronDown, Globe } from 'lucide-react';
 import { 
   DropdownMenu, 
@@ -17,7 +17,7 @@ interface LanguageSelectorProps {
 
 export function LanguageSelector({ className }: LanguageSelectorProps) {
   const { currentLanguage, changeLanguage, languages } = useLanguage();
-
+  
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
