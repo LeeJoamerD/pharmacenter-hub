@@ -12,27 +12,39 @@ import {
   Headphones
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 
 interface FeatureProps {
   icon: React.ReactNode;
   title: string;
   description: string;
   delay?: number;
+  linkTo?: string;
 }
 
-function Feature({ icon, title, description, delay = 0 }: FeatureProps) {
+function Feature({ icon, title, description, delay = 0, linkTo }: FeatureProps) {
+  const content = (
+    <div className="group h-full glass-card p-6 rounded-xl transition-all duration-300 hover:shadow-xl">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 rounded-xl transition-opacity duration-300"></div>
+      <div className="relative z-10">
+        <div className="p-3 bg-primary/10 rounded-lg inline-flex items-center justify-center text-primary mb-4">
+          {icon}
+        </div>
+        <h3 className="text-lg font-medium mb-2">{title}</h3>
+        <p className="text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+
   return (
     <FadeIn delay={delay} className="relative">
-      <div className="group h-full glass-card p-6 rounded-xl transition-all duration-300 hover:shadow-xl">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 rounded-xl transition-opacity duration-300"></div>
-        <div className="relative z-10">
-          <div className="p-3 bg-primary/10 rounded-lg inline-flex items-center justify-center text-primary mb-4">
-            {icon}
-          </div>
-          <h3 className="text-lg font-medium mb-2">{title}</h3>
-          <p className="text-muted-foreground">{description}</p>
-        </div>
-      </div>
+      {linkTo ? (
+        <Link to={linkTo} className="block h-full">
+          {content}
+        </Link>
+      ) : (
+        content
+      )}
     </FadeIn>
   );
 }
@@ -42,27 +54,32 @@ export function Features() {
     {
       icon: <ShoppingCart size={20} />,
       title: "Gestion des ventes",
-      description: "Point de vente tactile, gestion des ordonnances, remises et promotions automatisées."
+      description: "Point de vente tactile, gestion des ordonnances, remises et promotions automatisées.",
+      linkTo: "/dashboard"
     },
     {
       icon: <Package size={20} />,
       title: "Gestion des stocks",
-      description: "Inventaire en temps réel, alertes de seuil, commandes automatisées, suivi des péremptions."
+      description: "Inventaire en temps réel, alertes de seuil, commandes automatisées, suivi des péremptions.",
+      linkTo: "/dashboard"
     },
     {
       icon: <Users size={20} />,
       title: "Gestion des clients",
-      description: "Base de données clients, historique d'achats, programme de fidélité, segmentation."
+      description: "Base de données clients, historique d'achats, programme de fidélité, segmentation.",
+      linkTo: "/dashboard"
     },
     {
       icon: <CreditCard size={20} />,
       title: "Gestion de caisse",
-      description: "Multi-caisses, suivi des encaissements, clôtures journalières, rapports détaillés."
+      description: "Multi-caisses, suivi des encaissements, clôtures journalières, rapports détaillés.",
+      linkTo: "/dashboard"
     },
     {
       icon: <BarChart size={20} />,
       title: "Analyses & Rapports",
-      description: "Tableaux de bord analytiques, rapports personnalisés, prévisions et tendances."
+      description: "Tableaux de bord analytiques, rapports personnalisés, prévisions et tendances.",
+      linkTo: "/dashboard"
     },
     {
       icon: <Shield size={20} />,
@@ -72,17 +89,20 @@ export function Features() {
     {
       icon: <Smartphone size={20} />,
       title: "Web & Mobile",
-      description: "Application web responsive et applications mobiles natives (iOS et Android)."
+      description: "Application web responsive et applications mobiles natives (iOS et Android).",
+      linkTo: "/dashboard"
     },
     {
       icon: <Globe size={20} />,
       title: "Multilingue",
-      description: "Application disponible en 4 langues : Français, Anglais, Espagnol et Lingala."
+      description: "Application disponible en 4 langues : Français, Anglais, Espagnol et Lingala.",
+      linkTo: "/dashboard"
     },
     {
       icon: <Headphones size={20} />,
       title: "Commandes vocales",
-      description: "Contrôlez l'application par la voix, dictée vocale et reconnaissance des médicaments."
+      description: "Contrôlez l'application par la voix, dictée vocale et reconnaissance des médicaments.",
+      linkTo: "/dashboard"
     }
   ];
 
@@ -104,6 +124,7 @@ export function Features() {
               title={feature.title}
               description={feature.description}
               delay={0.1 * index}
+              linkTo={feature.linkTo}
             />
           ))}
         </div>
