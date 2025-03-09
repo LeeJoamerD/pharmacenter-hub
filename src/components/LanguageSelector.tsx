@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Check, ChevronDown, Globe } from 'lucide-react';
 import { 
   DropdownMenu, 
@@ -9,26 +9,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-interface Language {
-  code: string;
-  name: string;
-  flag: string;
-}
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface LanguageSelectorProps {
   className?: string;
 }
 
 export function LanguageSelector({ className }: LanguageSelectorProps) {
-  const languages: Language[] = [
-    { code: 'fr', name: 'Français', flag: '🇫🇷' },
-    { code: 'en', name: 'English', flag: '🇬🇧' },
-    { code: 'es', name: 'Español', flag: '🇪🇸' },
-    { code: 'ln', name: 'Lingala', flag: '🇨🇬' },
-  ];
-
-  const [selectedLanguage, setSelectedLanguage] = useState<Language>(languages[0]);
+  const { currentLanguage, changeLanguage, languages } = useLanguage();
 
   return (
     <DropdownMenu>
@@ -42,7 +30,7 @@ export function LanguageSelector({ className }: LanguageSelectorProps) {
           )}
         >
           <Globe size={16} className="opacity-70" />
-          <span className="ml-1">{selectedLanguage.code.toUpperCase()}</span>
+          <span className="ml-1">{currentLanguage.code.toUpperCase()}</span>
           <ChevronDown size={14} className="opacity-60" />
         </Button>
       </DropdownMenuTrigger>
@@ -52,15 +40,15 @@ export function LanguageSelector({ className }: LanguageSelectorProps) {
             key={language.code}
             className={cn(
               "flex items-center justify-between cursor-pointer",
-              selectedLanguage.code === language.code && "bg-primary/10"
+              currentLanguage.code === language.code && "bg-primary/10"
             )}
-            onClick={() => setSelectedLanguage(language)}
+            onClick={() => changeLanguage(language)}
           >
             <div className="flex items-center gap-2">
               <span>{language.flag}</span>
               <span>{language.name}</span>
             </div>
-            {selectedLanguage.code === language.code && (
+            {currentLanguage.code === language.code && (
               <Check size={16} className="text-primary" />
             )}
           </DropdownMenuItem>
