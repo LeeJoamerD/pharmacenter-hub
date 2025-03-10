@@ -3,10 +3,11 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, Package, PackagePlus, PackageCheck, AlertTriangle, Clock, ArrowUpDown } from 'lucide-react';
+import { Search, Package, PackagePlus, PackageCheck, AlertTriangle, Clock, ArrowUpDown, LayoutDashboard, List } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import StockDashboard from './StockDashboard';
 
 // Types pour les produits en stock
 interface StockItem {
@@ -39,6 +40,9 @@ const InventoryView = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const { formatPrice } = useCurrency();
+  
+  // State pour gérer la vue active (dashboard ou inventaire)
+  const [activeView, setActiveView] = useState<'dashboard' | 'inventory'>('dashboard');
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Tous');
@@ -136,183 +140,175 @@ const InventoryView = () => {
     nearExpiry: stockItems.filter(item => isNearExpiry(item)).length
   };
   
+  // Navigation entre les vues
+  const renderNavigation = () => (
+    <div className="mb-6 flex space-x-2">
+      <Button 
+        variant={activeView === 'dashboard' ? 'default' : 'outline'} 
+        onClick={() => setActiveView('dashboard')}
+      >
+        <LayoutDashboard className="mr-2 h-4 w-4" />
+        Tableau de bord du stock
+      </Button>
+      <Button 
+        variant={activeView === 'inventory' ? 'default' : 'outline'} 
+        onClick={() => setActiveView('inventory')}
+      >
+        <List className="mr-2 h-4 w-4" />
+        Inventaire des produits
+      </Button>
+    </div>
+  );
+  
+  // Rendu de la vue d'inventaire détaillée
+  const renderInventoryView = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle>Inventaire des produits</CardTitle>
+        <CardDescription>Gérez votre stock de médicaments et produits</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Rechercher un produit ou fournisseur..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <select
+            className="h-10 rounded-md border border-input bg-background px-3 py-2"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+            {categories.map(category => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
+          <Button>
+            <PackagePlus className="mr-2 h-4 w-4" />
+            Nouveau produit
+          </Button>
+        </div>
+        
+        {/* Tableau des produits */}
+        <div className="rounded-md border">
+          <div className="overflow-auto">
+            <table className="w-full min-w-[640px]">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="text-left p-2 font-medium">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="hover:bg-transparent font-medium"
+                      onClick={() => handleSort('name')}
+                    >
+                      Produit
+                      {sortBy === 'name' && (
+                        <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === 'asc' ? 'rotate-180' : ''}`} />
+                      )}
+                    </Button>
+                  </th>
+                  <th className="text-left p-2 font-medium">Catégorie</th>
+                  <th className="text-left p-2 font-medium">Fournisseur</th>
+                  <th className="text-left p-2 font-medium">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="hover:bg-transparent font-medium"
+                      onClick={() => handleSort('stock')}
+                    >
+                      Stock
+                      {sortBy === 'stock' && (
+                        <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === 'asc' ? 'rotate-180' : ''}`} />
+                      )}
+                    </Button>
+                  </th>
+                  <th className="text-left p-2 font-medium">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="hover:bg-transparent font-medium"
+                      onClick={() => handleSort('expiryDate')}
+                    >
+                      Expiration
+                      {sortBy === 'expiryDate' && (
+                        <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === 'asc' ? 'rotate-180' : ''}`} />
+                      )}
+                    </Button>
+                  </th>
+                  <th className="text-left p-2 font-medium">Prix d'achat</th>
+                  <th className="text-left p-2 font-medium">Prix de vente</th>
+                  <th className="text-center p-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {sortedItems.map(item => (
+                  <tr key={item.id} className={`${hasLowStock(item) ? 'bg-amber-50' : ''} ${isNearExpiry(item) ? 'bg-red-50' : ''}`}>
+                    <td className="p-2">
+                      <div className="font-medium">{item.name}</div>
+                    </td>
+                    <td className="p-2 text-sm">{item.category}</td>
+                    <td className="p-2 text-sm">{item.supplier}</td>
+                    <td className="p-2">
+                      <div className={`${hasLowStock(item) ? 'text-amber-600 font-semibold' : ''}`}>
+                        {item.stock}
+                        {hasLowStock(item) && <span className="ml-1 text-xs">({item.minStock} min)</span>}
+                      </div>
+                    </td>
+                    <td className="p-2">
+                      <div className={`${isNearExpiry(item) ? 'text-red-600 font-semibold' : ''}`}>
+                        {item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : '-'}
+                      </div>
+                    </td>
+                    <td className="p-2">{formatPrice(item.price)}</td>
+                    <td className="p-2">{formatPrice(item.sellingPrice)}</td>
+                    <td className="p-2">
+                      <div className="flex justify-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleAddStock(item.id)}>
+                          <PackagePlus className="h-4 w-4" />
+                        </Button>
+                        {hasLowStock(item) && (
+                          <Button variant="outline" size="sm" onClick={() => handleOrderItem(item)}>
+                            <PackageCheck className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {sortedItems.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-4 text-center text-muted-foreground">
+                      Aucun produit ne correspond aux critères de recherche
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="justify-between border-t p-4">
+        <div className="text-sm text-muted-foreground">
+          {sortedItems.length} produit{sortedItems.length !== 1 ? 's' : ''} affiché{sortedItems.length !== 1 ? 's' : ''}
+        </div>
+        <Button variant="outline" size="sm">
+          Exporter
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+  
   return (
     <div className="space-y-6">
-      {/* Statistiques du stock */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total produits</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stockStats.totalItems}</div>
-            <p className="text-xs text-muted-foreground">Produits en inventaire</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stock faible</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stockStats.lowStock}</div>
-            <p className="text-xs text-muted-foreground">Produits sous le seuil minimum</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Proche expiration</CardTitle>
-            <Clock className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stockStats.nearExpiry}</div>
-            <p className="text-xs text-muted-foreground">Expirent dans les 3 mois</p>
-          </CardContent>
-        </Card>
-      </div>
+      {renderNavigation()}
       
-      {/* Recherche et filtres */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Inventaire des produits</CardTitle>
-          <CardDescription>Gérez votre stock de médicaments et produits</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Rechercher un produit ou fournisseur..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <select
-              className="h-10 rounded-md border border-input bg-background px-3 py-2"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
-            <Button>
-              <PackagePlus className="mr-2 h-4 w-4" />
-              Nouveau produit
-            </Button>
-          </div>
-          
-          {/* Tableau des produits */}
-          <div className="rounded-md border">
-            <div className="overflow-auto">
-              <table className="w-full min-w-[640px]">
-                <thead>
-                  <tr className="bg-muted/50">
-                    <th className="text-left p-2 font-medium">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="hover:bg-transparent font-medium"
-                        onClick={() => handleSort('name')}
-                      >
-                        Produit
-                        {sortBy === 'name' && (
-                          <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === 'asc' ? 'rotate-180' : ''}`} />
-                        )}
-                      </Button>
-                    </th>
-                    <th className="text-left p-2 font-medium">Catégorie</th>
-                    <th className="text-left p-2 font-medium">Fournisseur</th>
-                    <th className="text-left p-2 font-medium">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="hover:bg-transparent font-medium"
-                        onClick={() => handleSort('stock')}
-                      >
-                        Stock
-                        {sortBy === 'stock' && (
-                          <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === 'asc' ? 'rotate-180' : ''}`} />
-                        )}
-                      </Button>
-                    </th>
-                    <th className="text-left p-2 font-medium">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="hover:bg-transparent font-medium"
-                        onClick={() => handleSort('expiryDate')}
-                      >
-                        Expiration
-                        {sortBy === 'expiryDate' && (
-                          <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === 'asc' ? 'rotate-180' : ''}`} />
-                        )}
-                      </Button>
-                    </th>
-                    <th className="text-left p-2 font-medium">Prix d'achat</th>
-                    <th className="text-left p-2 font-medium">Prix de vente</th>
-                    <th className="text-center p-2 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {sortedItems.map(item => (
-                    <tr key={item.id} className={`${hasLowStock(item) ? 'bg-amber-50' : ''} ${isNearExpiry(item) ? 'bg-red-50' : ''}`}>
-                      <td className="p-2">
-                        <div className="font-medium">{item.name}</div>
-                      </td>
-                      <td className="p-2 text-sm">{item.category}</td>
-                      <td className="p-2 text-sm">{item.supplier}</td>
-                      <td className="p-2">
-                        <div className={`${hasLowStock(item) ? 'text-amber-600 font-semibold' : ''}`}>
-                          {item.stock}
-                          {hasLowStock(item) && <span className="ml-1 text-xs">({item.minStock} min)</span>}
-                        </div>
-                      </td>
-                      <td className="p-2">
-                        <div className={`${isNearExpiry(item) ? 'text-red-600 font-semibold' : ''}`}>
-                          {item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : '-'}
-                        </div>
-                      </td>
-                      <td className="p-2">{formatPrice(item.price)}</td>
-                      <td className="p-2">{formatPrice(item.sellingPrice)}</td>
-                      <td className="p-2">
-                        <div className="flex justify-center gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleAddStock(item.id)}>
-                            <PackagePlus className="h-4 w-4" />
-                          </Button>
-                          {hasLowStock(item) && (
-                            <Button variant="outline" size="sm" onClick={() => handleOrderItem(item)}>
-                              <PackageCheck className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {sortedItems.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="py-4 text-center text-muted-foreground">
-                        Aucun produit ne correspond aux critères de recherche
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="justify-between border-t p-4">
-          <div className="text-sm text-muted-foreground">
-            {sortedItems.length} produit{sortedItems.length !== 1 ? 's' : ''} affiché{sortedItems.length !== 1 ? 's' : ''}
-          </div>
-          <Button variant="outline" size="sm">
-            Exporter
-          </Button>
-        </CardFooter>
-      </Card>
+      {activeView === 'dashboard' ? <StockDashboard /> : renderInventoryView()}
     </div>
   );
 };
