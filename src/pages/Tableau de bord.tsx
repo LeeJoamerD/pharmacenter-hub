@@ -8,6 +8,7 @@ import SalesView from '@/components/dashboard/SalesView';
 import InventoryView from '@/components/dashboard/InventoryView';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
+import { Link, useNavigate } from 'react-router-dom';
 
 const DashboardHome = () => (
   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -140,6 +141,7 @@ const ReportsModule = () => (
 
 const AppSidebar = ({ activeModule, setActiveModule } :{ activeModule : string, setActiveModule : (module : string) => void }) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const handleLogout = () => {
     toast({
@@ -149,10 +151,14 @@ const AppSidebar = ({ activeModule, setActiveModule } :{ activeModule : string, 
     // Dans une vraie application, rediriger vers la page de connexion
   };
 
+  const handleLogoClick = () => {
+    navigate('/');
+  };
+
   return (
     <Sidebar>
       <SidebarHeader className="border-b px-4 py-6">
-        <a href="#" className="flex items-center gap-2">
+        <a onClick={handleLogoClick} className="flex items-center gap-2 cursor-pointer">
           <Pill className="h-6 w-6 text-primary" />
           <span className="text-xl font-display font-bold text-primary">PharmaSoft</span>
         </a>
