@@ -41,7 +41,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-    return currencies[0]; // Default to XAF
+    return currencies[0]; // Default to XAF (Franc CFA)
   });
 
   const changeCurrency = (currency: Currency) => {
@@ -57,7 +57,12 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   const formatPrice = (amount: number): string => {
     const convertedAmount = (amount * currentCurrency.rate).toFixed(2);
-    return `${convertedAmount} ${currentCurrency.symbol}`;
+    // For XAF, don't show decimal places as they're rarely used
+    const formattedAmount = currentCurrency.code === 'XAF' 
+      ? Math.round(parseFloat(convertedAmount)).toString()
+      : convertedAmount;
+    
+    return `${formattedAmount} ${currentCurrency.symbol}`;
   };
 
   const convertPrice = (amount: number, fromCurrency?: Currency): number => {

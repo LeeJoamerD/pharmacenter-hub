@@ -287,8 +287,16 @@ const Dashboard = () => {
               </div>
               <div className="flex items-center gap-4">
                 <Button variant="outline" size="sm">Aide</Button>
-                <div
+              </div>
+            </div>
+            <div className="p-6">
+              {renderActiveModule()}
+            </div>
+          </main>
+        </div>
+      </CurrencyProvider>
+    </SidebarProvider>
+  );
+};
 
-
-
-
+export default Dashboard;
