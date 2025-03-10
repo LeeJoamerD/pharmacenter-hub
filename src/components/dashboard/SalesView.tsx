@@ -1,11 +1,11 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Search, CreditCard, Receipt, Tag, Package, Pill, Check } from 'lucide-react';
+import { ShoppingCart, Search, CreditCard, Tag, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 // Type pour un produit
 interface Product {
@@ -25,6 +25,7 @@ interface CartItem {
 const SalesView = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { formatPrice } = useCurrency();
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   
@@ -86,7 +87,7 @@ const SalesView = () => {
     );
   };
   
-  // Calculer le total du panier
+  // Calculer le total du panier avec la devise actuelle
   const calculateTotal = () => {
     return cart.reduce((total, item) => total + (item.product.price * item.quantity), 0);
   };
@@ -152,7 +153,7 @@ const SalesView = () => {
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <div className="font-semibold">{product.price.toFixed(2)}€</div>
+                        <div className="font-semibold">{formatPrice(product.price)}</div>
                         <div className="text-xs text-muted-foreground">
                           {t('inStock')}: {product.stock}
                         </div>
@@ -196,7 +197,7 @@ const SalesView = () => {
                   <div key={item.product.id} className="flex items-center justify-between border-b pb-2">
                     <div>
                       <div className="font-medium">{item.product.name}</div>
-                      <div className="text-sm text-muted-foreground">{item.product.price.toFixed(2)}€</div>
+                      <div className="text-sm text-muted-foreground">{formatPrice(item.product.price)}</div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button 
@@ -225,7 +226,7 @@ const SalesView = () => {
           <CardFooter className="flex flex-col space-y-3">
             <div className="flex justify-between w-full border-t pt-3">
               <span className="font-semibold">{t('total')}</span>
-              <span className="font-bold">{calculateTotal().toFixed(2)}€</span>
+              <span className="font-bold">{formatPrice(calculateTotal())}</span>
             </div>
             <Button className="w-full" disabled={cart.length === 0} onClick={finalizeSale}>
               <CreditCard className="h-4 w-4 mr-2" />

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import SalesView from '@/components/dashboard/SalesView';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { CurrencyProvider } from '@/contexts/CurrencyContext';
 
 const DashboardHome = () => (
   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -268,35 +269,26 @@ const Dashboard = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar activeModule={activeModule} setActiveModule={setActiveModule} />
-        <main className="flex-1 overflow-y-auto">
-          <div className="flex items-center justify-between border-b p-4">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger />
-              <h1 className="text-xl font-bold">
-                {activeModule === 'dashboard' && 'Tableau de bord'}
-                {activeModule === 'sales' && 'Gestion des Ventes'}
-                {activeModule === 'inventory' && 'Gestion des Stocks'}
-                {activeModule === 'clients' && 'Gestion des Clients'}
-                {activeModule === 'calendar' && 'Calendrier & Rendez-vous'}
-                {activeModule === 'reports' && 'Analyses & Rapports'}
-              </h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <Button variant="outline" size="sm">Aide</Button>
-              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-medium">
-                AD
+      <CurrencyProvider>
+        <div className="min-h-screen flex w-full">
+          <AppSidebar activeModule={activeModule} setActiveModule={setActiveModule} />
+          <main className="flex-1 overflow-y-auto">
+            <div className="flex items-center justify-between border-b p-4">
+              <div className="flex items-center gap-2">
+                <SidebarTrigger />
+                <h1 className="text-xl font-bold">
+                  {activeModule === 'dashboard' && 'Tableau de bord'}
+                  {activeModule === 'sales' && 'Gestion des Ventes'}
+                  {activeModule === 'inventory' && 'Gestion des Stocks'}
+                  {activeModule === 'clients' && 'Gestion des Clients'}
+                  {activeModule === 'calendar' && 'Calendrier & Rendez-vous'}
+                  {activeModule === 'reports' && 'Analyses & Rapports'}
+                </h1>
               </div>
-            </div>
-          </div>
-          <div className="p-6">
-            {renderActiveModule()}
-          </div>
-        </main>
-      </div>
-    </SidebarProvider>
-  );
-};
+              <div className="flex items-center gap-4">
+                <Button variant="outline" size="sm">Aide</Button>
+                <div
 
-export default Dashboard;
+
+
+
