@@ -5,6 +5,7 @@ import { LineChart, BarChart, Calendar, PackageSearch, Users, ShoppingCart, Sett
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import SalesView from '@/components/dashboard/SalesView';
+import InventoryView from '@/components/dashboard/InventoryView';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 
@@ -100,10 +101,7 @@ const InventoryModule = () => (
   <div className="space-y-4">
     <h2 className="text-2xl font-bold tracking-tight">Gestion des Stocks</h2>
     <p className="text-muted-foreground">Suivez votre inventaire, les dates d'expiration et planifiez vos commandes.</p>
-    <div className="h-[400px] w-full bg-muted/20 rounded-md flex items-center justify-center">
-      <PackageSearch className="h-12 w-12 text-muted" />
-      <span className="ml-4 text-xl text-muted-foreground">Module de gestion des stocks</span>
-    </div>
+    <InventoryView />
   </div>
 );
 
