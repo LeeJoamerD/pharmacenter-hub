@@ -10,6 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import { Link, useNavigate } from 'react-router-dom';
 import StockDashboard from '@/components/dashboard/StockDashboard';
+import CalendarView from '@/components/dashboard/CalendarView';
 
 const DashboardHome = () => (
   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -551,4 +552,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
