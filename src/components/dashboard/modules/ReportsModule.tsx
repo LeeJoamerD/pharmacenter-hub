@@ -56,7 +56,7 @@ const ReportsModule = () => {
       </div>
 
       <Tabs defaultValue="sales" className="w-full">
-        <TabsList className="grid grid-cols-3 md:grid-cols-5 w-full">
+        <TabsList className="grid grid-cols-5 w-full">
           <TabsTrigger value="sales">
             <BarChart className="mr-2 h-4 w-4" />
             Ventes
@@ -69,11 +69,11 @@ const ReportsModule = () => {
             <LineChart className="mr-2 h-4 w-4" />
             Clients
           </TabsTrigger>
-          <TabsTrigger value="appointments" className="hidden md:flex">
+          <TabsTrigger value="appointments">
             <Calendar className="mr-2 h-4 w-4" />
             Rendez-vous
           </TabsTrigger>
-          <TabsTrigger value="financial" className="hidden md:flex">
+          <TabsTrigger value="financial">
             <BarChart2 className="mr-2 h-4 w-4" />
             Finances
           </TabsTrigger>
