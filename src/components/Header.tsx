@@ -42,17 +42,10 @@ export function Header() {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-1">
           <a href="#features" className="navbar-item">{t('features')}</a>
-          <a href="#modules" className="navbar-item">{t('modules')}</a>
-          <a href="#ai" className="navbar-item">{t('ai')}</a>
           <a href="#contact" className="navbar-item">{t('contact')}</a>
           <div className="ml-4">
             <LanguageSelector />
           </div>
-          <Link to="/dashboard">
-            <Button className="ml-4 button-hover-effect bg-primary hover:bg-primary/90 text-white">
-              {t('freeTrial')}
-            </Button>
-          </Link>
         </nav>
 
         {/* Mobile Menu Button */}
@@ -89,33 +82,15 @@ export function Header() {
             {t('features')}
           </a>
           <a
-            href="#modules"
-            className="py-3 text-lg font-medium border-b border-border/20"
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            {t('modules')}
-          </a>
-          <a
-            href="#ai"
-            className="py-3 text-lg font-medium border-b border-border/20"
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            {t('ai')}
-          </a>
-          <a
             href="#contact"
             className="py-3 text-lg font-medium border-b border-border/20"
             onClick={() => setIsMobileMenuOpen(false)}
           >
             {t('contact')}
           </a>
-          <Link to="/dashboard">
-            <Button className="mt-4 w-full button-hover-effect bg-primary hover:bg-primary/90 text-white">
-              {t('freeTrial')}
-            </Button>
-          </Link>
         </nav>
       </div>
     </header>
   );
 }
+
