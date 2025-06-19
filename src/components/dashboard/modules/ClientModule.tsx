@@ -3,6 +3,10 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 import { Users, UserPlus, ListChecks, BarChart, User } from 'lucide-react';
 
 export const ClientDashboardModule = () => (
@@ -91,10 +95,11 @@ export const ClientDashboardModule = () => (
 );
 
 export const ClientDirectoryModule = () => {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filterStatus, setFilterStatus] = React.useState('all');
-
-  const clients = [
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [clients, setClients] = React.useState([
     {
       id: 1,
       name: "Martin Dupont",
@@ -150,7 +155,55 @@ export const ClientDirectoryModule = () => {
       status: "Inactif",
       totalSpent: "680 €"
     }
-  ];
+  ]);
+  const [newClient, setNewClient] = React.useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    birthDate: '',
+    notes: ''
+  });
+
+  const handleAddClient = () => {
+    if (!newClient.name || !newClient.email || !newClient.phone) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez remplir tous les champs obligatoires.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const today = new Date().toLocaleDateString('fr-FR');
+    const newClientData = {
+      id: clients.length + 1,
+      name: newClient.name,
+      email: newClient.email,
+      phone: newClient.phone,
+      address: newClient.address,
+      birthDate: newClient.birthDate,
+      lastVisit: today,
+      status: "Actif",
+      totalSpent: "0 €"
+    };
+
+    setClients([...clients, newClientData]);
+    setNewClient({
+      name: '',
+      email: '',
+      phone: '',
+      address: '',
+      birthDate: '',
+      notes: ''
+    });
+    setIsDialogOpen(false);
+    
+    toast({
+      title: "Client ajouté",
+      description: `${newClient.name} a été ajouté avec succès.`,
+    });
+  };
 
   const filteredClients = clients.filter(client => {
     const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -167,10 +220,92 @@ export const ClientDirectoryModule = () => {
           <h2 className="text-2xl font-bold tracking-tight">Répertoire des clients</h2>
           <p className="text-muted-foreground">Gérez votre base de données clients et consultez leurs informations.</p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90">
-          <UserPlus className="mr-2 h-4 w-4" />
-          Nouveau client
-        </Button>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-primary hover:bg-primary/90">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Nouveau client
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Ajouter un nouveau client</DialogTitle>
+              <DialogDescription>
+                Remplissez les informations du nouveau client. Les champs marqués d'un * sont obligatoires.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nom complet *</Label>
+                  <Input
+                    id="name"
+                    placeholder="Ex: Jean Dupont"
+                    value={newClient.name}
+                    onChange={(e) => setNewClient({...newClient, name: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="birthDate">Date de naissance</Label>
+                  <Input
+                    id="birthDate"
+                    type="date"
+                    value={newClient.birthDate}
+                    onChange={(e) => setNewClient({...newClient, birthDate: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="jean.dupont@email.com"
+                    value={newClient.email}
+                    onChange={(e) => setNewClient({...newClient, email: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Téléphone *</Label>
+                  <Input
+                    id="phone"
+                    placeholder="06 12 34 56 78"
+                    value={newClient.phone}
+                    onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address">Adresse complète</Label>
+                <Input
+                  id="address"
+                  placeholder="123 Rue de la Paix, 75001 Paris"
+                  value={newClient.address}
+                  onChange={(e) => setNewClient({...newClient, address: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes (optionnel)</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Informations supplémentaires sur le client..."
+                  value={newClient.notes}
+                  onChange={(e) => setNewClient({...newClient, notes: e.target.value})}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Annuler
+              </Button>
+              <Button onClick={handleAddClient}>
+                Ajouter le client
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
       
       <Card>
@@ -224,7 +359,9 @@ export const ClientDirectoryModule = () => {
                         </div>
                         <div>
                           <div className="font-medium">{client.name}</div>
-                          <div className="text-sm text-muted-foreground">Né le {client.birthDate}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {client.birthDate ? `Né le ${client.birthDate}` : 'Date de naissance non renseignée'}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -235,7 +372,7 @@ export const ClientDirectoryModule = () => {
                       </div>
                     </td>
                     <td className="p-4 align-middle">
-                      <div className="text-sm">{client.address}</div>
+                      <div className="text-sm">{client.address || 'Non renseignée'}</div>
                     </td>
                     <td className="p-4 align-middle">
                       <div className="text-sm">{client.lastVisit}</div>
@@ -254,13 +391,13 @@ export const ClientDirectoryModule = () => {
                     </td>
                     <td className="p-4 align-middle">
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" title="Voir le profil">
                           <User className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" title="Historique médical">
                           <ListChecks className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="text-destructive">
+                        <Button variant="ghost" size="sm" className="text-destructive" title="Supprimer">
                           ×
                         </Button>
                       </div>
