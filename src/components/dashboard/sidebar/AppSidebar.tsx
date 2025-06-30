@@ -7,7 +7,11 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupConte
   SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Home, ShoppingCart, PackageSearch, Users, Calendar, BarChart, 
-  Settings, LogOut, Pill, LayoutDashboard, User, ListChecks } from 'lucide-react';
+  Settings, LogOut, Pill, LayoutDashboard, User, ListChecks, Calculator,
+  Bot, MessageSquare, Shield, Building2, UserCheck, Factory, Package,
+  ClipboardList, Truck, Receipt, Book, FileText, CreditCard, Printer,
+  Save, Wrench, Import, Maintenance, UserCog, AlertTriangle, Bell,
+  Archive, Taxes, TrendingUp, PieChart, Brain, HelpCircle } from 'lucide-react';
 
 interface AppSidebarProps {
   activeModule: string;
@@ -30,7 +34,6 @@ const AppSidebar = ({
       title: "Déconnexion",
       description: "Vous avez été déconnecté avec succès.",
     });
-    // Dans une vraie application, rediriger vers la page de connexion
   };
 
   const handleLogoClick = () => {
@@ -68,6 +71,7 @@ const AppSidebar = ({
                   <span>Tableau de bord</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              
               <SidebarMenuItem>
                 <SidebarMenuButton 
                   className={activeModule === 'sales' ? 'bg-primary/10 text-primary' : ''} 
@@ -77,86 +81,98 @@ const AppSidebar = ({
                   <span>Ventes</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              
               <SidebarMenuItem>
                 <SidebarMenuButton 
-                  className={activeModule === 'inventory' ? 'bg-primary/10 text-primary' : ''} 
-                  onClick={() => handleMenuClick('inventory')}
+                  className={activeModule === 'stock' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('stock')}
                 >
                   <PackageSearch className="h-5 w-5" />
-                  <span>Stocks</span>
+                  <span>Stock</span>
                 </SidebarMenuButton>
-                {activeModule === 'inventory' && (
+                {activeModule === 'stock' && (
                   <SidebarMenuSub>
                     <SidebarMenuSubItem>
                       <SidebarMenuSubButton
-                        className={activeSubModule === 'stockDashboard' ? 'bg-primary/10 text-primary' : ''}
-                        onClick={() => handleMenuClick('inventory', 'stockDashboard')}
+                        className={activeSubModule === 'products' ? 'bg-primary/10 text-primary' : ''}
+                        onClick={() => handleMenuClick('stock', 'products')}
                       >
-                        <LayoutDashboard className="h-4 w-4" />
-                        <span>Tableau de bord du stock</span>
+                        <Package className="h-4 w-4" />
+                        <span>Produits</span>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                     <SidebarMenuSubItem>
                       <SidebarMenuSubButton
-                        className={activeSubModule === 'inventoryList' ? 'bg-primary/10 text-primary' : ''}
-                        onClick={() => handleMenuClick('inventory', 'inventoryList')}
+                        className={activeSubModule === 'lots' ? 'bg-primary/10 text-primary' : ''}
+                        onClick={() => handleMenuClick('stock', 'lots')}
                       >
-                        <ListChecks className="h-4 w-4" />
-                        <span>Inventaire des produits</span>
+                        <Archive className="h-4 w-4" />
+                        <span>Lots</span>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        className={activeSubModule === 'orders' ? 'bg-primary/10 text-primary' : ''}
+                        onClick={() => handleMenuClick('stock', 'orders')}
+                      >
+                        <ClipboardList className="h-4 w-4" />
+                        <span>Commandes</span>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        className={activeSubModule === 'receptions' ? 'bg-primary/10 text-primary' : ''}
+                        onClick={() => handleMenuClick('stock', 'receptions')}
+                      >
+                        <Truck className="h-4 w-4" />
+                        <span>Réceptions</span>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                   </SidebarMenuSub>
                 )}
               </SidebarMenuItem>
+              
               <SidebarMenuItem>
                 <SidebarMenuButton 
-                  className={activeModule === 'clients' ? 'bg-primary/10 text-primary' :''} 
-                  onClick={() => handleMenuClick('clients')}
+                  className={activeModule === 'accounting' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('accounting')}
                 >
-                  <Users className="h-5 w-5" />
-                  <span>Clients</span>
+                  <Calculator className="h-5 w-5" />
+                  <span>Comptabilité</span>
                 </SidebarMenuButton>
-                {activeModule === 'clients' && (
+                {activeModule === 'accounting' && (
                   <SidebarMenuSub>
                     <SidebarMenuSubItem>
                       <SidebarMenuSubButton
-                        className={activeSubModule === 'clientDashboard' ? 'bg-primary/10 text-primary' : ''}
-                        onClick={() => handleMenuClick('clients', 'clientDashboard')}
+                        className={activeSubModule === 'accounts' ? 'bg-primary/10 text-primary' : ''}
+                        onClick={() => handleMenuClick('accounting', 'accounts')}
                       >
-                        <LayoutDashboard className="h-4 w-4" />
-                        <span>Tableau de bord des clients</span>
+                        <CreditCard className="h-4 w-4" />
+                        <span>Comptes</span>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                     <SidebarMenuSubItem>
                       <SidebarMenuSubButton
-                        className={activeSubModule === 'clientDirectory' ? 'bg-primary/10 text-primary' : ''}
-                        onClick={() => handleMenuClick('clients', 'clientDirectory')}
+                        className={activeSubModule === 'journals' ? 'bg-primary/10 text-primary' : ''}
+                        onClick={() => handleMenuClick('accounting', 'journals')}
                       >
-                        <User className="h-4 w-4" />
-                        <span>Répertoire des clients</span>
+                        <Book className="h-4 w-4" />
+                        <span>Journaux</span>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                     <SidebarMenuSubItem>
                       <SidebarMenuSubButton
-                        className={activeSubModule === 'clientHistory' ? 'bg-primary/10 text-primary' : ''}
-                        onClick={() => handleMenuClick('clients', 'clientHistory')}
+                        className={activeSubModule === 'entries' ? 'bg-primary/10 text-primary' : ''}
+                        onClick={() => handleMenuClick('accounting', 'entries')}
                       >
-                        <ListChecks className="h-4 w-4" />
-                        <span>Historique médical</span>
+                        <FileText className="h-4 w-4" />
+                        <span>Écritures</span>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                   </SidebarMenuSub>
                 )}
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton 
-                  className={activeModule === 'calendar' ? 'bg-primary/10 text-primary' : ''} 
-                  onClick={() => handleMenuClick('calendar')}
-                >
-                  <Calendar className="h-5 w-5" />
-                  <span>Calendrier</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              
               <SidebarMenuItem>
                 <SidebarMenuButton 
                   className={activeModule === 'reports' ? 'bg-primary/10 text-primary' : ''} 
@@ -166,17 +182,170 @@ const AppSidebar = ({
                   <span>Rapports</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  className={activeModule === 'settings' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('settings')}
+                >
+                  <Settings className="h-5 w-5" />
+                  <span>Paramètres</span>
+                </SidebarMenuButton>
+                {activeModule === 'settings' && (
+                  <SidebarMenuSub>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        className={activeSubModule === 'general' ? 'bg-primary/10 text-primary' : ''}
+                        onClick={() => handleMenuClick('settings', 'general')}
+                      >
+                        <Settings className="h-4 w-4" />
+                        <span>Général</span>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        className={activeSubModule === 'interface' ? 'bg-primary/10 text-primary' : ''}
+                        onClick={() => handleMenuClick('settings', 'interface')}
+                      >
+                        <LayoutDashboard className="h-4 w-4" />
+                        <span>Interface</span>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        className={activeSubModule === 'printers' ? 'bg-primary/10 text-primary' : ''}
+                        onClick={() => handleMenuClick('settings', 'printers')}
+                      >
+                        <Printer className="h-4 w-4" />
+                        <span>Imprimantes</span>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        className={activeSubModule === 'taxes' ? 'bg-primary/10 text-primary' : ''}
+                        onClick={() => handleMenuClick('settings', 'taxes')}
+                      >
+                        <Taxes className="h-4 w-4" />
+                        <span>Taxes</span>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        className={activeSubModule === 'backup' ? 'bg-primary/10 text-primary' : ''}
+                        onClick={() => handleMenuClick('settings', 'backup')}
+                      >
+                        <Save className="h-4 w-4" />
+                        <span>Sauvegarde</span>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton
+                        className={activeSubModule === 'maintenance' ? 'bg-primary/10 text-primary' : ''}
+                        onClick={() => handleMenuClick('settings', 'maintenance')}
+                      >
+                        <Wrench className="h-4 w-4" />
+                        <span>Maintenance</span>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  </SidebarMenuSub>
+                )}
+              </SidebarMenuItem>
+              
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  className={activeModule === 'assistant' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('assistant')}
+                >
+                  <Bot className="h-5 w-5" />
+                  <span>Assistant IA</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  className={activeModule === 'chat' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('chat')}
+                >
+                  <MessageSquare className="h-5 w-5" />
+                  <span>Chat</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        
         <SidebarGroup>
-          <SidebarGroupLabel>Paramètres</SidebarGroupLabel>
+          <SidebarGroupLabel>Administration</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton>
-                  <Settings className="h-5 w-5" />
-                  <span>Paramètres</span>
+                <SidebarMenuButton 
+                  className={activeModule === 'personnel' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('personnel')}
+                >
+                  <Users className="h-5 w-5" />
+                  <span>Personnel</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  className={activeModule === 'insurers' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('insurers')}
+                >
+                  <Shield className="h-5 w-5" />
+                  <span>Assureurs</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  className={activeModule === 'companies' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('companies')}
+                >
+                  <Building2 className="h-5 w-5" />
+                  <span>Sociétés</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  className={activeModule === 'contracted' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('contracted')}
+                >
+                  <UserCheck className="h-5 w-5" />
+                  <span>Conventionnés</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  className={activeModule === 'clients' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('clients')}
+                >
+                  <User className="h-5 w-5" />
+                  <span>Clients</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  className={activeModule === 'suppliers' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('suppliers')}
+                >
+                  <Truck className="h-5 w-5" />
+                  <span>Fournisseurs</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  className={activeModule === 'laboratories' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('laboratories')}
+                >
+                  <Factory className="h-5 w-5" />
+                  <span>Laboratoires</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
