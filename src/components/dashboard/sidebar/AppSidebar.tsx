@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -10,8 +9,8 @@ import { Home, ShoppingCart, PackageSearch, Users, Calendar, BarChart,
   Settings, LogOut, Pill, LayoutDashboard, User, ListChecks, Calculator,
   Bot, MessageSquare, Shield, Building2, UserCheck, Factory, Package,
   ClipboardList, Truck, Receipt, Book, FileText, CreditCard, Printer,
-  Save, Wrench, Import, Maintenance, UserCog, AlertTriangle, Bell,
-  Archive, Taxes, TrendingUp, PieChart, Brain, HelpCircle } from 'lucide-react';
+  Save, Wrench, Import, UserCog, AlertTriangle, Bell,
+  Archive, TrendingUp, PieChart, Brain, HelpCircle } from 'lucide-react';
 
 interface AppSidebarProps {
   activeModule: string;
@@ -225,7 +224,7 @@ const AppSidebar = ({
                         className={activeSubModule === 'taxes' ? 'bg-primary/10 text-primary' : ''}
                         onClick={() => handleMenuClick('settings', 'taxes')}
                       >
-                        <Taxes className="h-4 w-4" />
+                        <Receipt className="h-4 w-4" />
                         <span>Taxes</span>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
