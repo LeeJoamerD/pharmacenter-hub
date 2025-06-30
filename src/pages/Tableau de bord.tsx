@@ -28,14 +28,36 @@ const Dashboard = () => {
   const [activeSubModule, setActiveSubModule] = useState('');
 
   const renderActiveModule = () => {
+    // Administration module with submodules
+    if (activeModule === 'administration') {
+      switch (activeSubModule) {
+        case 'personnel':
+          return <PlaceholderModule title="Gestion du Personnel" />;
+        case 'assureurs':
+          return <PlaceholderModule title="Gestion des Assureurs" />;
+        case 'societes':
+          return <PlaceholderModule title="Gestion des Sociétés" />;
+        case 'conventionnes':
+          return <PlaceholderModule title="Gestion des Conventionnés" />;
+        case 'clients':
+          return <PlaceholderModule title="Gestion des Clients" />;
+        case 'fournisseurs':
+          return <PlaceholderModule title="Gestion des Fournisseurs" />;
+        case 'laboratoires':
+          return <PlaceholderModule title="Gestion des Laboratoires" />;
+        default:
+          return <PlaceholderModule title="Tableau de bord Administration" />;
+      }
+    }
+    
     // Stock module with submodules
     if (activeModule === 'stock') {
       switch (activeSubModule) {
-        case 'products':
+        case 'produits':
           return <PlaceholderModule title="Gestion des Produits" />;
         case 'lots':
           return <PlaceholderModule title="Gestion des Lots" />;
-        case 'orders':
+        case 'commandes':
           return <PlaceholderModule title="Commandes Fournisseurs" />;
         case 'receptions':
           return <PlaceholderModule title="Réceptions" />;
@@ -44,51 +66,17 @@ const Dashboard = () => {
       }
     }
     
-    // Accounting module with submodules
-    if (activeModule === 'accounting') {
+    // Comptabilité module with submodules
+    if (activeModule === 'comptabilite') {
       switch (activeSubModule) {
-        case 'accounts':
+        case 'comptes':
           return <PlaceholderModule title="Comptes Comptables" />;
-        case 'journals':
+        case 'journaux':
           return <PlaceholderModule title="Journaux Comptables" />;
-        case 'entries':
+        case 'ecritures':
           return <PlaceholderModule title="Écritures Comptables" />;
         default:
           return <PlaceholderModule title="Tableau de bord Comptabilité" />;
-      }
-    }
-    
-    // Settings module with submodules
-    if (activeModule === 'settings') {
-      switch (activeSubModule) {
-        case 'general':
-          return <PlaceholderModule title="Paramètres Généraux" />;
-        case 'interface':
-          return <PlaceholderModule title="Paramètres Interface" />;
-        case 'printers':
-          return <PlaceholderModule title="Paramètres Imprimantes" />;
-        case 'taxes':
-          return <PlaceholderModule title="Paramètres Taxes" />;
-        case 'backup':
-          return <PlaceholderModule title="Paramètres Sauvegarde" />;
-        case 'maintenance':
-          return <PlaceholderModule title="Paramètres Maintenance" />;
-        default:
-          return <PlaceholderModule title="Configuration Système" />;
-      }
-    }
-    
-    // Clients module (existing)
-    if (activeModule === 'clients') {
-      switch (activeSubModule) {
-        case 'clientDashboard':
-          return <ClientDashboardModule />;
-        case 'clientDirectory':
-          return <ClientDirectoryModule />;
-        case 'clientHistory':
-          return <ClientHistoryModule />;
-        default:
-          return <ClientDashboardModule />;
       }
     }
     
@@ -96,28 +84,14 @@ const Dashboard = () => {
     switch (activeModule) {
       case 'dashboard':
         return <DashboardHome />;
-      case 'sales':
+      case 'ventes':
         return <SalesModule />;
-      case 'reports':
+      case 'rapports':
         return <ReportsModule />;
       case 'assistant':
         return <PlaceholderModule title="Assistant IA" />;
       case 'chat':
-        return <PlaceholderModule title="Chat PharmaSoft" />;
-      
-      // Administration modules
-      case 'personnel':
-        return <PlaceholderModule title="Gestion du Personnel" />;
-      case 'insurers':
-        return <PlaceholderModule title="Gestion des Assureurs" />;
-      case 'companies':
-        return <PlaceholderModule title="Gestion des Sociétés" />;
-      case 'contracted':
-        return <PlaceholderModule title="Gestion des Conventionnés" />;
-      case 'suppliers':
-        return <PlaceholderModule title="Gestion des Fournisseurs" />;
-      case 'laboratories':
-        return <PlaceholderModule title="Gestion des Laboratoires" />;
+        return <PlaceholderModule title="Chat-PharmaSoft" />;
         
       default:
         return <DashboardHome />;
@@ -125,14 +99,36 @@ const Dashboard = () => {
   };
 
   const getModuleTitle = () => {
+    // Administration module titles
+    if (activeModule === 'administration') {
+      switch (activeSubModule) {
+        case 'personnel':
+          return 'Gestion du Personnel';
+        case 'assureurs':
+          return 'Gestion des Assureurs';
+        case 'societes':
+          return 'Gestion des Sociétés';
+        case 'conventionnes':
+          return 'Gestion des Conventionnés';
+        case 'clients':
+          return 'Gestion des Clients';
+        case 'fournisseurs':
+          return 'Gestion des Fournisseurs';
+        case 'laboratoires':
+          return 'Gestion des Laboratoires';
+        default:
+          return 'Administration';
+      }
+    }
+    
     // Stock module titles
     if (activeModule === 'stock') {
       switch (activeSubModule) {
-        case 'products':
+        case 'produits':
           return 'Gestion des Produits';
         case 'lots':
           return 'Gestion des Lots';
-        case 'orders':
+        case 'commandes':
           return 'Commandes Fournisseurs';
         case 'receptions':
           return 'Réceptions';
@@ -141,51 +137,17 @@ const Dashboard = () => {
       }
     }
     
-    // Accounting module titles
-    if (activeModule === 'accounting') {
+    // Comptabilité module titles
+    if (activeModule === 'comptabilite') {
       switch (activeSubModule) {
-        case 'accounts':
+        case 'comptes':
           return 'Comptes Comptables';
-        case 'journals':
+        case 'journaux':
           return 'Journaux Comptables';
-        case 'entries':
+        case 'ecritures':
           return 'Écritures Comptables';
         default:
           return 'Comptabilité';
-      }
-    }
-    
-    // Settings module titles
-    if (activeModule === 'settings') {
-      switch (activeSubModule) {
-        case 'general':
-          return 'Paramètres Généraux';
-        case 'interface':
-          return 'Paramètres Interface';
-        case 'printers':
-          return 'Paramètres Imprimantes';
-        case 'taxes':
-          return 'Paramètres Taxes';
-        case 'backup':
-          return 'Paramètres Sauvegarde';
-        case 'maintenance':
-          return 'Paramètres Maintenance';
-        default:
-          return 'Paramètres';
-      }
-    }
-    
-    // Clients module titles (existing)
-    if (activeModule === 'clients') {
-      switch (activeSubModule) {
-        case 'clientDashboard':
-          return 'Tableau de bord des clients';
-        case 'clientDirectory':
-          return 'Répertoire des clients';
-        case 'clientHistory':
-          return 'Historique médical';
-        default:
-          return 'Gestion des Clients';
       }
     }
     
@@ -193,28 +155,14 @@ const Dashboard = () => {
     switch (activeModule) {
       case 'dashboard':
         return 'Tableau de bord';
-      case 'sales':
+      case 'ventes':
         return 'Gestion des Ventes';
-      case 'reports':
+      case 'rapports':
         return 'Analyses & Rapports';
       case 'assistant':
         return 'Assistant IA';
       case 'chat':
-        return 'Chat PharmaSoft';
-      
-      // Administration module titles
-      case 'personnel':
-        return 'Gestion du Personnel';
-      case 'insurers':
-        return 'Gestion des Assureurs';
-      case 'companies':
-        return 'Gestion des Sociétés';
-      case 'contracted':
-        return 'Gestion des Conventionnés';
-      case 'suppliers':
-        return 'Gestion des Fournisseurs';
-      case 'laboratories':
-        return 'Gestion des Laboratoires';
+        return 'Chat-PharmaSoft';
         
       default:
         return 'Tableau de bord';
