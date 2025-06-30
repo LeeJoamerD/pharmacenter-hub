@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
@@ -28,23 +27,107 @@ const Dashboard = () => {
   const [activeSubModule, setActiveSubModule] = useState('');
 
   const renderActiveModule = () => {
-    // Administration module with submodules
+    // Administration module with all submodules
     if (activeModule === 'administration') {
       switch (activeSubModule) {
-        case 'personnel':
-          return <PlaceholderModule title="Gestion du Personnel" />;
+        // Gestion du Personnel
+        case 'gestion-personnel':
+          return <PlaceholderModule title="📋 Gestion du Personnel" />;
+        case 'employes':
+          return <PlaceholderModule title="Employés" />;
+        case 'plannings':
+          return <PlaceholderModule title="Plannings & Horaires" />;
+        case 'roles-permissions':
+          return <PlaceholderModule title="Rôles & Permissions" />;
+        case 'sessions-caisse':
+          return <PlaceholderModule title="Sessions de Caisse" />;
+        case 'journal-activite':
+          return <PlaceholderModule title="Journal d'Activité" />;
+        
+        // Gestion des Partenaires
+        case 'gestion-partenaires':
+          return <PlaceholderModule title="🤝 Gestion des Partenaires" />;
         case 'assureurs':
-          return <PlaceholderModule title="Gestion des Assureurs" />;
-        case 'societes':
-          return <PlaceholderModule title="Gestion des Sociétés" />;
+          return <PlaceholderModule title="Assureurs" />;
+        case 'societes-conventionnees':
+          return <PlaceholderModule title="Sociétés Conventionnées" />;
         case 'conventionnes':
-          return <PlaceholderModule title="Gestion des Conventionnés" />;
-        case 'clients':
-          return <PlaceholderModule title="Gestion des Clients" />;
+          return <PlaceholderModule title="Conventionnés" />;
         case 'fournisseurs':
-          return <PlaceholderModule title="Gestion des Fournisseurs" />;
+          return <PlaceholderModule title="Fournisseurs" />;
         case 'laboratoires':
-          return <PlaceholderModule title="Gestion des Laboratoires" />;
+          return <PlaceholderModule title="Laboratoires" />;
+        
+        // Gestion des Produits
+        case 'gestion-produits':
+          return <PlaceholderModule title="📦 Gestion des Produits" />;
+        case 'catalogue-produits':
+          return <PlaceholderModule title="Catalogue Produits" />;
+        case 'familles-produits':
+          return <PlaceholderModule title="Familles de Produits" />;
+        case 'rayons':
+          return <PlaceholderModule title="Rayons" />;
+        case 'categories-tarification':
+          return <PlaceholderModule title="Catégories de Tarification" />;
+        case 'tarification-prix':
+          return <PlaceholderModule title="Tarification & Prix" />;
+        
+        // Gestion des Clients
+        case 'gestion-clients':
+          return <PlaceholderModule title="👥 Gestion des Clients" />;
+        case 'clients-tous':
+          return <PlaceholderModule title="Clients (tous types)" />;
+        case 'segments-clients':
+          return <PlaceholderModule title="Segments Clients" />;
+        case 'limites-credit':
+          return <PlaceholderModule title="Limites de Crédit" />;
+        
+        // Paramètres Système
+        case 'parametres-systeme':
+          return <PlaceholderModule title="⚙️ Paramètres Système" />;
+        case 'parametres-generaux':
+          return <PlaceholderModule title="Paramètres Généraux" />;
+        case 'interface-affichage':
+          return <PlaceholderModule title="Interface & Affichage" />;
+        case 'alertes-notifications':
+          return <PlaceholderModule title="Alertes & Notifications" />;
+        case 'sauvegardes':
+          return <PlaceholderModule title="Sauvegardes" />;
+        case 'import-export':
+          return <PlaceholderModule title="Import/Export" />;
+        case 'maintenance':
+          return <PlaceholderModule title="Maintenance" />;
+        
+        // Configuration Matériel
+        case 'configuration-materiel':
+          return <PlaceholderModule title="🖨️ Configuration Matériel" />;
+        case 'imprimantes':
+          return <PlaceholderModule title="Imprimantes" />;
+        case 'caisses':
+          return <PlaceholderModule title="Caisses" />;
+        
+        // Configuration Financière
+        case 'configuration-financiere':
+          return <PlaceholderModule title="💰 Configuration Financière" />;
+        case 'taxes':
+          return <PlaceholderModule title="Taxes" />;
+        case 'comptes-depenses':
+          return <PlaceholderModule title="Comptes de Dépenses" />;
+        case 'parametres-facturation':
+          return <PlaceholderModule title="Paramètres de Facturation" />;
+        
+        // Rapports & Audit
+        case 'rapports-audit':
+          return <PlaceholderModule title="📊 Rapports & Audit" />;
+        case 'journal-activite-audit':
+          return <PlaceholderModule title="Journal d'Activité (Audit)" />;
+        case 'statistiques-rh':
+          return <PlaceholderModule title="Statistiques RH" />;
+        case 'performance-partenaires':
+          return <PlaceholderModule title="Performance Partenaires" />;
+        case 'audit-trail':
+          return <PlaceholderModule title="Audit Trail" />;
+        
         default:
           return <PlaceholderModule title="Tableau de bord Administration" />;
       }
@@ -102,20 +185,104 @@ const Dashboard = () => {
     // Administration module titles
     if (activeModule === 'administration') {
       switch (activeSubModule) {
-        case 'personnel':
-          return 'Gestion du Personnel';
+        // Gestion du Personnel
+        case 'gestion-personnel':
+          return '📋 Gestion du Personnel';
+        case 'employes':
+          return 'Employés';
+        case 'plannings':
+          return 'Plannings & Horaires';
+        case 'roles-permissions':
+          return 'Rôles & Permissions';
+        case 'sessions-caisse':
+          return 'Sessions de Caisse';
+        case 'journal-activite':
+          return 'Journal d\'Activité';
+        
+        // Gestion des Partenaires
+        case 'gestion-partenaires':
+          return '🤝 Gestion des Partenaires';
         case 'assureurs':
-          return 'Gestion des Assureurs';
-        case 'societes':
-          return 'Gestion des Sociétés';
+          return 'Assureurs';
+        case 'societes-conventionnees':
+          return 'Sociétés Conventionnées';
         case 'conventionnes':
-          return 'Gestion des Conventionnés';
-        case 'clients':
-          return 'Gestion des Clients';
+          return 'Conventionnés';
         case 'fournisseurs':
-          return 'Gestion des Fournisseurs';
+          return 'Fournisseurs';
         case 'laboratoires':
-          return 'Gestion des Laboratoires';
+          return 'Laboratoires';
+        
+        // Gestion des Produits
+        case 'gestion-produits':
+          return '📦 Gestion des Produits';
+        case 'catalogue-produits':
+          return 'Catalogue Produits';
+        case 'familles-produits':
+          return 'Familles de Produits';
+        case 'rayons':
+          return 'Rayons';
+        case 'categories-tarification':
+          return 'Catégories de Tarification';
+        case 'tarification-prix':
+          return 'Tarification & Prix';
+        
+        // Gestion des Clients
+        case 'gestion-clients':
+          return '👥 Gestion des Clients';
+        case 'clients-tous':
+          return 'Clients (tous types)';
+        case 'segments-clients':
+          return 'Segments Clients';
+        case 'limites-credit':
+          return 'Limites de Crédit';
+        
+        // Paramètres Système
+        case 'parametres-systeme':
+          return '⚙️ Paramètres Système';
+        case 'parametres-generaux':
+          return 'Paramètres Généraux';
+        case 'interface-affichage':
+          return 'Interface & Affichage';
+        case 'alertes-notifications':
+          return 'Alertes & Notifications';
+        case 'sauvegardes':
+          return 'Sauvegardes';
+        case 'import-export':
+          return 'Import/Export';
+        case 'maintenance':
+          return 'Maintenance';
+        
+        // Configuration Matériel
+        case 'configuration-materiel':
+          return '🖨️ Configuration Matériel';
+        case 'imprimantes':
+          return 'Imprimantes';
+        case 'caisses':
+          return 'Caisses';
+        
+        // Configuration Financière
+        case 'configuration-financiere':
+          return '💰 Configuration Financière';
+        case 'taxes':
+          return 'Taxes';
+        case 'comptes-depenses':
+          return 'Comptes de Dépenses';
+        case 'parametres-facturation':
+          return 'Paramètres de Facturation';
+        
+        // Rapports & Audit
+        case 'rapports-audit':
+          return '📊 Rapports & Audit';
+        case 'journal-activite-audit':
+          return 'Journal d\'Activité (Audit)';
+        case 'statistiques-rh':
+          return 'Statistiques RH';
+        case 'performance-partenaires':
+          return 'Performance Partenaires';
+        case 'audit-trail':
+          return 'Audit Trail';
+        
         default:
           return 'Administration';
       }
