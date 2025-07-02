@@ -23,10 +23,10 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="nom"
+              name="noms"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nom</FormLabel>
+                  <FormLabel>Noms</FormLabel>
                   <FormControl>
                     <Input placeholder="Nom de famille" {...field} />
                   </FormControl>
@@ -36,12 +36,53 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
             />
             <FormField
               control={form.control}
-              name="prenom"
+              name="prenoms"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Prénom</FormLabel>
+                  <FormLabel>Prénoms</FormLabel>
                   <FormControl>
-                    <Input placeholder="Prénom" {...field} />
+                    <Input placeholder="Prénoms" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="fonction"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Fonction</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner une fonction" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Pharmacien titulaire">Pharmacien titulaire</SelectItem>
+                      <SelectItem value="Pharmacien adjoint">Pharmacien adjoint</SelectItem>
+                      <SelectItem value="Préparateur">Préparateur</SelectItem>
+                      <SelectItem value="Étudiant en pharmacie">Étudiant en pharmacie</SelectItem>
+                      <SelectItem value="Secrétaire">Secrétaire</SelectItem>
+                      <SelectItem value="Comptable">Comptable</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="profession"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Profession</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Profession" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -51,23 +92,17 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
 
           <FormField
             control={form.control}
-            name="poste"
+            name="adresse"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Poste</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un poste" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Pharmacien titulaire">Pharmacien titulaire</SelectItem>
-                    <SelectItem value="Pharmacien adjoint">Pharmacien adjoint</SelectItem>
-                    <SelectItem value="Préparateur">Préparateur</SelectItem>
-                    <SelectItem value="Étudiant en pharmacie">Étudiant en pharmacie</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormLabel>Adresse</FormLabel>
+                <FormControl>
+                  <Textarea 
+                    placeholder="Adresse complète"
+                    className="resize-none"
+                    {...field}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -76,10 +111,10 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="telephone"
+              name="telephone_appel"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Téléphone</FormLabel>
+                  <FormLabel>Téléphone d'appel</FormLabel>
                   <FormControl>
                     <Input placeholder="01.23.45.67.89" {...field} />
                   </FormControl>
@@ -87,6 +122,22 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="telephone_whatsapp"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>WhatsApp</FormLabel>
+                  <FormControl>
+                    <Input placeholder="01.23.45.67.89" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="email"
@@ -100,37 +151,41 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="niu_cni"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>NIU/CNI</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Numéro d'identification unique" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="statut"
+              name="date_naissance"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Statut</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un statut" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Actif">Actif</SelectItem>
-                      <SelectItem value="Congé">Congé</SelectItem>
-                      <SelectItem value="Inactif">Inactif</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Date de naissance</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <FormField
               control={form.control}
-              name="dateEmbauche"
+              name="date_recrutement"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Date d'embauche</FormLabel>
+                  <FormLabel>Date de recrutement</FormLabel>
                   <FormControl>
                     <Input type="date" {...field} />
                   </FormControl>
@@ -140,26 +195,134 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
             />
           </div>
 
-          <FormField
-            control={form.control}
-            name="certifications"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Certifications</FormLabel>
-                <FormControl>
-                  <Textarea 
-                    placeholder="Séparez les certifications par des virgules..."
-                    className="resize-none"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription>
-                  Listez les certifications et formations séparées par des virgules
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="situation_familiale"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Situation familiale</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner la situation" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Célibataire">Célibataire</SelectItem>
+                      <SelectItem value="Marié(e)">Marié(e)</SelectItem>
+                      <SelectItem value="Divorcé(e)">Divorcé(e)</SelectItem>
+                      <SelectItem value="Veuf(ve)">Veuf(ve)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="nombre_enfants"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nombre d'enfants</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min="0"
+                      placeholder="0"
+                      {...field}
+                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="statut_contractuel"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Statut contractuel</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner le statut" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="CDI">CDI</SelectItem>
+                      <SelectItem value="CDD">CDD</SelectItem>
+                      <SelectItem value="Stage">Stage</SelectItem>
+                      <SelectItem value="Freelance">Freelance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="numero_cnss"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Numéro CNSS</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Numéro CNSS" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="salaire_base"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Salaire de base</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      {...field}
+                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="photo_identite"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Photo d'identité</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          field.onChange(file.name);
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
       </ScrollArea>
       

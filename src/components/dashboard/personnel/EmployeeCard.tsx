@@ -31,23 +31,30 @@ export const EmployeeCard = ({ employees, onEdit, onDelete }: EmployeeCardProps)
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center text-lg">
                 <Users className="mr-2 h-5 w-5" />
-                {employee.prenom} {employee.nom}
+                {employee.prenoms} {employee.noms}
               </CardTitle>
-              {getStatusBadge(employee.statut)}
+              {getStatusBadge(employee.statut_contractuel)}
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-3">
               <div className="flex items-center">
                 <Badge variant="outline" className="mr-3">
-                  {employee.poste}
+                  {employee.fonction}
                 </Badge>
               </div>
               
               <div className="flex items-center text-sm text-muted-foreground">
                 <Phone className="mr-2 h-4 w-4" />
-                {employee.telephone}
+                {employee.telephone_appel}
               </div>
+              
+              {employee.telephone_whatsapp && (
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <Phone className="mr-2 h-4 w-4" />
+                  WhatsApp: {employee.telephone_whatsapp}
+                </div>
+              )}
               
               <div className="flex items-center text-sm text-muted-foreground">
                 <Mail className="mr-2 h-4 w-4" />
@@ -56,21 +63,14 @@ export const EmployeeCard = ({ employees, onEdit, onDelete }: EmployeeCardProps)
               
               <div className="flex items-center text-sm text-muted-foreground">
                 <Calendar className="mr-2 h-4 w-4" />
-                Embauché le {new Date(employee.dateEmbauche).toLocaleDateString('fr-FR')}
+                Recruté le {new Date(employee.date_recrutement).toLocaleDateString('fr-FR')}
               </div>
               
-              {employee.certifications && employee.certifications.length > 0 && (
+              {employee.profession && (
                 <div className="space-y-2">
                   <div className="flex items-center text-sm font-medium">
                     <Award className="mr-2 h-4 w-4" />
-                    Certifications
-                  </div>
-                  <div className="space-y-1">
-                    {employee.certifications.map((cert, index) => (
-                      <Badge key={index} variant="secondary" className="mr-1 mb-1 text-xs">
-                        {cert}
-                      </Badge>
-                    ))}
+                    Profession: {employee.profession}
                   </div>
                 </div>
               )}

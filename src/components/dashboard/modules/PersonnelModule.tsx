@@ -22,36 +22,61 @@ import { employeeSchema, EmployeeFormData, Employee, LeaveRequest, Training } fr
 const employees: Employee[] = [
   {
     id: 1,
-    nom: "Dupont",
-    prenom: "Marie",
-    poste: "Pharmacien titulaire",
-    telephone: "01.23.45.67.89",
+    noms: "Dupont",
+    prenoms: "Marie",
+    fonction: "Pharmacien titulaire",
+    adresse: "123 Rue de la Pharmacie, Paris",
+    telephone_appel: "01.23.45.67.89",
+    telephone_whatsapp: "01.23.45.67.89",
     email: "marie.dupont@pharma.com",
-    statut: "Actif",
-    dateEmbauche: "2020-03-15",
-    certifications: ["DU Pharmacie clinique", "Formation gériatrie"]
+    niu_cni: "1234567890123",
+    profession: "Pharmacien",
+    date_naissance: "1985-05-15",
+    date_recrutement: "2020-03-15",
+    photo_identite: "marie_dupont.jpg",
+    salaire_base: 4500.00,
+    situation_familiale: "Marié(e)",
+    nombre_enfants: 2,
+    numero_cnss: "123456789",
+    statut_contractuel: "CDI"
   },
   {
     id: 2,
-    nom: "Martin",
-    prenom: "Pierre",
-    poste: "Préparateur",
-    telephone: "01.23.45.67.90",
+    noms: "Martin",
+    prenoms: "Pierre",
+    fonction: "Préparateur",
+    adresse: "456 Avenue des Médicaments, Lyon",
+    telephone_appel: "01.23.45.67.90",
+    telephone_whatsapp: "01.23.45.67.90",
     email: "pierre.martin@pharma.com",
-    statut: "Actif",
-    dateEmbauche: "2021-09-01",
-    certifications: ["BP Préparateur", "Formation oncologie"]
+    niu_cni: "1234567890124",
+    profession: "Préparateur en pharmacie",
+    date_naissance: "1990-08-22",
+    date_recrutement: "2021-09-01",
+    salaire_base: 2800.00,
+    situation_familiale: "Célibataire",
+    nombre_enfants: 0,
+    numero_cnss: "123456790",
+    statut_contractuel: "CDI"
   },
   {
     id: 3,
-    nom: "Bernard",
-    prenom: "Sophie",
-    poste: "Pharmacien adjoint",
-    telephone: "01.23.45.67.91",
+    noms: "Bernard",
+    prenoms: "Sophie",
+    fonction: "Pharmacien adjoint",
+    adresse: "789 Boulevard de la Santé, Marseille",
+    telephone_appel: "01.23.45.67.91",
+    telephone_whatsapp: "01.23.45.67.91",
     email: "sophie.bernard@pharma.com",
-    statut: "Congé",
-    dateEmbauche: "2019-01-10",
-    certifications: ["Doctorat Pharmacie", "DU Pharmacie d'officine"]
+    niu_cni: "1234567890125",
+    profession: "Pharmacien",
+    date_naissance: "1988-12-10",
+    date_recrutement: "2019-01-10",
+    salaire_base: 3800.00,
+    situation_familiale: "Divorcé(e)",
+    nombre_enfants: 1,
+    numero_cnss: "123456791",
+    statut_contractuel: "CDD"
   }
 ];
 
@@ -110,14 +135,23 @@ const PersonnelModule = () => {
   const newEmployeeForm = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
     defaultValues: {
-      nom: '',
-      prenom: '',
-      poste: '',
-      telephone: '',
+      noms: '',
+      prenoms: '',
+      fonction: '',
+      adresse: '',
+      telephone_appel: '',
+      telephone_whatsapp: '',
       email: '',
-      statut: 'Actif',
-      dateEmbauche: '',
-      certifications: ''
+      niu_cni: '',
+      profession: '',
+      date_naissance: '',
+      date_recrutement: '',
+      photo_identite: '',
+      salaire_base: 0,
+      situation_familiale: '',
+      nombre_enfants: 0,
+      numero_cnss: '',
+      statut_contractuel: ''
     }
   });
 
@@ -128,14 +162,23 @@ const PersonnelModule = () => {
   const handleEditEmployee = (employee: Employee) => {
     setSelectedEmployee(employee);
     editEmployeeForm.reset({
-      nom: employee.nom,
-      prenom: employee.prenom,
-      poste: employee.poste,
-      telephone: employee.telephone,
+      noms: employee.noms,
+      prenoms: employee.prenoms,
+      fonction: employee.fonction,
+      adresse: employee.adresse,
+      telephone_appel: employee.telephone_appel,
+      telephone_whatsapp: employee.telephone_whatsapp,
       email: employee.email,
-      statut: employee.statut,
-      dateEmbauche: employee.dateEmbauche,
-      certifications: employee.certifications.join(', ')
+      niu_cni: employee.niu_cni,
+      profession: employee.profession,
+      date_naissance: employee.date_naissance,
+      date_recrutement: employee.date_recrutement,
+      photo_identite: employee.photo_identite,
+      salaire_base: employee.salaire_base,
+      situation_familiale: employee.situation_familiale,
+      nombre_enfants: employee.nombre_enfants,
+      numero_cnss: employee.numero_cnss,
+      statut_contractuel: employee.statut_contractuel
     });
     setIsEditEmployeeOpen(true);
   };
@@ -157,12 +200,12 @@ const PersonnelModule = () => {
   };
 
   const filteredEmployees = employees.filter(employee => {
-    const matchesSearch = employee.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.poste.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = employee.noms.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.prenoms.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.fonction.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === '' || employee.statut === statusFilter;
-    const matchesPoste = posteFilter === '' || employee.poste === posteFilter;
+    const matchesStatus = statusFilter === '' || employee.statut_contractuel === statusFilter;
+    const matchesPoste = posteFilter === '' || employee.fonction === posteFilter;
     
     return matchesSearch && matchesStatus && matchesPoste;
   });

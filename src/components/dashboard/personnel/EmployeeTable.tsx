@@ -43,14 +43,14 @@ export const EmployeeTable = ({ employees, onEdit, onDelete }: EmployeeTableProp
               <TableCell className="font-medium">
                 <div className="flex items-center">
                   <Users className="mr-2 h-4 w-4 text-muted-foreground" />
-                  {employee.nom}
+                  {employee.noms}
                 </div>
               </TableCell>
-              <TableCell>{employee.prenom}</TableCell>
-              <TableCell>{employee.poste}</TableCell>
-              <TableCell>{employee.telephone}</TableCell>
+              <TableCell>{employee.prenoms}</TableCell>
+              <TableCell>{employee.fonction}</TableCell>
+              <TableCell>{employee.telephone_appel}</TableCell>
               <TableCell>{employee.email}</TableCell>
-              <TableCell>{getStatusBadge(employee.statut)}</TableCell>
+              <TableCell>{getStatusBadge(employee.statut_contractuel)}</TableCell>
               <TableCell>
                 <div className="flex items-center space-x-2">
                   <Button 

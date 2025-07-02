@@ -1,28 +1,46 @@
 import * as z from 'zod';
 
 export const employeeSchema = z.object({
-  nom: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
-  prenom: z.string().min(2, "Le prénom doit contenir au moins 2 caractères"),
-  poste: z.string().min(1, "Le poste est requis"),
-  telephone: z.string().min(10, "Le numéro de téléphone doit contenir au moins 10 caractères"),
+  noms: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
+  prenoms: z.string().min(2, "Le prénom doit contenir au moins 2 caractères"),
+  fonction: z.string().min(1, "La fonction est requise"),
+  adresse: z.string().optional(),
+  telephone_appel: z.string().min(10, "Le numéro de téléphone doit contenir au moins 10 caractères"),
+  telephone_whatsapp: z.string().optional(),
   email: z.string().email("Email invalide"),
-  statut: z.string().min(1, "Le statut est requis"),
-  dateEmbauche: z.string().min(1, "La date d'embauche est requise"),
-  certifications: z.string().optional()
+  niu_cni: z.string().min(1, "Le NIU/CNI est requis"),
+  profession: z.string().optional(),
+  date_naissance: z.string().min(1, "La date de naissance est requise"),
+  date_recrutement: z.string().min(1, "La date de recrutement est requise"),
+  photo_identite: z.string().optional(),
+  salaire_base: z.number().min(0, "Le salaire doit être positif").optional(),
+  situation_familiale: z.string().min(1, "La situation familiale est requise"),
+  nombre_enfants: z.number().min(0, "Le nombre d'enfants doit être positif").default(0),
+  numero_cnss: z.string().optional(),
+  statut_contractuel: z.string().min(1, "Le statut contractuel est requis")
 });
 
 export type EmployeeFormData = z.infer<typeof employeeSchema>;
 
 export interface Employee {
   id: number;
-  nom: string;
-  prenom: string;
-  poste: string;
-  telephone: string;
+  noms: string;
+  prenoms: string;
+  fonction: string;
+  adresse?: string;
+  telephone_appel: string;
+  telephone_whatsapp?: string;
   email: string;
-  statut: string;
-  dateEmbauche: string;
-  certifications: string[];
+  niu_cni: string;
+  profession?: string;
+  date_naissance: string;
+  date_recrutement: string;
+  photo_identite?: string;
+  salaire_base?: number;
+  situation_familiale: string;
+  nombre_enfants: number;
+  numero_cnss?: string;
+  statut_contractuel: string;
 }
 
 export interface LeaveRequest {
