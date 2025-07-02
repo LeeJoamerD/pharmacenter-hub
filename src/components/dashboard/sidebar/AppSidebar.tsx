@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, 
@@ -7,7 +7,10 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupConte
   SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Home, ShoppingCart, Package, Calculator, BarChart, 
-  Settings, LogOut, Pill, Shield, Bot, MessageCircle } from 'lucide-react';
+  Settings, LogOut, Pill, Shield, Bot, MessageCircle, Users, Handshake, Tag, User, Lock, 
+  Clipboard, ChartBar, RefreshCw, DollarSign, CreditCard, Receipt, Briefcase, Target, 
+  Building, Banknote, Smartphone, Wrench, Map, Globe, Palette, Search, TrendingUp, 
+  Eye, GraduationCap, Folder, Paperclip, Zap } from 'lucide-react';
 
 interface AppSidebarProps {
   activeModule: string;
@@ -24,6 +27,7 @@ const AppSidebar = ({
 }: AppSidebarProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   
   const handleLogout = () => {
     toast({
@@ -38,12 +42,128 @@ const AppSidebar = ({
   };
 
   const handleMenuClick = (module: string, subModule: string = '') => {
-    setActiveModule(module);
     if (subModule) {
+      setActiveModule(module);
       setActiveSubModule(subModule);
     } else {
+      // Toggle menu expansion
+      if (expandedMenus.includes(module)) {
+        setExpandedMenus(expandedMenus.filter(m => m !== module));
+      } else {
+        setExpandedMenus([...expandedMenus, module]);
+      }
+      setActiveModule(module);
       setActiveSubModule('');
     }
+  };
+
+  const subMenus = {
+    administration: [
+      { name: 'Personnel', icon: Users },
+      { name: 'Partenaires', icon: Handshake },
+      { name: 'Référentiel', icon: Tag },
+      { name: 'Clients', icon: User },
+      { name: 'Sécurité', icon: Lock },
+      { name: 'Documents', icon: Clipboard },
+      { name: 'Analytics', icon: ChartBar },
+      { name: 'Workflows', icon: RefreshCw },
+      { name: 'Configuration', icon: Settings }
+    ],
+    stock: [
+      { name: 'Produits', icon: Package },
+      { name: 'Lots', icon: Tag },
+      { name: 'Approvisionnement', icon: Clipboard },
+      { name: 'Mouvements', icon: ChartBar },
+      { name: 'Inventaires', icon: Clipboard },
+      { name: 'Alertes', icon: RefreshCw },
+      { name: 'Analyses', icon: TrendingUp },
+      { name: 'Configuration', icon: Settings }
+    ],
+    ventes: [
+      { name: 'Caisses', icon: DollarSign },
+      { name: 'Point de Vente', icon: ShoppingCart },
+      { name: 'Encaissements', icon: CreditCard },
+      { name: 'Historique', icon: Clipboard },
+      { name: 'Retours', icon: RefreshCw },
+      { name: 'Facturation', icon: Receipt },
+      { name: 'Analytics', icon: ChartBar },
+      { name: 'Crédit', icon: Briefcase },
+      { name: 'Promotions', icon: Target },
+      { name: 'Configuration', icon: Settings }
+    ],
+    comptabilite: [
+      { name: 'Plan Comptable', icon: ChartBar },
+      { name: 'Journalisation', icon: Clipboard },
+      { name: 'Factures', icon: Receipt },
+      { name: 'Paiements', icon: CreditCard },
+      { name: 'Analytique', icon: TrendingUp },
+      { name: 'Fiscal', icon: Building },
+      { name: 'Bancaire', icon: Banknote },
+      { name: 'Rapports', icon: Clipboard },
+      { name: 'Audit', icon: Lock },
+      { name: 'Intégrations', icon: RefreshCw },
+      { name: 'Tableaux de Bord', icon: ChartBar },
+      { name: 'Configuration', icon: Settings }
+    ],
+    rapports: [
+      { name: 'Ventes', icon: ChartBar },
+      { name: 'Stock', icon: Package },
+      { name: 'Financier', icon: DollarSign },
+      { name: 'Clients', icon: Users },
+      { name: 'Business Intelligence', icon: Target },
+      { name: 'Réglementaire', icon: Clipboard },
+      { name: 'Géospatial', icon: Map },
+      { name: 'Mobile', icon: Smartphone },
+      { name: 'IA/Prédictif', icon: Bot },
+      { name: 'Générateur', icon: Wrench },
+      { name: 'Comparatif', icon: TrendingUp },
+      { name: 'Configuration', icon: Settings }
+    ],
+    parametres: [
+      { name: 'Général', icon: Building },
+      { name: 'Utilisateurs', icon: Users },
+      { name: 'Interface', icon: Palette },
+      { name: 'Sécurité', icon: Lock },
+      { name: 'Impressions', icon: Clipboard },
+      { name: 'Sauvegarde', icon: RefreshCw },
+      { name: 'Intégrations', icon: RefreshCw },
+      { name: 'Métiers', icon: Briefcase },
+      { name: 'Maintenance', icon: Wrench },
+      { name: 'Alertes', icon: ChartBar },
+      { name: 'Multi-sites', icon: Globe },
+      { name: 'Avancé', icon: Settings }
+    ],
+    assistant: [
+      { name: 'Diagnostic', icon: Search },
+      { name: 'Prévisions', icon: TrendingUp },
+      { name: 'Recommandations', icon: Target },
+      { name: 'Automatisation', icon: Bot },
+      { name: 'Chat IA', icon: MessageCircle },
+      { name: 'Sentiment', icon: Eye },
+      { name: 'Stocks IA', icon: Package },
+      { name: 'Vision', icon: Eye },
+      { name: 'Expert Pharma', icon: Pill },
+      { name: 'Expert Comptable', icon: DollarSign },
+      { name: 'Analytics Avancées', icon: ChartBar },
+      { name: 'Intégrations', icon: RefreshCw },
+      { name: 'Apprentissage', icon: GraduationCap },
+      { name: 'Configuration', icon: Settings }
+    ],
+    chat: [
+      { name: 'Messagerie', icon: MessageCircle },
+      { name: 'Client Support', icon: Users },
+      { name: 'Canaux', icon: Folder },
+      { name: 'Ressources', icon: Paperclip },
+      { name: 'Assistant IA', icon: Bot },
+      { name: 'Intégrations', icon: RefreshCw },
+      { name: 'Sécurité', icon: Lock },
+      { name: 'Productivité', icon: Zap },
+      { name: 'Analytics', icon: ChartBar },
+      { name: 'Pharma Tools', icon: Pill },
+      { name: 'Multi-canaux', icon: Globe },
+      { name: 'Personnalisation', icon: Palette },
+      { name: 'Administration', icon: Settings }
+    ]
   };
 
   return (
@@ -76,6 +196,21 @@ const AppSidebar = ({
                   <Shield className="h-5 w-5 text-purple-600" />
                   <span>Administration</span>
                 </SidebarMenuButton>
+                {expandedMenus.includes('administration') && (
+                  <SidebarMenuSub>
+                    {subMenus.administration.map((item, index) => (
+                      <SidebarMenuSubItem key={index}>
+                        <SidebarMenuSubButton 
+                          onClick={() => handleMenuClick('administration', item.name.toLowerCase())}
+                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.name}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                )}
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton 
@@ -85,6 +220,21 @@ const AppSidebar = ({
                   <Package className="h-5 w-5 text-orange-600" />
                   <span>Stock</span>
                 </SidebarMenuButton>
+                {expandedMenus.includes('stock') && (
+                  <SidebarMenuSub>
+                    {subMenus.stock.map((item, index) => (
+                      <SidebarMenuSubItem key={index}>
+                        <SidebarMenuSubButton 
+                          onClick={() => handleMenuClick('stock', item.name.toLowerCase())}
+                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.name}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                )}
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton 
@@ -94,6 +244,21 @@ const AppSidebar = ({
                   <ShoppingCart className="h-5 w-5 text-green-600" />
                   <span>Ventes</span>
                 </SidebarMenuButton>
+                {expandedMenus.includes('ventes') && (
+                  <SidebarMenuSub>
+                    {subMenus.ventes.map((item, index) => (
+                      <SidebarMenuSubItem key={index}>
+                        <SidebarMenuSubButton 
+                          onClick={() => handleMenuClick('ventes', item.name.toLowerCase())}
+                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.name}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                )}
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton 
@@ -103,6 +268,21 @@ const AppSidebar = ({
                   <Calculator className="h-5 w-5 text-red-600" />
                   <span>Comptabilité</span>
                 </SidebarMenuButton>
+                {expandedMenus.includes('comptabilite') && (
+                  <SidebarMenuSub>
+                    {subMenus.comptabilite.map((item, index) => (
+                      <SidebarMenuSubItem key={index}>
+                        <SidebarMenuSubButton 
+                          onClick={() => handleMenuClick('comptabilite', item.name.toLowerCase())}
+                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.name}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                )}
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton 
@@ -112,6 +292,21 @@ const AppSidebar = ({
                   <BarChart className="h-5 w-5 text-indigo-600" />
                   <span>Rapports</span>
                 </SidebarMenuButton>
+                {expandedMenus.includes('rapports') && (
+                  <SidebarMenuSub>
+                    {subMenus.rapports.map((item, index) => (
+                      <SidebarMenuSubItem key={index}>
+                        <SidebarMenuSubButton 
+                          onClick={() => handleMenuClick('rapports', item.name.toLowerCase())}
+                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.name}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                )}
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton 
@@ -121,6 +316,21 @@ const AppSidebar = ({
                   <Bot className="h-5 w-5 text-cyan-600" />
                   <span>Assistant IA</span>
                 </SidebarMenuButton>
+                {expandedMenus.includes('assistant') && (
+                  <SidebarMenuSub>
+                    {subMenus.assistant.map((item, index) => (
+                      <SidebarMenuSubItem key={index}>
+                        <SidebarMenuSubButton 
+                          onClick={() => handleMenuClick('assistant', item.name.toLowerCase())}
+                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.name}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                )}
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton 
@@ -130,6 +340,21 @@ const AppSidebar = ({
                   <MessageCircle className="h-5 w-5 text-pink-600" />
                   <span>Chat-PharmaSoft</span>
                 </SidebarMenuButton>
+                {expandedMenus.includes('chat') && (
+                  <SidebarMenuSub>
+                    {subMenus.chat.map((item, index) => (
+                      <SidebarMenuSubItem key={index}>
+                        <SidebarMenuSubButton 
+                          onClick={() => handleMenuClick('chat', item.name.toLowerCase())}
+                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.name}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                )}
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
@@ -139,10 +364,28 @@ const AppSidebar = ({
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton>
+                <SidebarMenuButton 
+                  className={activeModule === 'parametres' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('parametres')}
+                >
                   <Settings className="h-5 w-5 text-gray-600" />
                   <span>Paramètres</span>
                 </SidebarMenuButton>
+                {expandedMenus.includes('parametres') && (
+                  <SidebarMenuSub>
+                    {subMenus.parametres.map((item, index) => (
+                      <SidebarMenuSubItem key={index}>
+                        <SidebarMenuSubButton 
+                          onClick={() => handleMenuClick('parametres', item.name.toLowerCase())}
+                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.name}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                )}
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
