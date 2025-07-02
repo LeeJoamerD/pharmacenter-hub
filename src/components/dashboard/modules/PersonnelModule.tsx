@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Calendar as CalendarIcon, Clock, GraduationCap, Search, Plus, Filter, FileText, Award, CheckCircle } from 'lucide-react';
+import { Users, Calendar as CalendarIcon, Clock, GraduationCap, Search, Plus, Filter, FileText, Award, CheckCircle, X } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 // Mock data for employees
 const employees = [
@@ -93,12 +95,24 @@ const trainings = [
 const PersonnelModule = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [statusFilter, setStatusFilter] = useState('');
+  const [posteFilter, setPosteFilter] = useState('');
 
-  const filteredEmployees = employees.filter(employee =>
-    employee.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.poste.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEmployees = employees.filter(employee => {
+    const matchesSearch = employee.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.poste.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === '' || employee.statut === statusFilter;
+    const matchesPoste = posteFilter === '' || employee.poste === posteFilter;
+    
+    return matchesSearch && matchesStatus && matchesPoste;
+  });
+
+  const clearFilters = () => {
+    setStatusFilter('');
+    setPosteFilter('');
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -171,10 +185,39 @@ const PersonnelModule = () => {
                     className="pl-8"
                   />
                 </div>
-                <Button variant="outline" size="sm">
-                  <Filter className="mr-2 h-4 w-4" />
-                  Filtres
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Filter className="mr-2 h-4 w-4" />
+                      Filtres
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuLabel>Filtres</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setStatusFilter('Actif')}>
+                      Employés actifs
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setStatusFilter('Congé')}>
+                      En congé
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setPosteFilter('Pharmacien titulaire')}>
+                      Pharmaciens titulaires
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setPosteFilter('Pharmacien adjoint')}>
+                      Pharmaciens adjoints
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setPosteFilter('Préparateur')}>
+                      Préparateurs
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={clearFilters}>
+                      <X className="mr-2 h-4 w-4" />
+                      Effacer les filtres
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </CardHeader>
             <CardContent>
@@ -209,10 +252,48 @@ const PersonnelModule = () => {
                         {getStatusBadge(employee.statut)}
                       </TableCell>
                       <TableCell>
-                        <Button variant="outline" size="sm">
-                          <FileText className="mr-2 h-4 w-4" />
-                          Voir fiche
-                        </Button>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <FileText className="mr-2 h-4 w-4" />
+                              Voir fiche
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle>Fiche Employé - {employee.prenom} {employee.nom}</DialogTitle>
+                              <DialogDescription>
+                                Informations détaillées de l'employé
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid grid-cols-2 gap-4 py-4">
+                              <div className="space-y-2">
+                                <h4 className="font-semibold">Informations personnelles</h4>
+                                <div className="text-sm space-y-1">
+                                  <p><span className="font-medium">Nom complet:</span> {employee.prenom} {employee.nom}</p>
+                                  <p><span className="font-medium">Poste:</span> {employee.poste}</p>
+                                  <p><span className="font-medium">Statut:</span> {getStatusBadge(employee.statut)}</p>
+                                  <p><span className="font-medium">Date d'embauche:</span> {new Date(employee.dateEmbauche).toLocaleDateString('fr-FR')}</p>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <h4 className="font-semibold">Contact</h4>
+                                <div className="text-sm space-y-1">
+                                  <p><span className="font-medium">Téléphone:</span> {employee.telephone}</p>
+                                  <p><span className="font-medium">Email:</span> {employee.email}</p>
+                                </div>
+                              </div>
+                              <div className="col-span-2 space-y-2">
+                                <h4 className="font-semibold">Certifications & Formations</h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {employee.certifications.map((cert, index) => (
+                                    <Badge key={index} variant="secondary">{cert}</Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                       </TableCell>
                     </TableRow>
                   ))}
