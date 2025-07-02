@@ -524,7 +524,13 @@ const PersonnelModule = () => {
                     Gestion des congés et absences du personnel
                   </CardDescription>
                 </div>
-                <Button onClick={() => setIsNewLeaveRequestOpen(true)}>
+                <Button 
+                  onClick={() => {
+                    console.log('Bouton Nouvelle demande cliqué');
+                    setIsNewLeaveRequestOpen(true);
+                  }}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Nouvelle demande
                 </Button>
