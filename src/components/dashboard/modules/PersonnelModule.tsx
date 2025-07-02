@@ -10,6 +10,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Users, Calendar as CalendarIcon, Clock, GraduationCap, Search, Plus, Filter, FileText, Award, CheckCircle, X, Edit, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+
+// Form schema for employee
+const employeeSchema = z.object({
+  nom: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
+  prenom: z.string().min(2, "Le prénom doit contenir au moins 2 caractères"),
+  poste: z.string().min(1, "Le poste est requis"),
+  telephone: z.string().min(10, "Le numéro de téléphone doit contenir au moins 10 caractères"),
+  email: z.string().email("Email invalide"),
+  statut: z.string().min(1, "Le statut est requis"),
+  dateEmbauche: z.string().min(1, "La date d'embauche est requise"),
+  certifications: z.string().optional()
+});
+
+type EmployeeFormData = z.infer<typeof employeeSchema>;
 
 // Mock data for employees
 const employees = [
@@ -97,6 +117,226 @@ const PersonnelModule = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [statusFilter, setStatusFilter] = useState('');
   const [posteFilter, setPosteFilter] = useState('');
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [isNewEmployeeOpen, setIsNewEmployeeOpen] = useState(false);
+  const [isEditEmployeeOpen, setIsEditEmployeeOpen] = useState(false);
+
+  const newEmployeeForm = useForm<EmployeeFormData>({
+    resolver: zodResolver(employeeSchema),
+    defaultValues: {
+      nom: '',
+      prenom: '',
+      poste: '',
+      telephone: '',
+      email: '',
+      statut: 'Actif',
+      dateEmbauche: '',
+      certifications: ''
+    }
+  });
+
+  const editEmployeeForm = useForm<EmployeeFormData>({
+    resolver: zodResolver(employeeSchema)
+  });
+
+  const handleEditEmployee = (employee: any) => {
+    setSelectedEmployee(employee);
+    editEmployeeForm.reset({
+      nom: employee.nom,
+      prenom: employee.prenom,
+      poste: employee.poste,
+      telephone: employee.telephone,
+      email: employee.email,
+      statut: employee.statut,
+      dateEmbauche: employee.dateEmbauche,
+      certifications: employee.certifications.join(', ')
+    });
+    setIsEditEmployeeOpen(true);
+  };
+
+  const onNewEmployeeSubmit = (data: EmployeeFormData) => {
+    console.log('Nouvel employé:', data);
+    // Ici vous ajouteriez la logique pour sauvegarder l'employé
+    setIsNewEmployeeOpen(false);
+    newEmployeeForm.reset();
+  };
+
+  const onEditEmployeeSubmit = (data: EmployeeFormData) => {
+    console.log('Modification employé:', data);
+    // Ici vous ajouteriez la logique pour modifier l'employé
+    setIsEditEmployeeOpen(false);
+    editEmployeeForm.reset();
+  };
+
+  const EmployeeForm = ({ form, onSubmit, isEdit = false }: { 
+    form: any; 
+    onSubmit: (data: EmployeeFormData) => void; 
+    isEdit?: boolean 
+  }) => (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <ScrollArea className="h-[400px] pr-4">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="nom"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nom</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nom de famille" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="prenom"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Prénom</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Prénom" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="poste"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Poste</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un poste" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Pharmacien titulaire">Pharmacien titulaire</SelectItem>
+                      <SelectItem value="Pharmacien adjoint">Pharmacien adjoint</SelectItem>
+                      <SelectItem value="Préparateur">Préparateur</SelectItem>
+                      <SelectItem value="Étudiant en pharmacie">Étudiant en pharmacie</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="telephone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Téléphone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="01.23.45.67.89" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="email@exemple.com" type="email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="statut"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Statut</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un statut" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Actif">Actif</SelectItem>
+                        <SelectItem value="Congé">Congé</SelectItem>
+                        <SelectItem value="Inactif">Inactif</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="dateEmbauche"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date d'embauche</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="certifications"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Certifications</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Séparez les certifications par des virgules..."
+                      className="resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Listez les certifications et formations séparées par des virgules
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </ScrollArea>
+        
+        <div className="flex justify-end space-x-2 pt-4">
+          <Button type="button" variant="outline" onClick={() => {
+            if (isEdit) {
+              setIsEditEmployeeOpen(false);
+            } else {
+              setIsNewEmployeeOpen(false);
+            }
+          }}>
+            Annuler
+          </Button>
+          <Button type="submit">
+            {isEdit ? 'Modifier' : 'Créer'}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
 
   const filteredEmployees = employees.filter(employee => {
     const matchesSearch = employee.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -142,10 +382,27 @@ const PersonnelModule = () => {
             Gérez les employés, plannings, congés et formations
           </p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Nouvel employé
-        </Button>
+        <Dialog open={isNewEmployeeOpen} onOpenChange={setIsNewEmployeeOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Nouvel employé
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Nouvel Employé</DialogTitle>
+              <DialogDescription>
+                Créer un nouveau profil employé avec toutes les informations nécessaires
+              </DialogDescription>
+            </DialogHeader>
+            <EmployeeForm 
+              form={newEmployeeForm} 
+              onSubmit={onNewEmployeeSubmit} 
+              isEdit={false} 
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Tabs defaultValue="employees" className="space-y-4">
@@ -295,21 +552,42 @@ const PersonnelModule = () => {
                             </div>
                           </DialogContent>
                           </Dialog>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditEmployee(employee)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="outline" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                           <Button variant="outline" size="sm">
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
+                         </div>
+                       </TableCell>
+                     </TableRow>
+                   ))}
+                 </TableBody>
+               </Table>
+             </CardContent>
+           </Card>
+         </TabsContent>
+
+         {/* Dialog pour modification d'employé */}
+         <Dialog open={isEditEmployeeOpen} onOpenChange={setIsEditEmployeeOpen}>
+           <DialogContent className="max-w-2xl">
+             <DialogHeader>
+               <DialogTitle>Modifier Employé</DialogTitle>
+               <DialogDescription>
+                 Modifier les informations de l'employé sélectionné
+               </DialogDescription>
+             </DialogHeader>
+             <EmployeeForm 
+               form={editEmployeeForm} 
+               onSubmit={onEditEmployeeSubmit} 
+               isEdit={true} 
+             />
+           </DialogContent>
+         </Dialog>
 
         <TabsContent value="schedule" className="space-y-4">
           <Card>
