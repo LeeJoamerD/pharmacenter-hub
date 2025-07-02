@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Users, Calendar as CalendarIcon, Clock, GraduationCap, Search, Plus, Filter, FileText, Award, CheckCircle, X, LayoutGrid, List } from 'lucide-react';
+import { Users, Calendar as CalendarIcon, Clock, GraduationCap, Search, Plus, Filter, FileText, Award, CheckCircle, X, LayoutGrid, List, Edit, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useForm } from 'react-hook-form';
@@ -16,7 +16,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { EmployeeForm } from '../personnel/EmployeeForm';
 import { EmployeeTable } from '../personnel/EmployeeTable';
 import { EmployeeCard } from '../personnel/EmployeeCard';
-import { employeeSchema, EmployeeFormData, Employee, LeaveRequest, Training } from '../personnel/types';
+import { LeaveRequestForm } from '../personnel/LeaveRequestForm';
+import { employeeSchema, EmployeeFormData, Employee, LeaveRequest, Training, leaveRequestSchema, LeaveRequestFormData } from '../personnel/types';
 
 // Mock data
 const employees: Employee[] = [
@@ -131,6 +132,9 @@ const PersonnelModule = () => {
   const [isNewEmployeeOpen, setIsNewEmployeeOpen] = useState(false);
   const [isEditEmployeeOpen, setIsEditEmployeeOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  const [selectedLeaveRequest, setSelectedLeaveRequest] = useState<LeaveRequest | null>(null);
+  const [isNewLeaveRequestOpen, setIsNewLeaveRequestOpen] = useState(false);
+  const [isEditLeaveRequestOpen, setIsEditLeaveRequestOpen] = useState(false);
 
   const newEmployeeForm = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
@@ -157,6 +161,22 @@ const PersonnelModule = () => {
 
   const editEmployeeForm = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema)
+  });
+
+  const newLeaveRequestForm = useForm<LeaveRequestFormData>({
+    resolver: zodResolver(leaveRequestSchema),
+    defaultValues: {
+      employe: '',
+      type: '',
+      dateDebut: '',
+      dateFin: '',
+      motif: '',
+      statut: 'En attente'
+    }
+  });
+
+  const editLeaveRequestForm = useForm<LeaveRequestFormData>({
+    resolver: zodResolver(leaveRequestSchema)
   });
 
   const handleEditEmployee = (employee: Employee) => {
@@ -197,6 +217,35 @@ const PersonnelModule = () => {
     console.log('Modification employé:', data);
     setIsEditEmployeeOpen(false);
     editEmployeeForm.reset();
+  };
+
+  const handleEditLeaveRequest = (leaveRequest: LeaveRequest) => {
+    setSelectedLeaveRequest(leaveRequest);
+    editLeaveRequestForm.reset({
+      employe: leaveRequest.employe,
+      type: leaveRequest.type,
+      dateDebut: leaveRequest.dateDebut,
+      dateFin: leaveRequest.dateFin,
+      motif: leaveRequest.motif,
+      statut: leaveRequest.statut
+    });
+    setIsEditLeaveRequestOpen(true);
+  };
+
+  const handleDeleteLeaveRequest = (id: number) => {
+    console.log('Supprimer demande de congé:', id);
+  };
+
+  const onNewLeaveRequestSubmit = (data: LeaveRequestFormData) => {
+    console.log('Nouvelle demande de congé:', data);
+    setIsNewLeaveRequestOpen(false);
+    newLeaveRequestForm.reset();
+  };
+
+  const onEditLeaveRequestSubmit = (data: LeaveRequestFormData) => {
+    console.log('Modification demande de congé:', data);
+    setIsEditLeaveRequestOpen(false);
+    editLeaveRequestForm.reset();
   };
 
   const filteredEmployees = employees.filter(employee => {
@@ -258,6 +307,42 @@ const PersonnelModule = () => {
               onSubmit={onNewEmployeeSubmit} 
               isEdit={false}
               onCancel={() => setIsNewEmployeeOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isNewLeaveRequestOpen} onOpenChange={setIsNewLeaveRequestOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Nouvelle Demande de Congé</DialogTitle>
+              <DialogDescription>
+                Créer une nouvelle demande de congé pour un employé
+              </DialogDescription>
+            </DialogHeader>
+            <LeaveRequestForm 
+              form={newLeaveRequestForm} 
+              onSubmit={onNewLeaveRequestSubmit} 
+              isEdit={false}
+              onCancel={() => setIsNewLeaveRequestOpen(false)}
+              employees={employees}
+            />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isEditLeaveRequestOpen} onOpenChange={setIsEditLeaveRequestOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Modifier Demande de Congé</DialogTitle>
+              <DialogDescription>
+                Modifier la demande de congé sélectionnée
+              </DialogDescription>
+            </DialogHeader>
+            <LeaveRequestForm 
+              form={editLeaveRequestForm} 
+              onSubmit={onEditLeaveRequestSubmit} 
+              isEdit={true}
+              onCancel={() => setIsEditLeaveRequestOpen(false)}
+              employees={employees}
             />
           </DialogContent>
         </Dialog>
@@ -432,10 +517,22 @@ const PersonnelModule = () => {
         <TabsContent value="leaves" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Demandes de Congés</CardTitle>
-              <CardDescription>
-                Gestion des congés et absences du personnel
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Demandes de Congés</CardTitle>
+                  <CardDescription>
+                    Gestion des congés et absences du personnel
+                  </CardDescription>
+                </div>
+                <Dialog open={isNewLeaveRequestOpen} onOpenChange={setIsNewLeaveRequestOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nouvelle demande
+                    </Button>
+                  </DialogTrigger>
+                </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="rounded-md border">
@@ -460,12 +557,31 @@ const PersonnelModule = () => {
                         <TableCell>{getStatusBadge(request.statut)}</TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
-                            <Button variant="outline" size="sm">
-                              <CheckCircle className="h-4 w-4" />
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleEditLeaveRequest(request)}
+                            >
+                              <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm">
-                              <X className="h-4 w-4" />
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDeleteLeaveRequest(request.id)}
+                              className="text-red-600 hover:text-red-800 hover:border-red-300"
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </Button>
+                            {request.statut === 'En attente' && (
+                              <>
+                                <Button variant="outline" size="sm" className="text-green-600 hover:text-green-800">
+                                  <CheckCircle className="h-4 w-4" />
+                                </Button>
+                                <Button variant="outline" size="sm" className="text-red-600 hover:text-red-800">
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

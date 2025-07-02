@@ -43,6 +43,17 @@ export interface Employee {
   statut_contractuel: string;
 }
 
+export const leaveRequestSchema = z.object({
+  employe: z.string().min(1, "L'employé est requis"),
+  type: z.string().min(1, "Le type de congé est requis"),
+  dateDebut: z.string().min(1, "La date de début est requise"),
+  dateFin: z.string().min(1, "La date de fin est requise"),
+  motif: z.string().min(1, "Le motif est requis"),
+  statut: z.string().default("En attente")
+});
+
+export type LeaveRequestFormData = z.infer<typeof leaveRequestSchema>;
+
 export interface LeaveRequest {
   id: number;
   employe: string;
