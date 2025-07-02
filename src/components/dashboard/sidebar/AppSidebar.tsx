@@ -128,7 +128,7 @@ const AppSidebar = ({
                   onClick={() => handleMenuClick('chat')}
                 >
                   <MessageCircle className="h-5 w-5 text-pink-600" />
-                  <span>Chat</span>
+                  <span>Chat-PharmaSoft</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -140,7 +140,7 @@ const AppSidebar = ({
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton>
-                  <Settings className="h-5 w-5" />
+                  <Settings className="h-5 w-5 text-gray-600" />
                   <span>Paramètres</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
