@@ -8,6 +8,7 @@ import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import AppSidebar from '@/components/dashboard/sidebar/AppSidebar';
 import DashboardHome from '@/components/dashboard/DashboardHome';
 import PersonnelModule from '@/components/dashboard/modules/PersonnelModule';
+import AdminDashboard from '@/components/dashboard/AdminDashboard';
 
 const Dashboard = () => {
   const [activeModule, setActiveModule] = useState('dashboard');
@@ -18,8 +19,10 @@ const Dashboard = () => {
       switch (activeSubModule) {
         case 'personnel':
           return <PersonnelModule />;
+        case '':
+          return <AdminDashboard />;
         default:
-          return <PersonnelModule />;
+          return <AdminDashboard />;
       }
     }
     
@@ -36,8 +39,10 @@ const Dashboard = () => {
       switch (activeSubModule) {
         case 'personnel':
           return 'Gestion du Personnel';
+        case '':
+          return 'Dashboard Administration';
         default:
-          return 'Administration';
+          return 'Dashboard Administration';
       }
     }
     
