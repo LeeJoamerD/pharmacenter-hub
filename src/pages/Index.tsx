@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Settings, Palette } from 'lucide-react';
 
 const Index = () => {
+  console.log('Index component is rendering...');
   const [gradientSettings, setGradientSettings] = useState({
     colors: 'blue' as 'blue' | 'purple' | 'mixed' | 'green' | 'amber' | 'primary',
     intensity: 'medium' as 'subtle' | 'medium' | 'strong',
