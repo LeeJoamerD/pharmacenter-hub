@@ -12,12 +12,22 @@ import CalendarModule from '@/components/dashboard/modules/CalendarModule';
 import ReportsModule from '@/components/dashboard/modules/ReportsModule';
 import { StockDashboardModule, InventoryModule } from '@/components/dashboard/modules/StockModule';
 import { ClientDashboardModule, ClientDirectoryModule, ClientHistoryModule } from '@/components/dashboard/modules/ClientModule';
+import PersonnelModule from '@/components/dashboard/modules/PersonnelModule';
 
 const Dashboard = () => {
   const [activeModule, setActiveModule] = useState('dashboard');
   const [activeSubModule, setActiveSubModule] = useState('');
 
   const renderActiveModule = () => {
+    if (activeModule === 'administration') {
+      switch (activeSubModule) {
+        case 'personnel':
+          return <PersonnelModule />;
+        default:
+          return <PersonnelModule />;
+      }
+    }
+    
     if (activeModule === 'inventory') {
       switch (activeSubModule) {
         case 'stockDashboard':
@@ -57,6 +67,15 @@ const Dashboard = () => {
   };
 
   const getModuleTitle = () => {
+    if (activeModule === 'administration') {
+      switch (activeSubModule) {
+        case 'personnel':
+          return 'Gestion du Personnel';
+        default:
+          return 'Administration';
+      }
+    }
+    
     if (activeModule === 'inventory') {
       switch (activeSubModule) {
         case 'stockDashboard':
