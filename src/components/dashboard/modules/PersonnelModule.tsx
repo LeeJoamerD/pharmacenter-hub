@@ -17,7 +17,8 @@ import { EmployeeForm } from '../personnel/EmployeeForm';
 import { EmployeeTable } from '../personnel/EmployeeTable';
 import { EmployeeCard } from '../personnel/EmployeeCard';
 import { LeaveRequestForm } from '../personnel/LeaveRequestForm';
-import { employeeSchema, EmployeeFormData, Employee, LeaveRequest, Training, leaveRequestSchema, LeaveRequestFormData } from '../personnel/types';
+import { TrainingForm } from '../personnel/TrainingForm';
+import { employeeSchema, EmployeeFormData, Employee, LeaveRequest, Training, leaveRequestSchema, LeaveRequestFormData, trainingSchema, TrainingFormData } from '../personnel/types';
 
 // Mock data
 const employees: Employee[] = [
@@ -110,7 +111,12 @@ const trainings: Training[] = [
     dateDebut: "2024-08-01",
     dateFin: "2024-08-02",
     statut: "Planifié",
-    organisme: "Ordre des Pharmaciens"
+    organisme: "Ordre des Pharmaciens",
+    description: "Formation sur les protocoles de vaccination en pharmacie",
+    duree: 16,
+    lieu: "Centre de formation, Paris",
+    cout: 350.00,
+    certificat_requis: true
   },
   {
     id: 2,
@@ -119,7 +125,11 @@ const trainings: Training[] = [
     dateDebut: "2024-07-20",
     dateFin: "2024-07-20",
     statut: "Terminé",
-    organisme: "Formation Continue Pharma"
+    organisme: "Formation Continue Pharma",
+    description: "Mise à jour sur les nouvelles réglementations pharmaceutiques",
+    duree: 8,
+    lieu: "En ligne",
+    certificat_requis: false
   }
 ];
 
@@ -135,6 +145,9 @@ const PersonnelModule = () => {
   const [selectedLeaveRequest, setSelectedLeaveRequest] = useState<LeaveRequest | null>(null);
   const [isNewLeaveRequestOpen, setIsNewLeaveRequestOpen] = useState(false);
   const [isEditLeaveRequestOpen, setIsEditLeaveRequestOpen] = useState(false);
+  const [selectedTraining, setSelectedTraining] = useState<Training | null>(null);
+  const [isNewTrainingOpen, setIsNewTrainingOpen] = useState(false);
+  const [isEditTrainingOpen, setIsEditTrainingOpen] = useState(false);
 
   const newEmployeeForm = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
@@ -177,6 +190,27 @@ const PersonnelModule = () => {
 
   const editLeaveRequestForm = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestSchema)
+  });
+
+  const newTrainingForm = useForm<TrainingFormData>({
+    resolver: zodResolver(trainingSchema),
+    defaultValues: {
+      nom: '',
+      employes: [],
+      dateDebut: '',
+      dateFin: '',
+      statut: 'Planifié',
+      organisme: '',
+      description: '',
+      duree: 1,
+      lieu: '',
+      cout: undefined,
+      certificat_requis: false
+    }
+  });
+
+  const editTrainingForm = useForm<TrainingFormData>({
+    resolver: zodResolver(trainingSchema)
   });
 
   const handleEditEmployee = (employee: Employee) => {
@@ -246,6 +280,48 @@ const PersonnelModule = () => {
     console.log('Modification demande de congé:', data);
     setIsEditLeaveRequestOpen(false);
     editLeaveRequestForm.reset();
+  };
+
+  const handleEditTraining = (training: Training) => {
+    setSelectedTraining(training);
+    editTrainingForm.reset({
+      nom: training.nom,
+      employes: training.employes,
+      dateDebut: training.dateDebut,
+      dateFin: training.dateFin,
+      statut: training.statut as "Planifié" | "Terminé" | "En cours" | "Annulé",
+      organisme: training.organisme,
+      description: training.description,
+      duree: training.duree,
+      lieu: training.lieu,
+      cout: training.cout,
+      certificat_requis: training.certificat_requis
+    });
+    setIsEditTrainingOpen(true);
+  };
+
+  const handleDeleteTraining = (id: number) => {
+    console.log('Supprimer formation:', id);
+  };
+
+  const onNewTrainingSubmit = (data: TrainingFormData) => {
+    console.log('Nouvelle formation:', data);
+    setIsNewTrainingOpen(false);
+    newTrainingForm.reset();
+  };
+
+  const onEditTrainingSubmit = (data: TrainingFormData) => {
+    console.log('Modification formation:', data);
+    setIsEditTrainingOpen(false);
+    editTrainingForm.reset();
+  };
+
+  const handleGenerateCertificate = (trainingId: number) => {
+    console.log('Générer certificat pour formation:', trainingId);
+  };
+
+  const handleMarkTrainingComplete = (trainingId: number) => {
+    console.log('Marquer formation comme terminée:', trainingId);
   };
 
   const filteredEmployees = employees.filter(employee => {
@@ -598,10 +674,21 @@ const PersonnelModule = () => {
         <TabsContent value="training" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Formations et Certifications</CardTitle>
-              <CardDescription>
-                Suivi des formations obligatoires et certifications professionnelles
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Formations et Certifications</CardTitle>
+                  <CardDescription>
+                    Suivi des formations obligatoires et certifications professionnelles
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={() => setIsNewTrainingOpen(true)}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nouvelle formation
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="rounded-md border">
@@ -624,11 +711,45 @@ const PersonnelModule = () => {
                         <TableCell>{new Date(training.dateDebut).toLocaleDateString('fr-FR')}</TableCell>
                         <TableCell>{new Date(training.dateFin).toLocaleDateString('fr-FR')}</TableCell>
                         <TableCell>{getStatusBadge(training.statut)}</TableCell>
-                        <TableCell>
-                          <Button variant="outline" size="sm">
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
+                         <TableCell>
+                           <div className="flex items-center space-x-2">
+                             <Button 
+                               variant="outline" 
+                               size="sm"
+                               onClick={() => handleEditTraining(training)}
+                             >
+                               <Edit className="h-4 w-4" />
+                             </Button>
+                             <Button 
+                               variant="outline" 
+                               size="sm"
+                               onClick={() => handleDeleteTraining(training.id)}
+                               className="text-red-600 hover:text-red-800 hover:border-red-300"
+                             >
+                               <Trash2 className="h-4 w-4" />
+                             </Button>
+                             {training.certificat_requis && training.statut === 'Terminé' && (
+                               <Button 
+                                 variant="outline" 
+                                 size="sm"
+                                 onClick={() => handleGenerateCertificate(training.id)}
+                                 className="text-blue-600 hover:text-blue-800"
+                               >
+                                 <Award className="h-4 w-4" />
+                               </Button>
+                             )}
+                             {training.statut === 'En cours' && (
+                               <Button 
+                                 variant="outline" 
+                                 size="sm"
+                                 onClick={() => handleMarkTrainingComplete(training.id)}
+                                 className="text-green-600 hover:text-green-800"
+                               >
+                                 <CheckCircle className="h-4 w-4" />
+                               </Button>
+                             )}
+                           </div>
+                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -638,6 +759,42 @@ const PersonnelModule = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isNewTrainingOpen} onOpenChange={setIsNewTrainingOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Nouvelle Formation</DialogTitle>
+            <DialogDescription>
+              Créer une nouvelle formation avec tous les détails nécessaires
+            </DialogDescription>
+          </DialogHeader>
+          <TrainingForm 
+            form={newTrainingForm} 
+            onSubmit={onNewTrainingSubmit} 
+            isEdit={false}
+            onCancel={() => setIsNewTrainingOpen(false)}
+            employees={employees}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditTrainingOpen} onOpenChange={setIsEditTrainingOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Modifier Formation</DialogTitle>
+            <DialogDescription>
+              Modifier les informations de la formation sélectionnée
+            </DialogDescription>
+          </DialogHeader>
+          <TrainingForm 
+            form={editTrainingForm} 
+            onSubmit={onEditTrainingSubmit} 
+            isEdit={true}
+            onCancel={() => setIsEditTrainingOpen(false)}
+            employees={employees}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

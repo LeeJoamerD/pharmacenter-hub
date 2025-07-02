@@ -72,4 +72,25 @@ export interface Training {
   dateFin: string;
   statut: string;
   organisme: string;
+  description?: string;
+  duree: number; // en heures
+  lieu: string;
+  cout?: number;
+  certificat_requis: boolean;
 }
+
+export const trainingSchema = z.object({
+  nom: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
+  employes: z.array(z.string()).min(1, "Au moins un employé doit être sélectionné"),
+  dateDebut: z.string().min(1, "La date de début est requise"),
+  dateFin: z.string().min(1, "La date de fin est requise"),
+  statut: z.enum(["Planifié", "En cours", "Terminé", "Annulé"]),
+  organisme: z.string().min(2, "L'organisme doit contenir au moins 2 caractères"),
+  description: z.string().optional(),
+  duree: z.number().min(1, "La durée doit être d'au moins 1 heure"),
+  lieu: z.string().min(2, "Le lieu doit contenir au moins 2 caractères"),
+  cout: z.number().optional(),
+  certificat_requis: z.boolean()
+});
+
+export type TrainingFormData = z.infer<typeof trainingSchema>;
