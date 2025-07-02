@@ -9,6 +9,7 @@ import AppSidebar from '@/components/dashboard/sidebar/AppSidebar';
 import DashboardHome from '@/components/dashboard/DashboardHome';
 import PersonnelModule from '@/components/dashboard/modules/PersonnelModule';
 import AdminDashboard from '@/components/dashboard/AdminDashboard';
+import PartnerModule from '@/components/dashboard/modules/PartnerModule';
 
 const Dashboard = () => {
   const [activeModule, setActiveModule] = useState('dashboard');
@@ -19,6 +20,8 @@ const Dashboard = () => {
       switch (activeSubModule) {
         case 'personnel':
           return <PersonnelModule />;
+        case 'partenaires':
+          return <PartnerModule />;
         case '':
           return <AdminDashboard />;
         default:
@@ -39,6 +42,8 @@ const Dashboard = () => {
       switch (activeSubModule) {
         case 'personnel':
           return 'Gestion du Personnel';
+        case 'partenaires':
+          return 'Gestion des Partenaires';
         case '':
           return 'Dashboard Administration';
         default:
