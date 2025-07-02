@@ -7,11 +7,6 @@ import { CurrencyProvider } from '@/contexts/CurrencyContext';
 // Import components
 import AppSidebar from '@/components/dashboard/sidebar/AppSidebar';
 import DashboardHome from '@/components/dashboard/DashboardHome';
-import SalesModule from '@/components/dashboard/modules/SalesModule';
-import CalendarModule from '@/components/dashboard/modules/CalendarModule';
-import ReportsModule from '@/components/dashboard/modules/ReportsModule';
-import { StockDashboardModule, InventoryModule } from '@/components/dashboard/modules/StockModule';
-import { ClientDashboardModule, ClientDirectoryModule, ClientHistoryModule } from '@/components/dashboard/modules/ClientModule';
 import PersonnelModule from '@/components/dashboard/modules/PersonnelModule';
 
 const Dashboard = () => {
@@ -28,39 +23,9 @@ const Dashboard = () => {
       }
     }
     
-    if (activeModule === 'inventory') {
-      switch (activeSubModule) {
-        case 'stockDashboard':
-          return <StockDashboardModule />;
-        case 'inventoryList':
-          return <InventoryModule />;
-        default:
-          return <StockDashboardModule />;
-      }
-    }
-    
-    if (activeModule === 'clients') {
-      switch (activeSubModule) {
-        case 'clientDashboard':
-          return <ClientDashboardModule />;
-        case 'clientDirectory':
-          return <ClientDirectoryModule />;
-        case 'clientHistory':
-          return <ClientHistoryModule />;
-        default:
-          return <ClientDashboardModule />;
-      }
-    }
-    
     switch (activeModule) {
       case 'dashboard':
         return <DashboardHome />;
-      case 'sales':
-        return <SalesModule />;
-      case 'calendar':
-        return <CalendarModule />;
-      case 'reports':
-        return <ReportsModule />;
       default:
         return <DashboardHome />;
     }
@@ -76,39 +41,9 @@ const Dashboard = () => {
       }
     }
     
-    if (activeModule === 'inventory') {
-      switch (activeSubModule) {
-        case 'stockDashboard':
-          return 'Tableau de bord du stock';
-        case 'inventoryList':
-          return 'Inventaire des produits';
-        default:
-          return 'Gestion des Stocks';
-      }
-    }
-    
-    if (activeModule === 'clients') {
-      switch (activeSubModule) {
-        case 'clientDashboard':
-          return 'Tableau de bord des clients';
-        case 'clientDirectory':
-          return 'Répertoire des clients';
-        case 'clientHistory':
-          return 'Historique médical';
-        default:
-          return 'Gestion des Clients';
-      }
-    }
-    
     switch (activeModule) {
       case 'dashboard':
         return 'Tableau de bord';
-      case 'sales':
-        return 'Gestion des Ventes';
-      case 'calendar':
-        return 'Calendrier & Rendez-vous';
-      case 'reports':
-        return 'Analyses & Rapports';
       default:
         return 'Tableau de bord';
     }
