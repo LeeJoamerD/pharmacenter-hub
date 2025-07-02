@@ -23,7 +23,7 @@ const Dashboard = () => {
           return <PersonnelModule />;
         case 'partenaires':
           return <PartnerModule />;
-        case 'referentiel':
+        case 'référentiel':
           return <ReferentielModule />;
         case '':
           return <AdminDashboard />;
@@ -47,7 +47,7 @@ const Dashboard = () => {
           return 'Gestion du Personnel';
         case 'partenaires':
           return 'Gestion des Partenaires';
-        case 'referentiel':
+        case 'référentiel':
           return 'Référentiel Produits';
         case '':
           return 'Dashboard Administration';
