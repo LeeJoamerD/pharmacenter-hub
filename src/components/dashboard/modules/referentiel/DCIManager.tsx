@@ -1,0 +1,294 @@
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useForm } from 'react-hook-form';
+import { Plus, Search, Edit, Trash2, Pill } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+interface DCI {
+  id: number;
+  nom_dci: string;
+  description?: string;
+  classe_therapeutique?: string;
+  contre_indications?: string;
+  effets_secondaires?: string;
+  posologie?: string;
+  produits_associes: number;
+}
+
+const DCIManager = () => {
+  const [dcis, setDcis] = useState<DCI[]>([
+    {
+      id: 1,
+      nom_dci: "Paracétamol",
+      description: "Analgésique et antipyrétique",
+      classe_therapeutique: "Antalgiques non opioïdes",
+      contre_indications: "Insuffisance hépatique sévère",
+      effets_secondaires: "Rares: éruptions cutanées",
+      posologie: "500mg à 1g, 3 à 4 fois par jour",
+      produits_associes: 15
+    },
+    {
+      id: 2,
+      nom_dci: "Ibuprofène",
+      description: "Anti-inflammatoire non stéroïdien",
+      classe_therapeutique: "AINS",
+      contre_indications: "Ulcère gastroduodénal",
+      effets_secondaires: "Troubles gastro-intestinaux",
+      posologie: "200mg à 400mg, 3 fois par jour",
+      produits_associes: 8
+    }
+  ]);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingDCI, setEditingDCI] = useState<DCI | null>(null);
+  const { toast } = useToast();
+
+  const form = useForm<DCI>({
+    defaultValues: {
+      nom_dci: '',
+      description: '',
+      classe_therapeutique: '',
+      contre_indications: '',
+      effets_secondaires: '',
+      posologie: '',
+      produits_associes: 0
+    }
+  });
+
+  const filteredDCIs = dcis.filter(dci =>
+    dci.nom_dci.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dci.classe_therapeutique?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleAddDCI = () => {
+    setEditingDCI(null);
+    form.reset();
+    setIsDialogOpen(true);
+  };
+
+  const handleEditDCI = (dci: DCI) => {
+    setEditingDCI(dci);
+    form.reset(dci);
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteDCI = (dciId: number) => {
+    setDcis(dcis.filter(d => d.id !== dciId));
+    toast({
+      title: "DCI supprimée",
+      description: "La DCI a été supprimée avec succès.",
+    });
+  };
+
+  const onSubmit = (data: DCI) => {
+    if (editingDCI) {
+      setDcis(dcis.map(d => d.id === editingDCI.id ? { ...data, id: editingDCI.id } : d));
+      toast({
+        title: "DCI modifiée",
+        description: "La DCI a été modifiée avec succès.",
+      });
+    } else {
+      const newDCI = { ...data, id: Date.now() };
+      setDcis([...dcis, newDCI]);
+      toast({
+        title: "DCI ajoutée",
+        description: "La DCI a été ajoutée avec succès.",
+      });
+    }
+    setIsDialogOpen(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Pill className="h-5 w-5" />
+            Gestion des DCI (Dénominations Communes Internationales)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center space-x-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher une DCI..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-64"
+              />
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={handleAddDCI}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter DCI
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingDCI ? 'Modifier la DCI' : 'Ajouter une nouvelle DCI'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Remplissez les informations détaillées de la DCI.
+                  </DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="nom_dci"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nom de la DCI *</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Ex: Paracétamol" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="classe_therapeutique"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Classe thérapeutique</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Ex: Antalgiques non opioïdes" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} placeholder="Description de la DCI" rows={3} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="contre_indications"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Contre-indications</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} placeholder="Liste des contre-indications" rows={3} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="effets_secondaires"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Effets secondaires</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} placeholder="Liste des effets secondaires" rows={3} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="posologie"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Posologie</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} placeholder="Informations sur la posologie" rows={2} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <DialogFooter className="col-span-2">
+                      <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                        Annuler
+                      </Button>
+                      <Button type="submit">
+                        {editingDCI ? 'Modifier' : 'Ajouter'}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nom DCI</TableHead>
+                <TableHead>Classe thérapeutique</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Produits associés</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredDCIs.map((dci) => (
+                <TableRow key={dci.id}>
+                  <TableCell className="font-medium">{dci.nom_dci}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{dci.classe_therapeutique || '-'}</Badge>
+                  </TableCell>
+                  <TableCell className="max-w-xs truncate">{dci.description || '-'}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{dci.produits_associes} produits</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditDCI(dci)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteDCI(dci.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default DCIManager;

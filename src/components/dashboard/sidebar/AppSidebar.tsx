@@ -61,7 +61,7 @@ const AppSidebar = ({
     administration: [
       { name: 'Personnel', icon: Users },
       { name: 'Partenaires', icon: Handshake },
-      { name: 'Référentiel', icon: Tag },
+      { name: 'Référentiel', icon: Package },
       { name: 'Clients', icon: User },
       { name: 'Sécurité', icon: Lock },
       { name: 'Documents', icon: Clipboard },

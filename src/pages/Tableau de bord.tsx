@@ -10,6 +10,7 @@ import DashboardHome from '@/components/dashboard/DashboardHome';
 import PersonnelModule from '@/components/dashboard/modules/PersonnelModule';
 import AdminDashboard from '@/components/dashboard/AdminDashboard';
 import PartnerModule from '@/components/dashboard/modules/PartnerModule';
+import ReferentielModule from '@/components/dashboard/modules/ReferentielModule';
 
 const Dashboard = () => {
   const [activeModule, setActiveModule] = useState('dashboard');
@@ -22,6 +23,8 @@ const Dashboard = () => {
           return <PersonnelModule />;
         case 'partenaires':
           return <PartnerModule />;
+        case 'referentiel':
+          return <ReferentielModule />;
         case '':
           return <AdminDashboard />;
         default:
@@ -44,6 +47,8 @@ const Dashboard = () => {
           return 'Gestion du Personnel';
         case 'partenaires':
           return 'Gestion des Partenaires';
+        case 'referentiel':
+          return 'Référentiel Produits';
         case '':
           return 'Dashboard Administration';
         default:
