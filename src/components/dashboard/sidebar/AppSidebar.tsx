@@ -202,7 +202,7 @@ const AppSidebar = ({
                       <SidebarMenuSubItem key={index}>
                         <SidebarMenuSubButton 
                           onClick={() => handleMenuClick('administration', item.name.toLowerCase())}
-                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                          className={`cursor-pointer ${activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}`}
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.name}</span>
@@ -226,7 +226,7 @@ const AppSidebar = ({
                       <SidebarMenuSubItem key={index}>
                         <SidebarMenuSubButton 
                           onClick={() => handleMenuClick('stock', item.name.toLowerCase())}
-                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                          className={`cursor-pointer ${activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}`}
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.name}</span>
@@ -250,7 +250,7 @@ const AppSidebar = ({
                       <SidebarMenuSubItem key={index}>
                         <SidebarMenuSubButton 
                           onClick={() => handleMenuClick('ventes', item.name.toLowerCase())}
-                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                          className={`cursor-pointer ${activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}`}
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.name}</span>
@@ -274,7 +274,7 @@ const AppSidebar = ({
                       <SidebarMenuSubItem key={index}>
                         <SidebarMenuSubButton 
                           onClick={() => handleMenuClick('comptabilite', item.name.toLowerCase())}
-                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                          className={`cursor-pointer ${activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}`}
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.name}</span>
@@ -298,7 +298,7 @@ const AppSidebar = ({
                       <SidebarMenuSubItem key={index}>
                         <SidebarMenuSubButton 
                           onClick={() => handleMenuClick('rapports', item.name.toLowerCase())}
-                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                          className={`cursor-pointer ${activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}`}
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.name}</span>
@@ -322,7 +322,7 @@ const AppSidebar = ({
                       <SidebarMenuSubItem key={index}>
                         <SidebarMenuSubButton 
                           onClick={() => handleMenuClick('assistant', item.name.toLowerCase())}
-                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                          className={`cursor-pointer ${activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}`}
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.name}</span>
@@ -346,7 +346,7 @@ const AppSidebar = ({
                       <SidebarMenuSubItem key={index}>
                         <SidebarMenuSubButton 
                           onClick={() => handleMenuClick('chat', item.name.toLowerCase())}
-                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                          className={`cursor-pointer ${activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}`}
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.name}</span>
@@ -377,7 +377,7 @@ const AppSidebar = ({
                       <SidebarMenuSubItem key={index}>
                         <SidebarMenuSubButton 
                           onClick={() => handleMenuClick('parametres', item.name.toLowerCase())}
-                          className={activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}
+                          className={`cursor-pointer ${activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}`}
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.name}</span>
