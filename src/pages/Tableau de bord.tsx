@@ -15,6 +15,7 @@ import ClientModule from '@/components/dashboard/modules/ClientModule';
 import ParametresModule from '@/components/dashboard/modules/ParametresModule';
 import DocumentModule from '@/components/dashboard/modules/DocumentModule';
 import AnalyticsModule from '@/components/dashboard/modules/AnalyticsModule';
+import WorkflowModule from '@/components/dashboard/modules/WorkflowModule';
 
 const Dashboard = () => {
   const [activeModule, setActiveModule] = useState('dashboard');
@@ -35,6 +36,8 @@ const Dashboard = () => {
           return <DocumentModule />;
         case 'analytics':
           return <AnalyticsModule />;
+        case 'workflows':
+          return <WorkflowModule />;
         case '':
           return <AdminDashboard />;
         default:
@@ -67,6 +70,8 @@ const Dashboard = () => {
           return 'Bibliothèque de Documents';
         case 'analytics':
           return 'Analyses et Reporting';
+        case 'workflows':
+          return 'Workflows & Automatisation';
         case '':
           return 'Dashboard Administration';
         default:
