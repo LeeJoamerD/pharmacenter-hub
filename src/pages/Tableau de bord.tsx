@@ -13,6 +13,7 @@ import PartnerModule from '@/components/dashboard/modules/PartnerModule';
 import ReferentielModule from '@/components/dashboard/modules/ReferentielModule';
 import ClientModule from '@/components/dashboard/modules/ClientModule';
 import ParametresModule from '@/components/dashboard/modules/ParametresModule';
+import DocumentModule from '@/components/dashboard/modules/DocumentModule';
 
 const Dashboard = () => {
   const [activeModule, setActiveModule] = useState('dashboard');
@@ -29,6 +30,8 @@ const Dashboard = () => {
           return <ReferentielModule />;
         case 'clients':
           return <ClientModule />;
+        case 'documents':
+          return <DocumentModule />;
         case '':
           return <AdminDashboard />;
         default:
@@ -57,6 +60,8 @@ const Dashboard = () => {
           return 'Référentiel Produits';
         case 'clients':
           return 'Gestion des Clients';
+        case 'documents':
+          return 'Bibliothèque de Documents';
         case '':
           return 'Dashboard Administration';
         default:
