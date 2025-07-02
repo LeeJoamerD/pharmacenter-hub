@@ -7,32 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Calendar as CalendarIcon, Clock, GraduationCap, Search, Plus, Filter, FileText, Award, CheckCircle, X, Edit, Trash2 } from 'lucide-react';
+import { Users, Calendar as CalendarIcon, Clock, GraduationCap, Search, Plus, Filter, FileText, Award, CheckCircle, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { EmployeeForm } from '../personnel/EmployeeForm';
+import { EmployeeTable } from '../personnel/EmployeeTable';
+import { employeeSchema, EmployeeFormData, Employee, LeaveRequest, Training } from '../personnel/types';
 
-// Form schema for employee
-const employeeSchema = z.object({
-  nom: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
-  prenom: z.string().min(2, "Le prénom doit contenir au moins 2 caractères"),
-  poste: z.string().min(1, "Le poste est requis"),
-  telephone: z.string().min(10, "Le numéro de téléphone doit contenir au moins 10 caractères"),
-  email: z.string().email("Email invalide"),
-  statut: z.string().min(1, "Le statut est requis"),
-  dateEmbauche: z.string().min(1, "La date d'embauche est requise"),
-  certifications: z.string().optional()
-});
-
-type EmployeeFormData = z.infer<typeof employeeSchema>;
-
-// Mock data for employees
-const employees = [
+// Mock data
+const employees: Employee[] = [
   {
     id: 1,
     nom: "Dupont",
@@ -68,8 +53,7 @@ const employees = [
   }
 ];
 
-// Mock data for leave requests
-const leaveRequests = [
+const leaveRequests: LeaveRequest[] = [
   {
     id: 1,
     employe: "Marie Dupont",
@@ -90,8 +74,7 @@ const leaveRequests = [
   }
 ];
 
-// Mock data for trainings
-const trainings = [
+const trainings: Training[] = [
   {
     id: 1,
     nom: "Formation Vaccinations",
@@ -117,7 +100,7 @@ const PersonnelModule = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [statusFilter, setStatusFilter] = useState('');
   const [posteFilter, setPosteFilter] = useState('');
-  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isNewEmployeeOpen, setIsNewEmployeeOpen] = useState(false);
   const [isEditEmployeeOpen, setIsEditEmployeeOpen] = useState(false);
 
@@ -139,7 +122,7 @@ const PersonnelModule = () => {
     resolver: zodResolver(employeeSchema)
   });
 
-  const handleEditEmployee = (employee: any) => {
+  const handleEditEmployee = (employee: Employee) => {
     setSelectedEmployee(employee);
     editEmployeeForm.reset({
       nom: employee.nom,
@@ -154,189 +137,21 @@ const PersonnelModule = () => {
     setIsEditEmployeeOpen(true);
   };
 
+  const handleDeleteEmployee = (id: number) => {
+    console.log('Supprimer employé:', id);
+  };
+
   const onNewEmployeeSubmit = (data: EmployeeFormData) => {
     console.log('Nouvel employé:', data);
-    // Ici vous ajouteriez la logique pour sauvegarder l'employé
     setIsNewEmployeeOpen(false);
     newEmployeeForm.reset();
   };
 
   const onEditEmployeeSubmit = (data: EmployeeFormData) => {
     console.log('Modification employé:', data);
-    // Ici vous ajouteriez la logique pour modifier l'employé
     setIsEditEmployeeOpen(false);
     editEmployeeForm.reset();
   };
-
-  const EmployeeForm = ({ form, onSubmit, isEdit = false }: { 
-    form: any; 
-    onSubmit: (data: EmployeeFormData) => void; 
-    isEdit?: boolean 
-  }) => (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <ScrollArea className="h-[400px] pr-4">
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="nom"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nom</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nom de famille" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="prenom"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Prénom</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Prénom" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="poste"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Poste</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un poste" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Pharmacien titulaire">Pharmacien titulaire</SelectItem>
-                      <SelectItem value="Pharmacien adjoint">Pharmacien adjoint</SelectItem>
-                      <SelectItem value="Préparateur">Préparateur</SelectItem>
-                      <SelectItem value="Étudiant en pharmacie">Étudiant en pharmacie</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="telephone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Téléphone</FormLabel>
-                    <FormControl>
-                      <Input placeholder="01.23.45.67.89" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="email@exemple.com" type="email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="statut"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Statut</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner un statut" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Actif">Actif</SelectItem>
-                        <SelectItem value="Congé">Congé</SelectItem>
-                        <SelectItem value="Inactif">Inactif</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="dateEmbauche"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date d'embauche</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="certifications"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Certifications</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Séparez les certifications par des virgules..."
-                      className="resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Listez les certifications et formations séparées par des virgules
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        </ScrollArea>
-        
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button type="button" variant="outline" onClick={() => {
-            if (isEdit) {
-              setIsEditEmployeeOpen(false);
-            } else {
-              setIsNewEmployeeOpen(false);
-            }
-          }}>
-            Annuler
-          </Button>
-          <Button type="submit">
-            {isEdit ? 'Modifier' : 'Créer'}
-          </Button>
-        </div>
-      </form>
-    </Form>
-  );
 
   const filteredEmployees = employees.filter(employee => {
     const matchesSearch = employee.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -356,10 +171,6 @@ const PersonnelModule = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Actif':
-        return <Badge variant="default" className="bg-green-100 text-green-800">Actif</Badge>;
-      case 'Congé':
-        return <Badge variant="secondary" className="bg-orange-100 text-orange-800">Congé</Badge>;
       case 'Approuvé':
         return <Badge variant="default" className="bg-green-100 text-green-800">Approuvé</Badge>;
       case 'En attente':
@@ -399,11 +210,29 @@ const PersonnelModule = () => {
             <EmployeeForm 
               form={newEmployeeForm} 
               onSubmit={onNewEmployeeSubmit} 
-              isEdit={false} 
+              isEdit={false}
+              onCancel={() => setIsNewEmployeeOpen(false)}
             />
           </DialogContent>
         </Dialog>
       </div>
+
+      <Dialog open={isEditEmployeeOpen} onOpenChange={setIsEditEmployeeOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Modifier Employé</DialogTitle>
+            <DialogDescription>
+              Modifier les informations de l'employé sélectionné
+            </DialogDescription>
+          </DialogHeader>
+          <EmployeeForm 
+            form={editEmployeeForm} 
+            onSubmit={onEditEmployeeSubmit} 
+            isEdit={true}
+            onCancel={() => setIsEditEmployeeOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       <Tabs defaultValue="employees" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
@@ -478,230 +307,110 @@ const PersonnelModule = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nom & Prénom</TableHead>
-                    <TableHead>Poste</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Date d'embauche</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEmployees.map((employee) => (
-                    <TableRow key={employee.id}>
-                      <TableCell className="font-medium">
-                        {employee.prenom} {employee.nom}
-                      </TableCell>
-                      <TableCell>{employee.poste}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div>{employee.telephone}</div>
-                          <div className="text-muted-foreground">{employee.email}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(employee.dateEmbauche).toLocaleDateString('fr-FR')}
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(employee.statut)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <FileText className="mr-2 h-4 w-4" />
-                                Voir fiche
-                              </Button>
-                            </DialogTrigger>
-                          <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                              <DialogTitle>Fiche Employé - {employee.prenom} {employee.nom}</DialogTitle>
-                              <DialogDescription>
-                                Informations détaillées de l'employé
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid grid-cols-2 gap-4 py-4">
-                              <div className="space-y-2">
-                                <h4 className="font-semibold">Informations personnelles</h4>
-                                <div className="text-sm space-y-1">
-                                  <p><span className="font-medium">Nom complet:</span> {employee.prenom} {employee.nom}</p>
-                                  <p><span className="font-medium">Poste:</span> {employee.poste}</p>
-                                  <p><span className="font-medium">Statut:</span> {getStatusBadge(employee.statut)}</p>
-                                  <p><span className="font-medium">Date d'embauche:</span> {new Date(employee.dateEmbauche).toLocaleDateString('fr-FR')}</p>
-                                </div>
-                              </div>
-                              <div className="space-y-2">
-                                <h4 className="font-semibold">Contact</h4>
-                                <div className="text-sm space-y-1">
-                                  <p><span className="font-medium">Téléphone:</span> {employee.telephone}</p>
-                                  <p><span className="font-medium">Email:</span> {employee.email}</p>
-                                </div>
-                              </div>
-                              <div className="col-span-2 space-y-2">
-                                <h4 className="font-semibold">Certifications & Formations</h4>
-                                <div className="flex flex-wrap gap-2">
-                                  {employee.certifications.map((cert, index) => (
-                                    <Badge key={index} variant="secondary">{cert}</Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          </DialogContent>
-                          </Dialog>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleEditEmployee(employee)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                           <Button variant="outline" size="sm">
-                             <Trash2 className="h-4 w-4" />
-                           </Button>
-                         </div>
-                       </TableCell>
-                     </TableRow>
-                   ))}
-                 </TableBody>
-               </Table>
-             </CardContent>
-           </Card>
-         </TabsContent>
-
-         {/* Dialog pour modification d'employé */}
-         <Dialog open={isEditEmployeeOpen} onOpenChange={setIsEditEmployeeOpen}>
-           <DialogContent className="max-w-2xl">
-             <DialogHeader>
-               <DialogTitle>Modifier Employé</DialogTitle>
-               <DialogDescription>
-                 Modifier les informations de l'employé sélectionné
-               </DialogDescription>
-             </DialogHeader>
-             <EmployeeForm 
-               form={editEmployeeForm} 
-               onSubmit={onEditEmployeeSubmit} 
-               isEdit={true} 
-             />
-           </DialogContent>
-         </Dialog>
-
-        <TabsContent value="schedule" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Plannings & Horaires</CardTitle>
-              <CardDescription>
-                Gestion des emplois du temps et gardes
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-1">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    className="rounded-md border"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">
-                        Planning du {selectedDate?.toLocaleDateString('fr-FR')}
-                      </h3>
-                      <Button size="sm">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Ajouter créneau
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="p-3 border rounded-lg">
-                        <div className="font-medium">Marie Dupont</div>
-                        <div className="text-sm text-muted-foreground">09:00 - 18:00 • Pharmacien titulaire</div>
-                      </div>
-                      <div className="p-3 border rounded-lg">
-                        <div className="font-medium">Pierre Martin</div>
-                        <div className="text-sm text-muted-foreground">09:00 - 17:00 • Préparateur</div>
-                      </div>
-                      <div className="p-3 border rounded-lg bg-orange-50">
-                        <div className="font-medium">Sophie Bernard</div>
-                        <div className="text-sm text-muted-foreground">Congé • Pharmacien adjoint</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <EmployeeTable 
+                employees={filteredEmployees}
+                onEdit={handleEditEmployee}
+                onDelete={handleDeleteEmployee}
+              />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        
+        <TabsContent value="schedule" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <CalendarIcon className="mr-2 h-5 w-5" />
+                  Calendrier
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  className="rounded-md border"
+                />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Planning du jour</CardTitle>
+                <CardDescription>
+                  {selectedDate ? selectedDate.toLocaleDateString('fr-FR', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  }) : 'Aucune date sélectionnée'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <p className="font-medium">Marie Dupont</p>
+                    <p className="text-sm text-muted-foreground">08:00 - 16:00</p>
+                  </div>
+                  <Badge variant="default">Matinée</Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <p className="font-medium">Pierre Martin</p>
+                    <p className="text-sm text-muted-foreground">14:00 - 20:00</p>
+                  </div>
+                  <Badge variant="secondary">Après-midi</Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="leaves" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Congés & Absences</CardTitle>
+              <CardTitle>Demandes de Congés</CardTitle>
               <CardDescription>
-                Suivi des demandes et planning des remplacements
+                Gestion des congés et absences du personnel
               </CardDescription>
-              <div className="flex items-center space-x-2">
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nouvelle demande
-                </Button>
-                <Select>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Filtrer par statut" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous</SelectItem>
-                    <SelectItem value="pending">En attente</SelectItem>
-                    <SelectItem value="approved">Approuvé</SelectItem>
-                    <SelectItem value="rejected">Refusé</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Employé</TableHead>
-                    <TableHead>Type de congé</TableHead>
-                    <TableHead>Période</TableHead>
-                    <TableHead>Motif</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leaveRequests.map((request) => (
-                    <TableRow key={request.id}>
-                      <TableCell className="font-medium">{request.employe}</TableCell>
-                      <TableCell>{request.type}</TableCell>
-                      <TableCell>
-                        {new Date(request.dateDebut).toLocaleDateString('fr-FR')} - {new Date(request.dateFin).toLocaleDateString('fr-FR')}
-                      </TableCell>
-                      <TableCell>{request.motif}</TableCell>
-                      <TableCell>
-                        {getStatusBadge(request.statut)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-1">
-                          <Button variant="outline" size="sm">
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employé</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Date début</TableHead>
+                      <TableHead>Date fin</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {leaveRequests.map((request) => (
+                      <TableRow key={request.id}>
+                        <TableCell className="font-medium">{request.employe}</TableCell>
+                        <TableCell>{request.type}</TableCell>
+                        <TableCell>{new Date(request.dateDebut).toLocaleDateString('fr-FR')}</TableCell>
+                        <TableCell>{new Date(request.dateFin).toLocaleDateString('fr-FR')}</TableCell>
+                        <TableCell>{getStatusBadge(request.statut)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Button variant="outline" size="sm">
+                              <CheckCircle className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -709,61 +418,42 @@ const PersonnelModule = () => {
         <TabsContent value="training" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Formations & Compétences</CardTitle>
+              <CardTitle>Formations et Certifications</CardTitle>
               <CardDescription>
-                Historique et certifications obligatoires
+                Suivi des formations obligatoires et certifications professionnelles
               </CardDescription>
-              <div className="flex items-center space-x-2">
-                <Button size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Planifier formation
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Award className="mr-2 h-4 w-4" />
-                  Certifications
-                </Button>
-              </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Formation</TableHead>
-                    <TableHead>Participants</TableHead>
-                    <TableHead>Période</TableHead>
-                    <TableHead>Organisme</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {trainings.map((training) => (
-                    <TableRow key={training.id}>
-                      <TableCell className="font-medium">{training.nom}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {training.employes.map((emp, index) => (
-                            <div key={index}>{emp}</div>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(training.dateDebut).toLocaleDateString('fr-FR')} - {new Date(training.dateFin).toLocaleDateString('fr-FR')}
-                      </TableCell>
-                      <TableCell>{training.organisme}</TableCell>
-                      <TableCell>
-                        {getStatusBadge(training.statut)}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="outline" size="sm">
-                          <FileText className="mr-2 h-4 w-4" />
-                          Détails
-                        </Button>
-                      </TableCell>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Formation</TableHead>
+                      <TableHead>Participants</TableHead>
+                      <TableHead>Date début</TableHead>
+                      <TableHead>Date fin</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {trainings.map((training) => (
+                      <TableRow key={training.id}>
+                        <TableCell className="font-medium">{training.nom}</TableCell>
+                        <TableCell>{training.employes.join(', ')}</TableCell>
+                        <TableCell>{new Date(training.dateDebut).toLocaleDateString('fr-FR')}</TableCell>
+                        <TableCell>{new Date(training.dateFin).toLocaleDateString('fr-FR')}</TableCell>
+                        <TableCell>{getStatusBadge(training.statut)}</TableCell>
+                        <TableCell>
+                          <Button variant="outline" size="sm">
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
