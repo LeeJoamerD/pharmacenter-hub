@@ -524,14 +524,10 @@ const PersonnelModule = () => {
                     Gestion des congés et absences du personnel
                   </CardDescription>
                 </div>
-                <Dialog open={isNewLeaveRequestOpen} onOpenChange={setIsNewLeaveRequestOpen}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Nouvelle demande
-                    </Button>
-                  </DialogTrigger>
-                </Dialog>
+                <Button onClick={() => setIsNewLeaveRequestOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nouvelle demande
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
