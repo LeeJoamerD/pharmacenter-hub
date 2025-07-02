@@ -2,7 +2,7 @@ import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, Users } from 'lucide-react';
 import { Employee } from './types';
 
 interface EmployeeTableProps {
@@ -40,7 +40,12 @@ export const EmployeeTable = ({ employees, onEdit, onDelete }: EmployeeTableProp
         <TableBody>
           {employees.map((employee) => (
             <TableRow key={employee.id}>
-              <TableCell className="font-medium">{employee.nom}</TableCell>
+              <TableCell className="font-medium">
+                <div className="flex items-center">
+                  <Users className="mr-2 h-4 w-4 text-muted-foreground" />
+                  {employee.nom}
+                </div>
+              </TableCell>
               <TableCell>{employee.prenom}</TableCell>
               <TableCell>{employee.poste}</TableCell>
               <TableCell>{employee.telephone}</TableCell>
@@ -59,6 +64,7 @@ export const EmployeeTable = ({ employees, onEdit, onDelete }: EmployeeTableProp
                     variant="outline" 
                     size="sm"
                     onClick={() => onDelete(employee.id)}
+                    className="text-red-600 hover:text-red-800 hover:border-red-300"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

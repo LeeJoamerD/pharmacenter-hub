@@ -7,13 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Calendar as CalendarIcon, Clock, GraduationCap, Search, Plus, Filter, FileText, Award, CheckCircle, X } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Users, Calendar as CalendarIcon, Clock, GraduationCap, Search, Plus, Filter, FileText, Award, CheckCircle, X, LayoutGrid, List } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { EmployeeForm } from '../personnel/EmployeeForm';
 import { EmployeeTable } from '../personnel/EmployeeTable';
+import { EmployeeCard } from '../personnel/EmployeeCard';
 import { employeeSchema, EmployeeFormData, Employee, LeaveRequest, Training } from '../personnel/types';
 
 // Mock data
@@ -103,6 +105,7 @@ const PersonnelModule = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isNewEmployeeOpen, setIsNewEmployeeOpen] = useState(false);
   const [isEditEmployeeOpen, setIsEditEmployeeOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
 
   const newEmployeeForm = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
@@ -304,14 +307,30 @@ const PersonnelModule = () => {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'card' | 'list')}>
+                  <ToggleGroupItem value="card" aria-label="Vue carte">
+                    <LayoutGrid className="h-4 w-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="list" aria-label="Vue liste">
+                    <List className="h-4 w-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
               </div>
             </CardHeader>
             <CardContent>
-              <EmployeeTable 
-                employees={filteredEmployees}
-                onEdit={handleEditEmployee}
-                onDelete={handleDeleteEmployee}
-              />
+              {viewMode === 'list' ? (
+                <EmployeeTable 
+                  employees={filteredEmployees}
+                  onEdit={handleEditEmployee}
+                  onDelete={handleDeleteEmployee}
+                />
+              ) : (
+                <EmployeeCard 
+                  employees={filteredEmployees}
+                  onEdit={handleEditEmployee}
+                  onDelete={handleDeleteEmployee}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
