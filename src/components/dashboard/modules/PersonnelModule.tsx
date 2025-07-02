@@ -18,7 +18,8 @@ import { EmployeeTable } from '../personnel/EmployeeTable';
 import { EmployeeCard } from '../personnel/EmployeeCard';
 import { LeaveRequestForm } from '../personnel/LeaveRequestForm';
 import { TrainingForm } from '../personnel/TrainingForm';
-import { employeeSchema, EmployeeFormData, Employee, LeaveRequest, Training, leaveRequestSchema, LeaveRequestFormData, trainingSchema, TrainingFormData } from '../personnel/types';
+import { ScheduleForm } from '../personnel/ScheduleForm';
+import { employeeSchema, EmployeeFormData, Employee, LeaveRequest, Training, leaveRequestSchema, LeaveRequestFormData, trainingSchema, TrainingFormData, Schedule, scheduleSchema, ScheduleFormData } from '../personnel/types';
 
 // Mock data
 const employees: Employee[] = [
@@ -133,6 +134,50 @@ const trainings: Training[] = [
   }
 ];
 
+const schedules: Schedule[] = [
+  {
+    id: 1,
+    employe: "Marie Dupont",
+    date: "2024-07-02",
+    heureDebut: "08:00",
+    heureFin: "16:00",
+    typeShift: "Journée complète",
+    poste: "Comptoir principal",
+    statut: "Confirmé",
+    notes: "Responsable de l'ouverture"
+  },
+  {
+    id: 2,
+    employe: "Pierre Martin",
+    date: "2024-07-02",
+    heureDebut: "14:00",
+    heureFin: "20:00",
+    typeShift: "Après-midi",
+    poste: "Préparation",
+    statut: "Planifié"
+  },
+  {
+    id: 3,
+    employe: "Sophie Bernard",
+    date: "2024-07-02",
+    heureDebut: "09:00",
+    heureFin: "17:00",
+    typeShift: "Journée complète",
+    poste: "Conseil/OTC",
+    statut: "Confirmé"
+  },
+  {
+    id: 4,
+    employe: "Marie Dupont",
+    date: "2024-07-03",
+    heureDebut: "08:00",
+    heureFin: "12:00",
+    typeShift: "Matinée",
+    poste: "Comptoir principal",
+    statut: "Planifié"
+  }
+];
+
 const PersonnelModule = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -148,6 +193,10 @@ const PersonnelModule = () => {
   const [selectedTraining, setSelectedTraining] = useState<Training | null>(null);
   const [isNewTrainingOpen, setIsNewTrainingOpen] = useState(false);
   const [isEditTrainingOpen, setIsEditTrainingOpen] = useState(false);
+  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
+  const [isNewScheduleOpen, setIsNewScheduleOpen] = useState(false);
+  const [isEditScheduleOpen, setIsEditScheduleOpen] = useState(false);
+  const [scheduleViewMode, setScheduleViewMode] = useState<'day' | 'week'>('day');
 
   const newEmployeeForm = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
@@ -211,6 +260,24 @@ const PersonnelModule = () => {
 
   const editTrainingForm = useForm<TrainingFormData>({
     resolver: zodResolver(trainingSchema)
+  });
+
+  const newScheduleForm = useForm<ScheduleFormData>({
+    resolver: zodResolver(scheduleSchema),
+    defaultValues: {
+      employe: '',
+      date: '',
+      heureDebut: '',
+      heureFin: '',
+      typeShift: 'Matinée',
+      poste: '',
+      statut: 'Planifié',
+      notes: ''
+    }
+  });
+
+  const editScheduleForm = useForm<ScheduleFormData>({
+    resolver: zodResolver(scheduleSchema)
   });
 
   const handleEditEmployee = (employee: Employee) => {
@@ -322,6 +389,59 @@ const PersonnelModule = () => {
 
   const handleMarkTrainingComplete = (trainingId: number) => {
     console.log('Marquer formation comme terminée:', trainingId);
+  };
+
+  const handleEditSchedule = (schedule: Schedule) => {
+    setSelectedSchedule(schedule);
+    editScheduleForm.reset({
+      employe: schedule.employe,
+      date: schedule.date,
+      heureDebut: schedule.heureDebut,
+      heureFin: schedule.heureFin,
+      typeShift: schedule.typeShift as "Matinée" | "Après-midi" | "Soirée" | "Nuit" | "Journée complète",
+      poste: schedule.poste,
+      statut: schedule.statut as "Planifié" | "Confirmé" | "En cours" | "Terminé" | "Annulé",
+      notes: schedule.notes
+    });
+    setIsEditScheduleOpen(true);
+  };
+
+  const handleDeleteSchedule = (id: number) => {
+    console.log('Supprimer planning:', id);
+  };
+
+  const onNewScheduleSubmit = (data: ScheduleFormData) => {
+    console.log('Nouveau planning:', data);
+    setIsNewScheduleOpen(false);
+    newScheduleForm.reset();
+  };
+
+  const onEditScheduleSubmit = (data: ScheduleFormData) => {
+    console.log('Modification planning:', data);
+    setIsEditScheduleOpen(false);
+    editScheduleForm.reset();
+  };
+
+  const getSchedulesForDate = (date: Date) => {
+    const dateString = date.toISOString().split('T')[0];
+    return schedules.filter(schedule => schedule.date === dateString);
+  };
+
+  const getScheduleStatusBadge = (status: string) => {
+    switch (status) {
+      case 'Confirmé':
+        return <Badge variant="default" className="bg-green-100 text-green-800">Confirmé</Badge>;
+      case 'Planifié':
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800">Planifié</Badge>;
+      case 'En cours':
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">En cours</Badge>;
+      case 'Terminé':
+        return <Badge variant="default" className="bg-gray-100 text-gray-800">Terminé</Badge>;
+      case 'Annulé':
+        return <Badge variant="destructive">Annulé</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
   };
 
   const filteredEmployees = employees.filter(employee => {
@@ -541,53 +661,152 @@ const PersonnelModule = () => {
 
         
         <TabsContent value="schedule" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <CalendarIcon className="mr-2 h-5 w-5" />
-                  Calendrier
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  className="rounded-md border"
-                />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Planning du jour</CardTitle>
-                <CardDescription>
-                  {selectedDate ? selectedDate.toLocaleDateString('fr-FR', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  }) : 'Aucune date sélectionnée'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">Marie Dupont</p>
-                    <p className="text-sm text-muted-foreground">08:00 - 16:00</p>
-                  </div>
-                  <Badge variant="default">Matinée</Badge>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <CalendarIcon className="mr-2 h-5 w-5" />
+                    Gestion des Plannings
+                  </CardTitle>
+                  <CardDescription>
+                    Planification des horaires et affectation du personnel
+                  </CardDescription>
                 </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">Pierre Martin</p>
-                    <p className="text-sm text-muted-foreground">14:00 - 20:00</p>
-                  </div>
-                  <Badge variant="secondary">Après-midi</Badge>
+                <div className="flex items-center space-x-2">
+                  <ToggleGroup type="single" value={scheduleViewMode} onValueChange={(value) => value && setScheduleViewMode(value as 'day' | 'week')}>
+                    <ToggleGroupItem value="day" aria-label="Vue journalière">
+                      Jour
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="week" aria-label="Vue hebdomadaire">
+                      Semaine
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                  <Button 
+                    onClick={() => setIsNewScheduleOpen(true)}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nouveau planning
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Calendrier</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={setSelectedDate}
+                      className="rounded-md border"
+                    />
+                  </CardContent>
+                </Card>
+                
+                <div className="md:col-span-2 space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>
+                        Planning du {selectedDate ? selectedDate.toLocaleDateString('fr-FR', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        }) : 'jour sélectionné'}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {selectedDate && getSchedulesForDate(selectedDate).length > 0 ? (
+                        <div className="space-y-3">
+                          {getSchedulesForDate(selectedDate).map((schedule) => (
+                            <div key={schedule.id} className="flex items-center justify-between p-3 border rounded-lg">
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-medium">{schedule.employe}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {schedule.heureDebut} - {schedule.heureFin} • {schedule.poste}
+                                    </p>
+                                    {schedule.notes && (
+                                      <p className="text-xs text-muted-foreground mt-1">{schedule.notes}</p>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    {getScheduleStatusBadge(schedule.statut)}
+                                    <Badge variant="outline">{schedule.typeShift}</Badge>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-1 ml-4">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleEditSchedule(schedule)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleDeleteSchedule(schedule.id)}
+                                  className="text-red-600 hover:text-red-800 hover:border-red-300"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <CalendarIcon className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                          <p>Aucun planning pour cette date</p>
+                          <Button 
+                            variant="outline" 
+                            className="mt-2"
+                            onClick={() => setIsNewScheduleOpen(true)}
+                          >
+                            Ajouter un planning
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Résumé hebdomadaire</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="p-3 bg-muted rounded-lg">
+                          <div className="font-medium">Total heures planifiées</div>
+                          <div className="text-2xl font-bold text-primary">132h</div>
+                        </div>
+                        <div className="p-3 bg-muted rounded-lg">
+                          <div className="font-medium">Employés actifs</div>
+                          <div className="text-2xl font-bold text-primary">3</div>
+                        </div>
+                        <div className="p-3 bg-muted rounded-lg">
+                          <div className="font-medium">Créneaux à confirmer</div>
+                          <div className="text-2xl font-bold text-yellow-600">2</div>
+                        </div>
+                        <div className="p-3 bg-muted rounded-lg">
+                          <div className="font-medium">Conflits détectés</div>
+                          <div className="text-2xl font-bold text-red-600">0</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="leaves" className="space-y-4">
@@ -791,6 +1010,42 @@ const PersonnelModule = () => {
             onSubmit={onEditTrainingSubmit} 
             isEdit={true}
             onCancel={() => setIsEditTrainingOpen(false)}
+            employees={employees}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isNewScheduleOpen} onOpenChange={setIsNewScheduleOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Nouveau Planning</DialogTitle>
+            <DialogDescription>
+              Créer un nouveau créneau de planning pour un employé
+            </DialogDescription>
+          </DialogHeader>
+          <ScheduleForm 
+            form={newScheduleForm} 
+            onSubmit={onNewScheduleSubmit} 
+            isEdit={false}
+            onCancel={() => setIsNewScheduleOpen(false)}
+            employees={employees}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditScheduleOpen} onOpenChange={setIsEditScheduleOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Modifier Planning</DialogTitle>
+            <DialogDescription>
+              Modifier le créneau de planning sélectionné
+            </DialogDescription>
+          </DialogHeader>
+          <ScheduleForm 
+            form={editScheduleForm} 
+            onSubmit={onEditScheduleSubmit} 
+            isEdit={true}
+            onCancel={() => setIsEditScheduleOpen(false)}
             employees={employees}
           />
         </DialogContent>

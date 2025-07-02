@@ -94,3 +94,28 @@ export const trainingSchema = z.object({
 });
 
 export type TrainingFormData = z.infer<typeof trainingSchema>;
+
+export interface Schedule {
+  id: number;
+  employe: string;
+  date: string;
+  heureDebut: string;
+  heureFin: string;
+  typeShift: string;
+  poste: string;
+  statut: string;
+  notes?: string;
+}
+
+export const scheduleSchema = z.object({
+  employe: z.string().min(1, "L'employé est requis"),
+  date: z.string().min(1, "La date est requise"),
+  heureDebut: z.string().min(1, "L'heure de début est requise"),
+  heureFin: z.string().min(1, "L'heure de fin est requise"),
+  typeShift: z.enum(["Matinée", "Après-midi", "Soirée", "Nuit", "Journée complète"]),
+  poste: z.string().min(1, "Le poste est requis"),
+  statut: z.enum(["Planifié", "Confirmé", "En cours", "Terminé", "Annulé"]),
+  notes: z.string().optional()
+});
+
+export type ScheduleFormData = z.infer<typeof scheduleSchema>;
