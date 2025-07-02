@@ -79,20 +79,20 @@ const AppSidebar = ({
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton 
-                  className={activeModule === 'ventes' ? 'bg-primary/10 text-primary' : ''} 
-                  onClick={() => handleMenuClick('ventes')}
-                >
-                  <ShoppingCart className="h-5 w-5 text-green-600" />
-                  <span>Ventes</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton 
                   className={activeModule === 'stock' ? 'bg-primary/10 text-primary' : ''} 
                   onClick={() => handleMenuClick('stock')}
                 >
                   <Package className="h-5 w-5 text-orange-600" />
                   <span>Stock</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  className={activeModule === 'ventes' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('ventes')}
+                >
+                  <ShoppingCart className="h-5 w-5 text-green-600" />
+                  <span>Ventes</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
