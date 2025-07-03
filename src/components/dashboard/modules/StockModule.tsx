@@ -26,6 +26,10 @@ import OrderForm from './stock/OrderForm';
 import ReceptionForm from './stock/ReceptionForm';
 import SupplierManager from './stock/SupplierManager';
 import OrderTracking from './stock/OrderTracking';
+import StockMovementJournal from './stock/StockMovementJournal';
+import StockAdjustments from './stock/StockAdjustments';
+import StockTransfers from './stock/StockTransfers';
+import StockAudit from './stock/StockAudit';
 
 interface StockModuleProps {
   activeSubModule: string;
@@ -331,35 +335,19 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
       </TabsList>
       
       <TabsContent value="journal">
-        <div className="text-center py-12">
-          <ChartBar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Journal des Mouvements</h3>
-          <p className="text-muted-foreground">Journal temps réel à implémenter</p>
-        </div>
+        <StockMovementJournal />
       </TabsContent>
       
       <TabsContent value="ajustements">
-        <div className="text-center py-12">
-          <Settings className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Ajustements Stock</h3>
-          <p className="text-muted-foreground">Formulaire ajustements à implémenter</p>
-        </div>
+        <StockAdjustments />
       </TabsContent>
       
       <TabsContent value="transferts">
-        <div className="text-center py-12">
-          <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Gestion Transferts</h3>
-          <p className="text-muted-foreground">Module transferts à implémenter</p>
-        </div>
+        <StockTransfers />
       </TabsContent>
       
       <TabsContent value="audit">
-        <div className="text-center py-12">
-          <Eye className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Historique Complet</h3>
-          <p className="text-muted-foreground">Audit trail à implémenter</p>
-        </div>
+        <StockAudit />
       </TabsContent>
     </Tabs>
   );
