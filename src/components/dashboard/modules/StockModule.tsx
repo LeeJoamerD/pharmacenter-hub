@@ -21,6 +21,11 @@ import LotTracker from './stock/LotTracker';
 import LotDetails from './stock/LotDetails';
 import ExpirationAlert from './stock/ExpirationAlert';
 import FIFOConfig from './stock/FIFOConfig';
+import OrderList from './stock/OrderList';
+import OrderForm from './stock/OrderForm';
+import ReceptionForm from './stock/ReceptionForm';
+import SupplierManager from './stock/SupplierManager';
+import OrderTracking from './stock/OrderTracking';
 
 interface StockModuleProps {
   activeSubModule: string;
@@ -253,11 +258,17 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
   );
 
   const renderApprovisionnementModule = () => (
-    <Tabs defaultValue="commandes" className="space-y-6">
+    <Tabs defaultValue="liste" className="space-y-6">
       <TabsList>
-        <TabsTrigger value="commandes">
+        <TabsTrigger value="liste">
           <div className="flex items-center gap-2">
             <Clipboard className="h-4 w-4" />
+            <span>Liste commandes</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="commandes">
+          <div className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
             <span>Commandes</span>
           </div>
         </TabsTrigger>
@@ -281,36 +292,24 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
         </TabsTrigger>
       </TabsList>
       
+      <TabsContent value="liste">
+        <OrderList />
+      </TabsContent>
+      
       <TabsContent value="commandes">
-        <div className="text-center py-12">
-          <Clipboard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Gestion Commandes</h3>
-          <p className="text-muted-foreground">Liste/Création commandes à implémenter</p>
-        </div>
+        <OrderForm />
       </TabsContent>
       
       <TabsContent value="receptions">
-        <div className="text-center py-12">
-          <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Enregistrement Réceptions</h3>
-          <p className="text-muted-foreground">Module réceptions à implémenter</p>
-        </div>
+        <ReceptionForm />
       </TabsContent>
       
       <TabsContent value="fournisseurs">
-        <div className="text-center py-12">
-          <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Gestion Fournisseurs</h3>
-          <p className="text-muted-foreground">Module fournisseurs à implémenter</p>
-        </div>
+        <SupplierManager />
       </TabsContent>
       
       <TabsContent value="suivi">
-        <div className="text-center py-12">
-          <Eye className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Suivi Temps Réel</h3>
-          <p className="text-muted-foreground">Dashboard suivi à implémenter</p>
-        </div>
+        <OrderTracking />
       </TabsContent>
     </Tabs>
   );
