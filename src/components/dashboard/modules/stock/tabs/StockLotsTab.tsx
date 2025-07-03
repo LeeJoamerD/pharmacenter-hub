@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tag, Eye, AlertTriangle, Settings } from 'lucide-react';
 import LotTracker from '../LotTracker';
@@ -7,8 +7,10 @@ import ExpirationAlert from '../ExpirationAlert';
 import FIFOConfig from '../FIFOConfig';
 
 const StockLotsTab = () => {
+  const [activeTab, setActiveTab] = useState('tracker');
+
   return (
-    <Tabs value="tracker" defaultValue="tracker" className="space-y-6">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
       <TabsList>
         <TabsTrigger value="tracker">
           <div className="flex items-center gap-2">

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clipboard, Plus, Package, ShoppingCart, Eye } from 'lucide-react';
 import OrderList from '../OrderList';
@@ -8,8 +8,10 @@ import SupplierManager from '../SupplierManager';
 import OrderTracking from '../OrderTracking';
 
 const StockApprovisionnementTab = () => {
+  const [activeTab, setActiveTab] = useState('liste');
+
   return (
-    <Tabs value="liste" defaultValue="liste" className="space-y-6">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
       <TabsList>
         <TabsTrigger value="liste">
           <div className="flex items-center gap-2">
