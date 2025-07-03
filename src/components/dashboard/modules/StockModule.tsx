@@ -34,6 +34,10 @@ import InventorySessions from './stock/InventorySessions';
 import InventoryEntry from './stock/InventoryEntry';
 import InventoryReconciliation from './stock/InventoryReconciliation';
 import InventoryReports from './stock/InventoryReports';
+import AlertsDashboard from './stock/AlertsDashboard';
+import LowStockAlerts from './stock/LowStockAlerts';
+import ExpirationMonitor from './stock/ExpirationMonitor';
+import AlertConfiguration from './stock/AlertConfiguration';
 
 interface StockModuleProps {
   activeSubModule: string;
@@ -433,35 +437,19 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
       </TabsList>
       
       <TabsContent value="dashboard">
-        <div className="text-center py-12">
-          <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Vue d'Ensemble</h3>
-          <p className="text-muted-foreground">Dashboard alertes à implémenter</p>
-        </div>
+        <AlertsDashboard />
       </TabsContent>
       
       <TabsContent value="stock-faible">
-        <div className="text-center py-12">
-          <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Alertes Stock Faible</h3>
-          <p className="text-muted-foreground">Module stock faible à implémenter</p>
-        </div>
+        <LowStockAlerts />
       </TabsContent>
       
       <TabsContent value="peremption">
-        <div className="text-center py-12">
-          <Tag className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Péremption Proche</h3>
-          <p className="text-muted-foreground">Module péremption à implémenter</p>
-        </div>
+        <ExpirationMonitor />
       </TabsContent>
       
       <TabsContent value="configuration">
-        <div className="text-center py-12">
-          <Settings className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Configuration Seuils</h3>
-          <p className="text-muted-foreground">Paramétrage alertes à implémenter</p>
-        </div>
+        <AlertConfiguration />
       </TabsContent>
     </Tabs>
   );
