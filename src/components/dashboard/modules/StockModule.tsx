@@ -193,24 +193,10 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
             <span>Catalogue</span>
           </div>
         </TabsTrigger>
-        <TabsTrigger value="details">
-          <div className="flex items-center gap-2">
-            <Eye className="h-4 w-4" />
-            <span>Détails</span>
-          </div>
-        </TabsTrigger>
       </TabsList>
       
       <TabsContent value="catalogue">
         <ProductCatalog />
-      </TabsContent>
-      
-      <TabsContent value="details">
-        <div className="text-center py-12">
-          <Eye className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Détails Produits</h3>
-          <p className="text-muted-foreground">Vue détaillée avec historique à implémenter</p>
-        </div>
       </TabsContent>
     </Tabs>
   );
@@ -222,6 +208,12 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
           <div className="flex items-center gap-2">
             <Tag className="h-4 w-4" />
             <span>Suivi</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="details">
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4" />
+            <span>Détails</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="expiration">
@@ -243,6 +235,14 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
           <Tag className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">Suivi des Lots</h3>
           <p className="text-muted-foreground">Vue d'ensemble des lots à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="details">
+        <div className="text-center py-12">
+          <Eye className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Détails Lots</h3>
+          <p className="text-muted-foreground">Vue détaillée avec traçabilité à implémenter</p>
         </div>
       </TabsContent>
       
