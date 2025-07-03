@@ -194,20 +194,7 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
   );
 
   const renderProductsModule = () => (
-    <Tabs defaultValue="catalogue" className="space-y-6">
-      <TabsList>
-        <TabsTrigger value="catalogue">
-          <div className="flex items-center gap-2">
-            <Package className="h-4 w-4" />
-            <span>Catalogue</span>
-          </div>
-        </TabsTrigger>
-      </TabsList>
-      
-      <TabsContent value="catalogue">
-        <ProductCatalog />
-      </TabsContent>
-    </Tabs>
+    <ProductCatalog />
   );
 
   const renderLotsModule = () => (
