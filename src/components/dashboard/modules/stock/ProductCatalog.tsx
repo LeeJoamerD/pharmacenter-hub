@@ -193,7 +193,7 @@ const ProductCatalog = () => {
                     Filtres
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 max-h-80 overflow-y-auto">
                   <DropdownMenuLabel>Filtrer par famille</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {familles.map((famille) => (
