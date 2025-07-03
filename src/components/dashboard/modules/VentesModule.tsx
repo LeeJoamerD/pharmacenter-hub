@@ -1,6 +1,7 @@
 import React from 'react';
 import SalesDashboard from './sales/SalesDashboard';
 import CashManagement from './sales/CashManagement';
+import POSInterface from './sales/POSInterface';
 
 interface VentesModuleProps {
   activeSubModule: string;
@@ -13,7 +14,7 @@ const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
       case 'caisses':
         return <CashManagement />;
       case 'point de vente':
-        return <div className="p-8 text-center text-muted-foreground">Interface Point de Vente - À implémenter</div>;
+        return <POSInterface />;
       case 'encaissements':
         return <div className="p-8 text-center text-muted-foreground">Module Encaissements - À implémenter</div>;
       case 'historique':
