@@ -16,6 +16,7 @@ import {
   BarChart3,
   ShoppingCart
 } from 'lucide-react';
+import ProductCatalog from './stock/ProductCatalog';
 
 interface StockModuleProps {
   activeSubModule: string;
@@ -190,13 +191,7 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
       case 'dashboard':
         return renderDashboard();
       case 'produits':
-        return (
-          <div className="text-center py-12">
-            <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Module Produits</h3>
-            <p className="text-muted-foreground">Gestion du catalogue produits à implémenter</p>
-          </div>
-        );
+        return <ProductCatalog />;
       case 'lots':
         return (
           <div className="text-center py-12">

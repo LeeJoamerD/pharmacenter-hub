@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Package, Grid3X3, Tags, Pill, FileText, ShieldCheck } from 'lucide-react';
-import ProductCatalog from './referentiel/ProductCatalog';
+
 import FamilyManager from './referentiel/FamilyManager';
 import RayonManager from './referentiel/RayonManager';
 import PricingCategories from './referentiel/PricingCategories';
@@ -168,9 +168,8 @@ const ReferentielModule = () => {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-          <TabsTrigger value="catalogue">Catalogue</TabsTrigger>
           <TabsTrigger value="familles">Familles</TabsTrigger>
           <TabsTrigger value="rayons">Rayons</TabsTrigger>
           <TabsTrigger value="categories">Catégories</TabsTrigger>
@@ -181,9 +180,6 @@ const ReferentielModule = () => {
           <OverviewTab />
         </TabsContent>
 
-        <TabsContent value="catalogue">
-          <ProductCatalog />
-        </TabsContent>
 
         <TabsContent value="familles">
           <FamilyManager />
