@@ -30,6 +30,10 @@ import StockMovementJournal from './stock/StockMovementJournal';
 import StockAdjustments from './stock/StockAdjustments';
 import StockTransfers from './stock/StockTransfers';
 import StockAudit from './stock/StockAudit';
+import InventorySessions from './stock/InventorySessions';
+import InventoryEntry from './stock/InventoryEntry';
+import InventoryReconciliation from './stock/InventoryReconciliation';
+import InventoryReports from './stock/InventoryReports';
 
 interface StockModuleProps {
   activeSubModule: string;
@@ -382,35 +386,19 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
       </TabsList>
       
       <TabsContent value="sessions">
-        <div className="text-center py-12">
-          <Clipboard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Gestion Sessions</h3>
-          <p className="text-muted-foreground">Sessions d'inventaire à implémenter</p>
-        </div>
+        <InventorySessions />
       </TabsContent>
       
       <TabsContent value="saisie">
-        <div className="text-center py-12">
-          <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Saisie avec Scanner</h3>
-          <p className="text-muted-foreground">Module saisie à implémenter</p>
-        </div>
+        <InventoryEntry />
       </TabsContent>
       
       <TabsContent value="reconciliation">
-        <div className="text-center py-12">
-          <ChartBar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Réconciliation</h3>
-          <p className="text-muted-foreground">Comparaison avec écarts à implémenter</p>
-        </div>
+        <InventoryReconciliation />
       </TabsContent>
       
       <TabsContent value="rapports">
-        <div className="text-center py-12">
-          <TrendingUp className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Rapports Générés</h3>
-          <p className="text-muted-foreground">Module rapports à implémenter</p>
-        </div>
+        <InventoryReports />
       </TabsContent>
     </Tabs>
   );
