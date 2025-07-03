@@ -125,7 +125,7 @@ const InventoryEntry = () => {
             ...item,
             quantiteComptee: quantite,
             emplacementReel: currentLocation || item.emplacementTheorique,
-            statut: (quantite === item.quantiteTheorique ? 'compte' : 'ecart') as const,
+            statut: (quantite === item.quantiteTheorique ? 'compte' : 'ecart') as InventoryItem['statut'],
             dateComptage: new Date(),
             operateur: 'Utilisateur Actuel'
           };
