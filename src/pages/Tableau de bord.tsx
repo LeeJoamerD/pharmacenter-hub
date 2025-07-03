@@ -17,6 +17,7 @@ import DocumentModule from '@/components/dashboard/modules/DocumentModule';
 import AnalyticsModule from '@/components/dashboard/modules/AnalyticsModule';
 import WorkflowModule from '@/components/dashboard/modules/WorkflowModule';
 import StockModule from '@/components/dashboard/modules/StockModule';
+import VentesModule from '@/components/dashboard/modules/VentesModule';
 
 const Dashboard = () => {
   const [activeModule, setActiveModule] = useState('dashboard');
@@ -51,6 +52,8 @@ const Dashboard = () => {
         return <DashboardHome />;
       case 'stock':
         return <StockModule activeSubModule={activeSubModule} />;
+      case 'ventes':
+        return <VentesModule activeSubModule={activeSubModule} />;
       case 'parametres':
         return <ParametresModule />;
       default:
@@ -87,6 +90,8 @@ const Dashboard = () => {
         return 'Tableau de bord';
       case 'stock':
         return 'Gestion de Stock';
+      case 'ventes':
+        return 'Gestion des Ventes';
       case 'parametres':
         return 'Configuration Système';
       default:
