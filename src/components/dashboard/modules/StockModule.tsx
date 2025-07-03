@@ -17,6 +17,10 @@ import {
   ShoppingCart
 } from 'lucide-react';
 import ProductCatalog from './stock/ProductCatalog';
+import LotTracker from './stock/LotTracker';
+import LotDetails from './stock/LotDetails';
+import ExpirationAlert from './stock/ExpirationAlert';
+import FIFOConfig from './stock/FIFOConfig';
 
 interface StockModuleProps {
   activeSubModule: string;
@@ -231,35 +235,19 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
       </TabsList>
       
       <TabsContent value="tracker">
-        <div className="text-center py-12">
-          <Tag className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Suivi des Lots</h3>
-          <p className="text-muted-foreground">Vue d'ensemble des lots à implémenter</p>
-        </div>
+        <LotTracker />
       </TabsContent>
       
       <TabsContent value="details">
-        <div className="text-center py-12">
-          <Eye className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Détails Lots</h3>
-          <p className="text-muted-foreground">Vue détaillée avec traçabilité à implémenter</p>
-        </div>
+        <LotDetails />
       </TabsContent>
       
       <TabsContent value="expiration">
-        <div className="text-center py-12">
-          <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Alertes Péremption</h3>
-          <p className="text-muted-foreground">Dashboard péremptions à implémenter</p>
-        </div>
+        <ExpirationAlert />
       </TabsContent>
       
       <TabsContent value="fifo">
-        <div className="text-center py-12">
-          <Settings className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Configuration FIFO</h3>
-          <p className="text-muted-foreground">Configuration rotation à implémenter</p>
-        </div>
+        <FIFOConfig />
       </TabsContent>
     </Tabs>
   );
