@@ -6,11 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
-import { Plus, Search, Edit, Trash2, Package } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Package, Filter, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Product {
@@ -61,7 +62,33 @@ const ProductCatalog = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  
+  // Filtres
+  const [familleFilter, setFamilleFilter] = useState('');
+  const [rayonFilter, setRayonFilter] = useState('');
+  const [laboratoireFilter, setLaboratoireFilter] = useState('');
+  const [stockFilter, setStockFilter] = useState('');
+  
   const { toast } = useToast();
+
+  // Données mock pour les filtres (à remplacer par les vraies données de la BDD)
+  const familles = [
+    { id: 1, libelle: 'Analgésiques' },
+    { id: 2, libelle: 'Antibiotiques' },
+    { id: 3, libelle: 'Vitamines' },
+  ];
+
+  const rayons = [
+    { id: 1, libelle: 'Comptoir' },
+    { id: 2, libelle: 'Prescription' },
+    { id: 3, libelle: 'Parapharmacie' },
+  ];
+
+  const laboratoires = [
+    { id: 1, libelle: 'Pfizer' },
+    { id: 2, libelle: 'Sanofi' },
+    { id: 3, libelle: 'GSK' },
+  ];
 
   const form = useForm<Product>({
     defaultValues: {
@@ -77,10 +104,28 @@ const ProductCatalog = () => {
     }
   });
 
-  const filteredProducts = products.filter(product =>
-    product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.code_cip?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.code_cip?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesFamille = !familleFilter || product.famille_produit_id?.toString() === familleFilter;
+    const matchesRayon = !rayonFilter || product.rayon_produit_id?.toString() === rayonFilter;
+    // Note: laboratoire_id n'existe pas encore dans le modèle Product, sera ajouté plus tard
+    const matchesLaboratoire = !laboratoireFilter; // Pour l'instant, accepter tous
+    const matchesStock = !stockFilter || 
+      (stockFilter === 'faible' && product.stock_alerte <= 10) ||
+      (stockFilter === 'normal' && product.stock_alerte > 10 && product.stock_alerte <= 50) ||
+      (stockFilter === 'eleve' && product.stock_alerte > 50);
+    
+    return matchesSearch && matchesFamille && matchesRayon && matchesLaboratoire && matchesStock;
+  });
+
+  const clearFilters = () => {
+    setFamilleFilter('');
+    setRayonFilter('');
+    setLaboratoireFilter('');
+    setStockFilter('');
+  };
 
   const handleAddProduct = () => {
     setEditingProduct(null);
@@ -132,13 +177,78 @@ const ProductCatalog = () => {
         <CardContent>
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center space-x-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher un produit..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-64"
-              />
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher un produit..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filtres
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>Filtrer par famille</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {familles.map((famille) => (
+                    <DropdownMenuItem 
+                      key={famille.id} 
+                      onClick={() => setFamilleFilter(famille.id.toString())}
+                    >
+                      {famille.libelle}
+                    </DropdownMenuItem>
+                  ))}
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Filtrer par rayon</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {rayons.map((rayon) => (
+                    <DropdownMenuItem 
+                      key={rayon.id} 
+                      onClick={() => setRayonFilter(rayon.id.toString())}
+                    >
+                      {rayon.libelle}
+                    </DropdownMenuItem>
+                  ))}
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Filtrer par laboratoire</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {laboratoires.map((laboratoire) => (
+                    <DropdownMenuItem 
+                      key={laboratoire.id} 
+                      onClick={() => setLaboratoireFilter(laboratoire.id.toString())}
+                    >
+                      {laboratoire.libelle}
+                    </DropdownMenuItem>
+                  ))}
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Filtrer par stock</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setStockFilter('faible')}>
+                    Stock faible (≤ 10)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStockFilter('normal')}>
+                    Stock normal (11-50)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStockFilter('eleve')}>
+                    Stock élevé (&gt; 50)
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={clearFilters}>
+                    <X className="mr-2 h-4 w-4" />
+                    Effacer les filtres
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
