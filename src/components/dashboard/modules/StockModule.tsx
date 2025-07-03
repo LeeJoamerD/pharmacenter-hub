@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -23,8 +23,6 @@ interface StockModuleProps {
 }
 
 const StockModule = ({ activeSubModule }: StockModuleProps) => {
-  const [activeTab, setActiveTab] = useState('dashboard');
-
   // Dashboard métriques mockées (à remplacer par les vraies données)
   const stockMetrics = {
     totalProduits: 1250,
@@ -126,23 +124,23 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={() => setActiveTab('produits')}>
+            <Button>
               <Plus className="mr-2 h-4 w-4" />
               Nouveau Produit
             </Button>
-            <Button variant="outline" onClick={() => setActiveTab('approvisionnement')}>
+            <Button variant="outline">
               <ShoppingCart className="mr-2 h-4 w-4" />
               Nouvelle Commande
             </Button>
-            <Button variant="outline" onClick={() => setActiveTab('mouvements')}>
+            <Button variant="outline">
               <ChartBar className="mr-2 h-4 w-4" />
               Ajustement Stock
             </Button>
-            <Button variant="outline" onClick={() => setActiveTab('inventaires')}>
+            <Button variant="outline">
               <Clipboard className="mr-2 h-4 w-4" />
               Nouvel Inventaire
             </Button>
-            <Button variant="outline" onClick={() => setActiveTab('alertes')}>
+            <Button variant="outline">
               <AlertTriangle className="mr-2 h-4 w-4" />
               Voir Alertes
             </Button>
@@ -186,79 +184,445 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
     </div>
   );
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return renderDashboard();
+  const renderProductsModule = () => (
+    <Tabs defaultValue="catalogue" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="catalogue">
+          <div className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            <span>Catalogue</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="details">
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4" />
+            <span>Détails</span>
+          </div>
+        </TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="catalogue">
+        <ProductCatalog />
+      </TabsContent>
+      
+      <TabsContent value="details">
+        <div className="text-center py-12">
+          <Eye className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Détails Produits</h3>
+          <p className="text-muted-foreground">Vue détaillée avec historique à implémenter</p>
+        </div>
+      </TabsContent>
+    </Tabs>
+  );
+
+  const renderLotsModule = () => (
+    <Tabs defaultValue="tracker" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="tracker">
+          <div className="flex items-center gap-2">
+            <Tag className="h-4 w-4" />
+            <span>Suivi</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="expiration">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            <span>Péremptions</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="fifo">
+          <div className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            <span>Configuration FIFO</span>
+          </div>
+        </TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="tracker">
+        <div className="text-center py-12">
+          <Tag className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Suivi des Lots</h3>
+          <p className="text-muted-foreground">Vue d'ensemble des lots à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="expiration">
+        <div className="text-center py-12">
+          <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Alertes Péremption</h3>
+          <p className="text-muted-foreground">Dashboard péremptions à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="fifo">
+        <div className="text-center py-12">
+          <Settings className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Configuration FIFO</h3>
+          <p className="text-muted-foreground">Configuration rotation à implémenter</p>
+        </div>
+      </TabsContent>
+    </Tabs>
+  );
+
+  const renderApprovisionnementModule = () => (
+    <Tabs defaultValue="commandes" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="commandes">
+          <div className="flex items-center gap-2">
+            <Clipboard className="h-4 w-4" />
+            <span>Commandes</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="receptions">
+          <div className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            <span>Réceptions</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="fournisseurs">
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4" />
+            <span>Fournisseurs</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="suivi">
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4" />
+            <span>Suivi</span>
+          </div>
+        </TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="commandes">
+        <div className="text-center py-12">
+          <Clipboard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Gestion Commandes</h3>
+          <p className="text-muted-foreground">Liste/Création commandes à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="receptions">
+        <div className="text-center py-12">
+          <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Enregistrement Réceptions</h3>
+          <p className="text-muted-foreground">Module réceptions à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="fournisseurs">
+        <div className="text-center py-12">
+          <ShoppingCart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Gestion Fournisseurs</h3>
+          <p className="text-muted-foreground">Module fournisseurs à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="suivi">
+        <div className="text-center py-12">
+          <Eye className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Suivi Temps Réel</h3>
+          <p className="text-muted-foreground">Dashboard suivi à implémenter</p>
+        </div>
+      </TabsContent>
+    </Tabs>
+  );
+
+  const renderMouvementsModule = () => (
+    <Tabs defaultValue="journal" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="journal">
+          <div className="flex items-center gap-2">
+            <ChartBar className="h-4 w-4" />
+            <span>Journal</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="ajustements">
+          <div className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            <span>Ajustements</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="transferts">
+          <div className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            <span>Transferts</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="audit">
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4" />
+            <span>Audit</span>
+          </div>
+        </TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="journal">
+        <div className="text-center py-12">
+          <ChartBar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Journal des Mouvements</h3>
+          <p className="text-muted-foreground">Journal temps réel à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="ajustements">
+        <div className="text-center py-12">
+          <Settings className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Ajustements Stock</h3>
+          <p className="text-muted-foreground">Formulaire ajustements à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="transferts">
+        <div className="text-center py-12">
+          <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Gestion Transferts</h3>
+          <p className="text-muted-foreground">Module transferts à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="audit">
+        <div className="text-center py-12">
+          <Eye className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Historique Complet</h3>
+          <p className="text-muted-foreground">Audit trail à implémenter</p>
+        </div>
+      </TabsContent>
+    </Tabs>
+  );
+
+  const renderInventairesModule = () => (
+    <Tabs defaultValue="sessions" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="sessions">
+          <div className="flex items-center gap-2">
+            <Clipboard className="h-4 w-4" />
+            <span>Sessions</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="saisie">
+          <div className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            <span>Saisie</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="reconciliation">
+          <div className="flex items-center gap-2">
+            <ChartBar className="h-4 w-4" />
+            <span>Réconciliation</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="rapports">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            <span>Rapports</span>
+          </div>
+        </TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="sessions">
+        <div className="text-center py-12">
+          <Clipboard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Gestion Sessions</h3>
+          <p className="text-muted-foreground">Sessions d'inventaire à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="saisie">
+        <div className="text-center py-12">
+          <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Saisie avec Scanner</h3>
+          <p className="text-muted-foreground">Module saisie à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="reconciliation">
+        <div className="text-center py-12">
+          <ChartBar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Réconciliation</h3>
+          <p className="text-muted-foreground">Comparaison avec écarts à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="rapports">
+        <div className="text-center py-12">
+          <TrendingUp className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Rapports Générés</h3>
+          <p className="text-muted-foreground">Module rapports à implémenter</p>
+        </div>
+      </TabsContent>
+    </Tabs>
+  );
+
+  const renderAlertesModule = () => (
+    <Tabs defaultValue="dashboard" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="dashboard">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span>Dashboard</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="stock-faible">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            <span>Stock Faible</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="peremption">
+          <div className="flex items-center gap-2">
+            <Tag className="h-4 w-4" />
+            <span>Péremption</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="configuration">
+          <div className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            <span>Configuration</span>
+          </div>
+        </TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="dashboard">
+        <div className="text-center py-12">
+          <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Vue d'Ensemble</h3>
+          <p className="text-muted-foreground">Dashboard alertes à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="stock-faible">
+        <div className="text-center py-12">
+          <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Alertes Stock Faible</h3>
+          <p className="text-muted-foreground">Module stock faible à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="peremption">
+        <div className="text-center py-12">
+          <Tag className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Péremption Proche</h3>
+          <p className="text-muted-foreground">Module péremption à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="configuration">
+        <div className="text-center py-12">
+          <Settings className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Configuration Seuils</h3>
+          <p className="text-muted-foreground">Paramétrage alertes à implémenter</p>
+        </div>
+      </TabsContent>
+    </Tabs>
+  );
+
+  const renderAnalysesModule = () => (
+    <Tabs defaultValue="valorisation" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="valorisation">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span>Valorisation</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="abc">
+          <div className="flex items-center gap-2">
+            <ChartBar className="h-4 w-4" />
+            <span>Analyse ABC</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="rotation">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            <span>Rotation</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="previsions">
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4" />
+            <span>Prévisions</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="conformite">
+          <div className="flex items-center gap-2">
+            <Clipboard className="h-4 w-4" />
+            <span>Conformité</span>
+          </div>
+        </TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="valorisation">
+        <div className="text-center py-12">
+          <BarChart3 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Valorisation Stocks</h3>
+          <p className="text-muted-foreground">Module valorisation à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="abc">
+        <div className="text-center py-12">
+          <ChartBar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Classification ABC</h3>
+          <p className="text-muted-foreground">Analyse ABC à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="rotation">
+        <div className="text-center py-12">
+          <TrendingUp className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Taux de Rotation</h3>
+          <p className="text-muted-foreground">Analyse rotation à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="previsions">
+        <div className="text-center py-12">
+          <Eye className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Prévisions</h3>
+          <p className="text-muted-foreground">Module prévisions à implémenter</p>
+        </div>
+      </TabsContent>
+      
+      <TabsContent value="conformite">
+        <div className="text-center py-12">
+          <Clipboard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">Rapports Conformité</h3>
+          <p className="text-muted-foreground">Module conformité à implémenter</p>
+        </div>
+      </TabsContent>
+    </Tabs>
+  );
+
+  const renderConfigurationModule = () => (
+    <div className="text-center py-12">
+      <Settings className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+      <h3 className="text-lg font-semibold mb-2">Configuration Stock</h3>
+      <p className="text-muted-foreground">Paramètres du module à implémenter</p>
+    </div>
+  );
+
+  const renderContent = () => {
+    switch (activeSubModule) {
       case 'produits':
-        return <ProductCatalog />;
+        return renderProductsModule();
       case 'lots':
-        return (
-          <div className="text-center py-12">
-            <Tag className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Module Lots</h3>
-            <p className="text-muted-foreground">Gestion des lots et traçabilité à implémenter</p>
-          </div>
-        );
+        return renderLotsModule();
       case 'approvisionnement':
-        return (
-          <div className="text-center py-12">
-            <Clipboard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Module Approvisionnement</h3>
-            <p className="text-muted-foreground">Commandes fournisseurs et réceptions à implémenter</p>
-          </div>
-        );
+        return renderApprovisionnementModule();
       case 'mouvements':
-        return (
-          <div className="text-center py-12">
-            <ChartBar className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Module Mouvements</h3>
-            <p className="text-muted-foreground">Journal des mouvements de stock à implémenter</p>
-          </div>
-        );
+        return renderMouvementsModule();
       case 'inventaires':
-        return (
-          <div className="text-center py-12">
-            <Clipboard className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Module Inventaires</h3>
-            <p className="text-muted-foreground">Sessions d'inventaire à implémenter</p>
-          </div>
-        );
+        return renderInventairesModule();
       case 'alertes':
-        return (
-          <div className="text-center py-12">
-            <AlertTriangle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Module Alertes</h3>
-            <p className="text-muted-foreground">Monitoring et alertes à implémenter</p>
-          </div>
-        );
+        return renderAlertesModule();
       case 'analyses':
-        return (
-          <div className="text-center py-12">
-            <TrendingUp className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Module Analyses</h3>
-            <p className="text-muted-foreground">Rapports et analyses à implémenter</p>
-          </div>
-        );
+        return renderAnalysesModule();
       case 'configuration':
-        return (
-          <div className="text-center py-12">
-            <Settings className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Configuration Stock</h3>
-            <p className="text-muted-foreground">Paramètres du module à implémenter</p>
-          </div>
-        );
+        return renderConfigurationModule();
       default:
         return renderDashboard();
     }
   };
-
-  // Si un sous-module est actif via la sidebar, utiliser celui-ci
-  React.useEffect(() => {
-    if (activeSubModule) {
-      setActiveTab(activeSubModule);
-    }
-  }, [activeSubModule]);
 
   return (
     <div className="space-y-6">
@@ -269,68 +633,7 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
-          <TabsTrigger value="dashboard">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </div>
-          </TabsTrigger>
-          <TabsTrigger value="produits">
-            <div className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              <span className="hidden sm:inline">Produits</span>
-            </div>
-          </TabsTrigger>
-          <TabsTrigger value="lots">
-            <div className="flex items-center gap-2">
-              <Tag className="h-4 w-4" />
-              <span className="hidden sm:inline">Lots</span>
-            </div>
-          </TabsTrigger>
-          <TabsTrigger value="approvisionnement">
-            <div className="flex items-center gap-2">
-              <Clipboard className="h-4 w-4" />
-              <span className="hidden sm:inline">Appro.</span>
-            </div>
-          </TabsTrigger>
-          <TabsTrigger value="mouvements">
-            <div className="flex items-center gap-2">
-              <ChartBar className="h-4 w-4" />
-              <span className="hidden sm:inline">Mouvements</span>
-            </div>
-          </TabsTrigger>
-          <TabsTrigger value="inventaires">
-            <div className="flex items-center gap-2">
-              <Clipboard className="h-4 w-4" />
-              <span className="hidden sm:inline">Inventaires</span>
-            </div>
-          </TabsTrigger>
-          <TabsTrigger value="alertes">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="hidden sm:inline">Alertes</span>
-            </div>
-          </TabsTrigger>
-          <TabsTrigger value="analyses">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Analyses</span>
-            </div>
-          </TabsTrigger>
-          <TabsTrigger value="configuration">
-            <div className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">Config</span>
-            </div>
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value={activeTab} className="space-y-6">
-          {renderTabContent()}
-        </TabsContent>
-      </Tabs>
+      {renderContent()}
     </div>
   );
 };
