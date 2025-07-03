@@ -198,7 +198,7 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
   );
 
   const renderLotsModule = () => (
-    <Tabs defaultValue="tracker" className="space-y-6">
+    <Tabs value="tracker" defaultValue="tracker" className="space-y-6">
       <TabsList>
         <TabsTrigger value="tracker">
           <div className="flex items-center gap-2">
@@ -245,7 +245,7 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
   );
 
   const renderApprovisionnementModule = () => (
-    <Tabs defaultValue="liste" className="space-y-6">
+    <Tabs value="liste" defaultValue="liste" className="space-y-6">
       <TabsList>
         <TabsTrigger value="liste">
           <div className="flex items-center gap-2">
