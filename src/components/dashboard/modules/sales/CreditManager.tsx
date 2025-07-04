@@ -210,6 +210,41 @@ const CreditManager = () => {
                 Nouveau Compte
               </Button>
             </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Créer un Nouveau Compte Crédit</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="customerName">Nom du Client</Label>
+                  <Input id="customerName" placeholder="Nom complet" />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="customerPhone">Téléphone</Label>
+                  <Input id="customerPhone" placeholder="07 12 34 56 78" />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="creditLimit">Limite de Crédit</Label>
+                  <Input id="creditLimit" type="number" placeholder="500000" />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes</Label>
+                  <Textarea id="notes" placeholder="Notes optionnelles..." />
+                </div>
+                
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setIsNewAccountOpen(false)}>
+                    Annuler
+                  </Button>
+                  <Button onClick={handleCreateAccount}>
+                    Créer le Compte
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
           </Dialog>
         </div>
       </div>
@@ -459,43 +494,6 @@ const CreditManager = () => {
           </div>
         </TabsContent>
       </Tabs>
-
-      {/* Dialog Nouveau Compte */}
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Créer un Nouveau Compte Crédit</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="customerName">Nom du Client</Label>
-            <Input id="customerName" placeholder="Nom complet" />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="customerPhone">Téléphone</Label>
-            <Input id="customerPhone" placeholder="07 12 34 56 78" />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="creditLimit">Limite de Crédit</Label>
-            <Input id="creditLimit" type="number" placeholder="500000" />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea id="notes" placeholder="Notes optionnelles..." />
-          </div>
-          
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setIsNewAccountOpen(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handleCreateAccount}>
-              Créer le Compte
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
 
       {/* Dialog Paiement */}
       <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
