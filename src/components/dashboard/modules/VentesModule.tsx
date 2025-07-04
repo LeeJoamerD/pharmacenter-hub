@@ -7,6 +7,8 @@ import TransactionHistory from './sales/TransactionHistory';
 import ReturnsExchanges from './sales/ReturnsExchanges';
 import InvoiceModule from './sales/InvoiceModule';
 import SalesAnalytics from './sales/SalesAnalytics';
+import CreditManager from './sales/CreditManager';
+import PromotionsManager from './sales/PromotionsManager';
 
 interface VentesModuleProps {
   activeSubModule: string;
@@ -30,9 +32,9 @@ const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
       case 'analytics':
         return <SalesAnalytics />;
       case 'crédit':
-        return <div className="p-8 text-center text-muted-foreground">Gestion Crédit - À implémenter</div>;
+        return <CreditManager />;
       case 'promotions':
-        return <div className="p-8 text-center text-muted-foreground">Promotions & Fidélité - À implémenter</div>;
+        return <PromotionsManager />;
       case 'configuration':
         return <div className="p-8 text-center text-muted-foreground">Configuration Ventes - À implémenter</div>;
       default:
