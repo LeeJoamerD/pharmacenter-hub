@@ -16,6 +16,10 @@ const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
 
   const renderContent = () => {
     console.log('VentesModule - activeSubModule reçu:', activeSubModule);
+    console.log('VentesModule - activeSubModule type:', typeof activeSubModule);
+    console.log('VentesModule - activeSubModule length:', activeSubModule.length);
+    console.log('VentesModule - Caractères:', [...activeSubModule].map(c => `'${c}' (${c.charCodeAt(0)})`));
+    
     switch (activeSubModule) {
       case 'caisses':
         return <CashManagement />;
