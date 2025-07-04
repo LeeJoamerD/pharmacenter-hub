@@ -5,6 +5,7 @@ import POSInterface from './sales/POSInterface';
 import EncaissementDashboard from './sales/EncaissementDashboard';
 import TransactionHistory from './sales/TransactionHistory';
 import ReturnsExchanges from './sales/ReturnsExchanges';
+import InvoiceModule from './sales/InvoiceModule';
 
 interface VentesModuleProps {
   activeSubModule: string;
@@ -28,7 +29,7 @@ const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
         console.log('VentesModule - Cas retours détecté');
         return <ReturnsExchanges />;
       case 'facturation':
-        return <div className="p-8 text-center text-muted-foreground">Module Facturation - À implémenter</div>;
+        return <InvoiceModule />;
       case 'analytics':
         return <div className="p-8 text-center text-muted-foreground">Analytics de Ventes - À implémenter</div>;
       case 'crédit':
