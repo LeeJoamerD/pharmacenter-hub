@@ -14,6 +14,7 @@ const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
   console.log('VentesModule activeSubModule:', activeSubModule); // Debug log
 
   const renderContent = () => {
+    console.log('VentesModule - activeSubModule reçu:', activeSubModule);
     switch (activeSubModule) {
       case 'caisses':
         return <CashManagement />;
@@ -24,6 +25,7 @@ const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
       case 'historique':
         return <TransactionHistory />;
       case 'retours':
+        console.log('VentesModule - Cas retours détecté');
         return <ReturnsExchanges />;
       case 'facturation':
         return <div className="p-8 text-center text-muted-foreground">Module Facturation - À implémenter</div>;
