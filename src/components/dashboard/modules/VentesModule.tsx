@@ -6,20 +6,14 @@ import EncaissementDashboard from './sales/EncaissementDashboard';
 import TransactionHistory from './sales/TransactionHistory';
 import ReturnsExchanges from './sales/ReturnsExchanges';
 import InvoiceModule from './sales/InvoiceModule';
+import SalesAnalytics from './sales/SalesAnalytics';
 
 interface VentesModuleProps {
   activeSubModule: string;
 }
 
 const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
-  console.log('VentesModule activeSubModule:', activeSubModule); // Debug log
-
   const renderContent = () => {
-    console.log('VentesModule - activeSubModule reçu:', activeSubModule);
-    console.log('VentesModule - activeSubModule type:', typeof activeSubModule);
-    console.log('VentesModule - activeSubModule length:', activeSubModule.length);
-    console.log('VentesModule - Caractères:', [...activeSubModule].map(c => `'${c}' (${c.charCodeAt(0)})`));
-    
     switch (activeSubModule) {
       case 'caisses':
         return <CashManagement />;
@@ -30,12 +24,11 @@ const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
       case 'historique':
         return <TransactionHistory />;
       case 'retours':
-        console.log('VentesModule - Cas retours détecté');
         return <ReturnsExchanges />;
       case 'facturation':
         return <InvoiceModule />;
       case 'analytics':
-        return <div className="p-8 text-center text-muted-foreground">Analytics de Ventes - À implémenter</div>;
+        return <SalesAnalytics />;
       case 'crédit':
         return <div className="p-8 text-center text-muted-foreground">Gestion Crédit - À implémenter</div>;
       case 'promotions':
