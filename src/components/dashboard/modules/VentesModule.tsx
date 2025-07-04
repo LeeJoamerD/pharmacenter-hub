@@ -3,6 +3,7 @@ import SalesDashboard from './sales/SalesDashboard';
 import CashManagement from './sales/CashManagement';
 import POSInterface from './sales/POSInterface';
 import EncaissementDashboard from './sales/EncaissementDashboard';
+import TransactionHistory from './sales/TransactionHistory';
 
 interface VentesModuleProps {
   activeSubModule: string;
@@ -19,7 +20,7 @@ const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
       case 'encaissements':
         return <EncaissementDashboard />;
       case 'historique':
-        return <div className="p-8 text-center text-muted-foreground">Historique des Ventes - À implémenter</div>;
+        return <TransactionHistory />;
       case 'retours':
         return <div className="p-8 text-center text-muted-foreground">Retours & Remboursements - À implémenter</div>;
       case 'facturation':
