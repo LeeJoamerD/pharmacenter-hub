@@ -9,6 +9,7 @@ import InvoiceModule from './sales/InvoiceModule';
 import SalesAnalytics from './sales/SalesAnalytics';
 import CreditManager from './sales/CreditManager';
 import PromotionsManager from './sales/PromotionsManager';
+import SalesConfiguration from './sales/SalesConfiguration';
 
 interface VentesModuleProps {
   activeSubModule: string;
@@ -36,7 +37,7 @@ const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
       case 'promotions':
         return <PromotionsManager />;
       case 'configuration':
-        return <div className="p-8 text-center text-muted-foreground">Configuration Ventes - À implémenter</div>;
+        return <SalesConfiguration />;
       default:
         return <SalesDashboard />;
     }
