@@ -11,6 +11,7 @@ interface VentesModuleProps {
 }
 
 const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
+  console.log('VentesModule activeSubModule:', activeSubModule); // Debug log
 
   const renderContent = () => {
     switch (activeSubModule) {
