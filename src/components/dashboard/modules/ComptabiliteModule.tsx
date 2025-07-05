@@ -2,6 +2,7 @@ import React from 'react';
 import ChartOfAccounts from './accounting/ChartOfAccounts';
 import JournalManager from './accounting/JournalManager';
 import InvoiceManager from './accounting/InvoiceManager';
+import PaymentManager from './accounting/PaymentManager';
 
 interface ComptabiliteModuleProps {
   activeSubModule: string;
@@ -17,15 +18,7 @@ const ComptabiliteModule = ({ activeSubModule }: ComptabiliteModuleProps) => {
       case 'factures':
         return <InvoiceManager />;
       case 'paiements':
-        return (
-          <div className="space-y-6">
-            <div className="text-center py-12 bg-muted/20 rounded-lg">
-              <h3 className="text-xl font-semibold mb-2">Suivi des Paiements</h3>
-              <p className="text-muted-foreground">Rapprochement bancaire et échéanciers</p>
-              <p className="text-sm text-muted-foreground mt-2">Module en cours de développement</p>
-            </div>
-          </div>
-        );
+        return <PaymentManager />;
       case 'analytique':
         return (
           <div className="space-y-6">
