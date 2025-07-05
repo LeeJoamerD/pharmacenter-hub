@@ -7,6 +7,7 @@ import FinancialReports from './accounting/FinancialReports';
 import AnalyticalAccounting from './accounting/AnalyticalAccounting';
 import FiscalManagement from './accounting/FiscalManagement';
 import BankingIntegration from './accounting/BankingIntegration';
+import AuditSecurity from './accounting/AuditSecurity';
 
 interface ComptabiliteModuleProps {
   activeSubModule: string;
@@ -32,15 +33,7 @@ const ComptabiliteModule = ({ activeSubModule }: ComptabiliteModuleProps) => {
       case 'rapports':
         return <FinancialReports />;
       case 'audit':
-        return (
-          <div className="space-y-6">
-            <div className="text-center py-12 bg-muted/20 rounded-lg">
-              <h3 className="text-xl font-semibold mb-2">Audit & Sécurité</h3>
-              <p className="text-muted-foreground">Pistes d'audit et contrôles de sécurité</p>
-              <p className="text-sm text-muted-foreground mt-2">Module en cours de développement</p>
-            </div>
-          </div>
-        );
+        return <AuditSecurity />;
       case 'intégrations':
         return (
           <div className="space-y-6">
