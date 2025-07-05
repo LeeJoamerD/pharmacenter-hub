@@ -3,6 +3,7 @@ import ChartOfAccounts from './accounting/ChartOfAccounts';
 import JournalManager from './accounting/JournalManager';
 import InvoiceManager from './accounting/InvoiceManager';
 import PaymentManager from './accounting/PaymentManager';
+import FinancialReports from './accounting/FinancialReports';
 
 interface ComptabiliteModuleProps {
   activeSubModule: string;
@@ -50,15 +51,7 @@ const ComptabiliteModule = ({ activeSubModule }: ComptabiliteModuleProps) => {
           </div>
         );
       case 'rapports':
-        return (
-          <div className="space-y-6">
-            <div className="text-center py-12 bg-muted/20 rounded-lg">
-              <h3 className="text-xl font-semibold mb-2">Rapports Réglementaires</h3>
-              <p className="text-muted-foreground">Bilan, compte de résultat et états financiers</p>
-              <p className="text-sm text-muted-foreground mt-2">Module en cours de développement</p>
-            </div>
-          </div>
-        );
+        return <FinancialReports />;
       case 'audit':
         return (
           <div className="space-y-6">
