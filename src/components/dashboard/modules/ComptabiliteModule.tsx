@@ -9,6 +9,7 @@ import FiscalManagement from './accounting/FiscalManagement';
 import BankingIntegration from './accounting/BankingIntegration';
 import AuditSecurity from './accounting/AuditSecurity';
 import SystemIntegrations from './accounting/SystemIntegrations';
+import AccountingConfiguration from './accounting/AccountingConfiguration';
 
 interface ComptabiliteModuleProps {
   activeSubModule: string;
@@ -48,15 +49,7 @@ const ComptabiliteModule = ({ activeSubModule }: ComptabiliteModuleProps) => {
           </div>
         );
       case 'configuration':
-        return (
-          <div className="space-y-6">
-            <div className="text-center py-12 bg-muted/20 rounded-lg">
-              <h3 className="text-xl font-semibold mb-2">Configuration Comptable</h3>
-              <p className="text-muted-foreground">Paramètres généraux et exercices comptables</p>
-              <p className="text-sm text-muted-foreground mt-2">Module en cours de développement</p>
-            </div>
-          </div>
-        );
+        return <AccountingConfiguration />;
       default:
         return (
           <div className="space-y-6">
