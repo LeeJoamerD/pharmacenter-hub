@@ -5,6 +5,7 @@ import InvoiceManager from './accounting/InvoiceManager';
 import PaymentManager from './accounting/PaymentManager';
 import FinancialReports from './accounting/FinancialReports';
 import AnalyticalAccounting from './accounting/AnalyticalAccounting';
+import FiscalManagement from './accounting/FiscalManagement';
 
 interface ComptabiliteModuleProps {
   activeSubModule: string;
@@ -24,15 +25,7 @@ const ComptabiliteModule = ({ activeSubModule }: ComptabiliteModuleProps) => {
       case 'analytique':
         return <AnalyticalAccounting />;
       case 'fiscal':
-        return (
-          <div className="space-y-6">
-            <div className="text-center py-12 bg-muted/20 rounded-lg">
-              <h3 className="text-xl font-semibold mb-2">Gestion Fiscale</h3>
-              <p className="text-muted-foreground">TVA, déclarations fiscales et conformité</p>
-              <p className="text-sm text-muted-foreground mt-2">Module en cours de développement</p>
-            </div>
-          </div>
-        );
+        return <FiscalManagement />;
       case 'bancaire':
         return (
           <div className="space-y-6">
