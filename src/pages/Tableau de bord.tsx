@@ -20,6 +20,7 @@ import StockModule from '@/components/dashboard/modules/StockModule';
 import VentesModule from '@/components/dashboard/modules/VentesModule';
 import ComptabiliteModule from '@/components/dashboard/modules/ComptabiliteModule';
 import RapportsModule from '@/components/dashboard/modules/RapportsModule';
+import AssistantIAModule from '@/components/dashboard/modules/AssistantIAModule';
 
 const Dashboard = () => {
   const [activeModule, setActiveModule] = useState('dashboard');
@@ -60,6 +61,8 @@ const Dashboard = () => {
         return <ComptabiliteModule activeSubModule={activeSubModule} />;
       case 'rapports':
         return <RapportsModule activeSubModule={activeSubModule} />;
+      case 'assistant':
+        return <AssistantIAModule activeSubModule={activeSubModule} />;
       case 'parametres':
         return <ParametresModule />;
       default:
@@ -102,6 +105,8 @@ const Dashboard = () => {
         return 'Module Comptabilité';
       case 'rapports':
         return 'Module Rapports';
+      case 'assistant':
+        return 'Assistant IA';
       case 'parametres':
         return 'Configuration Système';
       default:
