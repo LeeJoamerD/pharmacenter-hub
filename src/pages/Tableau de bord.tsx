@@ -19,6 +19,7 @@ import WorkflowModule from '@/components/dashboard/modules/WorkflowModule';
 import StockModule from '@/components/dashboard/modules/StockModule';
 import VentesModule from '@/components/dashboard/modules/VentesModule';
 import ComptabiliteModule from '@/components/dashboard/modules/ComptabiliteModule';
+import RapportsModule from '@/components/dashboard/modules/RapportsModule';
 
 const Dashboard = () => {
   const [activeModule, setActiveModule] = useState('dashboard');
@@ -57,6 +58,8 @@ const Dashboard = () => {
         return <VentesModule activeSubModule={activeSubModule} />;
       case 'comptabilite':
         return <ComptabiliteModule activeSubModule={activeSubModule} />;
+      case 'rapports':
+        return <RapportsModule activeSubModule={activeSubModule} />;
       case 'parametres':
         return <ParametresModule />;
       default:
@@ -97,6 +100,8 @@ const Dashboard = () => {
         return 'Gestion des Ventes';
       case 'comptabilite':
         return 'Module Comptabilité';
+      case 'rapports':
+        return 'Module Rapports';
       case 'parametres':
         return 'Configuration Système';
       default:
