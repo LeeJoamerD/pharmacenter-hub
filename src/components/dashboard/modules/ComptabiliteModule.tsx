@@ -10,6 +10,7 @@ import BankingIntegration from './accounting/BankingIntegration';
 import AuditSecurity from './accounting/AuditSecurity';
 import SystemIntegrations from './accounting/SystemIntegrations';
 import AccountingConfiguration from './accounting/AccountingConfiguration';
+import AccountingDashboard from './accounting/AccountingDashboard';
 
 interface ComptabiliteModuleProps {
   activeSubModule: string;
@@ -39,15 +40,7 @@ const ComptabiliteModule = ({ activeSubModule }: ComptabiliteModuleProps) => {
       case 'intégrations':
         return <SystemIntegrations />;
       case 'tableaux de bord':
-        return (
-          <div className="space-y-6">
-            <div className="text-center py-12 bg-muted/20 rounded-lg">
-              <h3 className="text-xl font-semibold mb-2">Tableaux de Bord</h3>
-              <p className="text-muted-foreground">Dashboard comptable et indicateurs clés</p>
-              <p className="text-sm text-muted-foreground mt-2">Module en cours de développement</p>
-            </div>
-          </div>
-        );
+        return <AccountingDashboard />;
       case 'configuration':
         return <AccountingConfiguration />;
       default:
