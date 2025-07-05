@@ -11,7 +11,7 @@ import {
   Upload,
   Scan,
   Package,
-  BarCode,
+  Barcode,
   Shield,
   Activity,
   CheckCircle,

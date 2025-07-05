@@ -2,10 +2,14 @@ import React from 'react';
 import AIDashboard from './ai/AIDashboard';
 import ConversationalAI from './ai/ConversationalAI';
 import IntelligentDiagnostic from './ai/IntelligentDiagnostic';
+import StrategicRecommendations from './ai/StrategicRecommendations';
 import AdvancedForecasting from './ai/AdvancedForecasting';
 import SentimentAnalysis from './ai/SentimentAnalysis';
 import ComputerVision from './ai/ComputerVision';
 import PharmaceuticalExpert from './ai/PharmaceuticalExpert';
+import AIBusinessIntelligence from './ai/AIBusinessIntelligence';
+import ContinuousLearning from './ai/ContinuousLearning';
+import AIConfiguration from './ai/AIConfiguration';
 
 interface AssistantIAModuleProps {
   activeSubModule: string;
@@ -14,6 +18,13 @@ interface AssistantIAModuleProps {
 const AssistantIAModule = ({ activeSubModule }: AssistantIAModuleProps) => {
   const renderActiveSubModule = () => {
     switch (activeSubModule) {
+      case 'configuration':
+        return <AIConfiguration />;
+      case 'analytics avancées':
+        return <AIBusinessIntelligence />;
+      case 'apprentissage':
+        return <ContinuousLearning />;
+      case 'prévisions':
         return <AdvancedForecasting />;
       case 'sentiment':
         return <SentimentAnalysis />;
