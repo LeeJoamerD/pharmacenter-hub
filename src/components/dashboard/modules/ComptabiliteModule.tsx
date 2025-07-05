@@ -1,4 +1,5 @@
 import React from 'react';
+import ChartOfAccounts from './accounting/ChartOfAccounts';
 
 interface ComptabiliteModuleProps {
   activeSubModule: string;
@@ -8,15 +9,7 @@ const ComptabiliteModule = ({ activeSubModule }: ComptabiliteModuleProps) => {
   const renderContent = () => {
     switch (activeSubModule) {
       case 'plan comptable':
-        return (
-          <div className="space-y-6">
-            <div className="text-center py-12 bg-muted/20 rounded-lg">
-              <h3 className="text-xl font-semibold mb-2">Plan Comptable</h3>
-              <p className="text-muted-foreground">Structure hiérarchique des comptes OHADA (Classes 1-7)</p>
-              <p className="text-sm text-muted-foreground mt-2">Module en cours de développement</p>
-            </div>
-          </div>
-        );
+        return <ChartOfAccounts />;
       case 'journalisation':
         return (
           <div className="space-y-6">
