@@ -21,7 +21,7 @@ import VentesModule from '@/components/dashboard/modules/VentesModule';
 import ComptabiliteModule from '@/components/dashboard/modules/ComptabiliteModule';
 import RapportsModule from '@/components/dashboard/modules/RapportsModule';
 import AssistantIAModule from '@/components/dashboard/modules/AssistantIAModule';
-import ChatModule from '@/components/dashboard/modules/ChatModule';
+
 
 const Dashboard = () => {
   const [activeModule, setActiveModule] = useState('dashboard');
@@ -64,8 +64,6 @@ const Dashboard = () => {
         return <RapportsModule activeSubModule={activeSubModule} />;
       case 'assistant':
         return <AssistantIAModule activeSubModule={activeSubModule} />;
-      case 'chat':
-        return <ChatModule activeSubModule={activeSubModule} />;
       case 'parametres':
         return <ParametresModule />;
       default:
@@ -110,8 +108,6 @@ const Dashboard = () => {
         return 'Module Rapports';
       case 'assistant':
         return 'Assistant IA';
-      case 'chat':
-        return 'Chat PharmaSoft';
       case 'parametres':
         return 'Configuration Système';
       default:
