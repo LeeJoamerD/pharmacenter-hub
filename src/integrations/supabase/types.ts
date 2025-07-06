@@ -9,7 +9,232 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      channel_participants: {
+        Row: {
+          channel_id: string
+          id: string
+          joined_at: string
+          last_read_at: string | null
+          pharmacy_id: string
+          role: string | null
+        }
+        Insert: {
+          channel_id: string
+          id?: string
+          joined_at?: string
+          last_read_at?: string | null
+          pharmacy_id: string
+          role?: string | null
+        }
+        Update: {
+          channel_id?: string
+          id?: string
+          joined_at?: string
+          last_read_at?: string | null
+          pharmacy_id?: string
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_participants_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "network_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_participants_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_channels: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_system: boolean | null
+          name: string
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name: string
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_channels_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_messages: {
+        Row: {
+          channel_id: string
+          content: string
+          created_at: string
+          id: string
+          message_type: string | null
+          metadata: Json | null
+          priority: string | null
+          read_by: Json | null
+          sender_name: string
+          sender_pharmacy_id: string
+          updated_at: string
+        }
+        Insert: {
+          channel_id: string
+          content: string
+          created_at?: string
+          id?: string
+          message_type?: string | null
+          metadata?: Json | null
+          priority?: string | null
+          read_by?: Json | null
+          sender_name: string
+          sender_pharmacy_id: string
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          message_type?: string | null
+          metadata?: Json | null
+          priority?: string | null
+          read_by?: Json | null
+          sender_name?: string
+          sender_pharmacy_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "network_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_messages_sender_pharmacy_id_fkey"
+            columns: ["sender_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacies: {
+        Row: {
+          address: string | null
+          city: string | null
+          code: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          postal_code: string | null
+          region: string | null
+          status: string | null
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          code: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          postal_code?: string | null
+          region?: string | null
+          status?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          code?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          postal_code?: string | null
+          region?: string | null
+          status?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pharmacy_presence: {
+        Row: {
+          current_users: number | null
+          id: string
+          last_seen: string | null
+          metadata: Json | null
+          pharmacy_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          current_users?: number | null
+          id?: string
+          last_seen?: string | null
+          metadata?: Json | null
+          pharmacy_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          current_users?: number | null
+          id?: string
+          last_seen?: string | null
+          metadata?: Json | null
+          pharmacy_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_presence_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
