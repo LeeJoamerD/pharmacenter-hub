@@ -150,19 +150,19 @@ const AppSidebar = ({
       { name: 'Configuration', icon: Settings }
     ],
     chat: [
-      { name: 'Messagerie', icon: MessageCircle },
-      { name: 'Client Support', icon: Users },
-      { name: 'Canaux', icon: Folder },
-      { name: 'Ressources', icon: Paperclip },
-      { name: 'Assistant IA', icon: Bot },
-      { name: 'Intégrations', icon: RefreshCw },
-      { name: 'Sécurité', icon: Lock },
-      { name: 'Productivité', icon: Zap },
-      { name: 'Analytics', icon: ChartBar },
-      { name: 'Pharma Tools', icon: Pill },
-      { name: 'Multi-canaux', icon: Globe },
-      { name: 'Personnalisation', icon: Palette },
-      { name: 'Administration', icon: Settings }
+      { name: 'Messagerie Réseau', icon: MessageCircle },
+      { name: 'Multi-Officines', icon: Building },
+      { name: 'Canaux Réseau', icon: Folder },
+      { name: 'Administration Centrale', icon: Shield },
+      { name: 'Assistant IA Réseau', icon: Bot },
+      { name: 'Intégrations Réseau', icon: RefreshCw },
+      { name: 'Sécurité Réseau', icon: Lock },
+      { name: 'Productivité Collaborative', icon: Zap },
+      { name: 'Analytics Réseau', icon: ChartBar },
+      { name: 'Pharma Tools Réseau', icon: Pill },
+      { name: 'Multi-canaux Réseau', icon: Globe },
+      { name: 'Personnalisation Réseau', icon: Palette },
+      { name: 'Administration Réseau', icon: Settings }
     ]
   };
 
