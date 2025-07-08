@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
-import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { supabase } from '@/integrations/supabase/client';
 import { Building2, MapPin, Phone, Mail, User, Check } from 'lucide-react';
 
 interface PharmacyRegistrationData {
@@ -37,7 +37,6 @@ interface PharmacyRegistrationData {
 
 const PharmacyRegistration = () => {
   const { toast } = useToast();
-  const { useTenantMutation } = useTenantQuery();
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -48,25 +47,11 @@ const PharmacyRegistration = () => {
     }
   });
 
-  const createPharmacyMutation = useTenantMutation('pharmacies', 'insert', {
-    onSuccess: (data) => {
-      toast({ title: 'Pharmacie créée avec succès' });
-      setStep(3);
-    },
-    onError: (error) => {
-      toast({
-        title: 'Erreur lors de la création',
-        description: error.message,
-        variant: 'destructive'
-      });
-    }
-  });
-
   const onSubmit = async (data: PharmacyRegistrationData) => {
     setIsLoading(true);
     
     try {
-      // 1. Créer la pharmacie
+      // 1. Créer la pharmacie directement avec Supabase (pas de tenant requis)
       const pharmacyData = {
         name: data.name,
         code: data.code,
@@ -84,12 +69,38 @@ const PharmacyRegistration = () => {
         status: 'active'
       };
 
-      createPharmacyMutation.mutate(pharmacyData);
+      const { data: pharmacyResult, error: pharmacyError } = await supabase
+        .from('pharmacies')
+        .insert(pharmacyData)
+        .select()
+        .single();
+
+      if (pharmacyError) throw pharmacyError;
+
+      // 2. Créer l'administrateur principal
+      const adminData = {
+        tenant_id: pharmacyResult.id,
+        noms: data.admin_noms,
+        prenoms: data.admin_prenoms,
+        email: data.admin_email,
+        telephone_appel: data.admin_telephone,
+        reference_agent: data.admin_reference,
+        role: 'Admin'
+      };
+
+      const { error: adminError } = await supabase
+        .from('personnel')
+        .insert(adminData);
+
+      if (adminError) throw adminError;
+
+      toast({ title: 'Pharmacie créée avec succès' });
+      setStep(3);
       
-    } catch (error) {
+    } catch (error: any) {
       toast({
-        title: 'Erreur',
-        description: 'Une erreur inattendue s\'est produite',
+        title: 'Erreur lors de la création',
+        description: error.message,
         variant: 'destructive'
       });
     } finally {
