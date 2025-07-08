@@ -109,13 +109,19 @@ export const useNetworkMessaging = () => {
         .from('network_messages')
         .select(`
           *,
-          pharmacy:pharmacies(id, name, code, type, city, region, status)
+          pharmacy:pharmacies!sender_pharmacy_id(id, name, code, type, city, region, status)
         `)
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true })
         .limit(50);
 
-      if (data) setMessages(data as Message[]);
+      if (data) {
+        const mappedMessages = data.map(msg => ({
+          ...msg,
+          pharmacy: Array.isArray(msg.pharmacy) ? msg.pharmacy[0] : msg.pharmacy
+        }));
+        setMessages(mappedMessages as Message[]);
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des messages:', error);
     }
@@ -132,7 +138,8 @@ export const useNetworkMessaging = () => {
           sender_pharmacy_id: currentPharmacy.id,
           sender_name: currentPharmacy.name,
           content: content.trim(),
-          priority
+          priority,
+          tenant_id: currentPharmacy.id
         });
 
       if (error) throw error;

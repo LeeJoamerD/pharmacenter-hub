@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { LogOut } from 'lucide-react';
 
 // Import components
 import AppSidebar from '@/components/dashboard/sidebar/AppSidebar';
@@ -25,6 +27,7 @@ import ChatNetworkModule from '@/components/dashboard/modules/ChatNetworkModule'
 
 
 const Dashboard = () => {
+  const { signOut, personnel, pharmacy } = useAuth();
   const [activeModule, setActiveModule] = useState('dashboard');
   const [activeSubModule, setActiveSubModule] = useState('');
 
@@ -139,7 +142,16 @@ const Dashboard = () => {
                 </h1>
               </div>
               <div className="flex items-center gap-4">
+                {personnel && (
+                  <span className="text-sm text-muted-foreground">
+                    {personnel.prenoms} {personnel.noms} - {pharmacy?.name}
+                  </span>
+                )}
                 <Button variant="outline" size="sm">Aide</Button>
+                <Button variant="outline" size="sm" onClick={signOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Déconnexion
+                </Button>
               </div>
             </div>
             <div className="p-6">
