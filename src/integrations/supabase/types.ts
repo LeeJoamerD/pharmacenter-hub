@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          error_message: string | null
+          id: string
+          ip_address: string | null
+          new_values: Json | null
+          old_values: Json | null
+          personnel_id: string | null
+          record_id: string | null
+          status: string | null
+          table_name: string | null
+          tenant_id: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          personnel_id?: string | null
+          record_id?: string | null
+          status?: string | null
+          table_name?: string | null
+          tenant_id: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
+          personnel_id?: string | null
+          record_id?: string | null
+          status?: string | null
+          table_name?: string | null
+          tenant_id?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_participants: {
         Row: {
           channel_id: string
@@ -407,6 +473,62 @@ export type Database = {
           },
           {
             foreignKeyName: "pharmacy_presence_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          description: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          tenant_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          description: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          description?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_alerts_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
