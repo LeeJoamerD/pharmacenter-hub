@@ -545,6 +545,15 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      register_pharmacy_with_admin: {
+        Args: {
+          pharmacy_data: Json
+          admin_data: Json
+          admin_email: string
+          admin_password: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       situation_familiale_enum:

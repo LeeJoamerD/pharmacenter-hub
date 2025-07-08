@@ -33,6 +33,7 @@ interface PharmacyRegistrationData {
   admin_email: string;
   admin_telephone: string;
   admin_reference: string;
+  admin_password: string;
 }
 
 const PharmacyRegistration = () => {
@@ -51,7 +52,7 @@ const PharmacyRegistration = () => {
     setIsLoading(true);
     
     try {
-      // 1. Créer la pharmacie directement avec Supabase (pas de tenant requis)
+      // Préparer les données pour la fonction sécurisée
       const pharmacyData = {
         name: data.name,
         code: data.code,
@@ -65,42 +66,44 @@ const PharmacyRegistration = () => {
         telephone_appel: data.telephone_appel,
         telephone_whatsapp: data.telephone_whatsapp,
         departement: data.departement,
-        type: data.type,
-        status: 'active'
+        type: data.type
       };
 
-      const { data: pharmacyResult, error: pharmacyError } = await supabase
-        .from('pharmacies')
-        .insert(pharmacyData)
-        .select()
-        .single();
-
-      if (pharmacyError) throw pharmacyError;
-
-      // 2. Créer l'administrateur principal
       const adminData = {
-        tenant_id: pharmacyResult.id,
         noms: data.admin_noms,
         prenoms: data.admin_prenoms,
-        email: data.admin_email,
-        telephone_appel: data.admin_telephone,
         reference_agent: data.admin_reference,
-        role: 'Admin'
+        telephone: data.admin_telephone
       };
 
-      const { error: adminError } = await supabase
-        .from('personnel')
-        .insert(adminData);
+      // Appeler la fonction d'inscription sécurisée
+      const { data: result, error } = await supabase.rpc('register_pharmacy_with_admin', {
+        pharmacy_data: pharmacyData,
+        admin_data: adminData,
+        admin_email: data.admin_email,
+        admin_password: data.admin_password
+      });
 
-      if (adminError) throw adminError;
+      if (error) throw error;
 
-      toast({ title: 'Pharmacie créée avec succès' });
-      setStep(3);
+      // TypeScript: Typer la réponse comme objet JSON
+      const response = result as { success: boolean; message?: string; error?: string };
+
+      if (response.success) {
+        toast({ 
+          title: 'Pharmacie créée avec succès',
+          description: response.message || 'Inscription terminée'
+        });
+        setStep(3);
+      } else {
+        throw new Error(response.error || 'Erreur inconnue');
+      }
       
     } catch (error: any) {
+      console.error('Erreur inscription:', error);
       toast({
-        title: 'Erreur lors de la création',
-        description: error.message,
+        title: 'Erreur lors de l\'inscription',
+        description: error.message || 'Une erreur inattendue s\'est produite',
         variant: 'destructive'
       });
     } finally {
@@ -318,6 +321,16 @@ const PharmacyRegistration = () => {
           </div>
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="admin_password">Mot de passe *</Label>
+          <Input
+            id="admin_password"
+            type="password"
+            {...form.register('admin_password', { required: true, minLength: 6 })}
+            placeholder="Minimum 6 caractères"
+          />
+        </div>
+
         <div className="flex justify-between">
           <Button variant="outline" onClick={() => setStep(1)}>
             Précédent
@@ -353,7 +366,7 @@ const PharmacyRegistration = () => {
         <div className="space-y-2">
           <h4 className="font-semibold">Prochaines étapes :</h4>
           <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-            <li>L'administrateur doit créer son compte via la page d'inscription</li>
+            <li>L'administrateur peut maintenant se connecter avec ses identifiants</li>
             <li>Configurer les paramètres de la pharmacie</li>
             <li>Ajouter le personnel et leurs rôles</li>
             <li>Configurer le stock initial</li>
