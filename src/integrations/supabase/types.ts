@@ -22,6 +22,7 @@ export type Database = {
           last_read_at: string | null
           pharmacy_id: string
           role: string | null
+          tenant_id: string
         }
         Insert: {
           channel_id: string
@@ -30,6 +31,7 @@ export type Database = {
           last_read_at?: string | null
           pharmacy_id: string
           role?: string | null
+          tenant_id: string
         }
         Update: {
           channel_id?: string
@@ -38,6 +40,7 @@ export type Database = {
           last_read_at?: string | null
           pharmacy_id?: string
           role?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
@@ -54,6 +57,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "channel_participants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
         ]
       }
       network_channels: {
@@ -64,6 +74,7 @@ export type Database = {
           id: string
           is_system: boolean | null
           name: string
+          tenant_id: string
           type: string | null
           updated_at: string
         }
@@ -74,6 +85,7 @@ export type Database = {
           id?: string
           is_system?: boolean | null
           name: string
+          tenant_id: string
           type?: string | null
           updated_at?: string
         }
@@ -84,6 +96,7 @@ export type Database = {
           id?: string
           is_system?: boolean | null
           name?: string
+          tenant_id?: string
           type?: string | null
           updated_at?: string
         }
@@ -91,6 +104,13 @@ export type Database = {
           {
             foreignKeyName: "network_channels_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_channels_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
@@ -109,6 +129,7 @@ export type Database = {
           read_by: Json | null
           sender_name: string
           sender_pharmacy_id: string
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -122,6 +143,7 @@ export type Database = {
           read_by?: Json | null
           sender_name: string
           sender_pharmacy_id: string
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -135,6 +157,7 @@ export type Database = {
           read_by?: Json | null
           sender_name?: string
           sender_pharmacy_id?: string
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -152,51 +175,192 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "network_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personnel: {
+        Row: {
+          adresse: string | null
+          auth_user_id: string | null
+          created_at: string
+          date_naissance: string | null
+          date_recrutement: string | null
+          email: string | null
+          fonction: string | null
+          id: string
+          is_active: boolean | null
+          limite_dette: number | null
+          niu_cni: string | null
+          nombre_enfants: number | null
+          noms: string
+          numero_cnss: string | null
+          photo_identite: string | null
+          prenoms: string
+          profession: string | null
+          reference_agent: string
+          role: string
+          salaire_base: number | null
+          situation_familiale:
+            | Database["public"]["Enums"]["situation_familiale_enum"]
+            | null
+          statut_contractuel:
+            | Database["public"]["Enums"]["statut_contractuel_enum"]
+            | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          adresse?: string | null
+          auth_user_id?: string | null
+          created_at?: string
+          date_naissance?: string | null
+          date_recrutement?: string | null
+          email?: string | null
+          fonction?: string | null
+          id?: string
+          is_active?: boolean | null
+          limite_dette?: number | null
+          niu_cni?: string | null
+          nombre_enfants?: number | null
+          noms: string
+          numero_cnss?: string | null
+          photo_identite?: string | null
+          prenoms: string
+          profession?: string | null
+          reference_agent: string
+          role?: string
+          salaire_base?: number | null
+          situation_familiale?:
+            | Database["public"]["Enums"]["situation_familiale_enum"]
+            | null
+          statut_contractuel?:
+            | Database["public"]["Enums"]["statut_contractuel_enum"]
+            | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          adresse?: string | null
+          auth_user_id?: string | null
+          created_at?: string
+          date_naissance?: string | null
+          date_recrutement?: string | null
+          email?: string | null
+          fonction?: string | null
+          id?: string
+          is_active?: boolean | null
+          limite_dette?: number | null
+          niu_cni?: string | null
+          nombre_enfants?: number | null
+          noms?: string
+          numero_cnss?: string | null
+          photo_identite?: string | null
+          prenoms?: string
+          profession?: string | null
+          reference_agent?: string
+          role?: string
+          salaire_base?: number | null
+          situation_familiale?:
+            | Database["public"]["Enums"]["situation_familiale_enum"]
+            | null
+          statut_contractuel?:
+            | Database["public"]["Enums"]["statut_contractuel_enum"]
+            | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
         ]
       }
       pharmacies: {
         Row: {
           address: string | null
+          arrondissement: string | null
           city: string | null
           code: string
           created_at: string
+          departement: string | null
           email: string | null
           id: string
+          logo: string | null
           name: string
+          pays: string | null
           phone: string | null
+          photo_exterieur: string | null
+          photo_interieur: string | null
           postal_code: string | null
+          quartier: string | null
           region: string | null
           status: string | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
           type: string | null
           updated_at: string
         }
         Insert: {
           address?: string | null
+          arrondissement?: string | null
           city?: string | null
           code: string
           created_at?: string
+          departement?: string | null
           email?: string | null
           id?: string
+          logo?: string | null
           name: string
+          pays?: string | null
           phone?: string | null
+          photo_exterieur?: string | null
+          photo_interieur?: string | null
           postal_code?: string | null
+          quartier?: string | null
           region?: string | null
           status?: string | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
           type?: string | null
           updated_at?: string
         }
         Update: {
           address?: string | null
+          arrondissement?: string | null
           city?: string | null
           code?: string
           created_at?: string
+          departement?: string | null
           email?: string | null
           id?: string
+          logo?: string | null
           name?: string
+          pays?: string | null
           phone?: string | null
+          photo_exterieur?: string | null
+          photo_interieur?: string | null
           postal_code?: string | null
+          quartier?: string | null
           region?: string | null
           status?: string | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
           type?: string | null
           updated_at?: string
         }
@@ -210,6 +374,7 @@ export type Database = {
           metadata: Json | null
           pharmacy_id: string
           status: string | null
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -219,6 +384,7 @@ export type Database = {
           metadata?: Json | null
           pharmacy_id: string
           status?: string | null
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -228,6 +394,7 @@ export type Database = {
           metadata?: Json | null
           pharmacy_id?: string
           status?: string | null
+          tenant_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -235,6 +402,13 @@ export type Database = {
             foreignKeyName: "pharmacy_presence_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_presence_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
@@ -248,7 +422,19 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      situation_familiale_enum:
+        | "Célibataire"
+        | "Marié(e)"
+        | "Divorcé(e)"
+        | "Veuf/Veuve"
+        | "Concubinage"
+      statut_contractuel_enum:
+        | "CDI"
+        | "CDD"
+        | "Stage"
+        | "Freelance"
+        | "Consultant"
+        | "Temporaire"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -375,6 +561,22 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      situation_familiale_enum: [
+        "Célibataire",
+        "Marié(e)",
+        "Divorcé(e)",
+        "Veuf/Veuve",
+        "Concubinage",
+      ],
+      statut_contractuel_enum: [
+        "CDI",
+        "CDD",
+        "Stage",
+        "Freelance",
+        "Consultant",
+        "Temporaire",
+      ],
+    },
   },
 } as const
