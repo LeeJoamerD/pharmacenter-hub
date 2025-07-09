@@ -60,7 +60,7 @@ export const AdminInfoForm = ({ form, onPrevious, onSubmit, isLoading }: AdminIn
             <Label htmlFor="admin_telephone">Téléphone *</Label>
             <Input
               id="admin_telephone"
-              {...form.register('admin_telephone', { required: true })}
+              {...form.register('admin_telephone_principal', { required: true })}
               placeholder="+237 6XX XXX XXX"
             />
           </div>

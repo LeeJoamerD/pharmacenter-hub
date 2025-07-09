@@ -22,13 +22,13 @@ export const usePharmacyRegistration = () => {
     try {
       const pharmacyData = {
         name: data.name,
-        code: data.code,
+        licence_number: data.licence_number,
         address: data.address,
         quartier: data.quartier,
         arrondissement: data.arrondissement,
         city: data.city,
-        region: data.region,
         pays: data.pays,
+        website: data.website,
         email: data.email,
         telephone_appel: data.telephone_appel,
         telephone_whatsapp: data.telephone_whatsapp,
@@ -40,7 +40,9 @@ export const usePharmacyRegistration = () => {
         noms: data.admin_noms,
         prenoms: data.admin_prenoms,
         reference_agent: data.admin_reference,
-        telephone: data.admin_telephone
+        telephone: data.admin_telephone_principal,
+        whatsapp: data.admin_whatsapp,
+        role: data.admin_role
       };
 
       const { data: result, error } = await supabase.rpc('register_pharmacy_with_admin', {

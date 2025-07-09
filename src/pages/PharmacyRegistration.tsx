@@ -1,7 +1,7 @@
 import React from 'react';
 import { StepIndicator } from '@/components/pharmacy-registration/StepIndicator';
 import { PharmacyInfoForm } from '@/components/pharmacy-registration/PharmacyInfoForm';
-import { AdminInfoForm } from '@/components/pharmacy-registration/AdminInfoForm';
+import { AdminPrincipalForm } from '@/components/pharmacy-registration/AdminPrincipalForm';
 import { SuccessStep } from '@/components/pharmacy-registration/SuccessStep';
 import { usePharmacyRegistration } from '@/hooks/usePharmacyRegistration';
 
@@ -29,7 +29,7 @@ const PharmacyRegistration = () => {
           />
         )}
         {step === 2 && (
-          <AdminInfoForm 
+          <AdminPrincipalForm 
             form={form}
             onPrevious={() => setStep(1)}
             onSubmit={form.handleSubmit(onSubmit)}

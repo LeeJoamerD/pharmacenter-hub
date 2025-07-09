@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { LanguageSelector } from '@/components/LanguageSelector';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -46,11 +46,29 @@ export function Header() {
           <div className="ml-4">
             <LanguageSelector />
           </div>
+          <div className="ml-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-foreground hover:bg-muted/50"
+              aria-label="Se connecter"
+            >
+              <User size={20} />
+            </Button>
+          </div>
         </nav>
 
         {/* Mobile Menu Button */}
         <div className="flex items-center md:hidden">
           <LanguageSelector className="mr-2" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-foreground hover:bg-muted/50 mr-2"
+            aria-label="Se connecter"
+          >
+            <User size={20} />
+          </Button>
           <Button
             variant="ghost"
             size="icon"

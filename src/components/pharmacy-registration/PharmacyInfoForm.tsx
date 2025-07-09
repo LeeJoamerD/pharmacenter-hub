@@ -35,11 +35,11 @@ export const PharmacyInfoForm = ({ form, onNext }: PharmacyInfoFormProps) => {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="code">Code Pharmacie *</Label>
+            <Label htmlFor="licence_number">Numéro Licence/Agrément *</Label>
             <Input
-              id="code"
-              {...form.register('code', { required: true })}
-              placeholder="PC001"
+              id="licence_number"
+              {...form.register('licence_number', { required: true })}
+              placeholder="LIC001234"
             />
           </div>
         </div>
@@ -90,27 +90,27 @@ export const PharmacyInfoForm = ({ form, onNext }: PharmacyInfoFormProps) => {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="region">Région *</Label>
-            <Select onValueChange={(value) => form.setValue('region', value)}>
+            <Label htmlFor="pays">Pays *</Label>
+            <Select onValueChange={(value) => form.setValue('pays', value)} defaultValue="Cameroun">
               <SelectTrigger>
-                <SelectValue placeholder="Sélectionner" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Adamaoua">Adamaoua</SelectItem>
-                <SelectItem value="Centre">Centre</SelectItem>
-                <SelectItem value="Est">Est</SelectItem>
-                <SelectItem value="Extrême-Nord">Extrême-Nord</SelectItem>
-                <SelectItem value="Littoral">Littoral</SelectItem>
-                <SelectItem value="Nord">Nord</SelectItem>
-                <SelectItem value="Nord-Ouest">Nord-Ouest</SelectItem>
-                <SelectItem value="Ouest">Ouest</SelectItem>
-                <SelectItem value="Sud">Sud</SelectItem>
-                <SelectItem value="Sud-Ouest">Sud-Ouest</SelectItem>
+                <SelectItem value="Cameroun">Cameroun</SelectItem>
+                <SelectItem value="France">France</SelectItem>
+                <SelectItem value="Sénégal">Sénégal</SelectItem>
+                <SelectItem value="Côte d'Ivoire">Côte d'Ivoire</SelectItem>
+                <SelectItem value="Gabon">Gabon</SelectItem>
+                <SelectItem value="Mali">Mali</SelectItem>
+                <SelectItem value="Burkina Faso">Burkina Faso</SelectItem>
+                <SelectItem value="Niger">Niger</SelectItem>
+                <SelectItem value="Tchad">Tchad</SelectItem>
+                <SelectItem value="République centrafricaine">République centrafricaine</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="type">Type</Label>
+            <Label htmlFor="type">Type *</Label>
             <Select onValueChange={(value) => form.setValue('type', value)} defaultValue="standard">
               <SelectTrigger>
                 <SelectValue />
@@ -145,13 +145,24 @@ export const PharmacyInfoForm = ({ form, onNext }: PharmacyInfoFormProps) => {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="telephone_whatsapp">WhatsApp</Label>
-          <Input
-            id="telephone_whatsapp"
-            {...form.register('telephone_whatsapp')}
-            placeholder="+237 6XX XXX XXX"
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="telephone_whatsapp">WhatsApp *</Label>
+            <Input
+              id="telephone_whatsapp"
+              {...form.register('telephone_whatsapp', { required: true })}
+              placeholder="+237 6XX XXX XXX"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="website">Site web *</Label>
+            <Input
+              id="website"
+              type="url"
+              {...form.register('website', { required: true })}
+              placeholder="https://www.votrepharmcie.com"
+            />
+          </div>
         </div>
 
         <div className="flex justify-end">
