@@ -11,11 +11,12 @@ import { useEffect } from 'react';
 interface AdminPrincipalFormProps {
   form: UseFormReturn<PharmacyRegistrationData>;
   onPrevious: () => void;
+  onNext?: () => void;
   onSubmit: () => void;
   isLoading: boolean;
 }
 
-export const AdminPrincipalForm = ({ form, onPrevious, onSubmit, isLoading }: AdminPrincipalFormProps) => {
+export const AdminPrincipalForm = ({ form, onPrevious, onNext, onSubmit, isLoading }: AdminPrincipalFormProps) => {
   const watchFirstName = form.watch('admin_prenoms');
   const watchLastName = form.watch('admin_noms');
   const pharmacyName = form.watch('name');
@@ -150,11 +151,11 @@ export const AdminPrincipalForm = ({ form, onPrevious, onSubmit, isLoading }: Ad
             Précédent
           </Button>
           <Button 
-            onClick={onSubmit}
+            onClick={onNext || onSubmit}
             disabled={isLoading}
             className="flex items-center gap-2"
           >
-            {isLoading ? 'Création...' : 'Créer le Compte'}
+            {isLoading ? 'Création...' : (onNext ? 'Suivant' : 'Créer le Compte')}
           </Button>
         </div>
       </CardContent>
