@@ -8,6 +8,7 @@ import { LanguageProvider } from "./contexts/LanguageContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { TenantProvider } from "./contexts/TenantContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { TestingIndicator } from "./components/TestingIndicator";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Tableau de bord";
 import Auth from "./pages/Auth";
@@ -34,6 +35,7 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <TestingIndicator />
             </BrowserRouter>
           </TooltipProvider>
         </LanguageProvider>

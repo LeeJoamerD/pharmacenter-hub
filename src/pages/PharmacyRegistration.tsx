@@ -4,6 +4,7 @@ import { PharmacyInfoForm } from '@/components/pharmacy-registration/PharmacyInf
 import { AdminPrincipalForm } from '@/components/pharmacy-registration/AdminPrincipalForm';
 import { SuccessStep } from '@/components/pharmacy-registration/SuccessStep';
 import { GoogleAuthStep } from '@/components/pharmacy-registration/GoogleAuthStep';
+import { RegistrationFlowValidator } from '@/components/RegistrationFlowValidator';
 import { usePharmacyRegistration } from '@/hooks/usePharmacyRegistration';
 
 const PharmacyRegistration = () => {
@@ -67,6 +68,12 @@ const PharmacyRegistration = () => {
         {!showGoogleAuth && step === 3 && (
           <SuccessStep pharmacyName={form.getValues('name')} />
         )}
+
+        {/* Validation en temps réel (développement uniquement) */}
+        <RegistrationFlowValidator 
+          data={form.getValues()} 
+          currentStep={step} 
+        />
       </div>
     </div>
   );
