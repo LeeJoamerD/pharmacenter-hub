@@ -39,7 +39,7 @@ const Auth = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (user && !loading) {
-      navigate('/dashboard');
+      navigate('/tableau-de-bord');
     }
   }, [user, loading, navigate]);
 
@@ -154,6 +154,16 @@ const Auth = () => {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary">PharmaSoft</h1>
           <p className="text-muted-foreground mt-2">Système de Gestion Pharmacie</p>
+          
+          <div className="mt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/')}
+              className="text-sm"
+            >
+              ← Retour à l'accueil
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="login" className="w-full">

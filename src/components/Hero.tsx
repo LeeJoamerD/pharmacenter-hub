@@ -35,14 +35,14 @@ export function Hero() {
             </FadeIn>
             
             <FadeIn delay={0.3} className="flex flex-col sm:flex-row gap-4">
-              <Link to="/register-pharmacy">
+              <Link to="/pharmacy-registration">
                 <Button size="lg" className="button-hover-effect bg-primary hover:bg-primary/90 text-white">
                   Créer votre pharmacie
                 </Button>
               </Link>
-              <Link to="/dashboard">
+              <Link to="/auth">
                 <Button size="lg" variant="outline" className="button-hover-effect border-primary/20 text-primary hover:bg-primary/5">
-                  <span>Voir la démo</span>
+                  <span>Se connecter</span>
                   <ArrowRight size={16} className="ml-2" />
                 </Button>
               </Link>

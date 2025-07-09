@@ -2,15 +2,32 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LanguageSelector } from '@/components/LanguageSelector';
-import { Menu, X, User } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Menu, X, User, LogOut } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function Header() {
   const { t } = useLanguage();
+  const { user, personnel, pharmacy, signOut } = useAuth();
+  const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const handleProfileClick = () => {
+    if (user) {
+      navigate('/tableau-de-bord');
+    } else {
+      navigate('/auth');
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -37,38 +54,116 @@ export function Header() {
               PharmaSoft
             </span>
           </a>
+          {pharmacy && (
+            <span className="hidden sm:inline ml-3 text-sm text-muted-foreground">
+              - {pharmacy.name}
+            </span>
+          )}
         </div>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-1">
-          <a href="#features" className="navbar-item">{t('features')}</a>
-          <a href="#contact" className="navbar-item">{t('contact')}</a>
+          {!user ? (
+            <>
+              <a href="#features" className="navbar-item">{t('features')}</a>
+              <a href="#contact" className="navbar-item">{t('contact')}</a>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" onClick={() => navigate('/tableau-de-bord')}>
+                Tableau de bord
+              </Button>
+              {personnel && (
+                <span className="text-sm text-muted-foreground mr-2">
+                  {personnel.prenoms} {personnel.noms} ({personnel.role})
+                </span>
+              )}
+            </>
+          )}
           <div className="ml-4">
             <LanguageSelector />
           </div>
           <div className="ml-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-foreground hover:bg-muted/50"
-              aria-label="Se connecter"
-            >
-              <User size={20} />
-            </Button>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-foreground hover:bg-muted/50"
+                    aria-label="Menu utilisateur"
+                  >
+                    <User size={20} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/tableau-de-bord')}>
+                    <User className="mr-2 h-4 w-4" />
+                    Profil
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Déconnexion
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-foreground hover:bg-muted/50"
+                aria-label="Se connecter"
+                onClick={handleProfileClick}
+              >
+                <User size={20} />
+              </Button>
+            )}
           </div>
         </nav>
 
         {/* Mobile Menu Button */}
         <div className="flex items-center md:hidden">
           <LanguageSelector className="mr-2" />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-foreground hover:bg-muted/50 mr-2"
-            aria-label="Se connecter"
-          >
-            <User size={20} />
-          </Button>
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-foreground hover:bg-muted/50 mr-2"
+                  aria-label="Menu utilisateur"
+                >
+                  <User size={20} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/tableau-de-bord')}>
+                  <User className="mr-2 h-4 w-4" />
+                  Profil
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Déconnexion
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-foreground hover:bg-muted/50 mr-2"
+              aria-label="Se connecter"
+              onClick={handleProfileClick}
+            >
+              <User size={20} />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -92,20 +187,53 @@ export function Header() {
         )}
       >
         <nav className="container flex flex-col space-y-4 p-6">
-          <a
-            href="#features"
-            className="py-3 text-lg font-medium border-b border-border/20"
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            {t('features')}
-          </a>
-          <a
-            href="#contact"
-            className="py-3 text-lg font-medium border-b border-border/20"
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            {t('contact')}
-          </a>
+          {!user ? (
+            <>
+              <a
+                href="#features"
+                className="py-3 text-lg font-medium border-b border-border/20"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                {t('features')}
+              </a>
+              <a
+                href="#contact"
+                className="py-3 text-lg font-medium border-b border-border/20"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                {t('contact')}
+              </a>
+            </>
+          ) : (
+            <>
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  navigate('/tableau-de-bord');
+                  setIsMobileMenuOpen(false);
+                }}
+                className="justify-start py-3 text-lg font-medium border-b border-border/20"
+              >
+                Tableau de bord
+              </Button>
+              {personnel && (
+                <div className="py-3 text-sm text-muted-foreground border-b border-border/20">
+                  {personnel.prenoms} {personnel.noms} ({personnel.role})
+                </div>
+              )}
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  handleSignOut();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="justify-start py-3 text-lg font-medium text-destructive"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Déconnexion
+              </Button>
+            </>
+          )}
         </nav>
       </div>
     </header>
