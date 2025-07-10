@@ -11,7 +11,7 @@ export const usePharmacyRegistration = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [pharmacyGoogleUser, setPharmacyGoogleUser] = useState<User | null>(null);
   const [adminGoogleUser, setAdminGoogleUser] = useState<User | null>(null);
-  const [showGoogleAuth, setShowGoogleAuth] = useState(false);
+  const [showGoogleAuth, setShowGoogleAuth] = useState(true); // Démarrer par l'auth
   const [authType, setAuthType] = useState<'pharmacy' | 'admin'>('pharmacy');
 
   const form = useForm<PharmacyRegistrationData>({
@@ -47,7 +47,7 @@ export const usePharmacyRegistration = () => {
       form.setValue('telephone_appel', user.user_metadata.phone);
     }
     
-    setStep(2);
+    setStep(1); // Aller au formulaire pharmacie après auth
   };
 
   const handleAdminFormNext = () => {
