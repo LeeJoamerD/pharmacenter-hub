@@ -406,6 +406,85 @@ export type Database = {
         }
         Relationships: []
       }
+      encaissements: {
+        Row: {
+          caissier_id: string
+          created_at: string
+          date_encaissement: string
+          id: string
+          mode_paiement: string
+          montant_a_encaisser: number
+          montant_recu: number
+          montant_rendu: number
+          notes: string | null
+          numero_encaissement: string
+          reference_paiement: string | null
+          session_caisse_id: string | null
+          statut: string
+          tenant_id: string
+          updated_at: string
+          vente_id: string
+        }
+        Insert: {
+          caissier_id: string
+          created_at?: string
+          date_encaissement?: string
+          id?: string
+          mode_paiement: string
+          montant_a_encaisser: number
+          montant_recu?: number
+          montant_rendu?: number
+          notes?: string | null
+          numero_encaissement: string
+          reference_paiement?: string | null
+          session_caisse_id?: string | null
+          statut?: string
+          tenant_id: string
+          updated_at?: string
+          vente_id: string
+        }
+        Update: {
+          caissier_id?: string
+          created_at?: string
+          date_encaissement?: string
+          id?: string
+          mode_paiement?: string
+          montant_a_encaisser?: number
+          montant_recu?: number
+          montant_rendu?: number
+          notes?: string | null
+          numero_encaissement?: string
+          reference_paiement?: string | null
+          session_caisse_id?: string | null
+          statut?: string
+          tenant_id?: string
+          updated_at?: string
+          vente_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encaissements_caissier_id_fkey"
+            columns: ["caissier_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encaissements_session_caisse_id_fkey"
+            columns: ["session_caisse_id"]
+            isOneToOne: false
+            referencedRelation: "sessions_caisse"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encaissements_vente_id_fkey"
+            columns: ["vente_id"]
+            isOneToOne: false
+            referencedRelation: "ventes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       famille_produit: {
         Row: {
           created_at: string
@@ -658,6 +737,76 @@ export type Database = {
           },
         ]
       }
+      lignes_ventes: {
+        Row: {
+          created_at: string
+          id: string
+          lot_id: string | null
+          montant_ligne_ht: number
+          montant_ligne_ttc: number
+          prix_unitaire_ht: number
+          prix_unitaire_ttc: number
+          produit_id: string
+          quantite: number
+          remise_ligne: number
+          tenant_id: string
+          updated_at: string
+          vente_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lot_id?: string | null
+          montant_ligne_ht?: number
+          montant_ligne_ttc?: number
+          prix_unitaire_ht?: number
+          prix_unitaire_ttc?: number
+          produit_id: string
+          quantite: number
+          remise_ligne?: number
+          tenant_id: string
+          updated_at?: string
+          vente_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lot_id?: string | null
+          montant_ligne_ht?: number
+          montant_ligne_ttc?: number
+          prix_unitaire_ht?: number
+          prix_unitaire_ttc?: number
+          produit_id?: string
+          quantite?: number
+          remise_ligne?: number
+          tenant_id?: string
+          updated_at?: string
+          vente_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lignes_ventes_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_ventes_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_ventes_vente_id_fkey"
+            columns: ["vente_id"]
+            isOneToOne: false
+            referencedRelation: "ventes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lots: {
         Row: {
           created_at: string
@@ -698,6 +847,66 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mouvements_caisse: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          date_mouvement: string
+          description: string | null
+          id: string
+          montant: number
+          reference_id: string | null
+          reference_type: string | null
+          session_caisse_id: string
+          tenant_id: string
+          type_mouvement: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          date_mouvement?: string
+          description?: string | null
+          id?: string
+          montant: number
+          reference_id?: string | null
+          reference_type?: string | null
+          session_caisse_id: string
+          tenant_id: string
+          type_mouvement: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          date_mouvement?: string
+          description?: string | null
+          id?: string
+          montant?: number
+          reference_id?: string | null
+          reference_type?: string | null
+          session_caisse_id?: string
+          tenant_id?: string
+          type_mouvement?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mouvements_caisse_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_caisse_session_caisse_id_fkey"
+            columns: ["session_caisse_id"]
+            isOneToOne: false
+            referencedRelation: "sessions_caisse"
             referencedColumns: ["id"]
           },
         ]
@@ -1303,6 +1512,62 @@ export type Database = {
           },
         ]
       }
+      sessions_caisse: {
+        Row: {
+          caissier_id: string
+          created_at: string
+          date_fermeture: string | null
+          date_ouverture: string
+          ecart: number | null
+          fond_caisse_ouverture: number
+          id: string
+          montant_reel_fermeture: number | null
+          montant_theorique_fermeture: number | null
+          numero_session: string
+          statut: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          caissier_id: string
+          created_at?: string
+          date_fermeture?: string | null
+          date_ouverture?: string
+          ecart?: number | null
+          fond_caisse_ouverture?: number
+          id?: string
+          montant_reel_fermeture?: number | null
+          montant_theorique_fermeture?: number | null
+          numero_session: string
+          statut?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          caissier_id?: string
+          created_at?: string
+          date_fermeture?: string | null
+          date_ouverture?: string
+          ecart?: number | null
+          fond_caisse_ouverture?: number
+          id?: string
+          montant_reel_fermeture?: number | null
+          montant_theorique_fermeture?: number | null
+          numero_session?: string
+          statut?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_caisse_caissier_id_fkey"
+            columns: ["caissier_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       societes: {
         Row: {
           adresse: string | null
@@ -1460,6 +1725,75 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ventes: {
+        Row: {
+          agent_vendeur_id: string | null
+          client_id: string | null
+          created_at: string
+          date_vente: string
+          id: string
+          montant_brut: number
+          montant_net: number
+          montant_remise_automatique: number
+          montant_remise_manuelle: number
+          notes: string | null
+          numero_ticket: string
+          statut: string
+          taux_remise_manuelle: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_vendeur_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          date_vente?: string
+          id?: string
+          montant_brut?: number
+          montant_net?: number
+          montant_remise_automatique?: number
+          montant_remise_manuelle?: number
+          notes?: string | null
+          numero_ticket: string
+          statut?: string
+          taux_remise_manuelle?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          agent_vendeur_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          date_vente?: string
+          id?: string
+          montant_brut?: number
+          montant_net?: number
+          montant_remise_automatique?: number
+          montant_remise_manuelle?: number
+          notes?: string | null
+          numero_ticket?: string
+          statut?: string
+          taux_remise_manuelle?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ventes_agent_vendeur_id_fkey"
+            columns: ["agent_vendeur_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
