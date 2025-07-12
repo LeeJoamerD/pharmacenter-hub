@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      assureurs: {
+        Row: {
+          adresse: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean | null
+          libelle_assureur: string
+          limite_dette: number | null
+          niu: string | null
+          notes: string | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          adresse?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          libelle_assureur: string
+          limite_dette?: number | null
+          niu?: string | null
+          notes?: string | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          adresse?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          libelle_assureur?: string
+          limite_dette?: number | null
+          niu?: string | null
+          notes?: string | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -165,6 +213,73 @@ export type Database = {
           },
         ]
       }
+      clients: {
+        Row: {
+          adresse: string | null
+          conventionne_id: string | null
+          created_at: string
+          id: string
+          nom_complet: string | null
+          personnel_id: string | null
+          societe_id: string | null
+          taux_remise_automatique: number | null
+          telephone: string | null
+          tenant_id: string
+          type_client: Database["public"]["Enums"]["type_client_enum"]
+          updated_at: string
+        }
+        Insert: {
+          adresse?: string | null
+          conventionne_id?: string | null
+          created_at?: string
+          id?: string
+          nom_complet?: string | null
+          personnel_id?: string | null
+          societe_id?: string | null
+          taux_remise_automatique?: number | null
+          telephone?: string | null
+          tenant_id: string
+          type_client: Database["public"]["Enums"]["type_client_enum"]
+          updated_at?: string
+        }
+        Update: {
+          adresse?: string | null
+          conventionne_id?: string | null
+          created_at?: string
+          id?: string
+          nom_complet?: string | null
+          personnel_id?: string | null
+          societe_id?: string | null
+          taux_remise_automatique?: number | null
+          telephone?: string | null
+          tenant_id?: string
+          type_client?: Database["public"]["Enums"]["type_client_enum"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_conventionne_id_fkey"
+            columns: ["conventionne_id"]
+            isOneToOne: false
+            referencedRelation: "conventionnes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_societe_id_fkey"
+            columns: ["societe_id"]
+            isOneToOne: false
+            referencedRelation: "societes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compte_depenses: {
         Row: {
           created_at: string
@@ -186,6 +301,60 @@ export type Database = {
           libelle_compte?: string
           tenant_id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      conventionnes: {
+        Row: {
+          adresse: string | null
+          caution: number | null
+          created_at: string
+          email: string | null
+          id: string
+          limite_dette: number | null
+          niu: string | null
+          noms: string
+          taux_remise_automatique: number | null
+          taux_ticket_moderateur: number | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          tenant_id: string
+          updated_at: string
+          ville: string | null
+        }
+        Insert: {
+          adresse?: string | null
+          caution?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          limite_dette?: number | null
+          niu?: string | null
+          noms: string
+          taux_remise_automatique?: number | null
+          taux_ticket_moderateur?: number | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id: string
+          updated_at?: string
+          ville?: string | null
+        }
+        Update: {
+          adresse?: string | null
+          caution?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          limite_dette?: number | null
+          niu?: string | null
+          noms?: string
+          taux_remise_automatique?: number | null
+          taux_ticket_moderateur?: number | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string
+          updated_at?: string
+          ville?: string | null
         }
         Relationships: []
       }
@@ -715,6 +884,65 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      societes: {
+        Row: {
+          adresse: string | null
+          assureur_id: string
+          created_at: string
+          email: string | null
+          id: string
+          libelle_societe: string
+          limite_dette: number | null
+          niu: string | null
+          taux_couverture_agent: number | null
+          taux_couverture_ayant_droit: number | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          adresse?: string | null
+          assureur_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          libelle_societe: string
+          limite_dette?: number | null
+          niu?: string | null
+          taux_couverture_agent?: number | null
+          taux_couverture_ayant_droit?: number | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          adresse?: string | null
+          assureur_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          libelle_societe?: string
+          limite_dette?: number | null
+          niu?: string | null
+          taux_couverture_agent?: number | null
+          taux_couverture_ayant_droit?: number | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "societes_assureur_id_fkey"
+            columns: ["assureur_id"]
+            isOneToOne: false
+            referencedRelation: "assureurs"
             referencedColumns: ["id"]
           },
         ]
