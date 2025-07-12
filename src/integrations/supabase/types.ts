@@ -589,6 +589,59 @@ export type Database = {
           },
         ]
       }
+      journaux_configuration: {
+        Row: {
+          ancienne_valeur: Json | null
+          created_at: string
+          description: string | null
+          enregistrement_id: string
+          id: string
+          ip_address: string | null
+          nouvelle_valeur: Json | null
+          personnel_id: string | null
+          table_affectee: string
+          tenant_id: string
+          type_changement: string
+          user_agent: string | null
+        }
+        Insert: {
+          ancienne_valeur?: Json | null
+          created_at?: string
+          description?: string | null
+          enregistrement_id: string
+          id?: string
+          ip_address?: string | null
+          nouvelle_valeur?: Json | null
+          personnel_id?: string | null
+          table_affectee: string
+          tenant_id: string
+          type_changement: string
+          user_agent?: string | null
+        }
+        Update: {
+          ancienne_valeur?: Json | null
+          created_at?: string
+          description?: string | null
+          enregistrement_id?: string
+          id?: string
+          ip_address?: string | null
+          nouvelle_valeur?: Json | null
+          personnel_id?: string | null
+          table_affectee?: string
+          tenant_id?: string
+          type_changement?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journaux_configuration_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       laboratoires: {
         Row: {
           created_at: string
@@ -1029,6 +1082,84 @@ export type Database = {
           },
         ]
       }
+      parametres_systeme: {
+        Row: {
+          categorie: string
+          cle_parametre: string
+          created_at: string
+          description: string | null
+          id: string
+          is_modifiable: boolean
+          is_visible: boolean
+          tenant_id: string
+          type_parametre: string
+          updated_at: string
+          valeur_defaut: string | null
+          valeur_parametre: string | null
+        }
+        Insert: {
+          categorie: string
+          cle_parametre: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_modifiable?: boolean
+          is_visible?: boolean
+          tenant_id: string
+          type_parametre: string
+          updated_at?: string
+          valeur_defaut?: string | null
+          valeur_parametre?: string | null
+        }
+        Update: {
+          categorie?: string
+          cle_parametre?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_modifiable?: boolean
+          is_visible?: boolean
+          tenant_id?: string
+          type_parametre?: string
+          updated_at?: string
+          valeur_defaut?: string | null
+          valeur_parametre?: string | null
+        }
+        Relationships: []
+      }
+      permissions: {
+        Row: {
+          categorie: string
+          code_permission: string
+          created_at: string
+          description: string | null
+          id: string
+          is_system: boolean
+          nom_permission: string
+          updated_at: string
+        }
+        Insert: {
+          categorie: string
+          code_permission: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          nom_permission: string
+          updated_at?: string
+        }
+        Update: {
+          categorie?: string
+          code_permission?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          nom_permission?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       personnel: {
         Row: {
           adresse: string | null
@@ -1259,6 +1390,47 @@ export type Database = {
           },
         ]
       }
+      preferences_utilisateur: {
+        Row: {
+          cle_preference: string
+          created_at: string
+          id: string
+          personnel_id: string
+          tenant_id: string
+          type_preference: string
+          updated_at: string
+          valeur_preference: string | null
+        }
+        Insert: {
+          cle_preference: string
+          created_at?: string
+          id?: string
+          personnel_id: string
+          tenant_id: string
+          type_preference: string
+          updated_at?: string
+          valeur_preference?: string | null
+        }
+        Update: {
+          cle_preference?: string
+          created_at?: string
+          id?: string
+          personnel_id?: string
+          tenant_id?: string
+          type_preference?: string
+          updated_at?: string
+          valeur_preference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preferences_utilisateur_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       produits: {
         Row: {
           categorie_tarification_id: string | null
@@ -1452,6 +1624,87 @@ export type Database = {
             columns: ["fournisseur_id"]
             isOneToOne: false
             referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_system: boolean
+          niveau_hierarchique: number
+          nom_role: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          niveau_hierarchique?: number
+          nom_role: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          niveau_hierarchique?: number
+          nom_role?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      roles_permissions: {
+        Row: {
+          accorde: boolean
+          created_at: string
+          id: string
+          permission_id: string
+          role_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          accorde?: boolean
+          created_at?: string
+          id?: string
+          permission_id: string
+          role_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          accorde?: boolean
+          created_at?: string
+          id?: string
+          permission_id?: string
+          role_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roles_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roles_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
             referencedColumns: ["id"]
           },
         ]
