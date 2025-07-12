@@ -1667,6 +1667,7 @@ export type Database = {
         Row: {
           address: string | null
           arrondissement: string | null
+          banque: string | null
           city: string | null
           code: string
           created_at: string
@@ -1675,13 +1676,17 @@ export type Database = {
           id: string
           logo: string | null
           name: string
+          niu: string | null
+          numero_compte_bancaire: string | null
           pays: string | null
           phone: string | null
           photo_exterieur: string | null
           photo_interieur: string | null
           postal_code: string | null
           quartier: string | null
+          rccm: string | null
           region: string | null
+          slogan: string | null
           status: string | null
           telephone_appel: string | null
           telephone_whatsapp: string | null
@@ -1691,6 +1696,7 @@ export type Database = {
         Insert: {
           address?: string | null
           arrondissement?: string | null
+          banque?: string | null
           city?: string | null
           code: string
           created_at?: string
@@ -1699,13 +1705,17 @@ export type Database = {
           id?: string
           logo?: string | null
           name: string
+          niu?: string | null
+          numero_compte_bancaire?: string | null
           pays?: string | null
           phone?: string | null
           photo_exterieur?: string | null
           photo_interieur?: string | null
           postal_code?: string | null
           quartier?: string | null
+          rccm?: string | null
           region?: string | null
+          slogan?: string | null
           status?: string | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
@@ -1715,6 +1725,7 @@ export type Database = {
         Update: {
           address?: string | null
           arrondissement?: string | null
+          banque?: string | null
           city?: string | null
           code?: string
           created_at?: string
@@ -1723,13 +1734,17 @@ export type Database = {
           id?: string
           logo?: string | null
           name?: string
+          niu?: string | null
+          numero_compte_bancaire?: string | null
           pays?: string | null
           phone?: string | null
           photo_exterieur?: string | null
           photo_interieur?: string | null
           postal_code?: string | null
           quartier?: string | null
+          rccm?: string | null
           region?: string | null
+          slogan?: string | null
           status?: string | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
