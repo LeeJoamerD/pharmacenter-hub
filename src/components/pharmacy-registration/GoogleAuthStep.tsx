@@ -26,7 +26,7 @@ export const GoogleAuthStep: React.FC<GoogleAuthStepProps> = ({
   const handleGoogleAuth = async () => {
     setIsLoading(true);
     try {
-      const redirectUrl = `${window.location.origin}/register-pharmacy?step=${stepType}`;
+      const redirectUrl = `${window.location.origin}/pharmacy-registration?step=${stepType}`;
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
