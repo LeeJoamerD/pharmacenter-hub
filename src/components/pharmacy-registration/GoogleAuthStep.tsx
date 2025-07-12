@@ -33,8 +33,7 @@ export const GoogleAuthStep: React.FC<GoogleAuthStepProps> = ({
         options: {
           redirectTo: redirectUrl,
           queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
+            access_type: 'offline'
           }
         }
       });
