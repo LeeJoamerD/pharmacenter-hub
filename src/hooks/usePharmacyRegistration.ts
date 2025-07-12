@@ -21,14 +21,15 @@ export const usePharmacyRegistration = () => {
     }
   });
 
-  // Vérifier les paramètres URL pour les redirections Google
+  // Vérifier le localStorage pour les redirections Google
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const stepParam = urlParams.get('step');
+    const storedAuthType = localStorage.getItem('pharmacyAuthType');
     
-    if (stepParam === 'pharmacy' || stepParam === 'admin') {
-      setAuthType(stepParam);
+    if (storedAuthType === 'pharmacy' || storedAuthType === 'admin') {
+      setAuthType(storedAuthType);
       setShowGoogleAuth(true);
+      // Nettoyer le localStorage après utilisation
+      localStorage.removeItem('pharmacyAuthType');
     }
   }, []);
 
