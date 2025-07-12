@@ -569,6 +569,7 @@ export type Database = {
         | "Freelance"
         | "Consultant"
         | "Temporaire"
+      type_client_enum: "Ordinaire" | "Conventionné" | "Personnel" | "Assuré"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -711,6 +712,7 @@ export const Constants = {
         "Consultant",
         "Temporaire",
       ],
+      type_client_enum: ["Ordinaire", "Conventionné", "Personnel", "Assuré"],
     },
   },
 } as const
