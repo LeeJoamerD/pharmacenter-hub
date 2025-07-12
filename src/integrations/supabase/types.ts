@@ -128,6 +128,72 @@ export type Database = {
           },
         ]
       }
+      balances: {
+        Row: {
+          compte_id: string
+          created_at: string
+          date_calcul: string
+          exercice_id: string
+          id: string
+          periode: string
+          solde_credit_cloture: number
+          solde_credit_ouverture: number
+          solde_debit_cloture: number
+          solde_debit_ouverture: number
+          tenant_id: string
+          total_credit_periode: number
+          total_debit_periode: number
+          updated_at: string
+        }
+        Insert: {
+          compte_id: string
+          created_at?: string
+          date_calcul?: string
+          exercice_id: string
+          id?: string
+          periode: string
+          solde_credit_cloture?: number
+          solde_credit_ouverture?: number
+          solde_debit_cloture?: number
+          solde_debit_ouverture?: number
+          tenant_id: string
+          total_credit_periode?: number
+          total_debit_periode?: number
+          updated_at?: string
+        }
+        Update: {
+          compte_id?: string
+          created_at?: string
+          date_calcul?: string
+          exercice_id?: string
+          id?: string
+          periode?: string
+          solde_credit_cloture?: number
+          solde_credit_ouverture?: number
+          solde_debit_cloture?: number
+          solde_debit_ouverture?: number
+          tenant_id?: string
+          total_credit_periode?: number
+          total_debit_periode?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "balances_compte_id_fkey"
+            columns: ["compte_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "balances_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices_comptables"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorie_tarification: {
         Row: {
           coefficient_prix_vente: number | null
@@ -406,6 +472,88 @@ export type Database = {
         }
         Relationships: []
       }
+      ecritures_comptables: {
+        Row: {
+          created_at: string
+          date_ecriture: string
+          date_valeur: string | null
+          exercice_id: string
+          id: string
+          journal_id: string
+          libelle_ecriture: string
+          montant_total: number
+          notes: string | null
+          numero_piece: string
+          personnel_id: string | null
+          reference_externe: string | null
+          reference_id: string | null
+          reference_type: string | null
+          statut: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_ecriture: string
+          date_valeur?: string | null
+          exercice_id: string
+          id?: string
+          journal_id: string
+          libelle_ecriture: string
+          montant_total?: number
+          notes?: string | null
+          numero_piece: string
+          personnel_id?: string | null
+          reference_externe?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          statut?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_ecriture?: string
+          date_valeur?: string | null
+          exercice_id?: string
+          id?: string
+          journal_id?: string
+          libelle_ecriture?: string
+          montant_total?: number
+          notes?: string | null
+          numero_piece?: string
+          personnel_id?: string | null
+          reference_externe?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          statut?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ecritures_comptables_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecritures_comptables_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journaux_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecritures_comptables_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       encaissements: {
         Row: {
           caissier_id: string
@@ -485,6 +633,45 @@ export type Database = {
           },
         ]
       }
+      exercices_comptables: {
+        Row: {
+          created_at: string
+          date_debut: string
+          date_fin: string
+          id: string
+          is_current: boolean
+          libelle_exercice: string
+          notes: string | null
+          statut: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_debut: string
+          date_fin: string
+          id?: string
+          is_current?: boolean
+          libelle_exercice: string
+          notes?: string | null
+          statut?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_debut?: string
+          date_fin?: string
+          id?: string
+          is_current?: boolean
+          libelle_exercice?: string
+          notes?: string | null
+          statut?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       famille_produit: {
         Row: {
           created_at: string
@@ -548,6 +735,90 @@ export type Database = {
         }
         Relationships: []
       }
+      immobilisations: {
+        Row: {
+          compte_amortissement_id: string | null
+          compte_immobilisation_id: string
+          created_at: string
+          cumul_amortissement: number
+          date_acquisition: string
+          date_sortie: string | null
+          duree_amortissement: number | null
+          id: string
+          is_active: boolean
+          libelle_immobilisation: string
+          mode_amortissement: string | null
+          motif_sortie: string | null
+          notes: string | null
+          numero_immobilisation: string
+          taux_amortissement: number | null
+          tenant_id: string
+          updated_at: string
+          valeur_acquisition: number
+          valeur_nette_comptable: number
+          valeur_residuelle: number | null
+        }
+        Insert: {
+          compte_amortissement_id?: string | null
+          compte_immobilisation_id: string
+          created_at?: string
+          cumul_amortissement?: number
+          date_acquisition: string
+          date_sortie?: string | null
+          duree_amortissement?: number | null
+          id?: string
+          is_active?: boolean
+          libelle_immobilisation: string
+          mode_amortissement?: string | null
+          motif_sortie?: string | null
+          notes?: string | null
+          numero_immobilisation: string
+          taux_amortissement?: number | null
+          tenant_id: string
+          updated_at?: string
+          valeur_acquisition: number
+          valeur_nette_comptable?: number
+          valeur_residuelle?: number | null
+        }
+        Update: {
+          compte_amortissement_id?: string | null
+          compte_immobilisation_id?: string
+          created_at?: string
+          cumul_amortissement?: number
+          date_acquisition?: string
+          date_sortie?: string | null
+          duree_amortissement?: number | null
+          id?: string
+          is_active?: boolean
+          libelle_immobilisation?: string
+          mode_amortissement?: string | null
+          motif_sortie?: string | null
+          notes?: string | null
+          numero_immobilisation?: string
+          taux_amortissement?: number | null
+          tenant_id?: string
+          updated_at?: string
+          valeur_acquisition?: number
+          valeur_nette_comptable?: number
+          valeur_residuelle?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "immobilisations_compte_amortissement_id_fkey"
+            columns: ["compte_amortissement_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "immobilisations_compte_immobilisation_id_fkey"
+            columns: ["compte_immobilisation_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventaire_sessions: {
         Row: {
           agent_id: string
@@ -585,6 +856,56 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journaux_comptables: {
+        Row: {
+          code_journal: string
+          compte_contrepartie_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          libelle_journal: string
+          numero_dernier_mouvement: number
+          tenant_id: string
+          type_journal: string
+          updated_at: string
+        }
+        Insert: {
+          code_journal: string
+          compte_contrepartie_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          libelle_journal: string
+          numero_dernier_mouvement?: number
+          tenant_id: string
+          type_journal: string
+          updated_at?: string
+        }
+        Update: {
+          code_journal?: string
+          compte_contrepartie_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          libelle_journal?: string
+          numero_dernier_mouvement?: number
+          tenant_id?: string
+          type_journal?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journaux_comptables_compte_contrepartie_id_fkey"
+            columns: ["compte_contrepartie_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
             referencedColumns: ["id"]
           },
         ]
@@ -725,6 +1046,81 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lignes_ecriture: {
+        Row: {
+          analytique_code: string | null
+          compte_id: string
+          created_at: string
+          date_echeance: string | null
+          ecriture_id: string
+          id: string
+          is_lettree: boolean
+          lettrage: string | null
+          libelle_ligne: string
+          montant_credit: number
+          montant_debit: number
+          notes: string | null
+          numero_ligne: number
+          piece_jointe: string | null
+          quantite: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          analytique_code?: string | null
+          compte_id: string
+          created_at?: string
+          date_echeance?: string | null
+          ecriture_id: string
+          id?: string
+          is_lettree?: boolean
+          lettrage?: string | null
+          libelle_ligne: string
+          montant_credit?: number
+          montant_debit?: number
+          notes?: string | null
+          numero_ligne: number
+          piece_jointe?: string | null
+          quantite?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          analytique_code?: string | null
+          compte_id?: string
+          created_at?: string
+          date_echeance?: string | null
+          ecriture_id?: string
+          id?: string
+          is_lettree?: boolean
+          lettrage?: string | null
+          libelle_ligne?: string
+          montant_credit?: number
+          montant_debit?: number
+          notes?: string | null
+          numero_ligne?: number
+          piece_jointe?: string | null
+          quantite?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lignes_ecriture_compte_id_fkey"
+            columns: ["compte_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_ecriture_ecriture_id_fkey"
+            columns: ["ecriture_id"]
+            isOneToOne: false
+            referencedRelation: "ecritures_comptables"
             referencedColumns: ["id"]
           },
         ]
@@ -1390,6 +1786,68 @@ export type Database = {
           },
         ]
       }
+      plan_comptable: {
+        Row: {
+          classe_compte: number
+          compte_parent_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_collectif: boolean
+          libelle_compte: string
+          niveau_compte: number
+          numero_compte: string
+          sens_normal: string
+          sous_classe: string | null
+          tenant_id: string
+          type_compte: string
+          updated_at: string
+        }
+        Insert: {
+          classe_compte: number
+          compte_parent_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_collectif?: boolean
+          libelle_compte: string
+          niveau_compte?: number
+          numero_compte: string
+          sens_normal: string
+          sous_classe?: string | null
+          tenant_id: string
+          type_compte: string
+          updated_at?: string
+        }
+        Update: {
+          classe_compte?: number
+          compte_parent_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_collectif?: boolean
+          libelle_compte?: string
+          niveau_compte?: number
+          numero_compte?: string
+          sens_normal?: string
+          sous_classe?: string | null
+          tenant_id?: string
+          type_compte?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_comptable_compte_parent_id_fkey"
+            columns: ["compte_parent_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       preferences_utilisateur: {
         Row: {
           cle_preference: string
@@ -1540,6 +1998,72 @@ export type Database = {
           {
             foreignKeyName: "produits_reference_agent_modification_id_fkey"
             columns: ["reference_agent_modification_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rapports_comptables: {
+        Row: {
+          contenu_rapport: Json | null
+          created_at: string
+          date_debut: string
+          date_fin: string
+          exercice_id: string
+          fichier_export: string | null
+          id: string
+          nom_rapport: string
+          parametres: Json | null
+          personnel_id: string | null
+          statut: string
+          tenant_id: string
+          type_rapport: string
+          updated_at: string
+        }
+        Insert: {
+          contenu_rapport?: Json | null
+          created_at?: string
+          date_debut: string
+          date_fin: string
+          exercice_id: string
+          fichier_export?: string | null
+          id?: string
+          nom_rapport: string
+          parametres?: Json | null
+          personnel_id?: string | null
+          statut?: string
+          tenant_id: string
+          type_rapport: string
+          updated_at?: string
+        }
+        Update: {
+          contenu_rapport?: Json | null
+          created_at?: string
+          date_debut?: string
+          date_fin?: string
+          exercice_id?: string
+          fichier_export?: string | null
+          id?: string
+          nom_rapport?: string
+          parametres?: Json | null
+          personnel_id?: string | null
+          statut?: string
+          tenant_id?: string
+          type_rapport?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rapports_comptables_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rapports_comptables_personnel_id_fkey"
+            columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
             referencedColumns: ["id"]
@@ -1978,6 +2502,68 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tva_declaration: {
+        Row: {
+          acompte_verse: number
+          created_at: string
+          credit_tva_anterieur: number
+          date_declaration: string | null
+          exercice_id: string
+          id: string
+          notes: string | null
+          periode: string
+          solde_a_payer: number
+          statut: string
+          tenant_id: string
+          tva_a_payer: number
+          tva_collectee: number
+          tva_deductible: number
+          updated_at: string
+        }
+        Insert: {
+          acompte_verse?: number
+          created_at?: string
+          credit_tva_anterieur?: number
+          date_declaration?: string | null
+          exercice_id: string
+          id?: string
+          notes?: string | null
+          periode: string
+          solde_a_payer?: number
+          statut?: string
+          tenant_id: string
+          tva_a_payer?: number
+          tva_collectee?: number
+          tva_deductible?: number
+          updated_at?: string
+        }
+        Update: {
+          acompte_verse?: number
+          created_at?: string
+          credit_tva_anterieur?: number
+          date_declaration?: string | null
+          exercice_id?: string
+          id?: string
+          notes?: string | null
+          periode?: string
+          solde_a_payer?: number
+          statut?: string
+          tenant_id?: string
+          tva_a_payer?: number
+          tva_collectee?: number
+          tva_deductible?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tva_declaration_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices_comptables"
             referencedColumns: ["id"]
           },
         ]
