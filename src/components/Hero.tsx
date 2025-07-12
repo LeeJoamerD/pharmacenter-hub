@@ -40,7 +40,8 @@ export function Hero() {
                   Créer votre pharmacie
                 </Button>
               </Link>
-              <Link to="/auth">
+              {/* TEMPORAIRE : Redirection directe vers le tableau de bord pour le développement */}
+              <Link to="/tableau-de-bord">
                 <Button size="lg" variant="outline" className="button-hover-effect border-primary/20 text-primary hover:bg-primary/5">
                   <span>Se connecter</span>
                   <ArrowRight size={16} className="ml-2" />

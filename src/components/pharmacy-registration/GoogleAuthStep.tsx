@@ -23,8 +23,16 @@ export const GoogleAuthStep: React.FC<GoogleAuthStepProps> = ({
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
 
+  // TEMPORAIRE : Code OAuth commenté pour le développement
   const handleGoogleAuth = async () => {
     setIsLoading(true);
+    
+    // Redirection directe vers le tableau de bord pour le développement
+    setTimeout(() => {
+      window.location.href = '/tableau-de-bord';
+    }, 1000);
+    
+    /* CODE OAUTH ORIGINAL - À RÉACTIVER POUR LA PRODUCTION
     try {
       // Stocker le type d'authentification dans localStorage avant la redirection
       localStorage.setItem('pharmacyAuthType', stepType);
@@ -57,10 +65,11 @@ export const GoogleAuthStep: React.FC<GoogleAuthStepProps> = ({
     } finally {
       setIsLoading(false);
     }
+    */
   };
 
-  // Vérifier si on revient de Google avec une session
-  React.useEffect(() => {
+  // TEMPORAIRE : Vérification de session désactivée pour le développement
+  /* React.useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
@@ -80,7 +89,7 @@ export const GoogleAuthStep: React.FC<GoogleAuthStepProps> = ({
     );
 
     return () => subscription.unsubscribe();
-  }, [onSuccess]);
+  }, [onSuccess]); */
 
   return (
     <Card className="w-full max-w-md mx-auto">

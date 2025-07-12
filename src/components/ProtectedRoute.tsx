@@ -8,7 +8,10 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, loading } = useAuth();
+  // TEMPORAIRE : Protection désactivée pour le développement
+  // TODO: Réactiver l'authentification avant la production
+  
+  /* const { user, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -30,8 +33,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   if (!user) {
     return null;
-  }
+  } */
 
+  // Affichage direct des enfants sans protection
   return <>{children}</>;
 };
 
