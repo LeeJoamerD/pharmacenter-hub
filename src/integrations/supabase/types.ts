@@ -1572,6 +1572,7 @@ export type Database = {
           nombre_enfants: number | null
           noms: string
           numero_cnss: string | null
+          password: string | null
           photo_identite: string | null
           prenoms: string
           profession: string | null
@@ -1604,6 +1605,7 @@ export type Database = {
           nombre_enfants?: number | null
           noms: string
           numero_cnss?: string | null
+          password?: string | null
           photo_identite?: string | null
           prenoms: string
           profession?: string | null
@@ -1636,6 +1638,7 @@ export type Database = {
           nombre_enfants?: number | null
           noms?: string
           numero_cnss?: string | null
+          password?: string | null
           photo_identite?: string | null
           prenoms?: string
           profession?: string | null
