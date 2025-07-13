@@ -28,7 +28,10 @@ interface PersonnelFormData {
 
 const UserSettings = () => {
   const { toast } = useToast();
-  const { useTenantMutation } = useTenantQuery();
+  const { useTenantMutation, tenantId } = useTenantQuery();
+  
+  // Debug: Afficher le tenantId
+  console.log('UserSettings - tenantId:', tenantId);
   
   const canCreateUsers = useHasPermission(PERMISSIONS.USERS_CREATE);
   const canEditUsers = useHasPermission(PERMISSIONS.USERS_EDIT);
@@ -59,6 +62,7 @@ const UserSettings = () => {
       createForm.reset();
     },
     onError: (error) => {
+      console.error('Erreur lors de la création:', error);
       toast({
         title: 'Erreur lors de la création',
         description: error.message,
@@ -112,15 +116,22 @@ const UserSettings = () => {
   const editForm = useForm<PersonnelFormData>();
 
   const onCreateSubmit = async (data: PersonnelFormData) => {
+    // Debug: Vérifier le tenantId
+    console.log('onCreateSubmit - tenantId:', tenantId);
+    console.log('onCreateSubmit - data:', data);
+    
     // Générer la référence agent automatiquement
     const firstPrenom = data.prenoms.split(' ')[0];
     const firstThreeLettersNom = data.noms.substring(0, 3).toLowerCase();
     const reference_agent = `${firstPrenom}_${firstThreeLettersNom}`;
     
-    createPersonnelMutation.mutate({
+    const finalData = {
       ...data,
       reference_agent
-    });
+    };
+    
+    console.log('onCreateSubmit - finalData:', finalData);
+    createPersonnelMutation.mutate(finalData);
   };
 
   const onEditSubmit = async (data: PersonnelFormData) => {
