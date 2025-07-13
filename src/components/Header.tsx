@@ -16,13 +16,11 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleProfileClick = () => {
-    // TEMPORAIRE : Redirection directe vers le tableau de bord pour le développement
-    navigate('/tableau-de-bord');
-    /* if (user) {
+    if (user) {
       navigate('/tableau-de-bord');
     } else {
       navigate('/auth');
-    } */
+    }
   };
 
   const handleSignOut = async () => {
@@ -55,52 +53,82 @@ export function Header() {
               PharmaSoft
             </span>
           </a>
-          {/* TEMPORAIRE : Masqué pour le développement */}
-          {/* {pharmacy && (
+          {pharmacy && (
             <span className="hidden sm:inline ml-3 text-sm text-muted-foreground">
               - {pharmacy.name}
             </span>
-          )} */}
+          )}
         </div>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-1">
-          {/* TEMPORAIRE : Navigation simplifiée pour le développement */}
           <a href="#features" className="navbar-item">{t('features')}</a>
           <a href="#contact" className="navbar-item">{t('contact')}</a>
-          <Button variant="ghost" onClick={() => navigate('/tableau-de-bord')}>
-            Tableau de bord
-          </Button>
           <div className="ml-4">
             <LanguageSelector />
           </div>
           <div className="ml-2">
-            {/* TEMPORAIRE : Bouton utilisateur simplifié pour le développement */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-foreground hover:bg-muted/50"
-              aria-label="Accéder au tableau de bord"
-              onClick={handleProfileClick}
-            >
-              <User size={20} />
-            </Button>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-foreground hover:bg-muted/50"
+                  >
+                    <User size={20} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>
+                    {personnel ? `${personnel.prenoms} ${personnel.noms}` : user.email}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/tableau-de-bord')}>
+                    Tableau de bord
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Se déconnecter
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/auth')}
+                className="text-foreground hover:bg-muted/50"
+              >
+                Se connecter
+              </Button>
+            )}
           </div>
         </nav>
 
         {/* Mobile Menu Button */}
         <div className="flex items-center md:hidden">
           <LanguageSelector className="mr-2" />
-          {/* TEMPORAIRE : Bouton utilisateur mobile simplifié pour le développement */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-foreground hover:bg-muted/50 mr-2"
-            aria-label="Accéder au tableau de bord"
-            onClick={handleProfileClick}
-          >
-            <User size={20} />
-          </Button>
+          {user ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-foreground hover:bg-muted/50 mr-2"
+              aria-label="Accéder au tableau de bord"
+              onClick={handleProfileClick}
+            >
+              <User size={20} />
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/auth')}
+              className="text-foreground hover:bg-muted/50 mr-2"
+            >
+              Connexion
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -124,7 +152,6 @@ export function Header() {
         )}
       >
         <nav className="container flex flex-col space-y-4 p-6">
-          {/* TEMPORAIRE : Navigation mobile simplifiée pour le développement */}
           <a
             href="#features"
             className="py-3 text-lg font-medium border-b border-border/20"
@@ -139,16 +166,42 @@ export function Header() {
           >
             {t('contact')}
           </a>
-          <Button 
-            variant="ghost" 
-            onClick={() => {
-              navigate('/tableau-de-bord');
-              setIsMobileMenuOpen(false);
-            }}
-            className="justify-start py-3 text-lg font-medium border-b border-border/20"
-          >
-            Tableau de bord
-          </Button>
+          {user ? (
+            <>
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  navigate('/tableau-de-bord');
+                  setIsMobileMenuOpen(false);
+                }}
+                className="justify-start py-3 text-lg font-medium border-b border-border/20"
+              >
+                Tableau de bord
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  handleSignOut();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="justify-start py-3 text-lg font-medium border-b border-border/20 text-red-600"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Se déconnecter
+              </Button>
+            </>
+          ) : (
+            <Button 
+              variant="ghost" 
+              onClick={() => {
+                navigate('/auth');
+                setIsMobileMenuOpen(false);
+              }}
+              className="justify-start py-3 text-lg font-medium border-b border-border/20"
+            >
+              Se connecter
+            </Button>
+          )}
         </nav>
       </div>
     </header>

@@ -13,15 +13,11 @@ export const usePermissions = (): UserPermissions => {
   }, [roleConfig]);
 
   const canAccess = useCallback((permission: string): boolean => {
-    // TEMPORAIRE : Désactiver les permissions pour le développement
-    return true;
-    // return permissions.includes(permission);
+    return permissions.includes(permission);
   }, [permissions]);
 
   const canManage = useCallback((targetRole: string): boolean => {
-    // TEMPORAIRE : Désactiver les permissions pour le développement
-    return true;
-    /* if (!roleConfig) return false;
+    if (!roleConfig) return false;
     
     const targetRoleConfig = ROLES[targetRole];
     if (!targetRoleConfig) return false;
@@ -30,7 +26,7 @@ export const usePermissions = (): UserPermissions => {
     // sauf pour l'admin qui peut tout gérer
     if (userRole === 'Admin') return true;
     
-    return roleConfig.level <= targetRoleConfig.level; */
+    return roleConfig.level <= targetRoleConfig.level;
   }, [roleConfig, userRole]);
 
   return {

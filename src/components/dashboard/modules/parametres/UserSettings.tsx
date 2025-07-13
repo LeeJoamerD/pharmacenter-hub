@@ -33,21 +33,6 @@ const UserSettings = () => {
   const { toast } = useToast();
   const { useTenantMutation, tenantId } = useTenantQuery();
   
-  // Debug: Afficher le tenantId et les données d'auth
-  const { currentTenant, currentUser } = useTenant();
-  const { user, personnel: authPersonnel, pharmacy } = useAuth();
-  
-  console.log('UserSettings - tenantId:', tenantId);
-  console.log('UserSettings - currentTenant:', currentTenant);
-  console.log('UserSettings - currentUser:', currentUser);
-  console.log('UserSettings - user:', user);
-  console.log('UserSettings - authPersonnel:', authPersonnel);
-  console.log('UserSettings - pharmacy:', pharmacy);
-  
-  // Utiliser directement le pharmacy.id comme fallback si tenantId est null
-  const effectiveTenantId = tenantId || pharmacy?.id;
-  console.log('UserSettings - effectiveTenantId:', effectiveTenantId);
-  
   const canCreateUsers = useHasPermission(PERMISSIONS.USERS_CREATE);
   const canEditUsers = useHasPermission(PERMISSIONS.USERS_EDIT);
   const canDeleteUsers = useHasPermission(PERMISSIONS.USERS_DELETE);
@@ -131,12 +116,7 @@ const UserSettings = () => {
   const editForm = useForm<PersonnelFormData>();
 
   const onCreateSubmit = async (data: PersonnelFormData) => {
-    // Debug: Vérifier le tenantId
-    console.log('onCreateSubmit - tenantId:', tenantId);
-    console.log('onCreateSubmit - effectiveTenantId:', effectiveTenantId);
-    console.log('onCreateSubmit - data:', data);
-    
-    if (!effectiveTenantId) {
+    if (!tenantId) {
       toast({
         title: 'Erreur de configuration',
         description: 'Tenant ID non disponible. Veuillez vous reconnecter.',
@@ -152,37 +132,10 @@ const UserSettings = () => {
     
     const finalData = {
       ...data,
-      reference_agent,
-      tenant_id: effectiveTenantId
+      reference_agent
     };
     
-    console.log('onCreateSubmit - finalData:', finalData);
-    
-    // Utiliser directement Supabase au lieu de la mutation
-    try {
-      const { data: result, error } = await supabase
-        .from('personnel')
-        .insert(finalData)
-        .select();
-      
-      if (error) throw error;
-      
-      toast({ title: 'Utilisateur créé avec succès' });
-      setIsCreateDialogOpen(false);
-      createForm.reset();
-      
-      // Invalider les queries pour recharger la liste
-      // Re-fetch personnel data
-      window.location.reload(); // Temporaire pour forcer le rechargement
-      
-    } catch (error: any) {
-      console.error('Erreur lors de la création:', error);
-      toast({
-        title: 'Erreur lors de la création',
-        description: error.message,
-        variant: 'destructive'
-      });
-    }
+    createPersonnelMutation.mutate(finalData);
   };
 
   const onEditSubmit = async (data: PersonnelFormData) => {
@@ -345,7 +298,7 @@ const UserSettings = () => {
                   Liste et gestion des comptes utilisateurs
                 </CardDescription>
               </div>
-              {canCreateUsers && effectiveTenantId && (
+              {canCreateUsers && tenantId && (
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                   <DialogTrigger asChild>
                     <Button>
@@ -466,7 +419,7 @@ const UserSettings = () => {
                         <DialogFooter>
                           <Button 
                             type="submit" 
-                            disabled={!effectiveTenantId}
+                            disabled={!tenantId}
                           >
                             Créer
                           </Button>
@@ -476,7 +429,7 @@ const UserSettings = () => {
                   </DialogContent>
                 </Dialog>
               )}
-              {canCreateUsers && !effectiveTenantId && (
+              {canCreateUsers && !tenantId && (
                 <div className="text-sm text-muted-foreground bg-yellow-50 border border-yellow-200 rounded-md p-3">
                   ⚠️ Chargement des données en cours... Le bouton "Nouvel utilisateur" sera disponible dans un moment.
                 </div>
