@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ import { usePersonnelQuery, useTenantQuery } from '@/hooks/useTenantQuery';
 import { useHasPermission } from '@/hooks/usePermissions';
 import { PERMISSIONS, ROLES } from '@/types/permissions';
 import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PersonnelFormData {
   noms: string;
@@ -33,9 +35,18 @@ const UserSettings = () => {
   
   // Debug: Afficher le tenantId et les données d'auth
   const { currentTenant, currentUser } = useTenant();
+  const { user, personnel: authPersonnel, pharmacy } = useAuth();
+  
   console.log('UserSettings - tenantId:', tenantId);
   console.log('UserSettings - currentTenant:', currentTenant);
   console.log('UserSettings - currentUser:', currentUser);
+  console.log('UserSettings - user:', user);
+  console.log('UserSettings - authPersonnel:', authPersonnel);
+  console.log('UserSettings - pharmacy:', pharmacy);
+  
+  // Utiliser directement le pharmacy.id comme fallback si tenantId est null
+  const effectiveTenantId = tenantId || pharmacy?.id;
+  console.log('UserSettings - effectiveTenantId:', effectiveTenantId);
   
   const canCreateUsers = useHasPermission(PERMISSIONS.USERS_CREATE);
   const canEditUsers = useHasPermission(PERMISSIONS.USERS_EDIT);
@@ -55,7 +66,7 @@ const UserSettings = () => {
   });
 
   // Charger la liste du personnel depuis la base de données
-  const { data: personnel, isLoading, error } = usePersonnelQuery();
+  const { data: personnelList, isLoading, error } = usePersonnelQuery();
 
   // Mutations
   const createPersonnelMutation = useTenantMutation('personnel', 'insert', {
@@ -122,9 +133,10 @@ const UserSettings = () => {
   const onCreateSubmit = async (data: PersonnelFormData) => {
     // Debug: Vérifier le tenantId
     console.log('onCreateSubmit - tenantId:', tenantId);
+    console.log('onCreateSubmit - effectiveTenantId:', effectiveTenantId);
     console.log('onCreateSubmit - data:', data);
     
-    if (!tenantId) {
+    if (!effectiveTenantId) {
       toast({
         title: 'Erreur de configuration',
         description: 'Tenant ID non disponible. Veuillez vous reconnecter.',
@@ -140,11 +152,37 @@ const UserSettings = () => {
     
     const finalData = {
       ...data,
-      reference_agent
+      reference_agent,
+      tenant_id: effectiveTenantId
     };
     
     console.log('onCreateSubmit - finalData:', finalData);
-    createPersonnelMutation.mutate(finalData);
+    
+    // Utiliser directement Supabase au lieu de la mutation
+    try {
+      const { data: result, error } = await supabase
+        .from('personnel')
+        .insert(finalData)
+        .select();
+      
+      if (error) throw error;
+      
+      toast({ title: 'Utilisateur créé avec succès' });
+      setIsCreateDialogOpen(false);
+      createForm.reset();
+      
+      // Invalider les queries pour recharger la liste
+      // Re-fetch personnel data
+      window.location.reload(); // Temporaire pour forcer le rechargement
+      
+    } catch (error: any) {
+      console.error('Erreur lors de la création:', error);
+      toast({
+        title: 'Erreur lors de la création',
+        description: error.message,
+        variant: 'destructive'
+      });
+    }
   };
 
   const onEditSubmit = async (data: PersonnelFormData) => {
@@ -307,7 +345,7 @@ const UserSettings = () => {
                   Liste et gestion des comptes utilisateurs
                 </CardDescription>
               </div>
-              {canCreateUsers && tenantId && (
+              {canCreateUsers && effectiveTenantId && (
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                   <DialogTrigger asChild>
                     <Button>
@@ -428,9 +466,9 @@ const UserSettings = () => {
                         <DialogFooter>
                           <Button 
                             type="submit" 
-                            disabled={createPersonnelMutation.isPending || !tenantId}
+                            disabled={!effectiveTenantId}
                           >
-                            {createPersonnelMutation.isPending ? 'Création...' : 'Créer'}
+                            Créer
                           </Button>
                         </DialogFooter>
                       </form>
@@ -438,7 +476,7 @@ const UserSettings = () => {
                   </DialogContent>
                 </Dialog>
               )}
-              {canCreateUsers && !tenantId && (
+              {canCreateUsers && !effectiveTenantId && (
                 <div className="text-sm text-muted-foreground bg-yellow-50 border border-yellow-200 rounded-md p-3">
                   ⚠️ Chargement des données en cours... Le bouton "Nouvel utilisateur" sera disponible dans un moment.
                 </div>
@@ -464,14 +502,14 @@ const UserSettings = () => {
                     Chargement des utilisateurs...
                   </TableCell>
                 </TableRow>
-              ) : personnel?.length === 0 ? (
+              ) : personnelList?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center">
                     Aucun utilisateur trouvé
                   </TableCell>
                 </TableRow>
               ) : (
-                personnel?.map((user: any) => (
+                personnelList?.map((user: any) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">
                       {user.prenoms} {user.noms}
