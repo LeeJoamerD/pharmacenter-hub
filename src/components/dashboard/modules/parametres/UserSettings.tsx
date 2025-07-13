@@ -15,6 +15,7 @@ import { useForm } from 'react-hook-form';
 import { usePersonnelQuery, useTenantQuery } from '@/hooks/useTenantQuery';
 import { useHasPermission } from '@/hooks/usePermissions';
 import { PERMISSIONS, ROLES } from '@/types/permissions';
+import { useTenant } from '@/contexts/TenantContext';
 
 interface PersonnelFormData {
   noms: string;
@@ -30,8 +31,11 @@ const UserSettings = () => {
   const { toast } = useToast();
   const { useTenantMutation, tenantId } = useTenantQuery();
   
-  // Debug: Afficher le tenantId
+  // Debug: Afficher le tenantId et les données d'auth
+  const { currentTenant, currentUser } = useTenant();
   console.log('UserSettings - tenantId:', tenantId);
+  console.log('UserSettings - currentTenant:', currentTenant);
+  console.log('UserSettings - currentUser:', currentUser);
   
   const canCreateUsers = useHasPermission(PERMISSIONS.USERS_CREATE);
   const canEditUsers = useHasPermission(PERMISSIONS.USERS_EDIT);
@@ -119,6 +123,15 @@ const UserSettings = () => {
     // Debug: Vérifier le tenantId
     console.log('onCreateSubmit - tenantId:', tenantId);
     console.log('onCreateSubmit - data:', data);
+    
+    if (!tenantId) {
+      toast({
+        title: 'Erreur de configuration',
+        description: 'Tenant ID non disponible. Veuillez vous reconnecter.',
+        variant: 'destructive'
+      });
+      return;
+    }
     
     // Générer la référence agent automatiquement
     const firstPrenom = data.prenoms.split(' ')[0];
@@ -294,7 +307,7 @@ const UserSettings = () => {
                   Liste et gestion des comptes utilisateurs
                 </CardDescription>
               </div>
-              {canCreateUsers && (
+              {canCreateUsers && tenantId && (
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                   <DialogTrigger asChild>
                     <Button>
@@ -415,7 +428,7 @@ const UserSettings = () => {
                         <DialogFooter>
                           <Button 
                             type="submit" 
-                            disabled={createPersonnelMutation.isPending}
+                            disabled={createPersonnelMutation.isPending || !tenantId}
                           >
                             {createPersonnelMutation.isPending ? 'Création...' : 'Créer'}
                           </Button>
@@ -424,6 +437,11 @@ const UserSettings = () => {
                     </Form>
                   </DialogContent>
                 </Dialog>
+              )}
+              {canCreateUsers && !tenantId && (
+                <div className="text-sm text-muted-foreground bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                  ⚠️ Chargement des données en cours... Le bouton "Nouvel utilisateur" sera disponible dans un moment.
+                </div>
               )}
             </div>
         </CardHeader>
