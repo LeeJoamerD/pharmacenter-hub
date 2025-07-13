@@ -20,7 +20,6 @@ interface PersonnelFormData {
   noms: string;
   prenoms: string;
   email: string;
-  reference_agent: string;
   password?: string;
   role: string;
   telephone_appel?: string;
@@ -104,7 +103,6 @@ const UserSettings = () => {
       noms: '',
       prenoms: '',
       email: '',
-      reference_agent: '',
       password: '',
       role: 'Employé',
       is_active: true
@@ -114,7 +112,15 @@ const UserSettings = () => {
   const editForm = useForm<PersonnelFormData>();
 
   const onCreateSubmit = async (data: PersonnelFormData) => {
-    createPersonnelMutation.mutate(data);
+    // Générer la référence agent automatiquement
+    const firstPrenom = data.prenoms.split(' ')[0];
+    const firstThreeLettersNom = data.noms.substring(0, 3).toLowerCase();
+    const reference_agent = `${firstPrenom}_${firstThreeLettersNom}`;
+    
+    createPersonnelMutation.mutate({
+      ...data,
+      reference_agent
+    });
   };
 
   const onEditSubmit = async (data: PersonnelFormData) => {
@@ -131,7 +137,6 @@ const UserSettings = () => {
       noms: user.noms,
       prenoms: user.prenoms,
       email: user.email,
-      reference_agent: user.reference_agent,
       role: user.role,
       telephone_appel: user.telephone_appel,
       is_active: user.is_active
@@ -338,19 +343,6 @@ const UserSettings = () => {
                           )}
                         />
 
-                        <FormField
-                          control={createForm.control}
-                          name="reference_agent"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Référence Agent</FormLabel>
-                              <FormControl>
-                                <Input {...field} placeholder="REF001" required />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
 
                         <FormField
                           control={createForm.control}
@@ -604,19 +596,6 @@ const UserSettings = () => {
                 )}
               />
 
-              <FormField
-                control={editForm.control}
-                name="reference_agent"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Référence Agent</FormLabel>
-                    <FormControl>
-                      <Input {...field} required />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <FormField
                 control={editForm.control}
