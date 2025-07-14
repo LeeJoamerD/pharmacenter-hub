@@ -2660,9 +2660,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_user_permission: {
+        Args: { required_roles: string[] }
+        Returns: boolean
+      }
+      cleanup_old_security_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_current_user_tenant_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      log_sensitive_operation: {
+        Args: {
+          operation_type: string
+          table_name: string
+          record_data: Json
+          risk_level?: string
+        }
+        Returns: undefined
       }
       register_pharmacy_with_admin: {
         Args: {
