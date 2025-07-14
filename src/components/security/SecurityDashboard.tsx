@@ -22,20 +22,9 @@ import {
   Settings
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import type { Database } from "@/integrations/supabase/types";
 
-interface SecurityAlert {
-  id: string;
-  alert_type: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  description: string;
-  metadata: any;
-  created_at: string;
-  resolved: boolean;
-  resolved_at?: string;
-  resolved_by?: string;
-  tenant_id: string;
-  user_id?: string;
-}
+type SecurityAlert = Database['public']['Tables']['security_alerts']['Row'];
 
 const SecurityDashboard = () => {
   const { 

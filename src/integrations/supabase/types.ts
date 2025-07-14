@@ -890,6 +890,41 @@ export type Database = {
           },
         ]
       }
+      incident_comments: {
+        Row: {
+          comment: string
+          created_at: string
+          id: string
+          incident_id: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string
+          id?: string
+          incident_id: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          id?: string
+          incident_id?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incident_comments_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "security_incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventaire_sessions: {
         Row: {
           agent_id: string
@@ -2519,6 +2554,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      security_incidents: {
+        Row: {
+          affected_systems: string[] | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          impact_level: string | null
+          incident_type: string
+          ip_address: string | null
+          metadata: Json | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          affected_systems?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          impact_level?: string | null
+          incident_type: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity: string
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          affected_systems?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          impact_level?: string | null
+          incident_type?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: []
       }
       sessions_caisse: {
         Row: {

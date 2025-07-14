@@ -22,29 +22,12 @@ import {
   Save
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import type { Database } from "@/integrations/supabase/types";
 
-interface SecurityIncident {
-  id: string;
-  title: string;
-  description: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  status: 'open' | 'investigating' | 'resolved' | 'closed';
-  assigned_to?: string;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  resolution_notes?: string;
-  tags: string[];
-  related_alerts: string[];
-  tenant_id: string;
-}
+type SecurityIncident = Database['public']['Tables']['security_incidents']['Row'];
+type IncidentComment = Database['public']['Tables']['incident_comments']['Row'];
 
-interface IncidentComment {
-  id: string;
-  incident_id: string;
-  user_id: string;
-  comment: string;
-  created_at: string;
+interface IncidentCommentWithUser extends IncidentComment {
   user_name: string;
 }
 
@@ -53,14 +36,14 @@ const SecurityIncidentManager = () => {
   const { toast } = useToast();
   const [incidents, setIncidents] = useState<SecurityIncident[]>([]);
   const [selectedIncident, setSelectedIncident] = useState<SecurityIncident | null>(null);
-  const [comments, setComments] = useState<IncidentComment[]>([]);
+  const [comments, setComments] = useState<IncidentCommentWithUser[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
   const [newIncident, setNewIncident] = useState({
     title: '',
     description: '',
     severity: 'medium' as const,
-    tags: [] as string[]
+    incident_type: 'security_breach'
   });
 
   // Charger les incidents
@@ -70,11 +53,7 @@ const SecurityIncidentManager = () => {
     try {
       const { data } = await supabase
         .from('security_incidents')
-        .select(`
-          *,
-          created_by_user:personnel!security_incidents_created_by_fkey(noms, prenoms),
-          assigned_to_user:personnel!security_incidents_assigned_to_fkey(noms, prenoms)
-        `)
+        .select('*')
         .eq('tenant_id', personnel.tenant_id)
         .order('created_at', { ascending: false });
 
@@ -89,21 +68,28 @@ const SecurityIncidentManager = () => {
   // Charger les commentaires d'un incident
   const loadIncidentComments = async (incidentId: string) => {
     try {
-      const { data } = await supabase
+      const { data: commentsData } = await supabase
         .from('incident_comments')
-        .select(`
-          *,
-          user:personnel!incident_comments_user_id_fkey(noms, prenoms)
-        `)
+        .select('*')
         .eq('incident_id', incidentId)
         .order('created_at', { ascending: true });
 
-      const formattedComments = data?.map(comment => ({
-        ...comment,
-        user_name: `${comment.user.prenoms} ${comment.user.noms}`
-      })) || [];
+      if (commentsData) {
+        // Récupérer les noms des utilisateurs
+        const userIds = [...new Set(commentsData.map(c => c.user_id))];
+        const { data: users } = await supabase
+          .from('personnel')
+          .select('id, noms, prenoms')
+          .in('id', userIds);
 
-      setComments(formattedComments);
+        const formattedComments: IncidentCommentWithUser[] = commentsData.map(comment => ({
+          ...comment,
+          user_name: users?.find(u => u.id === comment.user_id)?.prenoms + ' ' + 
+                     users?.find(u => u.id === comment.user_id)?.noms || 'Utilisateur inconnu'
+        }));
+
+        setComments(formattedComments);
+      }
     } catch (error) {
       console.error('Erreur chargement commentaires:', error);
     }
@@ -119,11 +105,11 @@ const SecurityIncidentManager = () => {
         .insert({
           tenant_id: personnel.tenant_id,
           title: newIncident.title,
-          description: newIncident.description,
+          description: newIncident.description || '',
           severity: newIncident.severity,
           status: 'open',
-          created_by: personnel.id,
-          tags: newIncident.tags
+          incident_type: newIncident.incident_type,
+          created_by: personnel.id
         })
         .select()
         .single();
@@ -135,7 +121,7 @@ const SecurityIncidentManager = () => {
         title: '',
         description: '',
         severity: 'medium',
-        tags: []
+        incident_type: 'security_breach'
       });
 
       toast({
@@ -197,19 +183,17 @@ const SecurityIncidentManager = () => {
         .insert({
           incident_id: selectedIncident.id,
           user_id: personnel.id,
-          comment: newComment.trim()
+          comment: newComment.trim(),
+          tenant_id: personnel.tenant_id
         })
-        .select(`
-          *,
-          user:personnel!incident_comments_user_id_fkey(noms, prenoms)
-        `)
+        .select()
         .single();
 
       if (error) throw error;
 
-      const newCommentData = {
+      const newCommentData: IncidentCommentWithUser = {
         ...data,
-        user_name: `${data.user.prenoms} ${data.user.noms}`
+        user_name: `${personnel.prenoms} ${personnel.noms}`
       };
 
       setComments(prev => [...prev, newCommentData]);
@@ -456,18 +440,12 @@ const SecurityIncidentManager = () => {
                       </div>
                     </div>
 
-                    {selectedIncident.tags && selectedIncident.tags.length > 0 && (
-                      <div>
-                        <h4 className="font-medium mb-2">Tags</h4>
-                        <div className="flex gap-2">
-                          {selectedIncident.tags.map(tag => (
-                            <Badge key={tag} variant="outline">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    <div>
+                      <h4 className="font-medium mb-2">Type d'incident</h4>
+                      <Badge variant="outline">
+                        {selectedIncident.incident_type}
+                      </Badge>
+                    </div>
                   </TabsContent>
 
                   <TabsContent value="comments" className="space-y-4">
