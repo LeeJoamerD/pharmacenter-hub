@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings, Building, Users, Palette, Lock, Printer, RefreshCw, Briefcase, Wrench, Globe } from 'lucide-react';
 import GeneralSettings from './parametres/GeneralSettings';
-import UserSettings from './parametres/UserSettings';
+import UserSettingsWithTabs from './parametres/UserSettingsWithTabs';
 import InterfaceSettings from './parametres/InterfaceSettings';
 import SecuritySettings from './parametres/SecuritySettings';
 import PrintSettings from './parametres/PrintSettings';
@@ -65,7 +65,7 @@ const ParametresModule = () => {
             </TabsContent>
 
             <TabsContent value="users" className="mt-6">
-              <UserSettings />
+              <UserSettingsWithTabs />
             </TabsContent>
 
             <TabsContent value="interface" className="mt-6">
