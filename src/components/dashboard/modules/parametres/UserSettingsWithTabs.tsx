@@ -7,6 +7,10 @@ import { RolePermissionManager } from './RolePermissionManager';
 import { SecurityDashboard } from '@/components/auth/SecurityDashboard';
 import { CrossTenantSecurityManager } from '@/components/security/CrossTenantSecurityManager';
 import { SecurityMonitoring } from '@/components/security/SecurityMonitoring';
+import SecuritySurveillanceDashboard from '@/components/security/SecurityDashboard';
+import SecurityNotificationManager from '@/components/security/SecurityNotificationManager';
+import SecurityIncidentManager from '@/components/security/SecurityIncidentManager';
+import SecurityAnalyticsDashboard from '@/components/security/SecurityAnalyticsDashboard';
 
 const UserSettingsWithTabs = () => {
   return (
@@ -24,7 +28,7 @@ const UserSettingsWithTabs = () => {
       </Card>
 
       <Tabs defaultValue="users" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">{/* Augmenté pour plus d'onglets */}
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Utilisateurs
@@ -33,14 +37,10 @@ const UserSettingsWithTabs = () => {
             <Shield className="h-4 w-4" />
             Rôles et Permissions
           </TabsTrigger>
-          <TabsTrigger value="security" className="flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            Sessions & Activité
-          </TabsTrigger>
-          <TabsTrigger value="cross-tenant" className="flex items-center gap-2">
-            <Lock className="h-4 w-4" />
-            Sécurité Inter-Pharmacie
-          </TabsTrigger>
+          <TabsTrigger value="security">Sécurité</TabsTrigger>
+          <TabsTrigger value="surveillance">Surveillance</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="incidents">Incidents</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-6">
@@ -68,38 +68,16 @@ const UserSettingsWithTabs = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="cross-tenant" className="space-y-6">
-          <div className="grid grid-cols-1 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lock className="h-5 w-5" />
-                  Monitoring de sécurité cross-tenant
-                </CardTitle>
-                <CardDescription>
-                  Surveillez les violations et incidents de sécurité
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <SecurityMonitoring />
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Configuration cross-tenant
-                </CardTitle>
-                <CardDescription>
-                  Gérez les accès et permissions entre pharmacies
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CrossTenantSecurityManager />
-              </CardContent>
-            </Card>
-          </div>
+        <TabsContent value="surveillance">
+          <SecuritySurveillanceDashboard />
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <SecurityNotificationManager />
+        </TabsContent>
+
+        <TabsContent value="incidents">
+          <SecurityIncidentManager />
         </TabsContent>
       </Tabs>
     </div>
