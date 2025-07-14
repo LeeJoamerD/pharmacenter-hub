@@ -14,6 +14,7 @@ import Dashboard from "./pages/Tableau de bord";
 import Auth from "./pages/Auth";
 import PharmacyRegistration from "./pages/PharmacyRegistration";
 import NotFound from "./pages/NotFound";
+import { PERMISSIONS } from './types/permissions';
 
 const queryClient = new QueryClient();
 
@@ -30,8 +31,22 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/pharmacy-registration" element={<PharmacyRegistration />} />
-              <Route path="/tableau-de-bord" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route 
+                path="/tableau-de-bord" 
+                element={
+                  <ProtectedRoute permissions={[PERMISSIONS.PHARMACY_VIEW]}>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/dashboard" 
+                element={
+                  <ProtectedRoute permissions={[PERMISSIONS.PHARMACY_VIEW]}>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
