@@ -8,16 +8,21 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Shield, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAdvancedAuth } from '@/hooks/useAdvancedAuth';
+import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 
 const Auth = () => {
   const { signIn, signUp, user, loading } = useAuth();
+  const { enhancedSignIn, validatePassword, checkLoginAttempts } = useAdvancedAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [pharmacies, setPharmacies] = useState<any[]>([]);
+  const [passwordValidation, setPasswordValidation] = useState<any>(null);
+  const [accountLocked, setAccountLocked] = useState<any>(null);
 
   // Form states
   const [loginData, setLoginData] = useState({
@@ -66,12 +71,19 @@ const Auth = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setAccountLocked(null);
 
     try {
-      const { error } = await signIn(loginData.email, loginData.password);
+      // Utiliser l'authentification avancée
+      const { data, error } = await enhancedSignIn(loginData.email, loginData.password);
       
       if (error) {
-        if (error.message === 'Invalid login credentials') {
+        if (error.message?.includes('verrouillé')) {
+          setAccountLocked({
+            isLocked: true,
+            message: error.message
+          });
+        } else if (error.message === 'Invalid login credentials') {
           setError('Email ou mot de passe incorrect');
         } else {
           setError(error.message);
@@ -81,6 +93,23 @@ const Auth = () => {
       setError('Une erreur inattendue s\'est produite');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Vérifier le statut du compte lors de la saisie de l'email
+  const handleEmailChange = async (email: string) => {
+    setLoginData(prev => ({ ...prev, email }));
+    
+    if (email && email.includes('@')) {
+      const lockStatus = await checkLoginAttempts(email);
+      if (lockStatus.isLocked) {
+        setAccountLocked({
+          isLocked: true,
+          message: `Compte temporairement verrouillé (${lockStatus.lockoutRemainingMinutes} min restantes)`
+        });
+      } else {
+        setAccountLocked(null);
+      }
     }
   };
 
@@ -109,6 +138,14 @@ const Auth = () => {
     }
 
     try {
+      // Valider le mot de passe avant l'inscription
+      const validation = await validatePassword(signupData.password);
+      if (!validation.isValid) {
+        setError(validation.errors.join(', '));
+        setIsLoading(false);
+        return;
+      }
+
       const { error } = await signUp(
         signupData.email,
         signupData.password,
@@ -187,6 +224,18 @@ const Auth = () => {
                       <AlertDescription>{error}</AlertDescription>
                     </Alert>
                   )}
+
+                  {accountLocked?.isLocked && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-4 w-4" />
+                          {accountLocked.message}
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
@@ -195,7 +244,7 @@ const Auth = () => {
                       type="email"
                       placeholder="votre@email.com"
                       value={loginData.email}
-                      onChange={(e) => setLoginData(prev => ({ ...prev, email: e.target.value }))}
+                      onChange={(e) => handleEmailChange(e.target.value)}
                       required
                     />
                   </div>
@@ -223,7 +272,11 @@ const Auth = () => {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={isLoading || accountLocked?.isLocked}
+                  >
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Se connecter
                   </Button>
@@ -318,7 +371,15 @@ const Auth = () => {
                         id="signup-password"
                         type="password"
                         value={signupData.password}
-                        onChange={(e) => setSignupData(prev => ({ ...prev, password: e.target.value }))}
+                        onChange={async (e) => {
+                          const password = e.target.value;
+                          setSignupData(prev => ({ ...prev, password }));
+                          
+                          if (password && signupData.tenant_id) {
+                            const validation = await validatePassword(password);
+                            setPasswordValidation(validation);
+                          }
+                        }}
                         required
                       />
                     </div>
@@ -333,6 +394,14 @@ const Auth = () => {
                       />
                     </div>
                   </div>
+
+                  {/* Indicateur de force du mot de passe */}
+                  {signupData.password && (
+                    <PasswordStrengthIndicator 
+                      password={signupData.password}
+                      validation={passwordValidation}
+                    />
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="role">Rôle</Label>

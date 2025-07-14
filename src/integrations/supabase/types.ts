@@ -1256,6 +1256,47 @@ export type Database = {
           },
         ]
       }
+      login_attempts: {
+        Row: {
+          created_at: string
+          email: string
+          failure_reason: string | null
+          id: string
+          ip_address: string | null
+          success: boolean
+          tenant_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          failure_reason?: string | null
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+          tenant_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          failure_reason?: string | null
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+          tenant_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_login_attempts_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lots: {
         Row: {
           created_at: string
@@ -1522,6 +1563,107 @@ export type Database = {
           valeur_parametre?: string | null
         }
         Relationships: []
+      }
+      password_history: {
+        Row: {
+          created_at: string
+          id: string
+          password_hash: string
+          personnel_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          password_hash: string
+          personnel_id: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          password_hash?: string
+          personnel_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_password_history_personnel"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_password_history_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      password_policies: {
+        Row: {
+          created_at: string
+          force_2fa_for_roles: string[] | null
+          id: string
+          lockout_duration_minutes: number
+          max_age_days: number
+          max_failed_attempts: number
+          min_length: number
+          remember_last_passwords: number
+          require_lowercase: boolean
+          require_numbers: boolean
+          require_special_chars: boolean
+          require_uppercase: boolean
+          session_timeout_minutes: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          force_2fa_for_roles?: string[] | null
+          id?: string
+          lockout_duration_minutes?: number
+          max_age_days?: number
+          max_failed_attempts?: number
+          min_length?: number
+          remember_last_passwords?: number
+          require_lowercase?: boolean
+          require_numbers?: boolean
+          require_special_chars?: boolean
+          require_uppercase?: boolean
+          session_timeout_minutes?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          force_2fa_for_roles?: string[] | null
+          id?: string
+          lockout_duration_minutes?: number
+          max_age_days?: number
+          max_failed_attempts?: number
+          min_length?: number
+          remember_last_passwords?: number
+          require_lowercase?: boolean
+          require_numbers?: boolean
+          require_special_chars?: boolean
+          require_uppercase?: boolean
+          session_timeout_minutes?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_password_policies_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       permissions: {
         Row: {
@@ -2586,6 +2728,123 @@ export type Database = {
           },
         ]
       }
+      two_factor_auth: {
+        Row: {
+          backup_codes: string[] | null
+          created_at: string
+          id: string
+          is_enabled: boolean
+          last_used_at: string | null
+          personnel_id: string
+          secret_key: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          backup_codes?: string[] | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          last_used_at?: string | null
+          personnel_id: string
+          secret_key: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          backup_codes?: string[] | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          last_used_at?: string | null
+          personnel_id?: string
+          secret_key?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_two_factor_auth_personnel"
+            columns: ["personnel_id"]
+            isOneToOne: true
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_two_factor_auth_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          ip_address: string | null
+          is_active: boolean
+          last_activity: string
+          personnel_id: string
+          requires_2fa: boolean
+          risk_score: number | null
+          security_level: string
+          session_token: string
+          tenant_id: string
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean
+          last_activity?: string
+          personnel_id: string
+          requires_2fa?: boolean
+          risk_score?: number | null
+          security_level?: string
+          session_token: string
+          tenant_id: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean
+          last_activity?: string
+          personnel_id?: string
+          requires_2fa?: boolean
+          risk_score?: number | null
+          security_level?: string
+          session_token?: string
+          tenant_id?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_user_sessions_personnel"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_user_sessions_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ventes: {
         Row: {
           agent_vendeur_id: string | null
@@ -2660,6 +2919,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_session_risk_score: {
+        Args: { ip_address: string; user_agent: string; personnel_id: string }
+        Returns: number
+      }
+      check_login_attempts: {
+        Args: { email: string; tenant_id: string }
+        Returns: Json
+      }
       check_user_permission: {
         Args: { required_roles: string[] }
         Returns: boolean
@@ -2688,6 +2955,10 @@ export type Database = {
           admin_email: string
           admin_password: string
         }
+        Returns: Json
+      }
+      validate_password_strength: {
+        Args: { password: string; tenant_id: string }
         Returns: Json
       }
     }

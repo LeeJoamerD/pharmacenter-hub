@@ -12,9 +12,12 @@ interface AuthContextType {
   personnel: Personnel | null;
   pharmacy: Pharmacy | null;
   loading: boolean;
+  securityLevel: string;
+  requires2FA: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, personnelData: Partial<Personnel>) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  updateSecurityContext: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,6 +36,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [personnel, setPersonnel] = useState<Personnel | null>(null);
   const [pharmacy, setPharmacy] = useState<Pharmacy | null>(null);
   const [loading, setLoading] = useState(true);
+  const [securityLevel, setSecurityLevel] = useState<string>('standard');
+  const [requires2FA, setRequires2FA] = useState<boolean>(false);
 
   const fetchUserData = async (userId: string) => {
     try {
@@ -65,8 +70,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setPharmacy(pharmacyData);
       }
+
+      // Mettre à jour le contexte de sécurité
+      await updateSecurityContext();
     } catch (error) {
       console.error('Error in fetchUserData:', error);
+    }
+  };
+
+  const updateSecurityContext = async () => {
+    if (!personnel?.id || !pharmacy?.id) return;
+
+    try {
+      // Récupérer la session utilisateur active
+      const { data: userSession } = await supabase
+        .from('user_sessions')
+        .select('security_level, requires_2fa')
+        .eq('personnel_id', personnel.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (userSession) {
+        setSecurityLevel(userSession.security_level);
+        setRequires2FA(userSession.requires_2fa);
+      }
+
+      // Vérifier les politiques de sécurité pour ce rôle
+      const { data: passwordPolicy } = await supabase
+        .from('password_policies')
+        .select('force_2fa_for_roles')
+        .eq('tenant_id', pharmacy.id)
+        .single();
+
+      if (passwordPolicy?.force_2fa_for_roles?.includes(personnel.role)) {
+        setRequires2FA(true);
+      }
+    } catch (error) {
+      console.error('Error updating security context:', error);
     }
   };
 
@@ -84,6 +126,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setPersonnel(null);
           setPharmacy(null);
+          setSecurityLevel('standard');
+          setRequires2FA(false);
         }
         
         setLoading(false);
@@ -158,11 +202,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    // Désactiver les sessions actives
+    if (personnel?.id) {
+      await supabase
+        .from('user_sessions')
+        .update({ is_active: false })
+        .eq('personnel_id', personnel.id)
+        .eq('is_active', true);
+    }
+
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setPersonnel(null);
     setPharmacy(null);
+    setSecurityLevel('standard');
+    setRequires2FA(false);
   };
 
   const value = {
@@ -171,9 +226,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     personnel,
     pharmacy,
     loading,
+    securityLevel,
+    requires2FA,
     signIn,
     signUp,
-    signOut
+    signOut,
+    updateSecurityContext
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
