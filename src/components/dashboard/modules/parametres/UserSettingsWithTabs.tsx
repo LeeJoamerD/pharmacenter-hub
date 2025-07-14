@@ -1,10 +1,12 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Shield, Activity } from 'lucide-react';
+import { Users, Shield, Activity, Lock } from 'lucide-react';
 import UserSettings from './UserSettings';
 import { RolePermissionManager } from './RolePermissionManager';
 import { SecurityDashboard } from '@/components/auth/SecurityDashboard';
+import { CrossTenantSecurityManager } from '@/components/security/CrossTenantSecurityManager';
+import { SecurityMonitoring } from '@/components/security/SecurityMonitoring';
 
 const UserSettingsWithTabs = () => {
   return (
@@ -22,7 +24,7 @@ const UserSettingsWithTabs = () => {
       </Card>
 
       <Tabs defaultValue="users" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Utilisateurs
@@ -33,7 +35,11 @@ const UserSettingsWithTabs = () => {
           </TabsTrigger>
           <TabsTrigger value="security" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
-            Sécurité
+            Sessions & Activité
+          </TabsTrigger>
+          <TabsTrigger value="cross-tenant" className="flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            Sécurité Inter-Pharmacie
           </TabsTrigger>
         </TabsList>
 
@@ -49,17 +55,51 @@ const UserSettingsWithTabs = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Tableau de bord sécurité
+                <Activity className="h-5 w-5" />
+                Surveillance des sessions et activité
               </CardTitle>
               <CardDescription>
-                Surveillez l'activité de sécurité et gérez les sessions actives
+                Surveillez les sessions actives et l'activité de sécurité
               </CardDescription>
             </CardHeader>
             <CardContent>
               <SecurityDashboard />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="cross-tenant" className="space-y-6">
+          <div className="grid grid-cols-1 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="h-5 w-5" />
+                  Monitoring de sécurité cross-tenant
+                </CardTitle>
+                <CardDescription>
+                  Surveillez les violations et incidents de sécurité
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SecurityMonitoring />
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Configuration cross-tenant
+                </CardTitle>
+                <CardDescription>
+                  Gérez les accès et permissions entre pharmacies
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CrossTenantSecurityManager />
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

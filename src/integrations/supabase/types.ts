@@ -472,6 +472,77 @@ export type Database = {
         }
         Relationships: []
       }
+      cross_tenant_permissions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          granted_by: string
+          granted_to: string | null
+          id: string
+          is_active: boolean
+          permission_type: string
+          source_tenant_id: string
+          table_name: string
+          target_tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          granted_by: string
+          granted_to?: string | null
+          id?: string
+          is_active?: boolean
+          permission_type: string
+          source_tenant_id: string
+          table_name: string
+          target_tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          granted_by?: string
+          granted_to?: string | null
+          id?: string
+          is_active?: boolean
+          permission_type?: string
+          source_tenant_id?: string
+          table_name?: string
+          target_tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_cross_tenant_granted_by"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_cross_tenant_granted_to"
+            columns: ["granted_to"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_cross_tenant_source"
+            columns: ["source_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_cross_tenant_target"
+            columns: ["target_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ecritures_comptables: {
         Row: {
           created_at: string
@@ -2666,6 +2737,53 @@ export type Database = {
           },
         ]
       }
+      tenant_security_config: {
+        Row: {
+          allow_cross_tenant_read: boolean
+          allowed_source_tenants: string[] | null
+          auto_block_violations: boolean
+          created_at: string
+          id: string
+          max_violations_per_hour: number
+          notification_webhook: string | null
+          security_level: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          allow_cross_tenant_read?: boolean
+          allowed_source_tenants?: string[] | null
+          auto_block_violations?: boolean
+          created_at?: string
+          id?: string
+          max_violations_per_hour?: number
+          notification_webhook?: string | null
+          security_level?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          allow_cross_tenant_read?: boolean
+          allowed_source_tenants?: string[] | null
+          auto_block_violations?: boolean
+          created_at?: string
+          id?: string
+          max_violations_per_hour?: number
+          notification_webhook?: string | null
+          security_level?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_tenant_security_config_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tva_declaration: {
         Row: {
           acompte_verse: number
@@ -2923,6 +3041,15 @@ export type Database = {
         Args: { ip_address: string; user_agent: string; personnel_id: string }
         Returns: number
       }
+      check_cross_tenant_permission: {
+        Args: {
+          source_tenant: string
+          target_tenant: string
+          table_name: string
+          permission_type: string
+        }
+        Returns: boolean
+      }
       check_login_attempts: {
         Args: { email: string; tenant_id: string }
         Returns: Json
@@ -2932,6 +3059,14 @@ export type Database = {
         Returns: boolean
       }
       cleanup_old_security_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cleanup_security_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      detect_suspicious_patterns: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
@@ -2957,9 +3092,17 @@ export type Database = {
         }
         Returns: Json
       }
+      setup_cross_tenant_security_triggers: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       validate_password_strength: {
         Args: { password: string; tenant_id: string }
         Returns: Json
+      }
+      validate_tenant_access: {
+        Args: { target_tenant_id: string; operation_type?: string }
+        Returns: boolean
       }
     }
     Enums: {
