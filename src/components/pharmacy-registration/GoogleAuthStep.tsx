@@ -90,7 +90,7 @@ export const GoogleAuthStep: React.FC<GoogleAuthStepProps> = ({
             <Shield className="h-8 w-8 text-primary" />
           </div>
         </div>
-        <CardTitle className="text-xl">{title}</CardTitle>
+        <CardTitle className="text-xl">Authentification Pharmacie</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

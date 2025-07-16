@@ -34,8 +34,8 @@ export const usePharmacyRegistration = () => {
   }, []);
 
   const handlePharmacyNext = () => {
-    setAuthType('pharmacy');
-    setShowGoogleAuth(true);
+    // Rediriger vers la nouvelle page de connexion pharmacie
+    window.location.href = '/pharmacy-login';
   };
 
   const handlePharmacyGoogleSuccess = (user: User) => {
