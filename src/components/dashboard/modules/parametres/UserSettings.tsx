@@ -523,7 +523,42 @@ const UserSettings = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          
+          <div className="space-y-6">
+            {Object.values(ROLES).map((role) => (
+              <Card key={role.id} className="border-l-4 border-l-primary">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">{role.name}</CardTitle>
+                      <CardDescription>{role.description}</CardDescription>
+                    </div>
+                    <Badge variant="outline">Niveau {role.level}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-medium flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      Permissions accordées
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {role.permissions.map((permission) => (
+                        <div key={permission} className="flex items-center space-x-3 p-2 bg-muted/30 rounded-md">
+                          <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" />
+                          <span className="text-sm text-muted-foreground">{permission}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {role.permissions.length === 0 && (
+                      <div className="text-sm text-muted-foreground italic">
+                        Aucune permission spécifique accordée
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -536,105 +571,7 @@ const UserSettings = () => {
               Modifier les informations de {selectedUser?.prenoms} {selectedUser?.noms}
             </DialogDescription>
           </DialogHeader>
-          <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={editForm.control}
-                  name="noms"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nom(s)</FormLabel>
-                      <FormControl>
-                        <Input {...field} required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={editForm.control}
-                  name="prenoms"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Prénom(s)</FormLabel>
-                      <FormControl>
-                        <Input {...field} required />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={editForm.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="email" required />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-
-              <FormField
-                control={editForm.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Rôle</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Object.values(ROLES).map((role) => (
-                          <SelectItem key={role.id} value={role.id}>
-                            {role.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex items-center space-x-2">
-                <FormField
-                  control={editForm.control}
-                  name="is_active"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2">
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormLabel>Utilisateur actif</FormLabel>
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <DialogFooter>
-                <Button 
-                  type="submit" 
-                  disabled={updatePersonnelMutation.isPending}
-                >
-                  {updatePersonnelMutation.isPending ? 'Modification...' : 'Modifier'}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+          
         </DialogContent>
       </Dialog>
     </div>
