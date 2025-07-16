@@ -30,8 +30,8 @@ export const GoogleAuthStep: React.FC<GoogleAuthStepProps> = ({
       // Stocker le type d'authentification dans localStorage avant la redirection
       localStorage.setItem('pharmacyAuthType', stepType);
       
-      // URL de redirection simple, exactement comme configurée dans Google Cloud Console
-      const redirectUrl = `${window.location.origin}/pharmacy-registration`;
+      // URL de redirection vers PharmacyLogin après authentification Google
+      const redirectUrl = `${window.location.origin}/pharmacy-login`;
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -90,7 +90,7 @@ export const GoogleAuthStep: React.FC<GoogleAuthStepProps> = ({
             <Shield className="h-8 w-8 text-primary" />
           </div>
         </div>
-        <CardTitle className="text-xl">Authentification Pharmacie</CardTitle>
+        <CardTitle className="text-xl">Connecter votre pharmacie</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

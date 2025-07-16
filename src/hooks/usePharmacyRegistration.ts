@@ -11,7 +11,7 @@ export const usePharmacyRegistration = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [pharmacyGoogleUser, setPharmacyGoogleUser] = useState<User | null>(null);
   const [adminGoogleUser, setAdminGoogleUser] = useState<User | null>(null);
-  const [showGoogleAuth, setShowGoogleAuth] = useState(true); // Démarrer par l'auth
+  const [showGoogleAuth, setShowGoogleAuth] = useState(false); // Démarrer par le formulaire
   const [authType, setAuthType] = useState<'pharmacy' | 'admin'>('pharmacy');
 
   const form = useForm<PharmacyRegistrationData>({
@@ -34,21 +34,14 @@ export const usePharmacyRegistration = () => {
   }, []);
 
   const handlePharmacyNext = () => {
-    // Rediriger vers la nouvelle page de connexion pharmacie
-    window.location.href = '/pharmacy-login';
+    setShowGoogleAuth(true);
+    setAuthType('pharmacy');
   };
 
   const handlePharmacyGoogleSuccess = (user: User) => {
     setPharmacyGoogleUser(user);
-    setShowGoogleAuth(false);
-    
-    // Remplir automatiquement les champs avec les données Google
-    form.setValue('email', user.email || '');
-    if (user.user_metadata?.phone) {
-      form.setValue('telephone_appel', user.user_metadata.phone);
-    }
-    
-    setStep(1); // Aller au formulaire pharmacie après auth
+    // Rediriger vers la page des deux blocs d'authentification
+    window.location.href = '/pharmacy-login';
   };
 
   const handleAdminFormNext = () => {

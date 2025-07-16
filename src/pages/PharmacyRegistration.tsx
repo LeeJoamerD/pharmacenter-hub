@@ -28,7 +28,7 @@ const PharmacyRegistration = () => {
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary mb-2">
-            Inscription Pharmacie PharmaSoft
+            Connecter votre pharmacie
           </h1>
           <p className="text-muted-foreground">
             Rejoignez notre réseau de pharmacies connectées
@@ -39,11 +39,8 @@ const PharmacyRegistration = () => {
 
         {showGoogleAuth && (
           <GoogleAuthStep
-            title={authType === 'pharmacy' ? 'Authentification Pharmacie' : 'Authentification Administrateur'}
-            description={authType === 'pharmacy' 
-              ? 'Connectez-vous avec Google pour sécuriser votre pharmacie'
-              : 'Connectez-vous avec un compte Google différent pour l\'administrateur'
-            }
+            title="Connecter votre pharmacie"
+            description="Authentifiez-vous avec Google pour continuer vers votre espace pharmacie"
             onSuccess={authType === 'pharmacy' ? handlePharmacyGoogleSuccess : handleAdminGoogleSuccess}
             onBack={handleGoogleAuthBack}
             stepType={authType}
