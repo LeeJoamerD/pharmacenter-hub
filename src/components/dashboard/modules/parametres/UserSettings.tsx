@@ -523,7 +523,281 @@ const UserSettings = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          
+          <div className="grid grid-cols-2 gap-8">
+            {/* Administrateur */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-foreground">Administrateur</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Accès aux rapports</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Rapports comptables</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Configuration système</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Accès complet au système</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Ajustements d'inventaire</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des clients</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion financière</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des factures</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des médicaments</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion du stock</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des utilisateurs</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Réception des commandes</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Ventes et encaissements</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Validation des ordonnances</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Consultation du stock</span>
+                  <Switch defaultChecked />
+                </div>
+              </div>
+            </div>
+
+            {/* Pharmacien */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-foreground">Pharmacien</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Accès aux rapports</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Rapports comptables</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Configuration système</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Accès complet au système</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Ajustements d'inventaire</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des clients</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion financière</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des factures</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des médicaments</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion du stock</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des utilisateurs</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Réception des commandes</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Ventes et encaissements</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Validation des ordonnances</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Consultation du stock</span>
+                  <Switch defaultChecked />
+                </div>
+              </div>
+            </div>
+
+            {/* Vendeur */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-foreground">Vendeur</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Accès aux rapports</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Rapports comptables</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Configuration système</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Accès complet au système</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Ajustements d'inventaire</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des clients</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion financière</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des factures</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des médicaments</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion du stock</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des utilisateurs</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Réception des commandes</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Ventes et encaissements</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Validation des ordonnances</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Consultation du stock</span>
+                  <Switch />
+                </div>
+              </div>
+            </div>
+
+            {/* Comptable */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-foreground">Comptable</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Accès aux rapports</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Rapports comptables</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Configuration système</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Accès complet au système</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Ajustements d'inventaire</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des clients</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion financière</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des factures</span>
+                  <Switch defaultChecked />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des médicaments</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion du stock</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Gestion des utilisateurs</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Réception des commandes</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Ventes et encaissements</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Validation des ordonnances</span>
+                  <Switch />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Consultation du stock</span>
+                  <Switch />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-6 border-t">
+            <Button onClick={handleSaveSettings} className="w-full">
+              Sauvegarder la configuration des rôles
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
