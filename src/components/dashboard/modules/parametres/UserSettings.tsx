@@ -523,42 +523,7 @@ const UserSettings = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
-            {Object.values(ROLES).map((role) => (
-              <Card key={role.id} className="border-l-4 border-l-primary">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{role.name}</CardTitle>
-                      <CardDescription>{role.description}</CardDescription>
-                    </div>
-                    <Badge variant="outline">Niveau {role.level}</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <h4 className="text-sm font-medium flex items-center gap-2">
-                      <Settings className="h-4 w-4" />
-                      Permissions accordées
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {role.permissions.map((permission) => (
-                        <div key={permission} className="flex items-center space-x-3 p-2 bg-muted/30 rounded-md">
-                          <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0" />
-                          <span className="text-sm text-muted-foreground">{permission}</span>
-                        </div>
-                      ))}
-                    </div>
-                    {role.permissions.length === 0 && (
-                      <div className="text-sm text-muted-foreground italic">
-                        Aucune permission spécifique accordée
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          
         </CardContent>
       </Card>
 
