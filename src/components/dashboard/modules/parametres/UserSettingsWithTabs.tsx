@@ -9,6 +9,7 @@ import SecuritySurveillance from './SecuritySurveillance';
 import SecurityNotifications from './SecurityNotifications';
 import SecurityIncidents from './SecurityIncidents';
 import SecuritySystemIntegration from '@/components/security/SecuritySystemIntegration';
+import SecurityValidationTests from '@/components/security/SecurityValidationTests';
 
 const UserSettingsWithTabs = () => {
   return (
@@ -26,7 +27,7 @@ const UserSettingsWithTabs = () => {
       </Card>
 
       <Tabs defaultValue="users" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">{/* Phase 6: Système intégré */}
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Utilisateurs
@@ -40,6 +41,7 @@ const UserSettingsWithTabs = () => {
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="incidents">Incidents</TabsTrigger>
           <TabsTrigger value="integration">Système Intégré</TabsTrigger>
+          <TabsTrigger value="tests">Tests Sécurité</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-6">
@@ -81,6 +83,10 @@ const UserSettingsWithTabs = () => {
 
         <TabsContent value="integration">
           <SecuritySystemIntegration />
+        </TabsContent>
+
+        <TabsContent value="tests">
+          <SecurityValidationTests />
         </TabsContent>
       </Tabs>
     </div>
