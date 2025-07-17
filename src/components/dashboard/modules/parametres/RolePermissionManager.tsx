@@ -1,137 +1,142 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
-import { Shield } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Shield, AlertCircle, Loader2 } from 'lucide-react';
+import { 
+  useRoles, 
+  usePermissions, 
+  useRolePermissionsByRole, 
+  useUpdateRolePermissions,
+  groupPermissionsByCategory,
+  getCategoryDisplayName,
+  type Role,
+  type Permission
+} from '@/hooks/useRolesPermissions';
 
 export const RolePermissionManager: React.FC = () => {
-  const { toast } = useToast();
-  
-  // État pour la gestion des rôles et permissions
-  const [selectedRole, setSelectedRole] = useState('Admin');
-  const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>({});
+  const [selectedRoleId, setSelectedRoleId] = useState<string>('');
 
-  // Liste complète des rôles disponibles
-  const availableRoles = [
-    { id: 'Admin', name: 'Administrateur' },
-    { id: 'Pharmacien', name: 'Pharmacien' },
-    { id: 'Vendeur', name: 'Vendeur' },
-    { id: 'Caissier', name: 'Caissier' },
-    { id: 'Gestionnaire de stock', name: 'Gestionnaire de Stock' },
-    { id: 'Comptable', name: 'Comptable' },
-    { id: 'Employé', name: 'Employé' },
-    { id: 'Partenaire', name: 'Partenaire' }
-  ];
+  // Charger les données depuis la base
+  const { data: roles = [], isLoading: rolesLoading, error: rolesError } = useRoles();
+  const { data: permissions = [], isLoading: permissionsLoading, error: permissionsError } = usePermissions();
+  const { 
+    data: rolePermissions = [], 
+    isLoading: rolePermissionsLoading 
+  } = useRolePermissionsByRole(selectedRoleId);
 
-  // Liste complète des permissions organisées par catégorie
-  const allPermissions = {
-    'Gestion Générale': [
-      { id: 'system_admin', name: 'Accès complet au système' },
-      { id: 'system_config', name: 'Configuration système' },
-      { id: 'users_manage', name: 'Gestion des utilisateurs' },
-      { id: 'reports_access', name: 'Accès aux rapports' },
-      { id: 'reports_accounting', name: 'Rapports comptables' },
-    ],
-    'Gestion Stock': [
-      { id: 'stock_view', name: 'Consultation du stock' },
-      { id: 'stock_manage', name: 'Gestion du stock' },
-      { id: 'inventory_adjust', name: 'Ajustements d\'inventaire' },
-      { id: 'orders_receive', name: 'Réception des commandes' },
-      { id: 'medicines_manage', name: 'Gestion des médicaments' },
-    ],
-    'Gestion Ventes': [
-      { id: 'sales_cashier', name: 'Ventes et encaissements' },
-      { id: 'prescriptions_validate', name: 'Validation des ordonnances' },
-      { id: 'clients_manage', name: 'Gestion des clients' },
-      { id: 'promotions_manage', name: 'Gestion des promotions' },
-      { id: 'returns_manage', name: 'Gestion des retours' },
-    ],
-    'Gestion Financière': [
-      { id: 'finance_manage', name: 'Gestion financière' },
-      { id: 'invoices_manage', name: 'Gestion des factures' },
-      { id: 'payments_manage', name: 'Gestion des paiements' },
-      { id: 'cash_manage', name: 'Gestion de caisse' },
-      { id: 'expenses_manage', name: 'Gestion des dépenses' },
-    ],
-    'Gestion Partenaires': [
-      { id: 'suppliers_manage', name: 'Gestion des fournisseurs' },
-      { id: 'partners_manage', name: 'Gestion des partenaires' },
-      { id: 'insurance_manage', name: 'Gestion des assurances' },
-      { id: 'laboratories_manage', name: 'Gestion des laboratoires' },
-    ]
-  };
+  const updateRolePermissions = useUpdateRolePermissions();
 
-  // Regrouper toutes les permissions pour l'affichage
-  const groupedPermissions = allPermissions;
-
-  // Initialiser les permissions par défaut pour chaque rôle
+  // Sélectionner le premier rôle par défaut
   React.useEffect(() => {
-    const defaultPermissions: Record<string, string[]> = {
-      'Admin': Object.values(allPermissions).flat().map(p => p.id),
-      'Pharmacien': [
-        'reports_access', 'stock_view', 'stock_manage', 'inventory_adjust',
-        'orders_receive', 'medicines_manage', 'sales_cashier', 'prescriptions_validate',
-        'clients_manage', 'suppliers_manage'
-      ],
-      'Vendeur': [
-        'stock_view', 'medicines_manage', 'sales_cashier', 'clients_manage'
-      ],
-      'Caissier': [
-        'stock_view', 'sales_cashier', 'cash_manage', 'payments_manage'
-      ],
-      'Gestionnaire de stock': [
-        'stock_view', 'stock_manage', 'inventory_adjust', 'orders_receive',
-        'medicines_manage', 'suppliers_manage'
-      ],
-      'Comptable': [
-        'reports_access', 'reports_accounting', 'finance_manage', 'invoices_manage',
-        'payments_manage', 'expenses_manage'
-      ],
-      'Employé': [
-        'stock_view'
-      ],
-      'Partenaire': [
-        'stock_view', 'reports_access'
-      ]
-    };
-    setRolePermissions(defaultPermissions);
-  }, []);
+    if (roles.length > 0 && !selectedRoleId) {
+      setSelectedRoleId(roles[0].id);
+    }
+  }, [roles, selectedRoleId]);
 
-  // Vérifier si une permission est activée pour un rôle
-  const isPermissionEnabled = (roleId: string, permissionId: string): boolean => {
-    return rolePermissions[roleId]?.includes(permissionId) || false;
-  };
+  // Grouper les permissions par catégorie
+  const groupedPermissions = useMemo(() => {
+    return groupPermissionsByCategory(permissions as Permission[]);
+  }, [permissions]);
 
-  // Gérer le changement de permission
-  const handlePermissionChange = (roleId: string, permissionId: string, enabled: boolean) => {
-    setRolePermissions(prev => {
-      const currentPermissions = prev[roleId] || [];
-      if (enabled) {
-        return {
-          ...prev,
-          [roleId]: [...currentPermissions, permissionId]
-        };
-      } else {
-        return {
-          ...prev,
-          [roleId]: currentPermissions.filter(p => p !== permissionId)
-        };
-      }
+  // Obtenir les permissions actives pour le rôle sélectionné
+  const activePermissionIds = useMemo(() => {
+    return (rolePermissions as any[])
+      .filter(rp => rp.accorde)
+      .map(rp => rp.permission_id);
+  }, [rolePermissions]);
+
+  // État local pour les modifications en cours
+  const [localPermissions, setLocalPermissions] = useState<string[]>([]);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Synchroniser l'état local avec les données de la base
+  React.useEffect(() => {
+    setLocalPermissions(activePermissionIds);
+    setHasChanges(false);
+  }, [activePermissionIds]);
+
+  // Gérer le changement d'une permission
+  const handlePermissionToggle = (permissionId: string, enabled: boolean) => {
+    setLocalPermissions(prev => {
+      const newPermissions = enabled
+        ? [...prev, permissionId]
+        : prev.filter(id => id !== permissionId);
+      
+      setHasChanges(JSON.stringify(newPermissions.sort()) !== JSON.stringify(activePermissionIds.sort()));
+      return newPermissions;
     });
   };
 
-  // Sauvegarder les permissions d'un rôle
-  const handleSaveRolePermissions = () => {
-    const selectedRoleName = availableRoles.find(r => r.id === selectedRole)?.name;
-    toast({
-      title: "Permissions sauvegardées",
-      description: `Les permissions pour ${selectedRoleName} ont été mises à jour.`,
+  // Sauvegarder les modifications
+  const handleSave = () => {
+    if (!selectedRoleId) return;
+    
+    updateRolePermissions.mutate({
+      roleId: selectedRoleId,
+      permissionIds: localPermissions
     });
+    setHasChanges(false);
   };
+
+  // Annuler les modifications
+  const handleCancel = () => {
+    setLocalPermissions(activePermissionIds);
+    setHasChanges(false);
+  };
+
+  // Vérifier si une permission est activée
+  const isPermissionEnabled = (permissionId: string) => {
+    return localPermissions.includes(permissionId);
+  };
+
+  // Gestion des erreurs
+  if (rolesError || permissionsError) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Erreur lors du chargement des données. Veuillez actualiser la page.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  // État de chargement
+  if (rolesLoading || permissionsLoading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Configuration des Rôles et Permissions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-1 space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+              <div className="lg:col-span-2 space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-32 w-full" />
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const selectedRole = roles.find(r => r.id === selectedRoleId);
 
   return (
     <div className="space-y-6">
@@ -152,18 +157,25 @@ export const RolePermissionManager: React.FC = () => {
               <h3 className="text-lg font-semibold mb-4">Rôles disponibles</h3>
               <ScrollArea className="h-[600px]">
                 <div className="space-y-2">
-                  {availableRoles.map((role) => (
+                  {(roles as Role[]).map((role) => (
                     <Card 
                       key={role.id}
                       className={`cursor-pointer transition-colors ${
-                        selectedRole === role.id ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                        selectedRoleId === role.id ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
                       }`}
-                      onClick={() => setSelectedRole(role.id)}
+                      onClick={() => setSelectedRoleId(role.id)}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium">{role.name}</span>
-                          {selectedRole === role.id && (
+                          <div>
+                            <span className="font-medium">{role.nom_role}</span>
+                            {role.description && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {role.description}
+                              </p>
+                            )}
+                          </div>
+                          {selectedRoleId === role.id && (
                             <Badge variant="secondary">Sélectionné</Badge>
                           )}
                         </div>
@@ -178,44 +190,74 @@ export const RolePermissionManager: React.FC = () => {
             <div className="lg:col-span-2">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">
-                  Permissions pour : {availableRoles.find(r => r.id === selectedRole)?.name}
+                  Permissions pour : {selectedRole?.nom_role}
                 </h3>
-                <Button onClick={handleSaveRolePermissions}>
-                  Sauvegarder
-                </Button>
+                <div className="flex gap-2">
+                  {hasChanges && (
+                    <Button variant="outline" onClick={handleCancel}>
+                      Annuler
+                    </Button>
+                  )}
+                  <Button 
+                    onClick={handleSave}
+                    disabled={!hasChanges || updateRolePermissions.isPending}
+                  >
+                    {updateRolePermissions.isPending && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Sauvegarder
+                  </Button>
+                </div>
               </div>
               
-              <ScrollArea className="h-[600px]">
-                <div className="space-y-6">
-                  {Object.entries(groupedPermissions).map(([category, permissions]) => (
-                    <Card key={category}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-base">{category}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          {permissions.map((permission) => (
-                            <div 
-                              key={permission.id}
-                              className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50"
-                            >
-                              <span className="text-sm font-medium">
-                                {permission.name}
-                              </span>
-                              <Switch
-                                checked={isPermissionEnabled(selectedRole, permission.id)}
-                                onCheckedChange={(checked) => 
-                                  handlePermissionChange(selectedRole, permission.id, checked)
-                                }
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
+              {rolePermissionsLoading ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <Skeleton key={i} className="h-32 w-full" />
                   ))}
                 </div>
-              </ScrollArea>
+              ) : (
+                <ScrollArea className="h-[600px]">
+                  <div className="space-y-6">
+                    {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => (
+                      <Card key={category}>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-base">
+                            {getCategoryDisplayName(category)}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            {categoryPermissions.map((permission) => (
+                              <div 
+                                key={permission.id}
+                                className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50"
+                              >
+                                <div>
+                                  <span className="text-sm font-medium">
+                                    {permission.nom_permission}
+                                  </span>
+                                  {permission.description && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {permission.description}
+                                    </p>
+                                  )}
+                                </div>
+                                <Switch
+                                  checked={isPermissionEnabled(permission.id)}
+                                  onCheckedChange={(checked) => 
+                                    handlePermissionToggle(permission.id, checked)
+                                  }
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
             </div>
           </div>
         </CardContent>

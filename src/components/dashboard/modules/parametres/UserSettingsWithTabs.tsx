@@ -4,13 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, Shield, Activity, Lock } from 'lucide-react';
 import UserSettings from './UserSettings';
 import { RolePermissionManager } from './RolePermissionManager';
-import { SecurityDashboard } from '@/components/auth/SecurityDashboard';
-import { CrossTenantSecurityManager } from '@/components/security/CrossTenantSecurityManager';
-import { SecurityMonitoring } from '@/components/security/SecurityMonitoring';
-import SecuritySurveillanceDashboard from '@/components/security/SecurityDashboard';
-import SecurityNotificationManager from '@/components/security/SecurityNotificationManager';
-import SecurityIncidentManager from '@/components/security/SecurityIncidentManager';
-import SecurityAnalyticsDashboard from '@/components/security/SecurityAnalyticsDashboard';
+import { SecurityDashboard } from './SecurityDashboard';
+import SecuritySurveillance from './SecuritySurveillance';
+import SecurityNotifications from './SecurityNotifications';
+import SecurityIncidents from './SecurityIncidents';
 
 const UserSettingsWithTabs = () => {
   return (
@@ -69,15 +66,15 @@ const UserSettingsWithTabs = () => {
         </TabsContent>
 
         <TabsContent value="surveillance">
-          <SecuritySurveillanceDashboard />
+          <SecuritySurveillance />
         </TabsContent>
 
         <TabsContent value="notifications">
-          <SecurityNotificationManager />
+          <SecurityNotifications />
         </TabsContent>
 
         <TabsContent value="incidents">
-          <SecurityIncidentManager />
+          <SecurityIncidents />
         </TabsContent>
       </Tabs>
     </div>
