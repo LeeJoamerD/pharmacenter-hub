@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, AlertCircle, Loader2 } from 'lucide-react';
+import { Shield, AlertTriangle, Loader2, Users } from 'lucide-react';
 import { 
   useRoles, 
   usePermissions, 
@@ -98,9 +98,9 @@ export const RolePermissionManager: React.FC = () => {
   if (rolesError || permissionsError) {
     return (
       <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
+        <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
-          Erreur lors du chargement des données. Veuillez actualiser la page.
+          Erreur lors du chargement des données : {rolesError?.message || permissionsError?.message}
         </AlertDescription>
       </Alert>
     );
@@ -110,28 +110,40 @@ export const RolePermissionManager: React.FC = () => {
   if (rolesLoading || permissionsLoading) {
     return (
       <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Configuration des Rôles et Permissions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-1 space-y-2">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Gestion des Rôles et Permissions</h2>
+            <p className="text-muted-foreground">
+              Configurez les permissions pour chaque rôle de votre équipe
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-12 gap-6">
+          <div className="col-span-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Chargement des rôles...</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
                 ))}
-              </div>
-              <div className="lg:col-span-2 space-y-4">
+              </CardContent>
+            </Card>
+          </div>
+          <div className="col-span-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Chargement des permissions...</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 {[...Array(3)].map((_, i) => (
                   <Skeleton key={i} className="h-32 w-full" />
                 ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -140,108 +152,121 @@ export const RolePermissionManager: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Configuration des Rôles et Permissions
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Sélectionnez un rôle et configurez ses permissions. Vous pouvez activer ou désactiver n'importe quelle permission pour chaque rôle.
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Gestion des Rôles et Permissions</h2>
+          <p className="text-muted-foreground">
+            Configurez les permissions pour chaque rôle de votre équipe
           </p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Bloc 1: Liste des rôles */}
-            <div className="lg:col-span-1">
-              <h3 className="text-lg font-semibold mb-4">Rôles disponibles</h3>
-              <ScrollArea className="h-[600px]">
-                <div className="space-y-2">
-                  {(roles as Role[]).map((role) => (
-                    <Card 
-                      key={role.id}
-                      className={`cursor-pointer transition-colors ${
-                        selectedRoleId === role.id ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
-                      }`}
-                      onClick={() => setSelectedRoleId(role.id)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="font-medium">{role.nom_role}</span>
-                            {role.description && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {role.description}
-                              </p>
-                            )}
-                          </div>
-                          {selectedRoleId === role.id && (
-                            <Badge variant="secondary">Sélectionné</Badge>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
+        </div>
+      </div>
 
-            {/* Bloc 2: Permissions du rôle sélectionné */}
-            <div className="lg:col-span-2">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">
-                  Permissions pour : {selectedRole?.nom_role}
-                </h3>
-                <div className="flex gap-2">
-                  {hasChanges && (
-                    <Button variant="outline" onClick={handleCancel}>
+      <div className="grid grid-cols-12 gap-6">
+        {/* Liste des rôles */}
+        <div className="col-span-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Rôles
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {roles?.map((role) => (
+                  <button
+                    key={role.id}
+                    onClick={() => setSelectedRoleId(role.id)}
+                    className={`w-full text-left p-4 hover:bg-muted/50 transition-colors ${
+                      selectedRoleId === role.id ? 'bg-primary/10 border-r-2 border-primary' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">{role.nom_role}</h4>
+                        {role.description && (
+                          <p className="text-sm text-muted-foreground">{role.description}</p>
+                        )}
+                      </div>
+                      <Badge variant={role.is_active ? 'default' : 'secondary'}>
+                        {role.is_active ? 'Actif' : 'Inactif'}
+                      </Badge>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Permissions du rôle sélectionné */}
+        <div className="col-span-8">
+          {selectedRoleId ? (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Permissions - {selectedRole?.nom_role}
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCancel}
+                      disabled={!hasChanges || updateRolePermissions.isPending}
+                    >
                       Annuler
                     </Button>
-                  )}
-                  <Button 
-                    onClick={handleSave}
-                    disabled={!hasChanges || updateRolePermissions.isPending}
-                  >
-                    {updateRolePermissions.isPending && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Sauvegarder
-                  </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSave}
+                      disabled={!hasChanges || updateRolePermissions.isPending}
+                    >
+                      {updateRolePermissions.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Sauvegarde...
+                        </>
+                      ) : (
+                        'Sauvegarder'
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              
-              {rolePermissionsLoading ? (
-                <div className="space-y-4">
-                  {[...Array(3)].map((_, i) => (
-                    <Skeleton key={i} className="h-32 w-full" />
-                  ))}
-                </div>
-              ) : (
-                <ScrollArea className="h-[600px]">
-                  <div className="space-y-6">
-                    {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => (
-                      <Card key={category}>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base">
+              </CardHeader>
+              <CardContent>
+                {rolePermissionsLoading ? (
+                  <div className="space-y-4">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="space-y-2">
+                        <Skeleton className="h-6 w-32" />
+                        <div className="grid grid-cols-2 gap-4">
+                          <Skeleton className="h-16 w-full" />
+                          <Skeleton className="h-16 w-full" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[600px]">
+                    <div className="space-y-6">
+                      {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => (
+                        <div key={category} className="space-y-3">
+                          <h4 className="font-medium text-sm uppercase tracking-wide text-muted-foreground">
                             {getCategoryDisplayName(category)}
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-3">
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {categoryPermissions.map((permission) => (
-                              <div 
+                              <div
                                 key={permission.id}
-                                className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50"
+                                className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                               >
-                                <div>
-                                  <span className="text-sm font-medium">
-                                    {permission.nom_permission}
-                                  </span>
-                                  {permission.description && (
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      {permission.description}
-                                    </p>
-                                  )}
+                                <div className="flex-1">
+                                  <h5 className="font-medium text-sm">{permission.nom_permission}</h5>
+                                  <p className="text-xs text-muted-foreground">
+                                    {permission.description || permission.code_permission}
+                                  </p>
                                 </div>
                                 <Switch
                                   checked={isPermissionEnabled(permission.id)}
@@ -252,16 +277,26 @@ export const RolePermissionManager: React.FC = () => {
                               </div>
                             ))}
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </ScrollArea>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">Sélectionnez un rôle</h3>
+                <p className="text-muted-foreground">
+                  Choisissez un rôle dans la liste pour configurer ses permissions
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

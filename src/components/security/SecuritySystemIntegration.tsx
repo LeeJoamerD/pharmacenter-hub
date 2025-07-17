@@ -28,6 +28,7 @@ import SecuritySurveillance from '@/components/dashboard/modules/parametres/Secu
 import SecurityNotifications from '@/components/dashboard/modules/parametres/SecurityNotifications';
 import SecurityIncidents from '@/components/dashboard/modules/parametres/SecurityIncidents';
 import SecurityTestingOptimization from '@/components/security/SecurityTestingOptimization';
+import SecurityReports from '@/components/security/SecurityReports';
 import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 
@@ -228,26 +229,14 @@ const SecuritySystemIntegration = () => {
       </Card>
 
       <Tabs value={activeModule} onValueChange={setActiveModule} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Target className="h-4 w-4" />
             Vue d'ensemble
           </TabsTrigger>
           <TabsTrigger value="dashboard" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
-            Tableau de Bord
-          </TabsTrigger>
-          <TabsTrigger value="surveillance" className="flex items-center gap-2">
-            <Eye className="h-4 w-4" />
-            Surveillance
-          </TabsTrigger>
-          <TabsTrigger value="incidents" className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            Incidents
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2">
-            <Bell className="h-4 w-4" />
-            Notifications
+            Configuration
           </TabsTrigger>
           <TabsTrigger value="testing" className="flex items-center gap-2">
             <Zap className="h-4 w-4" />
@@ -465,118 +454,12 @@ const SecuritySystemIntegration = () => {
           <SecurityDashboard />
         </TabsContent>
 
-        <TabsContent value="surveillance">
-          <SecuritySurveillance />
-        </TabsContent>
-
-        <TabsContent value="incidents">
-          <SecurityIncidents />
-        </TabsContent>
-
-        <TabsContent value="notifications">
-          <SecurityNotifications />
-        </TabsContent>
-
         <TabsContent value="testing">
           <SecurityTestingOptimization />
         </TabsContent>
 
         <TabsContent value="reports">
-          <Card>
-            <CardHeader>
-              <CardTitle>Rapports de Sécurité</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Rapports Automatisés</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <h4 className="font-medium">Rapport Quotidien</h4>
-                          <p className="text-sm text-muted-foreground">Synthèse sécuritaire des dernières 24h</p>
-                        </div>
-                        <Button size="sm">Générer</Button>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <h4 className="font-medium">Rapport Hebdomadaire</h4>
-                          <p className="text-sm text-muted-foreground">Analyse des tendances sur 7 jours</p>
-                        </div>
-                        <Button size="sm">Générer</Button>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <h4 className="font-medium">Audit de Conformité</h4>
-                          <p className="text-sm text-muted-foreground">Conformité réglementaire pharmaceutique</p>
-                        </div>
-                        <Button size="sm">Générer</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Métriques Système</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div>
-                          <div className="flex justify-between mb-2">
-                            <span>Sécurité Authentification</span>
-                            <span>{systemHealth.modules.authentication}%</span>
-                          </div>
-                          <Progress value={systemHealth.modules.authentication} />
-                        </div>
-                        <div>
-                          <div className="flex justify-between mb-2">
-                            <span>Monitoring Actif</span>
-                            <span>{systemHealth.modules.monitoring}%</span>
-                          </div>
-                          <Progress value={systemHealth.modules.monitoring} />
-                        </div>
-                        <div>
-                          <div className="flex justify-between mb-2">
-                            <span>Gestion Incidents</span>
-                            <span>{systemHealth.modules.incidents}%</span>
-                          </div>
-                          <Progress value={systemHealth.modules.incidents} />
-                        </div>
-                        <div>
-                          <div className="flex justify-between mb-2">
-                            <span>Notifications</span>
-                            <span>{systemHealth.modules.notifications}%</span>
-                          </div>
-                          <Progress value={systemHealth.modules.notifications} />
-                        </div>
-                        <div>
-                          <div className="flex justify-between mb-2">
-                            <span>Protection Données</span>
-                            <span>{systemHealth.modules.dataProtection}%</span>
-                          </div>
-                          <Progress value={systemHealth.modules.dataProtection} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <Alert>
-                  <Zap className="h-4 w-4" />
-                  <AlertDescription>
-                    <strong>Système de Sécurité Intégré Actif</strong>
-                    <p className="mt-1">
-                      Tous les modules de sécurité sont opérationnels et surveillent activement votre infrastructure pharmaceutique. 
-                      Les alertes automatiques et les rapports de conformité sont configurés selon les standards de l'industrie.
-                    </p>
-                  </AlertDescription>
-                </Alert>
-              </div>
-            </CardContent>
-          </Card>
+          <SecurityReports />
         </TabsContent>
       </Tabs>
     </div>

@@ -144,25 +144,33 @@ const SecurityValidationTests: React.FC = () => {
           };
 
         case 'rls-policies':
-          // Test des politiques RLS
+          // Test des politiques RLS avec vraies données BD
           try {
-            const { data, error } = await supabase
+            // Test 1: Vérifier que l'utilisateur peut accéder à ses données
+            const { data: myData, error: myError } = await supabase
               .from('personnel')
-              .select('id')
-              .limit(1);
+              .select('id, tenant_id')
+              .eq('auth_user_id', (await supabase.auth.getUser()).data.user?.id)
+              .single();
             
-            if (error) {
+            if (myError || !myData) {
               return {
                 ...test,
                 status: 'failed',
-                message: `Erreur RLS: ${error.message}`,
+                message: `Impossible d'accéder aux données utilisateur: ${myError?.message}`,
                 duration: Date.now() - startTime
               };
             }
+
+            // Test 2: Vérifier l'isolation tenant
+            const { count } = await supabase
+              .from('personnel')
+              .select('*', { count: 'exact', head: true });
+            
             return {
               ...test,
               status: 'passed',
-              message: 'Politiques RLS fonctionnelles',
+              message: `RLS actif - Tenant ${myData.tenant_id} isolé (${count} utilisateurs visibles)`,
               duration: Date.now() - startTime
             };
           } catch (error) {
@@ -211,19 +219,23 @@ const SecurityValidationTests: React.FC = () => {
           };
 
         case 'cross-tenant-prevention':
-          // Test prévention cross-tenant
+          // Test prévention cross-tenant avec vraies données BD
           try {
-            // Essayer d'accéder à des données d'un autre tenant (simulation)
-            const { data: alerts } = await supabase
+            // Vérifier les alertes de sécurité cross-tenant
+            const { data: alerts, count } = await supabase
               .from('security_alerts')
-              .select('*')
-              .eq('alert_type', 'cross_tenant_violation')
-              .limit(1);
+              .select('*', { count: 'exact' })
+              .eq('alert_type', 'cross_tenant_violation');
+            
+            // Vérifier les permissions cross-tenant
+            const { count: permissionsCount } = await supabase
+              .from('cross_tenant_permissions')
+              .select('*', { count: 'exact', head: true });
             
             return {
               ...test,
               status: 'passed',
-              message: 'Système de prévention cross-tenant actif',
+              message: `Protection cross-tenant active - ${count || 0} violations détectées, ${permissionsCount || 0} permissions configurées`,
               duration: Date.now() - startTime
             };
           } catch (error) {

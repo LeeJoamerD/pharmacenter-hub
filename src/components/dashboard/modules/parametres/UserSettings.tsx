@@ -372,12 +372,12 @@ const UserSettings = () => {
                   Liste et gestion des comptes utilisateurs
                 </CardDescription>
               </div>
-              {canCreateUsers && tenantId && (
+                {canCreateUsers && (
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="h-4 w-4 mr-2" />
-                      Nouvel utilisateur
+                      Ajouter un Utilisateur
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-md">
