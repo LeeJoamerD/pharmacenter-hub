@@ -1,298 +1,247 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertTriangle, Plus, Eye, MessageSquare, Clock, CheckCircle, XCircle, AlertCircle, Search, Filter } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { 
+  AlertTriangle, 
+  Plus, 
+  Eye, 
+  Edit,
+  Clock,
+  User,
+  MessageSquare,
+  CheckCircle,
+  XCircle,
+  Search
+} from 'lucide-react';
+import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
-import { Database } from '@/integrations/supabase/types';
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
-type SecurityIncident = Database['public']['Tables']['security_incidents']['Row'];
-type IncidentComment = Database['public']['Tables']['incident_comments']['Row'];
-
-interface IncidentCommentWithUser extends IncidentComment {
-  user_name?: string;
+interface IncidentFormData {
+  title: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  assigned_to?: string;
 }
 
 const SecurityIncidents = () => {
-  const [incidents, setIncidents] = useState<SecurityIncident[]>([]);
-  const [selectedIncident, setSelectedIncident] = useState<SecurityIncident | null>(null);
-  const [comments, setComments] = useState<IncidentCommentWithUser[]>([]);
-  const [newComment, setNewComment] = useState('');
-  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const { tenantId, useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
+  
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedIncident, setSelectedIncident] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newIncident, setNewIncident] = useState({
-    title: '',
-    description: '',
-    severity: 'medium' as const,
-    incident_type: '',
-    affected_systems: [] as string[]
-  });
-  const { toast } = useToast();
-  const loadIncidents = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('security_incidents')
-        .select('*')
-        .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setIncidents(data || []);
-    } catch (error) {
-      console.error('Erreur lors du chargement des incidents:', error);
+  // Charger les incidents depuis la base de données
+  const { data: incidents = [], isLoading } = useTenantQueryWithCache(
+    ['security-incidents'],
+    'security_incidents',
+    '*',
+    undefined,
+    { orderBy: { column: 'created_at', ascending: false } }
+  );
+
+  // Mutation pour créer un incident
+  const createIncidentMutation = useTenantMutation('security_incidents', 'insert', {
+    invalidateQueries: ['security-incidents'],
+    onSuccess: () => {
       toast({
-        title: "Erreur",
-        description: "Impossible de charger les incidents de sécurité",
-        variant: "destructive",
+        title: "Incident créé",
+        description: "L'incident de sécurité a été créé avec succès.",
       });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadIncidentComments = async (incidentId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('incident_comments')
-        .select('*')
-        .eq('incident_id', incidentId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      
-      // Charger les noms des utilisateurs séparément
-      const commentsWithUserNames = await Promise.all(
-        (data || []).map(async (comment) => {
-          const { data: personnel } = await supabase
-            .from('personnel')
-            .select('noms, prenoms')
-            .eq('auth_user_id', comment.user_id)
-            .single();
-          
-          return {
-            ...comment,
-            user_name: personnel ? `${personnel.noms} ${personnel.prenoms}` : 'Utilisateur'
-          };
-        })
-      );
-      
-      setComments(commentsWithUserNames);
-    } catch (error) {
-      console.error('Erreur lors du chargement des commentaires:', error);
-    }
-  };
-
-  const createIncident = async () => {
-    try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error('Utilisateur non authentifié');
-
-      const { data: personnel } = await supabase
-        .from('personnel')
-        .select('tenant_id')
-        .eq('auth_user_id', user.user.id)
-        .single();
-
-      if (!personnel) throw new Error('Personnel non trouvé');
-
-      const { error } = await supabase
-        .from('security_incidents')
-        .insert({
-          ...newIncident,
-          tenant_id: personnel.tenant_id,
-          affected_systems: newIncident.affected_systems
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Succès",
-        description: "Incident créé avec succès",
-      });
-
-      setShowCreateDialog(false);
-      setNewIncident({
-        title: '',
-        description: '',
-        severity: 'medium',
-        incident_type: '',
-        affected_systems: []
-      });
-      loadIncidents();
-    } catch (error) {
+      form.reset();
+      setIsCreateDialogOpen(false);
+    },
+    onError: (error) => {
       console.error('Erreur lors de la création de l\'incident:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de créer l'incident",
+        description: "Impossible de créer l'incident. Veuillez réessayer.",
         variant: "destructive",
       });
-    }
-  };
+    },
+  });
 
-  const updateIncidentStatus = async (incidentId: string, status: string) => {
-    try {
-      const updates: any = { status };
-      if (status === 'resolved' || status === 'closed') {
-        const { data: user } = await supabase.auth.getUser();
-        updates.resolved_at = new Date().toISOString();
-        updates.resolved_by = user.user?.id;
-      }
-
-      const { error } = await supabase
-        .from('security_incidents')
-        .update(updates)
-        .eq('id', incidentId);
-
-      if (error) throw error;
-
+  // Mutation pour mettre à jour un incident
+  const updateIncidentMutation = useTenantMutation('security_incidents', 'update', {
+    invalidateQueries: ['security-incidents'],
+    onSuccess: () => {
       toast({
-        title: "Succès",
-        description: "Statut de l'incident mis à jour",
+        title: "Incident mis à jour",
+        description: "L'incident a été mis à jour avec succès.",
       });
-
-      loadIncidents();
-      if (selectedIncident?.id === incidentId) {
-        setSelectedIncident({ ...selectedIncident, ...updates });
-      }
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour du statut:', error);
+    },
+    onError: (error) => {
+      console.error('Erreur lors de la mise à jour:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour le statut",
+        description: "Impossible de mettre à jour l'incident.",
         variant: "destructive",
       });
+    },
+  });
+
+  const form = useForm<IncidentFormData>({
+    defaultValues: {
+      title: '',
+      description: '',
+      severity: 'medium',
+      assigned_to: ''
     }
-  };
+  });
 
-  const addComment = async () => {
-    if (!selectedIncident || !newComment.trim()) return;
-
-    try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error('Utilisateur non authentifié');
-
-      const { data: personnel } = await supabase
-        .from('personnel')
-        .select('tenant_id')
-        .eq('auth_user_id', user.user.id)
-        .single();
-
-      if (!personnel) throw new Error('Personnel non trouvé');
-
-      const { error } = await supabase
-        .from('incident_comments')
-        .insert({
-          incident_id: selectedIncident.id,
-          user_id: user.user.id,
-          comment: newComment.trim(),
-          tenant_id: personnel.tenant_id
-        });
-
-      if (error) throw error;
-
-      setNewComment('');
-      loadIncidentComments(selectedIncident.id);
-      toast({
-        title: "Succès",
-        description: "Commentaire ajouté",
-      });
-    } catch (error) {
-      console.error('Erreur lors de l\'ajout du commentaire:', error);
+  const onSubmit = async (data: IncidentFormData) => {
+    if (!tenantId) {
       toast({
         title: "Erreur",
-        description: "Impossible d'ajouter le commentaire",
+        description: "Tenant ID non disponible.",
         variant: "destructive",
       });
+      return;
     }
+
+    createIncidentMutation.mutate({
+      ...data,
+      status: 'open',
+      metadata: {
+        created_via: 'security_dashboard',
+        timestamp: new Date().toISOString()
+      }
+    });
   };
 
-  useEffect(() => {
-    loadIncidents();
-  }, []);
-
-  useEffect(() => {
-    if (selectedIncident) {
-      loadIncidentComments(selectedIncident.id);
-    }
-  }, [selectedIncident]);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'open': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'in_progress': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'resolved': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'closed': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-    }
+  const handleStatusChange = async (incidentId: string, newStatus: string) => {
+    updateIncidentMutation.mutate({
+      id: incidentId,
+      status: newStatus
+    });
   };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'low': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'high': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
-      case 'critical': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+      case 'critical': return 'destructive';
+      case 'high': return 'destructive';
+      case 'medium': return 'secondary';
+      case 'low': return 'outline';
+      default: return 'outline';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open': return 'destructive';
+      case 'investigating': return 'secondary';
+      case 'resolved': return 'default';
+      case 'closed': return 'outline';
+      default: return 'outline';
     }
   };
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case 'low': return <AlertCircle className="h-4 w-4" />;
-      case 'medium': return <AlertTriangle className="h-4 w-4" />;
-      case 'high': return <AlertTriangle className="h-4 w-4" />;
-      case 'critical': return <XCircle className="h-4 w-4" />;
-      default: return <AlertCircle className="h-4 w-4" />;
+      case 'critical': return '🔴';
+      case 'high': return '🟠';
+      case 'medium': return '🟡';
+      case 'low': return '🟢';
+      default: return '⚪';
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('fr-FR');
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'open': return <XCircle className="h-4 w-4" />;
+      case 'investigating': return <Eye className="h-4 w-4" />;
+      case 'resolved': return <CheckCircle className="h-4 w-4" />;
+      case 'closed': return <CheckCircle className="h-4 w-4" />;
+      default: return <Clock className="h-4 w-4" />;
+    }
   };
 
-  const filteredIncidents = incidents.filter(incident => {
-    const matchesSearch = incident.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         incident.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         incident.incident_type.toLowerCase().includes(searchTerm.toLowerCase());
+  // Filtrer les incidents
+  const filteredIncidents = incidents.filter((incident: any) => {
+    const matchesSearch = incident.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         incident.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || incident.status === statusFilter;
     const matchesSeverity = severityFilter === 'all' || incident.severity === severityFilter;
     
     return matchesSearch && matchesStatus && matchesSeverity;
   });
 
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
-            Gestion des Incidents
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center p-8">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-2 text-muted-foreground">Chargement des incidents...</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      {/* Header avec actions */}
+      {/* En-tête avec statistiques */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-8 w-8 text-red-500" />
+              <div>
+                <p className="text-sm font-medium">Incidents Ouverts</p>
+                <p className="text-2xl font-bold text-red-500">
+                  {incidents.filter((i: any) => i.status === 'open').length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Eye className="h-8 w-8 text-orange-500" />
+              <div>
+                <p className="text-sm font-medium">En Investigation</p>
+                <p className="text-2xl font-bold text-orange-500">
+                  {incidents.filter((i: any) => i.status === 'investigating').length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-8 w-8 text-green-500" />
+              <div>
+                <p className="text-sm font-medium">Résolus</p>
+                <p className="text-2xl font-bold text-green-500">
+                  {incidents.filter((i: any) => i.status === 'resolved').length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <XCircle className="h-8 w-8 text-red-500" />
+              <div>
+                <p className="text-sm font-medium">Critiques</p>
+                <p className="text-2xl font-bold text-red-500">
+                  {incidents.filter((i: any) => i.severity === 'critical').length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Contrôles et filtres */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -300,361 +249,212 @@ const SecurityIncidents = () => {
               <AlertTriangle className="h-5 w-5" />
               Gestion des Incidents de Sécurité
             </CardTitle>
-            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Créer un Incident
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>Créer un Nouvel Incident</DialogTitle>
+                  <DialogDescription>
+                    Signaler un nouveau problème de sécurité
+                  </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium">Titre</label>
-                    <Input
-                      value={newIncident.title}
-                      onChange={(e) => setNewIncident(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="Titre de l'incident"
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Titre</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder="Titre de l'incident"
+                              required 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Description</label>
-                    <Textarea
-                      value={newIncident.description}
-                      onChange={(e) => setNewIncident(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Description détaillée de l'incident"
-                      rows={4}
+
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              {...field} 
+                              placeholder="Description détaillée de l'incident"
+                              required 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">Sévérité</label>
-                      <Select
-                        value={newIncident.severity}
-                        onValueChange={(value: any) => setNewIncident(prev => ({ ...prev, severity: value }))}
+
+                    <FormField
+                      control={form.control}
+                      name="severity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sévérité</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="low">🟢 Faible</SelectItem>
+                              <SelectItem value="medium">🟡 Moyenne</SelectItem>
+                              <SelectItem value="high">🟠 Élevée</SelectItem>
+                              <SelectItem value="critical">🔴 Critique</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <DialogFooter>
+                      <Button 
+                        type="submit" 
+                        disabled={createIncidentMutation.isPending}
                       >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">Faible</SelectItem>
-                          <SelectItem value="medium">Moyenne</SelectItem>
-                          <SelectItem value="high">Élevée</SelectItem>
-                          <SelectItem value="critical">Critique</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Type d'Incident</label>
-                      <Input
-                        value={newIncident.incident_type}
-                        onChange={(e) => setNewIncident(prev => ({ ...prev, incident_type: e.target.value }))}
-                        placeholder="Ex: Intrusion, Malware, Phishing"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                      Annuler
-                    </Button>
-                    <Button onClick={createIncident}>
-                      Créer l'Incident
-                    </Button>
-                  </div>
-                </div>
+                        {createIncidentMutation.isPending ? 'Création...' : 'Créer l\'incident'}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
               </DialogContent>
             </Dialog>
           </div>
-        </CardHeader>
-        <CardContent>
-          {/* Filtres et recherche */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher des incidents..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px]">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
-                  <SelectItem value="open">Ouvert</SelectItem>
-                  <SelectItem value="in_progress">En cours</SelectItem>
-                  <SelectItem value="resolved">Résolu</SelectItem>
-                  <SelectItem value="closed">Fermé</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={severityFilter} onValueChange={setSeverityFilter}>
-                <SelectTrigger className="w-[140px]">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Sévérité" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Toutes sévérités</SelectItem>
-                  <SelectItem value="low">Faible</SelectItem>
-                  <SelectItem value="medium">Moyenne</SelectItem>
-                  <SelectItem value="high">Élevée</SelectItem>
-                  <SelectItem value="critical">Critique</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
-          {/* Statistiques rapides */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center">
-                  <XCircle className="h-8 w-8 text-red-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-muted-foreground">Incidents Ouverts</p>
-                    <p className="text-2xl font-bold">{incidents.filter(i => i.status === 'open').length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center">
-                  <Clock className="h-8 w-8 text-yellow-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-muted-foreground">En Cours</p>
-                    <p className="text-2xl font-bold">{incidents.filter(i => i.status === 'in_progress').length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center">
-                  <CheckCircle className="h-8 w-8 text-green-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-muted-foreground">Résolus</p>
-                    <p className="text-2xl font-bold">{incidents.filter(i => i.status === 'resolved').length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center">
-                  <AlertTriangle className="h-8 w-8 text-red-600" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-muted-foreground">Critiques</p>
-                    <p className="text-2xl font-bold">{incidents.filter(i => i.severity === 'critical').length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </CardContent>
-      </Card>
+          {/* Filtres */}
+          <div className="flex flex-wrap gap-4 mt-4">
+            <div className="flex items-center gap-2">
+              <Search className="h-4 w-4" />
+              <Input
+                placeholder="Rechercher..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-64"
+              />
+            </div>
+            
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                <SelectItem value="open">Ouvert</SelectItem>
+                <SelectItem value="investigating">Investigation</SelectItem>
+                <SelectItem value="resolved">Résolu</SelectItem>
+                <SelectItem value="closed">Fermé</SelectItem>
+              </SelectContent>
+            </Select>
 
-      {/* Liste des incidents */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Liste des Incidents ({filteredIncidents.length})</CardTitle>
+            <Select value={severityFilter} onValueChange={setSeverityFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Sévérité" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes sévérités</SelectItem>
+                <SelectItem value="critical">Critique</SelectItem>
+                <SelectItem value="high">Élevée</SelectItem>
+                <SelectItem value="medium">Moyenne</SelectItem>
+                <SelectItem value="low">Faible</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
+
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Incident</TableHead>
-                <TableHead>Sévérité</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Date de Création</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredIncidents.map((incident) => (
-                <TableRow key={incident.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{incident.title}</div>
-                      {incident.description && (
-                        <div className="text-sm text-muted-foreground line-clamp-2">
+          {isLoading ? (
+            <div className="text-center py-8">
+              <p>Chargement des incidents...</p>
+            </div>
+          ) : filteredIncidents.length === 0 ? (
+            <div className="text-center py-8">
+              <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">
+                {searchTerm || statusFilter !== 'all' || severityFilter !== 'all' 
+                  ? 'Aucun incident trouvé avec ces filtres.'
+                  : 'Aucun incident de sécurité signalé.'}
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Incident</TableHead>
+                  <TableHead>Sévérité</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Créé le</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredIncidents.map((incident: any) => (
+                  <TableRow key={incident.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{incident.title}</div>
+                        <div className="text-sm text-muted-foreground truncate max-w-xs">
                           {incident.description}
                         </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getSeverityColor(incident.severity)}>
-                      <span className="flex items-center gap-1">
-                        {getSeverityIcon(incident.severity)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getSeverityColor(incident.severity)} className="flex items-center gap-1 w-fit">
+                        <span>{getSeverityIcon(incident.severity)}</span>
                         {incident.severity}
-                      </span>
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(incident.status)}>
-                      {incident.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{incident.incident_type}</TableCell>
-                  <TableCell>{formatDate(incident.created_at)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedIncident(incident)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {incident.status !== 'closed' && (
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusColor(incident.status)} className="flex items-center gap-1 w-fit">
+                        {getStatusIcon(incident.status)}
+                        {incident.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {incident.created_at && format(new Date(incident.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
                         <Select
                           value={incident.status}
-                          onValueChange={(value) => updateIncidentStatus(incident.id, value)}
+                          onValueChange={(value) => handleStatusChange(incident.id, value)}
                         >
-                          <SelectTrigger className="w-[120px]">
+                          <SelectTrigger className="w-32">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="open">Ouvert</SelectItem>
-                            <SelectItem value="in_progress">En cours</SelectItem>
+                            <SelectItem value="investigating">Investigation</SelectItem>
                             <SelectItem value="resolved">Résolu</SelectItem>
                             <SelectItem value="closed">Fermé</SelectItem>
                           </SelectContent>
                         </Select>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {filteredIncidents.length === 0 && (
-            <div className="text-center py-8">
-              <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Aucun incident trouvé avec les critères actuels</p>
-            </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
-
-      {/* Détails de l'incident sélectionné */}
-      {selectedIncident && (
-        <Dialog open={!!selectedIncident} onOpenChange={() => setSelectedIncident(null)}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
-                {selectedIncident.title}
-              </DialogTitle>
-            </DialogHeader>
-            
-            <div className="space-y-6">
-              {/* Informations principales */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Sévérité</label>
-                  <Badge className={`${getSeverityColor(selectedIncident.severity)} mt-1`}>
-                    <span className="flex items-center gap-1">
-                      {getSeverityIcon(selectedIncident.severity)}
-                      {selectedIncident.severity}
-                    </span>
-                  </Badge>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Statut</label>
-                  <Badge className={`${getStatusColor(selectedIncident.status)} mt-1`}>
-                    {selectedIncident.status}
-                  </Badge>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Type</label>
-                  <p>{selectedIncident.incident_type}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Date de création</label>
-                  <p>{formatDate(selectedIncident.created_at)}</p>
-                </div>
-              </div>
-
-              {/* Description */}
-              {selectedIncident.description && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Description</label>
-                  <p className="mt-1 p-3 bg-muted rounded-md">{selectedIncident.description}</p>
-                </div>
-              )}
-
-              {/* Systèmes affectés */}
-              {selectedIncident.affected_systems && selectedIncident.affected_systems.length > 0 && (
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Systèmes Affectés</label>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {selectedIncident.affected_systems.map((system, index) => (
-                      <Badge key={index} variant="outline">{system}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Timeline / Commentaires */}
-              <div>
-                <h4 className="text-lg font-medium mb-4 flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" />
-                  Timeline et Commentaires
-                </h4>
-                
-                <div className="space-y-4 max-h-60 overflow-y-auto border rounded-md p-4">
-                  {comments.map((comment) => (
-                    <div key={comment.id} className="flex space-x-3">
-                      <div className="flex-shrink-0">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <MessageSquare className="h-4 w-4" />
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm font-medium">
-                            {comment.user_name || 'Utilisateur'}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(comment.created_at)}
-                          </span>
-                        </div>
-                        <p className="text-sm mt-1">{comment.comment}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Ajouter un commentaire */}
-                <div className="mt-4 space-y-2">
-                  <Textarea
-                    placeholder="Ajouter un commentaire..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    rows={3}
-                  />
-                  <Button onClick={addComment} disabled={!newComment.trim()}>
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Ajouter un Commentaire
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 };

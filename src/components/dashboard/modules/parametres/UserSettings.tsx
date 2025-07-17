@@ -166,11 +166,84 @@ const UserSettings = () => {
     }
   };
 
-  const handleSaveSettings = () => {
-    toast({
-      title: "Paramètres utilisateurs sauvegardés",
-      description: "La configuration des utilisateurs a été mise à jour.",
-    });
+  const handleSaveSettings = async () => {
+    if (!tenantId) return;
+    
+    try {
+      // Sauvegarder les paramètres dans la table parametres_systeme
+      const settingsToSave = [
+        {
+          tenant_id: tenantId,
+          cle_parametre: 'max_users',
+          valeur_parametre: userSettings.maxUsers.toString(),
+          categorie: 'users',
+          type_parametre: 'number',
+          description: 'Nombre maximum d\'utilisateurs autorisés'
+        },
+        {
+          tenant_id: tenantId,
+          cle_parametre: 'session_timeout',
+          valeur_parametre: userSettings.sessionTimeout.toString(),
+          categorie: 'security',
+          type_parametre: 'number',
+          description: 'Timeout de session en minutes'
+        },
+        {
+          tenant_id: tenantId,
+          cle_parametre: 'password_policy',
+          valeur_parametre: userSettings.passwordPolicy,
+          categorie: 'security',
+          type_parametre: 'string',
+          description: 'Politique de mot de passe'
+        },
+        {
+          tenant_id: tenantId,
+          cle_parametre: 'two_factor_auth',
+          valeur_parametre: userSettings.twoFactorAuth.toString(),
+          categorie: 'security',
+          type_parametre: 'boolean',
+          description: 'Authentification à deux facteurs'
+        },
+        {
+          tenant_id: tenantId,
+          cle_parametre: 'auto_logout',
+          valeur_parametre: userSettings.autoLogout.toString(),
+          categorie: 'security',
+          type_parametre: 'boolean',
+          description: 'Déconnexion automatique'
+        },
+        {
+          tenant_id: tenantId,
+          cle_parametre: 'login_attempts',
+          valeur_parametre: userSettings.loginAttempts.toString(),
+          categorie: 'security',
+          type_parametre: 'number',
+          description: 'Tentatives de connexion maximales'
+        }
+      ];
+
+      // Utiliser upsert pour sauvegarder ou mettre à jour
+      const { error } = await supabase
+        .from('parametres_systeme')
+        .upsert(settingsToSave, { 
+          onConflict: 'tenant_id,cle_parametre',
+          ignoreDuplicates: false 
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Paramètres sauvegardés",
+        description: "La configuration des utilisateurs a été mise à jour avec succès.",
+      });
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder les paramètres.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getRoleColor = (role: string) => {

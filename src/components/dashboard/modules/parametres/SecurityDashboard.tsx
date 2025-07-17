@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export const SecurityDashboard: React.FC = () => {
   const { toast } = useToast();
@@ -95,12 +96,35 @@ export const SecurityDashboard: React.FC = () => {
     }
   }, [currentPolicy]);
 
-  const handleSavePolicies = () => {
-    // TODO: Implémenter la sauvegarde des politiques
-    toast({
-      title: "Politiques sauvegardées",
-      description: "Les politiques de sécurité ont été mises à jour.",
-    });
+  const handleSavePolicies = async () => {
+    const { useTenantMutation } = useTenantQuery();
+    
+    try {
+      // Sauvegarder ou mettre à jour la politique de mot de passe
+      const { error } = await supabase
+        .from('password_policies')
+        .upsert({
+          tenant_id: (window as any).currentTenantId, // Utilisation d'un tenantId global temporaire
+          ...policySettings
+        }, { 
+          onConflict: 'tenant_id',
+          ignoreDuplicates: false 
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Politiques sauvegardées",
+        description: "Les politiques de sécurité ont été mises à jour avec succès.",
+      });
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder les politiques.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getAlertIcon = (severity: string) => {
