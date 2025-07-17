@@ -27,6 +27,7 @@ import { SecurityDashboard } from '@/components/dashboard/modules/parametres/Sec
 import SecuritySurveillance from '@/components/dashboard/modules/parametres/SecuritySurveillance';
 import SecurityNotifications from '@/components/dashboard/modules/parametres/SecurityNotifications';
 import SecurityIncidents from '@/components/dashboard/modules/parametres/SecurityIncidents';
+import SecurityTestingOptimization from '@/components/security/SecurityTestingOptimization';
 import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 
@@ -227,7 +228,7 @@ const SecuritySystemIntegration = () => {
       </Card>
 
       <Tabs value={activeModule} onValueChange={setActiveModule} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <Target className="h-4 w-4" />
             Vue d'ensemble
@@ -247,6 +248,10 @@ const SecuritySystemIntegration = () => {
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
             Notifications
+          </TabsTrigger>
+          <TabsTrigger value="testing" className="flex items-center gap-2">
+            <Zap className="h-4 w-4" />
+            Tests & Optimisation
           </TabsTrigger>
           <TabsTrigger value="reports" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -382,7 +387,7 @@ const SecuritySystemIntegration = () => {
                 <CardTitle>Actions Rapides</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                   <Button 
                     variant="outline" 
                     className="h-20 flex-col gap-2"
@@ -398,6 +403,14 @@ const SecuritySystemIntegration = () => {
                   >
                     <AlertTriangle className="h-6 w-6" />
                     Créer un Incident
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="h-20 flex-col gap-2"
+                    onClick={() => setActiveModule('testing')}
+                  >
+                    <Zap className="h-6 w-6" />
+                    Tests & Optimisation
                   </Button>
                   <Button 
                     variant="outline" 
@@ -462,6 +475,10 @@ const SecuritySystemIntegration = () => {
 
         <TabsContent value="notifications">
           <SecurityNotifications />
+        </TabsContent>
+
+        <TabsContent value="testing">
+          <SecurityTestingOptimization />
         </TabsContent>
 
         <TabsContent value="reports">
