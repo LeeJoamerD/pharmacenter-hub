@@ -1929,6 +1929,7 @@ export type Database = {
           name: string
           niu: string | null
           numero_compte_bancaire: string | null
+          password: string | null
           pays: string | null
           phone: string | null
           photo_exterieur: string | null
@@ -1958,6 +1959,7 @@ export type Database = {
           name: string
           niu?: string | null
           numero_compte_bancaire?: string | null
+          password?: string | null
           pays?: string | null
           phone?: string | null
           photo_exterieur?: string | null
@@ -1987,6 +1989,7 @@ export type Database = {
           name?: string
           niu?: string | null
           numero_compte_bancaire?: string | null
+          password?: string | null
           pays?: string | null
           phone?: string | null
           photo_exterieur?: string | null

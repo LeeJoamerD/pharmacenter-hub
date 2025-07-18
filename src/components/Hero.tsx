@@ -35,7 +35,7 @@ export function Hero() {
             </FadeIn>
             
             <FadeIn delay={0.3} className="flex flex-col sm:flex-row gap-4">
-              <Link to="/pharmacy-registration">
+              <Link to="/pharmacy-connection">
                 <Button size="lg" className="button-hover-effect bg-primary hover:bg-primary/90 text-white">
                   Connecter votre Pharmacie
                 </Button>
