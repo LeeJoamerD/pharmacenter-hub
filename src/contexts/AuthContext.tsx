@@ -11,6 +11,7 @@ interface AuthContextType {
   session: Session | null;
   personnel: Personnel | null;
   pharmacy: Pharmacy | null;
+  connectedPharmacy: Pharmacy | null;
   loading: boolean;
   securityLevel: string;
   requires2FA: boolean;
@@ -18,6 +19,8 @@ interface AuthContextType {
   signUp: (email: string, password: string, personnelData: Partial<Personnel>) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   updateSecurityContext: () => Promise<void>;
+  connectPharmacy: (email: string, password: string) => Promise<{ error: Error | null }>;
+  disconnectPharmacy: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [personnel, setPersonnel] = useState<Personnel | null>(null);
   const [pharmacy, setPharmacy] = useState<Pharmacy | null>(null);
+  const [connectedPharmacy, setConnectedPharmacy] = useState<Pharmacy | null>(null);
   const [loading, setLoading] = useState(true);
   const [securityLevel, setSecurityLevel] = useState<string>('standard');
   const [requires2FA, setRequires2FA] = useState<boolean>(false);
@@ -146,6 +150,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
+    // Check for connected pharmacy in localStorage
+    const savedPharmacy = localStorage.getItem('connectedPharmacy');
+    if (savedPharmacy) {
+      try {
+        setConnectedPharmacy(JSON.parse(savedPharmacy));
+      } catch (error) {
+        localStorage.removeItem('connectedPharmacy');
+      }
+    }
+
     return () => subscription.unsubscribe();
   }, []);
 
@@ -201,6 +215,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const connectPharmacy = async (email: string, password: string) => {
+    try {
+      // Rechercher la pharmacie par email et password
+      const { data: pharmacy, error } = await supabase
+        .from('pharmacies')
+        .select('*')
+        .eq('email', email)
+        .eq('password', password)
+        .single();
+
+      if (error || !pharmacy) {
+        return { error: new Error('Email ou mot de passe incorrect') };
+      }
+
+      // Stocker la pharmacie connectée
+      setConnectedPharmacy(pharmacy);
+      localStorage.setItem('connectedPharmacy', JSON.stringify(pharmacy));
+      
+      // Déconnecter l'utilisateur si connecté
+      if (user) {
+        await supabase.auth.signOut();
+        setUser(null);
+        setSession(null);
+        setPersonnel(null);
+        setPharmacy(null);
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  };
+
+  const disconnectPharmacy = () => {
+    setConnectedPharmacy(null);
+    localStorage.removeItem('connectedPharmacy');
+  };
+
   const signOut = async () => {
     // Désactiver les sessions actives
     if (personnel?.id) {
@@ -225,13 +277,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     session,
     personnel,
     pharmacy,
+    connectedPharmacy,
     loading,
     securityLevel,
     requires2FA,
     signIn,
     signUp,
     signOut,
-    updateSecurityContext
+    updateSecurityContext,
+    connectPharmacy,
+    disconnectPharmacy
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

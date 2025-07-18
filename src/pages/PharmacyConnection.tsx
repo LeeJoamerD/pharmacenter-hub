@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Mail, Lock, Building2 } from 'lucide-react';
 import { FadeIn } from '@/components/FadeIn';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 export default function PharmacyConnection() {
@@ -21,29 +21,21 @@ export default function PharmacyConnection() {
     setIsLoading(true);
 
     try {
-      // Rechercher la pharmacie par email et password
-      const { data: pharmacy, error } = await supabase
-        .from('pharmacies')
-        .select('*')
-        .eq('email', email)
-        .eq('password', password)
-        .single();
+      const { connectPharmacy } = useAuth();
+      const { error } = await connectPharmacy(email, password);
 
-      if (error || !pharmacy) {
+      if (error) {
         toast({
           title: "Erreur de connexion",
-          description: "Email ou mot de passe incorrect",
+          description: error.message,
           variant: "destructive"
         });
         return;
       }
 
-      // Stocker les informations de la pharmacie connectée
-      localStorage.setItem('connectedPharmacy', JSON.stringify(pharmacy));
-      
       toast({
         title: "Connexion réussie",
-        description: `Bienvenue ${pharmacy.name}`,
+        description: "Bienvenue dans votre pharmacie",
       });
 
       // Rediriger vers la page d'accueil
