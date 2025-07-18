@@ -24,6 +24,16 @@ export const RolePermissionManager: React.FC = () => {
   // Charger les données depuis la base
   const { data: roles = [], isLoading: rolesLoading, error: rolesError } = useRoles();
   const { data: permissions = [], isLoading: permissionsLoading, error: permissionsError } = usePermissions();
+
+  // Debug
+  console.log('Debug RolePermissionManager:', {
+    roles,
+    permissions,
+    rolesLoading,
+    permissionsLoading,
+    rolesError,
+    permissionsError
+  });
   const { 
     data: rolePermissions = [], 
     isLoading: rolePermissionsLoading 

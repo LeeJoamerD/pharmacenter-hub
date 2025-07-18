@@ -51,8 +51,16 @@ const UserSettings = () => {
   });
 
 
-  // Charger la liste du personnel depuis la base de données
+  // Charger la liste du personnel depuis la base de données  
   const { data: personnelList, isLoading, error } = usePersonnelQuery();
+
+  // Debug du contexte
+  console.log('Debug UserSettings:', {
+    tenantId,
+    personnelList,
+    isLoading,
+    error
+  });
 
   // Mutations
   const createPersonnelMutation = useTenantMutation('personnel', 'insert', {

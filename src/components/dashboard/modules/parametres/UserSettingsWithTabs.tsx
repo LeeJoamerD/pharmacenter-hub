@@ -2,6 +2,8 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Shield, Activity, Lock } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 import UserSettings from './UserSettings';
 import { RolePermissionManager } from './RolePermissionManager';
 import { SecurityDashboard } from './SecurityDashboard';
@@ -10,8 +12,53 @@ import SecurityNotifications from './SecurityNotifications';
 import SecurityIncidents from './SecurityIncidents';
 import SecuritySystemIntegration from '@/components/security/SecuritySystemIntegration';
 import SecurityValidationTests from '@/components/security/SecurityValidationTests';
+import TempLogin from '@/components/TempLogin';
 
 const UserSettingsWithTabs = () => {
+  const { user, loading } = useAuth();
+  const { tenantId } = useTenant();
+
+  // Si pas d'utilisateur connecté, afficher le formulaire de connexion
+  if (!loading && !user) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Connexion requise
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Vous devez être connecté pour accéder à la gestion des utilisateurs et permissions.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <TempLogin />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Si pas de tenant ID, afficher le chargement
+  if (!tenantId) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Chargement...
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Initialisation de votre espace de travail...
+            </p>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Card>
