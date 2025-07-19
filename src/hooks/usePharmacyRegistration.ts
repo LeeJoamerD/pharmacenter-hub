@@ -48,8 +48,8 @@ export const usePharmacyRegistration = () => {
   }, []);
 
   const handlePharmacyNext = () => {
-    // Passer directement à l'étape admin sans Google Auth
-    setStep(2);
+    setAuthType('pharmacy');
+    setShowGoogleAuth(true);
   };
 
   const handlePharmacyGoogleSuccess = (user: User) => {
@@ -59,8 +59,8 @@ export const usePharmacyRegistration = () => {
   };
 
   const handleAdminFormNext = () => {
-    // Soumettre directement sans Google Auth
-    return form.handleSubmit(onSubmit)();
+    setAuthType('admin');
+    setShowGoogleAuth(true);
   };
 
   const handleAdminGoogleSuccess = (user: User) => {
@@ -101,35 +101,23 @@ export const usePharmacyRegistration = () => {
     setIsLoading(true);
     
     try {
-      const adminEmail = adminGoogleUser?.email || data.admin_email;
-      const adminPassword = generateSecurePassword();
+      // Vérifier que l'utilisateur admin est authentifié
+      if (!adminGoogleUser) {
+        toast({
+          title: "Erreur d'authentification",
+          description: "Veuillez vous authentifier avec Google avant de continuer.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      // Étape 1: Créer l'utilisateur via Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: adminEmail,
-        password: adminPassword,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-        }
-      });
-
-      if (authError || !authData.user) {
-        console.error('Erreur lors de la création de l\'utilisateur:', authError);
-        
-        // Gestion spécifique pour l'email déjà utilisé
-        if (authError?.message?.includes('duplicate') || authError?.message?.includes('already registered') || authError?.message?.includes('already exists')) {
-          toast({
-            title: "Email déjà utilisé",
-            description: `L'email ${adminEmail} est déjà utilisé. Veuillez utiliser un autre email ou vous connecter avec celui-ci.`,
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Erreur",
-            description: authError?.message || "Erreur lors de la création du compte utilisateur",
-            variant: "destructive",
-          });
-        }
+      const adminEmail = adminGoogleUser.email;
+      if (!adminEmail) {
+        toast({
+          title: "Erreur",
+          description: "Email de l'administrateur non trouvé.",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -150,15 +138,18 @@ export const usePharmacyRegistration = () => {
         type: data.type
       };
 
-      // Préparer les données de l'admin
+      // Préparer les données de l'admin avec les informations Google
       const adminData = {
-        noms: data.admin_noms,
-        prenoms: data.admin_prenoms,
+        noms: data.admin_noms || adminGoogleUser.user_metadata?.family_name || '',
+        prenoms: data.admin_prenoms || adminGoogleUser.user_metadata?.given_name || '',
         reference_agent: data.admin_reference,
         telephone: data.admin_telephone_principal
       };
 
-      // Étape 2: Utiliser la fonction RPC qui gère les permissions
+      // Générer un mot de passe sécurisé
+      const adminPassword = generateSecurePassword();
+
+      // Utiliser la fonction RPC qui gère les permissions avec l'utilisateur authentifié
       const { data: result, error: registrationError } = await supabase.rpc('register_pharmacy_with_admin', {
         pharmacy_data: pharmacyData,
         admin_data: adminData,
@@ -178,13 +169,10 @@ export const usePharmacyRegistration = () => {
         return;
       }
 
-      // Déconnecter l'utilisateur automatiquement créé pour forcer une connexion manuelle
-      await supabase.auth.signOut();
-
       // Succès
       toast({
         title: "Succès !",
-        description: `Votre pharmacie et votre compte ont été créés avec succès. Email: ${adminEmail}, Mot de passe: ${adminPassword}`,
+        description: `Votre pharmacie et votre compte ont été créés avec succès. Email: ${adminEmail}`,
       });
 
       // Passer à l'étape suivante
