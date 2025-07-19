@@ -64,10 +64,13 @@ const TempLogin = () => {
       }
 
       if (authData.user) {
-        // Créer d'abord la pharmacie
+        // Créer d'abord la pharmacie avec tenant_id
+        const pharmacyId = crypto.randomUUID();
         const { data: pharmacyData, error: pharmacyError } = await supabase
           .from('pharmacies')
           .insert({
+            id: pharmacyId,
+            tenant_id: pharmacyId,
             name: 'Test Pharmacie',
             code: 'TEST001',
             email: 'test@pharmacie.fr',

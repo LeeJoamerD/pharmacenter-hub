@@ -18,15 +18,33 @@ interface PasswordValidation {
   hasSpecial: boolean;
 }
 
+interface PharmacyRegistrationResult {
+  success: boolean;
+  pharmacy_id?: string;
+  user_id?: string;
+  personnel_id?: string;
+  message?: string;
+  error?: string;
+}
+
 export default function PharmacyCreation() {
   // États du formulaire
   const [formData, setFormData] = useState({
     name: '',
+    code: '',
     address: '',
     quartier: '',
+    arrondissement: '',
     city: '',
     telephone_appel: '',
+    telephone_whatsapp: '',
     email: '',
+    departement: '',
+    type: 'Pharmacie',
+    noms: '',
+    prenoms: '',
+    reference_agent: '',
+    telephone: '',
     password: '',
     confirmPassword: ''
   });
@@ -96,39 +114,50 @@ export default function PharmacyCreation() {
       // Déconnecter l'utilisateur s'il est connecté
       await signOut();
 
-      // Créer la pharmacie
-      const { data: pharmacy, error: createError } = await supabase
-        .from('pharmacies')
-        .insert({
+      // Utiliser la fonction sécurisée pour créer la pharmacie et l'admin
+      const { data, error } = await supabase.rpc('create_new_pharmacy_registration', {
+        pharmacy_data: {
           name: formData.name,
-          code: `PH${Date.now()}`, // Générer un code unique
+          code: formData.code || `PH${Date.now()}`,
           address: formData.address,
           quartier: formData.quartier,
+          arrondissement: formData.arrondissement,
           city: formData.city,
           telephone_appel: formData.telephone_appel,
+          telephone_whatsapp: formData.telephone_whatsapp,
           email: formData.email,
-          status: 'active',
-          region: 'Cameroun', // Valeur par défaut
-          pays: 'Cameroun' // Valeur par défaut
-        })
-        .select()
-        .single();
+          departement: formData.departement,
+          type: formData.type,
+          region: 'Cameroun',
+          pays: 'Cameroun'
+        },
+        admin_data: {
+          noms: formData.noms,
+          prenoms: formData.prenoms,
+          reference_agent: formData.reference_agent,
+          telephone: formData.telephone
+        },
+        admin_email: formData.email,
+        admin_password: formData.password
+      });
 
-      if (createError) {
-        console.error('Erreur de création pharmacie:', createError);
-        if (createError.code === '23505') { // Violation de contrainte unique
-          toast({
-            title: "Email déjà utilisé",
-            description: "Cette adresse email est déjà associée à une pharmacie",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Erreur de création",
-            description: `Impossible de créer la pharmacie: ${createError.message}`,
-            variant: "destructive"
-          });
-        }
+      if (error) {
+        console.error('Erreur de création:', error);
+        toast({
+          title: "Erreur de création",
+          description: `Impossible de créer la pharmacie: ${error.message}`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const result = data as unknown as PharmacyRegistrationResult;
+      if (!result?.success) {
+        toast({
+          title: "Erreur de création",
+          description: result?.error || "Une erreur inconnue s'est produite",
+          variant: "destructive"
+        });
         return;
       }
 

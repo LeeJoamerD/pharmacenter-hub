@@ -1942,6 +1942,7 @@ export type Database = {
           status: string | null
           telephone_appel: string | null
           telephone_whatsapp: string | null
+          tenant_id: string
           type: string | null
           updated_at: string
         }
@@ -1972,6 +1973,7 @@ export type Database = {
           status?: string | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
+          tenant_id: string
           type?: string | null
           updated_at?: string
         }
@@ -2002,6 +2004,7 @@ export type Database = {
           status?: string | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
+          tenant_id?: string
           type?: string | null
           updated_at?: string
         }
@@ -3207,6 +3210,15 @@ export type Database = {
       cleanup_security_data: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      create_new_pharmacy_registration: {
+        Args: {
+          pharmacy_data: Json
+          admin_data: Json
+          admin_email: string
+          admin_password: string
+        }
+        Returns: Json
       }
       create_pharmacy_session: {
         Args: {
