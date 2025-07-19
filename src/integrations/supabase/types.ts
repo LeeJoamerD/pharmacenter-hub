@@ -1835,7 +1835,7 @@ export type Database = {
             | null
           telephone_appel: string | null
           telephone_whatsapp: string | null
-          tenant_id: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1868,7 +1868,7 @@ export type Database = {
             | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
-          tenant_id: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1901,7 +1901,7 @@ export type Database = {
             | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
-          tenant_id?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2049,6 +2049,50 @@ export type Database = {
           {
             foreignKeyName: "pharmacy_presence_tenant_id_fkey"
             columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_sessions: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          ip_address: string | null
+          is_active: boolean | null
+          last_activity: string | null
+          pharmacy_id: string
+          session_token: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean | null
+          last_activity?: string | null
+          pharmacy_id: string
+          session_token: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean | null
+          last_activity?: string | null
+          pharmacy_id?: string
+          session_token?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_sessions_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
@@ -3164,13 +3208,29 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      create_pharmacy_session: {
+        Args: {
+          p_pharmacy_id: string
+          p_ip_address?: string
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
       detect_suspicious_patterns: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      disconnect_pharmacy_session: {
+        Args: { p_session_token: string }
+        Returns: boolean
+      }
       get_current_user_tenant_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      is_system_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
       }
       log_sensitive_operation: {
         Args: {
@@ -3196,6 +3256,10 @@ export type Database = {
       }
       validate_password_strength: {
         Args: { password: string; tenant_id: string }
+        Returns: Json
+      }
+      validate_pharmacy_session: {
+        Args: { p_session_token: string }
         Returns: Json
       }
       validate_tenant_access: {

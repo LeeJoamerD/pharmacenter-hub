@@ -6,12 +6,16 @@ import { Tables } from '@/integrations/supabase/types';
 type Personnel = Tables<'personnel'>;
 type Pharmacy = Tables<'pharmacies'>;
 
+interface ConnectedPharmacy extends Pharmacy {
+  sessionToken: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   personnel: Personnel | null;
   pharmacy: Pharmacy | null;
-  connectedPharmacy: Pharmacy | null;
+  connectedPharmacy: ConnectedPharmacy | null;
   loading: boolean;
   securityLevel: string;
   requires2FA: boolean;
@@ -38,41 +42,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [personnel, setPersonnel] = useState<Personnel | null>(null);
   const [pharmacy, setPharmacy] = useState<Pharmacy | null>(null);
-  const [connectedPharmacy, setConnectedPharmacy] = useState<Pharmacy | null>(null);
+  const [connectedPharmacy, setConnectedPharmacy] = useState<ConnectedPharmacy | null>(null);
   const [loading, setLoading] = useState(true);
   const [securityLevel, setSecurityLevel] = useState<string>('standard');
   const [requires2FA, setRequires2FA] = useState<boolean>(false);
 
   const fetchUserData = async (userId: string) => {
     try {
-      // Fetch personnel data
+      // Fetch personnel data - utilise maybeSingle pour permettre NULL
       const { data: personnelData, error: personnelError } = await supabase
         .from('personnel')
         .select('*')
         .eq('auth_user_id', userId)
-        .single();
+        .maybeSingle();
 
-      if (personnelError) {
+      if (personnelError && personnelError.code !== 'PGRST116') {
         console.error('Error fetching personnel:', personnelError);
         return;
       }
 
-      setPersonnel(personnelData);
+      if (personnelData) {
+        setPersonnel(personnelData);
 
-      // Fetch pharmacy data
-      if (personnelData?.tenant_id) {
-        const { data: pharmacyData, error: pharmacyError } = await supabase
-          .from('pharmacies')
-          .select('*')
-          .eq('id', personnelData.tenant_id)
-          .single();
+        // Fetch pharmacy data seulement si l'utilisateur a un tenant_id
+        if (personnelData?.tenant_id) {
+          const { data: pharmacyData, error: pharmacyError } = await supabase
+            .from('pharmacies')
+            .select('*')
+            .eq('id', personnelData.tenant_id)
+            .maybeSingle();
 
-        if (pharmacyError) {
-          console.error('Error fetching pharmacy:', pharmacyError);
-          return;
+          if (pharmacyError && pharmacyError.code !== 'PGRST116') {
+            console.error('Error fetching pharmacy:', pharmacyError);
+            return;
+          }
+
+          if (pharmacyData) {
+            setPharmacy(pharmacyData);
+          }
         }
-
-        setPharmacy(pharmacyData);
       }
 
       // Mettre à jour le contexte de sécurité
@@ -83,32 +91,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateSecurityContext = async () => {
-    if (!personnel?.id || !pharmacy?.id) return;
+    // Permettre aux utilisateurs sans tenant_id (admins système)
+    if (!personnel?.id) return;
 
     try {
-      // Récupérer la session utilisateur active
-      const { data: userSession } = await supabase
-        .from('user_sessions')
-        .select('security_level, requires_2fa')
-        .eq('personnel_id', personnel.id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      // Récupérer la session utilisateur active seulement si l'utilisateur a un tenant
+      if (personnel.tenant_id) {
+        const { data: userSession } = await supabase
+          .from('user_sessions')
+          .select('security_level, requires_2fa')
+          .eq('personnel_id', personnel.id)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      if (userSession) {
-        setSecurityLevel(userSession.security_level);
-        setRequires2FA(userSession.requires_2fa);
-      }
+        if (userSession) {
+          setSecurityLevel(userSession.security_level);
+          setRequires2FA(userSession.requires_2fa);
+        }
 
-      // Vérifier les politiques de sécurité pour ce rôle
-      const { data: passwordPolicy } = await supabase
-        .from('password_policies')
-        .select('force_2fa_for_roles')
-        .eq('tenant_id', pharmacy.id)
-        .single();
+        // Vérifier les politiques de sécurité pour ce rôle si pharmacie existe
+        if (pharmacy?.id) {
+          const { data: passwordPolicy } = await supabase
+            .from('password_policies')
+            .select('force_2fa_for_roles')
+            .eq('tenant_id', pharmacy.id)
+            .maybeSingle();
 
-      if (passwordPolicy?.force_2fa_for_roles?.includes(personnel.role)) {
+          if (passwordPolicy?.force_2fa_for_roles?.includes(personnel.role)) {
+            setRequires2FA(true);
+          }
+        }
+      } else {
+        // Pour les admins système, utiliser des paramètres par défaut
+        setSecurityLevel('high');
         setRequires2FA(true);
       }
     } catch (error) {
@@ -150,13 +167,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
-    // Check for connected pharmacy in localStorage
-    const savedPharmacy = localStorage.getItem('connectedPharmacy');
-    if (savedPharmacy) {
+    // Check for connected pharmacy session in localStorage
+    const savedPharmacySession = localStorage.getItem('pharmacy_session');
+    if (savedPharmacySession) {
       try {
-        setConnectedPharmacy(JSON.parse(savedPharmacy));
+        const sessionData = JSON.parse(savedPharmacySession);
+        // Valider la session pharmacie
+        supabase.rpc('validate_pharmacy_session', {
+          p_session_token: sessionData.sessionToken
+        }).then(({ data, error }) => {
+          if (data && typeof data === 'object' && 'valid' in data && data.valid && !error) {
+            const validationData = data as { valid: boolean; pharmacy: any };
+            setConnectedPharmacy({
+              ...validationData.pharmacy,
+              sessionToken: sessionData.sessionToken
+            });
+          } else {
+            localStorage.removeItem('pharmacy_session');
+          }
+        });
       } catch (error) {
-        localStorage.removeItem('connectedPharmacy');
+        localStorage.removeItem('pharmacy_session');
       }
     }
 
@@ -191,7 +222,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) return { error };
 
       // Create personnel record if auth user was created
-      if (data.user && personnelData.tenant_id) {
+      if (data.user) {
         const { error: personnelError } = await supabase
           .from('personnel')
           .insert({
@@ -217,22 +248,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const connectPharmacy = async (email: string, password: string) => {
     try {
-      // Rechercher la pharmacie par email et password
-      const { data: pharmacy, error } = await supabase
-        .from('pharmacies')
-        .select('*')
-        .eq('email', email)
-        .eq('password', password)
-        .single();
-
-      if (error || !pharmacy) {
-        return { error: new Error('Email ou mot de passe incorrect') };
-      }
-
-      // Stocker la pharmacie connectée
-      setConnectedPharmacy(pharmacy);
-      localStorage.setItem('connectedPharmacy', JSON.stringify(pharmacy));
-      
       // Déconnecter l'utilisateur si connecté
       if (user) {
         await supabase.auth.signOut();
@@ -242,15 +257,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setPharmacy(null);
       }
 
+      // Rechercher la pharmacie par email et password
+      const { data: pharmacy, error } = await supabase
+        .from('pharmacies')
+        .select('*')
+        .eq('email', email)
+        .eq('password', password)
+        .maybeSingle();
+
+      if (error || !pharmacy) {
+        return { error: new Error('Email ou mot de passe incorrect') };
+      }
+
+      // Créer une session pharmacie
+      const { data: sessionData, error: sessionError } = await supabase.rpc('create_pharmacy_session', {
+        p_pharmacy_id: pharmacy.id,
+        p_ip_address: null,
+        p_user_agent: navigator.userAgent
+      });
+
+      if (sessionError || !sessionData) {
+        return { error: new Error('Erreur lors de la création de la session') };
+      }
+
+      // Type assertion pour sessionData
+      const sessionResult = sessionData as { session_token: string; expires_at: string };
+
+      const connectedPharmacyData: ConnectedPharmacy = {
+        ...pharmacy,
+        sessionToken: sessionResult.session_token
+      };
+
+      // Stocker la pharmacie connectée
+      setConnectedPharmacy(connectedPharmacyData);
+      localStorage.setItem('pharmacy_session', JSON.stringify({
+        sessionToken: sessionResult.session_token,
+        expiresAt: sessionResult.expires_at
+      }));
+
       return { error: null };
     } catch (error) {
       return { error: error as Error };
     }
   };
 
-  const disconnectPharmacy = () => {
+  const disconnectPharmacy = async () => {
+    if (connectedPharmacy?.sessionToken) {
+      // Déconnecter la session côté serveur
+      await supabase.rpc('disconnect_pharmacy_session', {
+        p_session_token: connectedPharmacy.sessionToken
+      });
+    }
+    
     setConnectedPharmacy(null);
-    localStorage.removeItem('connectedPharmacy');
+    localStorage.removeItem('pharmacy_session');
   };
 
   const signOut = async () => {
