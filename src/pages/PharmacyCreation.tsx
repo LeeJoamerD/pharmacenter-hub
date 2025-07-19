@@ -18,13 +18,18 @@ interface PasswordValidation {
   hasSpecial: boolean;
 }
 
-interface PharmacyRegistrationResult {
+interface PharmacyCreationResult {
   success: boolean;
   pharmacy_id?: string;
-  user_id?: string;
-  personnel_id?: string;
-  message?: string;
   error?: string;
+  message?: string;
+}
+
+interface AdminCreationResult {
+  success: boolean;
+  personnel_id?: string;
+  error?: string;
+  message?: string;
 }
 
 export default function PharmacyCreation() {
@@ -114,8 +119,27 @@ export default function PharmacyCreation() {
       // Déconnecter l'utilisateur s'il est connecté
       await signOut();
 
-      // Utiliser la fonction sécurisée pour créer la pharmacie et l'admin
-      const { data, error } = await supabase.rpc('create_new_pharmacy_registration', {
+      // Étape 1: Créer l'utilisateur via Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        }
+      });
+
+      if (authError || !authData.user) {
+        console.error('Erreur lors de la création de l\'utilisateur:', authError);
+        toast({
+          title: "Erreur",
+          description: authError?.message || "Erreur lors de la création du compte utilisateur",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Étape 2: Créer la pharmacie
+      const { data: pharmacyData, error: pharmacyError } = await supabase.rpc('create_pharmacy_for_user', {
         pharmacy_data: {
           name: formData.name,
           code: formData.code || `PH${Date.now()}`,
@@ -130,36 +154,46 @@ export default function PharmacyCreation() {
           type: formData.type,
           region: 'Cameroun',
           pays: 'Cameroun'
-        },
+        }
+      });
+
+      const typedPharmacyData = pharmacyData as unknown as PharmacyCreationResult;
+
+      if (pharmacyError || !typedPharmacyData?.success) {
+        console.error('Erreur lors de la création de la pharmacie:', pharmacyError);
+        toast({
+          title: "Erreur",
+          description: typedPharmacyData?.error || pharmacyError?.message || "Erreur lors de la création de la pharmacie",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Étape 3: Lier l'utilisateur comme admin de la pharmacie
+      const { data, error } = await supabase.rpc('create_admin_personnel', {
+        pharmacy_id: typedPharmacyData.pharmacy_id,
         admin_data: {
           noms: formData.noms,
           prenoms: formData.prenoms,
           reference_agent: formData.reference_agent,
           telephone: formData.telephone
-        },
-        admin_email: formData.email,
-        admin_password: formData.password
+        }
       });
 
-      if (error) {
-        console.error('Erreur de création:', error);
+      const typedAdminData = data as unknown as AdminCreationResult;
+
+      if (error || !typedAdminData?.success) {
+        console.error('Erreur lors de la création de l\'admin:', error);
         toast({
-          title: "Erreur de création",
-          description: `Impossible de créer la pharmacie: ${error.message}`,
-          variant: "destructive"
+          title: "Erreur",
+          description: typedAdminData?.error || error?.message || "Erreur lors de la création de l'administrateur",
+          variant: "destructive",
         });
         return;
       }
 
-      const result = data as unknown as PharmacyRegistrationResult;
-      if (!result?.success) {
-        toast({
-          title: "Erreur de création",
-          description: result?.error || "Une erreur inconnue s'est produite",
-          variant: "destructive"
-        });
-        return;
-      }
+      // Déconnecter l'utilisateur automatiquement créé pour forcer une connexion manuelle
+      await supabase.auth.signOut();
 
       // Connexion automatique après création
       const { error: connectError } = await connectPharmacy(formData.email, formData.password);

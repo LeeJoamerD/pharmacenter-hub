@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LanguageSelector } from '@/components/LanguageSelector';
-import { Menu, X, User, LogOut, Building2 } from 'lucide-react';
+import { Menu, X, User, LogOut, Building2, Plus, LogIn, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -72,7 +72,56 @@ export function Header() {
           <div className="ml-4">
             <LanguageSelector />
           </div>
-          <div className="ml-2">
+          <div className="ml-2 flex items-center gap-2">
+            {/* Bouton 1: Gestion des pharmacies */}
+            {connectedPharmacy ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-foreground hover:bg-muted/50"
+                  >
+                    <Building2 size={20} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>
+                    {connectedPharmacy.name}
+                  </DropdownMenuLabel>
+                  <div className="px-2 py-1 text-sm text-muted-foreground">
+                    {connectedPharmacy.email}
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handlePharmacyDisconnect}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Déconnecter pharmacie
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-foreground hover:bg-muted/50"
+                  >
+                    <Building2 size={20} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => navigate('/pharmacy-creation')}>
+                    Créer une pharmacie
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/pharmacy-connection')}>
+                    Se connecter
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {/* Bouton 2: Gestion des utilisateurs */}
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -99,38 +148,13 @@ export function Header() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            ) : connectedPharmacy ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-foreground hover:bg-muted/50"
-                  >
-                    <Building2 size={20} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>
-                    {connectedPharmacy.name}
-                  </DropdownMenuLabel>
-                  <div className="px-2 py-1 text-sm text-muted-foreground">
-                    {connectedPharmacy.email}
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handlePharmacyDisconnect}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Déconnecter pharmacie
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             ) : (
               <Button
                 variant="ghost"
-                onClick={() => navigate('/pharmacy-connection')}
-                className="text-foreground hover:bg-muted/50"
+                size="icon"
+                className="text-foreground hover:bg-muted/50 opacity-60"
               >
-                Connecter pharmacie
+                <User size={20} />
               </Button>
             )}
           </div>

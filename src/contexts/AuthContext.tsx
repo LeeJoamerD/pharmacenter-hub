@@ -257,26 +257,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setPharmacy(null);
       }
 
-      // Vérifier d'abord que l'utilisateur existe avec ce rôle
-      const { data: personnel, error: personnelError } = await supabase
-        .from('personnel')
-        .select('*, pharmacies!inner(*)')
-        .eq('email', email)
-        .eq('role', 'Admin')
-        .maybeSingle();
-
-      if (personnelError || !personnel) {
-        return { error: new Error('Email ou mot de passe incorrect') };
-      }
-
-      // Maintenant se connecter avec les identifiants utilisateur dans auth.users
+      // Authentification utilisateur standard
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (authError) {
+      if (authError || !authData.user) {
         return { error: new Error('Email ou mot de passe incorrect') };
+      }
+
+      // Récupérer les données du personnel et de la pharmacie
+      const { data: personnel, error: personnelError } = await supabase
+        .from('personnel')
+        .select('*')
+        .eq('auth_user_id', authData.user.id)
+        .eq('role', 'Admin')
+        .maybeSingle();
+
+      if (personnelError || !personnel) {
+        return { error: new Error('Aucun compte administrateur trouvé pour ces identifiants') };
       }
 
       // Récupérer la pharmacie associée

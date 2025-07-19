@@ -3211,13 +3211,12 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
-      create_new_pharmacy_registration: {
-        Args: {
-          pharmacy_data: Json
-          admin_data: Json
-          admin_email: string
-          admin_password: string
-        }
+      create_admin_personnel: {
+        Args: { pharmacy_id: string; admin_data: Json }
+        Returns: Json
+      }
+      create_pharmacy_for_user: {
+        Args: { pharmacy_data: Json }
         Returns: Json
       }
       create_pharmacy_session: {
