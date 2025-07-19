@@ -15,13 +15,13 @@ export default function PharmacyConnection() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { connectPharmacy } = useAuth(); // Déplacer ici
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const { connectPharmacy } = useAuth();
       const { error } = await connectPharmacy(email, password);
 
       if (error) {
