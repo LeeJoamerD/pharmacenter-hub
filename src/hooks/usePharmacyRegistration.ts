@@ -150,41 +150,6 @@ export const usePharmacyRegistration = () => {
         type: data.type
       };
 
-      // Étape 2: Créer la pharmacie directement (sans passer par la fonction RPC)
-      const newPharmacyId = crypto.randomUUID();
-      const { data: pharmacyResult, error: pharmacyError } = await supabase
-        .from('pharmacies')
-        .insert({
-          id: newPharmacyId,
-          tenant_id: newPharmacyId,
-          name: data.name,
-          code: data.licence_number || `PH${Date.now()}`,
-          address: data.address,
-          quartier: data.quartier,
-          arrondissement: data.arrondissement,
-          city: data.city,
-          region: 'Cameroun',
-          pays: data.pays,
-          email: data.email,
-          telephone_appel: data.telephone_appel,
-          telephone_whatsapp: data.telephone_whatsapp,
-          departement: data.departement,
-          type: data.type,
-          status: 'active'
-        })
-        .select()
-        .single();
-
-      if (pharmacyError || !pharmacyResult) {
-        console.error('Erreur lors de la création de la pharmacie:', pharmacyError);
-        toast({
-          title: "Erreur",
-          description: pharmacyError?.message || "Erreur lors de la création de la pharmacie",
-          variant: "destructive",
-        });
-        return;
-      }
-
       // Préparer les données de l'admin
       const adminData = {
         noms: data.admin_noms,
@@ -193,28 +158,21 @@ export const usePharmacyRegistration = () => {
         telephone: data.admin_telephone_principal
       };
 
-      // Étape 3: Créer le personnel admin directement
-      const { data: adminResult, error: adminError } = await supabase
-        .from('personnel')
-        .insert({
-          tenant_id: pharmacyResult.id,
-          auth_user_id: authData.user.id,
-          noms: data.admin_noms,
-          prenoms: data.admin_prenoms,
-          reference_agent: data.admin_reference,
-          email: adminEmail,
-          telephone_appel: data.admin_telephone_principal,
-          role: 'Admin',
-          is_active: true
-        })
-        .select()
-        .single();
+      // Étape 2: Utiliser la fonction RPC qui gère les permissions
+      const { data: result, error: registrationError } = await supabase.rpc('register_pharmacy_with_admin', {
+        pharmacy_data: pharmacyData,
+        admin_data: adminData,
+        admin_email: adminEmail,
+        admin_password: adminPassword
+      });
 
-      if (adminError || !adminResult) {
-        console.error('Erreur lors de la création de l\'admin:', adminError);
+      const typedResult = result as unknown as { success: boolean; error?: string; pharmacy_id?: string; };
+
+      if (registrationError || !typedResult?.success) {
+        console.error('Erreur lors de l\'inscription:', registrationError);
         toast({
           title: "Erreur",
-          description: adminError?.message || "Erreur lors de la création de l'administrateur",
+          description: typedResult?.error || registrationError?.message || "Erreur lors de l'inscription",
           variant: "destructive",
         });
         return;
