@@ -107,7 +107,6 @@ export default function PharmacyCreation() {
           city: formData.city,
           telephone_appel: formData.telephone_appel,
           email: formData.email,
-          password: formData.password,
           status: 'active',
           region: 'Cameroun', // Valeur par défaut
           pays: 'Cameroun' // Valeur par défaut
@@ -116,6 +115,7 @@ export default function PharmacyCreation() {
         .single();
 
       if (createError) {
+        console.error('Erreur de création pharmacie:', createError);
         if (createError.code === '23505') { // Violation de contrainte unique
           toast({
             title: "Email déjà utilisé",
@@ -125,7 +125,7 @@ export default function PharmacyCreation() {
         } else {
           toast({
             title: "Erreur de création",
-            description: "Impossible de créer la pharmacie. Veuillez réessayer.",
+            description: `Impossible de créer la pharmacie: ${createError.message}`,
             variant: "destructive"
           });
         }
