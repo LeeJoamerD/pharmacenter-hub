@@ -270,16 +270,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Récupérer les données du personnel et de la pharmacie
       const { data: personnel, error: personnelError } = await supabase
         .from('personnel')
-        .select('*, pharmacies!personnel_tenant_id_fkey(*)')
+        .select('*')
         .eq('auth_user_id', authData.user.id)
         .eq('role', 'Admin')
         .maybeSingle();
 
-      if (personnelError || !personnel || !personnel.pharmacies) {
-        return { error: new Error('Aucune pharmacie associée à ce compte administrateur') };
+      if (personnelError || !personnel) {
+        return { error: new Error('Aucun compte administrateur trouvé pour ces identifiants') };
       }
 
-      const pharmacy = personnel.pharmacies;
+      // Récupérer la pharmacie associée
+      const { data: pharmacy, error: pharmacyError } = await supabase
+        .from('pharmacies')
+        .select('*')
+        .eq('tenant_id', personnel.tenant_id)
+        .maybeSingle();
+
+      if (pharmacyError || !pharmacy) {
+        return { error: new Error('Aucune pharmacie associée à ce compte') };
+      }
 
       // Créer une session pharmacie
       const { data: sessionData, error: sessionError } = await supabase.rpc('create_pharmacy_session', {
