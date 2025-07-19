@@ -48,8 +48,8 @@ export const usePharmacyRegistration = () => {
   }, []);
 
   const handlePharmacyNext = () => {
-    setShowGoogleAuth(true);
-    setAuthType('pharmacy');
+    // Passer directement à l'étape admin sans Google Auth
+    setStep(2);
   };
 
   const handlePharmacyGoogleSuccess = (user: User) => {
@@ -59,8 +59,8 @@ export const usePharmacyRegistration = () => {
   };
 
   const handleAdminFormNext = () => {
-    setAuthType('admin');
-    setShowGoogleAuth(true);
+    // Soumettre directement sans Google Auth
+    return form.handleSubmit(onSubmit)();
   };
 
   const handleAdminGoogleSuccess = (user: User) => {
