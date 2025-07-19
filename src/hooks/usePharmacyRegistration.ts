@@ -115,11 +115,21 @@ export const usePharmacyRegistration = () => {
 
       if (authError || !authData.user) {
         console.error('Erreur lors de la création de l\'utilisateur:', authError);
-        toast({
-          title: "Erreur",
-          description: authError?.message || "Erreur lors de la création du compte utilisateur",
-          variant: "destructive",
-        });
+        
+        // Gestion spécifique pour l'email déjà utilisé
+        if (authError?.message?.includes('duplicate') || authError?.message?.includes('already registered') || authError?.message?.includes('already exists')) {
+          toast({
+            title: "Email déjà utilisé",
+            description: `L'email ${adminEmail} est déjà utilisé. Veuillez utiliser un autre email ou vous connecter avec celui-ci.`,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Erreur",
+            description: authError?.message || "Erreur lors de la création du compte utilisateur",
+            variant: "destructive",
+          });
+        }
         return;
       }
 
