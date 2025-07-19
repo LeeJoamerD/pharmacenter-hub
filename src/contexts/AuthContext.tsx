@@ -257,17 +257,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setPharmacy(null);
       }
 
-      // Rechercher la pharmacie par email et password
-      const { data: pharmacy, error } = await supabase
-        .from('pharmacies')
-        .select('*')
-        .eq('email', email)
-        .eq('password', password)
-        .maybeSingle();
+      // D'abord, essayer de se connecter avec les identifiants utilisateur
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      if (error || !pharmacy) {
+      if (authError || !authData.user) {
         return { error: new Error('Email ou mot de passe incorrect') };
       }
+
+      // Récupérer les données du personnel et de la pharmacie
+      const { data: personnel, error: personnelError } = await supabase
+        .from('personnel')
+        .select('*, pharmacies!personnel_tenant_id_fkey(*)')
+        .eq('auth_user_id', authData.user.id)
+        .eq('role', 'Admin')
+        .maybeSingle();
+
+      if (personnelError || !personnel || !personnel.pharmacies) {
+        return { error: new Error('Aucune pharmacie associée à ce compte administrateur') };
+      }
+
+      const pharmacy = personnel.pharmacies;
 
       // Créer une session pharmacie
       const { data: sessionData, error: sessionError } = await supabase.rpc('create_pharmacy_session', {
