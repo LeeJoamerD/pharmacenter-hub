@@ -150,18 +150,36 @@ export const usePharmacyRegistration = () => {
         type: data.type
       };
 
-      // Étape 2: Créer la pharmacie
-      const { data: pharmacyResult, error: pharmacyError } = await supabase.rpc('create_pharmacy_for_user', {
-        pharmacy_data: pharmacyData
-      });
+      // Étape 2: Créer la pharmacie directement (sans passer par la fonction RPC)
+      const newPharmacyId = crypto.randomUUID();
+      const { data: pharmacyResult, error: pharmacyError } = await supabase
+        .from('pharmacies')
+        .insert({
+          id: newPharmacyId,
+          tenant_id: newPharmacyId,
+          name: data.name,
+          code: data.licence_number || `PH${Date.now()}`,
+          address: data.address,
+          quartier: data.quartier,
+          arrondissement: data.arrondissement,
+          city: data.city,
+          region: 'Cameroun',
+          pays: data.pays,
+          email: data.email,
+          telephone_appel: data.telephone_appel,
+          telephone_whatsapp: data.telephone_whatsapp,
+          departement: data.departement,
+          type: data.type,
+          status: 'active'
+        })
+        .select()
+        .single();
 
-      const typedPharmacyResult = pharmacyResult as unknown as PharmacyCreationResult;
-
-      if (pharmacyError || !typedPharmacyResult?.success) {
+      if (pharmacyError || !pharmacyResult) {
         console.error('Erreur lors de la création de la pharmacie:', pharmacyError);
         toast({
           title: "Erreur",
-          description: typedPharmacyResult?.error || pharmacyError?.message || "Erreur lors de la création de la pharmacie",
+          description: pharmacyError?.message || "Erreur lors de la création de la pharmacie",
           variant: "destructive",
         });
         return;
@@ -175,19 +193,28 @@ export const usePharmacyRegistration = () => {
         telephone: data.admin_telephone_principal
       };
 
-      // Étape 3: Lier l'utilisateur comme admin de la pharmacie
-      const { data: adminResult, error: adminError } = await supabase.rpc('create_admin_personnel', {
-        pharmacy_id: typedPharmacyResult.pharmacy_id,
-        admin_data: adminData
-      });
+      // Étape 3: Créer le personnel admin directement
+      const { data: adminResult, error: adminError } = await supabase
+        .from('personnel')
+        .insert({
+          tenant_id: pharmacyResult.id,
+          auth_user_id: authData.user.id,
+          noms: data.admin_noms,
+          prenoms: data.admin_prenoms,
+          reference_agent: data.admin_reference,
+          email: adminEmail,
+          telephone_appel: data.admin_telephone_principal,
+          role: 'Admin',
+          is_active: true
+        })
+        .select()
+        .single();
 
-      const typedAdminResult = adminResult as unknown as AdminCreationResult;
-
-      if (adminError || !typedAdminResult?.success) {
+      if (adminError || !adminResult) {
         console.error('Erreur lors de la création de l\'admin:', adminError);
         toast({
           title: "Erreur",
-          description: typedAdminResult?.error || adminError?.message || "Erreur lors de la création de l'administrateur",
+          description: adminError?.message || "Erreur lors de la création de l'administrateur",
           variant: "destructive",
         });
         return;
