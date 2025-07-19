@@ -15,6 +15,7 @@ import Auth from "./pages/Auth";
 import PharmacyRegistration from "./pages/PharmacyRegistration";
 import PharmacyLogin from "./pages/PharmacyLogin";
 import PharmacyConnection from "./pages/PharmacyConnection";
+import PharmacyCreation from "./pages/PharmacyCreation";
 import NotFound from "./pages/NotFound";
 import { PERMISSIONS } from './types/permissions';
 
@@ -33,7 +34,8 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/pharmacy-login" element={<PharmacyLogin />} />
-              <Route path="/pharmacy-connection" element={<PharmacyConnection />} />
+        <Route path="/pharmacy-connection" element={<PharmacyConnection />} />
+        <Route path="/pharmacy-creation" element={<PharmacyCreation />} />
               <Route path="/pharmacy-registration" element={<PharmacyRegistration />} />
               <Route 
                 path="/tableau-de-bord" 
