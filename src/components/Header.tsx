@@ -3,14 +3,14 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LanguageSelector } from '@/components/LanguageSelector';
-import { Menu, X, User, LogOut } from 'lucide-react';
+import { Menu, X, User, LogOut, Building2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function Header() {
   const { t } = useLanguage();
-  const { user, personnel, pharmacy, signOut } = useAuth();
+  const { user, personnel, pharmacy, connectedPharmacy, signOut, disconnectPharmacy } = useAuth();
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -25,6 +25,11 @@ export function Header() {
 
   const handleSignOut = async () => {
     await signOut();
+    navigate('/');
+  };
+
+  const handlePharmacyDisconnect = () => {
+    disconnectPharmacy();
     navigate('/');
   };
 
@@ -53,9 +58,9 @@ export function Header() {
               PharmaSoft
             </span>
           </a>
-          {pharmacy && (
+          {(pharmacy || connectedPharmacy) && (
             <span className="hidden sm:inline ml-3 text-sm text-muted-foreground">
-              - {pharmacy.name}
+              - {pharmacy?.name || connectedPharmacy?.name}
             </span>
           )}
         </div>
@@ -94,13 +99,38 @@ export function Header() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            ) : connectedPharmacy ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-foreground hover:bg-muted/50"
+                  >
+                    <Building2 size={20} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>
+                    {connectedPharmacy.name}
+                  </DropdownMenuLabel>
+                  <div className="px-2 py-1 text-sm text-muted-foreground">
+                    {connectedPharmacy.email}
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handlePharmacyDisconnect}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Déconnecter pharmacie
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <Button
                 variant="ghost"
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/pharmacy-connection')}
                 className="text-foreground hover:bg-muted/50"
               >
-                Se connecter
+                Connecter pharmacie
               </Button>
             )}
           </div>
@@ -119,14 +149,24 @@ export function Header() {
             >
               <User size={20} />
             </Button>
+          ) : connectedPharmacy ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-foreground hover:bg-muted/50 mr-2"
+              aria-label="Menu pharmacie"
+              onClick={() => {}} // Menu mobile géré dans la navigation mobile
+            >
+              <Building2 size={20} />
+            </Button>
           ) : (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/pharmacy-connection')}
               className="text-foreground hover:bg-muted/50 mr-2"
             >
-              Connexion
+              Pharmacie
             </Button>
           )}
           <Button
@@ -190,16 +230,34 @@ export function Header() {
                 Se déconnecter
               </Button>
             </>
+          ) : connectedPharmacy ? (
+            <>
+              <div className="py-3 border-b border-border/20">
+                <div className="text-lg font-medium">{connectedPharmacy.name}</div>
+                <div className="text-sm text-muted-foreground">{connectedPharmacy.email}</div>
+              </div>
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  handlePharmacyDisconnect();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="justify-start py-3 text-lg font-medium border-b border-border/20 text-red-600"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Déconnecter pharmacie
+              </Button>
+            </>
           ) : (
             <Button 
               variant="ghost" 
               onClick={() => {
-                navigate('/auth');
+                navigate('/pharmacy-connection');
                 setIsMobileMenuOpen(false);
               }}
               className="justify-start py-3 text-lg font-medium border-b border-border/20"
             >
-              Se connecter
+              Connecter pharmacie
             </Button>
           )}
         </nav>
