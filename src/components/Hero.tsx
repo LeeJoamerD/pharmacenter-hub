@@ -25,12 +25,6 @@ export function Hero() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('HERO: Événement auth:', event, 'User:', !!session?.user);
       setCurrentUser(session?.user || null);
-      
-      // Si l'utilisateur vient de se connecter, rediriger vers l'inscription
-      if (event === 'SIGNED_IN' && session?.user) {
-        console.log('HERO: Redirection vers pharmacy-registration après authentification');
-        window.location.href = '/pharmacy-registration';
-      }
     });
 
     return () => subscription.unsubscribe();
@@ -66,9 +60,9 @@ export function Hero() {
         setLoading(false);
       }
     } else {
-      // Si déjà connecté, rediriger directement vers l'inscription
-      console.log('HERO: Utilisateur déjà connecté, redirection vers pharmacy-registration');
-      window.location.href = '/pharmacy-registration';
+      // Si déjà connecté, informer l'utilisateur
+      console.log('HERO: Utilisateur déjà connecté');
+      alert('Vous êtes déjà connecté. Utilisez le menu pour accéder aux fonctionnalités.');
     }
   };
 
@@ -118,14 +112,6 @@ export function Hero() {
               </Link>
             </FadeIn>
 
-            {/* Debug info pour voir l'état actuel */}
-            {currentUser && (
-              <FadeIn delay={0.35} className="mt-4">
-                <div className="p-2 bg-green-100 border border-green-300 rounded text-sm text-green-700">
-                  ✅ Connecté: {currentUser.email}
-                </div>
-              </FadeIn>
-            )}
             
             <FadeIn delay={0.4}>
               <div className="mt-10 flex items-center gap-6">
