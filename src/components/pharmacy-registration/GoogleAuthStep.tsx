@@ -27,11 +27,8 @@ export const GoogleAuthStep: React.FC<GoogleAuthStepProps> = ({
     setIsLoading(true);
     
     try {
-      // Stocker le type d'authentification dans localStorage avant la redirection
-      localStorage.setItem('pharmacyAuthType', stepType);
-      
-      // URL de redirection vers PharmacyLogin après authentification Google
-      const redirectUrl = `${window.location.origin}/pharmacy-login`;
+      // Rester sur la page courante pour le processus d'inscription
+      const redirectUrl = `${window.location.origin}/pharmacy-registration`;
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -47,7 +44,7 @@ export const GoogleAuthStep: React.FC<GoogleAuthStepProps> = ({
         throw error;
       }
 
-      // L'utilisateur sera redirigé vers Google
+      // L'utilisateur sera redirigé vers Google puis de retour ici
     } catch (error: any) {
       console.error('Erreur authentification Google:', error);
       toast({
