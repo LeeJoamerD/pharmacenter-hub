@@ -48,7 +48,8 @@ export const usePharmacyRegistration = () => {
   }, []);
 
   const handlePharmacyNext = () => {
-    setAuthType('pharmacy');
+    // Déclencher l'authentification Google après la première étape
+    setAuthType('admin');
     setShowGoogleAuth(true);
   };
 
@@ -59,15 +60,22 @@ export const usePharmacyRegistration = () => {
   };
 
   const handleAdminFormNext = () => {
-    setAuthType('admin');
-    setShowGoogleAuth(true);
+    // Soumettre directement le formulaire car l'utilisateur est déjà authentifié
+    return form.handleSubmit(onSubmit)();
   };
 
   const handleAdminGoogleSuccess = (user: User) => {
     setAdminGoogleUser(user);
     setShowGoogleAuth(false);
+    setStep(2); // Aller directement au formulaire admin
     
-    // Remplir automatiquement les champs admin avec les données Google
+    // Pré-remplir automatiquement les champs admin avec les données Google
+    if (user.user_metadata?.given_name) {
+      form.setValue('admin_prenoms', user.user_metadata.given_name);
+    }
+    if (user.user_metadata?.family_name) {
+      form.setValue('admin_noms', user.user_metadata.family_name);
+    }
     form.setValue('admin_email', user.email || '');
     if (user.user_metadata?.phone) {
       form.setValue('admin_telephone_principal', user.user_metadata.phone);

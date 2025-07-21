@@ -39,11 +39,11 @@ const PharmacyRegistration = () => {
 
         {showGoogleAuth && (
           <GoogleAuthStep
-            title="Connecter votre pharmacie"
-            description="Authentifiez-vous avec Google pour continuer vers votre espace pharmacie"
-            onSuccess={authType === 'pharmacy' ? handlePharmacyGoogleSuccess : handleAdminGoogleSuccess}
+            title="Authentification requise"
+            description="Authentifiez-vous avec Google pour finaliser l'inscription de votre pharmacie"
+            onSuccess={handleAdminGoogleSuccess}
             onBack={handleGoogleAuthBack}
-            stepType={authType}
+            stepType="admin"
           />
         )}
 
@@ -57,8 +57,7 @@ const PharmacyRegistration = () => {
           <AdminPrincipalForm 
             form={form}
             onPrevious={() => setStep(1)}
-            onNext={handleAdminFormNext}
-            onSubmit={form.handleSubmit(onSubmit)}
+            onSubmit={handleAdminFormNext}
             isLoading={isLoading}
           />
         )}
