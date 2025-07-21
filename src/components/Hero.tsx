@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { GoogleAuthTest } from '@/components/GoogleAuthTest';
 
 export function Hero() {
   return (
@@ -46,6 +47,11 @@ export function Hero() {
                   <ArrowRight size={16} className="ml-2" />
                 </Button>
               </Link>
+            </FadeIn>
+            
+            {/* Bouton de test Google Auth */}
+            <FadeIn delay={0.35} className="mt-4">
+              <GoogleAuthTest />
             </FadeIn>
             
             <FadeIn delay={0.4}>
