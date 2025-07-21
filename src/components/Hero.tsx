@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
-
+import { GoogleAuthTest } from '@/components/GoogleAuthTest';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
@@ -128,7 +128,33 @@ export function Hero() {
               </FadeIn>
             )}
             
-          
+            {/* Bouton de test Google Auth */}
+            <FadeIn delay={0.35} className="mt-4">
+              <GoogleAuthTest />
+            </FadeIn>
+            
+            <FadeIn delay={0.4}>
+              <div className="mt-10 flex items-center gap-6">
+                <div className="flex -space-x-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "w-8 h-8 rounded-full border-2 border-white",
+                        i === 1 && "bg-pharma-400",
+                        i === 2 && "bg-pharma-500",
+                        i === 3 && "bg-pharma-600",
+                        i === 4 && "bg-pharma-700"
+                      )}
+                    ></div>
+                  ))}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">+500</span> pharmacies utilisent déjà PharmaSoft
+                </div>
+              </div>
+            </FadeIn>
+          </div>
           
           <div className="order-1 lg:order-2 relative">
             <FadeIn className="relative z-10" delay={0.2}>
