@@ -7,6 +7,7 @@ import { Menu, X, User, LogOut, Building2, Plus, LogIn, LayoutDashboard, Chevron
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export function Header() {
   const { t } = useLanguage();
@@ -31,6 +32,33 @@ export function Header() {
   const handlePharmacyDisconnect = () => {
     disconnectPharmacy();
     navigate('/');
+  };
+
+  const handleCreatePharmacy = async () => {
+    console.log('HEADER: Lancement de l\'authentification Google pour création pharmacie...');
+    
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/pharmacy-creation`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account' // Force la sélection du compte Google
+          }
+        }
+      });
+
+      if (error) {
+        console.error('HEADER: Erreur authentification Google:', error);
+        alert('Erreur lors de l\'authentification: ' + error.message);
+      } else {
+        console.log('HEADER: Authentification Google lancée pour création pharmacie');
+      }
+    } catch (error) {
+      console.error('HEADER: Exception authentification Google:', error);
+      alert('Erreur inattendue lors de l\'authentification');
+    }
   };
 
   useEffect(() => {
@@ -111,7 +139,7 @@ export function Header() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => navigate('/pharmacy-creation')}>
+                  <DropdownMenuItem onClick={handleCreatePharmacy}>
                     Créer une pharmacie
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate('/pharmacy-connection')}>

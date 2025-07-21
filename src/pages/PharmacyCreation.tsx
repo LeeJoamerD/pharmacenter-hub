@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { FadeIn } from '@/components/FadeIn';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import type { User } from '@supabase/supabase-js';
 
 interface PasswordValidation {
   minLength: boolean;
@@ -68,6 +69,35 @@ export default function PharmacyCreation() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { connectPharmacy, signOut } = useAuth();
+
+  // Pré-remplir avec les données Google si disponibles
+  useEffect(() => {
+    const checkGoogleAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        console.log('PHARMACY-CREATION: Utilisateur Google détecté:', session.user.email);
+        
+        // Pré-remplir les champs avec les données Google
+        const googleData = {
+          email: session.user.email || '',
+          telephone_appel: session.user.phone || '',
+          // Extraire le nom depuis les métadonnées Google si disponible
+          prenoms: session.user.user_metadata?.given_name || '',
+          noms: session.user.user_metadata?.family_name || session.user.user_metadata?.name || ''
+        };
+
+        setFormData(prev => ({
+          ...prev,
+          ...googleData
+        }));
+
+        console.log('PHARMACY-CREATION: Champs pré-remplis:', googleData);
+      }
+    };
+
+    checkGoogleAuth();
+  }, []);
 
   // Validation du mot de passe en temps réel
   const validatePassword = (password: string): PasswordValidation => {
@@ -283,7 +313,7 @@ export default function PharmacyCreation() {
 
                     <div className="space-y-2">
                       <Label htmlFor="telephone_appel" className="text-sm font-medium">
-                        Téléphone *
+                        Téléphone * {formData.telephone_appel && <span className="text-xs text-muted-foreground">(depuis Google)</span>}
                       </Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -295,6 +325,7 @@ export default function PharmacyCreation() {
                           onChange={(e) => handleInputChange('telephone_appel', e.target.value)}
                           className="pl-10 h-11"
                           required
+                          disabled={!!(formData.telephone_appel && formData.telephone_appel.length > 0)}
                         />
                       </div>
                     </div>
@@ -356,7 +387,7 @@ export default function PharmacyCreation() {
                   
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-sm font-medium">
-                      Adresse email *
+                      Adresse email * {formData.email && <span className="text-xs text-muted-foreground">(depuis Google)</span>}
                     </Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -368,6 +399,7 @@ export default function PharmacyCreation() {
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         className="pl-10 h-11"
                         required
+                        disabled={!!(formData.email && formData.email.length > 0)}
                       />
                     </div>
                   </div>
