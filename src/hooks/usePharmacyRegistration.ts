@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { PharmacyRegistrationData } from '@/types/pharmacy-registration';
+import { useAuth } from '@/contexts/AuthContext';
 import type { User } from '@supabase/supabase-js';
 
 interface PharmacyCreationResult {
@@ -12,20 +14,14 @@ interface PharmacyCreationResult {
   message?: string;
 }
 
-interface AdminCreationResult {
-  success: boolean;
-  personnel_id?: string;
-  error?: string;
-  message?: string;
-}
-
 export const usePharmacyRegistration = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [pharmacyGoogleUser, setPharmacyGoogleUser] = useState<User | null>(null);
   const [adminGoogleUser, setAdminGoogleUser] = useState<User | null>(null);
-  const [showGoogleAuth, setShowGoogleAuth] = useState(false); // Démarrer par le formulaire
+  const [showGoogleAuth, setShowGoogleAuth] = useState(false);
   const [authType, setAuthType] = useState<'pharmacy' | 'admin'>('pharmacy');
 
   const form = useForm<PharmacyRegistrationData>({
@@ -35,28 +31,14 @@ export const usePharmacyRegistration = () => {
     }
   });
 
-  // Vérifier le localStorage pour les redirections Google
-  useEffect(() => {
-    const storedAuthType = localStorage.getItem('pharmacyAuthType');
-    
-    if (storedAuthType === 'pharmacy' || storedAuthType === 'admin') {
-      setAuthType(storedAuthType);
-      setShowGoogleAuth(true);
-      // Nettoyer le localStorage après utilisation
-      localStorage.removeItem('pharmacyAuthType');
-    }
-  }, []);
-
   const handlePharmacyNext = () => {
-    // Déclencher l'authentification Google après la première étape
-    setAuthType('admin');
-    setShowGoogleAuth(true);
+    // Passer directement à l'étape 2 car l'utilisateur est déjà authentifié
+    setStep(2);
   };
 
   const handlePharmacyGoogleSuccess = (user: User) => {
     setPharmacyGoogleUser(user);
-    // Rediriger vers la page des deux blocs d'authentification
-    window.location.href = '/pharmacy-login';
+    console.log('Authentification pharmacie réussie:', user.email);
   };
 
   const handleAdminFormNext = () => {
@@ -67,7 +49,7 @@ export const usePharmacyRegistration = () => {
   const handleAdminGoogleSuccess = (user: User) => {
     setAdminGoogleUser(user);
     setShowGoogleAuth(false);
-    setStep(2); // Aller directement au formulaire admin
+    setStep(2);
     
     // Pré-remplir automatiquement les champs admin avec les données Google
     if (user.user_metadata?.given_name) {
@@ -109,8 +91,8 @@ export const usePharmacyRegistration = () => {
     setIsLoading(true);
     
     try {
-      // Vérifier que l'utilisateur admin est authentifié
-      if (!adminGoogleUser) {
+      // Utiliser l'utilisateur déjà authentifié via useAuth
+      if (!user) {
         toast({
           title: "Erreur d'authentification",
           description: "Veuillez vous authentifier avec Google avant de continuer.",
@@ -119,7 +101,7 @@ export const usePharmacyRegistration = () => {
         return;
       }
 
-      const adminEmail = adminGoogleUser.email;
+      const adminEmail = user.email;
       if (!adminEmail) {
         toast({
           title: "Erreur",
@@ -129,55 +111,20 @@ export const usePharmacyRegistration = () => {
         return;
       }
 
-      // ÉTAPE CRITIQUE: Vérifier et attendre que la session Supabase soit active
-      console.log('1. Vérification de la session Supabase avant RPC...');
-      let session = null;
-      let retryCount = 0;
-      const maxRetries = 5;
+      console.log('REGISTRATION: Début de l\'inscription avec utilisateur:', adminEmail);
 
-      // Retry pour attendre que la session soit établie
-      while (!session && retryCount < maxRetries) {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        session = currentSession;
-        
-        console.log(`2. Tentative ${retryCount + 1}: Session trouvée:`, !!session);
-        console.log(`3. User ID disponible:`, session?.user?.id || 'null');
-        
-        if (!session) {
-          console.log('4. Attente de 1 seconde pour l\'établissement de la session...');
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          retryCount++;
-        }
-      }
-
-      // Vérification finale de la session
+      // Vérifier que la session Supabase est active
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session || !session.user) {
-        console.error('5. ERREUR: Session Supabase non établie après', maxRetries, 'tentatives');
         toast({
           title: "Erreur de session",
-          description: "Session d'authentification non établie. Veuillez vous reconnecter.",
-          variant: "destructive",
-        });
-        
-        // Forcer une nouvelle authentification
-        setShowGoogleAuth(true);
-        return;
-      }
-
-      console.log('6. Session confirmée, utilisateur:', session.user.id);
-      console.log('7. Email de session:', session.user.email);
-      console.log('8. Email admin:', adminEmail);
-
-      // Vérifier que les emails correspondent
-      if (session.user.email !== adminEmail) {
-        console.error('9. ERREUR: Email de session ne correspond pas à l\'email admin');
-        toast({
-          title: "Erreur d'authentification",
-          description: "L'email de session ne correspond pas. Veuillez vous reconnecter.",
+          description: "Session d'authentification expirée. Veuillez vous reconnecter.",
           variant: "destructive",
         });
         return;
       }
+
+      console.log('REGISTRATION: Session confirmée pour:', session.user.email);
 
       // Préparer les données de la pharmacie
       const pharmacyData = {
@@ -198,14 +145,16 @@ export const usePharmacyRegistration = () => {
 
       // Préparer les données de l'admin avec les informations Google
       const adminData = {
-        noms: data.admin_noms || adminGoogleUser.user_metadata?.family_name || '',
-        prenoms: data.admin_prenoms || adminGoogleUser.user_metadata?.given_name || '',
+        noms: data.admin_noms || user.user_metadata?.family_name || '',
+        prenoms: data.admin_prenoms || user.user_metadata?.given_name || '',
         reference_agent: data.admin_reference,
         telephone: data.admin_telephone_principal
       };
 
       // Générer un mot de passe sécurisé
       const adminPassword = generateSecurePassword();
+
+      console.log('REGISTRATION: Appel de la fonction register_pharmacy_with_admin...');
 
       // Utiliser la fonction RPC qui gère les permissions avec l'utilisateur authentifié
       const { data: result, error: registrationError } = await supabase.rpc('register_pharmacy_with_admin', {
@@ -218,7 +167,7 @@ export const usePharmacyRegistration = () => {
       const typedResult = result as unknown as { success: boolean; error?: string; pharmacy_id?: string; };
 
       if (registrationError || !typedResult?.success) {
-        console.error('Erreur lors de l\'inscription:', registrationError);
+        console.error('REGISTRATION: Erreur lors de l\'inscription:', registrationError);
         toast({
           title: "Erreur",
           description: typedResult?.error || registrationError?.message || "Erreur lors de l'inscription",
@@ -226,6 +175,8 @@ export const usePharmacyRegistration = () => {
         });
         return;
       }
+
+      console.log('REGISTRATION: Inscription réussie !');
 
       // Succès
       toast({
@@ -237,7 +188,7 @@ export const usePharmacyRegistration = () => {
       setStep(3);
       
     } catch (error: any) {
-      console.error('Erreur lors de la soumission:', error);
+      console.error('REGISTRATION: Erreur lors de la soumission:', error);
       toast({
         title: "Erreur",
         description: "Une erreur inattendue est survenue. Veuillez réessayer.",

@@ -1,11 +1,41 @@
+
 import { FadeIn } from '@/components/FadeIn';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { GoogleAuthTest } from '@/components/GoogleAuthTest';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function Hero() {
+  const { user } = useAuth();
+
+  const handlePharmacyConnection = async () => {
+    // Si l'utilisateur n'est pas connecté, lancer l'authentification Google
+    if (!user) {
+      console.log('HERO: Lancement de l\'authentification Google avant création pharmacie...');
+      
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/pharmacy-registration`
+          }
+        });
+
+        if (error) {
+          console.error('HERO: Erreur authentification Google:', error);
+        }
+      } catch (error) {
+        console.error('HERO: Exception authentification Google:', error);
+      }
+    } else {
+      // Si déjà connecté, rediriger directement vers l'inscription
+      window.location.href = '/pharmacy-registration';
+    }
+  };
+
   return (
     <section className="pt-32 pb-20 relative overflow-hidden">
       {/* Background Elements */}
@@ -36,11 +66,13 @@ export function Hero() {
             </FadeIn>
             
             <FadeIn delay={0.3} className="flex flex-col sm:flex-row gap-4">
-              <Link to="/pharmacy-connection">
-                <Button size="lg" className="button-hover-effect bg-primary hover:bg-primary/90 text-white">
-                  Connecter votre Pharmacie
-                </Button>
-              </Link>
+              <Button 
+                size="lg" 
+                className="button-hover-effect bg-primary hover:bg-primary/90 text-white"
+                onClick={handlePharmacyConnection}
+              >
+                Connecter votre Pharmacie
+              </Button>
               <Link to="/tableau-de-bord">
                 <Button size="lg" variant="outline" className="button-hover-effect border-primary/20 text-primary hover:bg-primary/5">
                   <span>Voir la Démo</span>
