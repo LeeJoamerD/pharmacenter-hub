@@ -76,15 +76,26 @@ export default function PharmacyCreation() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        console.log('PHARMACY-CREATION: Utilisateur Google détecté:', session.user.email);
+        console.log('PHARMACY-CREATION: Utilisateur Google détecté:', session.user);
+        console.log('PHARMACY-CREATION: Métadonnées utilisateur:', session.user.user_metadata);
         
         // Pré-remplir les champs avec les données Google
         const googleData = {
           email: session.user.email || '',
-          telephone_appel: session.user.phone || '',
-          // Extraire le nom depuis les métadonnées Google si disponible
-          prenoms: session.user.user_metadata?.given_name || '',
-          noms: session.user.user_metadata?.family_name || session.user.user_metadata?.name || ''
+          // Essayer plusieurs sources pour le téléphone
+          telephone_appel: session.user.phone || 
+                          session.user.user_metadata?.phone || 
+                          session.user.user_metadata?.phone_number || '',
+          // Extraire le nom depuis les métadonnées Google
+          prenoms: session.user.user_metadata?.given_name || 
+                  session.user.user_metadata?.first_name || '',
+          noms: session.user.user_metadata?.family_name || 
+               session.user.user_metadata?.last_name || 
+               session.user.user_metadata?.name || '',
+          // Ajouter le téléphone dans le champ personnel aussi
+          telephone: session.user.phone || 
+                    session.user.user_metadata?.phone || 
+                    session.user.user_metadata?.phone_number || ''
         };
 
         setFormData(prev => ({
@@ -93,6 +104,7 @@ export default function PharmacyCreation() {
         }));
 
         console.log('PHARMACY-CREATION: Champs pré-remplis:', googleData);
+        console.log('PHARMACY-CREATION: Données disponibles dans user_metadata:', Object.keys(session.user.user_metadata || {}));
       }
     };
 
