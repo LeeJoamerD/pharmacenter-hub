@@ -1,4 +1,3 @@
-
 import { FadeIn } from '@/components/FadeIn';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
@@ -6,32 +5,70 @@ import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { GoogleAuthTest } from '@/components/GoogleAuthTest';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect } from 'react';
+import type { User } from '@supabase/supabase-js';
 
 export function Hero() {
-  const { user } = useAuth();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Vérifier la session existante au chargement
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('HERO: Session initiale:', !!session?.user);
+      setCurrentUser(session?.user || null);
+    };
+
+    checkSession();
+
+    // Écouter les changements d'auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('HERO: Événement auth:', event, 'User:', !!session?.user);
+      setCurrentUser(session?.user || null);
+      
+      // Si l'utilisateur vient de se connecter, rediriger vers l'inscription
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('HERO: Redirection vers pharmacy-registration après authentification');
+        window.location.href = '/pharmacy-registration';
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handlePharmacyConnection = async () => {
+    console.log('HERO: Clic sur le bouton Connecter votre Pharmacie');
+    console.log('HERO: Utilisateur actuel:', currentUser ? currentUser.email : 'aucun');
+    
     // Si l'utilisateur n'est pas connecté, lancer l'authentification Google
-    if (!user) {
-      console.log('HERO: Lancement de l\'authentification Google avant création pharmacie...');
+    if (!currentUser) {
+      console.log('HERO: Lancement de l\'authentification Google...');
+      setLoading(true);
       
       try {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: `${window.location.origin}/pharmacy-registration`
+            redirectTo: `${window.location.origin}/`
           }
         });
 
         if (error) {
           console.error('HERO: Erreur authentification Google:', error);
+          alert('Erreur lors de l\'authentification: ' + error.message);
+        } else {
+          console.log('HERO: Authentification Google lancée');
         }
       } catch (error) {
         console.error('HERO: Exception authentification Google:', error);
+        alert('Erreur inattendue lors de l\'authentification');
+      } finally {
+        setLoading(false);
       }
     } else {
       // Si déjà connecté, rediriger directement vers l'inscription
+      console.log('HERO: Utilisateur déjà connecté, redirection vers pharmacy-registration');
       window.location.href = '/pharmacy-registration';
     }
   };
@@ -70,8 +107,9 @@ export function Hero() {
                 size="lg" 
                 className="button-hover-effect bg-primary hover:bg-primary/90 text-white"
                 onClick={handlePharmacyConnection}
+                disabled={loading}
               >
-                Connecter votre Pharmacie
+                {loading ? 'Authentification...' : 'Connecter votre Pharmacie'}
               </Button>
               <Link to="/tableau-de-bord">
                 <Button size="lg" variant="outline" className="button-hover-effect border-primary/20 text-primary hover:bg-primary/5">
@@ -80,6 +118,15 @@ export function Hero() {
                 </Button>
               </Link>
             </FadeIn>
+
+            {/* Debug info pour voir l'état actuel */}
+            {currentUser && (
+              <FadeIn delay={0.35} className="mt-4">
+                <div className="p-2 bg-green-100 border border-green-300 rounded text-sm text-green-700">
+                  ✅ Connecté: {currentUser.email}
+                </div>
+              </FadeIn>
+            )}
             
             {/* Bouton de test Google Auth */}
             <FadeIn delay={0.35} className="mt-4">
