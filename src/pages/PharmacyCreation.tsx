@@ -78,32 +78,45 @@ export default function PharmacyCreation() {
       if (session?.user) {
         console.log('PHARMACY-CREATION: Utilisateur Google détecté:', session.user);
         console.log('PHARMACY-CREATION: Métadonnées utilisateur:', session.user.user_metadata);
+        console.log('PHARMACY-CREATION: Email user:', session.user.email);
+        console.log('PHARMACY-CREATION: Phone user:', session.user.phone);
         
-        // Pré-remplir les champs avec les données Google
+        // Pré-remplir les champs avec les données Google disponibles
         const googleData = {
           email: session.user.email || '',
-          // Essayer plusieurs sources pour le téléphone
-          telephone_appel: session.user.phone || 
-                          session.user.user_metadata?.phone || 
-                          session.user.user_metadata?.phone_number || '',
-          // Extraire le nom depuis les métadonnées Google
-          prenoms: session.user.user_metadata?.given_name || 
-                  session.user.user_metadata?.first_name || '',
-          noms: session.user.user_metadata?.family_name || 
-               session.user.user_metadata?.last_name || 
+          // Le téléphone n'est généralement pas disponible via Google Auth
+          telephone_appel: '',
+          // Utiliser les métadonnées disponibles pour les noms
+          prenoms: session.user.user_metadata?.full_name?.split(' ')[0] || 
+                  session.user.user_metadata?.name?.split(' ')[0] || '',
+          noms: session.user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || 
+               session.user.user_metadata?.name?.split(' ').slice(1).join(' ') || 
+               session.user.user_metadata?.full_name || 
                session.user.user_metadata?.name || '',
-          // Ajouter le téléphone dans le champ personnel aussi
-          telephone: session.user.phone || 
-                    session.user.user_metadata?.phone || 
-                    session.user.user_metadata?.phone_number || ''
+          // Pas de téléphone personnel non plus
+          telephone: ''
         };
 
-        setFormData(prev => ({
-          ...prev,
-          ...googleData
-        }));
+        console.log('PHARMACY-CREATION: Données extraites pour pré-remplissage:', googleData);
 
-        console.log('PHARMACY-CREATION: Champs pré-remplis:', googleData);
+        // Mettre à jour seulement les champs qui ont des valeurs
+        setFormData(prev => {
+          const updatedData = { ...prev };
+          
+          if (googleData.email) {
+            updatedData.email = googleData.email;
+          }
+          if (googleData.prenoms) {
+            updatedData.prenoms = googleData.prenoms;
+          }
+          if (googleData.noms) {
+            updatedData.noms = googleData.noms;
+          }
+          
+          console.log('PHARMACY-CREATION: FormData après mise à jour:', updatedData);
+          return updatedData;
+        });
+
         console.log('PHARMACY-CREATION: Données disponibles dans user_metadata:', Object.keys(session.user.user_metadata || {}));
       }
     };
@@ -511,6 +524,79 @@ export default function PharmacyCreation() {
                         </span>
                       </div>
                     )}
+                  </div>
+                </div>
+
+                {/* Informations de l'administrateur */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-foreground">Informations de l'administrateur</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="prenoms" className="text-sm font-medium">
+                        Prénoms * {formData.prenoms && <span className="text-xs text-muted-foreground">(depuis Google)</span>}
+                      </Label>
+                      <Input
+                        id="prenoms"
+                        type="text"
+                        placeholder="Jean"
+                        value={formData.prenoms}
+                        onChange={(e) => handleInputChange('prenoms', e.target.value)}
+                        className="h-11"
+                        required
+                        disabled={!!(formData.prenoms && formData.prenoms.length > 0)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="noms" className="text-sm font-medium">
+                        Noms * {formData.noms && <span className="text-xs text-muted-foreground">(depuis Google)</span>}
+                      </Label>
+                      <Input
+                        id="noms"
+                        type="text"
+                        placeholder="Dupont"
+                        value={formData.noms}
+                        onChange={(e) => handleInputChange('noms', e.target.value)}
+                        className="h-11"
+                        required
+                        disabled={!!(formData.noms && formData.noms.length > 0)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="telephone" className="text-sm font-medium">
+                        Téléphone personnel *
+                      </Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                        <Input
+                          id="telephone"
+                          type="tel"
+                          placeholder="+237 6XX XX XX XX"
+                          value={formData.telephone}
+                          onChange={(e) => handleInputChange('telephone', e.target.value)}
+                          className="pl-10 h-11"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="reference_agent" className="text-sm font-medium">
+                        Référence agent
+                      </Label>
+                      <Input
+                        id="reference_agent"
+                        type="text"
+                        placeholder="REF001"
+                        value={formData.reference_agent}
+                        onChange={(e) => handleInputChange('reference_agent', e.target.value)}
+                        className="h-11"
+                      />
+                    </div>
                   </div>
                 </div>
 
