@@ -129,6 +129,56 @@ export const usePharmacyRegistration = () => {
         return;
       }
 
+      // ÉTAPE CRITIQUE: Vérifier et attendre que la session Supabase soit active
+      console.log('1. Vérification de la session Supabase avant RPC...');
+      let session = null;
+      let retryCount = 0;
+      const maxRetries = 5;
+
+      // Retry pour attendre que la session soit établie
+      while (!session && retryCount < maxRetries) {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        session = currentSession;
+        
+        console.log(`2. Tentative ${retryCount + 1}: Session trouvée:`, !!session);
+        console.log(`3. User ID disponible:`, session?.user?.id || 'null');
+        
+        if (!session) {
+          console.log('4. Attente de 1 seconde pour l\'établissement de la session...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          retryCount++;
+        }
+      }
+
+      // Vérification finale de la session
+      if (!session || !session.user) {
+        console.error('5. ERREUR: Session Supabase non établie après', maxRetries, 'tentatives');
+        toast({
+          title: "Erreur de session",
+          description: "Session d'authentification non établie. Veuillez vous reconnecter.",
+          variant: "destructive",
+        });
+        
+        // Forcer une nouvelle authentification
+        setShowGoogleAuth(true);
+        return;
+      }
+
+      console.log('6. Session confirmée, utilisateur:', session.user.id);
+      console.log('7. Email de session:', session.user.email);
+      console.log('8. Email admin:', adminEmail);
+
+      // Vérifier que les emails correspondent
+      if (session.user.email !== adminEmail) {
+        console.error('9. ERREUR: Email de session ne correspond pas à l\'email admin');
+        toast({
+          title: "Erreur d'authentification",
+          description: "L'email de session ne correspond pas. Veuillez vous reconnecter.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Préparer les données de la pharmacie
       const pharmacyData = {
         name: data.name,

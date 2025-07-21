@@ -59,9 +59,16 @@ export const GoogleAuthStep: React.FC<GoogleAuthStepProps> = ({
 
   React.useEffect(() => {
     const checkSession = async () => {
+      console.log('GoogleAuth: Vérification de la session existante...');
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('GoogleAuth: Session trouvée:', !!session?.user);
+      
       if (session?.user) {
-        onSuccess(session.user);
+        console.log('GoogleAuth: Utilisateur déjà authentifié, appel onSuccess');
+        // Attendre un peu pour s'assurer que la session est stable
+        setTimeout(() => {
+          onSuccess(session.user);
+        }, 100);
       }
     };
 
@@ -69,9 +76,22 @@ export const GoogleAuthStep: React.FC<GoogleAuthStepProps> = ({
 
     // Écouter les changements d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        console.log('GoogleAuth: Événement auth:', event, 'Session:', !!session?.user);
+        
         if (event === 'SIGNED_IN' && session?.user) {
-          onSuccess(session.user);
+          console.log('GoogleAuth: Connexion détectée, attente de stabilisation...');
+          
+          // Attendre que la session soit complètement établie
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Vérifier à nouveau la session pour être sûr
+          const { data: { session: verifiedSession } } = await supabase.auth.getSession();
+          console.log('GoogleAuth: Session vérifiée:', !!verifiedSession?.user);
+          
+          if (verifiedSession?.user) {
+            onSuccess(verifiedSession.user);
+          }
         }
       }
     );
