@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
-import { GoogleAuthTest } from '@/components/GoogleAuthTest';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
@@ -127,11 +126,6 @@ export function Hero() {
                 </div>
               </FadeIn>
             )}
-            
-            {/* Bouton de test Google Auth */}
-            <FadeIn delay={0.35} className="mt-4">
-              <GoogleAuthTest />
-            </FadeIn>
             
             <FadeIn delay={0.4}>
               <div className="mt-10 flex items-center gap-6">
