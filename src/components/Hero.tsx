@@ -11,16 +11,20 @@ import type { User } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function Hero() {
-  const { user, connectedPharmacy, disconnectPharmacy } = useAuth();
+  const { user, connectedPharmacy, pharmacy, disconnectPharmacy } = useAuth();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Logique harmonisée : vérifier pharmacy OU connectedPharmacy
+  const activePharmacy = pharmacy || connectedPharmacy;
+  const isPharmacyConnected = !!activePharmacy;
 
   useEffect(() => {
     // Vérifier la session existante au chargement
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      console.log('HERO: Session initiale:', !!session?.user, 'Pharmacie connectée:', !!connectedPharmacy);
+      console.log('HERO: Session initiale:', !!session?.user, 'Pharmacie via tenant:', !!pharmacy, 'Pharmacie session:', !!connectedPharmacy);
       setCurrentUser(session?.user || null);
     };
 
@@ -28,12 +32,12 @@ export function Hero() {
 
     // Écouter les changements d'auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('HERO: Événement auth:', event, 'User:', !!session?.user, 'Pharmacie connectée:', !!connectedPharmacy);
+      console.log('HERO: Événement auth:', event, 'User:', !!session?.user, 'Pharmacie via tenant:', !!pharmacy, 'Pharmacie session:', !!connectedPharmacy);
       setCurrentUser(session?.user || null);
     });
 
     return () => subscription.unsubscribe();
-  }, [connectedPharmacy]);
+  }, [pharmacy, connectedPharmacy]);
 
   const handleCreatePharmacy = async () => {
     console.log('HERO: Lancement de l\'authentification Google pour création pharmacie...');
@@ -63,7 +67,14 @@ export function Hero() {
   };
 
   const handlePharmacyDisconnect = () => {
-    disconnectPharmacy();
+    // Si c'est une session pharmacie, utiliser disconnectPharmacy
+    if (connectedPharmacy) {
+      disconnectPharmacy();
+    }
+    // Si c'est une pharmacie via tenant, déconnecter l'utilisateur
+    else if (pharmacy) {
+      supabase.auth.signOut();
+    }
     navigate('/');
   };
 
@@ -133,8 +144,8 @@ export function Hero() {
             </FadeIn>
             
             <FadeIn delay={0.3} className="flex flex-col sm:flex-row gap-4">
-              {/* Gestion des pharmacies - État non connecté */}
-              {!connectedPharmacy ? (
+              {/* Gestion des pharmacies - Logique harmonisée */}
+              {!isPharmacyConnected ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
@@ -156,7 +167,7 @@ export function Hero() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                /* État connecté - Affichage direct */
+                /* État connecté - Affichage unifié */
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -167,9 +178,11 @@ export function Hero() {
                       <div className="flex items-start gap-3">
                         <Building2 size={20} className="mt-1 text-primary" />
                         <div className="flex flex-col items-start">
-                          <div className="font-semibold text-base">{connectedPharmacy.name}</div>
-                          <div className="text-sm text-muted-foreground">{connectedPharmacy.email}</div>
-                          <div className="text-xs text-green-600 font-medium">Connecté</div>
+                          <div className="font-semibold text-base">{activePharmacy.name}</div>
+                          <div className="text-sm text-muted-foreground">{activePharmacy.email}</div>
+                          <div className="text-xs text-green-600 font-medium">
+                            {connectedPharmacy ? 'Session active' : 'Connecté'}
+                          </div>
                         </div>
                       </div>
                     </Button>
@@ -177,7 +190,7 @@ export function Hero() {
                   <DropdownMenuContent align="start" className="bg-white dark:bg-gray-800 border shadow-lg">
                     <DropdownMenuItem onClick={handlePharmacyDisconnect}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      Déconnecter pharmacie
+                      {connectedPharmacy ? 'Déconnecter session' : 'Déconnecter pharmacie'}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
