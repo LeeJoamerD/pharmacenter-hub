@@ -336,8 +336,8 @@ export default function PharmacyCreation() {
           email: formData.email,
           departement: formData.departement,
           type: formData.type,
-          region: 'Cameroun',
-          pays: 'Cameroun'
+          region: 'Brazzaville',
+          pays: 'république du Congo'
         }
       });
 
