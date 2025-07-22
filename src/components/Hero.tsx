@@ -20,7 +20,7 @@ export function Hero() {
     // Vérifier la session existante au chargement
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      console.log('HERO: Session initiale:', !!session?.user);
+      console.log('HERO: Session initiale:', !!session?.user, 'Pharmacie connectée:', !!connectedPharmacy);
       setCurrentUser(session?.user || null);
     };
 
@@ -28,12 +28,12 @@ export function Hero() {
 
     // Écouter les changements d'auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('HERO: Événement auth:', event, 'User:', !!session?.user);
+      console.log('HERO: Événement auth:', event, 'User:', !!session?.user, 'Pharmacie connectée:', !!connectedPharmacy);
       setCurrentUser(session?.user || null);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [connectedPharmacy]);
 
   const handleCreatePharmacy = async () => {
     console.log('HERO: Lancement de l\'authentification Google pour création pharmacie...');
