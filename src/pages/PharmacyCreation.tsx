@@ -58,6 +58,7 @@ export default function PharmacyCreation() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [googleDataLoaded, setGoogleDataLoaded] = useState(false);
   const [passwordValidation, setPasswordValidation] = useState<PasswordValidation>({
     minLength: false,
     hasUppercase: false,
@@ -70,93 +71,176 @@ export default function PharmacyCreation() {
   const { toast } = useToast();
   const { connectPharmacy, signOut } = useAuth();
 
-  // Pré-remplir avec les données Google si disponibles
+  // Fonction pour extraire et formater les données Google
+  const extractGoogleData = (user: any) => {
+    if (!user) {
+      console.log('PHARMACY-CREATION: Aucun utilisateur fourni');
+      return null;
+    }
+    
+    console.log('PHARMACY-CREATION: Extraction des données Google:', {
+      email: user.email,
+      user_metadata: user.user_metadata,
+      app_metadata: user.app_metadata
+    });
+    
+    const metadata = user.user_metadata || {};
+    const appMetadata = user.app_metadata || {};
+    
+    // Différentes sources pour les données
+    const email = user.email || metadata.email;
+    const fullName = metadata.full_name || metadata.name || appMetadata.full_name || '';
+    const firstName = metadata.given_name || metadata.first_name || '';
+    const lastName = metadata.family_name || metadata.last_name || metadata.surname || '';
+    const phone = user.phone || metadata.phone_number || metadata.phone || '';
+    
+    // Si pas de prénom/nom séparés, essayer de les extraire du nom complet
+    let extractedFirstName = firstName;
+    let extractedLastName = lastName;
+    
+    if (!firstName && !lastName && fullName) {
+      const nameParts = fullName.trim().split(' ');
+      extractedFirstName = nameParts[0] || '';
+      extractedLastName = nameParts.slice(1).join(' ') || '';
+    }
+    
+    const googleData = {
+      email: email || '',
+      prenoms: extractedFirstName || '',
+      noms: extractedLastName || '',
+      telephone_appel: phone || '',
+      telephone: phone || ''
+    };
+    
+    console.log('PHARMACY-CREATION: Données extraites:', googleData);
+    return googleData;
+  };
+
+  // Fonction pour préremplir le formulaire
+  const fillFormWithGoogleData = (user: any) => {
+    const googleData = extractGoogleData(user);
+    
+    if (!googleData) return;
+    
+    console.log('PHARMACY-CREATION: Préremplissage avec:', googleData);
+    
+    setFormData(prev => {
+      // Ne pas écraser les données déjà saisies manuellement
+      const newData = { ...prev };
+      
+      // Email - toujours préremplir si disponible
+      if (googleData.email && !prev.email) {
+        newData.email = googleData.email;
+      }
+      
+      // Prénoms - préremplir si vide
+      if (googleData.prenoms && !prev.prenoms) {
+        newData.prenoms = googleData.prenoms;
+      }
+      
+      // Noms - préremplir si vide
+      if (googleData.noms && !prev.noms) {
+        newData.noms = googleData.noms;
+      }
+      
+      // Téléphone - préremplir si vide
+      if (googleData.telephone_appel && !prev.telephone_appel) {
+        newData.telephone_appel = googleData.telephone_appel;
+      }
+      
+      if (googleData.telephone && !prev.telephone) {
+        newData.telephone = googleData.telephone;
+      }
+      
+      console.log('PHARMACY-CREATION: FormData mis à jour:', newData);
+      return newData;
+    });
+    
+    setGoogleDataLoaded(true);
+  };
+
+  // Préremplir avec les données Google si disponibles
   useEffect(() => {
     console.log('PHARMACY-CREATION: Initialisation du composant');
     
-    const fillFormWithGoogleData = (user: any) => {
-      if (!user) {
-        console.log('PHARMACY-CREATION: Aucun utilisateur fourni');
-        return;
-      }
-      
-      console.log('PHARMACY-CREATION: Utilisateur Google détecté:', user);
-      console.log('PHARMACY-CREATION: user.email:', user.email);
-      console.log('PHARMACY-CREATION: user.user_metadata:', user.user_metadata);
-      
-      // Extraire les données Google selon les différents formats possibles
-      const metadata = user.user_metadata || {};
-      const fullName = metadata.full_name || metadata.name || '';
-      const firstName = metadata.given_name || fullName.split(' ')[0] || '';
-      const lastName = metadata.family_name || fullName.split(' ').slice(1).join(' ') || '';
-      
-      console.log('PHARMACY-CREATION: Extraction - fullName:', fullName, 'firstName:', firstName, 'lastName:', lastName);
-
-      // Mettre à jour les champs avec les données Google
-      setFormData(prev => {
-        const updatedData = { ...prev };
-        
-        // Email obligatoire depuis Google
-        if (user.email) {
-          updatedData.email = user.email;
-        }
-        
-        // Prénom depuis Google
-        if (firstName) {
-          updatedData.prenoms = firstName;
-        }
-        
-        // Nom depuis Google
-        if (lastName) {
-          updatedData.noms = lastName;
-        }
-        
-        // Téléphone (rarement disponible depuis Google)
-        if (user.phone || metadata.phone_number) {
-          const phone = user.phone || metadata.phone_number;
-          updatedData.telephone_appel = phone;
-          updatedData.telephone = phone;
-        }
-        
-        console.log('PHARMACY-CREATION: FormData mis à jour avec Google:', updatedData);
-        return updatedData;
-      });
-    };
-
-    // Vérifier immédiatement la session
-    const checkSession = async () => {
+    let mounted = true;
+    
+    const initializeGoogleData = async () => {
       try {
-        console.log('PHARMACY-CREATION: Vérification de la session...');
-        const { data: { session } } = await supabase.auth.getSession();
+        // Vérifier d'abord la session actuelle
+        console.log('PHARMACY-CREATION: Vérification session initiale...');
+        const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (session?.user) {
+        if (error) {
+          console.error('PHARMACY-CREATION: Erreur getSession:', error);
+          return;
+        }
+        
+        if (session?.user && mounted) {
           console.log('PHARMACY-CREATION: Session trouvée, préremplissage...');
           fillFormWithGoogleData(session.user);
         } else {
-          console.log('PHARMACY-CREATION: Aucune session trouvée');
+          console.log('PHARMACY-CREATION: Aucune session active');
         }
+        
+        // Écouter les changements d'authentification
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          console.log('PHARMACY-CREATION: Auth state change:', event, 'session:', !!session?.user);
+          
+          if (!mounted) return;
+          
+          if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+            console.log('PHARMACY-CREATION: Préremplissage depuis auth state change');
+            fillFormWithGoogleData(session.user);
+          } else if (event === 'SIGNED_OUT') {
+            console.log('PHARMACY-CREATION: Utilisateur déconnecté');
+            setGoogleDataLoaded(false);
+          }
+        });
+
+        return () => {
+          subscription.unsubscribe();
+        };
       } catch (error) {
-        console.error('PHARMACY-CREATION: Erreur vérification session:', error);
+        console.error('PHARMACY-CREATION: Erreur lors de l\'initialisation:', error);
       }
     };
 
-    // Écouter les changements d'authentification
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('PHARMACY-CREATION: Auth event:', event, 'has session:', !!session);
-      
-      if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-        console.log('PHARMACY-CREATION: Préremplissage depuis auth listener');
-        fillFormWithGoogleData(session.user);
+    const cleanup = initializeGoogleData();
+    
+    // Alternative: vérifier périodiquement si les données ne sont pas encore chargées
+    const checkInterval = setInterval(async () => {
+      if (!googleDataLoaded && mounted) {
+        console.log('PHARMACY-CREATION: Vérification périodique...');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          fillFormWithGoogleData(session.user);
+          clearInterval(checkInterval);
+        }
       }
-    });
-
-    // Vérifier immédiatement
-    checkSession();
+    }, 1000);
 
     return () => {
-      subscription.unsubscribe();
+      mounted = false;
+      clearInterval(checkInterval);
+      cleanup?.then(unsub => unsub?.());
     };
   }, []);
+
+  // Force une nouvelle vérification après le montage du composant
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (!googleDataLoaded) {
+        console.log('PHARMACY-CREATION: Vérification tardive...');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          fillFormWithGoogleData(session.user);
+        }
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [googleDataLoaded]);
 
   // Validation du mot de passe en temps réel
   const validatePassword = (password: string): PasswordValidation => {
@@ -180,6 +264,17 @@ export default function PharmacyCreation() {
 
   const isPasswordValid = Object.values(passwordValidation).every(Boolean);
   const passwordsMatch = formData.password === formData.confirmPassword;
+
+  // Déterminer si un champ est prérempli par Google
+  const isFieldFromGoogle = (field: string) => {
+    return googleDataLoaded && formData[field] && (
+      field === 'email' || 
+      field === 'prenoms' || 
+      field === 'noms' || 
+      field === 'telephone_appel' || 
+      field === 'telephone'
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -372,7 +467,7 @@ export default function PharmacyCreation() {
 
                     <div className="space-y-2">
                       <Label htmlFor="telephone_appel" className="text-sm font-medium">
-                        Téléphone * {formData.telephone_appel && <span className="text-xs text-muted-foreground">(depuis Google)</span>}
+                        Téléphone * {isFieldFromGoogle('telephone_appel') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
                       </Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -382,9 +477,8 @@ export default function PharmacyCreation() {
                           placeholder="+237 6XX XX XX XX"
                           value={formData.telephone_appel}
                           onChange={(e) => handleInputChange('telephone_appel', e.target.value)}
-                          className="pl-10 h-11"
+                          className={`pl-10 h-11 ${isFieldFromGoogle('telephone_appel') ? 'bg-green-50 border-green-200' : ''}`}
                           required
-                          disabled={!!(formData.telephone_appel && formData.telephone_appel.length > 0)}
                         />
                       </div>
                     </div>
@@ -446,7 +540,7 @@ export default function PharmacyCreation() {
                   
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-sm font-medium">
-                      Adresse email * {formData.email && <span className="text-xs text-muted-foreground">(depuis Google)</span>}
+                      Adresse email * {isFieldFromGoogle('email') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
                     </Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -456,9 +550,8 @@ export default function PharmacyCreation() {
                         placeholder="contact@pharmacie.fr"
                         value={formData.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
-                        className="pl-10 h-11"
+                        className={`pl-10 h-11 ${isFieldFromGoogle('email') ? 'bg-green-50 border-green-200' : ''}`}
                         required
-                        disabled={!!(formData.email && formData.email.length > 0)}
                       />
                     </div>
                   </div>
@@ -568,33 +661,31 @@ export default function PharmacyCreation() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="prenoms" className="text-sm font-medium">
-                        Prénoms * {formData.prenoms && <span className="text-xs text-muted-foreground">(depuis Google)</span>}
+                        Prénoms * {isFieldFromGoogle('prenoms') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
                       </Label>
                       <Input
                         id="prenoms"
                         type="text"
-                        placeholder="Jean"
+                        placeholder="Lee Joamer"
                         value={formData.prenoms}
                         onChange={(e) => handleInputChange('prenoms', e.target.value)}
-                        className="h-11"
+                        className={`h-11 ${isFieldFromGoogle('prenoms') ? 'bg-green-50 border-green-200' : ''}`}
                         required
-                        disabled={!!(formData.prenoms && formData.prenoms.length > 0)}
                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="noms" className="text-sm font-medium">
-                        Noms * {formData.noms && <span className="text-xs text-muted-foreground">(depuis Google)</span>}
+                        Noms * {isFieldFromGoogle('noms') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
                       </Label>
                       <Input
                         id="noms"
                         type="text"
-                        placeholder="Dupont"
+                        placeholder="DIAMBOMBA"
                         value={formData.noms}
                         onChange={(e) => handleInputChange('noms', e.target.value)}
-                        className="h-11"
+                        className={`h-11 ${isFieldFromGoogle('noms') ? 'bg-green-50 border-green-200' : ''}`}
                         required
-                        disabled={!!(formData.noms && formData.noms.length > 0)}
                       />
                     </div>
                   </div>
@@ -602,17 +693,17 @@ export default function PharmacyCreation() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="telephone" className="text-sm font-medium">
-                        Téléphone personnel *
+                        Téléphone personnel * {isFieldFromGoogle('telephone') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
                       </Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                         <Input
                           id="telephone"
                           type="tel"
-                          placeholder="+237 6XX XX XX XX"
+                          placeholder="+242 XX XXX XX XX"
                           value={formData.telephone}
                           onChange={(e) => handleInputChange('telephone', e.target.value)}
-                          className="pl-10 h-11"
+                          className={`pl-10 h-11 ${isFieldFromGoogle('telephone') ? 'bg-green-50 border-green-200' : ''}`}
                           required
                         />
                       </div>
