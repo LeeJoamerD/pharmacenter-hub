@@ -336,8 +336,8 @@ export default function PharmacyCreation() {
           email: formData.email,
           departement: formData.departement,
           type: formData.type,
-          region: 'Cameroun',
-          pays: 'Cameroun'
+          region: 'Brazzaville',
+          pays: 'République du Congo'
         }
       });
 
@@ -474,7 +474,7 @@ export default function PharmacyCreation() {
                         <Input
                           id="telephone_appel"
                           type="tel"
-                          placeholder="+237 6XX XX XX XX"
+                          placeholder="+242 XX XXX XX XX"
                           value={formData.telephone_appel}
                           onChange={(e) => handleInputChange('telephone_appel', e.target.value)}
                           className={`pl-10 h-11 ${isFieldFromGoogle('telephone_appel') ? 'bg-green-50 border-green-200' : ''}`}
@@ -493,7 +493,7 @@ export default function PharmacyCreation() {
                       <Input
                         id="address"
                         type="text"
-                        placeholder="123 Avenue de la Paix"
+                        placeholder="59 rue Ibaliko CNRTV"
                         value={formData.address}
                         onChange={(e) => handleInputChange('address', e.target.value)}
                         className="pl-10 h-11"
@@ -510,7 +510,7 @@ export default function PharmacyCreation() {
                       <Input
                         id="quartier"
                         type="text"
-                        placeholder="Centre-ville"
+                        placeholder="Nkombo"
                         value={formData.quartier}
                         onChange={(e) => handleInputChange('quartier', e.target.value)}
                         className="h-11"
@@ -524,7 +524,7 @@ export default function PharmacyCreation() {
                       <Input
                         id="city"
                         type="text"
-                        placeholder="Douala"
+                        placeholder="Brazzaville"
                         value={formData.city}
                         onChange={(e) => handleInputChange('city', e.target.value)}
                         className="h-11"
@@ -547,7 +547,7 @@ export default function PharmacyCreation() {
                       <Input
                         id="email"
                         type="email"
-                        placeholder="contact@pharmacie.fr"
+                        placeholder="djl.computersciences@gmail.com"
                         value={formData.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         className={`pl-10 h-11 ${isFieldFromGoogle('email') ? 'bg-green-50 border-green-200' : ''}`}
