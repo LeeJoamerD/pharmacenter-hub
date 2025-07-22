@@ -81,23 +81,23 @@ export default function PharmacyCreation() {
         console.log('PHARMACY-CREATION: Email user:', session.user.email);
         console.log('PHARMACY-CREATION: Phone user:', session.user.phone);
         
-        // Pré-remplir les champs avec les données Google disponibles
+        // Extraire les données Google selon les différents formats possibles
+        const metadata = session.user.user_metadata || {};
+        const fullName = metadata.full_name || metadata.name || '';
+        const firstName = metadata.given_name || fullName.split(' ')[0] || '';
+        const lastName = metadata.family_name || fullName.split(' ').slice(1).join(' ') || '';
+        
         const googleData = {
           email: session.user.email || '',
-          // Le téléphone n'est généralement pas disponible via Google Auth
-          telephone_appel: '',
-          // Utiliser les métadonnées disponibles pour les noms
-          prenoms: session.user.user_metadata?.full_name?.split(' ')[0] || 
-                  session.user.user_metadata?.name?.split(' ')[0] || '',
-          noms: session.user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || 
-               session.user.user_metadata?.name?.split(' ').slice(1).join(' ') || 
-               session.user.user_metadata?.full_name || 
-               session.user.user_metadata?.name || '',
-          // Pas de téléphone personnel non plus
-          telephone: ''
+          prenoms: firstName,
+          noms: lastName,
+          // Google Auth ne fournit généralement pas de téléphone, mais on peut vérifier
+          telephone_appel: session.user.phone || metadata.phone_number || '',
+          telephone: session.user.phone || metadata.phone_number || ''
         };
 
         console.log('PHARMACY-CREATION: Données extraites pour pré-remplissage:', googleData);
+        console.log('PHARMACY-CREATION: Métadonnées complètes disponibles:', metadata);
 
         // Mettre à jour seulement les champs qui ont des valeurs
         setFormData(prev => {
@@ -112,12 +112,16 @@ export default function PharmacyCreation() {
           if (googleData.noms) {
             updatedData.noms = googleData.noms;
           }
+          if (googleData.telephone_appel) {
+            updatedData.telephone_appel = googleData.telephone_appel;
+          }
+          if (googleData.telephone) {
+            updatedData.telephone = googleData.telephone;
+          }
           
           console.log('PHARMACY-CREATION: FormData après mise à jour:', updatedData);
           return updatedData;
         });
-
-        console.log('PHARMACY-CREATION: Données disponibles dans user_metadata:', Object.keys(session.user.user_metadata || {}));
       }
     };
 
