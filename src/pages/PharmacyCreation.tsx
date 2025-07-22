@@ -72,60 +72,87 @@ export default function PharmacyCreation() {
 
   // Pré-remplir avec les données Google si disponibles
   useEffect(() => {
-    const checkGoogleAuth = async () => {
+    console.log('PHARMACY-CREATION: Initialisation du composant');
+    
+    const fillFormWithGoogleData = (user: any) => {
+      if (!user) return;
+      
+      console.log('PHARMACY-CREATION: Utilisateur Google détecté:', user);
+      console.log('PHARMACY-CREATION: Métadonnées utilisateur:', user.user_metadata);
+      console.log('PHARMACY-CREATION: Email user:', user.email);
+      console.log('PHARMACY-CREATION: Phone user:', user.phone);
+      
+      // Extraire les données Google selon les différents formats possibles
+      const metadata = user.user_metadata || {};
+      const fullName = metadata.full_name || metadata.name || '';
+      const firstName = metadata.given_name || fullName.split(' ')[0] || '';
+      const lastName = metadata.family_name || fullName.split(' ').slice(1).join(' ') || '';
+      
+      const googleData = {
+        email: user.email || '',
+        prenoms: firstName,
+        noms: lastName,
+        // Google Auth ne fournit généralement pas de téléphone, mais on peut vérifier
+        telephone_appel: user.phone || metadata.phone_number || '',
+        telephone: user.phone || metadata.phone_number || ''
+      };
+
+      console.log('PHARMACY-CREATION: Données extraites pour pré-remplissage:', googleData);
+      console.log('PHARMACY-CREATION: Métadonnées complètes disponibles:', metadata);
+
+      // Mettre à jour seulement les champs qui ont des valeurs
+      setFormData(prev => {
+        const updatedData = { ...prev };
+        
+        if (googleData.email) {
+          updatedData.email = googleData.email;
+        }
+        if (googleData.prenoms) {
+          updatedData.prenoms = googleData.prenoms;
+        }
+        if (googleData.noms) {
+          updatedData.noms = googleData.noms;
+        }
+        if (googleData.telephone_appel) {
+          updatedData.telephone_appel = googleData.telephone_appel;
+        }
+        if (googleData.telephone) {
+          updatedData.telephone = googleData.telephone;
+        }
+        
+        console.log('PHARMACY-CREATION: FormData après mise à jour:', updatedData);
+        return updatedData;
+      });
+    };
+
+    // Vérifier la session initiale
+    const checkInitialSession = async () => {
+      console.log('PHARMACY-CREATION: Vérification de la session initiale...');
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        console.log('PHARMACY-CREATION: Utilisateur Google détecté:', session.user);
-        console.log('PHARMACY-CREATION: Métadonnées utilisateur:', session.user.user_metadata);
-        console.log('PHARMACY-CREATION: Email user:', session.user.email);
-        console.log('PHARMACY-CREATION: Phone user:', session.user.phone);
-        
-        // Extraire les données Google selon les différents formats possibles
-        const metadata = session.user.user_metadata || {};
-        const fullName = metadata.full_name || metadata.name || '';
-        const firstName = metadata.given_name || fullName.split(' ')[0] || '';
-        const lastName = metadata.family_name || fullName.split(' ').slice(1).join(' ') || '';
-        
-        const googleData = {
-          email: session.user.email || '',
-          prenoms: firstName,
-          noms: lastName,
-          // Google Auth ne fournit généralement pas de téléphone, mais on peut vérifier
-          telephone_appel: session.user.phone || metadata.phone_number || '',
-          telephone: session.user.phone || metadata.phone_number || ''
-        };
-
-        console.log('PHARMACY-CREATION: Données extraites pour pré-remplissage:', googleData);
-        console.log('PHARMACY-CREATION: Métadonnées complètes disponibles:', metadata);
-
-        // Mettre à jour seulement les champs qui ont des valeurs
-        setFormData(prev => {
-          const updatedData = { ...prev };
-          
-          if (googleData.email) {
-            updatedData.email = googleData.email;
-          }
-          if (googleData.prenoms) {
-            updatedData.prenoms = googleData.prenoms;
-          }
-          if (googleData.noms) {
-            updatedData.noms = googleData.noms;
-          }
-          if (googleData.telephone_appel) {
-            updatedData.telephone_appel = googleData.telephone_appel;
-          }
-          if (googleData.telephone) {
-            updatedData.telephone = googleData.telephone;
-          }
-          
-          console.log('PHARMACY-CREATION: FormData après mise à jour:', updatedData);
-          return updatedData;
-        });
+        console.log('PHARMACY-CREATION: Session trouvée immédiatement');
+        fillFormWithGoogleData(session.user);
+      } else {
+        console.log('PHARMACY-CREATION: Aucune session trouvée immédiatement');
       }
     };
 
-    checkGoogleAuth();
+    // Écouter les changements d'authentification pour capturer les redirections
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('PHARMACY-CREATION: Changement d\'état auth:', event, !!session);
+      
+      if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        console.log('PHARMACY-CREATION: Utilisateur connecté via listener');
+        fillFormWithGoogleData(session.user);
+      }
+    });
+
+    checkInitialSession();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Validation du mot de passe en temps réel
