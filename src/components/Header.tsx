@@ -12,38 +12,57 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Fonction pour extraire les initiales
 const getUserInitials = (personnel: any, user: any) => {
+  console.log('getUserInitials - personnel:', personnel);
+  console.log('getUserInitials - user:', user);
+  
   if (personnel?.prenoms && personnel?.noms) {
     const firstNameInitial = personnel.prenoms.charAt(0).toUpperCase();
     const lastNameInitial = personnel.noms.charAt(0).toUpperCase();
+    console.log('Using personnel initials:', `${firstNameInitial}${lastNameInitial}`);
     return `${firstNameInitial}${lastNameInitial}`;
   }
   
   if (user?.user_metadata?.name) {
     const nameParts = user.user_metadata.name.split(' ');
     if (nameParts.length >= 2) {
-      return `${nameParts[0].charAt(0).toUpperCase()}${nameParts[nameParts.length - 1].charAt(0).toUpperCase()}`;
+      const initials = `${nameParts[0].charAt(0).toUpperCase()}${nameParts[nameParts.length - 1].charAt(0).toUpperCase()}`;
+      console.log('Using user metadata initials:', initials);
+      return initials;
     }
-    return nameParts[0].charAt(0).toUpperCase();
+    const initial = nameParts[0].charAt(0).toUpperCase();
+    console.log('Using single user metadata initial:', initial);
+    return initial;
   }
   
   if (user?.email) {
-    return user.email.charAt(0).toUpperCase();
+    const initial = user.email.charAt(0).toUpperCase();
+    console.log('Using email initial:', initial);
+    return initial;
   }
   
+  console.log('Using default initial: U');
   return 'U';
 };
 
 // Fonction pour obtenir le nom complet
 const getFullUserName = (personnel: any, user: any) => {
+  console.log('getFullUserName - personnel:', personnel);
+  console.log('getFullUserName - user:', user);
+  
   if (personnel?.prenoms && personnel?.noms) {
-    return `${personnel.prenoms} ${personnel.noms}`;
+    const fullName = `${personnel.prenoms} ${personnel.noms}`;
+    console.log('Using personnel full name:', fullName);
+    return fullName;
   }
   
   if (user?.user_metadata?.name) {
+    console.log('Using user metadata name:', user.user_metadata.name);
     return user.user_metadata.name;
   }
   
-  return user?.email || 'Utilisateur';
+  const fallback = user?.email || 'Utilisateur';
+  console.log('Using fallback name:', fallback);
+  return fallback;
 };
 
 // Composant Avatar avec initiales
@@ -209,9 +228,9 @@ export function Header() {
                     <UserAvatar initials={userInitials} />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border shadow-lg">
                   <DropdownMenuLabel className="pb-1">
-                    <div className="flex flex-col">
+                    <div className="flex flex-col space-y-1">
                       <span className="font-medium">{fullUserName}</span>
                       <span className="text-sm text-muted-foreground font-normal">
                         {user.email}
