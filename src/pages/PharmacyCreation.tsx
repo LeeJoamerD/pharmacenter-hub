@@ -1,4 +1,713 @@
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, Building2, Phone, MapPin, Mail, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
+import { FadeIn } from '@/components/FadeIn';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import type { User } from '@supabase/supabase-js';
 
+interface PasswordValidation {
+  minLength: boolean;
+  hasUppercase: boolean;
+  hasLowercase: boolean;
+  hasNumber: boolean;
+  hasSpecial: boolean;
+}
+
+interface PharmacyCreationResult {
+  success: boolean;
+  pharmacy_id?: string;
+  error?: string;
+  message?: string;
+}
+
+interface AdminCreationResult {
+  success: boolean;
+  personnel_id?: string;
+  error?: string;
+  message?: string;
+}
+
+export default function PharmacyCreation() {
+  // États du formulaire
+  const [formData, setFormData] = useState({
+    name: '',
+    code: '',
+    address: '',
+    quartier: '',
+    arrondissement: '',
+    city: '',
+    telephone_appel: '',
+    telephone_whatsapp: '',
+    email: '',
+    departement: '',
+    type: 'Pharmacie',
+    noms: '',
+    prenoms: '',
+    reference_agent: '',
+    telephone: '',
+    password: '',
+    confirmPassword: ''
+  });
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [googleDataLoaded, setGoogleDataLoaded] = useState(false);
+  const [passwordValidation, setPasswordValidation] = useState<PasswordValidation>({
+    minLength: false,
+    hasUppercase: false,
+    hasLowercase: false,
+    hasNumber: false,
+    hasSpecial: false
+  });
+
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { connectPharmacy, signOut } = useAuth();
+
+  // Fonction pour extraire et formater les données Google
+  const extractGoogleData = (user: any) => {
+    if (!user) {
+      console.log('PHARMACY-CREATION: Aucun utilisateur fourni');
+      return null;
+    }
+    
+    console.log('PHARMACY-CREATION: Extraction des données Google:', {
+      email: user.email,
+      user_metadata: user.user_metadata,
+      app_metadata: user.app_metadata
+    });
+    
+    const metadata = user.user_metadata || {};
+    const appMetadata = user.app_metadata || {};
+    
+    // Différentes sources pour les données
+    const email = user.email || metadata.email;
+    const fullName = metadata.full_name || metadata.name || appMetadata.full_name || '';
+    const firstName = metadata.given_name || metadata.first_name || '';
+    const lastName = metadata.family_name || metadata.last_name || metadata.surname || '';
+    const phone = user.phone || metadata.phone_number || metadata.phone || '';
+    
+    // Si pas de prénom/nom séparés, essayer de les extraire du nom complet
+    let extractedFirstName = firstName;
+    let extractedLastName = lastName;
+    
+    if (!firstName && !lastName && fullName) {
+      const nameParts = fullName.trim().split(' ');
+      extractedFirstName = nameParts[0] || '';
+      extractedLastName = nameParts.slice(1).join(' ') || '';
+    }
+    
+    const googleData = {
+      email: email || '',
+      prenoms: extractedFirstName || '',
+      noms: extractedLastName || '',
+      telephone_appel: phone || '',
+      telephone: phone || ''
+    };
+    
+    console.log('PHARMACY-CREATION: Données extraites:', googleData);
+    return googleData;
+  };
+
+  // Fonction pour préremplir le formulaire
+  const fillFormWithGoogleData = (user: any) => {
+    const googleData = extractGoogleData(user);
+    
+    if (!googleData) return;
+    
+    console.log('PHARMACY-CREATION: Préremplissage avec:', googleData);
+    
+    setFormData(prev => {
+      // Ne pas écraser les données déjà saisies manuellement
+      const newData = { ...prev };
+      
+      // Email - toujours préremplir si disponible
+      if (googleData.email && !prev.email) {
+        newData.email = googleData.email;
+      }
+      
+      // Prénoms - préremplir si vide
+      if (googleData.prenoms && !prev.prenoms) {
+        newData.prenoms = googleData.prenoms;
+      }
+      
+      // Noms - préremplir si vide
+      if (googleData.noms && !prev.noms) {
+        newData.noms = googleData.noms;
+      }
+      
+      // Téléphone - préremplir si vide
+      if (googleData.telephone_appel && !prev.telephone_appel) {
+        newData.telephone_appel = googleData.telephone_appel;
+      }
+      
+      if (googleData.telephone && !prev.telephone) {
+        newData.telephone = googleData.telephone;
+      }
+      
+      console.log('PHARMACY-CREATION: FormData mis à jour:', newData);
+      return newData;
+    });
+    
+    setGoogleDataLoaded(true);
+  };
+
+  // Préremplir avec les données Google si disponibles
+  useEffect(() => {
+    console.log('PHARMACY-CREATION: Initialisation du composant');
+    
+    let mounted = true;
+    
+    const initializeGoogleData = async () => {
+      try {
+        // Vérifier d'abord la session actuelle
+        console.log('PHARMACY-CREATION: Vérification session initiale...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('PHARMACY-CREATION: Erreur getSession:', error);
+          return;
+        }
+        
+        if (session?.user && mounted) {
+          console.log('PHARMACY-CREATION: Session trouvée, préremplissage...');
+          fillFormWithGoogleData(session.user);
+        } else {
+          console.log('PHARMACY-CREATION: Aucune session active');
+        }
+        
+        // Écouter les changements d'authentification
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          console.log('PHARMACY-CREATION: Auth state change:', event, 'session:', !!session?.user);
+          
+          if (!mounted) return;
+          
+          if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+            console.log('PHARMACY-CREATION: Préremplissage depuis auth state change');
+            fillFormWithGoogleData(session.user);
+          } else if (event === 'SIGNED_OUT') {
+            console.log('PHARMACY-CREATION: Utilisateur déconnecté');
+            setGoogleDataLoaded(false);
+          }
+        });
+
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error('PHARMACY-CREATION: Erreur lors de l\'initialisation:', error);
+      }
+    };
+
+    const cleanup = initializeGoogleData();
+    
+    // Alternative: vérifier périodiquement si les données ne sont pas encore chargées
+    const checkInterval = setInterval(async () => {
+      if (!googleDataLoaded && mounted) {
+        console.log('PHARMACY-CREATION: Vérification périodique...');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          fillFormWithGoogleData(session.user);
+          clearInterval(checkInterval);
+        }
+      }
+    }, 1000);
+
+    return () => {
+      mounted = false;
+      clearInterval(checkInterval);
+      cleanup?.then(unsub => unsub?.());
+    };
+  }, []);
+
+  // Force une nouvelle vérification après le montage du composant
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (!googleDataLoaded) {
+        console.log('PHARMACY-CREATION: Vérification tardive...');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          fillFormWithGoogleData(session.user);
+        }
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [googleDataLoaded]);
+
+  // Validation du mot de passe en temps réel
+  const validatePassword = (password: string): PasswordValidation => {
+    return {
+      minLength: password.length >= 8,
+      hasUppercase: /[A-Z]/.test(password),
+      hasLowercase: /[a-z]/.test(password),
+      hasNumber: /\d/.test(password),
+      hasSpecial: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+    };
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Validation spéciale pour le mot de passe
+    if (field === 'password') {
+      setPasswordValidation(validatePassword(value));
+    }
+  };
+
+  const isPasswordValid = Object.values(passwordValidation).every(Boolean);
+  const passwordsMatch = formData.password === formData.confirmPassword;
+
+  // Déterminer si un champ est prérempli par Google
+  const isFieldFromGoogle = (field: string) => {
+    return googleDataLoaded && formData[field] && (
+      field === 'email' || 
+      field === 'prenoms' || 
+      field === 'noms' || 
+      field === 'telephone_appel' || 
+      field === 'telephone'
+    );
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!isPasswordValid) {
+      toast({
+        title: "Mot de passe invalide",
+        description: "Veuillez respecter tous les critères de sécurité",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!passwordsMatch) {
+      toast({
+        title: "Mots de passe différents",
+        description: "Les mots de passe ne correspondent pas",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Déconnecter l'utilisateur s'il est connecté
+      await signOut();
+
+      // Étape 1: Créer l'utilisateur via Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        }
+      });
+
+      if (authError || !authData.user) {
+        console.error('Erreur lors de la création de l\'utilisateur:', authError);
+        toast({
+          title: "Erreur",
+          description: authError?.message || "Erreur lors de la création du compte utilisateur",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Étape 2: Créer la pharmacie
+      const { data: pharmacyData, error: pharmacyError } = await supabase.rpc('create_pharmacy_for_user', {
+        pharmacy_data: {
+          name: formData.name,
+          code: formData.code || `PH${Date.now()}`,
+          address: formData.address,
+          quartier: formData.quartier,
+          arrondissement: formData.arrondissement,
+          city: formData.city,
+          telephone_appel: formData.telephone_appel,
+          telephone_whatsapp: formData.telephone_whatsapp,
+          email: formData.email,
+          departement: formData.departement,
+          type: formData.type,
+          region: 'Cameroun',
+          pays: 'Cameroun'
+        }
+      });
+
+      const typedPharmacyData = pharmacyData as unknown as PharmacyCreationResult;
+
+      if (pharmacyError || !typedPharmacyData?.success) {
+        console.error('Erreur lors de la création de la pharmacie:', pharmacyError);
+        toast({
+          title: "Erreur",
+          description: typedPharmacyData?.error || pharmacyError?.message || "Erreur lors de la création de la pharmacie",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Étape 3: Lier l'utilisateur comme admin de la pharmacie
+      const { data, error } = await supabase.rpc('create_admin_personnel', {
+        pharmacy_id: typedPharmacyData.pharmacy_id,
+        admin_data: {
+          noms: formData.noms,
+          prenoms: formData.prenoms,
+          reference_agent: formData.reference_agent,
+          telephone: formData.telephone
+        }
+      });
+
+      const typedAdminData = data as unknown as AdminCreationResult;
+
+      if (error || !typedAdminData?.success) {
+        console.error('Erreur lors de la création de l\'admin:', error);
+        toast({
+          title: "Erreur",
+          description: typedAdminData?.error || error?.message || "Erreur lors de la création de l'administrateur",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Déconnecter l'utilisateur automatiquement créé pour forcer une connexion manuelle
+      await supabase.auth.signOut();
+
+      // Connexion automatique après création
+      const { error: connectError } = await connectPharmacy(formData.email, formData.password);
+      
+      if (connectError) {
+        toast({
+          title: "Pharmacie créée",
+          description: "Votre pharmacie a été créée. Veuillez vous connecter.",
+        });
+        navigate('/pharmacy-connection');
+        return;
+      }
+
+      toast({
+        title: "Pharmacie créée avec succès",
+        description: `Bienvenue ${formData.name} !`,
+      });
+
+      // Rediriger vers la page d'accueil
+      navigate('/');
+      
+    } catch (error) {
+      console.error('Erreur lors de la création:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la création",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const ValidationIcon = ({ isValid }: { isValid: boolean }) => (
+    isValid ? 
+      <Check className="w-4 h-4 text-green-500" /> : 
+      <X className="w-4 h-4 text-red-500" />
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 py-8 px-4">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+      </div>
+
+      <div className="max-w-2xl mx-auto relative z-10">
+        <FadeIn>
+          <Card className="shadow-xl border-0 bg-card/50 backdrop-blur-sm">
+            <CardHeader className="space-y-4 text-center">
+              <div className="mx-auto w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center">
+                <Building2 className="w-8 h-8 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-2xl font-bold">Créer votre pharmacie</CardTitle>
+                <CardDescription className="text-muted-foreground mt-2">
+                  Rejoignez notre réseau de pharmacies connectées
+                </CardDescription>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Informations de la pharmacie */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-foreground">Informations de la pharmacie</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name" className="text-sm font-medium">
+                        Nom de la pharmacie *
+                      </Label>
+                      <div className="relative">
+                        <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                        <Input
+                          id="name"
+                          type="text"
+                          placeholder="Pharmacie Centrale"
+                          value={formData.name}
+                          onChange={(e) => handleInputChange('name', e.target.value)}
+                          className="pl-10 h-11"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="telephone_appel" className="text-sm font-medium">
+                        Téléphone * {isFieldFromGoogle('telephone_appel') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
+                      </Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                        <Input
+                          id="telephone_appel"
+                          type="tel"
+                          placeholder="+237 6XX XX XX XX"
+                          value={formData.telephone_appel}
+                          onChange={(e) => handleInputChange('telephone_appel', e.target.value)}
+                          className={`pl-10 h-11 ${isFieldFromGoogle('telephone_appel') ? 'bg-green-50 border-green-200' : ''}`}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="address" className="text-sm font-medium">
+                      Adresse complète *
+                    </Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <Input
+                        id="address"
+                        type="text"
+                        placeholder="123 Avenue de la Paix"
+                        value={formData.address}
+                        onChange={(e) => handleInputChange('address', e.target.value)}
+                        className="pl-10 h-11"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="quartier" className="text-sm font-medium">
+                        Quartier
+                      </Label>
+                      <Input
+                        id="quartier"
+                        type="text"
+                        placeholder="Centre-ville"
+                        value={formData.quartier}
+                        onChange={(e) => handleInputChange('quartier', e.target.value)}
+                        className="h-11"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="city" className="text-sm font-medium">
+                        Ville *
+                      </Label>
+                      <Input
+                        id="city"
+                        type="text"
+                        placeholder="Douala"
+                        value={formData.city}
+                        onChange={(e) => handleInputChange('city', e.target.value)}
+                        className="h-11"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informations de connexion */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-foreground">Informations de connexion</h3>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium">
+                      Adresse email * {isFieldFromGoogle('email') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="contact@pharmacie.fr"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        className={`pl-10 h-11 ${isFieldFromGoogle('email') ? 'bg-green-50 border-green-200' : ''}`}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-sm font-medium">
+                      Mot de passe *
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={formData.password}
+                        onChange={(e) => handleInputChange('password', e.target.value)}
+                        className="pl-10 pr-10 h-11"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    
+                    {/* Validation du mot de passe */}
+                    {formData.password && (
+                      <div className="mt-2 p-3 bg-muted/50 rounded-lg space-y-2">
+                        <div className="text-sm font-medium text-foreground">Critères de sécurité :</div>
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2 text-sm">
+                            <ValidationIcon isValid={passwordValidation.minLength} />
+                            <span className={passwordValidation.minLength ? "text-green-700" : "text-red-700"}>
+                              Au moins 8 caractères
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <ValidationIcon isValid={passwordValidation.hasUppercase} />
+                            <span className={passwordValidation.hasUppercase ? "text-green-700" : "text-red-700"}>
+                              Une majuscule
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <ValidationIcon isValid={passwordValidation.hasLowercase} />
+                            <span className={passwordValidation.hasLowercase ? "text-green-700" : "text-red-700"}>
+                              Une minuscule
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <ValidationIcon isValid={passwordValidation.hasNumber} />
+                            <span className={passwordValidation.hasNumber ? "text-green-700" : "text-red-700"}>
+                              Un chiffre
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2 text-sm">
+                            <ValidationIcon isValid={passwordValidation.hasSpecial} />
+                            <span className={passwordValidation.hasSpecial ? "text-green-700" : "text-red-700"}>
+                              Un caractère spécial
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-sm font-medium">
+                      Confirmation du mot de passe *
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={formData.confirmPassword}
+                        onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                        className="pl-10 pr-10 h-11"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {formData.confirmPassword && (
+                      <div className="flex items-center space-x-2 text-sm mt-1">
+                        <ValidationIcon isValid={passwordsMatch} />
+                        <span className={passwordsMatch ? "text-green-700" : "text-red-700"}>
+                          Les mots de passe correspondent
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Informations de l'administrateur */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-foreground">Informations de l'administrateur</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="prenoms" className="text-sm font-medium">
+                        Prénoms * {isFieldFromGoogle('prenoms') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
+                      </Label>
+                      <Input
+                        id="prenoms"
+                        type="text"
+                        placeholder="Jean"
+                        value={formData.prenoms}
+                        onChange={(e) => handleInputChange('prenoms', e.target.value)}
+                        className={`h-11 ${isFieldFromGoogle('prenoms') ? 'bg-green-50 border-green-200' : ''}`}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="noms" className="text-sm font-medium">
+                        Noms * {isFieldFromGoogle('noms') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
+                      </Label>
+                      <Input
+                        id="noms"
+                        type="text"
+                        placeholder="Dupont"
+                        value={formData.noms}
+                        onChange={(e) => handleInputChange('noms', e.target.value)}
+                        className={`h-11 ${isFieldFromGoogle('noms') ? 'bg-green-50 border-green-200' : ''}`}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="telephone" className="text-sm font-medium">
+                        Téléphone personnel * {isFieldFromGoogle('telephone') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
+                      </Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                        <Input
+                          id="telephone"
+                          type="tel"
+                          placeholder="+237 6XX XX XX XX"
+                          value={formData.telephone}
+                          onChange={(e) => handleInputChange('telephone', e.target.value)}
+                          className={`pl-10 h-11 ${isFieldFromGoogle('telephone') ? 'bg-green-50 border-green-200' : ''}`}
+                          required
+                        />
+                      </div>
+                    </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="reference_agent" className="text-sm font-medium">
