@@ -700,7 +700,7 @@ export default function PharmacyCreation() {
                         <Input
                           id="telephone"
                           type="tel"
-                          placeholder="+237 6XX XX XX XX"
+                          placeholder="+237 0000 6XX XX XX XX"
                           value={formData.telephone}
                           onChange={(e) => handleInputChange('telephone', e.target.value)}
                           className={`pl-10 h-11 ${isFieldFromGoogle('telephone') ? 'bg-green-50 border-green-200' : ''}`}
