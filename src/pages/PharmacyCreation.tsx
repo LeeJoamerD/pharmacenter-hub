@@ -456,7 +456,7 @@ export default function PharmacyCreation() {
                         <Input
                           id="name"
                           type="text"
-                          placeholder="Pharmacie Centrale"
+                          placeholder="DJL - Computer Sciences"
                           value={formData.name}
                           onChange={(e) => handleInputChange('name', e.target.value)}
                           className="pl-10 h-11"
@@ -474,7 +474,7 @@ export default function PharmacyCreation() {
                         <Input
                           id="telephone_appel"
                           type="tel"
-                          placeholder="+237 6XX XX XX XX"
+                          placeholder="+242 XX XXX XX XX"
                           value={formData.telephone_appel}
                           onChange={(e) => handleInputChange('telephone_appel', e.target.value)}
                           className={`pl-10 h-11 ${isFieldFromGoogle('telephone_appel') ? 'bg-green-50 border-green-200' : ''}`}
@@ -493,7 +493,7 @@ export default function PharmacyCreation() {
                       <Input
                         id="address"
                         type="text"
-                        placeholder="123 Avenue de la Paix"
+                        placeholder="59 rue Ibaliko CNRTV Djiri"
                         value={formData.address}
                         onChange={(e) => handleInputChange('address', e.target.value)}
                         className="pl-10 h-11"
@@ -510,7 +510,7 @@ export default function PharmacyCreation() {
                       <Input
                         id="quartier"
                         type="text"
-                        placeholder="Centre-ville"
+                        placeholder="Nkombo"
                         value={formData.quartier}
                         onChange={(e) => handleInputChange('quartier', e.target.value)}
                         className="h-11"
@@ -524,7 +524,7 @@ export default function PharmacyCreation() {
                       <Input
                         id="city"
                         type="text"
-                        placeholder="Douala"
+                        placeholder="Brazzaville"
                         value={formData.city}
                         onChange={(e) => handleInputChange('city', e.target.value)}
                         className="h-11"
@@ -547,7 +547,7 @@ export default function PharmacyCreation() {
                       <Input
                         id="email"
                         type="email"
-                        placeholder="contact@pharmacie.fr"
+                        placeholder="djl.computersciences@gmail.com"
                         value={formData.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         className={`pl-10 h-11 ${isFieldFromGoogle('email') ? 'bg-green-50 border-green-200' : ''}`}
@@ -666,7 +666,7 @@ export default function PharmacyCreation() {
                       <Input
                         id="prenoms"
                         type="text"
-                        placeholder="Jean"
+                        placeholder="Lee Joamer"
                         value={formData.prenoms}
                         onChange={(e) => handleInputChange('prenoms', e.target.value)}
                         className={`h-11 ${isFieldFromGoogle('prenoms') ? 'bg-green-50 border-green-200' : ''}`}
@@ -681,7 +681,7 @@ export default function PharmacyCreation() {
                       <Input
                         id="noms"
                         type="text"
-                        placeholder="Dupont"
+                        placeholder="DIAMBOMBA"
                         value={formData.noms}
                         onChange={(e) => handleInputChange('noms', e.target.value)}
                         className={`h-11 ${isFieldFromGoogle('noms') ? 'bg-green-50 border-green-200' : ''}`}
@@ -700,7 +700,7 @@ export default function PharmacyCreation() {
                         <Input
                           id="telephone"
                           type="tel"
-                          placeholder="+237 0000 6XX XX XX XX"
+                          placeholder="+242 XX XXX XX XX"
                           value={formData.telephone}
                           onChange={(e) => handleInputChange('telephone', e.target.value)}
                           className={`pl-10 h-11 ${isFieldFromGoogle('telephone') ? 'bg-green-50 border-green-200' : ''}`}
