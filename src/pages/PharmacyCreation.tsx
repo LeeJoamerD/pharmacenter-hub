@@ -75,12 +75,14 @@ export default function PharmacyCreation() {
     console.log('PHARMACY-CREATION: Initialisation du composant');
     
     const fillFormWithGoogleData = (user: any) => {
-      if (!user) return;
+      if (!user) {
+        console.log('PHARMACY-CREATION: Aucun utilisateur fourni');
+        return;
+      }
       
       console.log('PHARMACY-CREATION: Utilisateur Google détecté:', user);
-      console.log('PHARMACY-CREATION: Métadonnées utilisateur:', user.user_metadata);
-      console.log('PHARMACY-CREATION: Email user:', user.email);
-      console.log('PHARMACY-CREATION: Phone user:', user.phone);
+      console.log('PHARMACY-CREATION: user.email:', user.email);
+      console.log('PHARMACY-CREATION: user.user_metadata:', user.user_metadata);
       
       // Extraire les données Google selon les différents formats possibles
       const metadata = user.user_metadata || {};
@@ -88,67 +90,68 @@ export default function PharmacyCreation() {
       const firstName = metadata.given_name || fullName.split(' ')[0] || '';
       const lastName = metadata.family_name || fullName.split(' ').slice(1).join(' ') || '';
       
-      const googleData = {
-        email: user.email || '',
-        prenoms: firstName,
-        noms: lastName,
-        // Google Auth ne fournit généralement pas de téléphone, mais on peut vérifier
-        telephone_appel: user.phone || metadata.phone_number || '',
-        telephone: user.phone || metadata.phone_number || ''
-      };
+      console.log('PHARMACY-CREATION: Extraction - fullName:', fullName, 'firstName:', firstName, 'lastName:', lastName);
 
-      console.log('PHARMACY-CREATION: Données extraites pour pré-remplissage:', googleData);
-      console.log('PHARMACY-CREATION: Métadonnées complètes disponibles:', metadata);
-
-      // Mettre à jour seulement les champs qui ont des valeurs
+      // Mettre à jour les champs avec les données Google
       setFormData(prev => {
         const updatedData = { ...prev };
         
-        if (googleData.email) {
-          updatedData.email = googleData.email;
-        }
-        if (googleData.prenoms) {
-          updatedData.prenoms = googleData.prenoms;
-        }
-        if (googleData.noms) {
-          updatedData.noms = googleData.noms;
-        }
-        if (googleData.telephone_appel) {
-          updatedData.telephone_appel = googleData.telephone_appel;
-        }
-        if (googleData.telephone) {
-          updatedData.telephone = googleData.telephone;
+        // Email obligatoire depuis Google
+        if (user.email) {
+          updatedData.email = user.email;
         }
         
-        console.log('PHARMACY-CREATION: FormData après mise à jour:', updatedData);
+        // Prénom depuis Google
+        if (firstName) {
+          updatedData.prenoms = firstName;
+        }
+        
+        // Nom depuis Google
+        if (lastName) {
+          updatedData.noms = lastName;
+        }
+        
+        // Téléphone (rarement disponible depuis Google)
+        if (user.phone || metadata.phone_number) {
+          const phone = user.phone || metadata.phone_number;
+          updatedData.telephone_appel = phone;
+          updatedData.telephone = phone;
+        }
+        
+        console.log('PHARMACY-CREATION: FormData mis à jour avec Google:', updatedData);
         return updatedData;
       });
     };
 
-    // Vérifier la session initiale
-    const checkInitialSession = async () => {
-      console.log('PHARMACY-CREATION: Vérification de la session initiale...');
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        console.log('PHARMACY-CREATION: Session trouvée immédiatement');
-        fillFormWithGoogleData(session.user);
-      } else {
-        console.log('PHARMACY-CREATION: Aucune session trouvée immédiatement');
+    // Vérifier immédiatement la session
+    const checkSession = async () => {
+      try {
+        console.log('PHARMACY-CREATION: Vérification de la session...');
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          console.log('PHARMACY-CREATION: Session trouvée, préremplissage...');
+          fillFormWithGoogleData(session.user);
+        } else {
+          console.log('PHARMACY-CREATION: Aucune session trouvée');
+        }
+      } catch (error) {
+        console.error('PHARMACY-CREATION: Erreur vérification session:', error);
       }
     };
 
-    // Écouter les changements d'authentification pour capturer les redirections
+    // Écouter les changements d'authentification
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('PHARMACY-CREATION: Changement d\'état auth:', event, !!session);
+      console.log('PHARMACY-CREATION: Auth event:', event, 'has session:', !!session);
       
-      if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        console.log('PHARMACY-CREATION: Utilisateur connecté via listener');
+      if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        console.log('PHARMACY-CREATION: Préremplissage depuis auth listener');
         fillFormWithGoogleData(session.user);
       }
     });
 
-    checkInitialSession();
+    // Vérifier immédiatement
+    checkSession();
 
     return () => {
       subscription.unsubscribe();
