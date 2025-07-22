@@ -35,7 +35,7 @@ interface AdminCreationResult {
 
 export default function PharmacyCreation() {
   const navigate = useNavigate();
-  const { user, session, connectPharmacy, signOut } = useAuth();
+  const { user, session } = useAuth();
   const { toast } = useToast();
 
   // États du formulaire
@@ -284,32 +284,21 @@ export default function PharmacyCreation() {
       return;
     }
 
+    if (!user) {
+      toast({
+        title: "Authentification requise",
+        description: "Veuillez vous authentifier avec Google avant de continuer",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // Déconnecter l'utilisateur s'il est connecté
-      await signOut();
+      console.log('PHARMACY-CREATION: Début de la création avec utilisateur Google:', user.email);
 
-      // Étape 1: Créer l'utilisateur via Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-        }
-      });
-
-      if (authError || !authData.user) {
-        console.error('Erreur lors de la création de l\'utilisateur:', authError);
-        toast({
-          title: "Erreur",
-          description: authError?.message || "Erreur lors de la création du compte utilisateur",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Étape 2: Créer la pharmacie
+      // Étape 1: Créer la pharmacie en utilisant l'utilisateur Google déjà connecté
       const { data: pharmacyData, error: pharmacyError } = await supabase.rpc('create_pharmacy_for_user', {
         pharmacy_data: {
           name: formData.name,
@@ -340,7 +329,9 @@ export default function PharmacyCreation() {
         return;
       }
 
-      // Étape 3: Lier l'utilisateur comme admin de la pharmacie
+      console.log('PHARMACY-CREATION: Pharmacie créée avec succès, ID:', typedPharmacyData.pharmacy_id);
+
+      // Étape 2: Lier l'utilisateur comme admin de la pharmacie
       const { data, error } = await supabase.rpc('create_admin_personnel', {
         pharmacy_id: typedPharmacyData.pharmacy_id,
         admin_data: {
@@ -363,28 +354,18 @@ export default function PharmacyCreation() {
         return;
       }
 
-      // Déconnecter l'utilisateur automatiquement créé pour forcer une connexion manuelle
-      await supabase.auth.signOut();
+      console.log('PHARMACY-CREATION: Admin créé avec succès, ID:', typedAdminData.personnel_id);
 
-      // Connexion automatique après création
-      const { error: connectError } = await connectPharmacy(formData.email, formData.password);
-      
-      if (connectError) {
-        toast({
-          title: "Pharmacie créée",
-          description: "Votre pharmacie a été créée. Veuillez vous connecter.",
-        });
-        navigate('/pharmacy-connection');
-        return;
-      }
-
+      // Succès - l'utilisateur reste connecté
       toast({
         title: "Pharmacie créée avec succès",
-        description: `Bienvenue ${formData.name} !`,
+        description: `Bienvenue ${formData.name} ! Vous pouvez maintenant accéder à votre tableau de bord.`,
       });
 
-      // Rediriger vers la page d'accueil
-      navigate('/');
+      console.log('PHARMACY-CREATION: Redirection vers le tableau de bord');
+      
+      // Rediriger vers le tableau de bord - l'utilisateur reste connecté
+      navigate('/tableau-de-bord');
       
     } catch (error) {
       console.error('Erreur lors de la création:', error);
