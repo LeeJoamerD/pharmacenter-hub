@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,49 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+
+// Fonction pour extraire les initiales
+const getUserInitials = (personnel: any, user: any) => {
+  if (personnel?.prenoms && personnel?.noms) {
+    const firstNameInitial = personnel.prenoms.charAt(0).toUpperCase();
+    const lastNameInitial = personnel.noms.charAt(0).toUpperCase();
+    return `${firstNameInitial}${lastNameInitial}`;
+  }
+  
+  if (user?.user_metadata?.name) {
+    const nameParts = user.user_metadata.name.split(' ');
+    if (nameParts.length >= 2) {
+      return `${nameParts[0].charAt(0).toUpperCase()}${nameParts[nameParts.length - 1].charAt(0).toUpperCase()}`;
+    }
+    return nameParts[0].charAt(0).toUpperCase();
+  }
+  
+  if (user?.email) {
+    return user.email.charAt(0).toUpperCase();
+  }
+  
+  return 'U';
+};
+
+// Fonction pour obtenir le nom complet
+const getFullUserName = (personnel: any, user: any) => {
+  if (personnel?.prenoms && personnel?.noms) {
+    return `${personnel.prenoms} ${personnel.noms}`;
+  }
+  
+  if (user?.user_metadata?.name) {
+    return user.user_metadata.name;
+  }
+  
+  return user?.email || 'Utilisateur';
+};
+
+// Composant Avatar avec initiales
+const UserAvatar = ({ initials }: { initials: string }) => (
+  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
+    {initials}
+  </div>
+);
 
 export function Header() {
   const { t } = useLanguage();
@@ -44,7 +88,7 @@ export function Header() {
           redirectTo: `${window.location.origin}/pharmacy-creation`,
           queryParams: {
             access_type: 'offline',
-            prompt: 'select_account' // Force la sélection du compte Google
+            prompt: 'select_account'
           }
         }
       });
@@ -69,6 +113,10 @@ export function Header() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Calculer les initiales et le nom complet
+  const userInitials = getUserInitials(personnel, user);
+  const fullUserName = getFullUserName(personnel, user);
 
   return (
     <header
@@ -155,15 +203,20 @@ export function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="text-foreground hover:bg-muted/50"
+                    size="sm"
+                    className="text-foreground hover:bg-muted/50 h-8 gap-2"
                   >
-                    <User size={20} />
+                    <UserAvatar initials={userInitials} />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>
-                    {personnel ? `${personnel.prenoms} ${personnel.noms}` : user.email}
+                  <DropdownMenuLabel className="pb-1">
+                    <div className="flex flex-col">
+                      <span className="font-medium">{fullUserName}</span>
+                      <span className="text-sm text-muted-foreground font-normal">
+                        {user.email}
+                      </span>
+                    </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/tableau-de-bord')}>
@@ -194,12 +247,12 @@ export function Header() {
           {user ? (
             <Button
               variant="ghost"
-              size="icon"
-              className="text-foreground hover:bg-muted/50 mr-2"
+              size="sm"
+              className="text-foreground hover:bg-muted/50 mr-2 h-8 gap-2"
               aria-label="Accéder au tableau de bord"
               onClick={handleProfileClick}
             >
-              <User size={20} />
+              <UserAvatar initials={userInitials} />
             </Button>
           ) : connectedPharmacy ? (
             <Button
@@ -207,7 +260,7 @@ export function Header() {
               size="icon"
               className="text-foreground hover:bg-muted/50 mr-2"
               aria-label="Menu pharmacie"
-              onClick={() => {}} // Menu mobile géré dans la navigation mobile
+              onClick={() => {}}
             >
               <Building2 size={20} />
             </Button>
@@ -260,6 +313,15 @@ export function Header() {
           </a>
           {user ? (
             <>
+              <div className="py-3 border-b border-border/20">
+                <div className="flex items-center gap-3">
+                  <UserAvatar initials={userInitials} />
+                  <div className="flex flex-col">
+                    <span className="text-lg font-medium">{fullUserName}</span>
+                    <span className="text-sm text-muted-foreground">{user.email}</span>
+                  </div>
+                </div>
+              </div>
               <Button 
                 variant="ghost" 
                 onClick={() => {
