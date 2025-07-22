@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Building2, Phone, MapPin, Mail, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
+import { ArrowLeft, Building2, Phone, MapPin, Mail, Lock, Eye, EyeOff, Check, X, Shield, Loader2, CheckCircle } from 'lucide-react';
 import { FadeIn } from '@/components/FadeIn';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -63,6 +63,7 @@ export default function PharmacyCreation() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [googleDataLoaded, setGoogleDataLoaded] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordValidation, setPasswordValidation] = useState<PasswordValidation>({
     minLength: false,
     hasUppercase: false,
@@ -191,14 +192,48 @@ export default function PharmacyCreation() {
     console.log('PHARMACY-CREATION: Préremplissage terminé. Champs remplis:', Array.from(filledFields));
   };
 
-  // Préremplir UNIQUEMENT si l'utilisateur vient de Google OAuth
-  useEffect(() => {
-    // Simple: utiliser directement les données du contexte Auth si disponibles
-    if (user?.email) {
-      console.log('PHARMACY-CREATION: Utilisateur Google détecté, préremplissage direct...');
-      fillFormWithGoogleData(user);
+  // Fonction d'authentification Google
+  const handleGoogleAuth = async () => {
+    try {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + window.location.pathname,
+        }
+      });
+
+      if (error) {
+        console.error('Erreur Google Auth:', error);
+        toast({
+          title: "Erreur",
+          description: "Erreur lors de l'authentification Google",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Erreur Google Auth:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de l'authentification Google",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-  }, [user]); // Dépendre seulement de l'utilisateur
+  };
+
+  // Préremplir quand l'utilisateur se connecte avec Google
+  useEffect(() => {
+    if (user?.email) {
+      console.log('PHARMACY-CREATION: Utilisateur Google détecté, préremplissage...');
+      setIsAuthenticated(true);
+      fillFormWithGoogleData(user);
+    } else {
+      setIsAuthenticated(false);
+    }
+  }, [user]);
 
   // Validation du mot de passe en temps réel
   const validatePassword = (password: string): PasswordValidation => {
@@ -393,6 +428,45 @@ export default function PharmacyCreation() {
             </CardHeader>
 
             <CardContent className="space-y-6">
+              {/* Google Authentication Section */}
+              <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mt-1">
+                    <Shield className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-sm text-foreground mb-2">
+                      Authentification sécurisée
+                    </h3>
+                    <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+                      Nous utilisons l'authentification Google pour garantir la sécurité de votre compte. 
+                      Vos données seront automatiquement récupérées et certains champs pré-remplis.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGoogleAuth}
+                      disabled={isLoading}
+                      className="w-full bg-white hover:bg-gray-50 border-gray-300 text-gray-700 font-medium"
+                    >
+                      {isLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Mail className="mr-2 h-4 w-4" />
+                      )}
+                      {isAuthenticated ? "Changer de compte Google" : "Continuer avec Google"}
+                    </Button>
+                    {isAuthenticated && (
+                      <div className="mt-2 flex items-center gap-2 text-xs text-green-600">
+                        <CheckCircle className="w-3 h-3" />
+                        <span>Authentifié avec succès</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Informations de la pharmacie */}
                 <div className="space-y-4">
@@ -405,15 +479,16 @@ export default function PharmacyCreation() {
                       </Label>
                       <div className="relative">
                         <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                        <Input
-                          id="name"
-                          type="text"
-                          placeholder="DJL - Computer Sciences"
-                          value={formData.name}
-                          onChange={(e) => handleInputChange('name', e.target.value)}
-                          className="pl-10 h-11"
-                          required
-                        />
+                         <Input
+                           id="name"
+                           type="text"
+                           placeholder="DJL - Computer Sciences"
+                           value={formData.name}
+                           onChange={(e) => handleInputChange('name', e.target.value)}
+                           className="pl-10 h-11"
+                           disabled={!isAuthenticated}
+                           required
+                         />
                       </div>
                     </div>
 
@@ -423,15 +498,16 @@ export default function PharmacyCreation() {
                       </Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                        <Input
-                          id="telephone_appel"
-                          type="tel"
-                          placeholder="+242 XX XXX XX XX"
-                          value={formData.telephone_appel}
-                          onChange={(e) => handleInputChange('telephone_appel', e.target.value)}
-                          className={`pl-10 h-11 ${isFieldFromGoogle('telephone_appel') ? 'bg-green-50 border-green-200' : ''}`}
-                          required
-                        />
+                         <Input
+                           id="telephone_appel"
+                           type="tel"
+                           placeholder="+242 XX XXX XX XX"
+                           value={formData.telephone_appel}
+                           onChange={(e) => handleInputChange('telephone_appel', e.target.value)}
+                           className={`pl-10 h-11 ${isFieldFromGoogle('telephone_appel') ? 'bg-green-50 border-green-200' : ''}`}
+                           disabled={!isAuthenticated}
+                           required
+                         />
                       </div>
                     </div>
                   </div>
@@ -442,15 +518,16 @@ export default function PharmacyCreation() {
                     </Label>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <Input
-                        id="address"
-                        type="text"
-                        placeholder="59 rue Ibaliko CNRTV Djiri"
-                        value={formData.address}
-                        onChange={(e) => handleInputChange('address', e.target.value)}
-                        className="pl-10 h-11"
-                        required
-                      />
+                       <Input
+                         id="address"
+                         type="text"
+                         placeholder="59 rue Ibaliko CNRTV Djiri"
+                         value={formData.address}
+                         onChange={(e) => handleInputChange('address', e.target.value)}
+                         className="pl-10 h-11"
+                         disabled={!isAuthenticated}
+                         required
+                       />
                     </div>
                   </div>
 
@@ -459,29 +536,31 @@ export default function PharmacyCreation() {
                       <Label htmlFor="quartier" className="text-sm font-medium">
                         Quartier
                       </Label>
-                      <Input
-                        id="quartier"
-                        type="text"
-                        placeholder="Nkombo"
-                        value={formData.quartier}
-                        onChange={(e) => handleInputChange('quartier', e.target.value)}
-                        className="h-11"
-                      />
+                       <Input
+                         id="quartier"
+                         type="text"
+                         placeholder="Nkombo"
+                         value={formData.quartier}
+                         onChange={(e) => handleInputChange('quartier', e.target.value)}
+                         className="h-11"
+                         disabled={!isAuthenticated}
+                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="city" className="text-sm font-medium">
                         Ville *
                       </Label>
-                      <Input
-                        id="city"
-                        type="text"
-                        placeholder="Brazzaville"
-                        value={formData.city}
-                        onChange={(e) => handleInputChange('city', e.target.value)}
-                        className="h-11"
-                        required
-                      />
+                       <Input
+                         id="city"
+                         type="text"
+                         placeholder="Brazzaville"
+                         value={formData.city}
+                         onChange={(e) => handleInputChange('city', e.target.value)}
+                         className="h-11"
+                         disabled={!isAuthenticated}
+                         required
+                       />
                     </div>
                   </div>
                 </div>
@@ -496,15 +575,16 @@ export default function PharmacyCreation() {
                     </Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="djl.computersciences@gmail.com"
-                        value={formData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        className={`pl-10 h-11 ${isFieldFromGoogle('email') ? 'bg-green-50 border-green-200' : ''}`}
-                        required
-                      />
+                       <Input
+                         id="email"
+                         type="email"
+                         placeholder="djl.computersciences@gmail.com"
+                         value={formData.email}
+                         onChange={(e) => handleInputChange('email', e.target.value)}
+                         className={`pl-10 h-11 ${isFieldFromGoogle('email') ? 'bg-green-50 border-green-200' : ''}`}
+                         disabled={!isAuthenticated}
+                         required
+                       />
                     </div>
                   </div>
 
@@ -514,15 +594,16 @@ export default function PharmacyCreation() {
                     </Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <Input
-                        id="password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        value={formData.password}
-                        onChange={(e) => handleInputChange('password', e.target.value)}
-                        className="pl-10 pr-10 h-11"
-                        required
-                      />
+                       <Input
+                         id="password"
+                         type={showPassword ? "text" : "password"}
+                         placeholder="••••••••"
+                         value={formData.password}
+                         onChange={(e) => handleInputChange('password', e.target.value)}
+                         className="pl-10 pr-10 h-11"
+                         disabled={!isAuthenticated}
+                         required
+                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
@@ -578,15 +659,16 @@ export default function PharmacyCreation() {
                     </Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <Input
-                        id="confirmPassword"
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        value={formData.confirmPassword}
-                        onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                        className="pl-10 pr-10 h-11"
-                        required
-                      />
+                       <Input
+                         id="confirmPassword"
+                         type={showConfirmPassword ? "text" : "password"}
+                         placeholder="••••••••"
+                         value={formData.confirmPassword}
+                         onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                         className="pl-10 pr-10 h-11"
+                         disabled={!isAuthenticated}
+                         required
+                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -615,30 +697,32 @@ export default function PharmacyCreation() {
                       <Label htmlFor="prenoms" className="text-sm font-medium">
                         Prénoms * {isFieldFromGoogle('prenoms') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
                       </Label>
-                      <Input
-                        id="prenoms"
-                        type="text"
-                        placeholder="Lee Joamer"
-                        value={formData.prenoms}
-                        onChange={(e) => handleInputChange('prenoms', e.target.value)}
-                        className={`h-11 ${isFieldFromGoogle('prenoms') ? 'bg-green-50 border-green-200' : ''}`}
-                        required
-                      />
+                       <Input
+                         id="prenoms"
+                         type="text"
+                         placeholder="Lee Joamer"
+                         value={formData.prenoms}
+                         onChange={(e) => handleInputChange('prenoms', e.target.value)}
+                         className={`h-11 ${isFieldFromGoogle('prenoms') ? 'bg-green-50 border-green-200' : ''}`}
+                         disabled={!isAuthenticated}
+                         required
+                       />
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="noms" className="text-sm font-medium">
                         Noms * {isFieldFromGoogle('noms') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
                       </Label>
-                      <Input
-                        id="noms"
-                        type="text"
-                        placeholder="DIAMBOMBA"
-                        value={formData.noms}
-                        onChange={(e) => handleInputChange('noms', e.target.value)}
-                        className={`h-11 ${isFieldFromGoogle('noms') ? 'bg-green-50 border-green-200' : ''}`}
-                        required
-                      />
+                       <Input
+                         id="noms"
+                         type="text"
+                         placeholder="DIAMBOMBA"
+                         value={formData.noms}
+                         onChange={(e) => handleInputChange('noms', e.target.value)}
+                         className={`h-11 ${isFieldFromGoogle('noms') ? 'bg-green-50 border-green-200' : ''}`}
+                         disabled={!isAuthenticated}
+                         required
+                       />
                     </div>
                   </div>
 
@@ -649,15 +733,16 @@ export default function PharmacyCreation() {
                       </Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                        <Input
-                          id="telephone"
-                          type="tel"
-                          placeholder="+242 XX XXX XX XX"
-                          value={formData.telephone}
-                          onChange={(e) => handleInputChange('telephone', e.target.value)}
-                          className={`pl-10 h-11 ${isFieldFromGoogle('telephone') ? 'bg-green-50 border-green-200' : ''}`}
-                          required
-                        />
+                         <Input
+                           id="telephone"
+                           type="tel"
+                           placeholder="+242 XX XXX XX XX"
+                           value={formData.telephone}
+                           onChange={(e) => handleInputChange('telephone', e.target.value)}
+                           className={`pl-10 h-11 ${isFieldFromGoogle('telephone') ? 'bg-green-50 border-green-200' : ''}`}
+                           disabled={!isAuthenticated}
+                           required
+                         />
                       </div>
                     </div>
 
@@ -665,14 +750,15 @@ export default function PharmacyCreation() {
                       <Label htmlFor="reference_agent" className="text-sm font-medium">
                         Référence agent
                       </Label>
-                      <Input
-                        id="reference_agent"
-                        type="text"
-                        placeholder="REF001"
-                        value={formData.reference_agent}
-                        onChange={(e) => handleInputChange('reference_agent', e.target.value)}
-                        className="h-11"
-                      />
+                       <Input
+                         id="reference_agent"
+                         type="text"
+                         placeholder="REF001"
+                         value={formData.reference_agent}
+                         onChange={(e) => handleInputChange('reference_agent', e.target.value)}
+                         className="h-11"
+                         disabled={!isAuthenticated}
+                       />
                     </div>
                   </div>
                 </div>
@@ -680,7 +766,7 @@ export default function PharmacyCreation() {
                 <Button
                   type="submit"
                   className="w-full h-11 font-medium"
-                  disabled={isLoading || !isPasswordValid || !passwordsMatch}
+                  disabled={isLoading || !isPasswordValid || !passwordsMatch || !isAuthenticated}
                 >
                   {isLoading ? "Création en cours..." : "Créer ma pharmacie"}
                 </Button>
