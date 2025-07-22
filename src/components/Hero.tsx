@@ -1,13 +1,18 @@
+
 import { FadeIn } from '@/components/FadeIn';
 import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ArrowRight, Building2, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function Hero() {
+  const { user, connectedPharmacy, disconnectPharmacy } = useAuth();
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -29,6 +34,38 @@ export function Hero() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const handleCreatePharmacy = async () => {
+    console.log('HERO: Lancement de l\'authentification Google pour création pharmacie...');
+    
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/pharmacy-creation`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account'
+          }
+        }
+      });
+
+      if (error) {
+        console.error('HERO: Erreur authentification Google:', error);
+        alert('Erreur lors de l\'authentification: ' + error.message);
+      } else {
+        console.log('HERO: Authentification Google lancée pour création pharmacie');
+      }
+    } catch (error) {
+      console.error('HERO: Exception authentification Google:', error);
+      alert('Erreur inattendue lors de l\'authentification');
+    }
+  };
+
+  const handlePharmacyDisconnect = () => {
+    disconnectPharmacy();
+    navigate('/');
+  };
 
   const handlePharmacyConnection = async () => {
     console.log('HERO: Clic sur le bouton Connecter votre Pharmacie');
@@ -96,14 +133,56 @@ export function Hero() {
             </FadeIn>
             
             <FadeIn delay={0.3} className="flex flex-col sm:flex-row gap-4">
-              <Button 
-                size="lg" 
-                className="button-hover-effect bg-primary hover:bg-primary/90 text-white"
-                onClick={handlePharmacyConnection}
-                disabled={loading}
-              >
-                {loading ? 'Authentification...' : 'Connecter votre Pharmacie'}
-              </Button>
+              {/* Gestion des pharmacies - État non connecté */}
+              {!connectedPharmacy ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      size="lg" 
+                      className="button-hover-effect bg-primary hover:bg-primary/90 text-white"
+                      disabled={loading}
+                    >
+                      <Building2 size={16} className="mr-2" />
+                      {loading ? 'Authentification...' : 'Connecter votre Pharmacie'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="bg-white dark:bg-gray-800 border shadow-lg">
+                    <DropdownMenuItem onClick={handleCreatePharmacy}>
+                      Créer une pharmacie
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/pharmacy-connection')}>
+                      Se connecter
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                /* État connecté - Affichage direct */
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="lg"
+                      className="button-hover-effect bg-transparent hover:bg-muted/50 text-left justify-start p-4 h-auto"
+                    >
+                      <div className="flex items-start gap-3">
+                        <Building2 size={20} className="mt-1 text-primary" />
+                        <div className="flex flex-col items-start">
+                          <div className="font-semibold text-base">{connectedPharmacy.name}</div>
+                          <div className="text-sm text-muted-foreground">{connectedPharmacy.email}</div>
+                          <div className="text-xs text-green-600 font-medium">Connecté</div>
+                        </div>
+                      </div>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="bg-white dark:bg-gray-800 border shadow-lg">
+                    <DropdownMenuItem onClick={handlePharmacyDisconnect}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Déconnecter pharmacie
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
               <Link to="/tableau-de-bord">
                 <Button size="lg" variant="outline" className="button-hover-effect border-primary/20 text-primary hover:bg-primary/5">
                   <span>Voir la Démo</span>
