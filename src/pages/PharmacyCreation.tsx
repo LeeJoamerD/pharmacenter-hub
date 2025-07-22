@@ -78,21 +78,33 @@ export default function PharmacyCreation() {
       return null;
     }
     
-    console.log('PHARMACY-CREATION: Extraction des données Google:', {
-      email: user.email,
-      user_metadata: user.user_metadata,
-      app_metadata: user.app_metadata
-    });
+    console.log('PHARMACY-CREATION: Extraction des données Google - Utilisateur complet:', user);
     
     const metadata = user.user_metadata || {};
     const appMetadata = user.app_metadata || {};
     
-    // Différentes sources pour les données
-    const email = user.email || metadata.email;
-    const fullName = metadata.full_name || metadata.name || appMetadata.full_name || '';
-    const firstName = metadata.given_name || metadata.first_name || '';
-    const lastName = metadata.family_name || metadata.last_name || metadata.surname || '';
-    const phone = user.phone || metadata.phone_number || metadata.phone || '';
+    // Log détaillé de toutes les sources possibles
+    console.log('PHARMACY-CREATION: Sources de données:', {
+      email: user.email,
+      phone: user.phone,
+      user_metadata: metadata,
+      app_metadata: appMetadata,
+      identities: user.identities
+    });
+    
+    // Essayer d'extraire depuis les identités Google si disponibles
+    let googleIdentity = null;
+    if (user.identities && user.identities.length > 0) {
+      googleIdentity = user.identities.find((identity: any) => identity.provider === 'google');
+      console.log('PHARMACY-CREATION: Identité Google trouvée:', googleIdentity);
+    }
+    
+    // Différentes sources pour les données avec priorité
+    const email = user.email || metadata.email || (googleIdentity?.identity_data?.email);
+    const fullName = metadata.full_name || metadata.name || appMetadata.full_name || (googleIdentity?.identity_data?.name) || '';
+    const firstName = metadata.given_name || metadata.first_name || (googleIdentity?.identity_data?.given_name) || '';
+    const lastName = metadata.family_name || metadata.last_name || metadata.surname || (googleIdentity?.identity_data?.family_name) || '';
+    const phone = user.phone || metadata.phone_number || metadata.phone || (googleIdentity?.identity_data?.phone_number) || '';
     
     // Si pas de prénom/nom séparés, essayer de les extraire du nom complet
     let extractedFirstName = firstName;
@@ -112,135 +124,160 @@ export default function PharmacyCreation() {
       telephone: phone || ''
     };
     
-    console.log('PHARMACY-CREATION: Données extraites:', googleData);
+    console.log('PHARMACY-CREATION: Données Google extraites avec succès:', googleData);
     return googleData;
   };
+
+  // État pour tracker les champs préremplis par Google
+  const [googleFilledFields, setGoogleFilledFields] = useState<Set<string>>(new Set());
 
   // Fonction pour préremplir le formulaire
   const fillFormWithGoogleData = (user: any) => {
     const googleData = extractGoogleData(user);
     
-    if (!googleData) return;
+    if (!googleData) {
+      console.log('PHARMACY-CREATION: Aucune données Google à préremplir');
+      return;
+    }
     
-    console.log('PHARMACY-CREATION: Préremplissage avec:', googleData);
+    console.log('PHARMACY-CREATION: Début du préremplissage avec:', googleData);
+    
+    const filledFields = new Set<string>();
     
     setFormData(prev => {
-      // Ne pas écraser les données déjà saisies manuellement
       const newData = { ...prev };
       
-      // Email - toujours préremplir si disponible
-      if (googleData.email && !prev.email) {
+      // Email - préremplir si disponible (même si déjà rempli)
+      if (googleData.email) {
         newData.email = googleData.email;
+        filledFields.add('email');
+        console.log('PHARMACY-CREATION: Email prérempli:', googleData.email);
       }
       
-      // Prénoms - préremplir si vide
-      if (googleData.prenoms && !prev.prenoms) {
+      // Prénoms - préremplir si disponible
+      if (googleData.prenoms) {
         newData.prenoms = googleData.prenoms;
+        filledFields.add('prenoms');
+        console.log('PHARMACY-CREATION: Prénoms préremplis:', googleData.prenoms);
       }
       
-      // Noms - préremplir si vide
-      if (googleData.noms && !prev.noms) {
+      // Noms - préremplir si disponible
+      if (googleData.noms) {
         newData.noms = googleData.noms;
+        filledFields.add('noms');
+        console.log('PHARMACY-CREATION: Noms préremplis:', googleData.noms);
       }
       
-      // Téléphone - préremplir si vide
-      if (googleData.telephone_appel && !prev.telephone_appel) {
+      // Téléphone pharmacie - préremplir si disponible
+      if (googleData.telephone_appel) {
         newData.telephone_appel = googleData.telephone_appel;
+        filledFields.add('telephone_appel');
+        console.log('PHARMACY-CREATION: Téléphone pharmacie prérempli:', googleData.telephone_appel);
       }
       
-      if (googleData.telephone && !prev.telephone) {
+      // Téléphone personnel - préremplir si disponible
+      if (googleData.telephone) {
         newData.telephone = googleData.telephone;
+        filledFields.add('telephone');
+        console.log('PHARMACY-CREATION: Téléphone personnel prérempli:', googleData.telephone);
       }
       
-      console.log('PHARMACY-CREATION: FormData mis à jour:', newData);
+      console.log('PHARMACY-CREATION: FormData final après préremplissage:', newData);
       return newData;
     });
     
+    setGoogleFilledFields(filledFields);
     setGoogleDataLoaded(true);
+    console.log('PHARMACY-CREATION: Préremplissage terminé. Champs remplis:', Array.from(filledFields));
   };
 
   // Préremplir avec les données Google si disponibles
   useEffect(() => {
-    console.log('PHARMACY-CREATION: Initialisation du composant');
+    console.log('PHARMACY-CREATION: Initialisation du composant pour préremplissage Google');
     
     let mounted = true;
+    let authSubscription: any = null;
     
     const initializeGoogleData = async () => {
       try {
-        // Vérifier d'abord la session actuelle
+        // Vérifier la session immédiatement
         console.log('PHARMACY-CREATION: Vérification session initiale...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('PHARMACY-CREATION: Erreur getSession:', error);
-          return;
-        }
-        
-        if (session?.user && mounted) {
-          console.log('PHARMACY-CREATION: Session trouvée, préremplissage...');
+        } else if (session?.user && mounted) {
+          console.log('PHARMACY-CREATION: Session active trouvée, tentative de préremplissage...');
           fillFormWithGoogleData(session.user);
         } else {
-          console.log('PHARMACY-CREATION: Aucune session active');
+          console.log('PHARMACY-CREATION: Aucune session active trouvée');
         }
         
-        // Écouter les changements d'authentification
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          console.log('PHARMACY-CREATION: Auth state change:', event, 'session:', !!session?.user);
+        // Écouter TOUS les changements d'authentification
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log('PHARMACY-CREATION: Auth state change détecté:', event, 'User présent:', !!session?.user);
           
-          if (!mounted) return;
+          if (!mounted) {
+            console.log('PHARMACY-CREATION: Composant démonté, ignoré');
+            return;
+          }
           
-          if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-            console.log('PHARMACY-CREATION: Préremplissage depuis auth state change');
-            fillFormWithGoogleData(session.user);
+          if (session?.user) {
+            console.log('PHARMACY-CREATION: Utilisateur détecté, préremplissage...');
+            // Petit délai pour s'assurer que toutes les données sont disponibles
+            setTimeout(() => {
+              if (mounted) {
+                fillFormWithGoogleData(session.user);
+              }
+            }, 100);
           } else if (event === 'SIGNED_OUT') {
-            console.log('PHARMACY-CREATION: Utilisateur déconnecté');
+            console.log('PHARMACY-CREATION: Utilisateur déconnecté, reset');
             setGoogleDataLoaded(false);
+            setGoogleFilledFields(new Set());
           }
         });
 
-        return () => {
-          subscription.unsubscribe();
-        };
+        authSubscription = subscription;
+        
       } catch (error) {
         console.error('PHARMACY-CREATION: Erreur lors de l\'initialisation:', error);
       }
     };
 
-    const cleanup = initializeGoogleData();
+    initializeGoogleData();
     
-    // Alternative: vérifier périodiquement si les données ne sont pas encore chargées
-    const checkInterval = setInterval(async () => {
-      if (!googleDataLoaded && mounted) {
-        console.log('PHARMACY-CREATION: Vérification périodique...');
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          fillFormWithGoogleData(session.user);
-          clearInterval(checkInterval);
+    // Vérifications supplémentaires au cas où
+    const fallbackTimers = [
+      setTimeout(async () => {
+        if (mounted && !googleDataLoaded) {
+          console.log('PHARMACY-CREATION: Vérification de fallback 500ms...');
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            fillFormWithGoogleData(session.user);
+          }
         }
-      }
-    }, 1000);
+      }, 500),
+      
+      setTimeout(async () => {
+        if (mounted && !googleDataLoaded) {
+          console.log('PHARMACY-CREATION: Vérification de fallback 2s...');
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            fillFormWithGoogleData(session.user);
+          }
+        }
+      }, 2000)
+    ];
 
     return () => {
+      console.log('PHARMACY-CREATION: Nettoyage du useEffect');
       mounted = false;
-      clearInterval(checkInterval);
-      cleanup?.then(unsub => unsub?.());
-    };
-  }, []);
-
-  // Force une nouvelle vérification après le montage du composant
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (!googleDataLoaded) {
-        console.log('PHARMACY-CREATION: Vérification tardive...');
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          fillFormWithGoogleData(session.user);
-        }
+      fallbackTimers.forEach(timer => clearTimeout(timer));
+      if (authSubscription) {
+        authSubscription.unsubscribe();
       }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [googleDataLoaded]);
+    };
+  }, []); // Pas de dépendances pour éviter les re-exécutions
 
   // Validation du mot de passe en temps réel
   const validatePassword = (password: string): PasswordValidation => {
@@ -267,13 +304,7 @@ export default function PharmacyCreation() {
 
   // Déterminer si un champ est prérempli par Google
   const isFieldFromGoogle = (field: string) => {
-    return googleDataLoaded && formData[field] && (
-      field === 'email' || 
-      field === 'prenoms' || 
-      field === 'noms' || 
-      field === 'telephone_appel' || 
-      field === 'telephone'
-    );
+    return googleFilledFields.has(field);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
