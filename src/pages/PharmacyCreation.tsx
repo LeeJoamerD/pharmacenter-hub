@@ -34,6 +34,10 @@ interface AdminCreationResult {
 }
 
 export default function PharmacyCreation() {
+  const navigate = useNavigate();
+  const { user, session, connectPharmacy, signOut } = useAuth();
+  const { toast } = useToast();
+
   // États du formulaire
   const [formData, setFormData] = useState({
     name: '',
@@ -66,10 +70,6 @@ export default function PharmacyCreation() {
     hasNumber: false,
     hasSpecial: false
   });
-
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { connectPharmacy, signOut } = useAuth();
 
   // Fonction pour extraire et formater les données Google
   const extractGoogleData = (user: any) => {
@@ -191,93 +191,14 @@ export default function PharmacyCreation() {
     console.log('PHARMACY-CREATION: Préremplissage terminé. Champs remplis:', Array.from(filledFields));
   };
 
-  // Préremplir avec les données Google si disponibles
+  // Préremplir UNIQUEMENT si l'utilisateur vient de Google OAuth
   useEffect(() => {
-    console.log('PHARMACY-CREATION: Initialisation du composant pour préremplissage Google');
-    
-    let mounted = true;
-    let authSubscription: any = null;
-    
-    const initializeGoogleData = async () => {
-      try {
-        // Vérifier la session immédiatement
-        console.log('PHARMACY-CREATION: Vérification session initiale...');
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('PHARMACY-CREATION: Erreur getSession:', error);
-        } else if (session?.user && mounted) {
-          console.log('PHARMACY-CREATION: Session active trouvée, tentative de préremplissage...');
-          fillFormWithGoogleData(session.user);
-        } else {
-          console.log('PHARMACY-CREATION: Aucune session active trouvée');
-        }
-        
-        // Écouter TOUS les changements d'authentification
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('PHARMACY-CREATION: Auth state change détecté:', event, 'User présent:', !!session?.user);
-          
-          if (!mounted) {
-            console.log('PHARMACY-CREATION: Composant démonté, ignoré');
-            return;
-          }
-          
-          if (session?.user) {
-            console.log('PHARMACY-CREATION: Utilisateur détecté, préremplissage...');
-            // Petit délai pour s'assurer que toutes les données sont disponibles
-            setTimeout(() => {
-              if (mounted) {
-                fillFormWithGoogleData(session.user);
-              }
-            }, 100);
-          } else if (event === 'SIGNED_OUT') {
-            console.log('PHARMACY-CREATION: Utilisateur déconnecté, reset');
-            setGoogleDataLoaded(false);
-            setGoogleFilledFields(new Set());
-          }
-        });
-
-        authSubscription = subscription;
-        
-      } catch (error) {
-        console.error('PHARMACY-CREATION: Erreur lors de l\'initialisation:', error);
-      }
-    };
-
-    initializeGoogleData();
-    
-    // Vérifications supplémentaires au cas où
-    const fallbackTimers = [
-      setTimeout(async () => {
-        if (mounted && !googleDataLoaded) {
-          console.log('PHARMACY-CREATION: Vérification de fallback 500ms...');
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            fillFormWithGoogleData(session.user);
-          }
-        }
-      }, 500),
-      
-      setTimeout(async () => {
-        if (mounted && !googleDataLoaded) {
-          console.log('PHARMACY-CREATION: Vérification de fallback 2s...');
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user) {
-            fillFormWithGoogleData(session.user);
-          }
-        }
-      }, 2000)
-    ];
-
-    return () => {
-      console.log('PHARMACY-CREATION: Nettoyage du useEffect');
-      mounted = false;
-      fallbackTimers.forEach(timer => clearTimeout(timer));
-      if (authSubscription) {
-        authSubscription.unsubscribe();
-      }
-    };
-  }, []); // Pas de dépendances pour éviter les re-exécutions
+    // Simple: utiliser directement les données du contexte Auth si disponibles
+    if (user?.email) {
+      console.log('PHARMACY-CREATION: Utilisateur Google détecté, préremplissage direct...');
+      fillFormWithGoogleData(user);
+    }
+  }, [user]); // Dépendre seulement de l'utilisateur
 
   // Validation du mot de passe en temps réel
   const validatePassword = (password: string): PasswordValidation => {
