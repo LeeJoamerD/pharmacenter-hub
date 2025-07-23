@@ -153,11 +153,6 @@ export function Header() {
               PharmaSoft
             </span>
           </a>
-          {(pharmacy || connectedPharmacy) && (
-            <span className="hidden sm:inline ml-3 text-sm text-muted-foreground">
-              - {pharmacy?.name || connectedPharmacy?.name}
-            </span>
-          )}
         </div>
 
         {/* Desktop Navigation */}
@@ -168,54 +163,6 @@ export function Header() {
             <LanguageSelector />
           </div>
           <div className="ml-2 flex items-center gap-2">
-            {/* Bouton 1: Gestion des pharmacies */}
-            {connectedPharmacy ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-foreground hover:bg-muted/50"
-                  >
-                    <Building2 size={20} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>
-                    {connectedPharmacy.name}
-                  </DropdownMenuLabel>
-                  <div className="px-2 py-1 text-sm text-muted-foreground">
-                    {connectedPharmacy.email}
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handlePharmacyDisconnect}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Déconnecter pharmacie
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-foreground hover:bg-muted/50"
-                  >
-                    <Building2 size={20} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleCreatePharmacy}>
-                    Créer une pharmacie
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/pharmacy-connection')}>
-                    Se connecter
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
             {/* Bouton 2: Gestion des utilisateurs */}
             {user ? (
               <DropdownMenu>
