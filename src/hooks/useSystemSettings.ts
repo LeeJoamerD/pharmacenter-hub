@@ -74,9 +74,13 @@ export const useSystemSettings = () => {
         .from('pharmacies')
         .select('*')
         .eq('id', pharmacy.id)
-        .single();
+        .maybeSingle();
 
       if (pharmacyError) throw pharmacyError;
+      
+      if (!pharmacyData) {
+        throw new Error('Pharmacie non trouvée');
+      }
 
       // Charger les paramètres système
       const { data: parametres, error: parametresError } = await supabase

@@ -4,7 +4,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { SystemSettingsSync } from '@/components/system-settings/SystemSettingsSync';
 import { LogOut } from 'lucide-react';
 
 // Import components
@@ -24,6 +24,7 @@ import VentesModule from '@/components/dashboard/modules/VentesModule';
 import ComptabiliteModule from '@/components/dashboard/modules/ComptabiliteModule';
 import RapportsModule from '@/components/dashboard/modules/RapportsModule';
 import AssistantIAModule from '@/components/dashboard/modules/AssistantIAModule';
+import { useAuth } from '@/contexts/AuthContext';
 import ChatNetworkModule from '@/components/dashboard/modules/ChatNetworkModule';
 
 // Fonction pour extraire les initiales
@@ -177,6 +178,7 @@ const Dashboard = () => {
 
   return (
     <SidebarProvider>
+      <SystemSettingsSync />
       <CurrencyProvider>
         <div className="min-h-screen flex w-full">
           <AppSidebar 

@@ -7,10 +7,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Building, Globe, MapPin, Phone, Mail, Loader2 } from 'lucide-react';
-import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 
 const GeneralSettings = () => {
-  const { settings, loading, saving, saveSettings, updateSettings } = useSystemSettings();
+  const { settings, loading, saving, saveSettings, updateSettings } = useGlobalSystemSettings();
 
   if (loading) {
     return (
