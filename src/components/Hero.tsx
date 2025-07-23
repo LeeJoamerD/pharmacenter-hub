@@ -2,7 +2,7 @@
 import { FadeIn } from '@/components/FadeIn';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ArrowRight, Building2, LogOut } from 'lucide-react';
+import { ArrowRight, Building2, LogOut, TestTube } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,7 @@ import type { User } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function Hero() {
-  const { user, connectedPharmacy, pharmacy, disconnectPharmacy } = useAuth();
+  const { user, connectedPharmacy, pharmacy, disconnectPharmacy, createPharmacySession } = useAuth();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
@@ -82,8 +82,29 @@ export function Hero() {
     console.log('HERO: Clic sur le bouton Connecter votre Pharmacie');
     console.log('HERO: Utilisateur actuel:', currentUser ? currentUser.email : 'aucun');
     
+    // Si l'utilisateur est connecté et a une pharmacie, créer directement une session
+    if (currentUser && pharmacy) {
+      console.log('HERO: Utilisateur connecté avec pharmacie, création session...');
+      setLoading(true);
+      
+      try {
+        const { error } = await createPharmacySession();
+        
+        if (error) {
+          console.error('HERO: Erreur création session:', error);
+          alert('Erreur lors de la création de la session: ' + error.message);
+        } else {
+          console.log('HERO: Session pharmacie créée avec succès');
+        }
+      } catch (error) {
+        console.error('HERO: Exception création session:', error);
+        alert('Erreur inattendue lors de la création de la session');
+      } finally {
+        setLoading(false);
+      }
+    }
     // Si l'utilisateur n'est pas connecté, lancer l'authentification Google
-    if (!currentUser) {
+    else if (!currentUser) {
       console.log('HERO: Lancement de l\'authentification Google...');
       setLoading(true);
       
@@ -108,9 +129,9 @@ export function Hero() {
         setLoading(false);
       }
     } else {
-      // Si déjà connecté, informer l'utilisateur
-      console.log('HERO: Utilisateur déjà connecté');
-      alert('Vous êtes déjà connecté. Utilisez le menu pour accéder aux fonctionnalités.');
+      // Si connecté mais pas de pharmacie, rediriger vers la connexion
+      console.log('HERO: Utilisateur connecté sans pharmacie, redirection connexion');
+      navigate('/pharmacy-connection');
     }
   };
 
@@ -154,7 +175,7 @@ export function Hero() {
                       disabled={loading}
                     >
                       <Building2 size={16} className="mr-2" />
-                      {loading ? 'Authentification...' : 'Connecter votre Pharmacie'}
+                      {loading ? 'Chargement...' : 'Connecter votre Pharmacie'}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="bg-white dark:bg-gray-800 border shadow-lg">
@@ -162,7 +183,15 @@ export function Hero() {
                       Créer une pharmacie
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/pharmacy-connection')}>
-                      Se connecter
+                      Se connecter (Email/Mot de passe)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handlePharmacyConnection}>
+                      Connexion rapide (Google)
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/test-interface')}>
+                      <TestTube className="mr-2 h-4 w-4" />
+                      Interface de test
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -191,6 +220,11 @@ export function Hero() {
                     <DropdownMenuItem onClick={handlePharmacyDisconnect}>
                       <LogOut className="mr-2 h-4 w-4" />
                       {connectedPharmacy ? 'Déconnecter session' : 'Déconnecter pharmacie'}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/test-interface')}>
+                      <TestTube className="mr-2 h-4 w-4" />
+                      Interface de test
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

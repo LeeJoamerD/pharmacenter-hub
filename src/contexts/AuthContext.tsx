@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,6 +25,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateSecurityContext: () => Promise<void>;
   connectPharmacy: (email: string, password: string) => Promise<{ error: Error | null }>;
+  createPharmacySession: () => Promise<{ error: Error | null }>;
   disconnectPharmacy: () => void;
 }
 
@@ -246,51 +248,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const connectPharmacy = async (email: string, password: string) => {
+  // Nouvelle fonction simplifiée pour créer une session pharmacie
+  const createPharmacySession = async () => {
     try {
-      // Déconnecter l'utilisateur si connecté
-      if (user) {
-        await supabase.auth.signOut();
-        setUser(null);
-        setSession(null);
-        setPersonnel(null);
-        setPharmacy(null);
+      if (!user || !pharmacy) {
+        return { error: new Error('Utilisateur ou pharmacie non trouvé') };
       }
 
-      // Authentification utilisateur standard
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (authError || !authData.user) {
-        return { error: new Error('Email ou mot de passe incorrect') };
-      }
-
-      // Récupérer les données du personnel et de la pharmacie
-      const { data: personnel, error: personnelError } = await supabase
-        .from('personnel')
-        .select('*')
-        .eq('auth_user_id', authData.user.id)
-        .eq('role', 'Admin')
-        .maybeSingle();
-
-      if (personnelError || !personnel) {
-        return { error: new Error('Aucun compte administrateur trouvé pour ces identifiants') };
-      }
-
-      // Récupérer la pharmacie associée
-      const { data: pharmacy, error: pharmacyError } = await supabase
-        .from('pharmacies')
-        .select('*')
-        .eq('tenant_id', personnel.tenant_id)
-        .maybeSingle();
-
-      if (pharmacyError || !pharmacy) {
-        return { error: new Error('Aucune pharmacie associée à ce compte') };
-      }
-
-      // Créer une session pharmacie
+      // Créer une session pharmacie pour la pharmacie de l'utilisateur
       const { data: sessionData, error: sessionError } = await supabase.rpc('create_pharmacy_session', {
         p_pharmacy_id: pharmacy.id,
         p_ip_address: null,
@@ -301,7 +266,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error: new Error('Erreur lors de la création de la session') };
       }
 
-      // Type assertion pour sessionData
       const sessionResult = sessionData as { session_token: string; expires_at: string };
 
       const connectedPharmacyData: ConnectedPharmacy = {
@@ -316,6 +280,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         expiresAt: sessionResult.expires_at
       }));
 
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  };
+
+  // Fonction connectPharmacy simplifiée - pour l'authentification email/password
+  const connectPharmacy = async (email: string, password: string) => {
+    try {
+      // Authentifier l'utilisateur
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError || !authData.user) {
+        return { error: new Error('Email ou mot de passe incorrect') };
+      }
+
+      // Les données seront récupérées automatiquement par fetchUserData
+      // via le listener onAuthStateChange
+      
       return { error: null };
     } catch (error) {
       return { error: error as Error };
@@ -344,6 +330,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('is_active', true);
     }
 
+    // Déconnecter la session pharmacie si elle existe
+    if (connectedPharmacy?.sessionToken) {
+      await disconnectPharmacy();
+    }
+
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
@@ -367,6 +358,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signOut,
     updateSecurityContext,
     connectPharmacy,
+    createPharmacySession,
     disconnectPharmacy
   };
 
