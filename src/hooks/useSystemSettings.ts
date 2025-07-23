@@ -98,6 +98,28 @@ export const useSystemSettings = () => {
         return acc;
       }, {} as any);
 
+      // Données par défaut pour les options disponibles
+      const defaultCurrencies: Currency[] = [
+        { code: 'XAF', name: 'Franc CFA BEAC', symbol: 'FCFA', rate: 1, countries: ['Cameroun', 'Gabon', 'Tchad'] },
+        { code: 'EUR', name: 'Euro', symbol: '€', rate: 0.0015, countries: ['France', 'Allemagne', 'Espagne'] },
+        { code: 'USD', name: 'Dollar américain', symbol: '$', rate: 0.0016, countries: ['États-Unis', 'Canada'] },
+        { code: 'GBP', name: 'Livre sterling', symbol: '£', rate: 0.0013, countries: ['Royaume-Uni'] }
+      ];
+
+      const defaultTimezones: Timezone[] = [
+        { code: 'Africa/Douala', name: 'Heure du Cameroun', offset: 'UTC+1', region: 'Afrique Centrale' },
+        { code: 'Europe/Paris', name: 'Heure de Paris', offset: 'UTC+1', region: 'Europe' },
+        { code: 'America/New_York', name: 'Heure de New York', offset: 'UTC-5', region: 'Amérique du Nord' },
+        { code: 'Asia/Tokyo', name: 'Heure de Tokyo', offset: 'UTC+9', region: 'Asie' }
+      ];
+
+      const defaultLanguages: Language[] = [
+        { code: 'fr', name: 'Français', flag: '🇫🇷', native_name: 'Français', region: 'France' },
+        { code: 'en', name: 'English', flag: '🇺🇸', native_name: 'English', region: 'United States' },
+        { code: 'es', name: 'Español', flag: '🇪🇸', native_name: 'Español', region: 'España' },
+        { code: 'de', name: 'Deutsch', flag: '🇩🇪', native_name: 'Deutsch', region: 'Deutschland' }
+      ];
+
       const systemSettings: SystemSettings = {
         // Données pharmacie
         name: pharmacyData.name || '',
@@ -122,10 +144,16 @@ export const useSystemSettings = () => {
         fiscal_year: parametresMap.fiscal_year || new Date().getFullYear().toString(),
         taux_tva: parseFloat(parametresMap.taux_tva || '19.25'),
         
-        // Options disponibles
-        currencies_available: parametresMap.currencies_available || [],
-        timezones_available: parametresMap.timezones_available || [],
-        languages_available: parametresMap.languages_available || [],
+        // Options disponibles - utiliser les données de la base ou les données par défaut
+        currencies_available: parametresMap.currencies_available && parametresMap.currencies_available.length > 0 
+          ? parametresMap.currencies_available 
+          : defaultCurrencies,
+        timezones_available: parametresMap.timezones_available && parametresMap.timezones_available.length > 0 
+          ? parametresMap.timezones_available 
+          : defaultTimezones,
+        languages_available: parametresMap.languages_available && parametresMap.languages_available.length > 0 
+          ? parametresMap.languages_available 
+          : defaultLanguages,
       };
 
       setSettings(systemSettings);

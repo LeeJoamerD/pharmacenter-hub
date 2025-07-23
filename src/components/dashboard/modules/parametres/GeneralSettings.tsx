@@ -260,7 +260,7 @@ const GeneralSettings = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionner une devise" />
                 </SelectTrigger>
-                <SelectContent className="z-50 max-h-[300px] overflow-y-auto bg-white dark:bg-gray-800 border shadow-lg">
+                <SelectContent className="z-[100] max-h-[300px] overflow-y-auto bg-popover text-popover-foreground border shadow-lg">
                   {settings.currencies_available.map((currency) => (
                     <SelectItem key={currency.code} value={currency.code}>
                       <div className="flex items-center gap-2">
@@ -291,7 +291,7 @@ const GeneralSettings = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionner un fuseau horaire" />
                 </SelectTrigger>
-                <SelectContent className="z-50 max-h-[300px] overflow-y-auto bg-white dark:bg-gray-800 border shadow-lg">
+                <SelectContent className="z-[100] max-h-[300px] overflow-y-auto bg-popover text-popover-foreground border shadow-lg">
                   {settings.timezones_available.map((timezone) => (
                     <SelectItem key={timezone.code} value={timezone.code}>
                       <div className="flex flex-col">
@@ -316,7 +316,7 @@ const GeneralSettings = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionner une langue" />
                 </SelectTrigger>
-                <SelectContent className="z-50 max-h-[300px] overflow-y-auto bg-white dark:bg-gray-800 border shadow-lg">
+                <SelectContent className="z-[100] max-h-[300px] overflow-y-auto bg-popover text-popover-foreground border shadow-lg">
                   {settings.languages_available.map((language) => (
                     <SelectItem key={language.code} value={language.code}>
                       <div className="flex items-center gap-2">
