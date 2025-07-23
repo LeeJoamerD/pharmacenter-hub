@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { LogOut } from 'lucide-react';
@@ -25,11 +26,62 @@ import RapportsModule from '@/components/dashboard/modules/RapportsModule';
 import AssistantIAModule from '@/components/dashboard/modules/AssistantIAModule';
 import ChatNetworkModule from '@/components/dashboard/modules/ChatNetworkModule';
 
+// Fonction pour extraire les initiales
+const getUserInitials = (personnel: any, user: any) => {
+  if (personnel?.prenoms && personnel?.noms) {
+    const firstNameInitial = personnel.prenoms.charAt(0).toUpperCase();
+    const lastNameInitial = personnel.noms.charAt(0).toUpperCase();
+    return `${firstNameInitial}${lastNameInitial}`;
+  }
+  
+  if (user?.user_metadata?.name) {
+    const nameParts = user.user_metadata.name.split(' ');
+    if (nameParts.length >= 2) {
+      const initials = `${nameParts[0].charAt(0).toUpperCase()}${nameParts[nameParts.length - 1].charAt(0).toUpperCase()}`;
+      return initials;
+    }
+    const initial = nameParts[0].charAt(0).toUpperCase();
+    return initial;
+  }
+  
+  if (user?.email) {
+    const initial = user.email.charAt(0).toUpperCase();
+    return initial;
+  }
+  
+  return 'U';
+};
+
+// Fonction pour obtenir le nom complet
+const getFullUserName = (personnel: any, user: any) => {
+  if (personnel?.prenoms && personnel?.noms) {
+    const fullName = `${personnel.prenoms} ${personnel.noms}`;
+    return fullName;
+  }
+  
+  if (user?.user_metadata?.name) {
+    return user.user_metadata.name;
+  }
+  
+  const fallback = user?.email || 'Utilisateur';
+  return fallback;
+};
+
+// Composant Avatar avec initiales
+const UserAvatar = ({ initials }: { initials: string }) => (
+  <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
+    {initials}
+  </div>
+);
 
 const Dashboard = () => {
-  const { signOut, personnel, pharmacy } = useAuth();
+  const { signOut, personnel, pharmacy, user } = useAuth();
   const [activeModule, setActiveModule] = useState('dashboard');
   const [activeSubModule, setActiveSubModule] = useState('');
+
+  // Calculer les initiales et le nom complet
+  const userInitials = getUserInitials(personnel, user);
+  const fullUserName = getFullUserName(personnel, user);
 
   const renderActiveModule = () => {
     if (activeModule === 'administration') {
@@ -148,10 +200,34 @@ const Dashboard = () => {
                   </span>
                 )}
                 <Button variant="outline" size="sm">Aide</Button>
-                <Button variant="outline" size="sm" onClick={signOut}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Déconnexion
-                </Button>
+                {user && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-foreground hover:bg-muted/50 h-8 gap-2"
+                      >
+                        <UserAvatar initials={userInitials} />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border shadow-lg">
+                      <DropdownMenuLabel className="pb-1">
+                        <div className="flex flex-col space-y-1">
+                          <span className="font-medium">{fullUserName}</span>
+                          <span className="text-sm text-muted-foreground font-normal">
+                            {user.email}
+                          </span>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={signOut}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Se déconnecter
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </div>
             <div className="p-6">
