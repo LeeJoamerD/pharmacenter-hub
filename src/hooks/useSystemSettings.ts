@@ -98,8 +98,9 @@ export const useSystemSettings = () => {
         return acc;
       }, {} as any);
 
-      // Données par défaut pour les options disponibles
+      // Données par défaut pour les options disponibles (Congo Brazzaville)
       const defaultCurrencies: Currency[] = [
+        { code: 'XOF', name: 'Franc CFA XOF', symbol: 'CFA', rate: 1, countries: ['Congo Brazzaville', 'Sénégal', 'Mali'] },
         { code: 'XAF', name: 'Franc CFA BEAC', symbol: 'FCFA', rate: 1, countries: ['Cameroun', 'Gabon', 'Tchad'] },
         { code: 'EUR', name: 'Euro', symbol: '€', rate: 0.0015, countries: ['France', 'Allemagne', 'Espagne'] },
         { code: 'USD', name: 'Dollar américain', symbol: '$', rate: 0.0016, countries: ['États-Unis', 'Canada'] },
@@ -107,6 +108,7 @@ export const useSystemSettings = () => {
       ];
 
       const defaultTimezones: Timezone[] = [
+        { code: 'Africa/Brazzaville', name: 'Heure du Congo Brazzaville', offset: 'UTC+1', region: 'Afrique Centrale Ouest' },
         { code: 'Africa/Douala', name: 'Heure du Cameroun', offset: 'UTC+1', region: 'Afrique Centrale' },
         { code: 'Europe/Paris', name: 'Heure de Paris', offset: 'UTC+1', region: 'Europe' },
         { code: 'America/New_York', name: 'Heure de New York', offset: 'UTC-5', region: 'Amérique du Nord' },
@@ -114,7 +116,8 @@ export const useSystemSettings = () => {
       ];
 
       const defaultLanguages: Language[] = [
-        { code: 'fr', name: 'Français', flag: '🇫🇷', native_name: 'Français', region: 'France' },
+        { code: 'fr', name: 'Français', flag: '🇫🇷', native_name: 'Français', region: 'Congo Brazzaville' },
+        { code: 'ln', name: 'Lingala', flag: '🇨🇬', native_name: 'Lingála', region: 'Congo Brazzaville' },
         { code: 'en', name: 'English', flag: '🇺🇸', native_name: 'English', region: 'United States' },
         { code: 'es', name: 'Español', flag: '🇪🇸', native_name: 'Español', region: 'España' },
         { code: 'de', name: 'Deutsch', flag: '🇩🇪', native_name: 'Deutsch', region: 'Deutschland' }
@@ -137,9 +140,9 @@ export const useSystemSettings = () => {
         type: pharmacyData.type || '',
         taux_centime_additionnel: Number((pharmacyData as any).taux_centime_additionnel) || 0,
         
-        // Paramètres système
-        default_currency: parametresMap.default_currency || 'XAF',
-        default_timezone: parametresMap.default_timezone || 'Africa/Douala',
+        // Paramètres système (par défaut Congo Brazzaville)
+        default_currency: parametresMap.default_currency || 'XOF',
+        default_timezone: parametresMap.default_timezone || 'Africa/Brazzaville',
         default_language: parametresMap.default_language || 'fr',
         fiscal_year: parametresMap.fiscal_year || new Date().getFullYear().toString(),
         taux_tva: parseFloat(parametresMap.taux_tva || '19.25'),
@@ -214,13 +217,39 @@ export const useSystemSettings = () => {
       // Mettre à jour les paramètres système
       for (const [key, value] of Object.entries(systemParams)) {
         if (value !== undefined) {
-          const { error } = await supabase
+          // Vérifier si le paramètre existe déjà
+          const { data: existingParam } = await supabase
             .from('parametres_systeme')
-            .update({ valeur_parametre: value })
+            .select('id')
             .eq('tenant_id', pharmacy.id)
-            .eq('cle_parametre', key);
+            .eq('cle_parametre', key)
+            .maybeSingle();
 
-          if (error) throw error;
+          if (existingParam) {
+            // Mettre à jour
+            const { error } = await supabase
+              .from('parametres_systeme')
+              .update({ valeur_parametre: value })
+              .eq('tenant_id', pharmacy.id)
+              .eq('cle_parametre', key);
+
+            if (error) throw error;
+          } else {
+            // Créer
+            const { error } = await supabase
+              .from('parametres_systeme')
+              .insert({
+                tenant_id: pharmacy.id,
+                cle_parametre: key,
+                valeur_parametre: value,
+                type_parametre: 'string',
+                description: `Paramètre ${key}`,
+                valeur_defaut: value,
+                categorie: 'general'
+              });
+
+            if (error) throw error;
+          }
         }
       }
 
