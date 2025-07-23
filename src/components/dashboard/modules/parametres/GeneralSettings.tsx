@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,38 +6,35 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Building, Globe, MapPin, Phone, Mail } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Building, Globe, MapPin, Phone, Mail, Loader2 } from 'lucide-react';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 
 const GeneralSettings = () => {
-  const { toast } = useToast();
-  
-  const [settings, setSettings] = useState({
-    companyName: 'PharmaSoft SARL',
-    businessNumber: 'CI-ABJ-2024-001',
-    address: 'Abidjan, Cocody Riviera',
-    phone: '+225 0123456789',
-    email: 'contact@pharmasoft.ci',
-    website: 'www.pharmasoft.ci',
-    currency: 'XOF',
-    timezone: 'Africa/Abidjan',
-    language: 'fr',
-    fiscalYear: '2024',
-    taxRate: 18,
-    enableMultiSite: false,
-    enableNotifications: true,
-    description: 'Logiciel de gestion pharmaceutique complet'
-  });
+  const { settings, loading, saving, saveSettings, updateSettings } = useSystemSettings();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Chargement des paramètres...</span>
+      </div>
+    );
+  }
+
+  if (!settings) {
+    return (
+      <div className="text-center p-8">
+        <p>Impossible de charger les paramètres système.</p>
+      </div>
+    );
+  }
 
   const handleSave = () => {
-    toast({
-      title: "Paramètres sauvegardés",
-      description: "Les paramètres généraux ont été mis à jour avec succès.",
-    });
+    saveSettings(settings);
   };
 
   const handleInputChange = (field: string, value: string | number | boolean) => {
-    setSettings(prev => ({ ...prev, [field]: value }));
+    updateSettings({ [field]: value } as any);
   };
 
   return (
@@ -55,20 +52,20 @@ const GeneralSettings = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="companyName">Nom de l'entreprise</Label>
+              <Label htmlFor="name">Nom de la pharmacie</Label>
               <Input
-                id="companyName"
-                value={settings.companyName}
-                onChange={(e) => handleInputChange('companyName', e.target.value)}
+                id="name"
+                value={settings.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="businessNumber">Numéro d'entreprise</Label>
+              <Label htmlFor="code">Code pharmacie</Label>
               <Input
-                id="businessNumber"
-                value={settings.businessNumber}
-                onChange={(e) => handleInputChange('businessNumber', e.target.value)}
+                id="code"
+                value={settings.code}
+                onChange={(e) => handleInputChange('code', e.target.value)}
               />
             </div>
             
@@ -83,12 +80,12 @@ const GeneralSettings = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="phone">Téléphone</Label>
+              <Label htmlFor="telephone_appel">Téléphone</Label>
               <Input
-                id="phone"
+                id="telephone_appel"
                 type="tel"
-                value={settings.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
+                value={settings.telephone_appel}
+                onChange={(e) => handleInputChange('telephone_appel', e.target.value)}
               />
             </div>
             
@@ -103,11 +100,11 @@ const GeneralSettings = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="website">Site web</Label>
+              <Label htmlFor="city">Ville</Label>
               <Input
-                id="website"
-                value={settings.website}
-                onChange={(e) => handleInputChange('website', e.target.value)}
+                id="city"
+                value={settings.city}
+                onChange={(e) => handleInputChange('city', e.target.value)}
               />
             </div>
           </CardContent>
@@ -125,106 +122,97 @@ const GeneralSettings = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="currency">Devise</Label>
-              <Select value={settings.currency} onValueChange={(value) => handleInputChange('currency', value)}>
+              <Label htmlFor="default_currency">Devise</Label>
+              <Select value={settings.default_currency} onValueChange={(value) => handleInputChange('default_currency', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="XOF">Franc CFA (XOF)</SelectItem>
-                  <SelectItem value="EUR">Euro (EUR)</SelectItem>
-                  <SelectItem value="USD">Dollar US (USD)</SelectItem>
+                  {settings.currencies_available.map((currency) => (
+                    <SelectItem key={currency.code} value={currency.code}>
+                      {currency.name} ({currency.code}) - {currency.symbol}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="timezone">Fuseau horaire</Label>
-              <Select value={settings.timezone} onValueChange={(value) => handleInputChange('timezone', value)}>
+              <Label htmlFor="default_timezone">Fuseau horaire</Label>
+              <Select value={settings.default_timezone} onValueChange={(value) => handleInputChange('default_timezone', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Africa/Abidjan">Abidjan (GMT+0)</SelectItem>
-                  <SelectItem value="Africa/Casablanca">Casablanca (GMT+1)</SelectItem>
-                  <SelectItem value="Europe/Paris">Paris (GMT+1)</SelectItem>
+                  {settings.timezones_available.map((timezone) => (
+                    <SelectItem key={timezone.code} value={timezone.code}>
+                      {timezone.name} - {timezone.region}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="language">Langue</Label>
-              <Select value={settings.language} onValueChange={(value) => handleInputChange('language', value)}>
+              <Label htmlFor="default_language">Langue</Label>
+              <Select value={settings.default_language} onValueChange={(value) => handleInputChange('default_language', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="fr">Français</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
+                  {settings.languages_available.map((language) => (
+                    <SelectItem key={language.code} value={language.code}>
+                      {language.flag} {language.name} ({language.native_name})
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="fiscalYear">Année fiscale</Label>
+              <Label htmlFor="fiscal_year">Année fiscale</Label>
               <Input
-                id="fiscalYear"
-                value={settings.fiscalYear}
-                onChange={(e) => handleInputChange('fiscalYear', e.target.value)}
+                id="fiscal_year"
+                value={settings.fiscal_year}
+                onChange={(e) => handleInputChange('fiscal_year', e.target.value)}
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="taxRate">Taux de TVA (%)</Label>
+              <Label htmlFor="taux_tva">Taux de TVA (%)</Label>
               <Input
-                id="taxRate"
+                id="taux_tva"
                 type="number"
-                value={settings.taxRate}
-                onChange={(e) => handleInputChange('taxRate', Number(e.target.value))}
+                step="0.01"
+                value={settings.taux_tva}
+                onChange={(e) => handleInputChange('taux_tva', Number(e.target.value))}
               />
             </div>
             
-            <div className="flex items-center justify-between">
-              <Label htmlFor="multiSite">Multi-sites</Label>
-              <Switch
-                id="multiSite"
-                checked={settings.enableMultiSite}
-                onCheckedChange={(checked) => handleInputChange('enableMultiSite', checked)}
-              />
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <Label htmlFor="notifications">Notifications</Label>
-              <Switch
-                id="notifications"
-                checked={settings.enableNotifications}
-                onCheckedChange={(checked) => handleInputChange('enableNotifications', checked)}
+            <div className="space-y-2">
+              <Label htmlFor="taux_centime_additionnel">Taux de Centime additionnel (%)</Label>
+              <Input
+                id="taux_centime_additionnel"
+                type="number"
+                step="0.01"
+                value={settings.taux_centime_additionnel}
+                onChange={(e) => handleInputChange('taux_centime_additionnel', Number(e.target.value))}
               />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Description</CardTitle>
-          <CardDescription>
-            Description de votre entreprise ou application
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={settings.description}
-            onChange={(e) => handleInputChange('description', e.target.value)}
-            rows={4}
-            placeholder="Décrivez votre entreprise..."
-          />
-        </CardContent>
-      </Card>
-
       <div className="flex justify-end">
-        <Button onClick={handleSave}>
-          Sauvegarder les paramètres
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Sauvegarde...
+            </>
+          ) : (
+            'Sauvegarder les paramètres'
+          )}
         </Button>
       </div>
     </div>
