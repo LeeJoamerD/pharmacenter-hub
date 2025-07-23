@@ -253,11 +253,14 @@ const GeneralSettings = () => {
                 <DollarSign className="h-4 w-4" />
                 Devise par défaut
               </Label>
-              <Select value={settings.default_currency} onValueChange={(value) => handleInputChange('default_currency', value)}>
-                <SelectTrigger>
+              <Select 
+                value={settings.default_currency} 
+                onValueChange={(value) => handleInputChange('default_currency', value)}
+              >
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionner une devise" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50 max-h-[300px] overflow-y-auto bg-white dark:bg-gray-800 border shadow-lg">
                   {settings.currencies_available.map((currency) => (
                     <SelectItem key={currency.code} value={currency.code}>
                       <div className="flex items-center gap-2">
@@ -281,11 +284,14 @@ const GeneralSettings = () => {
                 <Globe className="h-4 w-4" />
                 Fuseau horaire
               </Label>
-              <Select value={settings.default_timezone} onValueChange={(value) => handleInputChange('default_timezone', value)}>
-                <SelectTrigger>
+              <Select 
+                value={settings.default_timezone} 
+                onValueChange={(value) => handleInputChange('default_timezone', value)}
+              >
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionner un fuseau horaire" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50 max-h-[300px] overflow-y-auto bg-white dark:bg-gray-800 border shadow-lg">
                   {settings.timezones_available.map((timezone) => (
                     <SelectItem key={timezone.code} value={timezone.code}>
                       <div className="flex flex-col">
@@ -303,11 +309,14 @@ const GeneralSettings = () => {
             
             <div className="space-y-2">
               <Label htmlFor="default_language">Langue d'interface</Label>
-              <Select value={settings.default_language} onValueChange={(value) => handleInputChange('default_language', value)}>
-                <SelectTrigger>
+              <Select 
+                value={settings.default_language} 
+                onValueChange={(value) => handleInputChange('default_language', value)}
+              >
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionner une langue" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50 max-h-[300px] overflow-y-auto bg-white dark:bg-gray-800 border shadow-lg">
                   {settings.languages_available.map((language) => (
                     <SelectItem key={language.code} value={language.code}>
                       <div className="flex items-center gap-2">
