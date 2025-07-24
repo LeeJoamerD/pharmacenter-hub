@@ -196,13 +196,25 @@ export const useSystemSettings = () => {
         taux_centime_additionnel: updatedSettings.taux_centime_additionnel,
       };
 
-      const systemParams = {
-        default_currency: updatedSettings.default_currency,
-        default_timezone: updatedSettings.default_timezone,
-        default_language: updatedSettings.default_language,
-        fiscal_year: updatedSettings.fiscal_year,
-        taux_tva: updatedSettings.taux_tva?.toString(),
-      };
+      // Préparer tous les paramètres système
+      const systemParams: Record<string, string | undefined> = {};
+      
+      // Paramètres spécifiques à sauvegarder dans parametres_systeme
+      const systemKeys = [
+        'default_currency', 'default_timezone', 'default_language', 'fiscal_year', 'taux_tva',
+        // Paramètres d'interface
+        'interface_theme', 'interface_primary_color', 'interface_font_size', 
+        'interface_sidebar_collapsed', 'interface_show_tooltips', 'interface_animations_enabled',
+        'interface_compact_mode', 'interface_grid_density', 'interface_date_format',
+        'interface_number_format', 'interface_auto_save'
+      ];
+      
+      systemKeys.forEach(key => {
+        const value = (updatedSettings as any)[key];
+        if (value !== undefined && value !== null) {
+          systemParams[key] = typeof value === 'object' ? JSON.stringify(value) : value.toString();
+        }
+      });
 
       // Mettre à jour la pharmacie
       const { error: pharmacyError } = await supabase
