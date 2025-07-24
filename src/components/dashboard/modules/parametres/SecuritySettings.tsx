@@ -7,55 +7,141 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Shield, Key, AlertTriangle, Clock, Users } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Shield, Key, AlertTriangle, Clock, Users, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useSecuritySettings } from '@/hooks/useSecuritySettings';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 const SecuritySettings = () => {
   const { toast } = useToast();
+  const { settings, loading, saving, savePasswordPolicy, saveSecurityConfig, resolveAlert } = useSecuritySettings();
   
-  const [securitySettings, setSecuritySettings] = useState({
-    passwordMinLength: 8,
-    passwordRequireSpecial: true,
-    passwordRequireNumbers: true,
-    passwordRequireUppercase: true,
-    sessionTimeout: 30,
-    maxLoginAttempts: 3,
-    lockoutDuration: 15,
-    twoFactorAuth: false,
-    ipWhitelist: '',
-    auditLogging: true,
-    encryptionLevel: 'AES256',
-    backupEncryption: true,
-    apiAccessControl: true,
-    bruteForceProtection: true
-  });
+  const [hasPasswordChanges, setHasPasswordChanges] = useState(false);
+  const [hasSecurityChanges, setHasSecurityChanges] = useState(false);
 
-  const [securityLogs] = useState([
-    { id: 1, event: 'Connexion réussie', user: 'admin', ip: '192.168.1.100', time: '2024-12-20 10:30:45', level: 'info' },
-    { id: 2, event: 'Tentative de connexion échouée', user: 'unknown', ip: '192.168.1.105', time: '2024-12-20 10:25:12', level: 'warning' },
-    { id: 3, event: 'Modification des paramètres', user: 'admin', ip: '192.168.1.100', time: '2024-12-20 09:15:30', level: 'info' },
-    { id: 4, event: 'Accès API refusé', user: 'api_user', ip: '10.0.0.50', time: '2024-12-20 08:45:22', level: 'error' }
-  ]);
-
-  const handleSave = () => {
-    toast({
-      title: "Paramètres de sécurité sauvegardés",
-      description: "La configuration de sécurité a été mise à jour.",
-    });
+  const handlePasswordPolicyChange = (key: string, value: any) => {
+    if (!settings) return;
+    
+    // Mettre à jour les paramètres localement
+    const updatedPolicy = { ...settings.passwordPolicy };
+    switch (key) {
+      case 'passwordMinLength':
+        updatedPolicy.min_length = value;
+        break;
+      case 'passwordRequireSpecial':
+        updatedPolicy.require_special_chars = value;
+        break;
+      case 'passwordRequireNumbers':
+        updatedPolicy.require_numbers = value;
+        break;
+      case 'passwordRequireUppercase':
+        updatedPolicy.require_uppercase = value;
+        break;
+      case 'sessionTimeout':
+        updatedPolicy.session_timeout_minutes = value;
+        break;
+      case 'maxLoginAttempts':
+        updatedPolicy.max_failed_attempts = value;
+        break;
+      case 'lockoutDuration':
+        updatedPolicy.lockout_duration_minutes = value;
+        break;
+      case 'twoFactorAuth':
+        updatedPolicy.force_2fa_for_roles = value ? ['Admin', 'Pharmacien'] : [];
+        break;
+    }
+    
+    setHasPasswordChanges(true);
   };
 
-  const handleSettingChange = (key: string, value: any) => {
-    setSecuritySettings(prev => ({ ...prev, [key]: value }));
+  const handleSecurityConfigChange = (key: string, value: any) => {
+    if (!settings) return;
+    
+    const updatedConfig = { ...settings.securityConfig };
+    switch (key) {
+      case 'encryptionLevel':
+        updatedConfig.security_level = value.toLowerCase();
+        break;
+      case 'bruteForceProtection':
+        updatedConfig.auto_block_violations = value;
+        break;
+    }
+    
+    setHasSecurityChanges(true);
+  };
+
+  const handleSavePasswordPolicy = async () => {
+    if (!settings) return;
+    
+    await savePasswordPolicy(settings.passwordPolicy);
+    setHasPasswordChanges(false);
+  };
+
+  const handleSaveSecurityConfig = async () => {
+    if (!settings) return;
+    
+    await saveSecurityConfig(settings.securityConfig);
+    setHasSecurityChanges(false);
   };
 
   const getLogLevelColor = (level: string) => {
-    switch (level) {
-      case 'error': return 'bg-red-100 text-red-800';
-      case 'warning': return 'bg-yellow-100 text-yellow-800';
-      case 'info': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
+    switch (level?.toLowerCase()) {
+      case 'error': 
+      case 'failed': 
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100';
+      case 'warning': 
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+      case 'info': 
+      case 'success':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
+      default: 
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100';
     }
   };
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity?.toLowerCase()) {
+      case 'critical': 
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100';
+      case 'high': 
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100';
+      case 'medium': 
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100';
+      case 'low': 
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
+      default: 
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-20 w-full" />
+        <div className="grid gap-6 md:grid-cols-2">
+          <Skeleton className="h-96 w-full" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
+
+  if (!settings) {
+    return (
+      <div className="space-y-6">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Impossible de charger les paramètres de sécurité.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -85,8 +171,8 @@ const SecuritySettings = () => {
                 type="number"
                 min="6"
                 max="20"
-                value={securitySettings.passwordMinLength}
-                onChange={(e) => handleSettingChange('passwordMinLength', Number(e.target.value))}
+                value={settings.passwordPolicy.min_length}
+                onChange={(e) => handlePasswordPolicyChange('passwordMinLength', Number(e.target.value))}
               />
             </div>
             
@@ -94,8 +180,8 @@ const SecuritySettings = () => {
               <Label htmlFor="requireSpecial">Caractères spéciaux obligatoires</Label>
               <Switch
                 id="requireSpecial"
-                checked={securitySettings.passwordRequireSpecial}
-                onCheckedChange={(checked) => handleSettingChange('passwordRequireSpecial', checked)}
+                checked={settings.passwordPolicy.require_special_chars}
+                onCheckedChange={(checked) => handlePasswordPolicyChange('passwordRequireSpecial', checked)}
               />
             </div>
             
@@ -103,8 +189,8 @@ const SecuritySettings = () => {
               <Label htmlFor="requireNumbers">Chiffres obligatoires</Label>
               <Switch
                 id="requireNumbers"
-                checked={securitySettings.passwordRequireNumbers}
-                onCheckedChange={(checked) => handleSettingChange('passwordRequireNumbers', checked)}
+                checked={settings.passwordPolicy.require_numbers}
+                onCheckedChange={(checked) => handlePasswordPolicyChange('passwordRequireNumbers', checked)}
               />
             </div>
             
@@ -112,8 +198,8 @@ const SecuritySettings = () => {
               <Label htmlFor="requireUppercase">Majuscules obligatoires</Label>
               <Switch
                 id="requireUppercase"
-                checked={securitySettings.passwordRequireUppercase}
-                onCheckedChange={(checked) => handleSettingChange('passwordRequireUppercase', checked)}
+                checked={settings.passwordPolicy.require_uppercase}
+                onCheckedChange={(checked) => handlePasswordPolicyChange('passwordRequireUppercase', checked)}
               />
             </div>
           </CardContent>
@@ -137,8 +223,8 @@ const SecuritySettings = () => {
                 type="number"
                 min="5"
                 max="480"
-                value={securitySettings.sessionTimeout}
-                onChange={(e) => handleSettingChange('sessionTimeout', Number(e.target.value))}
+                value={settings.passwordPolicy.session_timeout_minutes}
+                onChange={(e) => handlePasswordPolicyChange('sessionTimeout', Number(e.target.value))}
               />
             </div>
             
@@ -149,8 +235,8 @@ const SecuritySettings = () => {
                 type="number"
                 min="1"
                 max="10"
-                value={securitySettings.maxLoginAttempts}
-                onChange={(e) => handleSettingChange('maxLoginAttempts', Number(e.target.value))}
+                value={settings.passwordPolicy.max_failed_attempts}
+                onChange={(e) => handlePasswordPolicyChange('maxLoginAttempts', Number(e.target.value))}
               />
             </div>
             
@@ -161,8 +247,8 @@ const SecuritySettings = () => {
                 type="number"
                 min="1"
                 max="1440"
-                value={securitySettings.lockoutDuration}
-                onChange={(e) => handleSettingChange('lockoutDuration', Number(e.target.value))}
+                value={settings.passwordPolicy.lockout_duration_minutes}
+                onChange={(e) => handlePasswordPolicyChange('lockoutDuration', Number(e.target.value))}
               />
             </div>
             
@@ -170,8 +256,8 @@ const SecuritySettings = () => {
               <Label htmlFor="twoFactorAuth">Authentification à 2 facteurs</Label>
               <Switch
                 id="twoFactorAuth"
-                checked={securitySettings.twoFactorAuth}
-                onCheckedChange={(checked) => handleSettingChange('twoFactorAuth', checked)}
+                checked={settings.passwordPolicy.force_2fa_for_roles && settings.passwordPolicy.force_2fa_for_roles.length > 0}
+                onCheckedChange={(checked) => handlePasswordPolicyChange('twoFactorAuth', checked)}
               />
             </div>
           </CardContent>
@@ -193,16 +279,17 @@ const SecuritySettings = () => {
             <div className="space-y-2">
               <Label htmlFor="encryptionLevel">Niveau de chiffrement</Label>
               <Select 
-                value={securitySettings.encryptionLevel} 
-                onValueChange={(value) => handleSettingChange('encryptionLevel', value)}
+                value={settings.securityConfig.security_level} 
+                onValueChange={(value) => handleSecurityConfigChange('encryptionLevel', value)}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="AES128">AES-128</SelectItem>
-                  <SelectItem value="AES256">AES-256</SelectItem>
-                  <SelectItem value="AES512">AES-512</SelectItem>
+                  <SelectItem value="basic">Basic</SelectItem>
+                  <SelectItem value="standard">Standard</SelectItem>
+                  <SelectItem value="enhanced">Enhanced</SelectItem>
+                  <SelectItem value="maximum">Maximum</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -212,8 +299,11 @@ const SecuritySettings = () => {
               <Input
                 id="ipWhitelist"
                 placeholder="192.168.1.0/24, 10.0.0.0/8"
-                value={securitySettings.ipWhitelist}
-                onChange={(e) => handleSettingChange('ipWhitelist', e.target.value)}
+                value={settings.securityConfig.allowed_source_tenants?.join(', ') || ''}
+                onChange={(e) => {
+                  const tenants = e.target.value.split(',').map(t => t.trim()).filter(t => t);
+                  handleSecurityConfigChange('ipWhitelist', tenants);
+                }}
               />
             </div>
           </div>
@@ -223,8 +313,8 @@ const SecuritySettings = () => {
               <Label htmlFor="auditLogging">Journalisation d'audit</Label>
               <Switch
                 id="auditLogging"
-                checked={securitySettings.auditLogging}
-                onCheckedChange={(checked) => handleSettingChange('auditLogging', checked)}
+                checked={true}
+                disabled={true}
               />
             </div>
             
@@ -232,8 +322,8 @@ const SecuritySettings = () => {
               <Label htmlFor="backupEncryption">Chiffrement des sauvegardes</Label>
               <Switch
                 id="backupEncryption"
-                checked={securitySettings.backupEncryption}
-                onCheckedChange={(checked) => handleSettingChange('backupEncryption', checked)}
+                checked={settings.securityConfig.security_level !== 'basic'}
+                disabled={true}
               />
             </div>
             
@@ -241,8 +331,8 @@ const SecuritySettings = () => {
               <Label htmlFor="apiAccessControl">Contrôle d'accès API</Label>
               <Switch
                 id="apiAccessControl"
-                checked={securitySettings.apiAccessControl}
-                onCheckedChange={(checked) => handleSettingChange('apiAccessControl', checked)}
+                checked={!settings.securityConfig.allow_cross_tenant_read}
+                disabled={true}
               />
             </div>
             
@@ -250,53 +340,144 @@ const SecuritySettings = () => {
               <Label htmlFor="bruteForceProtection">Protection force brute</Label>
               <Switch
                 id="bruteForceProtection"
-                checked={securitySettings.bruteForceProtection}
-                onCheckedChange={(checked) => handleSettingChange('bruteForceProtection', checked)}
+                checked={settings.securityConfig.auto_block_violations}
+                onCheckedChange={(checked) => handleSecurityConfigChange('bruteForceProtection', checked)}
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* Boutons de sauvegarde */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium">Politique des mots de passe</h3>
+                <p className="text-sm text-muted-foreground">
+                  Sauvegarder les modifications de sécurité
+                </p>
+              </div>
+              <Button 
+                onClick={handleSavePasswordPolicy}
+                disabled={!hasPasswordChanges || saving}
+                variant={hasPasswordChanges ? "default" : "outline"}
+              >
+                {saving ? "Sauvegarde..." : "Sauvegarder"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium">Configuration avancée</h3>
+                <p className="text-sm text-muted-foreground">
+                  Sauvegarder les paramètres de sécurité
+                </p>
+              </div>
+              <Button 
+                onClick={handleSaveSecurityConfig}
+                disabled={!hasSecurityChanges || saving}
+                variant={hasSecurityChanges ? "default" : "outline"}
+              >
+                {saving ? "Sauvegarde..." : "Sauvegarder"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Alertes de sécurité */}
+      {settings.securityAlerts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              Alertes de Sécurité
+            </CardTitle>
+            <CardDescription>
+              Alertes de sécurité nécessitant votre attention
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {settings.securityAlerts.map((alert) => (
+                <div key={alert.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Badge className={getSeverityColor(alert.severity)}>
+                      {alert.severity.toUpperCase()}
+                    </Badge>
+                    <div className="flex-1">
+                      <p className="font-medium">{alert.description}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Type: {alert.alert_type} • 
+                        {alert.ip_address && ` IP: ${alert.ip_address} • `}
+                        {format(new Date(alert.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => resolveAlert(alert.id)}
+                    className="gap-2"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Résoudre
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Journaux d'audit */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Journaux de Sécurité
+            Journaux d'Audit
           </CardTitle>
           <CardDescription>
-            Activité de sécurité récente
+            Activité récente du système (30 derniers jours)
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {securityLogs.map((log) => (
-              <div key={log.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Badge className={getLogLevelColor(log.level)}>
-                    {log.level.toUpperCase()}
-                  </Badge>
-                  <div>
-                    <p className="font-medium">{log.event}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Utilisateur: {log.user} • IP: {log.ip}
-                    </p>
+            {settings.securityLogs.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">
+                Aucun journal d'audit récent
+              </p>
+            ) : (
+              settings.securityLogs.slice(0, 20).map((log) => (
+                <div key={log.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Badge className={getLogLevelColor(log.status || 'info')}>
+                      {(log.status || 'INFO').toUpperCase()}
+                    </Badge>
+                    <div>
+                      <p className="font-medium">{log.action}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {log.table_name && `Table: ${log.table_name} • `}
+                        {log.ip_address && `IP: ${log.ip_address} • `}
+                        {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                      </p>
+                    </div>
                   </div>
+                  {log.error_message && (
+                    <XCircle className="h-4 w-4 text-red-500" />
+                  )}
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {log.time}
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
-
-      <div className="flex justify-end">
-        <Button onClick={handleSave}>
-          Sauvegarder la configuration
-        </Button>
-      </div>
     </div>
   );
 };
