@@ -90,13 +90,18 @@ export const useSystemSettings = () => {
 
       if (parametresError) throw parametresError;
 
+      console.log('Paramètres chargés depuis la DB:', parametres);
+
       // Construire l'objet settings
       const parametresMap = parametres.reduce((acc, param) => {
-        acc[param.cle_parametre] = param.type_parametre === 'json' 
-          ? JSON.parse(param.valeur_parametre || param.valeur_defaut)
+        const value = param.type_parametre === 'json' 
+          ? JSON.parse(param.valeur_parametre || param.valeur_defaut || '{}')
           : param.valeur_parametre || param.valeur_defaut;
+        acc[param.cle_parametre] = value;
         return acc;
       }, {} as any);
+
+      console.log('Paramètres mappés:', parametresMap);
 
       // Données par défaut pour les options disponibles (Congo Brazzaville)
       const defaultCurrencies: Currency[] = [
