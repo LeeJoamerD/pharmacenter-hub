@@ -18,14 +18,24 @@ const SecuritySettings = () => {
   const { toast } = useToast();
   const { settings, loading, saving, savePasswordPolicy, saveSecurityConfig, resolveAlert } = useSecuritySettings();
   
+  const [localPasswordPolicy, setLocalPasswordPolicy] = useState(settings?.passwordPolicy);
+  const [localSecurityConfig, setLocalSecurityConfig] = useState(settings?.securityConfig);
   const [hasPasswordChanges, setHasPasswordChanges] = useState(false);
   const [hasSecurityChanges, setHasSecurityChanges] = useState(false);
 
+  // Mettre à jour les états locaux quand les settings se chargent
+  React.useEffect(() => {
+    if (settings) {
+      setLocalPasswordPolicy(settings.passwordPolicy);
+      setLocalSecurityConfig(settings.securityConfig);
+    }
+  }, [settings]);
+
   const handlePasswordPolicyChange = (key: string, value: any) => {
-    if (!settings) return;
+    if (!localPasswordPolicy) return;
     
     // Mettre à jour les paramètres localement
-    const updatedPolicy = { ...settings.passwordPolicy };
+    const updatedPolicy = { ...localPasswordPolicy };
     switch (key) {
       case 'passwordMinLength':
         updatedPolicy.min_length = value;
@@ -53,13 +63,14 @@ const SecuritySettings = () => {
         break;
     }
     
+    setLocalPasswordPolicy(updatedPolicy);
     setHasPasswordChanges(true);
   };
 
   const handleSecurityConfigChange = (key: string, value: any) => {
-    if (!settings) return;
+    if (!localSecurityConfig) return;
     
-    const updatedConfig = { ...settings.securityConfig };
+    const updatedConfig = { ...localSecurityConfig };
     switch (key) {
       case 'encryptionLevel':
         updatedConfig.security_level = value.toLowerCase();
@@ -67,22 +78,26 @@ const SecuritySettings = () => {
       case 'bruteForceProtection':
         updatedConfig.auto_block_violations = value;
         break;
+      case 'ipWhitelist':
+        updatedConfig.allowed_source_tenants = value;
+        break;
     }
     
+    setLocalSecurityConfig(updatedConfig);
     setHasSecurityChanges(true);
   };
 
   const handleSavePasswordPolicy = async () => {
-    if (!settings) return;
+    if (!localPasswordPolicy) return;
     
-    await savePasswordPolicy(settings.passwordPolicy);
+    await savePasswordPolicy(localPasswordPolicy);
     setHasPasswordChanges(false);
   };
 
   const handleSaveSecurityConfig = async () => {
-    if (!settings) return;
+    if (!localSecurityConfig) return;
     
-    await saveSecurityConfig(settings.securityConfig);
+    await saveSecurityConfig(localSecurityConfig);
     setHasSecurityChanges(false);
   };
 
@@ -171,7 +186,7 @@ const SecuritySettings = () => {
                 type="number"
                 min="6"
                 max="20"
-                value={settings.passwordPolicy.min_length}
+                value={localPasswordPolicy?.min_length || 8}
                 onChange={(e) => handlePasswordPolicyChange('passwordMinLength', Number(e.target.value))}
               />
             </div>
@@ -180,7 +195,7 @@ const SecuritySettings = () => {
               <Label htmlFor="requireSpecial">Caractères spéciaux obligatoires</Label>
               <Switch
                 id="requireSpecial"
-                checked={settings.passwordPolicy.require_special_chars}
+                checked={localPasswordPolicy?.require_special_chars || false}
                 onCheckedChange={(checked) => handlePasswordPolicyChange('passwordRequireSpecial', checked)}
               />
             </div>
@@ -189,7 +204,7 @@ const SecuritySettings = () => {
               <Label htmlFor="requireNumbers">Chiffres obligatoires</Label>
               <Switch
                 id="requireNumbers"
-                checked={settings.passwordPolicy.require_numbers}
+                checked={localPasswordPolicy?.require_numbers || false}
                 onCheckedChange={(checked) => handlePasswordPolicyChange('passwordRequireNumbers', checked)}
               />
             </div>
@@ -198,7 +213,7 @@ const SecuritySettings = () => {
               <Label htmlFor="requireUppercase">Majuscules obligatoires</Label>
               <Switch
                 id="requireUppercase"
-                checked={settings.passwordPolicy.require_uppercase}
+                checked={localPasswordPolicy?.require_uppercase || false}
                 onCheckedChange={(checked) => handlePasswordPolicyChange('passwordRequireUppercase', checked)}
               />
             </div>
@@ -223,7 +238,7 @@ const SecuritySettings = () => {
                 type="number"
                 min="5"
                 max="480"
-                value={settings.passwordPolicy.session_timeout_minutes}
+                value={localPasswordPolicy?.session_timeout_minutes || 30}
                 onChange={(e) => handlePasswordPolicyChange('sessionTimeout', Number(e.target.value))}
               />
             </div>
@@ -235,7 +250,7 @@ const SecuritySettings = () => {
                 type="number"
                 min="1"
                 max="10"
-                value={settings.passwordPolicy.max_failed_attempts}
+                value={localPasswordPolicy?.max_failed_attempts || 3}
                 onChange={(e) => handlePasswordPolicyChange('maxLoginAttempts', Number(e.target.value))}
               />
             </div>
@@ -247,7 +262,7 @@ const SecuritySettings = () => {
                 type="number"
                 min="1"
                 max="1440"
-                value={settings.passwordPolicy.lockout_duration_minutes}
+                value={localPasswordPolicy?.lockout_duration_minutes || 15}
                 onChange={(e) => handlePasswordPolicyChange('lockoutDuration', Number(e.target.value))}
               />
             </div>
@@ -256,7 +271,7 @@ const SecuritySettings = () => {
               <Label htmlFor="twoFactorAuth">Authentification à 2 facteurs</Label>
               <Switch
                 id="twoFactorAuth"
-                checked={settings.passwordPolicy.force_2fa_for_roles && settings.passwordPolicy.force_2fa_for_roles.length > 0}
+                checked={localPasswordPolicy?.force_2fa_for_roles && localPasswordPolicy.force_2fa_for_roles.length > 0}
                 onCheckedChange={(checked) => handlePasswordPolicyChange('twoFactorAuth', checked)}
               />
             </div>
@@ -279,7 +294,7 @@ const SecuritySettings = () => {
             <div className="space-y-2">
               <Label htmlFor="encryptionLevel">Niveau de chiffrement</Label>
               <Select 
-                value={settings.securityConfig.security_level} 
+                value={localSecurityConfig?.security_level || 'standard'} 
                 onValueChange={(value) => handleSecurityConfigChange('encryptionLevel', value)}
               >
                 <SelectTrigger>
@@ -299,7 +314,7 @@ const SecuritySettings = () => {
               <Input
                 id="ipWhitelist"
                 placeholder="192.168.1.0/24, 10.0.0.0/8"
-                value={settings.securityConfig.allowed_source_tenants?.join(', ') || ''}
+                value={localSecurityConfig?.allowed_source_tenants?.join(', ') || ''}
                 onChange={(e) => {
                   const tenants = e.target.value.split(',').map(t => t.trim()).filter(t => t);
                   handleSecurityConfigChange('ipWhitelist', tenants);
@@ -322,7 +337,7 @@ const SecuritySettings = () => {
               <Label htmlFor="backupEncryption">Chiffrement des sauvegardes</Label>
               <Switch
                 id="backupEncryption"
-                checked={settings.securityConfig.security_level !== 'basic'}
+                checked={localSecurityConfig?.security_level !== 'basic'}
                 disabled={true}
               />
             </div>
@@ -331,7 +346,7 @@ const SecuritySettings = () => {
               <Label htmlFor="apiAccessControl">Contrôle d'accès API</Label>
               <Switch
                 id="apiAccessControl"
-                checked={!settings.securityConfig.allow_cross_tenant_read}
+                checked={!localSecurityConfig?.allow_cross_tenant_read}
                 disabled={true}
               />
             </div>
@@ -340,7 +355,7 @@ const SecuritySettings = () => {
               <Label htmlFor="bruteForceProtection">Protection force brute</Label>
               <Switch
                 id="bruteForceProtection"
-                checked={settings.securityConfig.auto_block_violations}
+                checked={localSecurityConfig?.auto_block_violations || false}
                 onCheckedChange={(checked) => handleSecurityConfigChange('bruteForceProtection', checked)}
               />
             </div>
