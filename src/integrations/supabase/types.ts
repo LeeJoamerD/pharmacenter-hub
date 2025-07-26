@@ -2457,6 +2457,51 @@ export type Database = {
           },
         ]
       }
+      planning_employes: {
+        Row: {
+          created_at: string
+          date: string
+          employe_id: string
+          heure_debut: string
+          heure_fin: string
+          id: string
+          notes: string | null
+          poste: string
+          statut: string
+          tenant_id: string
+          type_shift: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          employe_id: string
+          heure_debut: string
+          heure_fin: string
+          id?: string
+          notes?: string | null
+          poste: string
+          statut?: string
+          tenant_id: string
+          type_shift: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          employe_id?: string
+          heure_debut?: string
+          heure_fin?: string
+          id?: string
+          notes?: string | null
+          poste?: string
+          statut?: string
+          tenant_id?: string
+          type_shift?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       preferences_utilisateur: {
         Row: {
           cle_preference: string

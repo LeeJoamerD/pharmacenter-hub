@@ -5,6 +5,10 @@ import { Calendar, Clock, GraduationCap, User, Users } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PERMISSIONS } from '@/types/permissions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { EmployeeManagement } from '@/components/dashboard/personnel/EmployeeManagement';
+import { ScheduleManagement } from '@/components/dashboard/personnel/ScheduleManagement';
+import { LeaveManagement } from '@/components/dashboard/personnel/LeaveManagement';
+import { TrainingManagement } from '@/components/dashboard/personnel/TrainingManagement';
 
 const PersonnelModule = () => {
   const { canAccess } = usePermissions();
@@ -54,75 +58,19 @@ const PersonnelModule = () => {
             </TabsList>
 
             <TabsContent value="employees" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Fiches Employés</CardTitle>
-                  <CardDescription>
-                    Gestion des informations personnelles et professionnelles des employés
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center text-muted-foreground py-8">
-                    Module en cours de développement
-                    <br />
-                    <small>Gérera les informations RH, contrats, salaires, etc.</small>
-                  </div>
-                </CardContent>
-              </Card>
+              <EmployeeManagement />
             </TabsContent>
 
             <TabsContent value="schedules" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Gestion des Horaires</CardTitle>
-                  <CardDescription>
-                    Planning et horaires de travail des employés
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center text-muted-foreground py-8">
-                    Module en cours de développement
-                    <br />
-                    <small>Gérera les plannings, rotations, heures supplémentaires, etc.</small>
-                  </div>
-                </CardContent>
-              </Card>
+              <ScheduleManagement />
             </TabsContent>
 
             <TabsContent value="leaves" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Gestion des Congés</CardTitle>
-                  <CardDescription>
-                    Demandes et validation des congés
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center text-muted-foreground py-8">
-                    Module en cours de développement
-                    <br />
-                    <small>Gérera les demandes de congés, validations, soldes, etc.</small>
-                  </div>
-                </CardContent>
-              </Card>
+              <LeaveManagement />
             </TabsContent>
 
             <TabsContent value="training" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Formations</CardTitle>
-                  <CardDescription>
-                    Suivi des formations et certifications
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center text-muted-foreground py-8">
-                    Module en cours de développement
-                    <br />
-                    <small>Gérera les formations, certifications, évaluations, etc.</small>
-                  </div>
-                </CardContent>
-              </Card>
+              <TrainingManagement />
             </TabsContent>
           </Tabs>
         </CardContent>
