@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UseFormReturn } from 'react-hook-form';
 import { EmployeeFormData } from './types';
+import { ImageUpload } from './ImageUpload';
 
 interface EmployeeFormProps {
   form: UseFormReturn<EmployeeFormData>;
@@ -69,6 +70,9 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
                       <SelectItem value="Étudiant en pharmacie">Étudiant en pharmacie</SelectItem>
                       <SelectItem value="Secrétaire">Secrétaire</SelectItem>
                       <SelectItem value="Comptable">Comptable</SelectItem>
+                      <SelectItem value="Vendeur">Vendeur</SelectItem>
+                      <SelectItem value="Caissier">Caissier</SelectItem>
+                      <SelectItem value="Agent d'entretien">Agent d'entretien</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -305,19 +309,11 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="photo_identite"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Photo d'identité</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          field.onChange(file.name);
-                        }
-                      }}
-                    />
-                  </FormControl>
+                  <ImageUpload
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    label="Photo d'identité"
+                  />
                   <FormMessage />
                 </FormItem>
               )}

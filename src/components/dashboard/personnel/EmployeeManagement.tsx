@@ -11,6 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { EmployeeForm } from './EmployeeForm';
 import { EmployeeTable } from './EmployeeTable';
 import { EmployeeCard } from './EmployeeCard';
+import { EmployeeFilters } from './EmployeeFilters';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { Employee, EmployeeFormData, employeeSchema } from './types';
 import { toast } from 'sonner';
@@ -20,6 +21,13 @@ export const EmployeeManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({
+    fonction: '',
+    statut_contractuel: '',
+    situation_familiale: '',
+    salaire_min: '',
+    salaire_max: ''
+  });
 
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
 
@@ -138,11 +146,34 @@ export const EmployeeManagement = () => {
     form.reset();
   };
 
-  const filteredEmployees = employees.filter((employee: Employee) =>
-    employee.noms.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.prenoms.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    employee.fonction.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEmployees = employees.filter((employee: Employee) => {
+    // Recherche par texte
+    const matchesSearch = searchTerm === '' || 
+      employee.noms.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.prenoms.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.fonction.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Filtres
+    const matchesFonction = filters.fonction === '' || employee.fonction === filters.fonction;
+    const matchesStatut = filters.statut_contractuel === '' || employee.statut_contractuel === filters.statut_contractuel;
+    const matchesSituation = filters.situation_familiale === '' || employee.situation_familiale === filters.situation_familiale;
+    
+    const salaire = employee.salaire_base || 0;
+    const matchesSalaireMin = filters.salaire_min === '' || salaire >= parseFloat(filters.salaire_min);
+    const matchesSalaireMax = filters.salaire_max === '' || salaire <= parseFloat(filters.salaire_max);
+
+    return matchesSearch && matchesFonction && matchesStatut && matchesSituation && matchesSalaireMin && matchesSalaireMax;
+  });
+
+  const clearFilters = () => {
+    setFilters({
+      fonction: '',
+      statut_contractuel: '',
+      situation_familiale: '',
+      salaire_min: '',
+      salaire_max: ''
+    });
+  };
 
   if (isLoading) {
     return (
@@ -204,10 +235,11 @@ export const EmployeeManagement = () => {
                   className="pl-10"
                 />
               </div>
-              <Button variant="outline" size="sm">
-                <Filter className="w-4 h-4 mr-2" />
-                Filtres
-              </Button>
+              <EmployeeFilters
+                filters={filters}
+                onFiltersChange={setFilters}
+                onClearFilters={clearFilters}
+              />
             </div>
             <div className="flex items-center gap-2">
               <Button
