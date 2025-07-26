@@ -19,7 +19,7 @@ interface EmployeeFiltersProps {
 
 export const EmployeeFilters = ({ filters, onFiltersChange, onClearFilters }: EmployeeFiltersProps) => {
   const updateFilter = (key: string, value: string) => {
-    onFiltersChange({ ...filters, [key]: value });
+    onFiltersChange({ ...filters, [key]: value === 'all' ? '' : value });
   };
 
   const hasActiveFilters = Object.values(filters).some(value => value !== '');
@@ -46,12 +46,12 @@ export const EmployeeFilters = ({ filters, onFiltersChange, onClearFilters }: Em
         <div className="space-y-4 mt-6">
           <div>
             <label className="text-sm font-medium mb-2 block">Fonction</label>
-            <Select value={filters.fonction} onValueChange={(value) => updateFilter('fonction', value)}>
+            <Select value={filters.fonction || 'all'} onValueChange={(value) => updateFilter('fonction', value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Toutes les fonctions" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Toutes les fonctions</SelectItem>
+                <SelectItem value="all">Toutes les fonctions</SelectItem>
                 <SelectItem value="Pharmacien titulaire">Pharmacien titulaire</SelectItem>
                 <SelectItem value="Pharmacien adjoint">Pharmacien adjoint</SelectItem>
                 <SelectItem value="Préparateur">Préparateur</SelectItem>
@@ -67,12 +67,12 @@ export const EmployeeFilters = ({ filters, onFiltersChange, onClearFilters }: Em
 
           <div>
             <label className="text-sm font-medium mb-2 block">Statut contractuel</label>
-            <Select value={filters.statut_contractuel} onValueChange={(value) => updateFilter('statut_contractuel', value)}>
+            <Select value={filters.statut_contractuel || 'all'} onValueChange={(value) => updateFilter('statut_contractuel', value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Tous les statuts" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tous les statuts</SelectItem>
+                <SelectItem value="all">Tous les statuts</SelectItem>
                 <SelectItem value="CDI">CDI</SelectItem>
                 <SelectItem value="CDD">CDD</SelectItem>
                 <SelectItem value="Stage">Stage</SelectItem>
@@ -83,12 +83,12 @@ export const EmployeeFilters = ({ filters, onFiltersChange, onClearFilters }: Em
 
           <div>
             <label className="text-sm font-medium mb-2 block">Situation familiale</label>
-            <Select value={filters.situation_familiale} onValueChange={(value) => updateFilter('situation_familiale', value)}>
+            <Select value={filters.situation_familiale || 'all'} onValueChange={(value) => updateFilter('situation_familiale', value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Toutes les situations" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Toutes les situations</SelectItem>
+                <SelectItem value="all">Toutes les situations</SelectItem>
                 <SelectItem value="Célibataire">Célibataire</SelectItem>
                 <SelectItem value="Marié(e)">Marié(e)</SelectItem>
                 <SelectItem value="Divorcé(e)">Divorcé(e)</SelectItem>

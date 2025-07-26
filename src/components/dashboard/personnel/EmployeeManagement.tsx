@@ -143,7 +143,25 @@ export const EmployeeManagement = () => {
   const handleCancel = () => {
     setIsDialogOpen(false);
     setEditingEmployee(null);
-    form.reset();
+    form.reset({
+      noms: '',
+      prenoms: '',
+      fonction: '',
+      adresse: '',
+      telephone_appel: '',
+      telephone_whatsapp: '',
+      email: '',
+      niu_cni: '',
+      profession: '',
+      date_naissance: '',
+      date_recrutement: '',
+      photo_identite: '',
+      salaire_base: 0,
+      situation_familiale: '',
+      nombre_enfants: 0,
+      numero_cnss: '',
+      statut_contractuel: ''
+    });
   };
 
   const filteredEmployees = employees.filter((employee: Employee) => {
@@ -197,10 +215,28 @@ export const EmployeeManagement = () => {
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => {
-                setEditingEmployee(null);
-                form.reset();
-              }}>
+               <Button onClick={() => {
+                 setEditingEmployee(null);
+                 form.reset({
+                   noms: '',
+                   prenoms: '',
+                   fonction: '',
+                   adresse: '',
+                   telephone_appel: '',
+                   telephone_whatsapp: '',
+                   email: '',
+                   niu_cni: '',
+                   profession: '',
+                   date_naissance: '',
+                   date_recrutement: '',
+                   photo_identite: '',
+                   salaire_base: 0,
+                   situation_familiale: '',
+                   nombre_enfants: 0,
+                   numero_cnss: '',
+                   statut_contractuel: ''
+                 });
+               }}>
                 <Plus className="w-4 h-4 mr-2" />
                 Nouvel Employé
               </Button>

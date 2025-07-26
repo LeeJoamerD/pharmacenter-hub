@@ -16,6 +16,7 @@ export const ImageUpload = ({ value, onChange, label }: ImageUploadProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [cropDimensions, setCropDimensions] = useState({ x: 0, y: 0, width: 200, height: 200 });
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -124,7 +125,7 @@ export const ImageUpload = ({ value, onChange, label }: ImageUploadProps) => {
       </div>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Recadrer l'image</DialogTitle>
           </DialogHeader>
@@ -151,12 +152,16 @@ export const ImageUpload = ({ value, onChange, label }: ImageUploadProps) => {
                   }}
                 />
                 <div 
-                  className="absolute border-2 border-primary bg-primary/20"
+                  className="absolute border-2 border-primary bg-primary/20 cursor-move"
                   style={{
                     left: `${(cropDimensions.x / (imageRef.current?.naturalWidth || 1)) * 100}%`,
                     top: `${(cropDimensions.y / (imageRef.current?.naturalHeight || 1)) * 100}%`,
                     width: `${(cropDimensions.width / (imageRef.current?.naturalWidth || 1)) * 100}%`,
                     height: `${(cropDimensions.height / (imageRef.current?.naturalHeight || 1)) * 100}%`
+                  }}
+                  onMouseDown={(e) => {
+                    setIsDragging(true);
+                    e.preventDefault();
                   }}
                 />
               </div>
