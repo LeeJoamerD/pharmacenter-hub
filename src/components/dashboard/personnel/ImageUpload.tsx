@@ -17,9 +17,11 @@ export const ImageUpload = ({ value, onChange, label }: ImageUploadProps) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [cropDimensions, setCropDimensions] = useState({ x: 0, y: 0, width: 200, height: 200 });
   const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -74,6 +76,41 @@ export const ImageUpload = ({ value, onChange, label }: ImageUploadProps) => {
       }
     }, 'image/jpeg', 0.8);
   }, [selectedImage, cropDimensions, onChange]);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging || !imageRef.current || !containerRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const imageRect = imageRef.current.getBoundingClientRect();
+    const scaleX = imageRef.current.naturalWidth / imageRect.width;
+    const scaleY = imageRef.current.naturalHeight / imageRect.height;
+
+    const deltaX = (e.clientX - dragStart.x) * scaleX;
+    const deltaY = (e.clientY - dragStart.y) * scaleY;
+
+    setCropDimensions(prev => {
+      const newX = Math.max(0, Math.min(prev.x + deltaX, imageRef.current!.naturalWidth - prev.width));
+      const newY = Math.max(0, Math.min(prev.y + deltaY, imageRef.current!.naturalHeight - prev.height));
+      return { ...prev, x: newX, y: newY };
+    });
+
+    setDragStart({ x: e.clientX, y: e.clientY });
+  }, [isDragging, dragStart]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  React.useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   const handleRemove = useCallback(() => {
     onChange('');
@@ -132,12 +169,13 @@ export const ImageUpload = ({ value, onChange, label }: ImageUploadProps) => {
           
           <div className="space-y-4">
             {selectedImage && (
-              <div className="relative">
+              <div ref={containerRef} className="relative select-none">
                 <img
                   ref={imageRef}
                   src={selectedImage}
                   alt="Aperçu"
                   className="max-w-full h-auto"
+                  draggable={false}
                   onLoad={() => {
                     if (imageRef.current) {
                       const { naturalWidth, naturalHeight } = imageRef.current;
@@ -152,7 +190,7 @@ export const ImageUpload = ({ value, onChange, label }: ImageUploadProps) => {
                   }}
                 />
                 <div 
-                  className="absolute border-2 border-primary bg-primary/20 cursor-move"
+                  className="absolute border-2 border-primary bg-primary/20 cursor-move touch-none"
                   style={{
                     left: `${(cropDimensions.x / (imageRef.current?.naturalWidth || 1)) * 100}%`,
                     top: `${(cropDimensions.y / (imageRef.current?.naturalHeight || 1)) * 100}%`,
@@ -161,9 +199,16 @@ export const ImageUpload = ({ value, onChange, label }: ImageUploadProps) => {
                   }}
                   onMouseDown={(e) => {
                     setIsDragging(true);
+                    setDragStart({ x: e.clientX, y: e.clientY });
                     e.preventDefault();
+                    e.stopPropagation();
                   }}
-                />
+                >
+                  <div className="absolute inset-0 border border-white/50"></div>
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-xs font-medium">
+                    Glisser pour déplacer
+                  </div>
+                </div>
               </div>
             )}
             
