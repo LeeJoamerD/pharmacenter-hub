@@ -418,6 +418,69 @@ export type Database = {
         }
         Relationships: []
       }
+      conges_employes: {
+        Row: {
+          approuve_par: string | null
+          commentaires: string | null
+          created_at: string
+          date_approbation: string | null
+          date_debut: string
+          date_fin: string
+          employe_id: string
+          id: string
+          motif: string
+          statut: string
+          tenant_id: string
+          type_conge: string
+          updated_at: string
+        }
+        Insert: {
+          approuve_par?: string | null
+          commentaires?: string | null
+          created_at?: string
+          date_approbation?: string | null
+          date_debut: string
+          date_fin: string
+          employe_id: string
+          id?: string
+          motif: string
+          statut?: string
+          tenant_id: string
+          type_conge: string
+          updated_at?: string
+        }
+        Update: {
+          approuve_par?: string | null
+          commentaires?: string | null
+          created_at?: string
+          date_approbation?: string | null
+          date_debut?: string
+          date_fin?: string
+          employe_id?: string
+          id?: string
+          motif?: string
+          statut?: string
+          tenant_id?: string
+          type_conge?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conges_employes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conges_employes_employe_id_fkey"
+            columns: ["employe_id"]
+            isOneToOne: false
+            referencedRelation: "employes_rh"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conventionnes: {
         Row: {
           adresse: string | null
@@ -625,6 +688,78 @@ export type Database = {
           },
         ]
       }
+      employes_rh: {
+        Row: {
+          adresse: string | null
+          created_at: string
+          date_naissance: string
+          date_recrutement: string
+          email: string
+          fonction: string
+          id: string
+          niu_cni: string
+          nombre_enfants: number | null
+          noms: string
+          numero_cnss: string | null
+          photo_identite: string | null
+          prenoms: string
+          profession: string | null
+          salaire_base: number | null
+          situation_familiale: string
+          statut_contractuel: string
+          telephone_appel: string
+          telephone_whatsapp: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          adresse?: string | null
+          created_at?: string
+          date_naissance: string
+          date_recrutement: string
+          email: string
+          fonction: string
+          id?: string
+          niu_cni: string
+          nombre_enfants?: number | null
+          noms: string
+          numero_cnss?: string | null
+          photo_identite?: string | null
+          prenoms: string
+          profession?: string | null
+          salaire_base?: number | null
+          situation_familiale: string
+          statut_contractuel: string
+          telephone_appel: string
+          telephone_whatsapp?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          adresse?: string | null
+          created_at?: string
+          date_naissance?: string
+          date_recrutement?: string
+          email?: string
+          fonction?: string
+          id?: string
+          niu_cni?: string
+          nombre_enfants?: number | null
+          noms?: string
+          numero_cnss?: string | null
+          photo_identite?: string | null
+          prenoms?: string
+          profession?: string | null
+          salaire_base?: number | null
+          situation_familiale?: string
+          statut_contractuel?: string
+          telephone_appel?: string
+          telephone_whatsapp?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       encaissements: {
         Row: {
           caissier_id: string
@@ -767,6 +902,111 @@ export type Database = {
         }
         Relationships: []
       }
+      formations_employes: {
+        Row: {
+          certificat_requis: boolean | null
+          cout: number | null
+          created_at: string
+          date_debut: string
+          date_fin: string
+          description: string | null
+          duree: number
+          id: string
+          lieu: string
+          nom: string
+          organisme: string
+          statut: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          certificat_requis?: boolean | null
+          cout?: number | null
+          created_at?: string
+          date_debut: string
+          date_fin: string
+          description?: string | null
+          duree: number
+          id?: string
+          lieu: string
+          nom: string
+          organisme: string
+          statut?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          certificat_requis?: boolean | null
+          cout?: number | null
+          created_at?: string
+          date_debut?: string
+          date_fin?: string
+          description?: string | null
+          duree?: number
+          id?: string
+          lieu?: string
+          nom?: string
+          organisme?: string
+          statut?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      formations_employes_participants: {
+        Row: {
+          certificat_obtenu: boolean | null
+          commentaires: string | null
+          created_at: string
+          employe_id: string
+          formation_id: string
+          id: string
+          note_finale: number | null
+          statut_participation: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          certificat_obtenu?: boolean | null
+          commentaires?: string | null
+          created_at?: string
+          employe_id: string
+          formation_id: string
+          id?: string
+          note_finale?: number | null
+          statut_participation?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          certificat_obtenu?: boolean | null
+          commentaires?: string | null
+          created_at?: string
+          employe_id?: string
+          formation_id?: string
+          id?: string
+          note_finale?: number | null
+          statut_participation?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formations_employes_participants_employe_id_fkey"
+            columns: ["employe_id"]
+            isOneToOne: false
+            referencedRelation: "employes_rh"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formations_employes_participants_formation_id_fkey"
+            columns: ["formation_id"]
+            isOneToOne: false
+            referencedRelation: "formations_employes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fournisseurs: {
         Row: {
           adresse: string | null
@@ -805,6 +1045,59 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      horaires_employes: {
+        Row: {
+          created_at: string
+          date_planning: string
+          employe_id: string
+          heure_debut: string
+          heure_fin: string
+          id: string
+          notes: string | null
+          poste: string
+          statut: string
+          tenant_id: string
+          type_shift: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_planning: string
+          employe_id: string
+          heure_debut: string
+          heure_fin: string
+          id?: string
+          notes?: string | null
+          poste: string
+          statut?: string
+          tenant_id: string
+          type_shift: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_planning?: string
+          employe_id?: string
+          heure_debut?: string
+          heure_fin?: string
+          id?: string
+          notes?: string | null
+          poste?: string
+          statut?: string
+          tenant_id?: string
+          type_shift?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "horaires_employes_employe_id_fkey"
+            columns: ["employe_id"]
+            isOneToOne: false
+            referencedRelation: "employes_rh"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       immobilisations: {
         Row: {
