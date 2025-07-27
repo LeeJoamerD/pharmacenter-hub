@@ -309,7 +309,6 @@ export const TrainingManagement = () => {
                             onClick={() => handleDelete(training.id)}
                           >
                             <Trash2 className="w-4 h-4" />
-                            // <Trash2 className="text-red-600 hover:text-red-800 hover:border-red-300" />
                           </Button>
                         </div>
                       </TableCell>
