@@ -8,17 +8,45 @@ import CompanyManager from './partners/CompanyManager';
 import ConventionedManager from './partners/ConventionedManager';
 import SupplierManager from './partners/SupplierManager';
 import LaboratoryManager from './partners/LaboratoryManager';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
 
 const PartnerModule = () => {
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Mock data pour les métriques
+  // Récupérer les métriques réelles
+  const { useTenantQueryWithCache } = useTenantQuery();
+  
+  const { data: assureurs = [] } = useTenantQueryWithCache(
+    ['assureurs-count'],
+    'assureurs'
+  );
+
+  const { data: societes = [] } = useTenantQueryWithCache(
+    ['societes-count'],
+    'societes'
+  );
+
+  const { data: conventionnes = [] } = useTenantQueryWithCache(
+    ['conventionnes-count'],
+    'conventionnes'
+  );
+
+  const { data: fournisseurs = [] } = useTenantQueryWithCache(
+    ['fournisseurs-count'],
+    'fournisseurs'
+  );
+
+  const { data: laboratoires = [] } = useTenantQueryWithCache(
+    ['laboratoires-count'],
+    'laboratoires'
+  );
+
   const partnerMetrics = {
-    assureurs: 12,
-    societes: 45,
-    conventionnes: 28,
-    fournisseurs: 67,
-    laboratoires: 34
+    assureurs: assureurs.length,
+    societes: societes.length,
+    conventionnes: conventionnes.length,
+    fournisseurs: fournisseurs.length,
+    laboratoires: laboratoires.length
   };
 
   const OverviewTab = () => (

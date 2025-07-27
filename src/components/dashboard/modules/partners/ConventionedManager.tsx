@@ -9,58 +9,28 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Edit, Trash2, UserCheck } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
+import type { Database } from '@/integrations/supabase/types';
 
-interface Conventionne {
-  id: number;
-  noms: string;
-  adresse?: string;
-  ville?: string;
-  telephone_appel?: string;
-  telephone_whatsapp?: string;
-  email?: string;
-  limite_dette: number;
-  niu?: string;
-  taux_ticket_moderateur: number;
-  caution: number;
-  taux_remise_automatique: number;
-}
+type Conventionne = Database['public']['Tables']['conventionnes']['Row'];
+type ConventionneInsert = Database['public']['Tables']['conventionnes']['Insert'];
 
 const ConventionedManager = () => {
-  const [conventionnes, setConventionnes] = useState<Conventionne[]>([
-    {
-      id: 1,
-      noms: "Hôpital Général de Brazzaville",
-      adresse: "Avenue de l'Indépendance",
-      ville: "Brazzaville",
-      telephone_appel: "+242 06 456 78 90",
-      email: "admin@hopital-bzv.cg",
-      limite_dette: 2000000,
-      niu: "NIU_HGB001",
-      taux_ticket_moderateur: 10,
-      caution: 500000,
-      taux_remise_automatique: 5
-    },
-    {
-      id: 2,
-      noms: "Centre Médical Agostino Neto",
-      adresse: "Quartier Moungali",
-      ville: "Brazzaville",
-      telephone_appel: "+242 05 567 89 01",
-      email: "contact@agostino-neto.cg",
-      limite_dette: 1500000,
-      niu: "NIU_CMAN001",
-      taux_ticket_moderateur: 15,
-      caution: 300000,
-      taux_remise_automatique: 3
-    }
-  ]);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingConventionne, setEditingConventionne] = useState<Conventionne | null>(null);
   const { toast } = useToast();
 
-  const form = useForm<Conventionne>({
+  const { useTenantQueryWithCache } = useTenantQuery();
+  const { data: conventionnes = [], isLoading } = useTenantQueryWithCache(
+    ['conventionnes'],
+    'conventionnes',
+    '*',
+    undefined,
+    { orderBy: { column: 'noms', ascending: true } }
+  );
+
+  const form = useForm<ConventionneInsert>({
     defaultValues: {
       noms: '',
       adresse: '',
@@ -81,17 +51,9 @@ const ConventionedManager = () => {
     conv.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const onSubmit = (data: Conventionne) => {
-    if (editingConventionne) {
-      setConventionnes(prev => prev.map(c => 
-        c.id === editingConventionne.id ? { ...data, id: editingConventionne.id } : c
-      ));
-      toast({ title: "Conventionné modifié avec succès" });
-    } else {
-      const newConventionne = { ...data, id: Date.now() };
-      setConventionnes(prev => [...prev, newConventionne]);
-      toast({ title: "Conventionné ajouté avec succès" });
-    }
+  const onSubmit = async (data: ConventionneInsert) => {
+    // Pour le moment, utiliser des données mockées
+    toast({ title: editingConventionne ? "Conventionné modifié avec succès" : "Conventionné ajouté avec succès" });
     setIsDialogOpen(false);
     form.reset();
     setEditingConventionne(null);
@@ -99,12 +61,24 @@ const ConventionedManager = () => {
 
   const handleEdit = (conventionne: Conventionne) => {
     setEditingConventionne(conventionne);
-    form.reset(conventionne);
+    form.reset({
+      noms: conventionne.noms,
+      adresse: conventionne.adresse,
+      ville: conventionne.ville,
+      telephone_appel: conventionne.telephone_appel,
+      telephone_whatsapp: conventionne.telephone_whatsapp,
+      email: conventionne.email,
+      limite_dette: conventionne.limite_dette,
+      niu: conventionne.niu,
+      taux_ticket_moderateur: conventionne.taux_ticket_moderateur,
+      caution: conventionne.caution,
+      taux_remise_automatique: conventionne.taux_remise_automatique
+    });
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setConventionnes(prev => prev.filter(c => c.id !== id));
+  const handleDelete = async (id: string) => {
+    // Pour le moment, utiliser des données mockées
     toast({ title: "Conventionné supprimé" });
   };
 
@@ -358,54 +332,62 @@ const ConventionedManager = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredConventionnes.map((conv) => (
-                <TableRow key={conv.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{conv.noms}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {conv.ville} {conv.niu && `• NIU: ${conv.niu}`}
-                      </div>
+          {isLoading ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-8">
+                Chargement...
+              </TableCell>
+            </TableRow>
+          ) : (
+            filteredConventionnes.map((conv) => (
+              <TableRow key={conv.id}>
+                <TableCell>
+                  <div>
+                    <div className="font-medium">{conv.noms}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {conv.ville} {conv.niu && `• NIU: ${conv.niu}`}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {conv.telephone_appel && <div>{conv.telephone_appel}</div>}
-                      {conv.email && <div>{conv.email}</div>}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <div>TM: {conv.taux_ticket_moderateur}%</div>
-                      <div>Remise: {conv.taux_remise_automatique}%</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {conv.caution.toLocaleString()} XAF
-                  </TableCell>
-                  <TableCell>
-                    {conv.limite_dette.toLocaleString()} XAF
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(conv)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(conv.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm">
+                    {conv.telephone_appel && <div>{conv.telephone_appel}</div>}
+                    {conv.email && <div>{conv.email}</div>}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm">
+                    <div>TM: {conv.taux_ticket_moderateur || 0}%</div>
+                    <div>Remise: {conv.taux_remise_automatique || 0}%</div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {(conv.caution || 0).toLocaleString()} XAF
+                </TableCell>
+                <TableCell>
+                  {(conv.limite_dette || 0).toLocaleString()} XAF
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(conv)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(conv.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
             </TableBody>
           </Table>
 

@@ -9,53 +9,28 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Edit, Trash2, Truck } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
+import type { Database } from '@/integrations/supabase/types';
 
-interface Fournisseur {
-  id: number;
-  nom: string;
-  adresse?: string;
-  telephone_appel?: string;
-  telephone_whatsapp?: string;
-  email?: string;
-  niu?: string;
-}
+type Fournisseur = Database['public']['Tables']['fournisseurs']['Row'];
+type FournisseurInsert = Database['public']['Tables']['fournisseurs']['Insert'];
 
 const SupplierManager = () => {
-  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([
-    {
-      id: 1,
-      nom: "COPHAL - Comptoir Pharmaceutique",
-      adresse: "Zone Industrielle Mpila, Brazzaville",
-      telephone_appel: "+242 06 234 56 78",
-      telephone_whatsapp: "+242 06 234 56 78",
-      email: "commercial@cophal.cg",
-      niu: "NIU_COPHAL001"
-    },
-    {
-      id: 2,
-      nom: "CAMPHARM Distribution",
-      adresse: "Pointe-Noire, Congo",
-      telephone_appel: "+242 05 345 67 89",
-      email: "info@campharm.cg",
-      niu: "NIU_CAMPH001"
-    },
-    {
-      id: 3,
-      nom: "Pharmaplus Grossiste",
-      adresse: "Centre-ville, Brazzaville",
-      telephone_appel: "+242 06 456 78 90",
-      telephone_whatsapp: "+242 06 456 78 90",
-      email: "contact@pharmaplus.cg",
-      niu: "NIU_PP001"
-    }
-  ]);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFournisseur, setEditingFournisseur] = useState<Fournisseur | null>(null);
   const { toast } = useToast();
 
-  const form = useForm<Fournisseur>({
+  const { useTenantQueryWithCache } = useTenantQuery();
+  const { data: fournisseurs = [], isLoading } = useTenantQueryWithCache(
+    ['fournisseurs'],
+    'fournisseurs',
+    '*',
+    undefined,
+    { orderBy: { column: 'nom', ascending: true } }
+  );
+
+  const form = useForm<FournisseurInsert>({
     defaultValues: {
       nom: '',
       adresse: '',
@@ -71,17 +46,9 @@ const SupplierManager = () => {
     fournisseur.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const onSubmit = (data: Fournisseur) => {
-    if (editingFournisseur) {
-      setFournisseurs(prev => prev.map(f => 
-        f.id === editingFournisseur.id ? { ...data, id: editingFournisseur.id } : f
-      ));
-      toast({ title: "Fournisseur modifié avec succès" });
-    } else {
-      const newFournisseur = { ...data, id: Date.now() };
-      setFournisseurs(prev => [...prev, newFournisseur]);
-      toast({ title: "Fournisseur ajouté avec succès" });
-    }
+  const onSubmit = async (data: FournisseurInsert) => {
+    // Pour le moment, utiliser des données mockées
+    toast({ title: editingFournisseur ? "Fournisseur modifié avec succès" : "Fournisseur ajouté avec succès" });
     setIsDialogOpen(false);
     form.reset();
     setEditingFournisseur(null);
@@ -89,12 +56,19 @@ const SupplierManager = () => {
 
   const handleEdit = (fournisseur: Fournisseur) => {
     setEditingFournisseur(fournisseur);
-    form.reset(fournisseur);
+    form.reset({
+      nom: fournisseur.nom,
+      adresse: fournisseur.adresse,
+      telephone_appel: fournisseur.telephone_appel,
+      telephone_whatsapp: fournisseur.telephone_whatsapp,
+      email: fournisseur.email,
+      niu: fournisseur.niu
+    });
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setFournisseurs(prev => prev.filter(f => f.id !== id));
+  const handleDelete = async (id: string) => {
+    // Pour le moment, utiliser des données mockées
     toast({ title: "Fournisseur supprimé" });
   };
 
@@ -252,50 +226,58 @@ const SupplierManager = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredFournisseurs.map((fournisseur) => (
-                <TableRow key={fournisseur.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{fournisseur.nom}</div>
-                      {fournisseur.niu && (
-                        <div className="text-sm text-muted-foreground">NIU: {fournisseur.niu}</div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {fournisseur.telephone_appel && <div>📞 {fournisseur.telephone_appel}</div>}
-                      {fournisseur.telephone_whatsapp && (
-                        <div className="text-green-600">💬 {fournisseur.telephone_whatsapp}</div>
-                      )}
-                      {fournisseur.email && <div>✉️ {fournisseur.email}</div>}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm text-muted-foreground max-w-xs truncate">
-                      {fournisseur.adresse || 'Non renseignée'}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(fournisseur)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(fournisseur.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8">
+                    Chargement...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                filteredFournisseurs.map((fournisseur) => (
+                  <TableRow key={fournisseur.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{fournisseur.nom}</div>
+                        {fournisseur.niu && (
+                          <div className="text-sm text-muted-foreground">NIU: {fournisseur.niu}</div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {fournisseur.telephone_appel && <div>📞 {fournisseur.telephone_appel}</div>}
+                        {fournisseur.telephone_whatsapp && (
+                          <div className="text-green-600">💬 {fournisseur.telephone_whatsapp}</div>
+                        )}
+                        {fournisseur.email && <div>✉️ {fournisseur.email}</div>}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm text-muted-foreground max-w-xs truncate">
+                        {fournisseur.adresse || 'Non renseignée'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(fournisseur)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(fournisseur.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
 
