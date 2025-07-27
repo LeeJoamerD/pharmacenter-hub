@@ -41,9 +41,9 @@ const CompanyManager = () => {
   const { data: assureurs = [] } = useTenantQueryWithCache(
     ['assureurs'],
     'assureurs',
-    'id, nom',
+    'id, libelle_assureur',
     undefined,
-    { orderBy: { column: 'nom', ascending: true } }
+    { orderBy: { column: 'libelle_assureur', ascending: true } }
   );
 
   // Récupérer les sociétés
@@ -267,7 +267,7 @@ const CompanyManager = () => {
                   <SelectContent>
                     {assureurs.map((assureur: any) => (
                       <SelectItem key={assureur.id} value={assureur.id}>
-                        {assureur.nom}
+                        {assureur.libelle_assureur}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -452,7 +452,7 @@ const CompanyManager = () => {
                   <TableCell>
                     <div className="text-sm text-muted-foreground">
                       {societe.assureur_id ? (
-                        assureurs.find((a: any) => a.id === societe.assureur_id)?.nom || 'Assureur inconnu'
+                        assureurs.find((a: any) => a.id === societe.assureur_id)?.libelle_assureur || 'Assureur inconnu'
                       ) : '-'}
                     </div>
                   </TableCell>

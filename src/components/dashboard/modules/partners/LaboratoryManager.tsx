@@ -14,15 +14,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 
 const laboratoireSchema = z.object({
-  nom: z.string().min(1, "Le nom est requis"),
-  adresse: z.string().optional(),
-  ville: z.string().optional(),
-  telephone_appel: z.string().optional(),
-  telephone_whatsapp: z.string().optional(),
-  email: z.string().email("Email invalide").optional().or(z.literal("")),
-  niu: z.string().optional(),
-  specialites: z.array(z.string()).optional(),
-  contact_principal: z.string().optional(),
+  libelle: z.string().min(1, "Le nom est requis"),
+  pays_siege: z.string().optional(),
+  email_siege: z.string().email("Email invalide").optional().or(z.literal("")),
+  email_delegation_local: z.string().email("Email invalide").optional().or(z.literal("")),
+  telephone_appel_delegation_local: z.string().optional(),
+  telephone_whatsapp_delegation_local: z.string().optional(),
 });
 
 type Laboratoire = z.infer<typeof laboratoireSchema> & { id?: string };
@@ -40,7 +37,7 @@ const LaboratoryManager = () => {
     'laboratoires',
     '*',
     undefined,
-    { orderBy: { column: 'nom', ascending: true } }
+    { orderBy: { column: 'libelle', ascending: true } }
   );
 
   // Mutations
@@ -68,15 +65,12 @@ const LaboratoryManager = () => {
   });
 
   const defaultValues = useMemo(() => ({
-    nom: '',
-    adresse: '',
-    ville: '',
-    telephone_appel: '',
-    telephone_whatsapp: '',
-    email: '',
-    niu: '',
-    specialites: [],
-    contact_principal: ''
+    libelle: '',
+    pays_siege: '',
+    email_siege: '',
+    email_delegation_local: '',
+    telephone_appel_delegation_local: '',
+    telephone_whatsapp_delegation_local: ''
   }), []);
 
   const form = useForm<Laboratoire>({
@@ -86,7 +80,7 @@ const LaboratoryManager = () => {
   });
 
   const filteredLaboratoires = laboratoires.filter((labo: any) =>
-    labo.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    labo.libelle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     labo.ville?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     labo.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -121,7 +115,7 @@ const LaboratoryManager = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="nom"
+            name="libelle"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Nom du laboratoire *</FormLabel>
@@ -140,13 +134,13 @@ const LaboratoryManager = () => {
 
           <FormField
             control={form.control}
-            name="ville"
+            name="pays_siege"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Ville</FormLabel>
+                <FormLabel>Pays du siège</FormLabel>
                 <FormControl>
                   <Input 
-                    placeholder="Brazzaville" 
+                    placeholder="France" 
                     {...field} 
                     tabIndex={2}
                   />
@@ -158,10 +152,10 @@ const LaboratoryManager = () => {
 
           <FormField
             control={form.control}
-            name="email"
+            name="email_siege"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>Email du siège</FormLabel>
                 <FormControl>
                   <Input 
                     type="email" 
@@ -177,13 +171,14 @@ const LaboratoryManager = () => {
 
           <FormField
             control={form.control}
-            name="niu"
+            name="email_delegation_local"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>NIU</FormLabel>
+                <FormLabel>Email délégation locale</FormLabel>
                 <FormControl>
                   <Input 
-                    placeholder="Numéro d'identification unique" 
+                    type="email" 
+                    placeholder="delegation@laboratoire.cg" 
                     {...field} 
                     tabIndex={4}
                   />
@@ -195,10 +190,10 @@ const LaboratoryManager = () => {
 
           <FormField
             control={form.control}
-            name="telephone_appel"
+            name="telephone_appel_delegation_local"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Téléphone</FormLabel>
+                <FormLabel>Téléphone délégation</FormLabel>
                 <FormControl>
                   <Input 
                     placeholder="+242 06 123 45 67" 
@@ -213,10 +208,10 @@ const LaboratoryManager = () => {
 
           <FormField
             control={form.control}
-            name="telephone_whatsapp"
+            name="telephone_whatsapp_delegation_local"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>WhatsApp</FormLabel>
+                <FormLabel>WhatsApp délégation</FormLabel>
                 <FormControl>
                   <Input 
                     placeholder="+242 06 123 45 67" 
@@ -229,42 +224,6 @@ const LaboratoryManager = () => {
             )}
           />
         </div>
-
-        <FormField
-          control={form.control}
-          name="adresse"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Adresse</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="Adresse complète" 
-                  {...field} 
-                  tabIndex={7}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="contact_principal"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Contact principal</FormLabel>
-              <FormControl>
-                <Input 
-                  placeholder="Nom du contact principal" 
-                  {...field} 
-                  tabIndex={8}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         <div className="flex justify-end gap-2">
           <Button 
@@ -354,7 +313,7 @@ const LaboratoryManager = () => {
                     <div>
                       <div className="font-medium flex items-center gap-2">
                         <FlaskConical className="h-4 w-4 text-blue-500" />
-                        {labo.nom}
+                        {labo.libelle}
                       </div>
                       {labo.niu && (
                         <div className="text-sm text-muted-foreground">NIU: {labo.niu}</div>
