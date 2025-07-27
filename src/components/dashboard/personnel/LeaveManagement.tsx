@@ -85,6 +85,8 @@ export const LeaveManagement = () => {
   });
 
   const handleSubmit = (data: LeaveRequestFormData) => {
+    console.log('Form data avant traitement:', data);
+    
     const leaveData = {
       employe_id: data.employe_id,
       type_conge: data.type_conge,
@@ -92,8 +94,10 @@ export const LeaveManagement = () => {
       date_fin: data.date_fin,
       motif: data.motif,
       statut: data.statut || 'En attente',
-      commentaires: data.commentaires
+      commentaires: data.commentaires || null
     };
+
+    console.log('Leave data to send:', leaveData);
 
     if (editingLeave) {
       updateMutation.mutate({ 
