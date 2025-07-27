@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Calendar, Clock, Filter } from 'lucide-react';
+import { Plus, Calendar, Clock, Filter, Edit, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ScheduleForm } from './ScheduleForm';
@@ -280,20 +280,21 @@ export const ScheduleManagement = () => {
                       <TableCell>{schedule.poste}</TableCell>
                       <TableCell>{getStatusBadge(schedule.statut)}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
+                        <div className="flex items-center space-x-2">
+                          <Button 
+                            variant="outline" 
                             size="sm"
                             onClick={() => handleEdit(schedule)}
                           >
-                            Modifier
+                            <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="destructive"
+                          <Button 
+                            variant="outline" 
                             size="sm"
                             onClick={() => handleDelete(schedule.id)}
+                            className="text-red-600 hover:text-red-800 hover:border-red-300"
                           >
-                            Supprimer
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
