@@ -86,6 +86,7 @@ export const ScheduleManagement = () => {
   });
 
   const handleSubmit = (data: ScheduleFormData) => {
+    console.log('Form data received:', data);
     const scheduleData = {
       employe_id: data.employe,
       date: data.date,
@@ -96,6 +97,7 @@ export const ScheduleManagement = () => {
       statut: data.statut,
       notes: data.notes
     };
+    console.log('Schedule data prepared:', scheduleData);
 
     if (editingSchedule) {
       updateMutation.mutate({ 

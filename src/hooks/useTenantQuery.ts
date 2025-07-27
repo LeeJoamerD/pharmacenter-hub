@@ -78,9 +78,6 @@ export const useTenantQuery = () => {
     return useQuery({
       queryKey: [tenantId, ...queryKey],
       queryFn: async () => {
-        console.log('TenantQuery - tenantId:', tenantId);
-        console.log('TenantQuery - tableName:', tableName);
-        
         const query = createTenantQuery(
           tableName,
           selectQuery,
@@ -90,10 +87,8 @@ export const useTenantQuery = () => {
         
         const { data, error } = await query;
         if (error) {
-          console.error('TenantQuery - Error:', error);
           throw error;
         }
-        console.log('TenantQuery - Success:', data);
         return data;
       },
       enabled: !!tenantId && (options?.enabled ?? true)
