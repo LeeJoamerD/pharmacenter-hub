@@ -97,11 +97,11 @@ export type TrainingFormData = z.infer<typeof trainingSchema>;
 
 export interface Schedule {
   id: number;
-  employe: string;
-  date: string;
-  heureDebut: string;
-  heureFin: string;
-  typeShift: string;
+  employe_id: string;
+  date_planning: string;
+  heure_debut: string;
+  heure_fin: string;
+  type_shift: string;
   poste: string;
   statut: string;
   notes?: string;

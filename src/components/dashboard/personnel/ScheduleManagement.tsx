@@ -88,7 +88,7 @@ export const ScheduleManagement = () => {
   const handleSubmit = (data: ScheduleFormData) => {
     const scheduleData = {
       employe_id: data.employe,
-      date: data.date,
+      date_planning: data.date,
       heure_debut: data.heureDebut,
       heure_fin: data.heureFin,
       type_shift: data.typeShift,
@@ -110,11 +110,11 @@ export const ScheduleManagement = () => {
   const handleEdit = (schedule: Schedule) => {
     setEditingSchedule(schedule);
     form.reset({
-      employe: schedule.employe,
-      date: schedule.date,
-      heureDebut: schedule.heureDebut,
-      heureFin: schedule.heureFin,
-      typeShift: schedule.typeShift as any,
+      employe: schedule.employe_id,
+      date: schedule.date_planning,
+      heureDebut: schedule.heure_debut,
+      heureFin: schedule.heure_fin,
+      typeShift: schedule.type_shift as any,
       poste: schedule.poste,
       statut: schedule.statut as any,
       notes: schedule.notes || ''
@@ -146,7 +146,7 @@ export const ScheduleManagement = () => {
   };
 
   const getEmployeeName = (employeId: string) => {
-    const employee = employees.find((e: any) => e.id === employeId);
+    const employee = employees.find((e: any) => e.id.toString() === employeId);
     return employee ? `${employee.prenoms} ${employee.noms}` : 'Employé inconnu';
   };
 
@@ -261,19 +261,19 @@ export const ScheduleManagement = () => {
                   {schedules.map((schedule: Schedule) => (
                     <TableRow key={schedule.id}>
                       <TableCell className="font-medium">
-                        {getEmployeeName(schedule.employe)}
+                        {getEmployeeName(schedule.employe_id)}
                       </TableCell>
                       <TableCell>
-                        {format(new Date(schedule.date), 'dd/MM/yyyy', { locale: fr })}
+                        {format(new Date(schedule.date_planning), 'dd/MM/yyyy', { locale: fr })}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
-                          {schedule.heureDebut} - {schedule.heureFin}
+                          {schedule.heure_debut} - {schedule.heure_fin}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{schedule.typeShift}</Badge>
+                        <Badge variant="outline">{schedule.type_shift}</Badge>
                       </TableCell>
                       <TableCell>{schedule.poste}</TableCell>
                       <TableCell>{getStatusBadge(schedule.statut)}</TableCell>

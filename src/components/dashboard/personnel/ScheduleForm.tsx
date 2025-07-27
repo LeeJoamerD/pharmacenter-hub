@@ -44,7 +44,7 @@ export const ScheduleForm: React.FC<ScheduleFormProps> = ({
                     {employees.map((employee) => (
                       <SelectItem 
                         key={employee.id} 
-                        value={`${employee.prenoms} ${employee.noms}`}
+                        value={employee.id.toString()}
                       >
                         {employee.prenoms} {employee.noms} - {employee.fonction}
                       </SelectItem>
