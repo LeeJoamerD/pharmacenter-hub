@@ -5,110 +5,94 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Edit, Trash2, FlaskConical, Globe } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
 
 interface Laboratoire {
-  id: number;
-  libelle: string;
-  pays_siege?: string;
-  email_siege?: string;
-  email_delegation_local?: string;
-  telephone_appel_delegation_local?: string;
-  telephone_whatsapp_delegation_local?: string;
-  date_creation?: string;
-  date_modification?: string;
+  id?: string;
+  nom: string;
+  adresse?: string;
+  ville?: string;
+  telephone_appel?: string;
+  telephone_whatsapp?: string;
+  email?: string;
+  niu?: string;
+  specialites?: string[];
+  contact_principal?: string;
 }
 
 const LaboratoryManager = () => {
-  const [laboratoires, setLaboratoires] = useState<Laboratoire[]>([
-    {
-      id: 1,
-      libelle: "Laboratoires Roche",
-      pays_siege: "Suisse",
-      email_siege: "contact@roche.com",
-      email_delegation_local: "congo@roche.com",
-      telephone_appel_delegation_local: "+242 06 345 67 89",
-      telephone_whatsapp_delegation_local: "+242 06 345 67 89",
-      date_creation: "2024-01-15"
-    },
-    {
-      id: 2,
-      libelle: "Sanofi Congo",
-      pays_siege: "France",
-      email_siege: "info@sanofi.com",
-      email_delegation_local: "congo@sanofi.com",
-      telephone_appel_delegation_local: "+242 05 456 78 90",
-      telephone_whatsapp_delegation_local: "+242 05 456 78 90",
-      date_creation: "2024-02-10"
-    },
-    {
-      id: 3,
-      libelle: "Pfizer Central Africa",
-      pays_siege: "États-Unis",
-      email_siege: "contact@pfizer.com",
-      email_delegation_local: "centralafrica@pfizer.com",
-      telephone_appel_delegation_local: "+242 06 567 89 01",
-      date_creation: "2024-03-05"
-    },
-    {
-      id: 4,
-      libelle: "Novartis",
-      pays_siege: "Suisse",
-      email_siege: "info@novartis.com",
-      email_delegation_local: "congo@novartis.com",
-      telephone_appel_delegation_local: "+242 05 678 90 12",
-      telephone_whatsapp_delegation_local: "+242 05 678 90 12",
-      date_creation: "2024-01-20"
-    }
-  ]);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLaboratoire, setEditingLaboratoire] = useState<Laboratoire | null>(null);
   const { toast } = useToast();
+  const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
 
-  const form = useForm<Laboratoire>({
-    defaultValues: {
-      libelle: '',
-      pays_siege: '',
-      email_siege: '',
-      email_delegation_local: '',
-      telephone_appel_delegation_local: '',
-      telephone_whatsapp_delegation_local: ''
+  // Récupérer les laboratoires
+  const { data: laboratoires = [], isLoading, refetch } = useTenantQueryWithCache(
+    ['laboratoires'],
+    'laboratoires',
+    '*',
+    undefined,
+    { orderBy: { column: 'nom', ascending: true } }
+  );
+
+  // Mutations
+  const createMutation = useTenantMutation('laboratoires', 'insert', {
+    invalidateQueries: ['laboratoires'],
+    onSuccess: () => {
+      toast({ title: "Laboratoire ajouté avec succès" });
+      setIsDialogOpen(false);
+      form.reset();
     }
   });
 
-  const filteredLaboratoires = laboratoires.filter(labo =>
-    labo.libelle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    labo.pays_siege?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    labo.email_delegation_local?.toLowerCase().includes(searchTerm.toLowerCase())
+  const updateMutation = useTenantMutation('laboratoires', 'update', {
+    invalidateQueries: ['laboratoires'],
+    onSuccess: () => {
+      toast({ title: "Laboratoire modifié avec succès" });
+      setIsDialogOpen(false);
+      form.reset();
+      setEditingLaboratoire(null);
+    }
+  });
+
+  const deleteMutation = useTenantMutation('laboratoires', 'delete', {
+    invalidateQueries: ['laboratoires'],
+    onSuccess: () => {
+      toast({ title: "Laboratoire supprimé" });
+    }
+  });
+
+  const form = useForm<Laboratoire>({
+    defaultValues: {
+      nom: '',
+      adresse: '',
+      ville: '',
+      telephone_appel: '',
+      telephone_whatsapp: '',
+      email: '',
+      niu: '',
+      specialites: [],
+      contact_principal: ''
+    }
+  });
+
+  const filteredLaboratoires = laboratoires.filter((labo: any) =>
+    labo.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    labo.ville?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    labo.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const onSubmit = (data: Laboratoire) => {
+  const onSubmit = (data: any) => {
     if (editingLaboratoire) {
-      setLaboratoires(prev => prev.map(l => 
-        l.id === editingLaboratoire.id ? { 
-          ...data, 
-          id: editingLaboratoire.id,
-          date_creation: editingLaboratoire.date_creation,
-          date_modification: new Date().toISOString().split('T')[0]
-        } : l
-      ));
-      toast({ title: "Laboratoire modifié avec succès" });
+      updateMutation.mutate({ ...data, id: editingLaboratoire.id });
     } else {
-      const newLaboratoire = { 
-        ...data, 
-        id: Date.now(),
-        date_creation: new Date().toISOString().split('T')[0]
-      };
-      setLaboratoires(prev => [...prev, newLaboratoire]);
-      toast({ title: "Laboratoire ajouté avec succès" });
+      createMutation.mutate(data);
     }
-    setIsDialogOpen(false);
-    form.reset();
-    setEditingLaboratoire(null);
   };
 
   const handleEdit = (laboratoire: Laboratoire) => {
@@ -117,9 +101,8 @@ const LaboratoryManager = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setLaboratoires(prev => prev.filter(l => l.id !== id));
-    toast({ title: "Laboratoire supprimé" });
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate({ id });
   };
 
   const LaboratoireForm = () => (
@@ -128,7 +111,7 @@ const LaboratoryManager = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="libelle"
+            name="nom"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Nom du laboratoire *</FormLabel>
@@ -142,12 +125,12 @@ const LaboratoryManager = () => {
 
           <FormField
             control={form.control}
-            name="pays_siege"
+            name="ville"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Pays du siège</FormLabel>
+                <FormLabel>Ville</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ex: Suisse" {...field} />
+                  <Input placeholder="Brazzaville" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -156,10 +139,10 @@ const LaboratoryManager = () => {
 
           <FormField
             control={form.control}
-            name="email_siege"
+            name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email siège</FormLabel>
+                <FormLabel>Email</FormLabel>
                 <FormControl>
                   <Input type="email" placeholder="contact@laboratoire.com" {...field} />
                 </FormControl>
@@ -170,12 +153,12 @@ const LaboratoryManager = () => {
 
           <FormField
             control={form.control}
-            name="email_delegation_local"
+            name="niu"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email délégation locale</FormLabel>
+                <FormLabel>NIU</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="congo@laboratoire.com" {...field} />
+                  <Input placeholder="Numéro d'identification unique" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -184,10 +167,10 @@ const LaboratoryManager = () => {
 
           <FormField
             control={form.control}
-            name="telephone_appel_delegation_local"
+            name="telephone_appel"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Téléphone délégation locale</FormLabel>
+                <FormLabel>Téléphone</FormLabel>
                 <FormControl>
                   <Input placeholder="+242 06 123 45 67" {...field} />
                 </FormControl>
@@ -198,10 +181,10 @@ const LaboratoryManager = () => {
 
           <FormField
             control={form.control}
-            name="telephone_whatsapp_delegation_local"
+            name="telephone_whatsapp"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>WhatsApp délégation locale</FormLabel>
+                <FormLabel>WhatsApp</FormLabel>
                 <FormControl>
                   <Input placeholder="+242 06 123 45 67" {...field} />
                 </FormControl>
@@ -211,12 +194,43 @@ const LaboratoryManager = () => {
           />
         </div>
 
+        <FormField
+          control={form.control}
+          name="adresse"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Adresse</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Adresse complète" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="contact_principal"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Contact principal</FormLabel>
+              <FormControl>
+                <Input placeholder="Nom du contact principal" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
             Annuler
           </Button>
-          <Button type="submit">
-            {editingLaboratoire ? 'Modifier' : 'Ajouter'}
+          <Button 
+            type="submit"
+            disabled={createMutation.isPending || updateMutation.isPending}
+          >
+            {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingLaboratoire ? 'Modifier' : 'Ajouter')}
           </Button>
         </div>
       </form>
@@ -270,50 +284,59 @@ const LaboratoryManager = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Laboratoire</TableHead>
-                <TableHead>Contact Siège</TableHead>
-                <TableHead>Contact Local</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Communication</TableHead>
                 <TableHead>Date création</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLaboratoires.map((labo) => (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8">
+                    Chargement...
+                  </TableCell>
+                </TableRow>
+              ) : filteredLaboratoires.map((labo: any) => (
                 <TableRow key={labo.id}>
                   <TableCell>
                     <div>
                       <div className="font-medium flex items-center gap-2">
                         <FlaskConical className="h-4 w-4 text-blue-500" />
-                        {labo.libelle}
+                        {labo.nom}
                       </div>
-                      {labo.pays_siege && (
-                        <div className="text-sm text-muted-foreground flex items-center gap-1">
+                      {labo.niu && (
+                        <div className="text-sm text-muted-foreground">NIU: {labo.niu}</div>
+                      )}
+                      {labo.contact_principal && (
+                        <div className="text-sm text-muted-foreground">Contact: {labo.contact_principal}</div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm">
+                      {labo.email && <div>✉️ {labo.email}</div>}
+                      {labo.ville && (
+                        <div className="flex items-center gap-1">
                           <Globe className="h-3 w-3" />
-                          {labo.pays_siege}
+                          {labo.ville}
                         </div>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      {labo.email_siege && <div>✉️ {labo.email_siege}</div>}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {labo.telephone_appel_delegation_local && (
-                        <div>📞 {labo.telephone_appel_delegation_local}</div>
+                      {labo.telephone_appel && (
+                        <div>📞 {labo.telephone_appel}</div>
                       )}
-                      {labo.telephone_whatsapp_delegation_local && (
-                        <div className="text-green-600">💬 {labo.telephone_whatsapp_delegation_local}</div>
-                      )}
-                      {labo.email_delegation_local && (
-                        <div>✉️ {labo.email_delegation_local}</div>
+                      {labo.telephone_whatsapp && (
+                        <div className="text-green-600">💬 {labo.telephone_whatsapp}</div>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm text-muted-foreground">
-                      {labo.date_creation ? new Date(labo.date_creation).toLocaleDateString('fr-FR') : '-'}
+                      {labo.created_at ? new Date(labo.created_at).toLocaleDateString('fr-FR') : '-'}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -322,6 +345,7 @@ const LaboratoryManager = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleEdit(labo)}
+                        disabled={updateMutation.isPending}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -329,6 +353,7 @@ const LaboratoryManager = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleDelete(labo.id)}
+                        disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

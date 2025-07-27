@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Search, Edit, Trash2, Building2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
 
 interface Societe {
-  id: number;
+  id?: string;
   libelle_societe: string;
   adresse?: string;
   telephone_appel?: string;
@@ -21,53 +22,71 @@ interface Societe {
   email?: string;
   limite_dette: number;
   niu?: string;
-  assureur_id?: number;
+  assureur_id?: string;
   taux_couverture_agent: number;
   taux_couverture_ayant_droit: number;
-  assureur_nom?: string;
 }
 
 const CompanyManager = () => {
-  // Mock data pour les assureurs
-  const assureurs = [
-    { id: 1, nom: "NSIA Assurances" },
-    { id: 2, nom: "Loyco Assurances" },
-    { id: 3, nom: "SONAR" }
-  ];
-
-  const [societes, setSocietes] = useState<Societe[]>([
-    {
-      id: 1,
-      libelle_societe: "Total E&P Congo",
-      adresse: "Zone industrielle, Pointe-Noire",
-      telephone_appel: "+242 05 234 56 78",
-      email: "rh@total-congo.com",
-      limite_dette: 10000000,
-      niu: "NIU_TOTAL001",
-      assureur_id: 1,
-      assureur_nom: "NSIA Assurances",
-      taux_couverture_agent: 80,
-      taux_couverture_ayant_droit: 60
-    },
-    {
-      id: 2,
-      libelle_societe: "Banque Postale Congo",
-      adresse: "Avenue Amilcar Cabral, Brazzaville",
-      telephone_appel: "+242 06 345 67 89",
-      email: "contact@laposte-congo.cg",
-      limite_dette: 5000000,
-      niu: "NIU_BPC001",
-      assureur_id: 2,
-      assureur_nom: "Loyco Assurances",
-      taux_couverture_agent: 90,
-      taux_couverture_ayant_droit: 70
-    }
-  ]);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSociete, setEditingSociete] = useState<Societe | null>(null);
   const { toast } = useToast();
+  const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
+
+  // Récupérer les assureurs pour le select
+  const { data: assureurs = [] } = useTenantQueryWithCache(
+    ['assureurs'],
+    'assureurs',
+    'id, nom',
+    undefined,
+    { orderBy: { column: 'nom', ascending: true } }
+  );
+
+  // Récupérer les sociétés
+  const { data: societes = [], isLoading } = useTenantQueryWithCache(
+    ['societes'],
+    'societes',
+    '*',
+    undefined,
+    { orderBy: { column: 'libelle_societe', ascending: true } }
+  );
+
+  // Mutations
+  const createMutation = useTenantMutation('societes', 'insert', {
+    invalidateQueries: ['societes'],
+    onSuccess: () => {
+      toast({ 
+        title: "Société ajoutée avec succès",
+        description: "Un compte client a été créé automatiquement pour cette société."
+      });
+      setIsDialogOpen(false);
+      form.reset();
+    }
+  });
+
+  const updateMutation = useTenantMutation('societes', 'update', {
+    invalidateQueries: ['societes'],
+    onSuccess: () => {
+      toast({ 
+        title: "Société modifiée avec succès",
+        description: "Le compte client associé a été mis à jour automatiquement."
+      });
+      setIsDialogOpen(false);
+      form.reset();
+      setEditingSociete(null);
+    }
+  });
+
+  const deleteMutation = useTenantMutation('societes', 'delete', {
+    invalidateQueries: ['societes'],
+    onSuccess: () => {
+      toast({ 
+        title: "Société supprimée",
+        description: "Le compte client associé a été supprimé automatiquement."
+      });
+    }
+  });
 
   const form = useForm<Societe>({
     defaultValues: {
@@ -84,31 +103,17 @@ const CompanyManager = () => {
     }
   });
 
-  const filteredSocietes = societes.filter(societe =>
-    societe.libelle_societe.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredSocietes = societes.filter((societe: any) =>
+    societe.libelle_societe?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     societe.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const onSubmit = (data: Societe) => {
-    const assureur = assureurs.find(a => a.id === data.assureur_id);
-    const societeData = {
-      ...data,
-      assureur_nom: assureur?.nom
-    };
-
     if (editingSociete) {
-      setSocietes(prev => prev.map(s => 
-        s.id === editingSociete.id ? { ...societeData, id: editingSociete.id } : s
-      ));
-      toast({ title: "Société modifiée avec succès" });
+      updateMutation.mutate({ ...data, id: editingSociete.id });
     } else {
-      const newSociete = { ...societeData, id: Date.now() };
-      setSocietes(prev => [...prev, newSociete]);
-      toast({ title: "Société ajoutée avec succès" });
+      createMutation.mutate(data);
     }
-    setIsDialogOpen(false);
-    form.reset();
-    setEditingSociete(null);
   };
 
   const handleEdit = (societe: Societe) => {
@@ -117,9 +122,8 @@ const CompanyManager = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setSocietes(prev => prev.filter(s => s.id !== id));
-    toast({ title: "Société supprimée" });
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate({ id });
   };
 
   const SocieteForm = () => (
@@ -220,16 +224,16 @@ const CompanyManager = () => {
             name="assureur_id"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Assureur</FormLabel>
-                <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value?.toString()}>
+                <FormLabel>Assureur partenaire</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner un assureur" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {assureurs.map(assureur => (
-                      <SelectItem key={assureur.id} value={assureur.id.toString()}>
+                    {assureurs.map((assureur: any) => (
+                      <SelectItem key={assureur.id} value={assureur.id}>
                         {assureur.nom}
                       </SelectItem>
                     ))}
@@ -301,8 +305,11 @@ const CompanyManager = () => {
           <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
             Annuler
           </Button>
-          <Button type="submit">
-            {editingSociete ? 'Modifier' : 'Ajouter'}
+          <Button 
+            type="submit"
+            disabled={createMutation.isPending || updateMutation.isPending}
+          >
+            {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingSociete ? 'Modifier' : 'Ajouter')}
           </Button>
         </div>
       </form>
@@ -357,14 +364,20 @@ const CompanyManager = () => {
               <TableRow>
                 <TableHead>Société</TableHead>
                 <TableHead>Contact</TableHead>
-                <TableHead>Assureur</TableHead>
-                <TableHead>Couverture</TableHead>
                 <TableHead>Limite dette</TableHead>
+                <TableHead>Couverture</TableHead>
+                <TableHead>Assureur</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSocietes.map((societe) => (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    Chargement...
+                  </TableCell>
+                </TableRow>
+              ) : filteredSocietes.map((societe: any) => (
                 <TableRow key={societe.id}>
                   <TableCell>
                     <div>
@@ -376,14 +389,13 @@ const CompanyManager = () => {
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      {societe.telephone_appel && <div>{societe.telephone_appel}</div>}
-                      {societe.email && <div>{societe.email}</div>}
+                      {societe.telephone_appel && <div>📞 {societe.telephone_appel}</div>}
+                      {societe.telephone_whatsapp && <div className="text-green-600">💬 {societe.telephone_whatsapp}</div>}
+                      {societe.email && <div>✉️ {societe.email}</div>}
                     </div>
                   </TableCell>
                   <TableCell>
-                    {societe.assureur_nom && (
-                      <Badge variant="outline">{societe.assureur_nom}</Badge>
-                    )}
+                    {societe.limite_dette?.toLocaleString()} XAF
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
@@ -392,7 +404,11 @@ const CompanyManager = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {societe.limite_dette.toLocaleString()} XAF
+                    <div className="text-sm text-muted-foreground">
+                      {societe.assureur_id ? (
+                        assureurs.find((a: any) => a.id === societe.assureur_id)?.nom || 'Assureur inconnu'
+                      ) : '-'}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -400,6 +416,7 @@ const CompanyManager = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleEdit(societe)}
+                        disabled={updateMutation.isPending}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -407,6 +424,7 @@ const CompanyManager = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleDelete(societe.id)}
+                        disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

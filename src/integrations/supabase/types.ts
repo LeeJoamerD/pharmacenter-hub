@@ -3630,6 +3630,7 @@ export type Database = {
         | "Freelance"
         | "Consultant"
         | "Temporaire"
+      type_client: "Ordinaire" | "Conventionné" | "Personnel" | "Assuré"
       type_client_enum: "Ordinaire" | "Conventionné" | "Personnel" | "Assuré"
     }
     CompositeTypes: {
@@ -3773,6 +3774,7 @@ export const Constants = {
         "Consultant",
         "Temporaire",
       ],
+      type_client: ["Ordinaire", "Conventionné", "Personnel", "Assuré"],
       type_client_enum: ["Ordinaire", "Conventionné", "Personnel", "Assuré"],
     },
   },

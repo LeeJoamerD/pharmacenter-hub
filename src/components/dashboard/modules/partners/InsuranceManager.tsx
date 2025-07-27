@@ -7,88 +7,90 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Plus, Search, Edit, Trash2, Shield } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
 
 interface Assureur {
-  id: number;
-  libelle_assureur: string;
+  id?: string;
+  nom: string;
   adresse?: string;
+  ville?: string;
   telephone_appel?: string;
   telephone_whatsapp?: string;
   email?: string;
-  limite_dette: number;
   niu?: string;
-  notes?: string;
-  is_active: boolean;
+  contact_principal?: string;
 }
 
 const InsuranceManager = () => {
-  const [assureurs, setAssureurs] = useState<Assureur[]>([
-    {
-      id: 1,
-      libelle_assureur: "NSIA Assurances",
-      adresse: "Avenue Amylcar Cabral, Brazzaville",
-      telephone_appel: "+242 06 123 45 67",
-      telephone_whatsapp: "+242 06 123 45 67",
-      email: "contact@nsia.cg",
-      limite_dette: 5000000,
-      niu: "NIU001234567",
-      notes: "Partenaire principal pour les assurances santé",
-      is_active: true
-    },
-    {
-      id: 2,
-      libelle_assureur: "Loyco Assurances",
-      adresse: "Centre-ville, Pointe-Noire",
-      telephone_appel: "+242 05 987 65 43",
-      email: "info@loyco.cg",
-      limite_dette: 3000000,
-      niu: "NIU987654321",
-      is_active: true
-    }
-  ]);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAssureur, setEditingAssureur] = useState<Assureur | null>(null);
   const { toast } = useToast();
+  const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
 
-  const form = useForm<Assureur>({
-    defaultValues: {
-      libelle_assureur: '',
-      adresse: '',
-      telephone_appel: '',
-      telephone_whatsapp: '',
-      email: '',
-      limite_dette: 0,
-      niu: '',
-      notes: '',
-      is_active: true
+  // Récupérer les assureurs
+  const { data: assureurs = [], isLoading, refetch } = useTenantQueryWithCache(
+    ['assureurs'],
+    'assureurs',
+    '*',
+    undefined,
+    { orderBy: { column: 'nom', ascending: true } }
+  );
+
+  // Mutations
+  const createMutation = useTenantMutation('assureurs', 'insert', {
+    invalidateQueries: ['assureurs'],
+    onSuccess: () => {
+      toast({ title: "Assureur ajouté avec succès" });
+      setIsDialogOpen(false);
+      form.reset();
     }
   });
 
-  const filteredAssureurs = assureurs.filter(assureur =>
-    assureur.libelle_assureur.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const updateMutation = useTenantMutation('assureurs', 'update', {
+    invalidateQueries: ['assureurs'],
+    onSuccess: () => {
+      toast({ title: "Assureur modifié avec succès" });
+      setIsDialogOpen(false);
+      form.reset();
+      setEditingAssureur(null);
+    }
+  });
+
+  const deleteMutation = useTenantMutation('assureurs', 'delete', {
+    invalidateQueries: ['assureurs'],
+    onSuccess: () => {
+      toast({ title: "Assureur supprimé" });
+    }
+  });
+
+  const form = useForm<Assureur>({
+    defaultValues: {
+      nom: '',
+      adresse: '',
+      ville: '',
+      telephone_appel: '',
+      telephone_whatsapp: '',
+      email: '',
+      niu: '',
+      contact_principal: ''
+    }
+  });
+
+  const filteredAssureurs = assureurs.filter((assureur: any) =>
+    assureur.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     assureur.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const onSubmit = (data: Assureur) => {
     if (editingAssureur) {
-      setAssureurs(prev => prev.map(a => 
-        a.id === editingAssureur.id ? { ...data, id: editingAssureur.id } : a
-      ));
-      toast({ title: "Assureur modifié avec succès" });
+      updateMutation.mutate({ ...data, id: editingAssureur.id });
     } else {
-      const newAssureur = { ...data, id: Date.now() };
-      setAssureurs(prev => [...prev, newAssureur]);
-      toast({ title: "Assureur ajouté avec succès" });
+      createMutation.mutate(data);
     }
-    setIsDialogOpen(false);
-    form.reset();
-    setEditingAssureur(null);
   };
 
   const handleEdit = (assureur: Assureur) => {
@@ -97,9 +99,8 @@ const InsuranceManager = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setAssureurs(prev => prev.filter(a => a.id !== id));
-    toast({ title: "Assureur supprimé" });
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate({ id });
   };
 
   const AssureurForm = () => (
@@ -108,7 +109,7 @@ const InsuranceManager = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="libelle_assureur"
+            name="nom"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Nom de l'assureur *</FormLabel>
@@ -178,17 +179,12 @@ const InsuranceManager = () => {
 
           <FormField
             control={form.control}
-            name="limite_dette"
+            name="ville"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Limite de dette (XAF)</FormLabel>
+                <FormLabel>Ville</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number" 
-                    placeholder="0" 
-                    {...field}
-                    onChange={e => field.onChange(Number(e.target.value))}
-                  />
+                  <Input placeholder="Brazzaville" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -212,32 +208,14 @@ const InsuranceManager = () => {
 
         <FormField
           control={form.control}
-          name="notes"
+          name="contact_principal"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Notes</FormLabel>
+              <FormLabel>Contact principal</FormLabel>
               <FormControl>
-                <Textarea placeholder="Notes et commentaires" {...field} />
+                <Input placeholder="Nom du contact principal" {...field} />
               </FormControl>
               <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="is_active"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-              <div className="space-y-0.5">
-                <FormLabel>Assureur actif</FormLabel>
-                <div className="text-sm text-muted-foreground">
-                  L'assureur peut être utilisé dans le système
-                </div>
-              </div>
-              <FormControl>
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
-              </FormControl>
             </FormItem>
           )}
         />
@@ -246,8 +224,11 @@ const InsuranceManager = () => {
           <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
             Annuler
           </Button>
-          <Button type="submit">
-            {editingAssureur ? 'Modifier' : 'Ajouter'}
+          <Button 
+            type="submit" 
+            disabled={createMutation.isPending || updateMutation.isPending}
+          >
+            {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingAssureur ? 'Modifier' : 'Ajouter')}
           </Button>
         </div>
       </form>
@@ -302,35 +283,41 @@ const InsuranceManager = () => {
               <TableRow>
                 <TableHead>Assureur</TableHead>
                 <TableHead>Contact</TableHead>
-                <TableHead>Limite dette</TableHead>
-                <TableHead>Statut</TableHead>
+                <TableHead>Ville</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAssureurs.map((assureur) => (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8">
+                    Chargement...
+                  </TableCell>
+                </TableRow>
+              ) : filteredAssureurs.map((assureur: any) => (
                 <TableRow key={assureur.id}>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{assureur.libelle_assureur}</div>
+                      <div className="font-medium">{assureur.nom}</div>
                       {assureur.niu && (
                         <div className="text-sm text-muted-foreground">NIU: {assureur.niu}</div>
+                      )}
+                      {assureur.contact_principal && (
+                        <div className="text-sm text-muted-foreground">Contact: {assureur.contact_principal}</div>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      {assureur.telephone_appel && <div>{assureur.telephone_appel}</div>}
-                      {assureur.email && <div>{assureur.email}</div>}
+                      {assureur.telephone_appel && <div>📞 {assureur.telephone_appel}</div>}
+                      {assureur.telephone_whatsapp && <div className="text-green-600">💬 {assureur.telephone_whatsapp}</div>}
+                      {assureur.email && <div>✉️ {assureur.email}</div>}
                     </div>
                   </TableCell>
                   <TableCell>
-                    {assureur.limite_dette.toLocaleString()} XAF
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={assureur.is_active ? "default" : "secondary"}>
-                      {assureur.is_active ? 'Actif' : 'Inactif'}
-                    </Badge>
+                    <div className="text-sm">
+                      {assureur.ville || '-'}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -338,6 +325,7 @@ const InsuranceManager = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleEdit(assureur)}
+                        disabled={updateMutation.isPending}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -345,6 +333,7 @@ const InsuranceManager = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleDelete(assureur.id)}
+                        disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
