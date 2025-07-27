@@ -96,7 +96,7 @@ export const TrainingForm: React.FC<TrainingFormProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
-                name="dateDebut"
+                name="date_debut"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Date de début</FormLabel>
@@ -110,7 +110,7 @@ export const TrainingForm: React.FC<TrainingFormProps> = ({
 
               <FormField
                 control={form.control}
-                name="dateFin"
+                name="date_fin"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Date de fin</FormLabel>

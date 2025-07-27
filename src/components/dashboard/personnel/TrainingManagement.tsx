@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, GraduationCap, Calendar, Users } from 'lucide-react';
+import { Plus, GraduationCap, Calendar, Users, Edit, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { TrainingForm } from './TrainingForm';
@@ -75,32 +75,36 @@ export const TrainingManagement = () => {
     resolver: zodResolver(trainingSchema),
     defaultValues: {
       nom: '',
-      employes: [],
-      dateDebut: '',
-      dateFin: '',
-      statut: 'Planifié',
       organisme: '',
       description: '',
+      date_debut: '',
+      date_fin: '',
       duree: 1,
       lieu: '',
       cout: 0,
-      certificat_requis: false
+      certificat_requis: false,
+      statut: 'Planifié',
+      employes: []
     }
   });
 
   const handleSubmit = (data: TrainingFormData) => {
+    console.log('Form data avant traitement:', data);
+    
     const trainingData = {
       nom: data.nom,
       organisme: data.organisme,
-      description: data.description,
-      date_debut: data.dateDebut,
-      date_fin: data.dateFin,
+      description: data.description || null,
+      date_debut: data.date_debut,
+      date_fin: data.date_fin,
       duree: data.duree,
       lieu: data.lieu,
-      cout: data.cout,
+      cout: data.cout || null,
       certificat_requis: data.certificat_requis,
       statut: data.statut
     };
+
+    console.log('Training data to send:', trainingData);
 
     if (editingTraining) {
       updateMutation.mutate({ 
@@ -116,21 +120,21 @@ export const TrainingManagement = () => {
     setEditingTraining(training);
     form.reset({
       nom: training.nom,
-      employes: training.employes,
-      dateDebut: training.dateDebut,
-      dateFin: training.dateFin,
-      statut: training.statut as any,
       organisme: training.organisme,
-      description: training.description,
+      description: training.description || '',
+      date_debut: training.date_debut,
+      date_fin: training.date_fin,
       duree: training.duree,
       lieu: training.lieu,
-      cout: training.cout,
-      certificat_requis: training.certificat_requis
+      cout: training.cout || 0,
+      certificat_requis: training.certificat_requis,
+      statut: training.statut as any,
+      employes: []
     });
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette formation ?')) {
       deleteMutation.mutate({ id });
     }
@@ -271,9 +275,9 @@ export const TrainingManagement = () => {
                       <TableCell>{training.organisme}</TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div>{format(new Date(training.dateDebut), 'dd/MM/yyyy', { locale: fr })}</div>
+                          <div>{training.date_debut ? format(new Date(training.date_debut), 'dd/MM/yyyy', { locale: fr }) : '-'}</div>
                           <div className="text-muted-foreground">
-                            au {format(new Date(training.dateFin), 'dd/MM/yyyy', { locale: fr })}
+                            au {training.date_fin ? format(new Date(training.date_fin), 'dd/MM/yyyy', { locale: fr }) : '-'}
                           </div>
                         </div>
                       </TableCell>
@@ -286,25 +290,25 @@ export const TrainingManagement = () => {
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Users className="w-4 h-4" />
-                          {training.employes.length}
+                          0
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(training.statut)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(training)}
                           >
-                            Modifier
+                            <Edit className="w-4 h-4" />
                           </Button>
                           <Button
-                            variant="destructive"
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(training.id)}
                           >
-                            Supprimer
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </TableCell>
