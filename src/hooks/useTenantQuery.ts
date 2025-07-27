@@ -78,6 +78,9 @@ export const useTenantQuery = () => {
     return useQuery({
       queryKey: [tenantId, ...queryKey],
       queryFn: async () => {
+        console.log('TenantQuery - tenantId:', tenantId);
+        console.log('TenantQuery - tableName:', tableName);
+        
         const query = createTenantQuery(
           tableName,
           selectQuery,
@@ -86,7 +89,11 @@ export const useTenantQuery = () => {
         );
         
         const { data, error } = await query;
-        if (error) throw error;
+        if (error) {
+          console.error('TenantQuery - Error:', error);
+          throw error;
+        }
+        console.log('TenantQuery - Success:', data);
         return data;
       },
       enabled: !!tenantId && (options?.enabled ?? true)
@@ -105,6 +112,11 @@ export const useTenantQuery = () => {
   ) => {
     return useMutation({
       mutationFn: async (variables: any) => {
+        console.log('TenantMutation - tenantId:', tenantId);
+        console.log('TenantMutation - operation:', operation);
+        console.log('TenantMutation - tableName:', tableName);
+        console.log('TenantMutation - variables:', variables);
+        
         if (!tenantId) {
           throw new Error('Tenant ID is required for tenant mutations');
         }
@@ -145,7 +157,11 @@ export const useTenantQuery = () => {
         }
 
         const { data, error } = await query.select();
-        if (error) throw error;
+        if (error) {
+          console.error('TenantMutation - Error:', error);
+          throw error;
+        }
+        console.log('TenantMutation - Success:', data);
         return data;
       },
       onSuccess: (data) => {
