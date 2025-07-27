@@ -44,24 +44,31 @@ export interface Employee {
 }
 
 export const leaveRequestSchema = z.object({
-  employe: z.string().min(1, "L'employé est requis"),
-  type: z.string().min(1, "Le type de congé est requis"),
-  dateDebut: z.string().min(1, "La date de début est requise"),
-  dateFin: z.string().min(1, "La date de fin est requise"),
+  employe_id: z.string().min(1, "L'employé est requis"),
+  type_conge: z.string().min(1, "Le type de congé est requis"),
+  date_debut: z.string().min(1, "La date de début est requise"),
+  date_fin: z.string().min(1, "La date de fin est requise"),
   motif: z.string().min(1, "Le motif est requis"),
-  statut: z.string().default("En attente")
+  statut: z.enum(['En attente', 'Approuvé', 'Rejeté']).optional(),
+  commentaires: z.string().optional()
 });
 
 export type LeaveRequestFormData = z.infer<typeof leaveRequestSchema>;
 
 export interface LeaveRequest {
-  id: number;
-  employe: string;
-  type: string;
-  dateDebut: string;
-  dateFin: string;
-  statut: string;
+  id: string;
+  tenant_id: string;
+  employe_id: string;
+  type_conge: string;
+  date_debut: string;
+  date_fin: string;
   motif: string;
+  statut: string;
+  approuve_par?: string;
+  date_approbation?: string;
+  commentaires?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Training {

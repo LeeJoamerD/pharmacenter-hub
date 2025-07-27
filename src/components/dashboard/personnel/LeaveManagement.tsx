@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Calendar, Clock, Filter } from 'lucide-react';
+import { Plus, Calendar, Clock, Filter, Edit, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LeaveRequestForm } from './LeaveRequestForm';
@@ -74,23 +74,25 @@ export const LeaveManagement = () => {
   const form = useForm<LeaveRequestFormData>({
     resolver: zodResolver(leaveRequestSchema),
     defaultValues: {
-      employe: '',
-      type: '',
-      dateDebut: '',
-      dateFin: '',
+      employe_id: '',
+      type_conge: '',
+      date_debut: '',
+      date_fin: '',
       motif: '',
-      statut: 'En attente'
+      statut: 'En attente',
+      commentaires: ''
     }
   });
 
   const handleSubmit = (data: LeaveRequestFormData) => {
     const leaveData = {
-      employe_id: data.employe,
-      type_conge: data.type,
-      date_debut: data.dateDebut,
-      date_fin: data.dateFin,
+      employe_id: data.employe_id,
+      type_conge: data.type_conge,
+      date_debut: data.date_debut,
+      date_fin: data.date_fin,
       motif: data.motif,
-      statut: data.statut
+      statut: data.statut || 'En attente',
+      commentaires: data.commentaires
     };
 
     if (editingLeave) {
@@ -106,17 +108,18 @@ export const LeaveManagement = () => {
   const handleEdit = (leave: LeaveRequest) => {
     setEditingLeave(leave);
     form.reset({
-      employe: leave.employe,
-      type: leave.type,
-      dateDebut: leave.dateDebut,
-      dateFin: leave.dateFin,
+      employe_id: leave.employe_id,
+      type_conge: leave.type_conge,
+      date_debut: leave.date_debut,
+      date_fin: leave.date_fin,
       motif: leave.motif,
-      statut: leave.statut as any
+      statut: leave.statut as any,
+      commentaires: leave.commentaires || ''
     });
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette demande de congé ?')) {
       deleteMutation.mutate({ id });
     }
@@ -128,7 +131,7 @@ export const LeaveManagement = () => {
     form.reset();
   };
 
-  const handleApprove = (id: number) => {
+  const handleApprove = (id: string) => {
     updateMutation.mutate({
       id,
       statut: 'Approuvé',
@@ -136,7 +139,7 @@ export const LeaveManagement = () => {
     });
   };
 
-  const handleReject = (id: number) => {
+  const handleReject = (id: string) => {
     updateMutation.mutate({
       id,
       statut: 'Rejeté'
@@ -266,17 +269,17 @@ export const LeaveManagement = () => {
                 </TableHeader>
                 <TableBody>
                   {leaves.map((leave: LeaveRequest) => {
-                    const startDate = new Date(leave.dateDebut);
-                    const endDate = new Date(leave.dateFin);
+                    const startDate = new Date(leave.date_debut);
+                    const endDate = new Date(leave.date_fin);
                     const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
                     
                     return (
                       <TableRow key={leave.id}>
                         <TableCell className="font-medium">
-                          {getEmployeeName(leave.employe)}
+                          {getEmployeeName(leave.employe_id)}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{leave.type}</Badge>
+                          <Badge variant="outline">{leave.type_conge}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
@@ -297,14 +300,14 @@ export const LeaveManagement = () => {
                           {leave.motif}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center space-x-2">
                             {leave.statut === 'En attente' && (
                               <>
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleApprove(leave.id)}
-                                  className="text-green-600 hover:text-green-700"
+                                  className="text-green-600 hover:text-green-700 hover:border-green-300"
                                 >
                                   Approuver
                                 </Button>
@@ -312,7 +315,7 @@ export const LeaveManagement = () => {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleReject(leave.id)}
-                                  className="text-red-600 hover:text-red-700"
+                                  className="text-red-600 hover:text-red-700 hover:border-red-300"
                                 >
                                   Rejeter
                                 </Button>
@@ -323,14 +326,15 @@ export const LeaveManagement = () => {
                               size="sm"
                               onClick={() => handleEdit(leave)}
                             >
-                              Modifier
+                              <Edit className="h-4 w-4" />
                             </Button>
                             <Button
-                              variant="destructive"
+                              variant="outline"
                               size="sm"
                               onClick={() => handleDelete(leave.id)}
+                              className="text-red-600 hover:text-red-800 hover:border-red-300"
                             >
-                              Supprimer
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>

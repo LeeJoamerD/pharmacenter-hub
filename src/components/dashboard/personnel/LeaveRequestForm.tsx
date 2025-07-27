@@ -18,7 +18,7 @@ interface LeaveRequestFormProps {
   onSubmit: (data: LeaveRequestFormData) => void;
   isEdit: boolean;
   onCancel: () => void;
-  employees: Array<{ id: number; noms: string; prenoms: string; }>;
+  employees: Array<{ id: string; noms: string; prenoms: string; }>;
 }
 
 export const LeaveRequestForm = ({ form, onSubmit, isEdit, onCancel, employees }: LeaveRequestFormProps) => {
@@ -28,7 +28,7 @@ export const LeaveRequestForm = ({ form, onSubmit, isEdit, onCancel, employees }
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="employe"
+            name="employe_id"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Employé</FormLabel>
@@ -40,7 +40,7 @@ export const LeaveRequestForm = ({ form, onSubmit, isEdit, onCancel, employees }
                   </FormControl>
                   <SelectContent>
                     {employees.map((employee) => (
-                      <SelectItem key={employee.id} value={`${employee.prenoms} ${employee.noms}`}>
+                      <SelectItem key={employee.id} value={employee.id}>
                         {employee.prenoms} {employee.noms}
                       </SelectItem>
                     ))}
@@ -53,7 +53,7 @@ export const LeaveRequestForm = ({ form, onSubmit, isEdit, onCancel, employees }
 
           <FormField
             control={form.control}
-            name="type"
+            name="type_conge"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Type de congé</FormLabel>
@@ -82,7 +82,7 @@ export const LeaveRequestForm = ({ form, onSubmit, isEdit, onCancel, employees }
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="dateDebut"
+            name="date_debut"
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Date de début</FormLabel>
@@ -123,7 +123,7 @@ export const LeaveRequestForm = ({ form, onSubmit, isEdit, onCancel, employees }
 
           <FormField
             control={form.control}
-            name="dateFin"
+            name="date_fin"
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel>Date de fin</FormLabel>
@@ -152,7 +152,7 @@ export const LeaveRequestForm = ({ form, onSubmit, isEdit, onCancel, employees }
                       selected={field.value ? new Date(field.value) : undefined}
                       onSelect={(date) => field.onChange(date ? date.toISOString().split('T')[0] : '')}
                       disabled={(date) => {
-                        const startDate = form.getValues('dateDebut');
+                        const startDate = form.getValues('date_debut');
                         return date < new Date() || (startDate && date < new Date(startDate));
                       }}
                       initialFocus
@@ -184,6 +184,24 @@ export const LeaveRequestForm = ({ form, onSubmit, isEdit, onCancel, employees }
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="commentaires"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Commentaires</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="Commentaires additionnels..."
+                  className="min-h-[80px]"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         {isEdit && (
           <FormField
             control={form.control}
@@ -200,7 +218,7 @@ export const LeaveRequestForm = ({ form, onSubmit, isEdit, onCancel, employees }
                   <SelectContent>
                     <SelectItem value="En attente">En attente</SelectItem>
                     <SelectItem value="Approuvé">Approuvé</SelectItem>
-                    <SelectItem value="Refusé">Refusé</SelectItem>
+                    <SelectItem value="Rejeté">Rejeté</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
