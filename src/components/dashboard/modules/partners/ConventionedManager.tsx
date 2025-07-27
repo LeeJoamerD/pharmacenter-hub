@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,12 +8,28 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Edit, Trash2, UserCheck } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import type { Database } from '@/integrations/supabase/types';
 
+const conventionneSchema = z.object({
+  noms: z.string().min(1, "Le nom est requis"),
+  adresse: z.string().optional(),
+  ville: z.string().optional(),
+  telephone_appel: z.string().optional(),
+  telephone_whatsapp: z.string().optional(),
+  email: z.string().email("Email invalide").optional().or(z.literal("")),
+  limite_dette: z.number().min(0, "La limite de dette ne peut être négative").optional(),
+  niu: z.string().optional(),
+  taux_ticket_moderateur: z.number().min(0).max(100, "Le taux doit être entre 0 et 100").optional(),
+  caution: z.number().min(0, "La caution ne peut être négative").optional(),
+  taux_remise_automatique: z.number().min(0).max(100, "Le taux doit être entre 0 et 100").optional(),
+});
+
 type Conventionne = Database['public']['Tables']['conventionnes']['Row'];
-type ConventionneInsert = Database['public']['Tables']['conventionnes']['Insert'];
+type ConventionneInsert = z.infer<typeof conventionneSchema>;
 
 const ConventionedManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,7 +37,7 @@ const ConventionedManager = () => {
   const [editingConventionne, setEditingConventionne] = useState<Conventionne | null>(null);
   const { toast } = useToast();
 
-  const { useTenantQueryWithCache } = useTenantQuery();
+  const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
   const { data: conventionnes = [], isLoading } = useTenantQueryWithCache(
     ['conventionnes'],
     'conventionnes',
@@ -30,20 +46,57 @@ const ConventionedManager = () => {
     { orderBy: { column: 'noms', ascending: true } }
   );
 
-  const form = useForm<ConventionneInsert>({
-    defaultValues: {
-      noms: '',
-      adresse: '',
-      ville: '',
-      telephone_appel: '',
-      telephone_whatsapp: '',
-      email: '',
-      limite_dette: 0,
-      niu: '',
-      taux_ticket_moderateur: 0,
-      caution: 0,
-      taux_remise_automatique: 0
+  // Mutations
+  const createMutation = useTenantMutation('conventionnes', 'insert', {
+    invalidateQueries: ['conventionnes'],
+    onSuccess: () => {
+      toast({ 
+        title: "Conventionné ajouté avec succès",
+        description: "Un compte client a été créé automatiquement pour ce conventionné."
+      });
+      handleDialogClose();
     }
+  });
+
+  const updateMutation = useTenantMutation('conventionnes', 'update', {
+    invalidateQueries: ['conventionnes'],
+    onSuccess: () => {
+      toast({ 
+        title: "Conventionné modifié avec succès",
+        description: "Le compte client associé a été mis à jour automatiquement."
+      });
+      handleDialogClose();
+    }
+  });
+
+  const deleteMutation = useTenantMutation('conventionnes', 'delete', {
+    invalidateQueries: ['conventionnes'],
+    onSuccess: () => {
+      toast({ 
+        title: "Conventionné supprimé",
+        description: "Le compte client associé a été supprimé automatiquement."
+      });
+    }
+  });
+
+  const defaultValues = useMemo(() => ({
+    noms: '',
+    adresse: '',
+    ville: '',
+    telephone_appel: '',
+    telephone_whatsapp: '',
+    email: '',
+    limite_dette: 0,
+    niu: '',
+    taux_ticket_moderateur: 0,
+    caution: 0,
+    taux_remise_automatique: 0
+  }), []);
+
+  const form = useForm<ConventionneInsert>({
+    resolver: zodResolver(conventionneSchema),
+    defaultValues,
+    mode: 'onChange'
   });
 
   const filteredConventionnes = conventionnes.filter(conv =>
@@ -51,36 +104,41 @@ const ConventionedManager = () => {
     conv.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const onSubmit = async (data: ConventionneInsert) => {
-    // Pour le moment, utiliser des données mockées
-    toast({ title: editingConventionne ? "Conventionné modifié avec succès" : "Conventionné ajouté avec succès" });
-    setIsDialogOpen(false);
-    form.reset();
-    setEditingConventionne(null);
-  };
+  const onSubmit = useCallback((data: ConventionneInsert) => {
+    if (editingConventionne) {
+      updateMutation.mutate({ ...data, id: editingConventionne.id });
+    } else {
+      createMutation.mutate(data);
+    }
+  }, [editingConventionne, updateMutation, createMutation]);
 
-  const handleEdit = (conventionne: Conventionne) => {
+  const handleEdit = useCallback((conventionne: Conventionne) => {
     setEditingConventionne(conventionne);
     form.reset({
       noms: conventionne.noms,
-      adresse: conventionne.adresse,
-      ville: conventionne.ville,
-      telephone_appel: conventionne.telephone_appel,
-      telephone_whatsapp: conventionne.telephone_whatsapp,
-      email: conventionne.email,
-      limite_dette: conventionne.limite_dette,
-      niu: conventionne.niu,
-      taux_ticket_moderateur: conventionne.taux_ticket_moderateur,
-      caution: conventionne.caution,
-      taux_remise_automatique: conventionne.taux_remise_automatique
+      adresse: conventionne.adresse || '',
+      ville: conventionne.ville || '',
+      telephone_appel: conventionne.telephone_appel || '',
+      telephone_whatsapp: conventionne.telephone_whatsapp || '',
+      email: conventionne.email || '',
+      limite_dette: conventionne.limite_dette || 0,
+      niu: conventionne.niu || '',
+      taux_ticket_moderateur: conventionne.taux_ticket_moderateur || 0,
+      caution: conventionne.caution || 0,
+      taux_remise_automatique: conventionne.taux_remise_automatique || 0
     });
     setIsDialogOpen(true);
-  };
+  }, [form]);
 
-  const handleDelete = async (id: string) => {
-    // Pour le moment, utiliser des données mockées
-    toast({ title: "Conventionné supprimé" });
-  };
+  const handleDelete = useCallback((id: string) => {
+    deleteMutation.mutate({ id });
+  }, [deleteMutation]);
+
+  const handleDialogClose = useCallback(() => {
+    setIsDialogOpen(false);
+    setEditingConventionne(null);
+    form.reset(defaultValues);
+  }, [form, defaultValues]);
 
   const ConventionneForm = () => (
     <Form {...form}>
@@ -93,7 +151,12 @@ const ConventionedManager = () => {
               <FormItem>
                 <FormLabel>Nom de l'établissement *</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ex: Hôpital Général de Brazzaville" {...field} />
+                  <Input 
+                    placeholder="Ex: Hôpital Général de Brazzaville" 
+                    {...field} 
+                    autoFocus
+                    tabIndex={1}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -107,7 +170,11 @@ const ConventionedManager = () => {
               <FormItem>
                 <FormLabel>NIU</FormLabel>
                 <FormControl>
-                  <Input placeholder="Numéro d'identification unique" {...field} />
+                  <Input 
+                    placeholder="Numéro d'identification unique" 
+                    {...field} 
+                    tabIndex={2}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -121,7 +188,11 @@ const ConventionedManager = () => {
               <FormItem>
                 <FormLabel>Téléphone</FormLabel>
                 <FormControl>
-                  <Input placeholder="+242 06 123 45 67" {...field} />
+                  <Input 
+                    placeholder="+242 06 123 45 67" 
+                    {...field} 
+                    tabIndex={3}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -135,7 +206,11 @@ const ConventionedManager = () => {
               <FormItem>
                 <FormLabel>WhatsApp</FormLabel>
                 <FormControl>
-                  <Input placeholder="+242 06 123 45 67" {...field} />
+                  <Input 
+                    placeholder="+242 06 123 45 67" 
+                    {...field} 
+                    tabIndex={4}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -149,7 +224,12 @@ const ConventionedManager = () => {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="contact@etablissement.cg" {...field} />
+                  <Input 
+                    type="email" 
+                    placeholder="contact@etablissement.cg" 
+                    {...field} 
+                    tabIndex={5}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -163,7 +243,11 @@ const ConventionedManager = () => {
               <FormItem>
                 <FormLabel>Ville</FormLabel>
                 <FormControl>
-                  <Input placeholder="Brazzaville" {...field} />
+                  <Input 
+                    placeholder="Brazzaville" 
+                    {...field} 
+                    tabIndex={6}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -182,6 +266,7 @@ const ConventionedManager = () => {
                     placeholder="0" 
                     {...field}
                     onChange={e => field.onChange(Number(e.target.value))}
+                    tabIndex={7}
                   />
                 </FormControl>
                 <FormMessage />
@@ -201,6 +286,7 @@ const ConventionedManager = () => {
                     placeholder="0" 
                     {...field}
                     onChange={e => field.onChange(Number(e.target.value))}
+                    tabIndex={8}
                   />
                 </FormControl>
                 <FormMessage />
@@ -222,6 +308,7 @@ const ConventionedManager = () => {
                     max="100"
                     {...field}
                     onChange={e => field.onChange(Number(e.target.value))}
+                    tabIndex={9}
                   />
                 </FormControl>
                 <FormMessage />
@@ -243,6 +330,7 @@ const ConventionedManager = () => {
                     max="100"
                     {...field}
                     onChange={e => field.onChange(Number(e.target.value))}
+                    tabIndex={10}
                   />
                 </FormControl>
                 <FormMessage />
@@ -258,7 +346,11 @@ const ConventionedManager = () => {
             <FormItem>
               <FormLabel>Adresse</FormLabel>
               <FormControl>
-                <Textarea placeholder="Adresse complète" {...field} />
+                <Textarea 
+                  placeholder="Adresse complète" 
+                  {...field} 
+                  tabIndex={11}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -266,11 +358,20 @@ const ConventionedManager = () => {
         />
 
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleDialogClose}
+            tabIndex={12}
+          >
             Annuler
           </Button>
-          <Button type="submit">
-            {editingConventionne ? 'Modifier' : 'Ajouter'}
+          <Button 
+            type="submit"
+            disabled={createMutation.isPending || updateMutation.isPending}
+            tabIndex={13}
+          >
+            {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingConventionne ? 'Modifier' : 'Ajouter')}
           </Button>
         </div>
       </form>
@@ -286,11 +387,12 @@ const ConventionedManager = () => {
               <UserCheck className="h-5 w-5" />
               Gestion des Conventionnés
             </CardTitle>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
               <DialogTrigger asChild>
                 <Button onClick={() => {
                   setEditingConventionne(null);
-                  form.reset();
+                  form.reset(defaultValues);
+                  setIsDialogOpen(true);
                 }}>
                   <Plus className="h-4 w-4 mr-2" />
                   Nouveau Conventionné
@@ -332,66 +434,68 @@ const ConventionedManager = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-          {isLoading ? (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center py-8">
-                Chargement...
-              </TableCell>
-            </TableRow>
-          ) : (
-            filteredConventionnes.map((conv) => (
-              <TableRow key={conv.id}>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{conv.noms}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {conv.ville} {conv.niu && `• NIU: ${conv.niu}`}
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm">
-                    {conv.telephone_appel && <div>{conv.telephone_appel}</div>}
-                    {conv.email && <div>{conv.email}</div>}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm">
-                    <div>TM: {conv.taux_ticket_moderateur || 0}%</div>
-                    <div>Remise: {conv.taux_remise_automatique || 0}%</div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {(conv.caution || 0).toLocaleString()} XAF
-                </TableCell>
-                <TableCell>
-                  {(conv.limite_dette || 0).toLocaleString()} XAF
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(conv)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(conv.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    Chargement...
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredConventionnes.map((conv) => (
+                  <TableRow key={conv.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{conv.noms}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {conv.ville} {conv.niu && `• NIU: ${conv.niu}`}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {conv.telephone_appel && <div>{conv.telephone_appel}</div>}
+                        {conv.email && <div>{conv.email}</div>}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <div>TM: {conv.taux_ticket_moderateur || 0}%</div>
+                        <div>Remise: {conv.taux_remise_automatique || 0}%</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {(conv.caution || 0).toLocaleString()} XAF
+                    </TableCell>
+                    <TableCell>
+                      {(conv.limite_dette || 0).toLocaleString()} XAF
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(conv)}
+                          disabled={updateMutation.isPending}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(conv.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
 
-          {filteredConventionnes.length === 0 && (
+          {filteredConventionnes.length === 0 && !isLoading && (
             <div className="text-center py-8 text-muted-foreground">
               Aucun conventionné trouvé
             </div>

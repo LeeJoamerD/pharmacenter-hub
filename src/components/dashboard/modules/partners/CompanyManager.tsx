@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,22 +10,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Edit, Trash2, Building2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 
-interface Societe {
-  id?: string;
-  libelle_societe: string;
-  adresse?: string;
-  telephone_appel?: string;
-  telephone_whatsapp?: string;
-  email?: string;
-  limite_dette: number;
-  niu?: string;
-  assureur_id?: string;
-  taux_couverture_agent: number;
-  taux_couverture_ayant_droit: number;
-}
+const societeSchema = z.object({
+  libelle_societe: z.string().min(1, "Le nom de la société est requis"),
+  adresse: z.string().optional(),
+  telephone_appel: z.string().optional(),
+  telephone_whatsapp: z.string().optional(),
+  email: z.string().email("Email invalide").optional().or(z.literal("")),
+  limite_dette: z.number().min(0, "La limite de dette ne peut être négative"),
+  niu: z.string().optional(),
+  assureur_id: z.string().optional(),
+  taux_couverture_agent: z.number().min(0).max(100, "Le taux doit être entre 0 et 100"),
+  taux_couverture_ayant_droit: z.number().min(0).max(100, "Le taux doit être entre 0 et 100"),
+});
+
+type Societe = z.infer<typeof societeSchema> & { id?: string };
 
 const CompanyManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,8 +63,7 @@ const CompanyManager = () => {
         title: "Société ajoutée avec succès",
         description: "Un compte client a été créé automatiquement pour cette société."
       });
-      setIsDialogOpen(false);
-      form.reset();
+      handleDialogClose();
     }
   });
 
@@ -72,9 +74,7 @@ const CompanyManager = () => {
         title: "Société modifiée avec succès",
         description: "Le compte client associé a été mis à jour automatiquement."
       });
-      setIsDialogOpen(false);
-      form.reset();
-      setEditingSociete(null);
+      handleDialogClose();
     }
   });
 
@@ -88,19 +88,23 @@ const CompanyManager = () => {
     }
   });
 
+  const defaultValues = useMemo(() => ({
+    libelle_societe: '',
+    adresse: '',
+    telephone_appel: '',
+    telephone_whatsapp: '',
+    email: '',
+    limite_dette: 0,
+    niu: '',
+    assureur_id: undefined,
+    taux_couverture_agent: 0,
+    taux_couverture_ayant_droit: 0
+  }), []);
+
   const form = useForm<Societe>({
-    defaultValues: {
-      libelle_societe: '',
-      adresse: '',
-      telephone_appel: '',
-      telephone_whatsapp: '',
-      email: '',
-      limite_dette: 0,
-      niu: '',
-      assureur_id: undefined,
-      taux_couverture_agent: 0,
-      taux_couverture_ayant_droit: 0
-    }
+    resolver: zodResolver(societeSchema),
+    defaultValues,
+    mode: 'onChange'
   });
 
   const filteredSocietes = societes.filter((societe: any) =>
@@ -108,23 +112,29 @@ const CompanyManager = () => {
     societe.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const onSubmit = (data: Societe) => {
+  const onSubmit = useCallback((data: Societe) => {
     if (editingSociete) {
       updateMutation.mutate({ ...data, id: editingSociete.id });
     } else {
       createMutation.mutate(data);
     }
-  };
+  }, [editingSociete, updateMutation, createMutation]);
 
-  const handleEdit = (societe: Societe) => {
+  const handleEdit = useCallback((societe: Societe) => {
     setEditingSociete(societe);
     form.reset(societe);
     setIsDialogOpen(true);
-  };
+  }, [form]);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     deleteMutation.mutate({ id });
-  };
+  }, [deleteMutation]);
+
+  const handleDialogClose = useCallback(() => {
+    setIsDialogOpen(false);
+    setEditingSociete(null);
+    form.reset(defaultValues);
+  }, [form, defaultValues]);
 
   const SocieteForm = () => (
     <Form {...form}>
@@ -137,7 +147,12 @@ const CompanyManager = () => {
               <FormItem>
                 <FormLabel>Nom de la société *</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ex: Total E&P Congo" {...field} />
+                  <Input 
+                    placeholder="Ex: Total E&P Congo" 
+                    {...field} 
+                    autoFocus
+                    tabIndex={1}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -151,7 +166,11 @@ const CompanyManager = () => {
               <FormItem>
                 <FormLabel>NIU</FormLabel>
                 <FormControl>
-                  <Input placeholder="Numéro d'identification unique" {...field} />
+                  <Input 
+                    placeholder="Numéro d'identification unique" 
+                    {...field} 
+                    tabIndex={2}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -165,7 +184,11 @@ const CompanyManager = () => {
               <FormItem>
                 <FormLabel>Téléphone</FormLabel>
                 <FormControl>
-                  <Input placeholder="+242 06 123 45 67" {...field} />
+                  <Input 
+                    placeholder="+242 06 123 45 67" 
+                    {...field} 
+                    tabIndex={3}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -179,7 +202,11 @@ const CompanyManager = () => {
               <FormItem>
                 <FormLabel>WhatsApp</FormLabel>
                 <FormControl>
-                  <Input placeholder="+242 06 123 45 67" {...field} />
+                  <Input 
+                    placeholder="+242 06 123 45 67" 
+                    {...field} 
+                    tabIndex={4}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -193,7 +220,12 @@ const CompanyManager = () => {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="contact@societe.cg" {...field} />
+                  <Input 
+                    type="email" 
+                    placeholder="contact@societe.cg" 
+                    {...field} 
+                    tabIndex={5}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -212,6 +244,7 @@ const CompanyManager = () => {
                     placeholder="0" 
                     {...field}
                     onChange={e => field.onChange(Number(e.target.value))}
+                    tabIndex={6}
                   />
                 </FormControl>
                 <FormMessage />
@@ -227,7 +260,7 @@ const CompanyManager = () => {
                 <FormLabel>Assureur partenaire</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger tabIndex={7}>
                       <SelectValue placeholder="Sélectionner un assureur" />
                     </SelectTrigger>
                   </FormControl>
@@ -258,6 +291,7 @@ const CompanyManager = () => {
                     max="100"
                     {...field}
                     onChange={e => field.onChange(Number(e.target.value))}
+                    tabIndex={8}
                   />
                 </FormControl>
                 <FormMessage />
@@ -279,6 +313,7 @@ const CompanyManager = () => {
                     max="100"
                     {...field}
                     onChange={e => field.onChange(Number(e.target.value))}
+                    tabIndex={9}
                   />
                 </FormControl>
                 <FormMessage />
@@ -294,7 +329,11 @@ const CompanyManager = () => {
             <FormItem>
               <FormLabel>Adresse</FormLabel>
               <FormControl>
-                <Textarea placeholder="Adresse complète" {...field} />
+                <Textarea 
+                  placeholder="Adresse complète" 
+                  {...field} 
+                  tabIndex={10}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -302,12 +341,18 @@ const CompanyManager = () => {
         />
 
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleDialogClose}
+            tabIndex={11}
+          >
             Annuler
           </Button>
           <Button 
             type="submit"
             disabled={createMutation.isPending || updateMutation.isPending}
+            tabIndex={12}
           >
             {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingSociete ? 'Modifier' : 'Ajouter')}
           </Button>
@@ -325,11 +370,12 @@ const CompanyManager = () => {
               <Building2 className="h-5 w-5" />
               Gestion des Sociétés
             </CardTitle>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
               <DialogTrigger asChild>
                 <Button onClick={() => {
                   setEditingSociete(null);
-                  form.reset();
+                  form.reset(defaultValues);
+                  setIsDialogOpen(true);
                 }}>
                   <Plus className="h-4 w-4 mr-2" />
                   Nouvelle Société
@@ -435,7 +481,7 @@ const CompanyManager = () => {
             </TableBody>
           </Table>
 
-          {filteredSocietes.length === 0 && (
+          {filteredSocietes.length === 0 && !isLoading && (
             <div className="text-center py-8 text-muted-foreground">
               Aucune société trouvée
             </div>

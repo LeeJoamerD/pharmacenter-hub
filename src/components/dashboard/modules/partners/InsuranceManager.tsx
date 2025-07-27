@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,20 +9,23 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Edit, Trash2, Shield } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 
-interface Assureur {
-  id?: string;
-  nom: string;
-  adresse?: string;
-  ville?: string;
-  telephone_appel?: string;
-  telephone_whatsapp?: string;
-  email?: string;
-  niu?: string;
-  contact_principal?: string;
-}
+const assureurSchema = z.object({
+  nom: z.string().min(1, "Le nom est requis"),
+  adresse: z.string().optional(),
+  ville: z.string().optional(),
+  telephone_appel: z.string().optional(),
+  telephone_whatsapp: z.string().optional(),
+  email: z.string().email("Email invalide").optional().or(z.literal("")),
+  niu: z.string().optional(),
+  contact_principal: z.string().optional(),
+});
+
+type Assureur = z.infer<typeof assureurSchema> & { id?: string };
 
 const InsuranceManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -67,17 +70,21 @@ const InsuranceManager = () => {
     }
   });
 
+  const defaultValues = useMemo(() => ({
+    nom: '',
+    adresse: '',
+    ville: '',
+    telephone_appel: '',
+    telephone_whatsapp: '',
+    email: '',
+    niu: '',
+    contact_principal: ''
+  }), []);
+
   const form = useForm<Assureur>({
-    defaultValues: {
-      nom: '',
-      adresse: '',
-      ville: '',
-      telephone_appel: '',
-      telephone_whatsapp: '',
-      email: '',
-      niu: '',
-      contact_principal: ''
-    }
+    resolver: zodResolver(assureurSchema),
+    defaultValues,
+    mode: 'onChange'
   });
 
   const filteredAssureurs = assureurs.filter((assureur: any) =>
@@ -85,23 +92,29 @@ const InsuranceManager = () => {
     assureur.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const onSubmit = (data: Assureur) => {
+  const onSubmit = useCallback((data: Assureur) => {
     if (editingAssureur) {
       updateMutation.mutate({ ...data, id: editingAssureur.id });
     } else {
       createMutation.mutate(data);
     }
-  };
+  }, [editingAssureur, updateMutation, createMutation]);
 
-  const handleEdit = (assureur: Assureur) => {
+  const handleEdit = useCallback((assureur: Assureur) => {
     setEditingAssureur(assureur);
     form.reset(assureur);
     setIsDialogOpen(true);
-  };
+  }, [form]);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     deleteMutation.mutate({ id });
-  };
+  }, [deleteMutation]);
+
+  const handleDialogClose = useCallback(() => {
+    setIsDialogOpen(false);
+    setEditingAssureur(null);
+    form.reset(defaultValues);
+  }, [form, defaultValues]);
 
   const AssureurForm = () => (
     <Form {...form}>
@@ -114,7 +127,12 @@ const InsuranceManager = () => {
               <FormItem>
                 <FormLabel>Nom de l'assureur *</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ex: NSIA Assurances" {...field} />
+                  <Input 
+                    placeholder="Ex: NSIA Assurances" 
+                    {...field} 
+                    autoFocus
+                    tabIndex={1}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -128,7 +146,11 @@ const InsuranceManager = () => {
               <FormItem>
                 <FormLabel>NIU</FormLabel>
                 <FormControl>
-                  <Input placeholder="Numéro d'identification unique" {...field} />
+                  <Input 
+                    placeholder="Numéro d'identification unique" 
+                    {...field} 
+                    tabIndex={2}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -221,12 +243,18 @@ const InsuranceManager = () => {
         />
 
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleDialogClose}
+            tabIndex={10}
+          >
             Annuler
           </Button>
           <Button 
             type="submit" 
             disabled={createMutation.isPending || updateMutation.isPending}
+            tabIndex={11}
           >
             {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingAssureur ? 'Modifier' : 'Ajouter')}
           </Button>
@@ -244,11 +272,12 @@ const InsuranceManager = () => {
               <Shield className="h-5 w-5" />
               Gestion des Assureurs
             </CardTitle>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
               <DialogTrigger asChild>
                 <Button onClick={() => {
                   setEditingAssureur(null);
-                  form.reset();
+                  form.reset(defaultValues);
+                  setIsDialogOpen(true);
                 }}>
                   <Plus className="h-4 w-4 mr-2" />
                   Nouvel Assureur

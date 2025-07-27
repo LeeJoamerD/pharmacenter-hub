@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,12 +8,23 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Edit, Trash2, Truck } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import type { Database } from '@/integrations/supabase/types';
 
+const fournisseurSchema = z.object({
+  nom: z.string().min(1, "Le nom est requis"),
+  adresse: z.string().optional(),
+  telephone_appel: z.string().optional(),
+  telephone_whatsapp: z.string().optional(),
+  email: z.string().email("Email invalide").optional().or(z.literal("")),
+  niu: z.string().optional(),
+});
+
 type Fournisseur = Database['public']['Tables']['fournisseurs']['Row'];
-type FournisseurInsert = Database['public']['Tables']['fournisseurs']['Insert'];
+type FournisseurInsert = z.infer<typeof fournisseurSchema>;
 
 const SupplierManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,7 +32,7 @@ const SupplierManager = () => {
   const [editingFournisseur, setEditingFournisseur] = useState<Fournisseur | null>(null);
   const { toast } = useToast();
 
-  const { useTenantQueryWithCache } = useTenantQuery();
+  const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
   const { data: fournisseurs = [], isLoading } = useTenantQueryWithCache(
     ['fournisseurs'],
     'fournisseurs',
@@ -30,15 +41,43 @@ const SupplierManager = () => {
     { orderBy: { column: 'nom', ascending: true } }
   );
 
-  const form = useForm<FournisseurInsert>({
-    defaultValues: {
-      nom: '',
-      adresse: '',
-      telephone_appel: '',
-      telephone_whatsapp: '',
-      email: '',
-      niu: ''
+  // Mutations
+  const createMutation = useTenantMutation('fournisseurs', 'insert', {
+    invalidateQueries: ['fournisseurs'],
+    onSuccess: () => {
+      toast({ title: "Fournisseur ajouté avec succès" });
+      handleDialogClose();
     }
+  });
+
+  const updateMutation = useTenantMutation('fournisseurs', 'update', {
+    invalidateQueries: ['fournisseurs'],
+    onSuccess: () => {
+      toast({ title: "Fournisseur modifié avec succès" });
+      handleDialogClose();
+    }
+  });
+
+  const deleteMutation = useTenantMutation('fournisseurs', 'delete', {
+    invalidateQueries: ['fournisseurs'],
+    onSuccess: () => {
+      toast({ title: "Fournisseur supprimé" });
+    }
+  });
+
+  const defaultValues = useMemo(() => ({
+    nom: '',
+    adresse: '',
+    telephone_appel: '',
+    telephone_whatsapp: '',
+    email: '',
+    niu: ''
+  }), []);
+
+  const form = useForm<FournisseurInsert>({
+    resolver: zodResolver(fournisseurSchema),
+    defaultValues,
+    mode: 'onChange'
   });
 
   const filteredFournisseurs = fournisseurs.filter(fournisseur =>
@@ -46,31 +85,36 @@ const SupplierManager = () => {
     fournisseur.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const onSubmit = async (data: FournisseurInsert) => {
-    // Pour le moment, utiliser des données mockées
-    toast({ title: editingFournisseur ? "Fournisseur modifié avec succès" : "Fournisseur ajouté avec succès" });
-    setIsDialogOpen(false);
-    form.reset();
-    setEditingFournisseur(null);
-  };
+  const onSubmit = useCallback((data: FournisseurInsert) => {
+    if (editingFournisseur) {
+      updateMutation.mutate({ ...data, id: editingFournisseur.id });
+    } else {
+      createMutation.mutate(data);
+    }
+  }, [editingFournisseur, updateMutation, createMutation]);
 
-  const handleEdit = (fournisseur: Fournisseur) => {
+  const handleEdit = useCallback((fournisseur: Fournisseur) => {
     setEditingFournisseur(fournisseur);
     form.reset({
       nom: fournisseur.nom,
-      adresse: fournisseur.adresse,
-      telephone_appel: fournisseur.telephone_appel,
-      telephone_whatsapp: fournisseur.telephone_whatsapp,
-      email: fournisseur.email,
-      niu: fournisseur.niu
+      adresse: fournisseur.adresse || '',
+      telephone_appel: fournisseur.telephone_appel || '',
+      telephone_whatsapp: fournisseur.telephone_whatsapp || '',
+      email: fournisseur.email || '',
+      niu: fournisseur.niu || ''
     });
     setIsDialogOpen(true);
-  };
+  }, [form]);
 
-  const handleDelete = async (id: string) => {
-    // Pour le moment, utiliser des données mockées
-    toast({ title: "Fournisseur supprimé" });
-  };
+  const handleDelete = useCallback((id: string) => {
+    deleteMutation.mutate({ id });
+  }, [deleteMutation]);
+
+  const handleDialogClose = useCallback(() => {
+    setIsDialogOpen(false);
+    setEditingFournisseur(null);
+    form.reset(defaultValues);
+  }, [form, defaultValues]);
 
   const FournisseurForm = () => (
     <Form {...form}>
@@ -83,7 +127,12 @@ const SupplierManager = () => {
               <FormItem>
                 <FormLabel>Nom du fournisseur *</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ex: COPHAL - Comptoir Pharmaceutique" {...field} />
+                  <Input 
+                    placeholder="Ex: COPHAL - Comptoir Pharmaceutique" 
+                    {...field} 
+                    autoFocus
+                    tabIndex={1}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -97,7 +146,11 @@ const SupplierManager = () => {
               <FormItem>
                 <FormLabel>NIU</FormLabel>
                 <FormControl>
-                  <Input placeholder="Numéro d'identification unique" {...field} />
+                  <Input 
+                    placeholder="Numéro d'identification unique" 
+                    {...field} 
+                    tabIndex={2}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -111,7 +164,11 @@ const SupplierManager = () => {
               <FormItem>
                 <FormLabel>Téléphone</FormLabel>
                 <FormControl>
-                  <Input placeholder="+242 06 123 45 67" {...field} />
+                  <Input 
+                    placeholder="+242 06 123 45 67" 
+                    {...field} 
+                    tabIndex={3}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -125,7 +182,11 @@ const SupplierManager = () => {
               <FormItem>
                 <FormLabel>WhatsApp</FormLabel>
                 <FormControl>
-                  <Input placeholder="+242 06 123 45 67" {...field} />
+                  <Input 
+                    placeholder="+242 06 123 45 67" 
+                    {...field} 
+                    tabIndex={4}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -139,7 +200,12 @@ const SupplierManager = () => {
               <FormItem className="md:col-span-2">
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="contact@fournisseur.cg" {...field} />
+                  <Input 
+                    type="email" 
+                    placeholder="contact@fournisseur.cg" 
+                    {...field} 
+                    tabIndex={5}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -154,7 +220,11 @@ const SupplierManager = () => {
             <FormItem>
               <FormLabel>Adresse</FormLabel>
               <FormControl>
-                <Textarea placeholder="Adresse complète du fournisseur" {...field} />
+                <Textarea 
+                  placeholder="Adresse complète du fournisseur" 
+                  {...field} 
+                  tabIndex={6}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -162,11 +232,20 @@ const SupplierManager = () => {
         />
 
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleDialogClose}
+            tabIndex={7}
+          >
             Annuler
           </Button>
-          <Button type="submit">
-            {editingFournisseur ? 'Modifier' : 'Ajouter'}
+          <Button 
+            type="submit"
+            disabled={createMutation.isPending || updateMutation.isPending}
+            tabIndex={8}
+          >
+            {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingFournisseur ? 'Modifier' : 'Ajouter')}
           </Button>
         </div>
       </form>
@@ -182,11 +261,12 @@ const SupplierManager = () => {
               <Truck className="h-5 w-5" />
               Gestion des Fournisseurs
             </CardTitle>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
               <DialogTrigger asChild>
                 <Button onClick={() => {
                   setEditingFournisseur(null);
-                  form.reset();
+                  form.reset(defaultValues);
+                  setIsDialogOpen(true);
                 }}>
                   <Plus className="h-4 w-4 mr-2" />
                   Nouveau Fournisseur
@@ -263,6 +343,7 @@ const SupplierManager = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleEdit(fournisseur)}
+                          disabled={updateMutation.isPending}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -270,6 +351,7 @@ const SupplierManager = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDelete(fournisseur.id)}
+                          disabled={deleteMutation.isPending}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -281,7 +363,7 @@ const SupplierManager = () => {
             </TableBody>
           </Table>
 
-          {filteredFournisseurs.length === 0 && (
+          {filteredFournisseurs.length === 0 && !isLoading && (
             <div className="text-center py-8 text-muted-foreground">
               Aucun fournisseur trouvé
             </div>

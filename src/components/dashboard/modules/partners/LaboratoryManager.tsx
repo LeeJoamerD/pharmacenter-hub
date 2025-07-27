@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,21 +8,24 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Edit, Trash2, FlaskConical, Globe } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 
-interface Laboratoire {
-  id?: string;
-  nom: string;
-  adresse?: string;
-  ville?: string;
-  telephone_appel?: string;
-  telephone_whatsapp?: string;
-  email?: string;
-  niu?: string;
-  specialites?: string[];
-  contact_principal?: string;
-}
+const laboratoireSchema = z.object({
+  nom: z.string().min(1, "Le nom est requis"),
+  adresse: z.string().optional(),
+  ville: z.string().optional(),
+  telephone_appel: z.string().optional(),
+  telephone_whatsapp: z.string().optional(),
+  email: z.string().email("Email invalide").optional().or(z.literal("")),
+  niu: z.string().optional(),
+  specialites: z.array(z.string()).optional(),
+  contact_principal: z.string().optional(),
+});
+
+type Laboratoire = z.infer<typeof laboratoireSchema> & { id?: string };
 
 const LaboratoryManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,8 +48,7 @@ const LaboratoryManager = () => {
     invalidateQueries: ['laboratoires'],
     onSuccess: () => {
       toast({ title: "Laboratoire ajouté avec succès" });
-      setIsDialogOpen(false);
-      form.reset();
+      handleDialogClose();
     }
   });
 
@@ -54,9 +56,7 @@ const LaboratoryManager = () => {
     invalidateQueries: ['laboratoires'],
     onSuccess: () => {
       toast({ title: "Laboratoire modifié avec succès" });
-      setIsDialogOpen(false);
-      form.reset();
-      setEditingLaboratoire(null);
+      handleDialogClose();
     }
   });
 
@@ -67,18 +67,22 @@ const LaboratoryManager = () => {
     }
   });
 
+  const defaultValues = useMemo(() => ({
+    nom: '',
+    adresse: '',
+    ville: '',
+    telephone_appel: '',
+    telephone_whatsapp: '',
+    email: '',
+    niu: '',
+    specialites: [],
+    contact_principal: ''
+  }), []);
+
   const form = useForm<Laboratoire>({
-    defaultValues: {
-      nom: '',
-      adresse: '',
-      ville: '',
-      telephone_appel: '',
-      telephone_whatsapp: '',
-      email: '',
-      niu: '',
-      specialites: [],
-      contact_principal: ''
-    }
+    resolver: zodResolver(laboratoireSchema),
+    defaultValues,
+    mode: 'onChange'
   });
 
   const filteredLaboratoires = laboratoires.filter((labo: any) =>
@@ -87,23 +91,29 @@ const LaboratoryManager = () => {
     labo.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const onSubmit = (data: any) => {
+  const onSubmit = useCallback((data: any) => {
     if (editingLaboratoire) {
       updateMutation.mutate({ ...data, id: editingLaboratoire.id });
     } else {
       createMutation.mutate(data);
     }
-  };
+  }, [editingLaboratoire, updateMutation, createMutation]);
 
-  const handleEdit = (laboratoire: Laboratoire) => {
+  const handleEdit = useCallback((laboratoire: Laboratoire) => {
     setEditingLaboratoire(laboratoire);
     form.reset(laboratoire);
     setIsDialogOpen(true);
-  };
+  }, [form]);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     deleteMutation.mutate({ id });
-  };
+  }, [deleteMutation]);
+
+  const handleDialogClose = useCallback(() => {
+    setIsDialogOpen(false);
+    setEditingLaboratoire(null);
+    form.reset(defaultValues);
+  }, [form, defaultValues]);
 
   const LaboratoireForm = () => (
     <Form {...form}>
@@ -116,7 +126,12 @@ const LaboratoryManager = () => {
               <FormItem>
                 <FormLabel>Nom du laboratoire *</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ex: Laboratoires Roche" {...field} />
+                  <Input 
+                    placeholder="Ex: Laboratoires Roche" 
+                    {...field} 
+                    autoFocus
+                    tabIndex={1}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -130,7 +145,11 @@ const LaboratoryManager = () => {
               <FormItem>
                 <FormLabel>Ville</FormLabel>
                 <FormControl>
-                  <Input placeholder="Brazzaville" {...field} />
+                  <Input 
+                    placeholder="Brazzaville" 
+                    {...field} 
+                    tabIndex={2}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -144,7 +163,12 @@ const LaboratoryManager = () => {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="contact@laboratoire.com" {...field} />
+                  <Input 
+                    type="email" 
+                    placeholder="contact@laboratoire.com" 
+                    {...field} 
+                    tabIndex={3}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -158,7 +182,11 @@ const LaboratoryManager = () => {
               <FormItem>
                 <FormLabel>NIU</FormLabel>
                 <FormControl>
-                  <Input placeholder="Numéro d'identification unique" {...field} />
+                  <Input 
+                    placeholder="Numéro d'identification unique" 
+                    {...field} 
+                    tabIndex={4}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -172,7 +200,11 @@ const LaboratoryManager = () => {
               <FormItem>
                 <FormLabel>Téléphone</FormLabel>
                 <FormControl>
-                  <Input placeholder="+242 06 123 45 67" {...field} />
+                  <Input 
+                    placeholder="+242 06 123 45 67" 
+                    {...field} 
+                    tabIndex={5}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -186,7 +218,11 @@ const LaboratoryManager = () => {
               <FormItem>
                 <FormLabel>WhatsApp</FormLabel>
                 <FormControl>
-                  <Input placeholder="+242 06 123 45 67" {...field} />
+                  <Input 
+                    placeholder="+242 06 123 45 67" 
+                    {...field} 
+                    tabIndex={6}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -201,7 +237,11 @@ const LaboratoryManager = () => {
             <FormItem>
               <FormLabel>Adresse</FormLabel>
               <FormControl>
-                <Textarea placeholder="Adresse complète" {...field} />
+                <Textarea 
+                  placeholder="Adresse complète" 
+                  {...field} 
+                  tabIndex={7}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -215,7 +255,11 @@ const LaboratoryManager = () => {
             <FormItem>
               <FormLabel>Contact principal</FormLabel>
               <FormControl>
-                <Input placeholder="Nom du contact principal" {...field} />
+                <Input 
+                  placeholder="Nom du contact principal" 
+                  {...field} 
+                  tabIndex={8}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -223,12 +267,18 @@ const LaboratoryManager = () => {
         />
 
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleDialogClose}
+            tabIndex={9}
+          >
             Annuler
           </Button>
           <Button 
             type="submit"
             disabled={createMutation.isPending || updateMutation.isPending}
+            tabIndex={10}
           >
             {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingLaboratoire ? 'Modifier' : 'Ajouter')}
           </Button>
@@ -246,11 +296,12 @@ const LaboratoryManager = () => {
               <FlaskConical className="h-5 w-5" />
               Gestion des Laboratoires Pharmaceutiques
             </CardTitle>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
               <DialogTrigger asChild>
                 <Button onClick={() => {
                   setEditingLaboratoire(null);
-                  form.reset();
+                  form.reset(defaultValues);
+                  setIsDialogOpen(true);
                 }}>
                   <Plus className="h-4 w-4 mr-2" />
                   Nouveau Laboratoire
@@ -364,7 +415,7 @@ const LaboratoryManager = () => {
             </TableBody>
           </Table>
 
-          {filteredLaboratoires.length === 0 && (
+          {filteredLaboratoires.length === 0 && !isLoading && (
             <div className="text-center py-8 text-muted-foreground">
               Aucun laboratoire trouvé
             </div>
