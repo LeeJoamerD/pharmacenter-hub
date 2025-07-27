@@ -88,7 +88,7 @@ export const ScheduleManagement = () => {
   const handleSubmit = (data: ScheduleFormData) => {
     const scheduleData = {
       employe_id: data.employe,
-      date_planning: data.date,
+      date: data.date,
       heure_debut: data.heureDebut,
       heure_fin: data.heureFin,
       type_shift: data.typeShift,
@@ -111,7 +111,7 @@ export const ScheduleManagement = () => {
     setEditingSchedule(schedule);
     form.reset({
       employe: schedule.employe_id,
-      date: schedule.date_planning,
+      date: schedule.date,
       heureDebut: schedule.heure_debut,
       heureFin: schedule.heure_fin,
       typeShift: schedule.type_shift as any,
@@ -264,7 +264,7 @@ export const ScheduleManagement = () => {
                         {getEmployeeName(schedule.employe_id)}
                       </TableCell>
                       <TableCell>
-                        {format(new Date(schedule.date_planning), 'dd/MM/yyyy', { locale: fr })}
+                        {format(new Date(schedule.date), 'dd/MM/yyyy', { locale: fr })}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
