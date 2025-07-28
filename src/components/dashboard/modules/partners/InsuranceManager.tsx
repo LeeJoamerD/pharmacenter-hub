@@ -160,7 +160,11 @@ const InsuranceManager = () => {
               <FormItem>
                 <FormLabel>Téléphone</FormLabel>
                 <FormControl>
-                  <Input placeholder="+242 06 123 45 67" {...field} />
+                  <Input 
+                    placeholder="+242 06 123 45 67" 
+                    {...field} 
+                    tabIndex={3}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -174,7 +178,11 @@ const InsuranceManager = () => {
               <FormItem>
                 <FormLabel>WhatsApp</FormLabel>
                 <FormControl>
-                  <Input placeholder="+242 06 123 45 67" {...field} />
+                  <Input 
+                    placeholder="+242 06 123 45 67" 
+                    {...field} 
+                    tabIndex={4}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -188,7 +196,12 @@ const InsuranceManager = () => {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="contact@assureur.cg" {...field} />
+                  <Input 
+                    type="email" 
+                    placeholder="contact@assureur.cg" 
+                    {...field} 
+                    tabIndex={5}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -204,7 +217,11 @@ const InsuranceManager = () => {
             <FormItem>
               <FormLabel>Adresse</FormLabel>
               <FormControl>
-                <Textarea placeholder="Adresse complète" {...field} />
+                <Textarea 
+                  placeholder="Adresse complète" 
+                  {...field} 
+                  tabIndex={6}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -216,14 +233,14 @@ const InsuranceManager = () => {
             type="button" 
             variant="outline" 
             onClick={handleDialogClose}
-            tabIndex={10}
+            tabIndex={7}
           >
             Annuler
           </Button>
           <Button 
             type="submit" 
             disabled={createMutation.isPending || updateMutation.isPending}
-            tabIndex={11}
+            tabIndex={8}
           >
             {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingAssureur ? 'Modifier' : 'Ajouter')}
           </Button>
