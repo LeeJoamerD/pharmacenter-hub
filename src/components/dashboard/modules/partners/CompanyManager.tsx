@@ -39,7 +39,7 @@ const CompanyManager = () => {
 
   // Récupérer les assureurs pour le select
   const { data: assureurs = [] } = useTenantQueryWithCache(
-    ['assureurs'],
+    ['assureurs-select-v2'],
     'assureurs',
     'id, libelle_assureur',
     undefined,

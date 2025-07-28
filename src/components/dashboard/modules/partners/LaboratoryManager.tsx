@@ -33,7 +33,7 @@ const LaboratoryManager = () => {
 
   // Récupérer les laboratoires
   const { data: laboratoires = [], isLoading, refetch } = useTenantQueryWithCache(
-    ['laboratoires'],
+    ['laboratoires-v2'],
     'laboratoires',
     '*',
     undefined,
@@ -42,7 +42,7 @@ const LaboratoryManager = () => {
 
   // Mutations
   const createMutation = useTenantMutation('laboratoires', 'insert', {
-    invalidateQueries: ['laboratoires'],
+    invalidateQueries: ['laboratoires-v2'],
     onSuccess: () => {
       toast({ title: "Laboratoire ajouté avec succès" });
       handleDialogClose();
@@ -50,7 +50,7 @@ const LaboratoryManager = () => {
   });
 
   const updateMutation = useTenantMutation('laboratoires', 'update', {
-    invalidateQueries: ['laboratoires'],
+    invalidateQueries: ['laboratoires-v2'],
     onSuccess: () => {
       toast({ title: "Laboratoire modifié avec succès" });
       handleDialogClose();
@@ -58,7 +58,7 @@ const LaboratoryManager = () => {
   });
 
   const deleteMutation = useTenantMutation('laboratoires', 'delete', {
-    invalidateQueries: ['laboratoires'],
+    invalidateQueries: ['laboratoires-v2'],
     onSuccess: () => {
       toast({ title: "Laboratoire supprimé" });
     }
@@ -81,8 +81,8 @@ const LaboratoryManager = () => {
 
   const filteredLaboratoires = laboratoires.filter((labo: any) =>
     labo.libelle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    labo.ville?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    labo.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    labo.pays_siege?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    labo.email_siege?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const onSubmit = useCallback((data: any) => {
@@ -315,32 +315,30 @@ const LaboratoryManager = () => {
                         <FlaskConical className="h-4 w-4 text-blue-500" />
                         {labo.libelle}
                       </div>
-                      {labo.niu && (
-                        <div className="text-sm text-muted-foreground">NIU: {labo.niu}</div>
-                      )}
-                      {labo.contact_principal && (
-                        <div className="text-sm text-muted-foreground">Contact: {labo.contact_principal}</div>
+                      {labo.pays_siege && (
+                        <div className="text-sm text-muted-foreground">Siège: {labo.pays_siege}</div>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      {labo.email && <div>✉️ {labo.email}</div>}
-                      {labo.ville && (
+                      {labo.email_siege && <div>✉️ Siège: {labo.email_siege}</div>}
+                      {labo.email_delegation_local && <div>✉️ Local: {labo.email_delegation_local}</div>}
+                      {labo.pays_siege && (
                         <div className="flex items-center gap-1">
                           <Globe className="h-3 w-3" />
-                          {labo.ville}
+                          {labo.pays_siege}
                         </div>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      {labo.telephone_appel && (
-                        <div>📞 {labo.telephone_appel}</div>
+                      {labo.telephone_appel_delegation_local && (
+                        <div>📞 {labo.telephone_appel_delegation_local}</div>
                       )}
-                      {labo.telephone_whatsapp && (
-                        <div className="text-green-600">💬 {labo.telephone_whatsapp}</div>
+                      {labo.telephone_whatsapp_delegation_local && (
+                        <div className="text-green-600">💬 {labo.telephone_whatsapp_delegation_local}</div>
                       )}
                     </div>
                   </TableCell>

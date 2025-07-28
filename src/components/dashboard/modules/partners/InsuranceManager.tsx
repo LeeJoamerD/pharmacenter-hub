@@ -34,7 +34,7 @@ const InsuranceManager = () => {
 
   // Récupérer les assureurs
   const { data: assureurs = [], isLoading, refetch } = useTenantQueryWithCache(
-    ['assureurs'],
+    ['assureurs-v2'],
     'assureurs',
     '*',
     undefined,
@@ -43,7 +43,7 @@ const InsuranceManager = () => {
 
   // Mutations
   const createMutation = useTenantMutation('assureurs', 'insert', {
-    invalidateQueries: ['assureurs'],
+    invalidateQueries: ['assureurs-v2'],
     onSuccess: () => {
       toast({ title: "Assureur ajouté avec succès" });
       setIsDialogOpen(false);
@@ -52,7 +52,7 @@ const InsuranceManager = () => {
   });
 
   const updateMutation = useTenantMutation('assureurs', 'update', {
-    invalidateQueries: ['assureurs'],
+    invalidateQueries: ['assureurs-v2'],
     onSuccess: () => {
       toast({ title: "Assureur modifié avec succès" });
       setIsDialogOpen(false);
@@ -62,7 +62,7 @@ const InsuranceManager = () => {
   });
 
   const deleteMutation = useTenantMutation('assureurs', 'delete', {
-    invalidateQueries: ['assureurs'],
+    invalidateQueries: ['assureurs-v2'],
     onSuccess: () => {
       toast({ title: "Assureur supprimé" });
     }

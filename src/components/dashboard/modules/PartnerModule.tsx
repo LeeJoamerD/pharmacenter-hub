@@ -17,28 +17,33 @@ const PartnerModule = () => {
   const { useTenantQueryWithCache } = useTenantQuery();
   
   const { data: assureurs = [] } = useTenantQueryWithCache(
-    ['assureurs-count'],
-    'assureurs'
+    ['assureurs-count-v2'],
+    'assureurs',
+    'id'
   );
 
   const { data: societes = [] } = useTenantQueryWithCache(
-    ['societes-count'],
-    'societes'
+    ['societes-count-v2'],
+    'societes',
+    'id'
   );
 
   const { data: conventionnes = [] } = useTenantQueryWithCache(
-    ['conventionnes-count'],
-    'conventionnes'
+    ['conventionnes-count-v2'],
+    'conventionnes',
+    'id'
   );
 
   const { data: fournisseurs = [] } = useTenantQueryWithCache(
-    ['fournisseurs-count'],
-    'fournisseurs'
+    ['fournisseurs-count-v2'],
+    'fournisseurs',
+    'id'
   );
 
   const { data: laboratoires = [] } = useTenantQueryWithCache(
-    ['laboratoires-count'],
-    'laboratoires'
+    ['laboratoires-count-v2'],
+    'laboratoires',
+    'id'
   );
 
   const partnerMetrics = {
