@@ -261,7 +261,7 @@ const SupplierManager = () => {
               <Truck className="h-5 w-5" />
               Gestion des Fournisseurs
             </CardTitle>
-            <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => {
                   setEditingFournisseur(null);

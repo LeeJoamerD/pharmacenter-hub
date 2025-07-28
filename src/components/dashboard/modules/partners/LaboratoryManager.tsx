@@ -255,7 +255,7 @@ const LaboratoryManager = () => {
               <FlaskConical className="h-5 w-5" />
               Gestion des Laboratoires Pharmaceutiques
             </CardTitle>
-            <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => {
                   setEditingLaboratoire(null);

@@ -370,7 +370,7 @@ const CompanyManager = () => {
               <Building2 className="h-5 w-5" />
               Gestion des Sociétés
             </CardTitle>
-            <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => {
                   setEditingSociete(null);

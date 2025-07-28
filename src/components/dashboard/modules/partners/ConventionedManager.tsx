@@ -387,7 +387,7 @@ const ConventionedManager = () => {
               <UserCheck className="h-5 w-5" />
               Gestion des Conventionnés
             </CardTitle>
-            <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => {
                   setEditingConventionne(null);
