@@ -9,11 +9,12 @@ import RayonManager from './referentiel/RayonManager';
 import PricingCategories from './referentiel/PricingCategories';
 import DCIManager from './referentiel/DCIManager';
 import RegulationTracker from './referentiel/RegulationTracker';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
 
 const ReferentielModule = () => {
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Mock data pour les métriques
+  // Mock data pour les métriques (sera remplacé par des données réelles)
   const referentielMetrics = {
     produits: 2847,
     familles: 45,
@@ -22,6 +23,7 @@ const ReferentielModule = () => {
     dci: 156,
     reglementations: 23
   };
+
 
   const OverviewTab = () => (
     <div className="space-y-6">
@@ -168,12 +170,13 @@ const ReferentielModule = () => {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
           <TabsTrigger value="familles">Familles</TabsTrigger>
           <TabsTrigger value="rayons">Rayons</TabsTrigger>
           <TabsTrigger value="categories">Catégories</TabsTrigger>
           <TabsTrigger value="dci">DCI</TabsTrigger>
+          <TabsTrigger value="reglementations">Réglementations</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -195,6 +198,10 @@ const ReferentielModule = () => {
 
         <TabsContent value="dci">
           <DCIManager />
+        </TabsContent>
+
+        <TabsContent value="reglementations">
+          <RegulationTracker />
         </TabsContent>
       </Tabs>
     </div>

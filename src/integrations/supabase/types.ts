@@ -606,6 +606,48 @@ export type Database = {
           },
         ]
       }
+      dci: {
+        Row: {
+          classe_therapeutique: string | null
+          contre_indications: string | null
+          created_at: string
+          description: string | null
+          effets_secondaires: string | null
+          id: string
+          nom_dci: string
+          posologie: string | null
+          produits_associes: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          classe_therapeutique?: string | null
+          contre_indications?: string | null
+          created_at?: string
+          description?: string | null
+          effets_secondaires?: string | null
+          id?: string
+          nom_dci: string
+          posologie?: string | null
+          produits_associes?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          classe_therapeutique?: string | null
+          contre_indications?: string | null
+          created_at?: string
+          description?: string | null
+          effets_secondaires?: string | null
+          id?: string
+          nom_dci?: string
+          posologie?: string | null
+          produits_associes?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ecritures_comptables: {
         Row: {
           created_at: string
@@ -2748,6 +2790,33 @@ export type Database = {
         }
         Relationships: []
       }
+      rayons_produits: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          libelle_rayon: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          libelle_rayon: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          libelle_rayon?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       receptions_fournisseurs: {
         Row: {
           agent_id: string | null
@@ -2805,6 +2874,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      reglementations: {
+        Row: {
+          autorite_competente: string
+          created_at: string
+          date_application: string
+          date_expiration: string | null
+          description: string | null
+          id: string
+          niveau_restriction: string
+          nom_reglementation: string
+          produits_concernes: number | null
+          reference_legale: string
+          statut: string
+          tenant_id: string
+          type_reglementation: string
+          updated_at: string
+        }
+        Insert: {
+          autorite_competente: string
+          created_at?: string
+          date_application: string
+          date_expiration?: string | null
+          description?: string | null
+          id?: string
+          niveau_restriction?: string
+          nom_reglementation: string
+          produits_concernes?: number | null
+          reference_legale: string
+          statut?: string
+          tenant_id: string
+          type_reglementation: string
+          updated_at?: string
+        }
+        Update: {
+          autorite_competente?: string
+          created_at?: string
+          date_application?: string
+          date_expiration?: string | null
+          description?: string | null
+          id?: string
+          niveau_restriction?: string
+          nom_reglementation?: string
+          produits_concernes?: number | null
+          reference_legale?: string
+          statut?: string
+          tenant_id?: string
+          type_reglementation?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       roles: {
         Row: {
