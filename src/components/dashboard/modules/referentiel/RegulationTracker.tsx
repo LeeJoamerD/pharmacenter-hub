@@ -169,7 +169,7 @@ const RegulationTracker = () => {
                 className="w-64"
               />
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={handleAddRegulation}>
                   <Plus className="h-4 w-4 mr-2" />

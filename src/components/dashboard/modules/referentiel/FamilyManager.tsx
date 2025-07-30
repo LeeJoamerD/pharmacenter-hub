@@ -23,18 +23,32 @@ const FamilyManager = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFamily, setEditingFamily] = useState<FamilyProduct | null>(null);
 
-  // Utilisation de useTenantQuery pour les données réelles
+  // Hook pour les données avec useTenantQuery
+  const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
+  
   const {
     data: families = [],
     isLoading,
     error,
-    createMutation,
-    updateMutation,
-    deleteMutation
-  } = useTenantQuery({
-    table: 'famille_produit',
-    queryKey: ['families'],
-    orderBy: 'libelle_famille'
+    refetch
+  } = useTenantQueryWithCache(
+    ['famille_produit'],
+    'famille_produit',
+    '*',
+    undefined,
+    { orderBy: { column: 'libelle_famille', ascending: true } }
+  );
+
+  const createMutation = useTenantMutation('famille_produit', 'insert', {
+    invalidateQueries: ['famille_produit']
+  });
+
+  const updateMutation = useTenantMutation('famille_produit', 'update', {
+    invalidateQueries: ['famille_produit']
+  });
+
+  const deleteMutation = useTenantMutation('famille_produit', 'delete', {
+    invalidateQueries: ['famille_produit']
   });
 
   const form = useForm<FamilyProduct>({

@@ -5,6 +5,7 @@ import { Hero } from '@/components/Hero';
 import { Features } from '@/components/Features';
 import { Footer } from '@/components/Footer';
 import { AnimatedGradient } from '@/components/AnimatedGradient';
+import TempAccountCreator from '@/components/TempAccountCreator';
 import { Button } from '@/components/ui/button';
 import { Settings, Palette } from 'lucide-react';
 
@@ -55,7 +56,21 @@ const Index = () => {
       <main>
         <Hero />
         <Features />
-        {/* Additional sections would go here */}
+        
+        {/* Section compte temporaire */}
+        <section className="py-16 px-4">
+          <div className="container mx-auto max-w-4xl">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-4">Compte de Test Temporaire</h2>
+              <p className="text-muted-foreground">
+                Créez un compte temporaire pour tester toutes les fonctionnalités de PharmaSoft
+              </p>
+            </div>
+            <div className="flex justify-center">
+              <TempAccountCreator />
+            </div>
+          </div>
+        </section>
       </main>
       <Footer />
       
