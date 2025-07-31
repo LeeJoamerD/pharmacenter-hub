@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,8 +15,8 @@ import {
   Clock,
   Calendar
 } from "lucide-react";
-//import { useDashboardStats, useRefreshData } from '@/hooks/useApi';
-//import { formatCurrency, formatDate } from '@/lib/utils';
+import { useDashboardStats, useRefreshData } from '@/hooks/useApi';
+import { formatCurrency, formatDate } from '@/lib/utils';
 
 const DashboardHome = () => {
   const { salesSummary, stockLevels, expiringStock, sessions, isLoading, error } = useDashboardStats();
@@ -239,5 +237,4 @@ const DashboardHome = () => {
   );
 };
 
-export default DashboardHome;
-
+export default DashboardHome
