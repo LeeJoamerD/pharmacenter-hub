@@ -8,21 +8,16 @@ import FamilyManager from './referentiel/FamilyManager';
 import RayonManager from './referentiel/RayonManager';
 import PricingCategories from './referentiel/PricingCategories';
 import DCIManager from './referentiel/DCIManager';
+import ProductCatalog from './referentiel/ProductCatalog';
 import RegulationTracker from './referentiel/RegulationTracker';
-import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { useReferentielMetrics, useRecentProducts } from '@/hooks/useReferentielMetrics';
 
 const ReferentielModule = () => {
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Mock data pour les métriques (sera remplacé par des données réelles)
-  const referentielMetrics = {
-    produits: 2847,
-    familles: 45,
-    rayons: 28,
-    categories: 12,
-    dci: 156,
-    reglementations: 23
-  };
+  // Fetch real-time metrics
+  const referentielMetrics = useReferentielMetrics();
+  const { products: recentProducts, isLoading: loadingRecentProducts } = useRecentProducts(3);
 
 
   const OverviewTab = () => (
@@ -101,29 +96,27 @@ const ReferentielModule = () => {
             <CardTitle>Produits Récents</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Paracétamol 500mg</p>
-                  <p className="text-xs text-muted-foreground">Ajouté il y a 2 heures</p>
-                </div>
-                <Badge variant="default">Médicament</Badge>
+            {loadingRecentProducts ? (
+              <div className="text-center py-4">Chargement...</div>
+            ) : (
+              <div className="space-y-4">
+                {recentProducts.length > 0 ? (
+                  recentProducts.map((product: any) => (
+                    <div key={product.id} className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{product.libelle_produit}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Ajouté {new Date(product.created_at).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                      <Badge variant="default">Produit</Badge>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucun produit récent</p>
+                )}
               </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Sérum physiologique</p>
-                  <p className="text-xs text-muted-foreground">Ajouté il y a 1 jour</p>
-                </div>
-                <Badge variant="secondary">Dispositif médical</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Vitamine D3</p>
-                  <p className="text-xs text-muted-foreground">Ajouté il y a 3 jours</p>
-                </div>
-                <Badge variant="outline">Complément</Badge>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -170,12 +163,13 @@ const ReferentielModule = () => {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
           <TabsTrigger value="familles">Familles</TabsTrigger>
           <TabsTrigger value="rayons">Rayons</TabsTrigger>
           <TabsTrigger value="categories">Catégories</TabsTrigger>
           <TabsTrigger value="dci">DCI</TabsTrigger>
+          <TabsTrigger value="catalog">Catalogue</TabsTrigger>
           <TabsTrigger value="reglementations">Réglementations</TabsTrigger>
         </TabsList>
 
@@ -198,6 +192,10 @@ const ReferentielModule = () => {
 
         <TabsContent value="dci">
           <DCIManager />
+        </TabsContent>
+
+        <TabsContent value="catalog">
+          <ProductCatalog />
         </TabsContent>
 
         <TabsContent value="reglementations">
