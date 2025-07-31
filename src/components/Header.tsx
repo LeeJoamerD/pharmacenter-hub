@@ -175,11 +175,10 @@ export function Header() {
                     <UserAvatar initials={userInitials} />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
+<DropdownMenuContent className="w-56" align="end" forceMount>
   <DropdownMenuLabel className="font-normal">
     <div className="flex flex-col space-y-1">
       <p className="text-sm font-medium leading-none">
-        {/* CORRECTION : Utiliser la variable 'fullUserName' qui gère déjà les cas */}
         {fullUserName}
       </p>
       <p className="text-xs leading-none text-muted-foreground">
@@ -188,12 +187,12 @@ export function Header() {
     </div>
   </DropdownMenuLabel>
   <DropdownMenuSeparator />
-  <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+  {/* CORRECTION : Le chemin doit être '/tableau-de-bord' et non '/dashboard' */}
+  <DropdownMenuItem onClick={() => navigate('/tableau-de-bord')}>
     <User className="mr-2 h-4 w-4" />
     <span>Tableau de bord</span>
   </DropdownMenuItem>
   <DropdownMenuSeparator />
-  {/* CORRECTION : Remplacer 'handleLogout' par 'handleSignOut' */}
   <DropdownMenuItem onClick={handleSignOut}>
     <LogOut className="mr-2 h-4 w-4" />
     <span>Se déconnecter</span>
