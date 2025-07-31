@@ -29,6 +29,16 @@ const formatCurrency = (amount) => {
   }).format(amount);
 };
 
+// --- Données Statiques ---
+// Ces valeurs remplacent les données qui venaient de l'API.
+const staticData = {
+  todaySales: 1254350,
+  todayTransactions: 82,
+  lowStockCount: 15,
+  expiringCount: 7,
+  activeSessions: 3,
+};
+
 const DashboardHome = () => (
   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
     
