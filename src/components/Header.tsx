@@ -175,25 +175,28 @@ export function Header() {
                     <UserAvatar initials={userInitials} />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border shadow-lg">
-                  <DropdownMenuLabel className="pb-1">
-                    <div className="flex flex-col space-y-1">
-                      <span className="font-medium">{fullUserName}</span>
-                      <span className="text-sm text-muted-foreground font-normal">
-                        {user.email}
-                      </span>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/tableau-de-bord')}>
-                    Tableau de bord
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Se déconnecter
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {user?.prenoms} {user?.noms}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user?.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Tableau de bord</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Se déconnecter</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Button
