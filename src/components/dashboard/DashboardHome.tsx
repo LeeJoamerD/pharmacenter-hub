@@ -174,7 +174,7 @@ const DashboardHome = () => {
                   <Badge variant="destructive">{expiringCount}</Badge>
                 </div>
               )}
-
+//
               {activeSessions > 0 && (
                 <div className="flex items-start space-x-3 p-2 bg-green-50 rounded-lg">
                   <div className="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
