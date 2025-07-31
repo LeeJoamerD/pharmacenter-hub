@@ -74,7 +74,7 @@ const FamilyManager = () => {
   };
 
   const handleDeleteFamily = (familyId: string) => {
-    deleteMutation.mutate(familyId, {
+    deleteMutation.mutate({ id: familyId }, {
       onSuccess: () => {
         toast.success('Famille supprimée avec succès');
       },
@@ -93,7 +93,7 @@ const FamilyManager = () => {
 
   const onSubmit = (data: FamilyProduct) => {
     if (editingFamily) {
-      updateMutation.mutate({ id: editingFamily.id, updates: data }, {
+      updateMutation.mutate({ id: editingFamily.id, ...data }, {
         onSuccess: () => {
           toast.success('Famille modifiée avec succès');
           handleDialogClose();

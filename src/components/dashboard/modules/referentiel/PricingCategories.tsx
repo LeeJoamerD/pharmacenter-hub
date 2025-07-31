@@ -65,6 +65,12 @@ const PricingCategories = () => {
     setIsDialogOpen(true);
   };
 
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+    setEditingCategory(null);
+    form.reset();
+  };
+
   const handleDeleteCategory = (categoryId: number) => {
     setCategories(categories.filter(c => c.id !== categoryId));
     toast({
@@ -186,7 +192,7 @@ const PricingCategories = () => {
                     />
 
                     <DialogFooter className="col-span-2">
-                      <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                      <Button type="button" variant="outline" onClick={handleDialogClose}>
                         Annuler
                       </Button>
                       <Button type="submit">

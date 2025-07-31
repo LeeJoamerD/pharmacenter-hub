@@ -91,6 +91,12 @@ const RegulationTracker = () => {
     setIsDialogOpen(true);
   };
 
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+    setEditingRegulation(null);
+    form.reset();
+  };
+
   const handleDeleteRegulation = (regulationId: number) => {
     setRegulations(regulations.filter(r => r.id !== regulationId));
     toast({
@@ -344,7 +350,7 @@ const RegulationTracker = () => {
                     />
 
                     <DialogFooter className="col-span-2">
-                      <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                      <Button type="button" variant="outline" onClick={handleDialogClose}>
                         Annuler
                       </Button>
                       <Button type="submit">

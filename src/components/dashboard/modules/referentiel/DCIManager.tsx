@@ -80,6 +80,12 @@ const DCIManager = () => {
     setIsDialogOpen(true);
   };
 
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+    setEditingDCI(null);
+    form.reset();
+  };
+
   const handleDeleteDCI = (dciId: number) => {
     setDcis(dcis.filter(d => d.id !== dciId));
     toast({
@@ -229,7 +235,7 @@ const DCIManager = () => {
                     />
 
                     <DialogFooter className="col-span-2">
-                      <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                      <Button type="button" variant="outline" onClick={handleDialogClose}>
                         Annuler
                       </Button>
                       <Button type="submit">
