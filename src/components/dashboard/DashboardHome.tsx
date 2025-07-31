@@ -17,8 +17,8 @@ import {
   Clock,
   Calendar
 } from "lucide-react";
-import { useDashboardStats, useRefreshData } from '@/hooks/useApi';
-import { formatCurrency, formatDate } from '@/lib/utils';
+//import { useDashboardStats, useRefreshData } from '@/hooks/useApi';
+//import { formatCurrency, formatDate } from '@/lib/utils';
 
 const DashboardHome = () => {
   const { salesSummary, stockLevels, expiringStock, sessions, isLoading, error } = useDashboardStats();
