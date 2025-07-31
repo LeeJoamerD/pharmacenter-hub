@@ -2,6 +2,8 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   ShoppingCart, 
   Users, 
@@ -12,41 +14,79 @@ import {
   TrendingUp,
   Clock,
   Calendar
-} from "lucide-react";;
+} from "lucide-react";
 
-// --- Fonctions utilitaires locales (pour remplacer celles du backend) ---
+// Données statiques simulées
+const staticData = {
+  salesSummary: {
+    total_ventes_ttc: 1250.75,
+    nombre_ventes: 42
+  },
+  stockLevels: [
+    { status: 'Alerte', nom: 'Paracétamol 500mg' },
+    { status: 'Normal', nom: 'Ibuprofène 400mg' },
+    { status: 'Alerte', nom: 'Amoxicilline 1g' }
+  ],
+  expiringStock: {
+    report: [
+      { nom: 'Doliprane 1000mg', date_expiration: '2025-08-15' },
+      { nom: 'Smecta', date_expiration: '2025-08-20' }
+    ]
+  },
+  sessions: [
+    { statut: 'Ouverte', caisse: 'Caisse 1' },
+    { statut: 'Fermée', caisse: 'Caisse 2' },
+    { statut: 'Ouverte', caisse: 'Caisse 3' }
+  ]
+};
 
-/**
- * Formate un nombre en devise (Franc CFA).
- * @param {number} amount - Le montant à formater.
- * @returns {string} - Le montant formaté.
- */
-const formatCurrency = (amount) => {
+// Fonctions utilitaires locales
+const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'XAF', // Franc CFA d'Afrique Centrale
-    minimumFractionDigits: 0,
+    currency: 'EUR'
   }).format(amount);
 };
 
-const DashboardHome = () => {
-  // Utilisation des données statiques définies ci-dessus
-  const { 
-    todaySales, 
-    todayTransactions, 
-    lowStockCount, 
-    expiringCount, 
-    activeSessions 
-  } = staticData;
+const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString('fr-FR');
+};
 
-  // La fonction de rafraîchissement est maintenant une simple alerte pour la démo.
-  const handleRefresh = () => {
-    alert("Ceci est une démo statique. Le rafraîchissement n'est pas actif.");
+const DashboardHome = () => {
+  // Simuler un état de chargement (désactivé ici)
+  const isLoading = false;
+  const error = null;
+
+  // Calculer les statistiques à partir des données statiques
+  const todaySales = staticData.salesSummary.total_ventes_ttc;
+  const todayTransactions = staticData.salesSummary.nombre_ventes;
+  const lowStockCount = staticData.stockLevels.filter(item => item.status === 'Alerte').length;
+  const expiringCount = staticData.expiringStock.report.length;
+  const activeSessions = staticData.sessions.filter(session => session.statut === 'Ouverte').length;
+
+  // Fonction de rafraîchissement factice
+  const refreshData = () => {
+    console.log('Rafraîchissement des données (statique - aucun changement)');
   };
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>
+          Erreur lors du chargement des données du tableau de bord. 
+          <Button variant="outline" size="sm" onClick={refreshData} className="ml-2">
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Réessayer
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header avec bouton de rafraîchissement (désactivé pour la démo) */}
+      {/* Header avec bouton de rafraîchissement */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Tableau de bord</h2>
@@ -56,9 +96,10 @@ const DashboardHome = () => {
         </div>
         <Button 
           variant="outline" 
-          onClick={handleRefresh}
+          onClick={refreshData}
+          disabled={isLoading}
         >
-          <RefreshCw className="h-4 w-4 mr-2" />
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           Actualiser
         </Button>
       </div>
@@ -71,10 +112,16 @@ const DashboardHome = () => {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(todaySales)}</div>
-            <p className="text-xs text-muted-foreground">
-              {todayTransactions} transaction{todayTransactions > 1 ? 's' : ''} aujourd'hui
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{formatCurrency(todaySales)}</div>
+                <p className="text-xs text-muted-foreground">
+                  {todayTransactions} transaction{todayTransactions > 1 ? 's' : ''} aujourd'hui
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -84,10 +131,16 @@ const DashboardHome = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{activeSessions}</div>
-            <p className="text-xs text-muted-foreground">
-              Caisse{activeSessions > 1 ? 's' : ''} ouverte{activeSessions > 1 ? 's' : ''}
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{activeSessions}</div>
+                <p className="text-xs text-muted-foreground">
+                  Caisse{activeSessions > 1 ? 's' : ''} ouverte{activeSessions > 1 ? 's' : ''}
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -97,10 +150,16 @@ const DashboardHome = () => {
             <PackageSearch className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{lowStockCount}</div>
-            <p className="text-xs text-muted-foreground">
-              Produit{lowStockCount > 1 ? 's' : ''} sous le seuil d'alerte
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-orange-600">{lowStockCount}</div>
+                <p className="text-xs text-muted-foreground">
+                  Produit{lowStockCount > 1 ? 's' : ''} sous le seuil d'alerte
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -110,10 +169,16 @@ const DashboardHome = () => {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{expiringCount}</div>
-            <p className="text-xs text-muted-foreground">
-              Lot{expiringCount > 1 ? 's' : ''} expirant dans 30 jours
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-red-600">{expiringCount}</div>
+                <p className="text-xs text-muted-foreground">
+                  Lot{expiringCount > 1 ? 's' : ''} expirant dans 30 jours
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -149,50 +214,60 @@ const DashboardHome = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {lowStockCount > 0 && (
-                <div className="flex items-start space-x-3 p-2 bg-orange-50 rounded-lg">
-                  <div className="w-2 h-2 rounded-full bg-orange-500 mt-2"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Stock faible</p>
-                    <p className="text-xs text-muted-foreground">
-                      {lowStockCount} produit{lowStockCount > 1 ? 's' : ''} à réapprovisionner
-                    </p>
-                  </div>
-                  <Badge variant="secondary">{lowStockCount}</Badge>
-                </div>
-              )}
-              
-              {expiringCount > 0 && (
-                <div className="flex items-start space-x-3 p-2 bg-red-50 rounded-lg">
-                  <div className="w-2 h-2 rounded-full bg-red-500 mt-2"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Expiration proche</p>
-                    <p className="text-xs text-muted-foreground">
-                      {expiringCount} lot{expiringCount > 1 ? 's' : ''} expire{expiringCount === 1 ? '' : 'nt'} bientôt
-                    </p>
-                  </div>
-                  <Badge variant="destructive">{expiringCount}</Badge>
-                </div>
-              )}
-//
-              {activeSessions > 0 && (
-                <div className="flex items-start space-x-3 p-2 bg-green-50 rounded-lg">
-                  <div className="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Sessions actives</p>
-                    <p className="text-xs text-muted-foreground">
-                      {activeSessions} caisse{activeSessions > 1 ? 's' : ''} en cours d'utilisation
-                    </p>
-                  </div>
-                  <Badge variant="default">{activeSessions}</Badge>
-                </div>
-              )}
+              {isLoading ? (
+                <>
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </>
+              ) : (
+                <>
+                  {lowStockCount > 0 && (
+                    <div className="flex items-start space-x-3 p-2 bg-orange-50 rounded-lg">
+                      <div className="w-2 h-2 rounded-full bg-orange-500 mt-2"></div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Stock faible</p>
+                        <p className="text-xs text-muted-foreground">
+                          {lowStockCount} produit{lowStockCount > 1 ? 's' : ''} à réapprovisionner
+                        </p>
+                      </div>
+                      <Badge variant="secondary">{lowStockCount}</Badge>
+                    </div>
+                  )}
+                  
+                  {expiringCount > 0 && (
+                    <div className="flex items-start space-x-3 p-2 bg-red-50 rounded-lg">
+                      <div className="w-2 h-2 rounded-full bg-red-500 mt-2"></div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Expiration proche</p>
+                        <p className="text-xs text-muted-foreground">
+                          {expiringCount} lot{expiringCount > 1 ? 's' : ''} expire{expiringCount === 1 ? '' : 'nt'} bientôt
+                        </p>
+                      </div>
+                      <Badge variant="destructive">{expiringCount}</Badge>
+                    </div>
+                  )}
 
-              {lowStockCount === 0 && expiringCount === 0 && activeSessions === 0 && (
-                <div className="text-center py-8">
-                  <Calendar className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">Aucune alerte pour le moment</p>
-                </div>
+                  {activeSessions > 0 && (
+                    <div className="flex items-start space-x-3 p-2 bg-green-50 rounded-lg">
+                      <div className="w-2 h-2 rounded-full bg-green-500 mt-2"></div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Sessions actives</p>
+                        <p className="text-xs text-muted-foreground">
+                          {activeSessions} caisse{activeSessions > 1 ? 's' : ''} en cours d'utilisation
+                        </p>
+                      </div>
+                      <Badge variant="default">{activeSessions}</Badge>
+                    </div>
+                  )}
+
+                  {lowStockCount === 0 && expiringCount === 0 && activeSessions === 0 && (
+                    <div className="text-center py-8">
+                      <Calendar className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">Aucune alerte pour le moment</p>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </CardContent>
