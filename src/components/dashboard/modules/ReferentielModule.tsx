@@ -128,7 +128,7 @@ const ReferentielModule = () => {
             <div className="space-y-2">
               <button 
                 className="w-full text-left p-2 rounded hover:bg-muted"
-                onClick={() => setActiveTab('catalogue')}
+                onClick={() => setActiveTab('catalog')}
               >
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4" />
@@ -165,16 +165,20 @@ const ReferentielModule = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
+          <TabsTrigger value="catalog">Catalogue</TabsTrigger>
           <TabsTrigger value="familles">Familles</TabsTrigger>
           <TabsTrigger value="rayons">Rayons</TabsTrigger>
           <TabsTrigger value="categories">Catégories</TabsTrigger>
           <TabsTrigger value="dci">DCI</TabsTrigger>
-          <TabsTrigger value="catalog">Catalogue</TabsTrigger>
           <TabsTrigger value="reglementations">Réglementations</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
           <OverviewTab />
+        </TabsContent>
+
+        <TabsContent value="catalog">
+          <ProductCatalog />
         </TabsContent>
 
 
@@ -192,10 +196,6 @@ const ReferentielModule = () => {
 
         <TabsContent value="dci">
           <DCIManager />
-        </TabsContent>
-
-        <TabsContent value="catalog">
-          <ProductCatalog />
         </TabsContent>
 
         <TabsContent value="reglementations">

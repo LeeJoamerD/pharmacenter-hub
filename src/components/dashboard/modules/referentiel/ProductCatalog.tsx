@@ -11,7 +11,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   Table,
@@ -28,7 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Trash2, Search, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -40,18 +38,16 @@ interface Product {
   dci_id?: string;
   categorie_tarification_id?: string;
   libelle_produit: string;
-  description?: string;
   code_produit?: string;
-  code_barre?: string;
+  laboratoire?: string;
   prix_achat?: number;
   prix_vente?: number;
+  taux_tva?: number;
   stock_limite?: number;
-  stock_actuel?: number;
-  unite_mesure?: string;
-  laboratoire?: string;
-  forme_pharmaceutique?: string;
-  dosage?: string;
+  quantite_stock?: number;
   is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface FamilyProduct {
@@ -75,30 +71,68 @@ interface PricingCategory {
 }
 
 const ProductCatalog = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+  // États locaux
+  const [searchTerm, setSearchTerm] = useState("");
+  const [familleFilter, setFamilleFilter] = useState("all");
+  const [rayonFilter, setRayonFilter] = useState("all");
+  const [stockFilter, setStockFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [familleFilter, setFamilleFilter] = useState('');
-  const [rayonFilter, setRayonFilter] = useState('');
-  const [stockFilter, setStockFilter] = useState('');
-  const { toast } = useToast();
 
+  const { toast } = useToast();
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
 
-  // Fetch products
-  const { data: products, isLoading, error } = useTenantQueryWithCache(
-    ['products', searchTerm, familleFilter, rayonFilter, stockFilter],
+  // Récupération des données avec gestion des colonnes manquantes
+  const { data: products = [], isLoading } = useTenantQueryWithCache(
+    ['products'],
     'produits',
-    '*',
-    {},
-    { orderBy: { column: 'libelle_produit', ascending: true } }
+    'id, libelle_produit, code_produit, laboratoire, prix_achat, prix_vente, taux_tva, stock_limite, quantite_stock, famille_id, rayon_id, dci_id, categorie_tarification_id, is_active, created_at',
+    { is_active: true }
   );
 
-  // Fetch reference data
-  const { data: familles } = useTenantQueryWithCache(['families'], 'famille_produit', '*');
-  const { data: rayons } = useTenantQueryWithCache(['rayons'], 'rayons_produits', '*');
-  const { data: dcis } = useTenantQueryWithCache(['dcis'], 'dci', '*');
-  const { data: categories } = useTenantQueryWithCache(['categories'], 'categorie_tarification', '*');
+  const { data: families = [] } = useTenantQueryWithCache(
+    ['families'],
+    'famille_produit',
+    'id, libelle_famille'
+  );
+
+  const { data: rayons = [] } = useTenantQueryWithCache(
+    ['rayons'],
+    'rayons_produits',
+    'id, libelle_rayon'
+  );
+
+  const { data: categories = [] } = useTenantQueryWithCache(
+    ['pricing-categories'],
+    'categorie_tarification',
+    'id, libelle_categorie'
+  );
+
+  const { data: dcis = [] } = useTenantQueryWithCache(
+    ['dcis'],
+    'dci',
+    'id, nom_dci'
+  );
+
+  // Filtrage des produits
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFamille = !familleFilter || familleFilter === "all" || product.famille_id === familleFilter;
+    const matchesRayon = !rayonFilter || rayonFilter === "all" || product.rayon_id === rayonFilter;
+    
+    let matchesStock = true;
+    if (stockFilter && stockFilter !== "all") {
+      if (stockFilter === "rupture") {
+        matchesStock = (product.quantite_stock || 0) === 0;
+      } else if (stockFilter === "faible") {
+        matchesStock = (product.quantite_stock || 0) > 0 && (product.quantite_stock || 0) <= (product.stock_limite || 0);
+      } else if (stockFilter === "normal") {
+        matchesStock = (product.quantite_stock || 0) > (product.stock_limite || 0);
+      }
+    }
+    
+    return matchesSearch && matchesFamille && matchesRayon && matchesStock;
+  });
 
   // Mutations
   const createMutation = useTenantMutation('produits', 'insert', {
@@ -113,74 +147,51 @@ const ProductCatalog = () => {
     invalidateQueries: ['products'],
   });
 
-  const form = useForm<Product>({
-    defaultValues: {
-      libelle_produit: '',
-      description: '',
-      code_produit: '',
-      code_barre: '',
-      prix_achat: 0,
-      prix_vente: 0,
-      stock_limite: 0,
-      stock_actuel: 0,
-      unite_mesure: 'Unité',
-      laboratoire: '',
-      forme_pharmaceutique: '',
-      dosage: '',
-      is_active: true,
-    },
-  });
-
-  const filteredProducts = products?.filter((product: Product) => {
-    const matchesSearch = product.libelle_produit?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.code_produit?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.laboratoire?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesFamille = !familleFilter || product.famille_id === familleFilter;
-    const matchesRayon = !rayonFilter || product.rayon_id === rayonFilter;
-    
-    let matchesStock = true;
-    if (stockFilter === 'low') {
-      matchesStock = (product.stock_actuel || 0) <= (product.stock_limite || 0);
-    } else if (stockFilter === 'out') {
-      matchesStock = (product.stock_actuel || 0) === 0;
-    }
-    
-    return matchesSearch && matchesFamille && matchesRayon && matchesStock;
-  }) || [];
+  // Form setup
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<Product>();
 
   const clearFilters = () => {
-    setSearchTerm('');
-    setFamilleFilter('');
-    setRayonFilter('');
-    setStockFilter('');
+    setSearchTerm("");
+    setFamilleFilter("all");
+    setRayonFilter("all");
+    setStockFilter("all");
   };
 
   const handleAddProduct = () => {
     setEditingProduct(null);
-    form.reset();
+    reset({
+      libelle_produit: "",
+      code_produit: "",
+      laboratoire: "",
+      prix_achat: 0,
+      prix_vente: 0,
+      taux_tva: 0,
+      stock_limite: 0,
+      quantite_stock: 0,
+      is_active: true,
+    });
     setIsDialogOpen(true);
   };
 
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
-    form.reset(product);
+    reset(product);
     setIsDialogOpen(true);
   };
 
   const handleDialogClose = () => {
     setIsDialogOpen(false);
     setEditingProduct(null);
-    form.reset();
+    reset();
   };
 
   const handleDeleteProduct = (productId: string) => {
     deleteMutation.mutate({ id: productId }, {
       onSuccess: () => {
-        toast({ title: 'Succès', description: 'Produit supprimé avec succès' });
+        toast({ title: "Succès", description: "Produit supprimé avec succès" });
       },
       onError: (error) => {
-        toast({ title: 'Erreur', description: 'Erreur lors de la suppression : ' + error.message, variant: 'destructive' });
+        toast({ title: "Erreur", description: "Erreur lors de la suppression", variant: "destructive" });
       },
     });
   };
@@ -189,50 +200,37 @@ const ProductCatalog = () => {
     if (editingProduct) {
       updateMutation.mutate({ id: editingProduct.id, ...data }, {
         onSuccess: () => {
-          toast({ title: 'Succès', description: 'Produit modifié avec succès' });
+          toast({ title: "Succès", description: "Produit modifié avec succès" });
           handleDialogClose();
         },
         onError: (error) => {
-          toast({ title: 'Erreur', description: 'Erreur lors de la modification : ' + error.message, variant: 'destructive' });
+          toast({ title: "Erreur", description: "Erreur lors de la modification", variant: "destructive" });
         },
       });
     } else {
       createMutation.mutate(data, {
         onSuccess: () => {
-          toast({ title: 'Succès', description: 'Produit ajouté avec succès' });
+          toast({ title: "Succès", description: "Produit ajouté avec succès" });
           handleDialogClose();
         },
         onError: (error) => {
-          toast({ title: 'Erreur', description: 'Erreur lors de l\'ajout : ' + error.message, variant: 'destructive' });
+          toast({ title: "Erreur", description: "Erreur lors de l'ajout", variant: "destructive" });
         },
       });
     }
   };
 
   const getStockBadge = (product: Product) => {
-    const stockActuel = product.stock_actuel || 0;
-    const stockLimite = product.stock_limite || 0;
+    const stock = product.quantite_stock || 0;
+    const limite = product.stock_limite || 0;
     
-    if (stockActuel === 0) {
+    if (stock === 0) {
       return <Badge variant="destructive">Rupture</Badge>;
-    } else if (stockActuel <= stockLimite) {
-      return <Badge variant="outline">Stock bas</Badge>;
-    } else {
-      return <Badge variant="secondary">En stock</Badge>;
+    } else if (stock <= limite) {
+      return <Badge variant="secondary">Stock bas</Badge>;
     }
+    return <Badge variant="default">En stock</Badge>;
   };
-
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="text-center text-red-600">
-            Erreur lors du chargement: {error.message}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card>
@@ -246,7 +244,7 @@ const ProductCatalog = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Filters */}
+        {/* Filtres */}
         <div className="flex flex-wrap gap-4 mb-6">
           <div className="flex items-center space-x-2">
             <Search className="h-4 w-4" />
@@ -260,13 +258,13 @@ const ProductCatalog = () => {
 
           <Select value={familleFilter} onValueChange={setFamilleFilter}>
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Toutes les familles" />
+              <SelectValue placeholder="Famille" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Toutes les familles</SelectItem>
-              {familles?.map((famille: FamilyProduct) => (
-                <SelectItem key={famille.id} value={famille.id}>
-                  {famille.libelle_famille}
+              <SelectItem value="all">Toutes les familles</SelectItem>
+              {families.map((family) => (
+                <SelectItem key={family.id} value={family.id}>
+                  {family.libelle_famille}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -274,11 +272,11 @@ const ProductCatalog = () => {
 
           <Select value={rayonFilter} onValueChange={setRayonFilter}>
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Tous les rayons" />
+              <SelectValue placeholder="Rayon" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Tous les rayons</SelectItem>
-              {rayons?.map((rayon: RayonProduct) => (
+              <SelectItem value="all">Tous les rayons</SelectItem>
+              {rayons.map((rayon) => (
                 <SelectItem key={rayon.id} value={rayon.id}>
                   {rayon.libelle_rayon}
                 </SelectItem>
@@ -288,12 +286,13 @@ const ProductCatalog = () => {
 
           <Select value={stockFilter} onValueChange={setStockFilter}>
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Tous les stocks" />
+              <SelectValue placeholder="Stock" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Tous les stocks</SelectItem>
-              <SelectItem value="low">Stock bas</SelectItem>
-              <SelectItem value="out">Rupture</SelectItem>
+              <SelectItem value="all">Tous</SelectItem>
+              <SelectItem value="rupture">Rupture de stock</SelectItem>
+              <SelectItem value="faible">Stock faible</SelectItem>
+              <SelectItem value="normal">Stock normal</SelectItem>
             </SelectContent>
           </Select>
 
@@ -303,7 +302,7 @@ const ProductCatalog = () => {
           </Button>
         </div>
 
-        {/* Products Table */}
+        {/* Tableau des produits */}
         {isLoading ? (
           <div className="text-center py-8">Chargement...</div>
         ) : (
@@ -320,30 +319,23 @@ const ProductCatalog = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProducts.map((product: Product) => (
+              {filteredProducts.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell>
-                    <div>
-                      <div className="font-medium">{product.libelle_produit}</div>
-                      {product.description && (
-                        <div className="text-sm text-muted-foreground">
-                          {product.description}
-                        </div>
-                      )}
+                    <div className="font-medium">{product.libelle_produit}</div>
+                  </TableCell>
+                  <TableCell>{product.code_produit || 'N/A'}</TableCell>
+                  <TableCell>{product.laboratoire || 'N/A'}</TableCell>
+                  <TableCell>{(product.prix_vente || 0).toLocaleString()} FCFA</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span>{product.quantite_stock || 0}</span>
+                      <span className="text-xs text-muted-foreground">
+                        Limite: {product.stock_limite || 0}
+                      </span>
                     </div>
                   </TableCell>
-                  <TableCell>{product.code_produit}</TableCell>
-                  <TableCell>{product.laboratoire}</TableCell>
-                  <TableCell>{product.prix_vente?.toFixed(2)} FCFA</TableCell>
-                  <TableCell>
-                    <div>{product.stock_actuel || 0} {product.unite_mesure}</div>
-                    {getStockBadge(product)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={product.is_active ? "default" : "secondary"}>
-                      {product.is_active ? "Actif" : "Inactif"}
-                    </Badge>
-                  </TableCell>
+                  <TableCell>{getStockBadge(product)}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button
@@ -368,142 +360,172 @@ const ProductCatalog = () => {
           </Table>
         )}
 
-        {/* Add/Edit Dialog */}
+        {/* Dialog d'ajout/modification */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {editingProduct ? 'Modifier le produit' : 'Ajouter un produit'}
+                {editingProduct ? "Modifier le produit" : "Ajouter un produit"}
               </DialogTitle>
             </DialogHeader>
 
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <Label htmlFor="libelle_produit">Nom du produit *</Label>
-                <Input
-                  id="libelle_produit"
-                  {...form.register('libelle_produit', { required: true })}
-                />
-              </div>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="libelle_produit">Nom du produit *</Label>
+                  <Input
+                    id="libelle_produit"
+                    {...register("libelle_produit", { required: "Le nom est requis" })}
+                    placeholder="Nom du produit"
+                  />
+                  {errors.libelle_produit && (
+                    <p className="text-sm text-destructive mt-1">{errors.libelle_produit.message}</p>
+                  )}
+                </div>
 
-              <div className="col-span-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  {...form.register('description')}
-                />
-              </div>
+                <div>
+                  <Label htmlFor="code_produit">Code produit</Label>
+                  <Input
+                    id="code_produit"
+                    {...register("code_produit")}
+                    placeholder="Code produit"
+                  />
+                </div>
 
-              <div>
-                <Label htmlFor="code_produit">Code produit</Label>
-                <Input
-                  id="code_produit"
-                  {...form.register('code_produit')}
-                />
-              </div>
+                <div>
+                  <Label htmlFor="famille_id">Famille</Label>
+                  <Select onValueChange={(value) => setValue('famille_id', value)} value={watch('famille_id') || ""}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une famille" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {families.map((family) => (
+                        <SelectItem key={family.id} value={family.id}>
+                          {family.libelle_famille}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <Label htmlFor="code_barre">Code barre</Label>
-                <Input
-                  id="code_barre"
-                  {...form.register('code_barre')}
-                />
-              </div>
+                <div>
+                  <Label htmlFor="rayon_id">Rayon</Label>
+                  <Select onValueChange={(value) => setValue('rayon_id', value)} value={watch('rayon_id') || ""}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un rayon" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rayons.map((rayon) => (
+                        <SelectItem key={rayon.id} value={rayon.id}>
+                          {rayon.libelle_rayon}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <Label htmlFor="famille_id">Famille</Label>
-                <Select onValueChange={(value) => form.setValue('famille_id', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une famille" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {familles?.map((famille: FamilyProduct) => (
-                      <SelectItem key={famille.id} value={famille.id}>
-                        {famille.libelle_famille}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <div>
+                  <Label htmlFor="dci_id">DCI</Label>
+                  <Select onValueChange={(value) => setValue('dci_id', value)} value={watch('dci_id') || ""}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un DCI" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dcis.map((dci) => (
+                        <SelectItem key={dci.id} value={dci.id}>
+                          {dci.nom_dci}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <Label htmlFor="rayon_id">Rayon</Label>
-                <Select onValueChange={(value) => form.setValue('rayon_id', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un rayon" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rayons?.map((rayon: RayonProduct) => (
-                      <SelectItem key={rayon.id} value={rayon.id}>
-                        {rayon.libelle_rayon}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <div>
+                  <Label htmlFor="categorie_tarification_id">Catégorie de tarification</Label>
+                  <Select onValueChange={(value) => setValue('categorie_tarification_id', value)} value={watch('categorie_tarification_id') || ""}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner une catégorie" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.libelle_categorie}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <Label htmlFor="laboratoire">Laboratoire</Label>
-                <Input
-                  id="laboratoire"
-                  {...form.register('laboratoire')}
-                />
-              </div>
+                <div>
+                  <Label htmlFor="laboratoire">Laboratoire</Label>
+                  <Input
+                    id="laboratoire"
+                    {...register("laboratoire")}
+                    placeholder="Laboratoire"
+                  />
+                </div>
 
-              <div>
-                <Label htmlFor="forme_pharmaceutique">Forme pharmaceutique</Label>
-                <Input
-                  id="forme_pharmaceutique"
-                  {...form.register('forme_pharmaceutique')}
-                />
-              </div>
+                <div>
+                  <Label htmlFor="prix_achat">Prix d'achat</Label>
+                  <Input
+                    id="prix_achat"
+                    type="number"
+                    step="0.01"
+                    {...register("prix_achat", { valueAsNumber: true })}
+                    placeholder="0.00"
+                  />
+                </div>
 
-              <div>
-                <Label htmlFor="prix_achat">Prix d'achat (FCFA)</Label>
-                <Input
-                  id="prix_achat"
-                  type="number"
-                  step="0.01"
-                  {...form.register('prix_achat', { valueAsNumber: true })}
-                />
-              </div>
+                <div>
+                  <Label htmlFor="prix_vente">Prix de vente</Label>
+                  <Input
+                    id="prix_vente"
+                    type="number"
+                    step="0.01"
+                    {...register("prix_vente", { valueAsNumber: true })}
+                    placeholder="0.00"
+                  />
+                </div>
 
-              <div>
-                <Label htmlFor="prix_vente">Prix de vente (FCFA)</Label>
-                <Input
-                  id="prix_vente"
-                  type="number"
-                  step="0.01"
-                  {...form.register('prix_vente', { valueAsNumber: true })}
-                />
-              </div>
+                <div>
+                  <Label htmlFor="taux_tva">Taux TVA (%)</Label>
+                  <Input
+                    id="taux_tva"
+                    type="number"
+                    step="0.01"
+                    {...register("taux_tva", { valueAsNumber: true })}
+                    placeholder="0.00"
+                  />
+                </div>
 
-              <div>
-                <Label htmlFor="stock_limite">Stock limite</Label>
-                <Input
-                  id="stock_limite"
-                  type="number"
-                  {...form.register('stock_limite', { valueAsNumber: true })}
-                />
-              </div>
+                <div>
+                  <Label htmlFor="stock_limite">Stock limite</Label>
+                  <Input
+                    id="stock_limite"
+                    type="number"
+                    {...register("stock_limite", { valueAsNumber: true })}
+                    placeholder="0"
+                  />
+                </div>
 
-              <div>
-                <Label htmlFor="stock_actuel">Stock actuel</Label>
-                <Input
-                  id="stock_actuel"
-                  type="number"
-                  {...form.register('stock_actuel', { valueAsNumber: true })}
-                />
+                <div>
+                  <Label htmlFor="quantite_stock">Quantité en stock</Label>
+                  <Input
+                    id="quantite_stock"
+                    type="number"
+                    {...register("quantite_stock", { valueAsNumber: true })}
+                    placeholder="0"
+                  />
+                </div>
               </div>
-
-              <DialogFooter className="col-span-2">
-                <Button type="button" variant="outline" onClick={handleDialogClose}>
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => handleDialogClose()}>
                   Annuler
                 </Button>
                 <Button type="submit">
-                  {editingProduct ? 'Modifier' : 'Ajouter'}
+                  {editingProduct ? "Modifier" : "Ajouter"}
                 </Button>
-              </DialogFooter>
+              </div>
             </form>
           </DialogContent>
         </Dialog>
