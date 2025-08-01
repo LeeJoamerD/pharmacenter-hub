@@ -11,9 +11,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { Plus, Search, Edit, Trash2, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
 
 interface Regulation {
-  id: number;
+  id: string;
   nom_reglementation: string;
   type_reglementation: string;
   statut: string;
@@ -27,32 +28,17 @@ interface Regulation {
 }
 
 const RegulationTracker = () => {
-  const [regulations, setRegulations] = useState<Regulation[]>([
-    {
-      id: 1,
-      nom_reglementation: "Liste I - Substances vénéneuses",
-      type_reglementation: "Classification pharmaceutique",
-      statut: "Actif",
-      description: "Médicaments délivrés uniquement sur prescription médicale",
-      date_application: "2020-01-01",
-      autorite_competente: "Ministère de la Santé",
-      reference_legale: "Arrêté n°2020-001",
-      niveau_restriction: "Élevé",
-      produits_concernes: 245
-    },
-    {
-      id: 2,
-      nom_reglementation: "Stupéfiants",
-      type_reglementation: "Substances contrôlées",
-      statut: "Actif",
-      description: "Médicaments soumis à réglementation spéciale",
-      date_application: "2019-06-15",
-      autorite_competente: "ANSM",
-      reference_legale: "Code de la santé publique",
-      niveau_restriction: "Très élevé",
-      produits_concernes: 67
-    }
-  ]);
+  const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
+  
+  const { data: regulations = [], isLoading, refetch } = useTenantQueryWithCache(
+    ['reglementations'],
+    'reglementations',
+    '*'
+  );
+
+  const createRegulation = useTenantMutation('reglementations', 'insert');
+  const updateRegulation = useTenantMutation('reglementations', 'update');
+  const deleteRegulation = useTenantMutation('reglementations', 'delete');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -74,7 +60,7 @@ const RegulationTracker = () => {
     }
   });
 
-  const filteredRegulations = regulations.filter(regulation =>
+  const filteredRegulations = regulations.filter((regulation: Regulation) =>
     regulation.nom_reglementation.toLowerCase().includes(searchTerm.toLowerCase()) ||
     regulation.type_reglementation.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -97,30 +83,50 @@ const RegulationTracker = () => {
     form.reset();
   };
 
-  const handleDeleteRegulation = (regulationId: number) => {
-    setRegulations(regulations.filter(r => r.id !== regulationId));
-    toast({
-      title: "Réglementation supprimée",
-      description: "La réglementation a été supprimée avec succès.",
-    });
-  };
-
-  const onSubmit = (data: Regulation) => {
-    if (editingRegulation) {
-      setRegulations(regulations.map(r => r.id === editingRegulation.id ? { ...data, id: editingRegulation.id } : r));
+  const handleDeleteRegulation = async (regulationId: string) => {
+    try {
+      await deleteRegulation.mutateAsync({ id: regulationId });
       toast({
-        title: "Réglementation modifiée",
-        description: "La réglementation a été modifiée avec succès.",
+        title: "Réglementation supprimée",
+        description: "La réglementation a été supprimée avec succès.",
       });
-    } else {
-      const newRegulation = { ...data, id: Date.now() };
-      setRegulations([...regulations, newRegulation]);
+      refetch();
+    } catch (error) {
       toast({
-        title: "Réglementation ajoutée",
-        description: "La réglementation a été ajoutée avec succès.",
+        title: "Erreur",
+        description: "Impossible de supprimer la réglementation.",
+        variant: "destructive",
       });
     }
-    setIsDialogOpen(false);
+  };
+
+  const onSubmit = async (data: Regulation) => {
+    try {
+      if (editingRegulation) {
+        await updateRegulation.mutateAsync({ 
+          id: editingRegulation.id, 
+          ...data 
+        });
+        toast({
+          title: "Réglementation modifiée",
+          description: "La réglementation a été modifiée avec succès.",
+        });
+      } else {
+        await createRegulation.mutateAsync(data);
+        toast({
+          title: "Réglementation ajoutée",
+          description: "La réglementation a été ajoutée avec succès.",
+        });
+      }
+      setIsDialogOpen(false);
+      refetch();
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur s'est produite lors de l'opération.",
+        variant: "destructive",
+      });
+    }
   };
 
   const getStatusBadge = (statut: string) => {
@@ -376,36 +382,46 @@ const RegulationTracker = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRegulations.map((regulation) => (
-                <TableRow key={regulation.id}>
-                  <TableCell className="font-medium">{regulation.nom_reglementation}</TableCell>
-                  <TableCell>{regulation.type_reglementation}</TableCell>
-                  <TableCell>{getStatusBadge(regulation.statut)}</TableCell>
-                  <TableCell>{getRestrictionBadge(regulation.niveau_restriction)}</TableCell>
-                  <TableCell>{new Date(regulation.date_application).toLocaleDateString('fr-FR')}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{regulation.produits_concernes} produits</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditRegulation(regulation)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteRegulation(regulation.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center">Chargement...</TableCell>
                 </TableRow>
-              ))}
+              ) : filteredRegulations.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center">Aucune réglementation trouvée</TableCell>
+                </TableRow>
+              ) : (
+                filteredRegulations.map((regulation: Regulation) => (
+                  <TableRow key={regulation.id}>
+                    <TableCell className="font-medium">{regulation.nom_reglementation}</TableCell>
+                    <TableCell>{regulation.type_reglementation}</TableCell>
+                    <TableCell>{getStatusBadge(regulation.statut)}</TableCell>
+                    <TableCell>{getRestrictionBadge(regulation.niveau_restriction)}</TableCell>
+                    <TableCell>{new Date(regulation.date_application).toLocaleDateString('fr-FR')}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{regulation.produits_concernes} produits</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditRegulation(regulation)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteRegulation(regulation.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

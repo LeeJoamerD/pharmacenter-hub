@@ -10,9 +10,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { Plus, Search, Edit, Trash2, Pill } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
 
 interface DCI {
-  id: number;
+  id: string;
   nom_dci: string;
   description?: string;
   classe_therapeutique?: string;
@@ -23,28 +24,17 @@ interface DCI {
 }
 
 const DCIManager = () => {
-  const [dcis, setDcis] = useState<DCI[]>([
-    {
-      id: 1,
-      nom_dci: "Paracétamol",
-      description: "Analgésique et antipyrétique",
-      classe_therapeutique: "Antalgiques non opioïdes",
-      contre_indications: "Insuffisance hépatique sévère",
-      effets_secondaires: "Rares: éruptions cutanées",
-      posologie: "500mg à 1g, 3 à 4 fois par jour",
-      produits_associes: 15
-    },
-    {
-      id: 2,
-      nom_dci: "Ibuprofène",
-      description: "Anti-inflammatoire non stéroïdien",
-      classe_therapeutique: "AINS",
-      contre_indications: "Ulcère gastroduodénal",
-      effets_secondaires: "Troubles gastro-intestinaux",
-      posologie: "200mg à 400mg, 3 fois par jour",
-      produits_associes: 8
-    }
-  ]);
+  const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
+  
+  const { data: dcis = [], isLoading, refetch } = useTenantQueryWithCache(
+    ['dci'],
+    'dci',
+    '*'
+  );
+
+  const createDCI = useTenantMutation('dci', 'insert');
+  const updateDCI = useTenantMutation('dci', 'update');
+  const deleteDCI = useTenantMutation('dci', 'delete');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -63,7 +53,7 @@ const DCIManager = () => {
     }
   });
 
-  const filteredDCIs = dcis.filter(dci =>
+  const filteredDCIs = dcis.filter((dci: DCI) =>
     dci.nom_dci.toLowerCase().includes(searchTerm.toLowerCase()) ||
     dci.classe_therapeutique?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -86,30 +76,50 @@ const DCIManager = () => {
     form.reset();
   };
 
-  const handleDeleteDCI = (dciId: number) => {
-    setDcis(dcis.filter(d => d.id !== dciId));
-    toast({
-      title: "DCI supprimée",
-      description: "La DCI a été supprimée avec succès.",
-    });
-  };
-
-  const onSubmit = (data: DCI) => {
-    if (editingDCI) {
-      setDcis(dcis.map(d => d.id === editingDCI.id ? { ...data, id: editingDCI.id } : d));
+  const handleDeleteDCI = async (dciId: string) => {
+    try {
+      await deleteDCI.mutateAsync({ id: dciId });
       toast({
-        title: "DCI modifiée",
-        description: "La DCI a été modifiée avec succès.",
+        title: "DCI supprimée",
+        description: "La DCI a été supprimée avec succès.",
       });
-    } else {
-      const newDCI = { ...data, id: Date.now() };
-      setDcis([...dcis, newDCI]);
+      refetch();
+    } catch (error) {
       toast({
-        title: "DCI ajoutée",
-        description: "La DCI a été ajoutée avec succès.",
+        title: "Erreur",
+        description: "Impossible de supprimer la DCI.",
+        variant: "destructive",
       });
     }
-    setIsDialogOpen(false);
+  };
+
+  const onSubmit = async (data: DCI) => {
+    try {
+      if (editingDCI) {
+        await updateDCI.mutateAsync({ 
+          id: editingDCI.id, 
+          ...data 
+        });
+        toast({
+          title: "DCI modifiée",
+          description: "La DCI a été modifiée avec succès.",
+        });
+      } else {
+        await createDCI.mutateAsync(data);
+        toast({
+          title: "DCI ajoutée",
+          description: "La DCI a été ajoutée avec succès.",
+        });
+      }
+      setIsDialogOpen(false);
+      refetch();
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur s'est produite lors de l'opération.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -259,36 +269,46 @@ const DCIManager = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredDCIs.map((dci) => (
-                <TableRow key={dci.id}>
-                  <TableCell className="font-medium">{dci.nom_dci}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{dci.classe_therapeutique || '-'}</Badge>
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate">{dci.description || '-'}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{dci.produits_associes} produits</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditDCI(dci)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteDCI(dci.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center">Chargement...</TableCell>
                 </TableRow>
-              ))}
+              ) : filteredDCIs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center">Aucune DCI trouvée</TableCell>
+                </TableRow>
+              ) : (
+                filteredDCIs.map((dci: DCI) => (
+                  <TableRow key={dci.id}>
+                    <TableCell className="font-medium">{dci.nom_dci}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{dci.classe_therapeutique || '-'}</Badge>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate">{dci.description || '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{dci.produits_associes} produits</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditDCI(dci)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteDCI(dci.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
