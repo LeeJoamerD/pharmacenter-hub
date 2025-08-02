@@ -8,39 +8,88 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { Plus, Search, Edit, Trash2, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
 
 interface PricingCategory {
-  id: number;
+  id: string;
+  tenant_id: string;
   libelle_categorie: string;
   taux_tva: number;
   taux_centime_additionnel: number;
   coefficient_prix_vente: number;
+  created_at: string;
+  updated_at: string;
 }
 
 const PricingCategories = () => {
-  const [categories, setCategories] = useState<PricingCategory[]>([
-    {
-      id: 1,
-      libelle_categorie: "Médicaments essentiels",
-      taux_tva: 18.00,
-      taux_centime_additionnel: 2.00,
-      coefficient_prix_vente: 1.30
+  const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
+  
+  // Fetch categories from database
+  const { data: categories = [], isLoading, error } = useTenantQueryWithCache(
+    ['pricing-categories'],
+    'categorie_tarification',
+    '*',
+    {},
+    { orderBy: { column: 'libelle_categorie', ascending: true } }
+  );
+
+  // Mutations
+  const createCategory = useTenantMutation('categorie_tarification', 'insert', {
+    onSuccess: () => {
+      toast({
+        title: "Catégorie ajoutée",
+        description: "La catégorie de tarification a été ajoutée avec succès.",
+      });
+      setIsDialogOpen(false);
     },
-    {
-      id: 2,
-      libelle_categorie: "Dispositifs médicaux",
-      taux_tva: 18.00,
-      taux_centime_additionnel: 1.50,
-      coefficient_prix_vente: 1.25
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: `Erreur lors de l'ajout: ${error.message}`,
+        variant: "destructive",
+      });
     }
-  ]);
+  });
+
+  const updateCategory = useTenantMutation('categorie_tarification', 'update', {
+    onSuccess: () => {
+      toast({
+        title: "Catégorie modifiée",
+        description: "La catégorie de tarification a été modifiée avec succès.",
+      });
+      setIsDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: `Erreur lors de la modification: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const deleteCategory = useTenantMutation('categorie_tarification', 'delete', {
+    onSuccess: () => {
+      toast({
+        title: "Catégorie supprimée",
+        description: "La catégorie de tarification a été supprimée avec succès.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: `Erreur lors de la suppression: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<PricingCategory | null>(null);
   const { toast } = useToast();
 
-  const form = useForm<PricingCategory>({
+  const form = useForm<Partial<PricingCategory>>({
     defaultValues: {
       libelle_categorie: '',
       taux_tva: 0,
@@ -55,7 +104,12 @@ const PricingCategories = () => {
 
   const handleAddCategory = () => {
     setEditingCategory(null);
-    form.reset();
+    form.reset({
+      libelle_categorie: '',
+      taux_tva: 0,
+      taux_centime_additionnel: 0,
+      coefficient_prix_vente: 0
+    });
     setIsDialogOpen(true);
   };
 
@@ -71,30 +125,33 @@ const PricingCategories = () => {
     form.reset();
   };
 
-  const handleDeleteCategory = (categoryId: number) => {
-    setCategories(categories.filter(c => c.id !== categoryId));
-    toast({
-      title: "Catégorie supprimée",
-      description: "La catégorie de tarification a été supprimée avec succès.",
+  const handleDeleteCategory = (categoryId: string) => {
+    deleteCategory.mutate({
+      filters: { id: { eq: categoryId } }
     });
   };
 
-  const onSubmit = (data: PricingCategory) => {
+  const onSubmit = (data: Partial<PricingCategory>) => {
     if (editingCategory) {
-      setCategories(categories.map(c => c.id === editingCategory.id ? { ...data, id: editingCategory.id } : c));
-      toast({
-        title: "Catégorie modifiée",
-        description: "La catégorie de tarification a été modifiée avec succès.",
+      updateCategory.mutate({
+        filters: { id: { eq: editingCategory.id } },
+        data: {
+          libelle_categorie: data.libelle_categorie!,
+          taux_tva: data.taux_tva!,
+          taux_centime_additionnel: data.taux_centime_additionnel!,
+          coefficient_prix_vente: data.coefficient_prix_vente!
+        }
       });
     } else {
-      const newCategory = { ...data, id: Date.now() };
-      setCategories([...categories, newCategory]);
-      toast({
-        title: "Catégorie ajoutée",
-        description: "La catégorie de tarification a été ajoutée avec succès.",
+      createCategory.mutate({
+        data: {
+          libelle_categorie: data.libelle_categorie!,
+          taux_tva: data.taux_tva!,
+          taux_centime_additionnel: data.taux_centime_additionnel!,
+          coefficient_prix_vente: data.coefficient_prix_vente!
+        }
       });
     }
-    setIsDialogOpen(false);
   };
 
   return (
@@ -205,45 +262,59 @@ const PricingCategories = () => {
             </Dialog>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Libellé</TableHead>
-                <TableHead>Taux TVA (%)</TableHead>
-                <TableHead>Taux centime add. (%)</TableHead>
-                <TableHead>Coefficient prix vente</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCategories.map((category) => (
-                <TableRow key={category.id}>
-                  <TableCell className="font-medium">{category.libelle_categorie}</TableCell>
-                  <TableCell>{category.taux_tva.toFixed(2)}%</TableCell>
-                  <TableCell>{category.taux_centime_additionnel.toFixed(2)}%</TableCell>
-                  <TableCell>{category.coefficient_prix_vente.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditCategory(category)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteCategory(category.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          {isLoading ? (
+            <div className="text-center py-4">Chargement...</div>
+          ) : error ? (
+            <div className="text-center py-4 text-red-500">Erreur: {error.message}</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Libellé</TableHead>
+                  <TableHead>Taux TVA (%)</TableHead>
+                  <TableHead>Taux centime add. (%)</TableHead>
+                  <TableHead>Coefficient prix vente</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredCategories.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-4">
+                      Aucune catégorie trouvée
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredCategories.map((category) => (
+                    <TableRow key={category.id}>
+                      <TableCell className="font-medium">{category.libelle_categorie}</TableCell>
+                      <TableCell>{category.taux_tva?.toFixed(2)}%</TableCell>
+                      <TableCell>{category.taux_centime_additionnel?.toFixed(2)}%</TableCell>
+                      <TableCell>{category.coefficient_prix_vente?.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditCategory(category)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteCategory(category.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

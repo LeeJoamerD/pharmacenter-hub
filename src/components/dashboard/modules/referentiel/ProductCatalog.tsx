@@ -308,34 +308,44 @@ const ProductCatalog = () => {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Produit</TableHead>
-                <TableHead>Code</TableHead>
-                <TableHead>Laboratoire</TableHead>
-                <TableHead>Prix vente</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
+               <TableRow>
+                 <TableHead>Produit</TableHead>
+                 <TableHead>Code CIP</TableHead>
+                 <TableHead>Famille</TableHead>
+                 <TableHead>Rayon</TableHead>
+                 <TableHead>Laboratoire</TableHead>
+                 <TableHead>Prix achat</TableHead>
+                 <TableHead>Prix vente</TableHead>
+                 <TableHead>Stock</TableHead>
+                 <TableHead>Statut</TableHead>
+                 <TableHead>Actions</TableHead>
+               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredProducts.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    <div className="font-medium">{product.libelle_produit}</div>
-                  </TableCell>
-                  <TableCell>{product.code_produit || 'N/A'}</TableCell>
-                  <TableCell>{product.laboratoire || 'N/A'}</TableCell>
-                  <TableCell>{(product.prix_vente || 0).toLocaleString()} FCFA</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span>{product.quantite_stock || 0}</span>
-                      <span className="text-xs text-muted-foreground">
-                        Limite: {product.stock_limite || 0}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{getStockBadge(product)}</TableCell>
+                 <TableRow key={product.id}>
+                   <TableCell>
+                     <div className="font-medium">{product.libelle_produit}</div>
+                   </TableCell>
+                   <TableCell>{product.code_produit || 'N/A'}</TableCell>
+                   <TableCell>
+                     {families.find(f => f.id === product.famille_id)?.libelle_famille || 'N/A'}
+                   </TableCell>
+                   <TableCell>
+                     {rayons.find(r => r.id === product.rayon_id)?.libelle_rayon || 'N/A'}
+                   </TableCell>
+                   <TableCell>{product.laboratoire || 'N/A'}</TableCell>
+                   <TableCell>{(product.prix_achat || 0).toLocaleString()} FCFA</TableCell>
+                   <TableCell>{(product.prix_vente || 0).toLocaleString()} FCFA</TableCell>
+                   <TableCell>
+                     <div className="flex flex-col">
+                       <span>{product.quantite_stock || 0}</span>
+                       <span className="text-xs text-muted-foreground">
+                         Limite: {product.stock_limite || 0}
+                       </span>
+                     </div>
+                   </TableCell>
+                   <TableCell>{getStockBadge(product)}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button
@@ -383,14 +393,14 @@ const ProductCatalog = () => {
                   )}
                 </div>
 
-                <div>
-                  <Label htmlFor="code_produit">Code produit</Label>
-                  <Input
-                    id="code_produit"
-                    {...register("code_produit")}
-                    placeholder="Code produit"
-                  />
-                </div>
+                 <div>
+                   <Label htmlFor="code_produit">Code CIP</Label>
+                   <Input
+                     id="code_produit"
+                     {...register("code_produit")}
+                     placeholder="Code CIP"
+                   />
+                 </div>
 
                 <div>
                   <Label htmlFor="famille_id">Famille</Label>

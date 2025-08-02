@@ -2733,13 +2733,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "produits_rayon_produit_id_fkey"
-            columns: ["rayon_produit_id"]
-            isOneToOne: false
-            referencedRelation: "rayon_produit"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "produits_reference_agent_enregistrement_id_fkey"
             columns: ["reference_agent_enregistrement_id"]
             isOneToOne: false
@@ -2820,30 +2813,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      rayon_produit: {
-        Row: {
-          created_at: string
-          id: string
-          libelle_rayon: string
-          tenant_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          libelle_rayon: string
-          tenant_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          libelle_rayon?: string
-          tenant_id?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       rayons_produits: {
         Row: {

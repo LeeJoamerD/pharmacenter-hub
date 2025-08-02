@@ -8,26 +8,85 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { Plus, Search, Edit, Trash2, Tags } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
 
 interface RayonProduct {
-  id: number;
+  id: string;
+  tenant_id: string;
   libelle_rayon: string;
+  created_at: string;
+  updated_at: string;
 }
 
 const RayonManager = () => {
-  const [rayons, setRayons] = useState<RayonProduct[]>([
-    { id: 1, libelle_rayon: "Prescription médicale" },
-    { id: 2, libelle_rayon: "Vente libre" },
-    { id: 3, libelle_rayon: "Parapharmacie" },
-    { id: 4, libelle_rayon: "Orthopédie" }
-  ]);
+  const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
+  
+  // Fetch rayons from database
+  const { data: rayons = [], isLoading, error } = useTenantQueryWithCache(
+    ['rayons'],
+    'rayons_produits',
+    '*',
+    {},
+    { orderBy: { column: 'libelle_rayon', ascending: true } }
+  );
+
+  // Mutations
+  const createRayon = useTenantMutation('rayons_produits', 'insert', {
+    onSuccess: () => {
+      toast({
+        title: "Rayon ajouté",
+        description: "Le rayon de produits a été ajouté avec succès.",
+      });
+      setIsDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: `Erreur lors de l'ajout: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const updateRayon = useTenantMutation('rayons_produits', 'update', {
+    onSuccess: () => {
+      toast({
+        title: "Rayon modifié",
+        description: "Le rayon de produits a été modifié avec succès.",
+      });
+      setIsDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: `Erreur lors de la modification: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const deleteRayon = useTenantMutation('rayons_produits', 'delete', {
+    onSuccess: () => {
+      toast({
+        title: "Rayon supprimé",
+        description: "Le rayon de produits a été supprimé avec succès.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erreur",
+        description: `Erreur lors de la suppression: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  });
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRayon, setEditingRayon] = useState<RayonProduct | null>(null);
   const { toast } = useToast();
 
-  const form = useForm<RayonProduct>({
+  const form = useForm<Partial<RayonProduct>>({
     defaultValues: {
       libelle_rayon: ''
     }
@@ -39,7 +98,7 @@ const RayonManager = () => {
 
   const handleAddRayon = () => {
     setEditingRayon(null);
-    form.reset();
+    form.reset({ libelle_rayon: '' });
     setIsDialogOpen(true);
   };
 
@@ -49,30 +108,23 @@ const RayonManager = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDeleteRayon = (rayonId: number) => {
-    setRayons(rayons.filter(r => r.id !== rayonId));
-    toast({
-      title: "Rayon supprimé",
-      description: "Le rayon de produits a été supprimé avec succès.",
+  const handleDeleteRayon = (rayonId: string) => {
+    deleteRayon.mutate({
+      filters: { id: { eq: rayonId } }
     });
   };
 
-  const onSubmit = (data: RayonProduct) => {
+  const onSubmit = (data: Partial<RayonProduct>) => {
     if (editingRayon) {
-      setRayons(rayons.map(r => r.id === editingRayon.id ? { ...data, id: editingRayon.id } : r));
-      toast({
-        title: "Rayon modifié",
-        description: "Le rayon de produits a été modifié avec succès.",
+      updateRayon.mutate({
+        filters: { id: { eq: editingRayon.id } },
+        data: { libelle_rayon: data.libelle_rayon! }
       });
     } else {
-      const newRayon = { ...data, id: Date.now() };
-      setRayons([...rayons, newRayon]);
-      toast({
-        title: "Rayon ajouté",
-        description: "Le rayon de produits a été ajouté avec succès.",
+      createRayon.mutate({
+        data: { libelle_rayon: data.libelle_rayon! }
       });
     }
-    setIsDialogOpen(false);
   };
 
   return (
@@ -141,41 +193,53 @@ const RayonManager = () => {
             </Dialog>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Libellé du rayon</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRayons.map((rayon) => (
-                <TableRow key={rayon.id}>
-                  <TableCell>{rayon.id}</TableCell>
-                  <TableCell className="font-medium">{rayon.libelle_rayon}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditRayon(rayon)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteRayon(rayon.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          {isLoading ? (
+            <div className="text-center py-4">Chargement...</div>
+          ) : error ? (
+            <div className="text-center py-4 text-red-500">Erreur: {error.message}</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Libellé du rayon</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredRayons.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={2} className="text-center py-4">
+                      Aucun rayon trouvé
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredRayons.map((rayon) => (
+                    <TableRow key={rayon.id}>
+                      <TableCell className="font-medium">{rayon.libelle_rayon}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditRayon(rayon)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteRayon(rayon.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
