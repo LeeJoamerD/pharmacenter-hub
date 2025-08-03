@@ -1,315 +1,789 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
-import { Plus, Search, Edit, Trash2, Building } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useTenantQuery } from '@/hooks/useTenantQuery';
-import { useQueryClient } from '@tanstack/react-query';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import React, { useState } from 'react';
 
-// Interface pour la structure des données d'une société
-interface Societe {
-  id: string;
-  raison_sociale: string;
-  nif: string;
-  rccm: string;
-  adresse: string;
-  telephone: string;
-  email: string;
-  type_societe: 'Assureur' | 'Conventionné';
-  created_at: string;
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+import { Button } from '@/components/ui/button';
+
+import { Input } from '@/components/ui/input';
+
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+
+import { useForm } from 'react-hook-form';
+
+import { Plus, Search, Edit, Trash2, FileText } from 'lucide-react';
+
+import { useToast } from '@/hooks/use-toast';
+
+import { useTenantQuery } from '@/hooks/useTenantQuery';
+
+import { useQueryClient } from '@tanstack/react-query';
+
+
+
+interface PricingCategory {
+
+  id: string;
+
+  tenant_id: string;
+
+  libelle_categorie: string;
+
+  taux_tva: number;
+
+  taux_centime_additionnel: number;
+
+  coefficient_prix_vente: number;
+
+  created_at: string;
+
+  updated_at: string;
+
 }
 
-// Composant principal pour la gestion des sociétés
-const Societes = () => {
-  const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingSociete, setEditingSociete] = useState<Societe | null>(null);
-
-  // Hook de formulaire pour la validation et la gestion des champs
-  const form = useForm<Partial<Societe>>({
-    defaultValues: {
-      raison_sociale: '',
-      nif: '',
-      rccm: '',
-      adresse: '',
-      telephone: '',
-      email: '',
-      type_societe: 'Assureur',
-    },
-  });
-
-  // Récupération des données des sociétés depuis la base de données
-  const { data: societes = [], isLoading, error } = useTenantQueryWithCache(
-    ['societes'],
-    'societes',
-    '*',
-    {},
-    { orderBy: { column: 'raison_sociale', ascending: true } }
-  );
-
-  // Mutation pour créer une société
-    const createSociete = useTenantMutation('societes', 'insert', {
-        invalidateQueries: ['societes'],
-    });
-
-    // Mutation pour créer le client associé à la société
-    const createClientForSociete = useTenantMutation('clients', 'insert', {
-        invalidateQueries: ['clients'], // Invalider aussi les clients
-    });
 
 
-  // Mutation pour mettre à jour une société
-  const updateSociete = useTenantMutation('societes', 'update', {
-    invalidateQueries: ['societes'],
-    onSuccess: () => {
-      toast({ title: "Succès", description: "Société modifiée avec succès." });
-      setIsDialogOpen(false);
-    },
-    onError: (error: any) => {
-        toast({ title: "Erreur", description: `Erreur: ${error.message}`, variant: "destructive" });
-    }
-  });
+const PricingCategories = () => {
 
-  // Mutation pour supprimer une société
-  const deleteSociete = useTenantMutation('societes', 'delete', {
-    invalidateQueries: ['societes'],
-    onSuccess: () => {
-        toast({ title: "Succès", description: "Société supprimée avec succès." });
-    },
-    onError: (error: any) => {
-        toast({ title: "Erreur", description: `Erreur: ${error.message}`, variant: "destructive" });
-    }
-  });
+  const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
 
-  // Filtrage des sociétés en fonction de la recherche
-  const filteredSocietes = societes.filter(s =>
-    s.raison_sociale.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const queryClient = useQueryClient();
 
-  // Gestion de la soumission du formulaire
-  const onSubmit = (data: Partial<Societe>) => {
-    const finalData = {
-        raison_sociale: data.raison_sociale,
-        nif: data.nif,
-        rccm: data.rccm,
-        adresse: data.adresse,
-        telephone: data.telephone,
-        email: data.email,
-        type_societe: data.type_societe,
-    };
+  
 
-    if (editingSociete) {
-        // Mise à jour
-        updateSociete.mutate({ id: editingSociete.id, ...finalData });
-    } else {
-        // Création
-        createSociete.mutate(finalData, {
-            onSuccess: async (createdSocieteData) => {
-                if (createdSocieteData && createdSocieteData.length > 0) {
-                    const newSociete = createdSocieteData[0];
-                    const clientType = newSociete.type_societe === 'Assureur' ? 'Assuré' : 'Conventionné';
+  // Fetch categories from database
 
-                    // Créer l'entrée correspondante dans la table 'clients'
-                    await createClientForSociete.mutateAsync({
-                        nom_complet: newSociete.raison_sociale,
-                        telephone: newSociete.telephone,
-                        type_client: clientType, // CORRECTION APPLIQUÉE ICI
-                        societe_id: newSociete.id,
-                        is_societe_client: true, // Marqueur pour identifier ce type de client
-                    });
-                }
-                toast({ title: "Succès", description: "Société ajoutée avec succès." });
-                setIsDialogOpen(false);
-                form.reset();
-            },
-            onError: (error: any) => {
-                toast({ title: "Erreur", description: `Erreur lors de la création: ${error.message}`, variant: "destructive" });
-            },
-        });
-    }
-  };
+  const { data: categories = [], isLoading, error } = useTenantQueryWithCache(
+
+    ['pricing-categories'],
+
+    'categorie_tarification',
+
+    '*',
+
+    {},
+
+    { orderBy: { column: 'libelle_categorie', ascending: true } }
+
+  );
 
 
-  // Fonctions pour gérer l'ouverture et la fermeture du dialogue
-  const handleAddNew = () => {
-    setEditingSociete(null);
-    form.reset({
-        raison_sociale: '',
-        nif: '',
-        rccm: '',
-        adresse: '',
-        telephone: '',
-        email: '',
-        type_societe: 'Assureur',
-    });
-    setIsDialogOpen(true);
-  };
 
-  const handleEdit = (societe: Societe) => {
-    setEditingSociete(societe);
-    form.reset(societe);
-    setIsDialogOpen(true);
-  };
+  // Mutations
 
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building className="h-5 w-5" />
-            Gestion des Sociétés Partenaires
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center space-x-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher par raison sociale..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-64"
-              />
-            </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={handleAddNew}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ajouter une Société
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-3xl">
-                <DialogHeader>
-                  <DialogTitle>{editingSociete ? 'Modifier la Société' : 'Ajouter une nouvelle Société'}</DialogTitle>
-                  <DialogDescription>
-                    Remplissez les informations de la société partenaire.
-                  </DialogDescription>
-                </DialogHeader>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4 py-4">
-                    <FormField control={form.control} name="raison_sociale" render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>Raison Sociale *</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="type_societe" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Type de Société *</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Sélectionner un type" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    <SelectItem value="Assureur">Assureur</SelectItem>
-                                    <SelectItem value="Conventionné">Conventionné</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                     <FormField control={form.control} name="nif" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>NIF</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="rccm" render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>RCCM</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                     <FormField control={form.control} name="telephone" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Téléphone *</FormLabel>
-                        <FormControl><Input {...field} type="tel" /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="email" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl><Input {...field} type="email" /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="adresse" render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>Adresse</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                     <DialogFooter className="col-span-2 mt-4">
-                        <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
-                        <Button type="submit">{editingSociete ? 'Modifier' : 'Ajouter'}</Button>
-                    </DialogFooter>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
-          </div>
+  const createCategory = useTenantMutation('categorie_tarification', 'insert', {
 
-            {isLoading ? (
-                <div className="text-center">Chargement...</div>
-            ) : error ? (
-                <div className="text-center text-red-500">Erreur: {error.message}</div>
-            ) : (
-                <Table>
-                    <TableHeader>
-                    <TableRow>
-                        <TableHead>Raison Sociale</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Téléphone</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Actions</TableHead>
-                    </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                    {filteredSocietes.map(societe => (
-                        <TableRow key={societe.id}>
-                        <TableCell className="font-medium">{societe.raison_sociale}</TableCell>
-                        <TableCell>{societe.type_societe}</TableCell>
-                        <TableCell>{societe.telephone}</TableCell>
-                        <TableCell>{societe.email}</TableCell>
-                        <TableCell>
-                            <div className="flex space-x-2">
-                            <Button variant="outline" size="icon" onClick={() => handleEdit(societe)}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="icon" onClick={() => deleteSociete.mutate({ id: societe.id })}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                            </div>
-                        </TableCell>
-                        </TableRow>
-                    ))}
-                    </TableBody>
-                </Table>
-            )}
-            {filteredSocietes.length === 0 && !isLoading && (
-                <p className="text-center text-muted-foreground mt-4">Aucune société trouvée.</p>
-            )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+    invalidateQueries: ['pricing-categories'],
+
+    onSuccess: () => {
+
+      toast({
+
+        title: "Catégorie ajoutée",
+
+        description: "La catégorie de tarification a été ajoutée avec succès.",
+
+      });
+
+      setIsDialogOpen(false);
+
+      setEditingCategory(null);
+
+      form.reset({
+
+        libelle_categorie: '',
+
+        taux_tva: 0,
+
+        taux_centime_additionnel: 0,
+
+        coefficient_prix_vente: 0
+
+      });
+
+    },
+
+    onError: (error: any) => {
+
+      toast({
+
+        title: "Erreur",
+
+        description: `Erreur lors de l'ajout: ${error.message}`,
+
+        variant: "destructive",
+
+      });
+
+    }
+
+  });
+
+
+
+  const updateCategory = useTenantMutation('categorie_tarification', 'update', {
+
+    invalidateQueries: ['pricing-categories'],
+
+    onSuccess: () => {
+
+      toast({
+
+        title: "Catégorie modifiée",
+
+        description: "La catégorie de tarification a été modifiée avec succès.",
+
+      });
+
+      setIsDialogOpen(false);
+
+      setEditingCategory(null);
+
+      form.reset({
+
+        libelle_categorie: '',
+
+        taux_tva: 0,
+
+        taux_centime_additionnel: 0,
+
+        coefficient_prix_vente: 0
+
+      });
+
+    },
+
+    onError: (error: any) => {
+
+      toast({
+
+        title: "Erreur",
+
+        description: `Erreur lors de la modification: ${error.message}`,
+
+        variant: "destructive",
+
+      });
+
+    }
+
+  });
+
+
+
+  const deleteCategory = useTenantMutation('categorie_tarification', 'delete', {
+
+    invalidateQueries: ['pricing-categories'],
+
+    onSuccess: () => {
+
+      toast({
+
+        title: "Catégorie supprimée",
+
+        description: "La catégorie de tarification a été supprimée avec succès.",
+
+      });
+
+    },
+
+    onError: (error: any) => {
+
+      toast({
+
+        title: "Erreur",
+
+        description: `Erreur lors de la suppression: ${error.message}`,
+
+        variant: "destructive",
+
+      });
+
+    }
+
+  });
+
+
+
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const [editingCategory, setEditingCategory] = useState<PricingCategory | null>(null);
+
+  const { toast } = useToast();
+
+
+
+  const form = useForm<Partial<PricingCategory>>({
+
+    defaultValues: {
+
+      libelle_categorie: '',
+
+      taux_tva: 0,
+
+      taux_centime_additionnel: 0,
+
+      coefficient_prix_vente: 0
+
+    }
+
+  });
+
+
+
+  const filteredCategories = categories.filter(category =>
+
+    category.libelle_categorie.toLowerCase().includes(searchTerm.toLowerCase())
+
+  );
+
+
+
+  const handleAddCategory = () => {
+
+    setEditingCategory(null);
+
+    form.reset({
+
+      libelle_categorie: '',
+
+      taux_tva: 0,
+
+      taux_centime_additionnel: 0,
+
+      coefficient_prix_vente: 0
+
+    });
+
+    setIsDialogOpen(true);
+
+  };
+
+
+
+  const handleEditCategory = (category: PricingCategory) => {
+
+    setEditingCategory(category);
+
+    form.reset(category);
+
+    setIsDialogOpen(true);
+
+  };
+
+
+
+  const handleDialogClose = () => {
+
+    setIsDialogOpen(false);
+
+    setEditingCategory(null);
+
+    form.reset();
+
+  };
+
+
+
+  const handleDeleteCategory = (categoryId: string) => {
+
+    deleteCategory.mutate({
+
+      id: categoryId
+
+    });
+
+  };
+
+
+
+  const onSubmit = (data: Partial<PricingCategory>) => {
+
+    if (editingCategory) {
+
+      updateCategory.mutate({
+
+        id: editingCategory.id,
+
+        libelle_categorie: data.libelle_categorie!,
+
+        taux_tva: data.taux_tva!,
+
+        taux_centime_additionnel: data.taux_centime_additionnel!,
+
+        coefficient_prix_vente: data.coefficient_prix_vente!
+
+      });
+
+    } else {
+
+      createCategory.mutate({
+
+        libelle_categorie: data.libelle_categorie!,
+
+        taux_tva: data.taux_tva!,
+
+        taux_centime_additionnel: data.taux_centime_additionnel!,
+
+        coefficient_prix_vente: data.coefficient_prix_vente!
+
+      });
+
+    }
+
+  };
+
+
+
+  return (
+
+    <div className="space-y-6">
+
+      <Card>
+
+        <CardHeader>
+
+          <CardTitle className="flex items-center gap-2">
+
+            <FileText className="h-5 w-5" />
+
+            Gestion des Catégories de Tarification
+
+          </CardTitle>
+
+        </CardHeader>
+
+        <CardContent>
+
+          <div className="flex justify-between items-center mb-4">
+
+            <div className="flex items-center space-x-2">
+
+              <Search className="h-4 w-4 text-muted-foreground" />
+
+              <Input
+
+                placeholder="Rechercher une catégorie..."
+
+                value={searchTerm}
+
+                onChange={(e) => setSearchTerm(e.target.value)}
+
+                className="w-64"
+
+              />
+
+            </div>
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+
+              <DialogTrigger asChild>
+
+                <Button onClick={handleAddCategory}>
+
+                  <Plus className="h-4 w-4 mr-2" />
+
+                  Ajouter Catégorie
+
+                </Button>
+
+              </DialogTrigger>
+
+              <DialogContent className="max-w-2xl">
+
+                <DialogHeader>
+
+                  <DialogTitle>
+
+                    {editingCategory ? 'Modifier la catégorie' : 'Ajouter une nouvelle catégorie'}
+
+                  </DialogTitle>
+
+                  <DialogDescription>
+
+                    Configurez les paramètres de tarification pour cette catégorie.
+
+                  </DialogDescription>
+
+                </DialogHeader>
+
+                <Form {...form}>
+
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4">
+
+                    <FormField
+
+                      control={form.control}
+
+                      name="libelle_categorie"
+
+                      render={({ field }) => (
+
+                        <FormItem className="col-span-2">
+
+                          <FormLabel>Libellé de la catégorie *</FormLabel>
+
+                          <FormControl>
+
+                            <Input {...field} placeholder="Ex: Médicaments essentiels" />
+
+                          </FormControl>
+
+                          <FormMessage />
+
+                        </FormItem>
+
+                      )}
+
+                    />
+
+
+
+                    <FormField
+
+                      control={form.control}
+
+                      name="taux_tva"
+
+                      render={({ field }) => (
+
+                        <FormItem>
+
+                          <FormLabel>Taux TVA (%)</FormLabel>
+
+                          <FormControl>
+
+                            <Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value))} />
+
+                          </FormControl>
+
+                          <FormMessage />
+
+                        </FormItem>
+
+                      )}
+
+                    />
+
+
+
+                    <FormField
+
+                      control={form.control}
+
+                      name="taux_centime_additionnel"
+
+                      render={({ field }) => (
+
+                        <FormItem>
+
+                          <FormLabel>Taux centime additionnel (%)</FormLabel>
+
+                          <FormControl>
+
+                            <Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value))} />
+
+                          </FormControl>
+
+                          <FormMessage />
+
+                        </FormItem>
+
+                      )}
+
+                    />
+
+
+
+                    <FormField
+
+                      control={form.control}
+
+                      name="coefficient_prix_vente"
+
+                      render={({ field }) => (
+
+                        <FormItem className="col-span-2">
+
+                          <FormLabel>Coefficient prix de vente</FormLabel>
+
+                          <FormControl>
+
+                            <Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value))} />
+
+                          </FormControl>
+
+                          <FormMessage />
+
+                        </FormItem>
+
+                      )}
+
+                    />
+
+
+
+                    <DialogFooter className="col-span-2">
+
+                      <Button type="button" variant="outline" onClick={handleDialogClose}>
+
+                        Annuler
+
+                      </Button>
+
+                      <Button type="submit">
+
+                        {editingCategory ? 'Modifier' : 'Ajouter'}
+
+                      </Button>
+
+                    </DialogFooter>
+
+                  </form>
+
+                </Form>
+
+              </DialogContent>
+
+            </Dialog>
+
+          </div
+
+
+
+          
+
+      <Separator />
+
+
+
+      <div className="space-y-4">
+
+        <h3 className="text-lg font-medium">Calcul du Prix de Vente (Simulation)</h3>
+
+        <p className="text-muted-foreground">
+
+          Entrez un prix d'achat et sélectionnez une catégorie pour simuler le calcul du prix de vente.
+
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+
+          <div className="space-y-2">
+
+            <Label htmlFor="simulation_purchase_price">Prix d'achat</Label>
+
+            <Input
+
+              id="simulation_purchase_price"
+
+              type="number"
+
+              value={simulationPurchasePrice}
+
+              onChange={(e) => setSimulationPurchasePrice(parseFloat(e.target.value))}
+
+              className="w-full"
+
+            />
+
+          </div>
+
+          <div className="space-y-2">
+
+            <Label htmlFor="simulation_category">Catégorie</Label>
+
+            <Select
+
+              value={selectedSimulationCategoryId?.toString() || ''}
+
+              onValueChange={(value) => setSelectedSimulationCategoryId(parseInt(value))}
+
+            >
+
+              <SelectTrigger id="simulation_category" className="w-full">
+
+                <SelectValue placeholder="Sélectionner une catégorie" />
+
+              </SelectTrigger>
+
+              <SelectContent>
+
+                {categories.map(category => (
+
+                  <SelectItem key={category.id} value={category.id.toString()}>
+
+                    {category.libelle_categorie}
+
+                  </SelectItem>
+
+                ))}
+
+              </SelectContent>
+
+            </Select>
+
+          </div>
+
+          <div className="space-y-2">
+
+            <Label htmlFor="simulated_sale_price_ht">Prix de vente HT</Label>
+
+            <Input id="simulated_sale_price_ht" value={simulatedSalePriceHT.toFixed(2)} readOnly className="w-full bg-gray-100" />
+
+          </div>
+
+          <div className="space-y-2">
+
+            <Label htmlFor="simulated_tva">TVA</Label>
+
+            <Input id="simulated_tva" value={simulatedTVA.toFixed(2)} readOnly className="w-full bg-gray-100" />
+
+          </div>
+
+          <div className="space-y-2">
+
+            <Label htmlFor="simulated_centime_additionnel">Centime additionnel</Label>
+
+            <Input id="simulated_centime_additionnel" value={simulatedCentimeAdditionnel.toFixed(2)} readOnly className="w-full bg-gray-100" />
+
+          </div>
+
+          <div className="space-y-2 col-span-full md:col-span-1">
+
+            <Label htmlFor="simulated_sale_price_ttc">Prix de vente TTC</Label>
+
+            <Input id="simulated_sale_price_ttc" value={simulatedSalePriceTTC.toFixed(2)} readOnly className="w-full bg-gray-100 font-bold" />
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+          {isLoading ? (
+
+            <div className="text-center py-4">Chargement...</div>
+
+          ) : error ? (
+
+            <div className="text-center py-4 text-red-500">Erreur: {error.message}</div>
+
+          ) : (
+
+            <Table>
+
+              <TableHeader>
+
+                <TableRow>
+
+                  <TableHead>Libellé</TableHead>
+
+                  <TableHead>Taux TVA (%)</TableHead>
+
+                  <TableHead>Taux centime add. (%)</TableHead>
+
+                  <TableHead>Coefficient prix vente</TableHead>
+
+                  <TableHead>Actions</TableHead>
+
+                </TableRow>
+
+              </TableHeader>
+
+              <TableBody>
+
+                {filteredCategories.length === 0 ? (
+
+                  <TableRow>
+
+                    <TableCell colSpan={5} className="text-center py-4">
+
+                      Aucune catégorie trouvée
+
+                    </TableCell>
+
+                  </TableRow>
+
+                ) : (
+
+                  filteredCategories.map((category) => (
+
+                    <TableRow key={category.id}>
+
+                      <TableCell className="font-medium">{category.libelle_categorie}</TableCell>
+
+                      <TableCell>{category.taux_tva?.toFixed(2)}%</TableCell>
+
+                      <TableCell>{category.taux_centime_additionnel?.toFixed(2)}%</TableCell>
+
+                      <TableCell>{category.coefficient_prix_vente?.toFixed(2)}</TableCell>
+
+                      <TableCell>
+
+                        <div className="flex items-center space-x-2">
+
+                          <Button
+
+                            variant="outline"
+
+                            size="sm"
+
+                            onClick={() => handleEditCategory(category)}
+
+                          >
+
+                            <Edit className="h-4 w-4" />
+
+                          </Button>
+
+                          <Button
+
+                            variant="outline"
+
+                            size="sm"
+
+                            onClick={() => handleDeleteCategory(category.id)}
+
+                          >
+
+                            <Trash2 className="h-4 w-4" />
+
+                          </Button>
+
+                        </div>
+
+                      </TableCell>
+
+                    </TableRow>
+
+                  ))
+
+                )}
+
+              </TableBody>
+
+            </Table>
+
+          )}
+
+        </CardContent>
+
+      </Card>
+
+    </div>
+
+  );
+
 };
 
-export default Societes;
+
+
+export default PricingCategories
