@@ -110,7 +110,7 @@ const RayonManager = () => {
 
   const handleDeleteRayon = (rayonId: string) => {
     deleteRayon.mutate({
-      filters: { id: { eq: rayonId } }
+      id: { eq: rayonId }
     });
   };
 
@@ -118,11 +118,11 @@ const RayonManager = () => {
     if (editingRayon) {
       updateRayon.mutate({
         filters: { id: { eq: editingRayon.id } },
-        data: { libelle_rayon: data.libelle_rayon! }
+        updates: { libelle_rayon: data.libelle_rayon! }
       });
     } else {
       createRayon.mutate({
-        data: { libelle_rayon: data.libelle_rayon! }
+        libelle_rayon: data.libelle_rayon!
       });
     }
   };

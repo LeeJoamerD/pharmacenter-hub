@@ -127,7 +127,7 @@ const PricingCategories = () => {
 
   const handleDeleteCategory = (categoryId: string) => {
     deleteCategory.mutate({
-      filters: { id: { eq: categoryId } }
+      id: { eq: categoryId }
     });
   };
 
@@ -135,7 +135,7 @@ const PricingCategories = () => {
     if (editingCategory) {
       updateCategory.mutate({
         filters: { id: { eq: editingCategory.id } },
-        data: {
+        updates: {
           libelle_categorie: data.libelle_categorie!,
           taux_tva: data.taux_tva!,
           taux_centime_additionnel: data.taux_centime_additionnel!,
@@ -144,12 +144,10 @@ const PricingCategories = () => {
       });
     } else {
       createCategory.mutate({
-        data: {
-          libelle_categorie: data.libelle_categorie!,
-          taux_tva: data.taux_tva!,
-          taux_centime_additionnel: data.taux_centime_additionnel!,
-          coefficient_prix_vente: data.coefficient_prix_vente!
-        }
+        libelle_categorie: data.libelle_categorie!,
+        taux_tva: data.taux_tva!,
+        taux_centime_additionnel: data.taux_centime_additionnel!,
+        coefficient_prix_vente: data.coefficient_prix_vente!
       });
     }
   };
