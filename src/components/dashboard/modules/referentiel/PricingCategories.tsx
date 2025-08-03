@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -11,6 +10,11 @@ import { Plus, Search, Edit, Trash2, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useQueryClient } from '@tanstack/react-query';
+// NOUVEAUX IMPORTS AJOUTÉS
+import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 interface PricingCategory {
   id: string;
@@ -26,7 +30,7 @@ interface PricingCategory {
 const PricingCategories = () => {
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
   const queryClient = useQueryClient();
-  
+
   // Fetch categories from database
   const { data: categories = [], isLoading, error } = useTenantQueryWithCache(
     ['pricing-categories'],
@@ -109,6 +113,15 @@ const PricingCategories = () => {
   const [editingCategory, setEditingCategory] = useState<PricingCategory | null>(null);
   const { toast } = useToast();
 
+  // --- ÉTATS POUR LE SIMULATEUR (AJOUTÉS) ---
+  const [simulationPurchasePrice, setSimulationPurchasePrice] = useState<number | string>('');
+  const [selectedSimulationCategoryId, setSelectedSimulationCategoryId] = useState<string | null>(null);
+  const [simulatedSalePriceHT, setSimulatedSalePriceHT] = useState(0);
+  const [simulatedTVA, setSimulatedTVA] = useState(0);
+  const [simulatedCentimeAdditionnel, setSimulatedCentimeAdditionnel] = useState(0);
+  const [simulatedSalePriceTTC, setSimulatedSalePriceTTC] = useState(0);
+
+
   const form = useForm<Partial<PricingCategory>>({
     defaultValues: {
       libelle_categorie: '',
@@ -121,6 +134,33 @@ const PricingCategories = () => {
   const filteredCategories = categories.filter(category =>
     category.libelle_categorie.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // --- LOGIQUE DE CALCUL POUR LE SIMULATEUR (AJOUTÉE) ---
+  useEffect(() => {
+    if (simulationPurchasePrice && selectedSimulationCategoryId) {
+      const category = categories.find(cat => cat.id === selectedSimulationCategoryId);
+      const purchasePrice = typeof simulationPurchasePrice === 'string' ? parseFloat(simulationPurchasePrice) : simulationPurchasePrice;
+
+      if (category && !isNaN(purchasePrice)) {
+        const ht = purchasePrice * category.coefficient_prix_vente;
+        const tva = ht * (category.taux_tva / 100);
+        const centime = ht * (category.taux_centime_additionnel / 100);
+        const ttc = ht + tva + centime;
+
+        setSimulatedSalePriceHT(ht);
+        setSimulatedTVA(tva);
+        setSimulatedCentimeAdditionnel(centime);
+        setSimulatedSalePriceTTC(ttc);
+      }
+    } else {
+        // Reset values if inputs are cleared
+        setSimulatedSalePriceHT(0);
+        setSimulatedTVA(0);
+        setSimulatedCentimeAdditionnel(0);
+        setSimulatedSalePriceTTC(0);
+    }
+  }, [simulationPurchasePrice, selectedSimulationCategoryId, categories]);
+
 
   const handleAddCategory = () => {
     setEditingCategory(null);
@@ -190,7 +230,7 @@ const PricingCategories = () => {
                 className="w-64"
               />
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
               <DialogTrigger asChild>
                 <Button onClick={handleAddCategory}>
                   <Plus className="h-4 w-4 mr-2" />
@@ -207,7 +247,7 @@ const PricingCategories = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4">
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4 py-4">
                     <FormField
                       control={form.control}
                       name="libelle_categorie"
@@ -229,7 +269,7 @@ const PricingCategories = () => {
                         <FormItem>
                           <FormLabel>Taux TVA (%)</FormLabel>
                           <FormControl>
-                            <Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value))} />
+                            <Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -243,7 +283,7 @@ const PricingCategories = () => {
                         <FormItem>
                           <FormLabel>Taux centime additionnel (%)</FormLabel>
                           <FormControl>
-                            <Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value))} />
+                            <Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -257,82 +297,25 @@ const PricingCategories = () => {
                         <FormItem className="col-span-2">
                           <FormLabel>Coefficient prix de vente</FormLabel>
                           <FormControl>
-                            <Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value))} />
+                            <Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-
-                    <DialogFooter className="col-span-2">
-                      <Button type="button" variant="outline" onClick={handleDialogClose}>
-                        Annuler
-                      </Button>
-                      <Button type="submit">
-                        {editingCategory ? 'Modifier' : 'Ajouter'}
-                      </Button>
-                    </DialogFooter>
                   </form>
                 </Form>
+                 <DialogFooter>
+                    <Button type="button" variant="outline" onClick={handleDialogClose}>
+                      Annuler
+                    </Button>
+                    <Button type="submit" onClick={form.handleSubmit(onSubmit)}>
+                      {editingCategory ? 'Modifier' : 'Ajouter'}
+                    </Button>
+                  </DialogFooter>
               </DialogContent>
             </Dialog>
-          </div
-
-          
-      <Separator />
-
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Calcul du Prix de Vente (Simulation)</h3>
-        <p className="text-muted-foreground">
-          Entrez un prix d'achat et sélectionnez une catégorie pour simuler le calcul du prix de vente.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-          <div className="space-y-2">
-            <Label htmlFor="simulation_purchase_price">Prix d'achat</Label>
-            <Input
-              id="simulation_purchase_price"
-              type="number"
-              value={simulationPurchasePrice}
-              onChange={(e) => setSimulationPurchasePrice(parseFloat(e.target.value))}
-              className="w-full"
-            />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="simulation_category">Catégorie</Label>
-            <Select
-              value={selectedSimulationCategoryId?.toString() || ''}
-              onValueChange={(value) => setSelectedSimulationCategoryId(parseInt(value))}
-            >
-              <SelectTrigger id="simulation_category" className="w-full">
-                <SelectValue placeholder="Sélectionner une catégorie" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map(category => (
-                  <SelectItem key={category.id} value={category.id.toString()}>
-                    {category.libelle_categorie}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="simulated_sale_price_ht">Prix de vente HT</Label>
-            <Input id="simulated_sale_price_ht" value={simulatedSalePriceHT.toFixed(2)} readOnly className="w-full bg-gray-100" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="simulated_tva">TVA</Label>
-            <Input id="simulated_tva" value={simulatedTVA.toFixed(2)} readOnly className="w-full bg-gray-100" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="simulated_centime_additionnel">Centime additionnel</Label>
-            <Input id="simulated_centime_additionnel" value={simulatedCentimeAdditionnel.toFixed(2)} readOnly className="w-full bg-gray-100" />
-          </div>
-          <div className="space-y-2 col-span-full md:col-span-1">
-            <Label htmlFor="simulated_sale_price_ttc">Prix de vente TTC</Label>
-            <Input id="simulated_sale_price_ttc" value={simulatedSalePriceTTC.toFixed(2)} readOnly className="w-full bg-gray-100 font-bold" />
-          </div>
-        </div>
-      </div>
 
           {isLoading ? (
             <div className="text-center py-4">Chargement...</div>
@@ -367,14 +350,14 @@ const PricingCategories = () => {
                         <div className="flex items-center space-x-2">
                           <Button
                             variant="outline"
-                            size="sm"
+                            size="icon"
                             onClick={() => handleEditCategory(category)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="outline"
-                            size="sm"
+                            size="icon"
                             onClick={() => handleDeleteCategory(category.id)}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -387,6 +370,66 @@ const PricingCategories = () => {
               </TableBody>
             </Table>
           )}
+
+          {/* --- BLOC SIMULATEUR (DÉPLACÉ ET FONCTIONNEL) --- */}
+          <div className="mt-8">
+            <Separator />
+            <div className="space-y-4 mt-6">
+                <h3 className="text-lg font-medium">Calcul du Prix de Vente (Simulation)</h3>
+                <p className="text-sm text-muted-foreground">
+                    Entrez un prix d'achat et sélectionnez une catégorie pour simuler le calcul du prix de vente.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+                    <div className="space-y-2 md:col-span-1 lg:col-span-1">
+                        <Label htmlFor="simulation_purchase_price">Prix d'achat</Label>
+                        <Input
+                            id="simulation_purchase_price"
+                            type="number"
+                            placeholder="0.00"
+                            value={simulationPurchasePrice}
+                            onChange={(e) => setSimulationPurchasePrice(e.target.value)}
+                            className="w-full"
+                        />
+                    </div>
+                    <div className="space-y-2 md:col-span-2 lg:col-span-1">
+                        <Label htmlFor="simulation_category">Catégorie</Label>
+                        <Select
+                            value={selectedSimulationCategoryId || ''}
+                            onValueChange={(value) => setSelectedSimulationCategoryId(value)}
+                        >
+                            <SelectTrigger id="simulation_category" className="w-full">
+                                <SelectValue placeholder="Sélectionner" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {categories.map(category => (
+                                    <SelectItem key={category.id} value={category.id}>
+                                        {category.libelle_categorie}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="simulated_sale_price_ht">Prix vente HT</Label>
+                        <Input id="simulated_sale_price_ht" value={simulatedSalePriceHT.toFixed(2)} readOnly className="w-full bg-muted" />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="simulated_tva">Montant TVA</Label>
+                        <Input id="simulated_tva" value={simulatedTVA.toFixed(2)} readOnly className="w-full bg-muted" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="simulated_centime_additionnel">Centime add.</Label>
+                        <Input id="simulated_centime_additionnel" value={simulatedCentimeAdditionnel.toFixed(2)} readOnly className="w-full bg-muted" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="simulated_sale_price_ttc" className="font-bold">Prix vente TTC</Label>
+                        <Input id="simulated_sale_price_ttc" value={simulatedSalePriceTTC.toFixed(2)} readOnly className="w-full bg-muted font-bold text-base" />
+                    </div>
+                </div>
+            </div>
+          </div>
+
+
         </CardContent>
       </Card>
     </div>
