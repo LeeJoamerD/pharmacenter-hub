@@ -21,6 +21,7 @@ const assureurSchema = z.object({
   telephone_whatsapp: z.string().optional(),
   email: z.string().email("Email invalide").optional().or(z.literal("")),
   niu: z.string().optional(),
+  limite_dette: z.string().optional().or(z.number().optional()),
 });
 
 type Assureur = z.infer<typeof assureurSchema> & { id?: string };
@@ -74,7 +75,8 @@ const InsuranceManager = () => {
     telephone_appel: '',
     telephone_whatsapp: '',
     email: '',
-    niu: ''
+    niu: '',
+    limite_dette: ''
   }), []);
 
   const form = useForm<Assureur>({
@@ -208,6 +210,25 @@ const InsuranceManager = () => {
             )}
           />
 
+          <FormField
+            control={form.control}
+            name="limite_dette"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Limite de dette</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="number"
+                    placeholder="0.00" 
+                    {...field} 
+                    tabIndex={6}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
         </div>
 
         <FormField
@@ -220,7 +241,7 @@ const InsuranceManager = () => {
                 <Textarea 
                   placeholder="Adresse complète" 
                   {...field} 
-                  tabIndex={6}
+                  tabIndex={7}
                 />
               </FormControl>
               <FormMessage />
@@ -233,14 +254,14 @@ const InsuranceManager = () => {
             type="button" 
             variant="outline" 
             onClick={handleDialogClose}
-            tabIndex={7}
+            tabIndex={8}
           >
             Annuler
           </Button>
           <Button 
             type="submit" 
             disabled={createMutation.isPending || updateMutation.isPending}
-            tabIndex={8}
+            tabIndex={9}
           >
             {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingAssureur ? 'Modifier' : 'Ajouter')}
           </Button>
