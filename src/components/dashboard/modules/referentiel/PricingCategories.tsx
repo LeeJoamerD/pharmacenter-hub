@@ -37,8 +37,8 @@ const PricingCategories = () => {
 
   // Mutations
   const createCategory = useTenantMutation('categorie_tarification', 'insert', {
+    invalidateQueries: ['pricing-categories'],
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pricing-categories'] });
       toast({
         title: "Catégorie ajoutée",
         description: "La catégorie de tarification a été ajoutée avec succès.",
@@ -62,8 +62,8 @@ const PricingCategories = () => {
   });
 
   const updateCategory = useTenantMutation('categorie_tarification', 'update', {
+    invalidateQueries: ['pricing-categories'],
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pricing-categories'] });
       toast({
         title: "Catégorie modifiée",
         description: "La catégorie de tarification a été modifiée avec succès.",
@@ -87,8 +87,8 @@ const PricingCategories = () => {
   });
 
   const deleteCategory = useTenantMutation('categorie_tarification', 'delete', {
+    invalidateQueries: ['pricing-categories'],
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pricing-categories'] });
       toast({
         title: "Catégorie supprimée",
         description: "La catégorie de tarification a été supprimée avec succès.",

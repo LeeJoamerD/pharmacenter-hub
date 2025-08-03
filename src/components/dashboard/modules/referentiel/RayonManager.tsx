@@ -34,8 +34,8 @@ const RayonManager = () => {
 
   // Mutations
   const createRayon = useTenantMutation('rayons_produits', 'insert', {
+    invalidateQueries: ['rayons'],
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rayons'] });
       toast({
         title: "Rayon ajouté",
         description: "Le rayon de produits a été ajouté avec succès.",
@@ -53,8 +53,8 @@ const RayonManager = () => {
   });
 
   const updateRayon = useTenantMutation('rayons_produits', 'update', {
+    invalidateQueries: ['rayons'],
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rayons'] });
       toast({
         title: "Rayon modifié",
         description: "Le rayon de produits a été modifié avec succès.",
@@ -73,8 +73,8 @@ const RayonManager = () => {
   });
 
   const deleteRayon = useTenantMutation('rayons_produits', 'delete', {
+    invalidateQueries: ['rayons'],
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rayons'] });
       toast({
         title: "Rayon supprimé",
         description: "Le rayon de produits a été supprimé avec succès.",
