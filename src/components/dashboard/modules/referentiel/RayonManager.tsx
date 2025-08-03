@@ -9,6 +9,7 @@ import { useForm } from 'react-hook-form';
 import { Plus, Search, Edit, Trash2, Tags } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface RayonProduct {
   id: string;
@@ -20,6 +21,7 @@ interface RayonProduct {
 
 const RayonManager = () => {
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
+  const queryClient = useQueryClient();
   
   // Fetch rayons from database
   const { data: rayons = [], isLoading, error } = useTenantQueryWithCache(
@@ -33,11 +35,13 @@ const RayonManager = () => {
   // Mutations
   const createRayon = useTenantMutation('rayons_produits', 'insert', {
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rayons'] });
       toast({
         title: "Rayon ajouté",
         description: "Le rayon de produits a été ajouté avec succès.",
       });
       setIsDialogOpen(false);
+      form.reset({ libelle_rayon: '' });
     },
     onError: (error: any) => {
       toast({
@@ -50,11 +54,14 @@ const RayonManager = () => {
 
   const updateRayon = useTenantMutation('rayons_produits', 'update', {
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rayons'] });
       toast({
         title: "Rayon modifié",
         description: "Le rayon de produits a été modifié avec succès.",
       });
       setIsDialogOpen(false);
+      setEditingRayon(null);
+      form.reset({ libelle_rayon: '' });
     },
     onError: (error: any) => {
       toast({
@@ -67,6 +74,7 @@ const RayonManager = () => {
 
   const deleteRayon = useTenantMutation('rayons_produits', 'delete', {
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rayons'] });
       toast({
         title: "Rayon supprimé",
         description: "Le rayon de produits a été supprimé avec succès.",
@@ -109,8 +117,8 @@ const RayonManager = () => {
   };
 
   const handleDeleteRayon = (rayonId: string) => {
-    deleteRayon.mutate({
-      id: { eq: rayonId }
+    deleteRayon.mutate({ 
+      filters: { id: { eq: rayonId } }
     });
   };
 

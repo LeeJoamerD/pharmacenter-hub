@@ -9,6 +9,7 @@ import { useForm } from 'react-hook-form';
 import { Plus, Search, Edit, Trash2, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface PricingCategory {
   id: string;
@@ -23,6 +24,7 @@ interface PricingCategory {
 
 const PricingCategories = () => {
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
+  const queryClient = useQueryClient();
   
   // Fetch categories from database
   const { data: categories = [], isLoading, error } = useTenantQueryWithCache(
@@ -36,11 +38,19 @@ const PricingCategories = () => {
   // Mutations
   const createCategory = useTenantMutation('categorie_tarification', 'insert', {
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pricing-categories'] });
       toast({
         title: "Catégorie ajoutée",
         description: "La catégorie de tarification a été ajoutée avec succès.",
       });
       setIsDialogOpen(false);
+      setEditingCategory(null);
+      form.reset({
+        libelle_categorie: '',
+        taux_tva: 0,
+        taux_centime_additionnel: 0,
+        coefficient_prix_vente: 0
+      });
     },
     onError: (error: any) => {
       toast({
@@ -53,11 +63,19 @@ const PricingCategories = () => {
 
   const updateCategory = useTenantMutation('categorie_tarification', 'update', {
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pricing-categories'] });
       toast({
         title: "Catégorie modifiée",
         description: "La catégorie de tarification a été modifiée avec succès.",
       });
       setIsDialogOpen(false);
+      setEditingCategory(null);
+      form.reset({
+        libelle_categorie: '',
+        taux_tva: 0,
+        taux_centime_additionnel: 0,
+        coefficient_prix_vente: 0
+      });
     },
     onError: (error: any) => {
       toast({
@@ -70,6 +88,7 @@ const PricingCategories = () => {
 
   const deleteCategory = useTenantMutation('categorie_tarification', 'delete', {
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pricing-categories'] });
       toast({
         title: "Catégorie supprimée",
         description: "La catégorie de tarification a été supprimée avec succès.",
@@ -127,7 +146,7 @@ const PricingCategories = () => {
 
   const handleDeleteCategory = (categoryId: string) => {
     deleteCategory.mutate({
-      id: { eq: categoryId }
+      filters: { id: { eq: categoryId } }
     });
   };
 
