@@ -146,20 +146,18 @@ const PricingCategories = () => {
 
   const handleDeleteCategory = (categoryId: string) => {
     deleteCategory.mutate({
-      filters: { id: { eq: categoryId } }
+      id: categoryId
     });
   };
 
   const onSubmit = (data: Partial<PricingCategory>) => {
     if (editingCategory) {
       updateCategory.mutate({
-        filters: { id: { eq: editingCategory.id } },
-        updates: {
-          libelle_categorie: data.libelle_categorie!,
-          taux_tva: data.taux_tva!,
-          taux_centime_additionnel: data.taux_centime_additionnel!,
-          coefficient_prix_vente: data.coefficient_prix_vente!
-        }
+        id: editingCategory.id,
+        libelle_categorie: data.libelle_categorie!,
+        taux_tva: data.taux_tva!,
+        taux_centime_additionnel: data.taux_centime_additionnel!,
+        coefficient_prix_vente: data.coefficient_prix_vente!
       });
     } else {
       createCategory.mutate({

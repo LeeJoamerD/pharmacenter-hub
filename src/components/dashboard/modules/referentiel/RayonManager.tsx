@@ -118,15 +118,15 @@ const RayonManager = () => {
 
   const handleDeleteRayon = (rayonId: string) => {
     deleteRayon.mutate({ 
-      filters: { id: { eq: rayonId } }
+      id: rayonId
     });
   };
 
   const onSubmit = (data: Partial<RayonProduct>) => {
     if (editingRayon) {
       updateRayon.mutate({
-        filters: { id: { eq: editingRayon.id } },
-        updates: { libelle_rayon: data.libelle_rayon! }
+        id: editingRayon.id,
+        libelle_rayon: data.libelle_rayon!
       });
     } else {
       createRayon.mutate({
