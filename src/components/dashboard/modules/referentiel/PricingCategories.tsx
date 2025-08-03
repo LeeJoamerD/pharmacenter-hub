@@ -275,7 +275,63 @@ const PricingCategories = () => {
                 </Form>
               </DialogContent>
             </Dialog>
+          </div
+
+          
+      <Separator />
+
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Calcul du Prix de Vente (Simulation)</h3>
+        <p className="text-muted-foreground">
+          Entrez un prix d'achat et sélectionnez une catégorie pour simuler le calcul du prix de vente.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+          <div className="space-y-2">
+            <Label htmlFor="simulation_purchase_price">Prix d'achat</Label>
+            <Input
+              id="simulation_purchase_price"
+              type="number"
+              value={simulationPurchasePrice}
+              onChange={(e) => setSimulationPurchasePrice(parseFloat(e.target.value))}
+              className="w-full"
+            />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="simulation_category">Catégorie</Label>
+            <Select
+              value={selectedSimulationCategoryId?.toString() || ''}
+              onValueChange={(value) => setSelectedSimulationCategoryId(parseInt(value))}
+            >
+              <SelectTrigger id="simulation_category" className="w-full">
+                <SelectValue placeholder="Sélectionner une catégorie" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map(category => (
+                  <SelectItem key={category.id} value={category.id.toString()}>
+                    {category.libelle_categorie}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="simulated_sale_price_ht">Prix de vente HT</Label>
+            <Input id="simulated_sale_price_ht" value={simulatedSalePriceHT.toFixed(2)} readOnly className="w-full bg-gray-100" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="simulated_tva">TVA</Label>
+            <Input id="simulated_tva" value={simulatedTVA.toFixed(2)} readOnly className="w-full bg-gray-100" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="simulated_centime_additionnel">Centime additionnel</Label>
+            <Input id="simulated_centime_additionnel" value={simulatedCentimeAdditionnel.toFixed(2)} readOnly className="w-full bg-gray-100" />
+          </div>
+          <div className="space-y-2 col-span-full md:col-span-1">
+            <Label htmlFor="simulated_sale_price_ttc">Prix de vente TTC</Label>
+            <Input id="simulated_sale_price_ttc" value={simulatedSalePriceTTC.toFixed(2)} readOnly className="w-full bg-gray-100 font-bold" />
+          </div>
+        </div>
+      </div>
 
           {isLoading ? (
             <div className="text-center py-4">Chargement...</div>
