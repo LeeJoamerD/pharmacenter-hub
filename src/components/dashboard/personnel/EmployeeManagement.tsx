@@ -42,6 +42,9 @@ export const EmployeeManagement = () => {
     }
   );
 
+  console.log('Employees data:', employees);
+  console.log('Is loading:', isLoading);
+
   // Mutations
   const createMutation = useTenantMutation('personnel', 'insert', {
     onSuccess: () => {
