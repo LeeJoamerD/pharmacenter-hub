@@ -15,13 +15,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 // Interface pour la structure des données d'une société
 interface Societe {
   id: string;
-  raison_sociale: string;
-  nif: string;
-  rccm: string;
+  libelle_societe: string;
   adresse: string;
-  telephone: string;
+  telephone_appel: string;
+  telephone_whatsapp: string;
   email: string;
-  type_societe: 'Assureur' | 'Conventionné';
+  limite_dette: number;
+  niu: string;
+  assureur_id: string;
+  taux_couverture_agent: number;
+  taux_couverture_ayant_droit: number;
   created_at: string;
 }
 
@@ -38,13 +41,15 @@ const Societes = () => {
   // Hook de formulaire pour la validation et la gestion des champs
   const form = useForm<Partial<Societe>>({
     defaultValues: {
-      raison_sociale: '',
-      nif: '',
-      rccm: '',
+      libelle_societe: '',
+      niu: '',
       adresse: '',
-      telephone: '',
+      telephone_appel: '',
+      telephone_whatsapp: '',
       email: '',
-      type_societe: 'Assureur',
+      limite_dette: 0,
+      taux_couverture_agent: 0,
+      taux_couverture_ayant_droit: 0,
     },
   });
 
@@ -54,7 +59,7 @@ const Societes = () => {
     'societes',
     '*',
     {},
-    { orderBy: { column: 'raison_sociale', ascending: true } }
+    { orderBy: { column: 'libelle_societe', ascending: true } }
   );
 
   // Mutation pour créer une société
@@ -93,19 +98,21 @@ const Societes = () => {
 
   // Filtrage des sociétés en fonction de la recherche
   const filteredSocietes = societes.filter(s =>
-    s.raison_sociale.toLowerCase().includes(searchTerm.toLowerCase())
+    s.libelle_societe?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Gestion de la soumission du formulaire
   const onSubmit = (data: Partial<Societe>) => {
     const finalData = {
-        raison_sociale: data.raison_sociale,
-        nif: data.nif,
-        rccm: data.rccm,
+        libelle_societe: data.libelle_societe,
+        niu: data.niu,
         adresse: data.adresse,
-        telephone: data.telephone,
+        telephone_appel: data.telephone_appel,
+        telephone_whatsapp: data.telephone_whatsapp,
         email: data.email,
-        type_societe: data.type_societe,
+        limite_dette: data.limite_dette || 0,
+        taux_couverture_agent: data.taux_couverture_agent || 0,
+        taux_couverture_ayant_droit: data.taux_couverture_ayant_droit || 0,
     };
 
     if (editingSociete) {
@@ -117,15 +124,14 @@ const Societes = () => {
             onSuccess: async (createdSocieteData) => {
                 if (createdSocieteData && createdSocieteData.length > 0) {
                     const newSociete = createdSocieteData[0];
-                    const clientType = newSociete.type_societe === 'Assureur' ? 'Assuré' : 'Conventionné';
 
                     // Créer l'entrée correspondante dans la table 'clients'
                     await createClientForSociete.mutateAsync({
-                        nom_complet: newSociete.raison_sociale,
-                        telephone: newSociete.telephone,
-                        type_client: clientType, // CORRECTION APPLIQUÉE ICI
+                        nom_complet: newSociete.libelle_societe,
+                        telephone: newSociete.telephone_appel,
+                        adresse: newSociete.adresse,
+                        type_client: 'Société',
                         societe_id: newSociete.id,
-                        is_societe_client: true, // Marqueur pour identifier ce type de client
                     });
                 }
                 toast({ title: "Succès", description: "Société ajoutée avec succès." });
@@ -144,13 +150,15 @@ const Societes = () => {
   const handleAddNew = () => {
     setEditingSociete(null);
     form.reset({
-        raison_sociale: '',
-        nif: '',
-        rccm: '',
+        libelle_societe: '',
+        niu: '',
         adresse: '',
-        telephone: '',
+        telephone_appel: '',
+        telephone_whatsapp: '',
         email: '',
-        type_societe: 'Assureur',
+        limite_dette: 0,
+        taux_couverture_agent: 0,
+        taux_couverture_ayant_droit: 0,
     });
     setIsDialogOpen(true);
   };
@@ -175,7 +183,7 @@ const Societes = () => {
             <div className="flex items-center space-x-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher par raison sociale..."
+                placeholder="Rechercher par nom de société..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-64"
@@ -197,47 +205,30 @@ const Societes = () => {
                 </DialogHeader>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4 py-4">
-                    <FormField control={form.control} name="raison_sociale" render={({ field }) => (
+                    <FormField control={form.control} name="libelle_societe" render={({ field }) => (
                       <FormItem className="col-span-2">
-                        <FormLabel>Raison Sociale *</FormLabel>
+                        <FormLabel>Nom de la société *</FormLabel>
                         <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="type_societe" render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Type de Société *</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Sélectionner un type" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    <SelectItem value="Assureur">Assureur</SelectItem>
-                                    <SelectItem value="Conventionné">Conventionné</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                     <FormField control={form.control} name="nif" render={({ field }) => (
+                    <FormField control={form.control} name="niu" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>NIF</FormLabel>
+                        <FormLabel>NIU</FormLabel>
                         <FormControl><Input {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="rccm" render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>RCCM</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                     <FormField control={form.control} name="telephone" render={({ field }) => (
+                    <FormField control={form.control} name="telephone_appel" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Téléphone *</FormLabel>
+                        <FormLabel>Téléphone principal *</FormLabel>
+                        <FormControl><Input {...field} type="tel" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="telephone_whatsapp" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Téléphone WhatsApp</FormLabel>
                         <FormControl><Input {...field} type="tel" /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -246,6 +237,27 @@ const Societes = () => {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl><Input {...field} type="email" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="limite_dette" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Limite de dette</FormLabel>
+                        <FormControl><Input {...field} type="number" onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="taux_couverture_agent" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Taux couverture agent (%)</FormLabel>
+                        <FormControl><Input {...field} type="number" onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="taux_couverture_ayant_droit" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Taux couverture ayant droit (%)</FormLabel>
+                        <FormControl><Input {...field} type="number" onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
@@ -274,20 +286,20 @@ const Societes = () => {
                 <Table>
                     <TableHeader>
                     <TableRow>
-                        <TableHead>Raison Sociale</TableHead>
-                        <TableHead>Type</TableHead>
+                        <TableHead>Nom de la société</TableHead>
                         <TableHead>Téléphone</TableHead>
                         <TableHead>Email</TableHead>
+                        <TableHead>Limite dette</TableHead>
                         <TableHead>Actions</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
                     {filteredSocietes.map(societe => (
                         <TableRow key={societe.id}>
-                        <TableCell className="font-medium">{societe.raison_sociale}</TableCell>
-                        <TableCell>{societe.type_societe}</TableCell>
-                        <TableCell>{societe.telephone}</TableCell>
+                        <TableCell className="font-medium">{societe.libelle_societe}</TableCell>
+                        <TableCell>{societe.telephone_appel}</TableCell>
                         <TableCell>{societe.email}</TableCell>
+                        <TableCell>{societe.limite_dette}</TableCell>
                         <TableCell>
                             <div className="flex space-x-2">
                             <Button variant="outline" size="icon" onClick={() => handleEdit(societe)}>
