@@ -3,14 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Edit, Trash2, Phone, Mail, Users } from 'lucide-react';
+import { Search, Edit, Trash2, Phone, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import type { Client } from '../ClientModule';
+import type { Client } from './types';
 
 interface ClientListProps {
   clients: Client[];
   onEditClient: (client: Client) => void;
-  onDeleteClient: (clientId: number) => void;
+  onDeleteClient: (clientId: string) => void;
 }
 
 const ClientList = ({ clients, onEditClient, onDeleteClient }: ClientListProps) => {
@@ -18,49 +18,16 @@ const ClientList = ({ clients, onEditClient, onDeleteClient }: ClientListProps) 
   const { toast } = useToast();
 
   const filteredClients = clients.filter(client =>
-    client.noms.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.prenoms.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.telephone_appel.includes(searchTerm)
+    (client.nom_complet && client.nom_complet.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (client.telephone && client.telephone.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleDelete = (clientId: number) => {
+  const handleDelete = (clientId: string) => {
     onDeleteClient(clientId);
     toast({
       title: "Client supprimé",
       description: "Le client a été supprimé avec succès.",
     });
-  };
-
-  const getStatusBadge = (statut: string) => {
-    switch (statut) {
-      case 'actif':
-        return <Badge variant="default" className="bg-green-100 text-green-800">Actif</Badge>;
-      case 'inactif':
-        return <Badge variant="secondary">Inactif</Badge>;
-      case 'suspendu':
-        return <Badge variant="destructive">Suspendu</Badge>;
-      default:
-        return <Badge variant="outline">{statut}</Badge>;
-    }
-  };
-
-  const getClientTypeBadge = (type: string) => {
-    switch (type) {
-      case 'particulier':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700">Particulier</Badge>;
-      case 'professionnel':
-        return <Badge variant="outline" className="bg-purple-50 text-purple-700">Professionnel</Badge>;
-      case 'entreprise':
-        return <Badge variant="outline" className="bg-orange-50 text-orange-700">Entreprise</Badge>;
-      default:
-        return <Badge variant="outline">{type}</Badge>;
-    }
-  };
-
-  const formatCurrency = (amount: number | undefined) => {
-    if (!amount) return '0 FCFA';
-    return `${amount.toLocaleString()} FCFA`;
   };
 
   return (
@@ -88,11 +55,10 @@ const ClientList = ({ clients, onEditClient, onDeleteClient }: ClientListProps) 
           <TableHeader>
             <TableRow>
               <TableHead>Client</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead>Total Achats</TableHead>
-              <TableHead>Dernière Visite</TableHead>
+              <TableHead>Téléphone</TableHead>
+              <TableHead>Adresse</TableHead>
+              <TableHead>Taux Remise</TableHead>
+              <TableHead>Date Création</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -100,42 +66,25 @@ const ClientList = ({ clients, onEditClient, onDeleteClient }: ClientListProps) 
             {filteredClients.map((client) => (
               <TableRow key={client.id}>
                 <TableCell>
-                  <div>
-                    <div className="font-medium">{client.noms} {client.prenoms}</div>
-                    <div className="text-sm text-muted-foreground">{client.profession}</div>
-                    <div className="text-xs text-muted-foreground">{client.adresse}</div>
+                  <div className="font-medium">{client.nom_complet || 'N/A'}</div>
+                  <div className="text-sm text-muted-foreground">Client ordinaire</div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1 text-sm">
+                    <Phone className="h-3 w-3" />
+                    {client.telephone || 'N/A'}
                   </div>
                 </TableCell>
-                <TableCell>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1 text-sm">
-                      <Phone className="h-3 w-3" />
-                      {client.telephone_appel}
-                    </div>
-                    <div className="flex items-center gap-1 text-sm">
-                      <Mail className="h-3 w-3" />
-                      {client.email}
-                    </div>
-                  </div>
+                <TableCell className="max-w-xs truncate">
+                  {client.adresse || 'N/A'}
                 </TableCell>
                 <TableCell>
-                  {getClientTypeBadge(client.type_client)}
+                  <Badge variant="secondary">
+                    {client.taux_remise_automatique || 0}%
+                  </Badge>
                 </TableCell>
                 <TableCell>
-                  {getStatusBadge(client.statut)}
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{formatCurrency(client.total_achats)}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {client.nombre_commandes} commande(s)
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm">
-                    {client.derniere_visite ? new Date(client.derniere_visite).toLocaleDateString('fr-FR') : 'Jamais'}
-                  </div>
+                  {new Date(client.created_at).toLocaleDateString('fr-FR')}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center space-x-2">
@@ -149,7 +98,7 @@ const ClientList = ({ clients, onEditClient, onDeleteClient }: ClientListProps) 
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => client.id && handleDelete(client.id)}
+                      onClick={() => handleDelete(client.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

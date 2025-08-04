@@ -2,40 +2,43 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { Users, TrendingUp, DollarSign, ShoppingCart, Calendar, Target } from 'lucide-react';
-import type { Client } from '../ClientModule';
+import type { Client } from './types';
 
 interface ClientAnalyticsProps {
   clients: Client[];
 }
 
 const ClientAnalytics = ({ clients }: ClientAnalyticsProps) => {
-  // Calculs des statistiques
+  // Calculs des statistiques basés sur la structure réelle
   const totalClients = clients.length;
-  const activeClients = clients.filter(c => c.statut === 'actif').length;
-  const totalRevenue = clients.reduce((sum, client) => sum + (client.total_achats || 0), 0);
-  const totalOrders = clients.reduce((sum, client) => sum + (client.nombre_commandes || 0), 0);
-  const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+  const clientsWithDiscount = clients.filter(c => (c.taux_remise_automatique || 0) > 0).length;
+  const clientsWithoutDiscount = clients.filter(c => (c.taux_remise_automatique || 0) === 0).length;
+  const averageDiscount = clients.length > 0 ? 
+    clients.reduce((sum, client) => sum + (client.taux_remise_automatique || 0), 0) / clients.length : 0;
 
-  // Données pour les graphiques
-  const clientTypeData = [
-    { name: 'Particulier', value: clients.filter(c => c.type_client === 'particulier').length, color: '#3b82f6' },
-    { name: 'Professionnel', value: clients.filter(c => c.type_client === 'professionnel').length, color: '#8b5cf6' },
-    { name: 'Entreprise', value: clients.filter(c => c.type_client === 'entreprise').length, color: '#f97316' }
+  // Répartition par taux de remise
+  const discountRanges = [
+    { name: '0%', value: clients.filter(c => (c.taux_remise_automatique || 0) === 0).length, color: '#6b7280' },
+    { name: '1-5%', value: clients.filter(c => {
+      const taux = c.taux_remise_automatique || 0;
+      return taux > 0 && taux <= 5;
+    }).length, color: '#3b82f6' },
+    { name: '6-10%', value: clients.filter(c => {
+      const taux = c.taux_remise_automatique || 0;
+      return taux > 5 && taux <= 10;
+    }).length, color: '#10b981' },
+    { name: '11%+', value: clients.filter(c => (c.taux_remise_automatique || 0) > 10).length, color: '#f97316' }
   ];
 
-  const statusData = [
-    { name: 'Actif', value: clients.filter(c => c.statut === 'actif').length, color: '#10b981' },
-    { name: 'Inactif', value: clients.filter(c => c.statut === 'inactif').length, color: '#6b7280' },
-    { name: 'Suspendu', value: clients.filter(c => c.statut === 'suspendu').length, color: '#ef4444' }
-  ];
-
-  const topClients = clients
-    .sort((a, b) => (b.total_achats || 0) - (a.total_achats || 0))
+  // Clients récents
+  const recentClients = clients
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5)
     .map(client => ({
-      name: `${client.noms} ${client.prenoms}`,
-      total: client.total_achats || 0,
-      commandes: client.nombre_commandes || 0
+      name: client.nom_complet || 'Client sans nom',
+      telephone: client.telephone || 'N/A',
+      taux_remise: client.taux_remise_automatique || 0,
+      date_creation: new Date(client.created_at).toLocaleDateString('fr-FR')
     }));
 
   // Données de tendance par mois (simulées)
@@ -68,7 +71,7 @@ const ClientAnalytics = ({ clients }: ClientAnalyticsProps) => {
               <Users className="h-8 w-8 text-blue-600" />
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              {activeClients} actifs
+              Clients ordinaires
             </p>
           </CardContent>
         </Card>
@@ -77,13 +80,13 @@ const ClientAnalytics = ({ clients }: ClientAnalyticsProps) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Chiffre d'affaires</p>
-                <p className="text-2xl font-bold">{formatCurrency(totalRevenue)}</p>
+                <p className="text-sm font-medium text-muted-foreground">Avec remise</p>
+                <p className="text-2xl font-bold">{clientsWithDiscount}</p>
               </div>
               <DollarSign className="h-8 w-8 text-green-600" />
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Total des achats
+              Bénéficient d'une remise
             </p>
           </CardContent>
         </Card>
@@ -92,13 +95,13 @@ const ClientAnalytics = ({ clients }: ClientAnalyticsProps) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Commandes</p>
-                <p className="text-2xl font-bold">{totalOrders}</p>
+                <p className="text-sm font-medium text-muted-foreground">Sans remise</p>
+                <p className="text-2xl font-bold">{clientsWithoutDiscount}</p>
               </div>
               <ShoppingCart className="h-8 w-8 text-orange-600" />
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Total commandes
+              Taux standard
             </p>
           </CardContent>
         </Card>
@@ -107,13 +110,13 @@ const ClientAnalytics = ({ clients }: ClientAnalyticsProps) => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Panier Moyen</p>
-                <p className="text-2xl font-bold">{formatCurrency(averageOrderValue)}</p>
+                <p className="text-sm font-medium text-muted-foreground">Remise Moyenne</p>
+                <p className="text-2xl font-bold">{averageDiscount.toFixed(1)}%</p>
               </div>
               <Target className="h-8 w-8 text-purple-600" />
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Par commande
+              Tous clients confondus
             </p>
           </CardContent>
         </Card>
@@ -121,16 +124,16 @@ const ClientAnalytics = ({ clients }: ClientAnalyticsProps) => {
 
       {/* Graphiques */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Répartition par type */}
+        {/* Répartition par taux de remise */}
         <Card>
           <CardHeader>
-            <CardTitle>Répartition par type de client</CardTitle>
+            <CardTitle>Répartition par taux de remise</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={clientTypeData}
+                  data={discountRanges}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -139,7 +142,7 @@ const ClientAnalytics = ({ clients }: ClientAnalyticsProps) => {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {clientTypeData.map((entry, index) => (
+                  {discountRanges.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -149,70 +152,10 @@ const ClientAnalytics = ({ clients }: ClientAnalyticsProps) => {
           </CardContent>
         </Card>
 
-        {/* Répartition par statut */}
+        {/* Évolution temporelle */}
         <Card>
           <CardHeader>
-            <CardTitle>Répartition par statut</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={statusData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Top clients et tendances */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top clients */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top 5 Clients</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topClients}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="name" 
-                  angle={-45}
-                  textAnchor="end"
-                  height={60}
-                  fontSize={12}
-                />
-                <YAxis />
-                <Tooltip 
-                  formatter={(value, name) => [
-                    name === 'total' ? formatCurrency(value as number) : value,
-                    name === 'total' ? 'Total Achats' : 'Commandes'
-                  ]}
-                />
-                <Bar dataKey="total" fill="#3b82f6" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Tendance mensuelle */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Évolution des clients</CardTitle>
+            <CardTitle>Évolution des inscriptions</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -233,13 +176,40 @@ const ClientAnalytics = ({ clients }: ClientAnalyticsProps) => {
                   dataKey="actifs" 
                   stroke="#10b981" 
                   strokeWidth={2}
-                  name="Clients actifs"
+                  name="Total cumulé"
                 />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
+
+      {/* Clients récents */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Clients récents</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {recentClients.length === 0 ? (
+              <p className="text-center text-muted-foreground">Aucun client trouvé</p>
+            ) : (
+              recentClients.map((client, index) => (
+                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <p className="font-medium">{client.name}</p>
+                    <p className="text-sm text-muted-foreground">{client.telephone}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium">{client.taux_remise}% de remise</p>
+                    <p className="text-xs text-muted-foreground">{client.date_creation}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
