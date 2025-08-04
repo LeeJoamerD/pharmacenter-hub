@@ -472,13 +472,6 @@ export type Database = {
             referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "conges_employes_employe_id_fkey"
-            columns: ["employe_id"]
-            isOneToOne: false
-            referencedRelation: "employes_rh"
-            referencedColumns: ["id"]
-          },
         ]
       }
       conventionnes: {
@@ -730,78 +723,6 @@ export type Database = {
           },
         ]
       }
-      employes_rh: {
-        Row: {
-          adresse: string | null
-          created_at: string
-          date_naissance: string
-          date_recrutement: string
-          email: string
-          fonction: string
-          id: string
-          niu_cni: string
-          nombre_enfants: number | null
-          noms: string
-          numero_cnss: string | null
-          photo_identite: string | null
-          prenoms: string
-          profession: string | null
-          salaire_base: number | null
-          situation_familiale: string
-          statut_contractuel: string
-          telephone_appel: string
-          telephone_whatsapp: string | null
-          tenant_id: string
-          updated_at: string
-        }
-        Insert: {
-          adresse?: string | null
-          created_at?: string
-          date_naissance: string
-          date_recrutement: string
-          email: string
-          fonction: string
-          id?: string
-          niu_cni: string
-          nombre_enfants?: number | null
-          noms: string
-          numero_cnss?: string | null
-          photo_identite?: string | null
-          prenoms: string
-          profession?: string | null
-          salaire_base?: number | null
-          situation_familiale: string
-          statut_contractuel: string
-          telephone_appel: string
-          telephone_whatsapp?: string | null
-          tenant_id: string
-          updated_at?: string
-        }
-        Update: {
-          adresse?: string | null
-          created_at?: string
-          date_naissance?: string
-          date_recrutement?: string
-          email?: string
-          fonction?: string
-          id?: string
-          niu_cni?: string
-          nombre_enfants?: number | null
-          noms?: string
-          numero_cnss?: string | null
-          photo_identite?: string | null
-          prenoms?: string
-          profession?: string | null
-          salaire_base?: number | null
-          situation_familiale?: string
-          statut_contractuel?: string
-          telephone_appel?: string
-          telephone_whatsapp?: string | null
-          tenant_id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       encaissements: {
         Row: {
           caissier_id: string
@@ -1034,13 +955,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "formations_employes_participants_employe_id_fkey"
-            columns: ["employe_id"]
-            isOneToOne: false
-            referencedRelation: "employes_rh"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "formations_employes_participants_formation_id_fkey"
             columns: ["formation_id"]
             isOneToOne: false
@@ -1131,15 +1045,7 @@ export type Database = {
           type_shift?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "horaires_employes_employe_id_fkey"
-            columns: ["employe_id"]
-            isOneToOne: false
-            referencedRelation: "employes_rh"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       immobilisations: {
         Row: {

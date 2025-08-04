@@ -31,14 +31,19 @@ export const EmployeeManagement = () => {
 
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
 
-  // Récupérer les employés
+  // Récupérer les employés depuis la table personnel (seulement les employés, pas les utilisateurs système)
   const { data: employees = [], isLoading, refetch } = useTenantQueryWithCache(
     ['employees'],
-    'employes_rh'
+    'personnel',
+    '*',
+    { 
+      orderBy: { column: 'noms', ascending: true },
+      filters: { auth_user_id: { is: null } } // Seulement les employés
+    }
   );
 
   // Mutations
-  const createMutation = useTenantMutation('employes_rh', 'insert', {
+  const createMutation = useTenantMutation('personnel', 'insert', {
     onSuccess: () => {
       toast.success('Employé créé avec succès');
       setIsDialogOpen(false);
@@ -51,7 +56,7 @@ export const EmployeeManagement = () => {
     }
   });
 
-  const updateMutation = useTenantMutation('employes_rh', 'update', {
+  const updateMutation = useTenantMutation('personnel', 'update', {
     onSuccess: () => {
       toast.success('Employé modifié avec succès');
       setIsDialogOpen(false);
@@ -65,7 +70,7 @@ export const EmployeeManagement = () => {
     }
   });
 
-  const deleteMutation = useTenantMutation('employes_rh', 'delete', {
+  const deleteMutation = useTenantMutation('personnel', 'delete', {
     onSuccess: () => {
       toast.success('Employé supprimé avec succès');
       refetch();
@@ -104,10 +109,18 @@ export const EmployeeManagement = () => {
       if (editingEmployee) {
         updateMutation.mutate({ 
           id: editingEmployee.id, 
-          ...data 
+          ...data,
+          role: 'Employé', // Rôle par défaut pour les employés
+          is_active: true
         });
       } else {
-        createMutation.mutate(data);
+        createMutation.mutate({
+          ...data,
+          role: 'Employé', // Rôle par défaut pour les employés
+          is_active: true,
+          // Générer reference_agent automatiquement
+          reference_agent: `${data.prenoms.split(' ')[0]}_${data.noms.split(' ')[0].substring(0, 4).toUpperCase()}`
+        });
       }
     } catch (error) {
       console.error('Erreur lors de la soumission du formulaire:', error);
