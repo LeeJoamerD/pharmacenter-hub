@@ -12,12 +12,23 @@ interface ClientFormProps {
   onSubmit: (data: ClientFormData) => void;
   isEdit: boolean;
   onCancel: () => void;
+  client?: any; // Pour accéder au type de client
 }
 
-export const ClientForm = ({ form, onSubmit, isEdit, onCancel }: ClientFormProps) => {
+export const ClientForm = ({ form, onSubmit, isEdit, onCancel, client }: ClientFormProps) => {
+  const isReadOnly = client && client.type_client !== 'Ordinaire';
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {isReadOnly && (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-sm text-blue-800">
+              Ce client est de type "{client.type_client}". Pour modifier ses informations, 
+              utilisez le module {client.type_client === 'Personnel' ? 'Personnel' : 
+                                client.type_client === 'Assuré' ? 'Sociétés' : 'Conventionnés'}.
+            </p>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -26,7 +37,7 @@ export const ClientForm = ({ form, onSubmit, isEdit, onCancel }: ClientFormProps
               <FormItem>
                 <FormLabel>Nom complet *</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="Jean Baptiste KOUAME" />
+                  <Input {...field} placeholder="Jean Baptiste KOUAME" disabled={isReadOnly} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -40,7 +51,7 @@ export const ClientForm = ({ form, onSubmit, isEdit, onCancel }: ClientFormProps
               <FormItem>
                 <FormLabel>Téléphone *</FormLabel>
                 <FormControl>
-                  <Input {...field} placeholder="+225 0123456789" />
+                  <Input {...field} placeholder="+225 0123456789" disabled={isReadOnly} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -60,6 +71,7 @@ export const ClientForm = ({ form, onSubmit, isEdit, onCancel }: ClientFormProps
                     min="0"
                     max="100"
                     step="0.01"
+                    disabled={isReadOnly}
                     onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                   />
                 </FormControl>
@@ -80,6 +92,7 @@ export const ClientForm = ({ form, onSubmit, isEdit, onCancel }: ClientFormProps
                   {...field} 
                   placeholder="Adresse complète du client..."
                   className="min-h-[80px]"
+                  disabled={isReadOnly}
                 />
               </FormControl>
               <FormMessage />
@@ -92,10 +105,12 @@ export const ClientForm = ({ form, onSubmit, isEdit, onCancel }: ClientFormProps
             <X className="h-4 w-4 mr-2" />
             Annuler
           </Button>
-          <Button type="submit">
-            <Save className="h-4 w-4 mr-2" />
-            {isEdit ? 'Modifier' : 'Créer'}
-          </Button>
+          {!isReadOnly && (
+            <Button type="submit">
+              <Save className="h-4 w-4 mr-2" />
+              {isEdit ? 'Modifier' : 'Créer'}
+            </Button>
+          )}
         </div>
       </form>
     </Form>

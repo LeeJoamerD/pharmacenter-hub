@@ -25,17 +25,18 @@ const ClientModule = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     taux_remise_min: '',
-    taux_remise_max: ''
+    taux_remise_max: '',
+    type_client: ''
   });
 
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
 
-  // Récupérer les clients "Ordinaire" depuis la base de données
+  // Récupérer tous les clients depuis la base de données
   const { data: clients = [], isLoading, refetch } = useTenantQueryWithCache(
-    ['clients-ordinaire'],
+    ['clients'],
     'clients',
     '*',
-    { type_client: { eq: 'Ordinaire' } },
+    {},
     { 
       orderBy: { column: 'created_at', ascending: false }
     }
@@ -151,14 +152,16 @@ const ClientModule = () => {
     const taux = client.taux_remise_automatique || 0;
     const matchesTauxMin = filters.taux_remise_min === '' || taux >= parseFloat(filters.taux_remise_min);
     const matchesTauxMax = filters.taux_remise_max === '' || taux <= parseFloat(filters.taux_remise_max);
+    const matchesType = filters.type_client === '' || client.type_client === filters.type_client;
 
-    return matchesSearch && matchesTauxMin && matchesTauxMax;
+    return matchesSearch && matchesTauxMin && matchesTauxMax && matchesType;
   });
 
   const clearFilters = () => {
     setFilters({
       taux_remise_min: '',
-      taux_remise_max: ''
+      taux_remise_max: '',
+      type_client: ''
     });
   };
 
@@ -197,7 +200,7 @@ const ClientModule = () => {
                 <div>
                   <CardTitle>Gestion des Clients</CardTitle>
                   <CardDescription>
-                    Gérez les informations de vos clients ordinaires
+                    Consultez et gérez tous vos clients
                   </CardDescription>
                 </div>
                 <Button onClick={() => {

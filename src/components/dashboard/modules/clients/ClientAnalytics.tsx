@@ -16,6 +16,19 @@ const ClientAnalytics = ({ clients }: ClientAnalyticsProps) => {
   const averageDiscount = clients.length > 0 ? 
     clients.reduce((sum, client) => sum + (client.taux_remise_automatique || 0), 0) / clients.length : 0;
 
+  // Répartition par type de client
+  const clientsByType = clients.reduce((acc, client) => {
+    const type = client.type_client || 'Non défini';
+    acc[type] = (acc[type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Données par type de client pour le graphique
+  const clientTypeData = Object.entries(clientsByType).map(([type, count]) => ({
+    name: type,
+    value: count
+  }));
+
   // Répartition par taux de remise
   const discountRanges = [
     { name: '0%', value: clients.filter(c => (c.taux_remise_automatique || 0) === 0).length, color: '#6b7280' },
@@ -71,7 +84,7 @@ const ClientAnalytics = ({ clients }: ClientAnalyticsProps) => {
               <Users className="h-8 w-8 text-blue-600" />
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Clients ordinaires
+              Tous types confondus
             </p>
           </CardContent>
         </Card>
@@ -152,33 +165,30 @@ const ClientAnalytics = ({ clients }: ClientAnalyticsProps) => {
           </CardContent>
         </Card>
 
-        {/* Évolution temporelle */}
+        {/* Répartition par type de client */}
         <Card>
           <CardHeader>
-            <CardTitle>Évolution des inscriptions</CardTitle>
+            <CardTitle>Répartition par type</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
+              <PieChart>
+                <Pie
+                  data={clientTypeData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#82ca9d"
+                  dataKey="value"
+                >
+                  {clientTypeData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
                 <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="nouveaux" 
-                  stroke="#3b82f6" 
-                  strokeWidth={2}
-                  name="Nouveaux clients"
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="actifs" 
-                  stroke="#10b981" 
-                  strokeWidth={2}
-                  name="Total cumulé"
-                />
-              </LineChart>
+              </PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>

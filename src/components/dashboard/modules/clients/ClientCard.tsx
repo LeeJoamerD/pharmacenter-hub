@@ -24,7 +24,9 @@ export const ClientCard = ({ clients, onEdit, onDelete }: ClientCardProps) => {
                   {client.nom_complet || 'N/A'}
                 </h3>
               </div>
-              <Badge variant="secondary">Ordinaire</Badge>
+              <Badge variant={client.type_client === 'Ordinaire' ? 'default' : 'secondary'}>
+                {client.type_client}
+              </Badge>
             </div>
             
             <div className="space-y-2 mb-4">
@@ -60,15 +62,17 @@ export const ClientCard = ({ clients, onEdit, onDelete }: ClientCardProps) => {
                 <Edit className="h-3 w-3 mr-1" />
                 Modifier
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onDelete(client.id)}
-                className="flex-1"
-              >
-                <Trash2 className="h-3 w-3 mr-1" />
-                Supprimer
-              </Button>
+              {client.type_client === 'Ordinaire' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onDelete(client.id)}
+                  className="flex-1"
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Supprimer
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

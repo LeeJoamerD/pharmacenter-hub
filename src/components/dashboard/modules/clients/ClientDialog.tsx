@@ -69,6 +69,7 @@ export const ClientDialog = ({
           onSubmit={onSubmit}
           isEdit={!!client}
           onCancel={onCancel}
+          client={client}
         />
       </DialogContent>
     </Dialog>

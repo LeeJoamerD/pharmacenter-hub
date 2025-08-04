@@ -29,6 +29,7 @@ export const ClientTable = ({ clients, onEdit, onDelete }: ClientTableProps) => 
           <TableHeader>
             <TableRow>
               <TableHead>Nom complet</TableHead>
+              <TableHead>Type de client</TableHead>
               <TableHead>Téléphone</TableHead>
               <TableHead>Adresse</TableHead>
               <TableHead>Taux remise</TableHead>
@@ -41,6 +42,11 @@ export const ClientTable = ({ clients, onEdit, onDelete }: ClientTableProps) => 
               <TableRow key={client.id}>
                 <TableCell className="font-medium">
                   {client.nom_complet || 'N/A'}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={client.type_client === 'Ordinaire' ? 'default' : 'secondary'}>
+                    {client.type_client}
+                  </Badge>
                 </TableCell>
                 <TableCell>{client.telephone || 'N/A'}</TableCell>
                 <TableCell className="max-w-xs truncate">
@@ -63,13 +69,15 @@ export const ClientTable = ({ clients, onEdit, onDelete }: ClientTableProps) => 
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onDelete(client.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {client.type_client === 'Ordinaire' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDelete(client.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

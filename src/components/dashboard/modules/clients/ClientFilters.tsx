@@ -9,6 +9,7 @@ interface ClientFiltersProps {
   filters: {
     taux_remise_min: string;
     taux_remise_max: string;
+    type_client: string;
   };
   onFiltersChange: (filters: any) => void;
   onClearFilters: () => void;
@@ -43,6 +44,21 @@ export const ClientFilters = ({ filters, onFiltersChange, onClearFilters }: Clie
           </div>
           
           <div className="space-y-3">
+            <div>
+              <Label className="text-sm font-medium">Type de client</Label>
+              <select
+                className="w-full mt-1 p-2 border rounded-md h-8"
+                value={filters.type_client}
+                onChange={(e) => onFiltersChange({...filters, type_client: e.target.value})}
+              >
+                <option value="">Tous les types</option>
+                <option value="Ordinaire">Ordinaire</option>
+                <option value="Personnel">Personnel</option>
+                <option value="Assuré">Assuré</option>
+                <option value="Conventionné">Conventionné</option>
+              </select>
+            </div>
+            
             <div>
               <Label className="text-sm font-medium">Taux de remise</Label>
               <div className="flex items-center space-x-2 mt-1">
