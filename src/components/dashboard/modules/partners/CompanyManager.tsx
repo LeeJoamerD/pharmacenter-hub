@@ -22,7 +22,7 @@ interface Societe {
   email: string;
   limite_dette: number;
   niu: string;
-  assureur_id: string;
+  assureur_id?: string;
   taux_couverture_agent: number;
   taux_couverture_ayant_droit: number;
   created_at: string;
