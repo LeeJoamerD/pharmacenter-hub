@@ -29,7 +29,12 @@ export const LeaveManagement = () => {
   // Récupérer les employés pour la sélection
   const { data: employees = [] } = useTenantQueryWithCache(
     ['employees'],
-    'employes_rh'
+    'personnel',
+    '*',
+    { 
+      orderBy: { column: 'noms', ascending: true },
+      filters: { auth_user_id: { is: null } } // Seulement les employés
+    }
   );
 
   // Mutations
