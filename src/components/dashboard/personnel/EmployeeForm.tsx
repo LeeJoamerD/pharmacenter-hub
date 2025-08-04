@@ -215,6 +215,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
                           date > new Date() || date < new Date("1900-01-01")
                         }
                         initialFocus
+                        captionLayout="dropdown-buttons"
                         className="p-3 pointer-events-auto"
                       />
                     </PopoverContent>
@@ -257,6 +258,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
                         }}
                         disabled={(date) => date > new Date()}
                         initialFocus
+                        captionLayout="dropdown-buttons"
                         className="p-3 pointer-events-auto"
                       />
                     </PopoverContent>
