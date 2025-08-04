@@ -22,10 +22,16 @@ interface Societe {
   email: string;
   limite_dette: number;
   niu: string;
-  assureur_id?: string;
+  assureur_id: string;
   taux_couverture_agent: number;
   taux_couverture_ayant_droit: number;
   created_at: string;
+}
+
+// Interface pour les assureurs
+interface Assureur {
+  id: string;
+  libelle_assureur: string;
 }
 
 // Composant principal pour la gestion des sociétés
@@ -60,6 +66,15 @@ const Societes = () => {
     '*',
     {},
     { orderBy: { column: 'libelle_societe', ascending: true } }
+  );
+
+  // Récupération des assureurs
+  const { data: assureurs = [] } = useTenantQueryWithCache(
+    ['assureurs'],
+    'assureurs',
+    'id, libelle_assureur',
+    {},
+    { orderBy: { column: 'libelle_assureur', ascending: true } }
   );
 
   // Mutation pour créer une société
@@ -103,6 +118,12 @@ const Societes = () => {
 
   // Gestion de la soumission du formulaire
   const onSubmit = (data: Partial<Societe>) => {
+    // Validation obligatoire de l'assureur
+    if (!data.assureur_id) {
+        toast({ title: "Erreur", description: "Veuillez sélectionner un assureur.", variant: "destructive" });
+        return;
+    }
+
     const finalData = {
         libelle_societe: data.libelle_societe,
         niu: data.niu,
@@ -111,6 +132,7 @@ const Societes = () => {
         telephone_whatsapp: data.telephone_whatsapp,
         email: data.email,
         limite_dette: data.limite_dette || 0,
+        assureur_id: data.assureur_id,
         taux_couverture_agent: data.taux_couverture_agent || 0,
         taux_couverture_ayant_droit: data.taux_couverture_ayant_droit || 0,
     };
@@ -119,21 +141,9 @@ const Societes = () => {
         // Mise à jour
         updateSociete.mutate({ id: editingSociete.id, ...finalData });
     } else {
-        // Création
+        // Création - le client sera créé automatiquement par le trigger de la DB
         createSociete.mutate(finalData, {
-            onSuccess: async (createdSocieteData) => {
-                if (createdSocieteData && createdSocieteData.length > 0) {
-                    const newSociete = createdSocieteData[0];
-
-                    // Créer l'entrée correspondante dans la table 'clients'
-                    await createClientForSociete.mutateAsync({
-                        nom_complet: newSociete.libelle_societe,
-                        telephone: newSociete.telephone_appel,
-                        adresse: newSociete.adresse,
-                        type_client: 'Société',
-                        societe_id: newSociete.id,
-                    });
-                }
+            onSuccess: () => {
                 toast({ title: "Succès", description: "Société ajoutée avec succès." });
                 setIsDialogOpen(false);
                 form.reset();
@@ -212,13 +222,33 @@ const Societes = () => {
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="niu" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>NIU</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                     <FormField control={form.control} name="assureur_id" render={({ field }) => (
+                       <FormItem>
+                         <FormLabel>Assureur *</FormLabel>
+                         <Select onValueChange={field.onChange} value={field.value || ""}>
+                           <FormControl>
+                             <SelectTrigger>
+                               <SelectValue placeholder="Sélectionner un assureur" />
+                             </SelectTrigger>
+                           </FormControl>
+                           <SelectContent>
+                             {assureurs.map((assureur: Assureur) => (
+                               <SelectItem key={assureur.id} value={assureur.id}>
+                                 {assureur.libelle_assureur}
+                               </SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
+                         <FormMessage />
+                       </FormItem>
+                     )} />
+                     <FormField control={form.control} name="niu" render={({ field }) => (
+                       <FormItem>
+                         <FormLabel>NIU</FormLabel>
+                         <FormControl><Input {...field} /></FormControl>
+                         <FormMessage />
+                       </FormItem>
+                     )} />
                     <FormField control={form.control} name="telephone_appel" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Téléphone principal *</FormLabel>

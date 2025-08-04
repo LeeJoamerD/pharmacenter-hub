@@ -3112,7 +3112,7 @@ export type Database = {
       societes: {
         Row: {
           adresse: string | null
-          assureur_id: string | null
+          assureur_id: string
           created_at: string
           email: string | null
           id: string
@@ -3128,7 +3128,7 @@ export type Database = {
         }
         Insert: {
           adresse?: string | null
-          assureur_id?: string | null
+          assureur_id: string
           created_at?: string
           email?: string | null
           id?: string
@@ -3144,7 +3144,7 @@ export type Database = {
         }
         Update: {
           adresse?: string | null
-          assureur_id?: string | null
+          assureur_id?: string
           created_at?: string
           email?: string | null
           id?: string
