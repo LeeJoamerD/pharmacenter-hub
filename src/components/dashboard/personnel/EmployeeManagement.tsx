@@ -36,9 +36,9 @@ export const EmployeeManagement = () => {
     ['employees'],
     'personnel',
     '*',
+    { auth_user_id: { is: null } },
     { 
-      orderBy: { column: 'noms', ascending: true },
-      filters: { auth_user_id: { is: null } } // Seulement les employés
+      orderBy: { column: 'noms', ascending: true }
     }
   );
 
@@ -321,7 +321,7 @@ export const EmployeeManagement = () => {
           </div>
 
           {/* Statistiques */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4">
                 <div className="text-2xl font-bold">{employees.length}</div>

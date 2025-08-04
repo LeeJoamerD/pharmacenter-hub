@@ -26,6 +26,8 @@ export type EmployeeFormData = z.infer<typeof employeeSchema>;
 
 export interface Employee {
   id: number;
+  tenant_id?: string;
+  auth_user_id?: string;
   noms: string;
   prenoms: string;
   fonction: string;
@@ -43,6 +45,9 @@ export interface Employee {
   nombre_enfants: number;
   numero_cnss?: string;
   statut_contractuel: string;
+  role?: string;
+  is_active?: boolean;
+  reference_agent?: string;
 }
 
 export const leaveRequestSchema = z.object({

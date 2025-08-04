@@ -34,6 +34,15 @@ export const useTenantQuery = () => {
         Object.entries(additionalFilters).forEach(([key, value]) => {
           if (Array.isArray(value)) {
             query = query.in(key, value);
+          } else if (typeof value === 'object' && value !== null) {
+            // Gestion des filtres spéciaux comme { is: null }
+            if ('is' in value && value.is === null) {
+              query = query.is(key, null);
+            } else if ('eq' in value) {
+              query = query.eq(key, value.eq);
+            } else if ('neq' in value) {
+              query = query.neq(key, value.neq);
+            }
           } else if (value !== undefined && value !== null) {
             query = query.eq(key, value);
           }
