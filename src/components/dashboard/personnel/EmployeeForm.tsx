@@ -5,6 +5,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { UseFormReturn } from 'react-hook-form';
 import { EmployeeFormData } from './types';
 import { ImageUpload } from './ImageUpload';
@@ -120,8 +125,11 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
                 <FormItem>
                   <FormLabel>Téléphone d'appel</FormLabel>
                   <FormControl>
-                    <Input placeholder="01.23.45.67.89" {...field} />
+                    <Input placeholder="+237 6XX XXX XXX ou 6XX XXX XXX" {...field} />
                   </FormControl>
+                  <FormDescription>
+                    Formats acceptés: +237 6XX XXX XXX, 237 6XX XXX XXX, 6XX XXX XXX
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -131,9 +139,9 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="telephone_whatsapp"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>WhatsApp</FormLabel>
+                  <FormLabel>WhatsApp (optionnel)</FormLabel>
                   <FormControl>
-                    <Input placeholder="01.23.45.67.89" {...field} />
+                    <Input placeholder="+237 6XX XXX XXX ou 6XX XXX XXX" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -175,11 +183,42 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               control={form.control}
               name="date_naissance"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Date de naissance</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(new Date(field.value), "dd/MM/yyyy")
+                          ) : (
+                            <span>Sélectionner une date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value ? new Date(field.value) : undefined}
+                        onSelect={(date) => {
+                          field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                        }}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date("1900-01-01")
+                        }
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
@@ -188,11 +227,40 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               control={form.control}
               name="date_recrutement"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Date de recrutement</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(new Date(field.value), "dd/MM/yyyy")
+                          ) : (
+                            <span>Sélectionner une date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value ? new Date(field.value) : undefined}
+                        onSelect={(date) => {
+                          field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                        }}
+                        disabled={(date) => date > new Date()}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}

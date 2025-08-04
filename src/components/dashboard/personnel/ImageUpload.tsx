@@ -17,7 +17,9 @@ export const ImageUpload = ({ value, onChange, label }: ImageUploadProps) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [cropDimensions, setCropDimensions] = useState({ x: 0, y: 0, width: 200, height: 200 });
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [resizeHandle, setResizeHandle] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -78,7 +80,7 @@ export const ImageUpload = ({ value, onChange, label }: ImageUploadProps) => {
   }, [selectedImage, cropDimensions, onChange]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging || !imageRef.current || !containerRef.current) return;
+    if ((!isDragging && !isResizing) || !imageRef.current || !containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect();
     const imageRect = imageRef.current.getBoundingClientRect();
@@ -88,21 +90,55 @@ export const ImageUpload = ({ value, onChange, label }: ImageUploadProps) => {
     const deltaX = (e.clientX - dragStart.x) * scaleX;
     const deltaY = (e.clientY - dragStart.y) * scaleY;
 
-    setCropDimensions(prev => {
-      const newX = Math.max(0, Math.min(prev.x + deltaX, imageRef.current!.naturalWidth - prev.width));
-      const newY = Math.max(0, Math.min(prev.y + deltaY, imageRef.current!.naturalHeight - prev.height));
-      return { ...prev, x: newX, y: newY };
-    });
+    if (isDragging) {
+      setCropDimensions(prev => {
+        const newX = Math.max(0, Math.min(prev.x + deltaX, imageRef.current!.naturalWidth - prev.width));
+        const newY = Math.max(0, Math.min(prev.y + deltaY, imageRef.current!.naturalHeight - prev.height));
+        return { ...prev, x: newX, y: newY };
+      });
+    } else if (isResizing) {
+      setCropDimensions(prev => {
+        let newWidth = prev.width;
+        let newHeight = prev.height;
+        let newX = prev.x;
+        let newY = prev.y;
+
+        if (resizeHandle.includes('e')) {
+          newWidth = Math.min(prev.width + deltaX, imageRef.current!.naturalWidth - prev.x);
+        }
+        if (resizeHandle.includes('w')) {
+          const widthChange = Math.min(deltaX, prev.x);
+          newWidth = prev.width - widthChange;
+          newX = prev.x + widthChange;
+        }
+        if (resizeHandle.includes('s')) {
+          newHeight = Math.min(prev.height + deltaY, imageRef.current!.naturalHeight - prev.y);
+        }
+        if (resizeHandle.includes('n')) {
+          const heightChange = Math.min(deltaY, prev.y);
+          newHeight = prev.height - heightChange;
+          newY = prev.y + heightChange;
+        }
+
+        // Maintenir une taille minimale
+        newWidth = Math.max(50, newWidth);
+        newHeight = Math.max(50, newHeight);
+
+        return { x: newX, y: newY, width: newWidth, height: newHeight };
+      });
+    }
 
     setDragStart({ x: e.clientX, y: e.clientY });
-  }, [isDragging, dragStart]);
+  }, [isDragging, isResizing, dragStart, resizeHandle]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
+    setIsResizing(false);
+    setResizeHandle('');
   }, []);
 
   React.useEffect(() => {
-    if (isDragging) {
+    if (isDragging || isResizing) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
       return () => {
@@ -110,7 +146,7 @@ export const ImageUpload = ({ value, onChange, label }: ImageUploadProps) => {
         document.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [isDragging, isResizing, handleMouseMove, handleMouseUp]);
 
   const handleRemove = useCallback(() => {
     onChange('');
@@ -198,6 +234,7 @@ export const ImageUpload = ({ value, onChange, label }: ImageUploadProps) => {
                     height: `${(cropDimensions.height / (imageRef.current?.naturalHeight || 1)) * 100}%`
                   }}
                   onMouseDown={(e) => {
+                    if ((e.target as HTMLElement).dataset.resize) return;
                     setIsDragging(true);
                     setDragStart({ x: e.clientX, y: e.clientY });
                     e.preventDefault();
@@ -208,6 +245,52 @@ export const ImageUpload = ({ value, onChange, label }: ImageUploadProps) => {
                   <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-xs font-medium">
                     Glisser pour déplacer
                   </div>
+                  
+                  {/* Poignées de redimensionnement */}
+                  <div 
+                    data-resize="nw"
+                    className="absolute -top-1 -left-1 w-3 h-3 bg-primary border border-white cursor-nw-resize"
+                    onMouseDown={(e) => {
+                      setIsResizing(true);
+                      setResizeHandle('nw');
+                      setDragStart({ x: e.clientX, y: e.clientY });
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <div 
+                    data-resize="ne"
+                    className="absolute -top-1 -right-1 w-3 h-3 bg-primary border border-white cursor-ne-resize"
+                    onMouseDown={(e) => {
+                      setIsResizing(true);
+                      setResizeHandle('ne');
+                      setDragStart({ x: e.clientX, y: e.clientY });
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <div 
+                    data-resize="sw"
+                    className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary border border-white cursor-sw-resize"
+                    onMouseDown={(e) => {
+                      setIsResizing(true);
+                      setResizeHandle('sw');
+                      setDragStart({ x: e.clientX, y: e.clientY });
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <div 
+                    data-resize="se"
+                    className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-white cursor-se-resize"
+                    onMouseDown={(e) => {
+                      setIsResizing(true);
+                      setResizeHandle('se');
+                      setDragStart({ x: e.clientX, y: e.clientY });
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
                 </div>
               </div>
             )}

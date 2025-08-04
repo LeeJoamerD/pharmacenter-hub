@@ -5,7 +5,9 @@ export const employeeSchema = z.object({
   prenoms: z.string().min(2, "Le prénom doit contenir au moins 2 caractères"),
   fonction: z.string().min(1, "La fonction est requise"),
   adresse: z.string().optional(),
-  telephone_appel: z.string().min(10, "Le numéro de téléphone doit contenir au moins 10 caractères"),
+  telephone_appel: z.string()
+    .min(8, "Le numéro de téléphone doit contenir au moins 8 caractères")
+    .regex(/^[\d+\-\s()\.]+$/, "Format de téléphone invalide"),
   telephone_whatsapp: z.string().optional(),
   email: z.string().email("Email invalide"),
   niu_cni: z.string().min(1, "Le NIU/CNI est requis"),

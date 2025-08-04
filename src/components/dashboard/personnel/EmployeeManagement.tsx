@@ -100,13 +100,18 @@ export const EmployeeManagement = () => {
   });
 
   const handleSubmit = (data: EmployeeFormData) => {
-    if (editingEmployee) {
-      updateMutation.mutate({ 
-        id: editingEmployee.id, 
-        ...data 
-      });
-    } else {
-      createMutation.mutate(data);
+    try {
+      if (editingEmployee) {
+        updateMutation.mutate({ 
+          id: editingEmployee.id, 
+          ...data 
+        });
+      } else {
+        createMutation.mutate(data);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la soumission du formulaire:', error);
+      toast.error('Erreur lors de la validation du formulaire. Veuillez vérifier tous les champs.');
     }
   };
 
@@ -241,11 +246,18 @@ export const EmployeeManagement = () => {
                 Nouvel Employé
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent 
+              className="max-w-4xl max-h-[90vh] overflow-y-auto"
+              aria-describedby="employee-form-description"
+            >
               <DialogHeader>
                 <DialogTitle>
                   {editingEmployee ? 'Modifier l\'employé' : 'Créer un nouvel employé'}
                 </DialogTitle>
+                <div id="employee-form-description" className="sr-only">
+                  Formulaire pour {editingEmployee ? 'modifier les informations d\'un' : 'créer un nouvel'} employé.
+                  Tous les champs marqués d'un astérisque sont obligatoires.
+                </div>
               </DialogHeader>
               <EmployeeForm
                 form={form}
