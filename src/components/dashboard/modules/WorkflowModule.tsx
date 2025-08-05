@@ -769,55 +769,329 @@ const WorkflowModule = () => {
         </TabsContent>
 
         {/* Configuration */}
-        <TabsContent value="settings" className="space-y-4">
-          <div className="grid gap-4">
+        <TabsContent value="settings" className="space-y-6">
+          <div className="grid gap-6">
+            {/* Paramètres généraux d'automatisation */}
             <Card>
               <CardHeader>
-                <CardTitle>Configuration Générale</CardTitle>
-                <CardDescription>Paramètres globaux pour l'automatisation</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Paramètres Généraux d'Automatisation
+                </CardTitle>
+                <CardDescription>
+                  Configuration globale des workflows et processus automatisés
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {settingsLoading ? (
-                  <div className="flex justify-center py-4">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                ) : (
-                  settings.map((setting) => (
-                    <div key={setting.id} className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>{setting.setting_key.replace(/_/g, ' ')}</Label>
-                        <div className="text-sm text-muted-foreground">{setting.description}</div>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Notifications activées</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Recevoir des notifications pour les événements de workflow
                       </div>
-                      {setting.setting_key === 'enable_notifications' ? (
-                        <Switch 
-                          checked={setting.setting_value === 'true'} 
-                          onCheckedChange={(checked) => {
-                            updateSettingMutation.mutate({
-                              setting_key: setting.setting_key,
-                              setting_value: checked ? 'true' : 'false',
-                              setting_type: setting.setting_type,
-                              description: setting.description
-                            });
-                          }}
-                        />
-                      ) : (
-                        <Input 
-                          type="number"
-                          defaultValue={setting.setting_value}
-                          className="w-24"
-                          onBlur={(e) => {
-                            updateSettingMutation.mutate({
-                              setting_key: setting.setting_key,
-                              setting_value: e.target.value,
-                              setting_type: setting.setting_type,
-                              description: setting.description
-                            });
-                          }}
-                        />
-                      )}
                     </div>
-                  ))
-                )}
+                    <Switch defaultChecked />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Délai d'attente par défaut (minutes)</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Temps maximum d'exécution avant timeout
+                      </div>
+                    </div>
+                    <Input type="number" defaultValue="30" className="w-24" />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Exécutions simultanées maximum</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Nombre limite de workflows exécutés en parallèle
+                      </div>
+                    </div>
+                    <Input type="number" defaultValue="5" className="w-24" />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Rétention des logs (jours)</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Durée de conservation des journaux d'exécution
+                      </div>
+                    </div>
+                    <Input type="number" defaultValue="90" className="w-24" />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Fréquence de vérification (minutes)</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Intervalle de vérification des conditions de déclenchement
+                      </div>
+                    </div>
+                    <Input type="number" defaultValue="5" className="w-24" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Configuration des déclencheurs */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Play className="h-5 w-5" />
+                  Configuration des Déclencheurs
+                </CardTitle>
+                <CardDescription>
+                  Paramètres des événements et conditions de déclenchement
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Déclencheurs automatiques activés</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Permet l'exécution automatique basée sur les événements
+                      </div>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Surveillance des stocks</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Déclenchement automatique sur seuils de stock
+                      </div>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Événements de vente</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Déclenchement sur les transactions de vente
+                      </div>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Seuil d'alerte stock bas (%)</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Pourcentage de stock restant pour déclencher une alerte
+                      </div>
+                    </div>
+                    <Input type="number" defaultValue="20" className="w-24" />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Planification activée</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Permet les workflows planifiés (cron jobs)
+                      </div>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Gestion des erreurs */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  Gestion des Erreurs
+                </CardTitle>
+                <CardDescription>
+                  Configuration de la gestion des échecs et nouvelle tentatives
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Nouvelles tentatives automatiques</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Relancer automatiquement les workflows échoués
+                      </div>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Nombre maximum de tentatives</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Limite des reprises automatiques avant échec définitif
+                      </div>
+                    </div>
+                    <Input type="number" defaultValue="3" className="w-24" />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Délai entre tentatives (minutes)</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Temps d'attente avant nouvelle tentative
+                      </div>
+                    </div>
+                    <Input type="number" defaultValue="5" className="w-24" />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Notifications d'échec</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Envoyer des alertes en cas d'échec de workflow
+                      </div>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Escalade automatique</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Remonter les échecs critiques aux superviseurs
+                      </div>
+                    </div>
+                    <Switch />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Sauvegarde des états</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Conserver l'état du workflow pour reprise
+                      </div>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Sécurité et audit */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Sécurité et Audit
+                </CardTitle>
+                <CardDescription>
+                  Paramètres de sécurité, contrôles d'accès et audit
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid gap-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Audit complet activé</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Journaliser toutes les actions sur les workflows
+                      </div>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Niveau de log</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Détail des informations à enregistrer
+                      </div>
+                    </div>
+                    <Select defaultValue="detailed">
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="minimal">Minimal</SelectItem>
+                        <SelectItem value="standard">Standard</SelectItem>
+                        <SelectItem value="detailed">Détaillé</SelectItem>
+                        <SelectItem value="debug">Debug</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Contrôle d'accès strict</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Vérification des permissions pour chaque action
+                      </div>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Chiffrement des données sensibles</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Chiffrer les informations confidentielles dans les logs
+                      </div>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Rétention des audits (mois)</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Durée de conservation des journaux d'audit
+                      </div>
+                    </div>
+                    <Input type="number" defaultValue="12" className="w-24" />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Alertes de sécurité</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Notifications pour tentatives d'accès non autorisées
+                      </div>
+                    </div>
+                    <Switch defaultChecked />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Actions rapides */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Actions de Maintenance</CardTitle>
+                <CardDescription>
+                  Outils de maintenance et d'optimisation du système
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="outline">
+                    <Package className="mr-2 h-4 w-4" />
+                    Nettoyer les logs anciens
+                  </Button>
+                  <Button variant="outline">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Exporter la configuration
+                  </Button>
+                  <Button variant="outline">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Réinitialiser par défaut
+                  </Button>
+                  <Button variant="outline">
+                    <Clock className="mr-2 h-4 w-4" />
+                    Test de connectivité
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>

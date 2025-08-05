@@ -306,7 +306,7 @@ export const useWorkflowTemplatesQuery = (filters?: Record<string, any>) => {
   return useTenantQueryWithCache(
     ['workflow-templates', JSON.stringify(filters)],
     'workflow_templates',
-    '*, created_by_user:personnel!created_by(id, noms, prenoms)',
+    '*',
     filters,
     { orderBy: { column: 'created_at', ascending: false } }
   );
