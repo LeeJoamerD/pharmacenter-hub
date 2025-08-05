@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Edit, Trash2, Search, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, Layers } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Product {
@@ -39,6 +39,7 @@ interface Product {
   categorie_tarification_id?: string;
   libelle_produit: string;
   code_produit?: string;
+  code_cip?: string;
   laboratoire?: string;
   prix_achat?: number;
   prix_vente?: number;
@@ -46,6 +47,9 @@ interface Product {
   stock_limite?: number;
   quantite_stock?: number;
   is_active?: boolean;
+  id_produit_source?: string;
+  quantite_unites_details_source?: number;
+  niveau_detail?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -77,7 +81,9 @@ const ProductCatalog = () => {
   const [rayonFilter, setRayonFilter] = useState("all");
   const [stockFilter, setStockFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [sourceProduct, setSourceProduct] = useState<Product | null>(null);
 
   const { toast } = useToast();
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
@@ -86,7 +92,7 @@ const ProductCatalog = () => {
   const { data: products = [], isLoading } = useTenantQueryWithCache(
     ['products'],
     'produits',
-    'id, libelle_produit, code_produit, laboratoire, prix_achat, prix_vente, taux_tva, stock_limite, quantite_stock, famille_id, rayon_id, dci_id, categorie_tarification_id, is_active, created_at',
+    'id, libelle_produit, code_produit, code_cip, laboratoire, prix_achat, prix_vente, taux_tva, stock_limite, quantite_stock, famille_id, rayon_id, dci_id, categorie_tarification_id, is_active, id_produit_source, quantite_unites_details_source, niveau_detail, created_at',
     { is_active: true }
   );
 
@@ -149,6 +155,7 @@ const ProductCatalog = () => {
 
   // Form setup
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<Product>();
+  const { register: registerDetail, handleSubmit: handleSubmitDetail, reset: resetDetail, formState: { errors: errorsDetail } } = useForm<{ quantite_unites_details_source: number }>();
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -185,6 +192,49 @@ const ProductCatalog = () => {
     reset();
   };
 
+  const handleDetailProduct = (product: Product) => {
+    // Vérifier que c'est un produit source (niveau_detail = 1)
+    if (product.niveau_detail !== 1) {
+      toast({ 
+        title: "Attention", 
+        description: "Seuls les produits sources peuvent être détaillés", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    setSourceProduct(product);
+    resetDetail({ quantite_unites_details_source: 1 });
+    setIsDetailDialogOpen(true);
+  };
+
+  const handleDetailDialogClose = () => {
+    setIsDetailDialogOpen(false);
+    setSourceProduct(null);
+    resetDetail();
+  };
+
+  const generateDetailProductData = (sourceProduct: Product, quantity: number) => {
+    // Générer le nouveau code CIP
+    const newCodeCip = sourceProduct.code_cip ? `${sourceProduct.code_cip}-1` : undefined;
+    
+    // Générer le nouveau nom avec (D)
+    const newLibelle = `${sourceProduct.libelle_produit} (D)`;
+    
+    return {
+      ...sourceProduct,
+      id: undefined, // Nouveau produit
+      libelle_produit: newLibelle,
+      code_cip: newCodeCip,
+      code_produit: newCodeCip, // Utiliser le même que code_cip
+      id_produit_source: sourceProduct.id,
+      quantite_unites_details_source: quantity,
+      niveau_detail: 2, // Produit détail
+      created_at: undefined,
+      updated_at: undefined
+    };
+  };
+
   const handleDeleteProduct = (productId: string) => {
     deleteMutation.mutate({ id: productId }, {
       onSuccess: () => {
@@ -218,6 +268,22 @@ const ProductCatalog = () => {
         },
       });
     }
+  };
+
+  const onSubmitDetail = (data: { quantite_unites_details_source: number }) => {
+    if (!sourceProduct) return;
+
+    const detailProductData = generateDetailProductData(sourceProduct, data.quantite_unites_details_source);
+    
+    createMutation.mutate(detailProductData, {
+      onSuccess: () => {
+        toast({ title: "Succès", description: "Produit détail créé avec succès" });
+        handleDetailDialogClose();
+      },
+      onError: (error) => {
+        toast({ title: "Erreur", description: "Erreur lors de la création du produit détail", variant: "destructive" });
+      },
+    });
   };
 
   const getStockBadge = (product: Product) => {
@@ -324,10 +390,15 @@ const ProductCatalog = () => {
             <TableBody>
               {filteredProducts.map((product) => (
                  <TableRow key={product.id}>
-                   <TableCell>
-                     <div className="font-medium">{product.libelle_produit}</div>
-                   </TableCell>
-                   <TableCell>{product.code_produit || 'N/A'}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">
+                        {product.libelle_produit}
+                        {product.niveau_detail === 2 && (
+                          <Badge variant="secondary" className="ml-2">Détail</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                   <TableCell>{product.code_cip || product.code_produit || 'N/A'}</TableCell>
                    <TableCell>
                      {families.find(f => f.id === product.famille_id)?.libelle_famille || 'N/A'}
                    </TableCell>
@@ -346,24 +417,34 @@ const ProductCatalog = () => {
                      </div>
                    </TableCell>
                    <TableCell>{getStockBadge(product)}</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditProduct(product)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteProduct(product.id!)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                   <TableCell>
+                     <div className="flex space-x-2">
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={() => handleEditProduct(product)}
+                       >
+                         <Edit className="h-4 w-4" />
+                       </Button>
+                       {product.niveau_detail === 1 && (
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={() => handleDetailProduct(product)}
+                           title="Créer un produit détail"
+                         >
+                           <Layers className="h-4 w-4" />
+                         </Button>
+                       )}
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={() => handleDeleteProduct(product.id!)}
+                       >
+                         <Trash2 className="h-4 w-4" />
+                       </Button>
+                     </div>
+                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -394,10 +475,10 @@ const ProductCatalog = () => {
                 </div>
 
                  <div>
-                   <Label htmlFor="code_produit">Code CIP</Label>
+                   <Label htmlFor="code_cip">Code CIP</Label>
                    <Input
-                     id="code_produit"
-                     {...register("code_produit")}
+                     id="code_cip"
+                     {...register("code_cip")}
                      placeholder="Code CIP"
                    />
                  </div>
@@ -534,6 +615,106 @@ const ProductCatalog = () => {
                 </Button>
                 <Button type="submit">
                   {editingProduct ? "Modifier" : "Ajouter"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de création de produit détail */}
+        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Créer le détail d'un produit</DialogTitle>
+            </DialogHeader>
+
+            <form onSubmit={handleSubmitDetail(onSubmitDetail)} className="space-y-6">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="source_product">Nom du produit Source</Label>
+                  <Input
+                    id="source_product"
+                    value={sourceProduct?.libelle_produit || ""}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Ce champ est automatiquement rempli et ne peut pas être modifié
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="detail_product">Nom du produit Détail</Label>
+                  <Input
+                    id="detail_product"
+                    value={sourceProduct ? `${sourceProduct.libelle_produit} (D)` : ""}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Le nom du produit détail est généré automatiquement avec le suffixe "(D)"
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="quantite_unites_details_source">Quantité des articles Détails *</Label>
+                  <Input
+                    id="quantite_unites_details_source"
+                    type="number"
+                    min="1"
+                    {...registerDetail("quantite_unites_details_source", { 
+                      required: "La quantité est requise",
+                      min: { value: 1, message: "La quantité doit être au moins 1" }
+                    })}
+                    placeholder="Entrez la quantité"
+                  />
+                  {errorsDetail.quantite_unites_details_source && (
+                    <p className="text-sm text-destructive mt-1">
+                      {errorsDetail.quantite_unites_details_source.message}
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Nombre d'unités contenues dans le produit source
+                  </p>
+                </div>
+
+                {sourceProduct && (
+                  <div className="bg-muted/50 p-4 rounded-lg">
+                    <h4 className="font-medium mb-2">Informations du produit détail</h4>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Code CIP:</span>
+                        <span className="ml-2">
+                          {sourceProduct.code_cip ? `${sourceProduct.code_cip}-1` : "Non défini"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Famille:</span>
+                        <span className="ml-2">
+                          {families.find(f => f.id === sourceProduct.famille_id)?.libelle_famille || "N/A"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Rayon:</span>
+                        <span className="ml-2">
+                          {rayons.find(r => r.id === sourceProduct.rayon_id)?.libelle_rayon || "N/A"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Prix vente:</span>
+                        <span className="ml-2">{(sourceProduct.prix_vente || 0).toLocaleString()} FCFA</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={handleDetailDialogClose}>
+                  Annuler
+                </Button>
+                <Button type="submit">
+                  Créer le produit détail
                 </Button>
               </div>
             </form>
