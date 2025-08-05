@@ -294,7 +294,7 @@ export const useWorkflowsQuery = (filters?: Record<string, any>) => {
   return useTenantQueryWithCache(
     ['workflows', JSON.stringify(filters)],
     'workflows',
-    '*, created_by_user:personnel!created_by(id, noms, prenoms), assigned_to_user:personnel!assigned_to(id, noms, prenoms)',
+    '*',
     filters,
     { orderBy: { column: 'created_at', ascending: false } }
   );
@@ -306,7 +306,7 @@ export const useWorkflowTemplatesQuery = (filters?: Record<string, any>) => {
   return useTenantQueryWithCache(
     ['workflow-templates', JSON.stringify(filters)],
     'workflow_templates',
-    '*, created_by_user:personnel(id, noms, prenoms)',
+    '*, created_by_user:personnel!created_by(id, noms, prenoms)',
     filters,
     { orderBy: { column: 'created_at', ascending: false } }
   );
