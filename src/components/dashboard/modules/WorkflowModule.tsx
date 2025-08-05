@@ -59,13 +59,39 @@ const WorkflowModule = () => {
     template_data: {}
   });
 
+  // États pour les configurations
+  const [workflowSettings, setWorkflowSettings] = useState({
+    notifications_enabled: true,
+    default_timeout: 30,
+    max_concurrent: 5,
+    log_retention_days: 90,
+    check_frequency: 5,
+    auto_triggers_enabled: true,
+    stock_monitoring: true,
+    sales_events: true,
+    stock_threshold: 20,
+    scheduling_enabled: true,
+    auto_retry: true,
+    max_retries: 3,
+    retry_delay: 5,
+    failure_notifications: true,
+    auto_escalation: false,
+    state_backup: true,
+    audit_enabled: true,
+    log_level: 'detailed',
+    strict_access: true,
+    encrypt_sensitive: true,
+    audit_retention_months: 12,
+    security_alerts: true
+  });
+
   const { toast } = useToast();
   const { currentUser } = useTenant();
 
   // Queries
   const { data: workflows = [], isLoading: workflowsLoading, refetch: refetchWorkflows } = useWorkflowsQuery();
   const { data: templates = [], isLoading: templatesLoading } = useWorkflowTemplatesQuery();
-  const { data: executions = [], isLoading: executionsLoading } = useWorkflowExecutionsQuery();
+  const { data: executions = [], isLoading: executionsLoading, refetch: refetchExecutions } = useWorkflowExecutionsQuery();
   const { data: settings = [], isLoading: settingsLoading } = useWorkflowSettingsQuery();
   const { data: personnel = [] } = usePersonnelQuery();
 
@@ -158,6 +184,9 @@ const WorkflowModule = () => {
         title: "Workflow démarré",
         description: "L'exécution du workflow a été démarrée.",
       });
+      
+      // Rafraîchir l'historique après exécution
+      refetchExecutions();
     } catch (error) {
       toast({
         title: "Erreur",
@@ -207,6 +236,38 @@ const WorkflowModule = () => {
     }
   };
 
+  const handleUseTemplate = async (template: any) => {
+    try {
+      // Créer un nouveau workflow basé sur le template
+      await createWorkflowMutation.mutateAsync({
+        name: `${template.name} - Copie`,
+        description: template.description,
+        category: template.category,
+        trigger_type: template.template_data?.trigger_type || 'Manuel',
+        priority: template.template_data?.priority || 'Normale',
+        status: 'Brouillon',
+        created_by: currentUser?.id,
+        trigger_config: template.template_data?.trigger_config || {},
+        tags: template.template_data?.tags || [],
+        completion_rate: 0,
+        execution_count: 0
+      });
+      
+      toast({
+        title: "Workflow créé depuis template",
+        description: "Le workflow a été créé à partir du template.",
+      });
+      
+      refetchWorkflows();
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer le workflow depuis le template.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const variants = {
       'Actif': 'default',
@@ -249,6 +310,62 @@ const WorkflowModule = () => {
       default:
         return <Clock className="h-4 w-4 text-gray-500" />;
     }
+  };
+
+  // Gestion des paramètres de configuration
+  const handleSaveSettings = async () => {
+    try {
+      // Sauvegarder chaque paramètre individuellement
+      const settingsToSave = Object.entries(workflowSettings).map(([key, value]) => ({
+        setting_type: 'workflow',
+        setting_key: key,
+        setting_value: String(value),
+        is_system: false
+      }));
+
+      for (const setting of settingsToSave) {
+        await updateSettingMutation.mutateAsync(setting);
+      }
+
+      toast({
+        title: "Configuration sauvegardée",
+        description: "Les paramètres ont été enregistrés avec succès.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder la configuration.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Charger les paramètres au démarrage
+  React.useEffect(() => {
+    if (settings && settings.length > 0) {
+      const newSettings = { ...workflowSettings };
+      settings.forEach(setting => {
+        if (setting.setting_key && workflowSettings.hasOwnProperty(setting.setting_key)) {
+          const value = setting.setting_value;
+          // Conversion des types
+          if (typeof workflowSettings[setting.setting_key] === 'boolean') {
+            newSettings[setting.setting_key] = value === 'true';
+          } else if (typeof workflowSettings[setting.setting_key] === 'number') {
+            newSettings[setting.setting_key] = parseInt(value) || 0;
+          } else {
+            newSettings[setting.setting_key] = value;
+          }
+        }
+      });
+      setWorkflowSettings(newSettings);
+    }
+  }, [settings]);
+
+  const updateSetting = (key: string, value: any) => {
+    setWorkflowSettings(prev => ({
+      ...prev,
+      [key]: value
+    }));
   };
 
   const filteredWorkflows = workflows.filter(workflow => {
@@ -694,7 +811,11 @@ const WorkflowModule = () => {
                             'Système'
                           }
                         </div>
-                        <Button className="w-full" size="sm">
+                        <Button 
+                          className="w-full" 
+                          size="sm"
+                          onClick={() => handleUseTemplate(template)}
+                        >
                           Utiliser ce template
                         </Button>
                       </div>
@@ -791,7 +912,10 @@ const WorkflowModule = () => {
                         Recevoir des notifications pour les événements de workflow
                       </div>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch 
+                      checked={workflowSettings.auto_triggers_enabled}
+                      onCheckedChange={(checked) => updateSetting('auto_triggers_enabled', checked)}
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -801,7 +925,12 @@ const WorkflowModule = () => {
                         Temps maximum d'exécution avant timeout
                       </div>
                     </div>
-                    <Input type="number" defaultValue="30" className="w-24" />
+                    <Input 
+                      type="number" 
+                      value={workflowSettings.default_timeout} 
+                      onChange={(e) => updateSetting('default_timeout', parseInt(e.target.value) || 30)}
+                      className="w-24" 
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -811,7 +940,12 @@ const WorkflowModule = () => {
                         Nombre limite de workflows exécutés en parallèle
                       </div>
                     </div>
-                    <Input type="number" defaultValue="5" className="w-24" />
+                    <Input 
+                      type="number" 
+                      value={workflowSettings.check_frequency} 
+                      onChange={(e) => updateSetting('check_frequency', parseInt(e.target.value) || 5)}
+                      className="w-24" 
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -821,7 +955,12 @@ const WorkflowModule = () => {
                         Durée de conservation des journaux d'exécution
                       </div>
                     </div>
-                    <Input type="number" defaultValue="90" className="w-24" />
+                    <Input 
+                      type="number" 
+                      value={workflowSettings.log_retention_days} 
+                      onChange={(e) => updateSetting('log_retention_days', parseInt(e.target.value) || 90)}
+                      className="w-24" 
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -831,7 +970,12 @@ const WorkflowModule = () => {
                         Intervalle de vérification des conditions de déclenchement
                       </div>
                     </div>
-                    <Input type="number" defaultValue="5" className="w-24" />
+                    <Input 
+                      type="number" 
+                      value={workflowSettings.max_concurrent} 
+                      onChange={(e) => updateSetting('max_concurrent', parseInt(e.target.value) || 5)}
+                      className="w-24" 
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -857,7 +1001,10 @@ const WorkflowModule = () => {
                         Permet l'exécution automatique basée sur les événements
                       </div>
                     </div>
-                    <Switch defaultChecked />
+                     <Switch 
+                       checked={workflowSettings.auto_triggers_enabled}
+                       onCheckedChange={(checked) => updateSetting('auto_triggers_enabled', checked)}
+                     />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -867,7 +1014,10 @@ const WorkflowModule = () => {
                         Déclenchement automatique sur seuils de stock
                       </div>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch 
+                      checked={workflowSettings.stock_monitoring}
+                      onCheckedChange={(checked) => updateSetting('stock_monitoring', checked)}
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -877,7 +1027,10 @@ const WorkflowModule = () => {
                         Déclenchement sur les transactions de vente
                       </div>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch 
+                      checked={workflowSettings.sales_events}
+                      onCheckedChange={(checked) => updateSetting('sales_events', checked)}
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -887,7 +1040,12 @@ const WorkflowModule = () => {
                         Pourcentage de stock restant pour déclencher une alerte
                       </div>
                     </div>
-                    <Input type="number" defaultValue="20" className="w-24" />
+                    <Input 
+                      type="number" 
+                      value={workflowSettings.stock_threshold} 
+                      onChange={(e) => updateSetting('stock_threshold', parseInt(e.target.value) || 20)}
+                      className="w-24" 
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -897,7 +1055,10 @@ const WorkflowModule = () => {
                         Permet les workflows planifiés (cron jobs)
                       </div>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch 
+                      checked={workflowSettings.scheduling_enabled}
+                      onCheckedChange={(checked) => updateSetting('scheduling_enabled', checked)}
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -923,7 +1084,10 @@ const WorkflowModule = () => {
                         Relancer automatiquement les workflows échoués
                       </div>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch 
+                      checked={workflowSettings.auto_retry}
+                      onCheckedChange={(checked) => updateSetting('auto_retry', checked)}
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -933,7 +1097,12 @@ const WorkflowModule = () => {
                         Limite des reprises automatiques avant échec définitif
                       </div>
                     </div>
-                    <Input type="number" defaultValue="3" className="w-24" />
+                    <Input 
+                      type="number" 
+                      value={workflowSettings.max_retries} 
+                      onChange={(e) => updateSetting('max_retries', parseInt(e.target.value) || 3)}
+                      className="w-24" 
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -943,7 +1112,12 @@ const WorkflowModule = () => {
                         Temps d'attente avant nouvelle tentative
                       </div>
                     </div>
-                    <Input type="number" defaultValue="5" className="w-24" />
+                    <Input 
+                      type="number" 
+                      value={workflowSettings.retry_delay} 
+                      onChange={(e) => updateSetting('retry_delay', parseInt(e.target.value) || 5)}
+                      className="w-24" 
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -953,7 +1127,10 @@ const WorkflowModule = () => {
                         Envoyer des alertes en cas d'échec de workflow
                       </div>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch 
+                      checked={workflowSettings.failure_notifications}
+                      onCheckedChange={(checked) => updateSetting('failure_notifications', checked)}
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -963,7 +1140,10 @@ const WorkflowModule = () => {
                         Remonter les échecs critiques aux superviseurs
                       </div>
                     </div>
-                    <Switch />
+                    <Switch 
+                      checked={workflowSettings.auto_escalation}
+                      onCheckedChange={(checked) => updateSetting('auto_escalation', checked)}
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -973,7 +1153,10 @@ const WorkflowModule = () => {
                         Conserver l'état du workflow pour reprise
                       </div>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch 
+                      checked={workflowSettings.state_backup}
+                      onCheckedChange={(checked) => updateSetting('state_backup', checked)}
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -999,7 +1182,10 @@ const WorkflowModule = () => {
                         Journaliser toutes les actions sur les workflows
                       </div>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch 
+                      checked={workflowSettings.audit_enabled}
+                      onCheckedChange={(checked) => updateSetting('audit_enabled', checked)}
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -1009,7 +1195,10 @@ const WorkflowModule = () => {
                         Détail des informations à enregistrer
                       </div>
                     </div>
-                    <Select defaultValue="detailed">
+                    <Select 
+                      value={workflowSettings.log_level}
+                      onValueChange={(value) => updateSetting('log_level', value)}
+                    >
                       <SelectTrigger className="w-32">
                         <SelectValue />
                       </SelectTrigger>
@@ -1029,7 +1218,10 @@ const WorkflowModule = () => {
                         Vérification des permissions pour chaque action
                       </div>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch 
+                      checked={workflowSettings.strict_access}
+                      onCheckedChange={(checked) => updateSetting('strict_access', checked)}
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -1039,7 +1231,10 @@ const WorkflowModule = () => {
                         Chiffrer les informations confidentielles dans les logs
                       </div>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch 
+                      checked={workflowSettings.encrypt_sensitive}
+                      onCheckedChange={(checked) => updateSetting('encrypt_sensitive', checked)}
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -1049,7 +1244,12 @@ const WorkflowModule = () => {
                         Durée de conservation des journaux d'audit
                       </div>
                     </div>
-                    <Input type="number" defaultValue="12" className="w-24" />
+                    <Input 
+                      type="number" 
+                      value={workflowSettings.audit_retention_months} 
+                      onChange={(e) => updateSetting('audit_retention_months', parseInt(e.target.value) || 12)}
+                      className="w-24" 
+                    />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -1059,7 +1259,10 @@ const WorkflowModule = () => {
                         Notifications pour tentatives d'accès non autorisées
                       </div>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch 
+                      checked={workflowSettings.security_alerts}
+                      onCheckedChange={(checked) => updateSetting('security_alerts', checked)}
+                    />
                   </div>
                 </div>
               </CardContent>
@@ -1074,7 +1277,7 @@ const WorkflowModule = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-3 mb-4">
                   <Button variant="outline">
                     <Package className="mr-2 h-4 w-4" />
                     Nettoyer les logs anciens
@@ -1090,6 +1293,16 @@ const WorkflowModule = () => {
                   <Button variant="outline">
                     <Clock className="mr-2 h-4 w-4" />
                     Test de connectivité
+                  </Button>
+                </div>
+                <div className="border-t pt-4">
+                  <Button 
+                    onClick={handleSaveSettings}
+                    disabled={updateSettingMutation.isPending}
+                    className="w-full"
+                  >
+                    {updateSettingMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Sauvegarder toute la configuration
                   </Button>
                 </div>
               </CardContent>
