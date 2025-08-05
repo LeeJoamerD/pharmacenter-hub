@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Search, Upload, FileText, Download, Eye, Trash2, Filter, FolderOpen, Edit, Plus } from 'lucide-react';
+import { Search, Upload, FileText, Download, Eye, Trash2, Filter, FolderOpen, Edit, Plus, Settings } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/contexts/TenantContext';
 import { useDocumentsQuery, useDocumentCategoriesQuery, useDocumentMutation, useDocumentCategoryMutation } from '@/hooks/useTenantQuery';
+import DocumentCategoryManager from './DocumentCategoryManager';
 
 interface Document {
   id: string;
@@ -517,6 +518,7 @@ const DocumentModule = () => {
         <TabsList>
           <TabsTrigger value="grid">Vue Grille</TabsTrigger>
           <TabsTrigger value="list">Vue Liste</TabsTrigger>
+          <TabsTrigger value="categories">Catégories</TabsTrigger>
         </TabsList>
         
         <TabsContent value="grid" className="space-y-4">
@@ -618,6 +620,10 @@ const DocumentModule = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+        
+        <TabsContent value="categories" className="space-y-4">
+          <DocumentCategoryManager />
         </TabsContent>
       </Tabs>
     </div>
