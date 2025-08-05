@@ -1,0 +1,243 @@
+import { useCallback } from 'react';
+import { useTenantQuery } from './useTenantQuery';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
+import { toast } from 'sonner';
+
+export interface Lot {
+  id: string;
+  tenant_id: string;
+  produit_id: string;
+  numero_lot: string;
+  fournisseur_id?: string;
+  reception_id?: string;
+  date_fabrication?: string;
+  date_reception?: string;
+  date_peremption?: string;
+  quantite_initiale: number;
+  quantite_restante: number;
+  prix_achat_unitaire?: number;
+  prix_vente_suggere?: number;
+  statut_lot?: string;
+  emplacement?: string;
+  temperature_stockage?: number;
+  conditions_stockage?: string;
+  notes?: string;
+  qr_code?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LotWithDetails extends Lot {
+  produit?: {
+    id: string;
+    nom_produit: string;
+    code_bare: string;
+    forme_pharmaceutique: string;
+  };
+  fournisseur?: {
+    id: string;
+    nom: string;
+  };
+  jours_restants_expiration?: number;
+  niveau_urgence?: string;
+  pourcentage_utilise?: number;
+}
+
+export interface CreateLotInput {
+  produit_id: string;
+  numero_lot: string;
+  fournisseur_id?: string;
+  reception_id?: string;
+  date_fabrication?: string;
+  date_reception?: string;
+  date_peremption?: string;
+  quantite_initiale: number;
+  prix_achat_unitaire?: number;
+  prix_vente_suggere?: number;
+  statut_lot?: string;
+  emplacement?: string;
+  temperature_stockage?: number;
+  conditions_stockage?: string;
+  notes?: string;
+}
+
+export interface UpdateLotInput extends Partial<CreateLotInput> {
+  id: string;
+  quantite_restante?: number;
+}
+
+export const useLots = () => {
+  const { tenantId } = useTenant();
+  const queryClient = useQueryClient();
+  const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
+
+  // Récupérer tous les lots avec détails
+  const useLotsQuery = (filters?: {
+    produit_id?: string;
+    fournisseur_id?: string;
+    statut_lot?: string;
+    expiration_proche?: boolean;
+    stock_faible?: boolean;
+  }) => {
+    return useTenantQueryWithCache(
+      ['lots', JSON.stringify(filters)],
+      'lots',
+      `
+        *,
+        produit:produits!inner(id, nom_produit, code_bare, forme_pharmaceutique),
+        fournisseur:fournisseurs(id, nom)
+      `,
+      {
+        ...filters,
+        ...(filters?.statut_lot && { statut_lot: filters.statut_lot }),
+      },
+      {
+        enabled: !!tenantId,
+        orderBy: { column: 'date_peremption', ascending: true },
+      }
+    );
+  };
+
+  // Récupérer un lot par ID avec tous les détails
+  const useLotQuery = (lotId: string) => {
+    return useTenantQueryWithCache(
+      ['lot', lotId],
+      'lots',
+      `
+        *,
+        produit:produits!inner(id, nom_produit, code_bare, forme_pharmaceutique, famille_id),
+        fournisseur:fournisseurs(id, nom)
+      `,
+      { id: lotId },
+      {
+        enabled: !!tenantId && !!lotId,
+        single: true,
+      }
+    );
+  };
+
+  // Récupérer les lots avec stock faible
+  const useLowStockLots = () => {
+    return useTenantQueryWithCache(
+      ['lots', 'low-stock'],
+      'lots',
+      `
+        *,
+        produit:produits!inner(id, nom_produit)
+      `,
+      {},
+      {
+        enabled: !!tenantId,
+        orderBy: { column: 'quantite_restante', ascending: true },
+      }
+    );
+  };
+
+  // Récupérer les lots proches de l'expiration
+  const useExpiringLots = (daysThreshold: number = 30) => {
+    return useQuery({
+      queryKey: ['lots', 'expiring', daysThreshold],
+      queryFn: async () => {
+        const today = new Date();
+        const futureDate = new Date();
+        futureDate.setDate(today.getDate() + daysThreshold);
+        
+        const { data, error } = await supabase
+          .from('lots')
+          .select(`
+            *,
+            produit:produits!inner(id, nom_produit, code_bare)
+          `)
+          .eq('tenant_id', tenantId!)
+          .lte('date_peremption', futureDate.toISOString().split('T')[0])
+          .gt('quantite_restante', 0)
+          .order('date_peremption', { ascending: true });
+        
+        if (error) throw error;
+        return data;
+      },
+      enabled: !!tenantId,
+    });
+  };
+
+  // Créer un nouveau lot
+  const createLotMutation = useTenantMutation('lots', {
+    onSuccess: () => {
+      toast.success('Lot créé avec succès');
+      queryClient.invalidateQueries({ queryKey: ['lots'] });
+    },
+    onError: (error: any) => {
+      toast.error(`Erreur lors de la création: ${error.message}`);
+    },
+  });
+
+  // Mettre à jour un lot
+  const updateLotMutation = useTenantMutation({
+    tableName: 'lots',
+    mutationType: 'update',
+    onSuccess: () => {
+      toast.success('Lot mis à jour avec succès');
+      queryClient.invalidateQueries({ queryKey: ['lots'] });
+    },
+    onError: (error: any) => {
+      toast.error(`Erreur lors de la mise à jour: ${error.message}`);
+    },
+  });
+
+  // Supprimer un lot
+  const deleteLotMutation = useTenantMutation({
+    tableName: 'lots',
+    mutationType: 'delete',
+    onSuccess: () => {
+      toast.success('Lot supprimé avec succès');
+      queryClient.invalidateQueries({ queryKey: ['lots'] });
+    },
+    onError: (error: any) => {
+      toast.error(`Erreur lors de la suppression: ${error.message}`);
+    },
+  });
+
+  // Fonctions utilitaires
+  const calculateDaysToExpiration = useCallback((expirationDate: string) => {
+    const expDate = new Date(expirationDate);
+    const today = new Date();
+    const diffTime = expDate.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }, []);
+
+  const determineUrgencyLevel = useCallback((daysToExpiration: number) => {
+    if (daysToExpiration <= 0) return 'critique';
+    if (daysToExpiration <= 7) return 'eleve';
+    if (daysToExpiration <= 30) return 'moyen';
+    return 'faible';
+  }, []);
+
+  const calculateUsagePercentage = useCallback((initial: number, remaining: number) => {
+    return ((initial - remaining) / initial) * 100;
+  }, []);
+
+  return {
+    // Queries
+    useLotsQuery,
+    useLotQuery,
+    useLowStockLots,
+    useExpiringLots,
+    
+    // Mutations
+    createLot: createLotMutation.mutate,
+    updateLot: updateLotMutation.mutate,
+    deleteLot: deleteLotMutation.mutate,
+    
+    // Loading states
+    isCreating: createLotMutation.isPending,
+    isUpdating: updateLotMutation.isPending,
+    isDeleting: deleteLotMutation.isPending,
+    
+    // Utilities
+    calculateDaysToExpiration,
+    determineUrgencyLevel,
+    calculateUsagePercentage,
+  };
+};
