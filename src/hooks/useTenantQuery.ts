@@ -318,7 +318,7 @@ export const useWorkflowExecutionsQuery = (workflowId?: string) => {
   return useTenantQueryWithCache(
     ['workflow-executions', workflowId || 'all'],
     'workflow_executions',
-    '*, workflow:workflows!workflow_id(id, name), executor:personnel!executor_id(id, noms, prenoms)',
+    '*',
     workflowId ? { workflow_id: workflowId } : undefined,
     { orderBy: { column: 'started_at', ascending: false } }
   );

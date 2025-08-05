@@ -3750,6 +3750,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_system: boolean
           setting_key: string
           setting_type: string
           setting_value: Json
@@ -3760,6 +3761,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_system?: boolean
           setting_key: string
           setting_type?: string
           setting_value?: Json
@@ -3770,6 +3772,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_system?: boolean
           setting_key?: string
           setting_type?: string
           setting_value?: Json
