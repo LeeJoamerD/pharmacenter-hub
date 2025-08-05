@@ -21,125 +21,261 @@ import {
   Workflow, Settings, Play, Pause, Plus, Edit, Trash2, 
   Clock, CheckCircle, AlertTriangle, Calendar, Mail,
   FileText, Users, Package, DollarSign, ArrowRight,
-  Filter, Search, MoreHorizontal, Copy, Eye
+  Filter, Search, MoreHorizontal, Copy, Eye, Loader2
 } from 'lucide-react';
+import { 
+  useWorkflowsQuery, 
+  useWorkflowTemplatesQuery, 
+  useWorkflowExecutionsQuery, 
+  useWorkflowSettingsQuery,
+  useWorkflowMutation,
+  useWorkflowTemplateMutation,
+  useWorkflowExecutionMutation,
+  useWorkflowSettingMutation,
+  usePersonnelQuery
+} from '@/hooks/useTenantQuery';
+import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/contexts/TenantContext';
 
 const WorkflowModule = () => {
   const [selectedTab, setSelectedTab] = useState('workflows');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [editingWorkflow, setEditingWorkflow] = useState<any>(null);
+  const [newWorkflow, setNewWorkflow] = useState({
+    name: '',
+    description: '',
+    trigger_type: 'Manuel',
+    priority: 'Normale',
+    category: 'Général',
+    status: 'Brouillon'
+  });
+  const [newTemplate, setNewTemplate] = useState({
+    name: '',
+    description: '',
+    category: 'Général',
+    template_data: {}
+  });
 
-  // Mock data pour les workflows
-  const workflows = [
-    {
-      id: 1,
-      name: 'Alerte Stock Faible',
-      description: 'Envoie une notification quand le stock descend sous le seuil critique',
-      status: 'active',
-      trigger: 'Stock Level',
-      actions: ['Email', 'Notification'],
-      lastRun: '2024-01-15 14:30',
-      executions: 145,
-      successRate: 98.6
-    },
-    {
-      id: 2,
-      name: 'Commande Automatique',
-      description: 'Crée automatiquement une commande fournisseur pour les produits critiques',
-      status: 'active',
-      trigger: 'Schedule',
-      actions: ['Create Order', 'Send Email'],
-      lastRun: '2024-01-15 09:00',
-      executions: 32,
-      successRate: 100
-    },
-    {
-      id: 3,
-      name: 'Rapport Mensuel',
-      description: 'Génère et envoie le rapport mensuel des ventes',
-      status: 'paused',
-      trigger: 'Schedule',
-      actions: ['Generate Report', 'Email'],
-      lastRun: '2024-01-01 08:00',
-      executions: 12,
-      successRate: 91.7
-    },
-    {
-      id: 4,
-      name: 'Péremption Proche',
-      description: 'Alerte sur les produits arrivant à péremption',
-      status: 'active',
-      trigger: 'Date Check',
-      actions: ['Alert', 'Update Status'],
-      lastRun: '2024-01-15 06:00',
-      executions: 289,
-      successRate: 95.2
+  const { toast } = useToast();
+  const { currentUser } = useTenant();
+
+  // Queries
+  const { data: workflows = [], isLoading: workflowsLoading, refetch: refetchWorkflows } = useWorkflowsQuery();
+  const { data: templates = [], isLoading: templatesLoading } = useWorkflowTemplatesQuery();
+  const { data: executions = [], isLoading: executionsLoading } = useWorkflowExecutionsQuery();
+  const { data: settings = [], isLoading: settingsLoading } = useWorkflowSettingsQuery();
+  const { data: personnel = [] } = usePersonnelQuery();
+
+  // Mutations
+  const createWorkflowMutation = useWorkflowMutation('insert');
+  const updateWorkflowMutation = useWorkflowMutation('update');
+  const deleteWorkflowMutation = useWorkflowMutation('delete');
+  const createTemplateMutation = useWorkflowTemplateMutation('insert');
+  const executeWorkflowMutation = useWorkflowExecutionMutation('insert');
+  const updateSettingMutation = useWorkflowSettingMutation('upsert');
+
+  const handleCreateWorkflow = async () => {
+    try {
+      await createWorkflowMutation.mutateAsync({
+        ...newWorkflow,
+        created_by: currentUser?.id,
+        trigger_config: {},
+        tags: [],
+        completion_rate: 0,
+        execution_count: 0
+      });
+      
+      toast({
+        title: "Workflow créé",
+        description: "Le workflow a été créé avec succès.",
+      });
+      
+      setShowCreateDialog(false);
+      setNewWorkflow({
+        name: '',
+        description: '',
+        trigger_type: 'Manuel',
+        priority: 'Normale',
+        category: 'Général',
+        status: 'Brouillon'
+      });
+      refetchWorkflows();
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer le workflow.",
+        variant: "destructive"
+      });
     }
-  ];
+  };
 
-  const workflowHistory = [
-    { id: 1, workflow: 'Alerte Stock Faible', timestamp: '2024-01-15 14:30', status: 'success', duration: '2.3s' },
-    { id: 2, workflow: 'Commande Automatique', timestamp: '2024-01-15 09:00', status: 'success', duration: '15.7s' },
-    { id: 3, workflow: 'Péremption Proche', timestamp: '2024-01-15 06:00', status: 'success', duration: '4.1s' },
-    { id: 4, workflow: 'Alerte Stock Faible', timestamp: '2024-01-14 16:45', status: 'failed', duration: '1.2s' },
-    { id: 5, workflow: 'Rapport Mensuel', timestamp: '2024-01-01 08:00', status: 'success', duration: '45.3s' },
-  ];
-
-  const templates = [
-    {
-      id: 1,
-      name: 'Gestion Stock Automatique',
-      description: 'Template pour automatiser la gestion des stocks',
-      category: 'Inventaire',
-      triggers: ['Stock Level', 'Timer'],
-      actions: ['Email Alert', 'Create Order', 'Update Status']
-    },
-    {
-      id: 2,
-      name: 'Suivi Client',
-      description: 'Automatise le suivi et les relances clients',
-      category: 'Commercial',
-      triggers: ['Client Action', 'Timer'],
-      actions: ['Send Email', 'Create Task', 'Update CRM']
-    },
-    {
-      id: 3,
-      name: 'Rapports Automatiques',
-      description: 'Génération et envoi automatique de rapports',
-      category: 'Reporting',
-      triggers: ['Schedule', 'Data Change'],
-      actions: ['Generate Report', 'Send Email', 'Archive']
+  const handleCreateTemplate = async () => {
+    try {
+      await createTemplateMutation.mutateAsync({
+        ...newTemplate,
+        created_by: currentUser?.id,
+        is_system: false,
+        usage_count: 0,
+        tags: []
+      });
+      
+      toast({
+        title: "Template créé",
+        description: "Le template a été créé avec succès.",
+      });
+      
+      setShowTemplateDialog(false);
+      setNewTemplate({
+        name: '',
+        description: '',
+        category: 'Général',
+        template_data: {}
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer le template.",
+        variant: "destructive"
+      });
     }
-  ];
+  };
+
+  const handleExecuteWorkflow = async (workflowId: string) => {
+    try {
+      await executeWorkflowMutation.mutateAsync({
+        workflow_id: workflowId,
+        executor_id: currentUser?.id,
+        status: 'En cours',
+        progress_percentage: 0,
+        logs: [],
+        result_data: {}
+      });
+      
+      toast({
+        title: "Workflow démarré",
+        description: "L'exécution du workflow a été démarrée.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de démarrer le workflow.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleToggleWorkflowStatus = async (workflow: any) => {
+    const newStatus = workflow.status === 'Actif' ? 'Inactif' : 'Actif';
+    try {
+      await updateWorkflowMutation.mutateAsync({
+        id: workflow.id,
+        status: newStatus
+      });
+      
+      toast({
+        title: "Statut mis à jour",
+        description: `Le workflow est maintenant ${newStatus.toLowerCase()}.`,
+      });
+      refetchWorkflows();
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de modifier le statut.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteWorkflow = async (workflowId: string) => {
+    try {
+      await deleteWorkflowMutation.mutateAsync({ id: workflowId });
+      
+      toast({
+        title: "Workflow supprimé",
+        description: "Le workflow a été supprimé avec succès.",
+      });
+      refetchWorkflows();
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le workflow.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      active: 'default',
-      paused: 'secondary',
-      failed: 'destructive'
+      'Actif': 'default',
+      'Inactif': 'secondary',
+      'Brouillon': 'outline',
+      'Archivé': 'secondary'
     } as const;
     
     return (
       <Badge variant={variants[status as keyof typeof variants] || 'secondary'}>
-        {status === 'active' ? 'Actif' : status === 'paused' ? 'Pausé' : 'Échoué'}
+        {status}
+      </Badge>
+    );
+  };
+
+  const getPriorityBadge = (priority: string) => {
+    const variants = {
+      'Haute': 'destructive',
+      'Normale': 'default',
+      'Basse': 'secondary'
+    } as const;
+    
+    return (
+      <Badge variant={variants[priority as keyof typeof variants] || 'default'}>
+        {priority}
       </Badge>
     );
   };
 
   const getHistoryStatusIcon = (status: string) => {
-    return status === 'success' ? (
-      <CheckCircle className="h-4 w-4 text-green-500" />
-    ) : (
-      <AlertTriangle className="h-4 w-4 text-red-500" />
-    );
+    switch (status) {
+      case 'Terminé':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'Échec':
+        return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      case 'En cours':
+        return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
+      case 'En pause':
+        return <Pause className="h-4 w-4 text-yellow-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-500" />;
+    }
   };
 
   const filteredWorkflows = workflows.filter(workflow => {
-    const matchesSearch = workflow.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         workflow.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = workflow.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         workflow.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || workflow.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
+
+  const filteredTemplates = templates.filter(template => 
+    template.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    template.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Calculs des statistiques
+  const activeWorkflows = workflows.filter(w => w.status === 'Actif').length;
+  const todayExecutions = executions.filter(e => {
+    const today = new Date().toDateString();
+    return new Date(e.started_at).toDateString() === today;
+  }).length;
+  
+  const completedExecutions = executions.filter(e => e.status === 'Terminé');
+  const successRate = executions.length > 0 ? 
+    (completedExecutions.length / executions.length * 100).toFixed(1) : '0';
+  
+  const avgDuration = completedExecutions.length > 0 ?
+    (completedExecutions.reduce((acc, e) => acc + (e.duration_minutes || 0), 0) / completedExecutions.length).toFixed(1) : '0';
 
   return (
     <div className="space-y-6">
@@ -151,50 +287,158 @@ const WorkflowModule = () => {
             Gestion des processus automatisés et des workflows métier
           </p>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Nouveau Workflow
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Créer un nouveau workflow</DialogTitle>
-              <DialogDescription>
-                Configurez les déclencheurs et actions pour votre workflow automatisé
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">Nom</Label>
-                <Input id="name" className="col-span-3" placeholder="Nom du workflow" />
+        <div className="flex gap-2">
+          <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <FileText className="mr-2 h-4 w-4" />
+                Nouveau Template
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Créer un nouveau template</DialogTitle>
+                <DialogDescription>
+                  Créez un modèle réutilisable pour vos workflows
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="template-name">Nom du template</Label>
+                  <Input
+                    id="template-name"
+                    value={newTemplate.name}
+                    onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value})}
+                    placeholder="Nom du template"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="template-description">Description</Label>
+                  <Textarea
+                    id="template-description"
+                    value={newTemplate.description}
+                    onChange={(e) => setNewTemplate({...newTemplate, description: e.target.value})}
+                    placeholder="Description du template"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="template-category">Catégorie</Label>
+                  <Select value={newTemplate.category} onValueChange={(value) => setNewTemplate({...newTemplate, category: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Général">Général</SelectItem>
+                      <SelectItem value="Inventaire">Inventaire</SelectItem>
+                      <SelectItem value="Commercial">Commercial</SelectItem>
+                      <SelectItem value="Reporting">Reporting</SelectItem>
+                      <SelectItem value="Maintenance">Maintenance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="description" className="text-right">Description</Label>
-                <Textarea id="description" className="col-span-3" placeholder="Description du workflow" />
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowTemplateDialog(false)}>
+                  Annuler
+                </Button>
+                <Button onClick={handleCreateTemplate} disabled={createTemplateMutation.isPending}>
+                  {createTemplateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Créer le template
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Nouveau Workflow
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Créer un nouveau workflow</DialogTitle>
+                <DialogDescription>
+                  Configurez les paramètres de base pour votre workflow automatisé
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nom du workflow</Label>
+                  <Input
+                    id="name"
+                    value={newWorkflow.name}
+                    onChange={(e) => setNewWorkflow({...newWorkflow, name: e.target.value})}
+                    placeholder="Nom du workflow"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={newWorkflow.description}
+                    onChange={(e) => setNewWorkflow({...newWorkflow, description: e.target.value})}
+                    placeholder="Description du workflow"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="trigger">Type de déclencheur</Label>
+                    <Select value={newWorkflow.trigger_type} onValueChange={(value) => setNewWorkflow({...newWorkflow, trigger_type: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Manuel">Manuel</SelectItem>
+                        <SelectItem value="Automatique">Automatique</SelectItem>
+                        <SelectItem value="Planifié">Planifié</SelectItem>
+                        <SelectItem value="Événement">Événement</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="priority">Priorité</Label>
+                    <Select value={newWorkflow.priority} onValueChange={(value) => setNewWorkflow({...newWorkflow, priority: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Haute">Haute</SelectItem>
+                        <SelectItem value="Normale">Normale</SelectItem>
+                        <SelectItem value="Basse">Basse</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="category">Catégorie</Label>
+                  <Select value={newWorkflow.category} onValueChange={(value) => setNewWorkflow({...newWorkflow, category: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Général">Général</SelectItem>
+                      <SelectItem value="Inventaire">Inventaire</SelectItem>
+                      <SelectItem value="Commercial">Commercial</SelectItem>
+                      <SelectItem value="Reporting">Reporting</SelectItem>
+                      <SelectItem value="Maintenance">Maintenance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="trigger" className="text-right">Déclencheur</Label>
-                <Select>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Sélectionner un déclencheur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="stock">Niveau de stock</SelectItem>
-                    <SelectItem value="schedule">Planification</SelectItem>
-                    <SelectItem value="date">Vérification date</SelectItem>
-                    <SelectItem value="event">Événement système</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline">Annuler</Button>
-              <Button>Créer le workflow</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                  Annuler
+                </Button>
+                <Button onClick={handleCreateWorkflow} disabled={createWorkflowMutation.isPending}>
+                  {createWorkflowMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Créer le workflow
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Statistiques rapides */}
@@ -205,8 +449,10 @@ const WorkflowModule = () => {
             <Workflow className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground">+1 depuis le mois dernier</p>
+            <div className="text-2xl font-bold">{activeWorkflows}</div>
+            <p className="text-xs text-muted-foreground">
+              sur {workflows.length} total
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -215,8 +461,10 @@ const WorkflowModule = () => {
             <Play className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
-            <p className="text-xs text-muted-foreground">+15% vs hier</p>
+            <div className="text-2xl font-bold">{todayExecutions}</div>
+            <p className="text-xs text-muted-foreground">
+              exécutions lancées
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -225,18 +473,22 @@ const WorkflowModule = () => {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">97.2%</div>
-            <p className="text-xs text-muted-foreground">+2.1% ce mois</p>
+            <div className="text-2xl font-bold">{successRate}%</div>
+            <p className="text-xs text-muted-foreground">
+              sur {executions.length} exécutions
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Temps Moyen</CardTitle>
+            <CardTitle className="text-sm font-medium">Durée Moyenne</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8.4s</div>
-            <p className="text-xs text-muted-foreground">-1.2s vs moyenne</p>
+            <div className="text-2xl font-bold">{avgDuration}min</div>
+            <p className="text-xs text-muted-foreground">
+              temps d'exécution
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -272,107 +524,186 @@ const WorkflowModule = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="active">Actifs</SelectItem>
-                <SelectItem value="paused">Pausés</SelectItem>
-                <SelectItem value="failed">Échoués</SelectItem>
+                <SelectItem value="Actif">Actifs</SelectItem>
+                <SelectItem value="Inactif">Inactifs</SelectItem>
+                <SelectItem value="Brouillon">Brouillons</SelectItem>
+                <SelectItem value="Archivé">Archivés</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Liste des workflows */}
-          <div className="space-y-4">
-            {filteredWorkflows.map((workflow) => (
-              <Card key={workflow.id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <CardTitle className="flex items-center gap-2">
-                        {workflow.name}
-                        {getStatusBadge(workflow.status)}
-                      </CardTitle>
-                      <CardDescription>{workflow.description}</CardDescription>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        {workflow.status === 'active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <div className="font-medium">Déclencheur</div>
-                      <div className="text-muted-foreground">{workflow.trigger}</div>
-                    </div>
-                    <div>
-                      <div className="font-medium">Actions</div>
-                      <div className="text-muted-foreground">{workflow.actions.join(', ')}</div>
-                    </div>
-                    <div>
-                      <div className="font-medium">Dernière exécution</div>
-                      <div className="text-muted-foreground">{workflow.lastRun}</div>
-                    </div>
-                    <div>
-                      <div className="font-medium">Taux de succès</div>
-                      <div className="text-muted-foreground">{workflow.successRate}% ({workflow.executions} exec.)</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          {workflowsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredWorkflows.length === 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-8">
+                    <Workflow className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">Aucun workflow trouvé</h3>
+                    <p className="text-muted-foreground text-center mb-4">
+                      Commencez par créer votre premier workflow pour automatiser vos processus.
+                    </p>
+                    <Button onClick={() => setShowCreateDialog(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Créer un workflow
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                filteredWorkflows.map((workflow) => (
+                  <Card key={workflow.id}>
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <CardTitle className="flex items-center gap-2">
+                            {workflow.name}
+                            {getStatusBadge(workflow.status)}
+                            {getPriorityBadge(workflow.priority)}
+                          </CardTitle>
+                          <CardDescription>{workflow.description}</CardDescription>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleExecuteWorkflow(workflow.id)}
+                            disabled={workflow.status !== 'Actif'}
+                          >
+                            <Play className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleToggleWorkflowStatus(workflow)}
+                          >
+                            {workflow.status === 'Actif' ? 
+                              <Pause className="h-4 w-4" /> : 
+                              <Play className="h-4 w-4" />
+                            }
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleDeleteWorkflow(workflow.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <div className="font-medium">Type de déclencheur</div>
+                          <div className="text-muted-foreground">{workflow.trigger_type}</div>
+                        </div>
+                        <div>
+                          <div className="font-medium">Catégorie</div>
+                          <div className="text-muted-foreground">{workflow.category}</div>
+                        </div>
+                        <div>
+                          <div className="font-medium">Créé par</div>
+                          <div className="text-muted-foreground">
+                            {workflow.created_by_user ? 
+                              `${workflow.created_by_user.prenoms} ${workflow.created_by_user.noms}` : 
+                              'Système'
+                            }
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-medium">Exécutions</div>
+                          <div className="text-muted-foreground">
+                            {workflow.execution_count} ({workflow.completion_rate}% succès)
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          )}
         </TabsContent>
 
         {/* Templates */}
         <TabsContent value="templates" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {templates.map((template) => (
-              <Card key={template.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    {template.name}
-                  </CardTitle>
-                  <CardDescription>{template.description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div>
-                      <Badge variant="outline">{template.category}</Badge>
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium mb-1">Déclencheurs disponibles:</div>
-                      <div className="text-sm text-muted-foreground">
-                        {template.triggers.join(', ')}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium mb-1">Actions disponibles:</div>
-                      <div className="text-sm text-muted-foreground">
-                        {template.actions.join(', ')}
-                      </div>
-                    </div>
-                    <Button className="w-full" size="sm">
-                      Utiliser ce template
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="flex gap-4 items-center">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher un template..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+            </div>
           </div>
+
+          {templatesLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredTemplates.length === 0 ? (
+                <div className="col-span-full">
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-8">
+                      <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                      <h3 className="text-lg font-medium mb-2">Aucun template trouvé</h3>
+                      <p className="text-muted-foreground text-center mb-4">
+                        Créez des templates pour réutiliser vos configurations de workflows.
+                      </p>
+                      <Button onClick={() => setShowTemplateDialog(true)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Créer un template
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : (
+                filteredTemplates.map((template) => (
+                  <Card key={template.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        {template.name}
+                      </CardTitle>
+                      <CardDescription>{template.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div>
+                          <Badge variant="outline">{template.category}</Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Utilisé {template.usage_count} fois
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Créé par: {template.created_by_user ? 
+                            `${template.created_by_user.prenoms} ${template.created_by_user.noms}` : 
+                            'Système'
+                          }
+                        </div>
+                        <Button className="w-full" size="sm">
+                          Utiliser ce template
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          )}
         </TabsContent>
 
         {/* Historique */}
@@ -383,25 +714,56 @@ const WorkflowModule = () => {
               <CardDescription>Journal détaillé des exécutions de workflows</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {workflowHistory.map((entry) => (
-                  <div key={entry.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      {getHistoryStatusIcon(entry.status)}
-                      <div>
-                        <div className="font-medium">{entry.workflow}</div>
-                        <div className="text-sm text-muted-foreground">{entry.timestamp}</div>
+              {executionsLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              ) : executions.length === 0 ? (
+                <div className="text-center py-8">
+                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Aucune exécution</h3>
+                  <p className="text-muted-foreground">
+                    L'historique des exécutions apparaîtra ici.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {executions.slice(0, 20).map((execution) => (
+                    <div key={execution.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        {getHistoryStatusIcon(execution.status)}
+                        <div>
+                          <div className="font-medium">
+                            {execution.workflow?.name || 'Workflow supprimé'}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Démarré le {new Date(execution.started_at).toLocaleString()}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Exécuté par: {execution.executor ? 
+                              `${execution.executor.prenoms} ${execution.executor.noms}` : 
+                              'Système'
+                            }
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-medium">
+                          {execution.status}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {execution.duration_minutes ? `${execution.duration_minutes}min` : 'En cours...'}
+                        </div>
+                        {execution.progress_percentage !== null && (
+                          <div className="text-sm text-muted-foreground">
+                            {execution.progress_percentage}%
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium">
-                        {entry.status === 'success' ? 'Succès' : 'Échec'}
-                      </div>
-                      <div className="text-sm text-muted-foreground">{entry.duration}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -415,74 +777,47 @@ const WorkflowModule = () => {
                 <CardDescription>Paramètres globaux pour l'automatisation</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Exécution automatique</Label>
-                    <div className="text-sm text-muted-foreground">Activer l'exécution automatique des workflows</div>
+                {settingsLoading ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="h-6 w-6 animate-spin" />
                   </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Notifications par email</Label>
-                    <div className="text-sm text-muted-foreground">Recevoir des notifications par email</div>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Logs détaillés</Label>
-                    <div className="text-sm text-muted-foreground">Enregistrer des logs détaillés</div>
-                  </div>
-                  <Switch />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Limites et Quotas</CardTitle>
-                <CardDescription>Configuration des limites d'exécution</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="max-concurrent">Exécutions simultanées max</Label>
-                    <Input id="max-concurrent" type="number" defaultValue="5" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="timeout">Timeout (secondes)</Label>
-                    <Input id="timeout" type="number" defaultValue="300" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="retry-count">Nombre de tentatives</Label>
-                  <Input id="retry-count" type="number" defaultValue="3" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Intégrations</CardTitle>
-                <CardDescription>Configuration des services externes</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email-server">Serveur Email SMTP</Label>
-                  <Input id="email-server" placeholder="smtp.example.com" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email-user">Utilisateur SMTP</Label>
-                    <Input id="email-user" placeholder="user@example.com" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email-port">Port SMTP</Label>
-                    <Input id="email-port" type="number" defaultValue="587" />
-                  </div>
-                </div>
-                <Button>Tester la configuration</Button>
+                ) : (
+                  settings.map((setting) => (
+                    <div key={setting.id} className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label>{setting.setting_key.replace(/_/g, ' ')}</Label>
+                        <div className="text-sm text-muted-foreground">{setting.description}</div>
+                      </div>
+                      {setting.setting_key === 'enable_notifications' ? (
+                        <Switch 
+                          checked={setting.setting_value === 'true'} 
+                          onCheckedChange={(checked) => {
+                            updateSettingMutation.mutate({
+                              setting_key: setting.setting_key,
+                              setting_value: checked ? 'true' : 'false',
+                              setting_type: setting.setting_type,
+                              description: setting.description
+                            });
+                          }}
+                        />
+                      ) : (
+                        <Input 
+                          type="number"
+                          defaultValue={setting.setting_value}
+                          className="w-24"
+                          onBlur={(e) => {
+                            updateSettingMutation.mutate({
+                              setting_key: setting.setting_key,
+                              setting_value: e.target.value,
+                              setting_type: setting.setting_type,
+                              description: setting.description
+                            });
+                          }}
+                        />
+                      )}
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
           </div>

@@ -286,3 +286,125 @@ export const useDocumentCategoryMutation = (operation: 'insert' | 'update' | 'de
     invalidateQueries: ['document-categories']
   });
 };
+
+// Workflows hooks
+export const useWorkflowsQuery = (filters?: Record<string, any>) => {
+  const { useTenantQueryWithCache } = useTenantQuery();
+  
+  return useTenantQueryWithCache(
+    ['workflows', JSON.stringify(filters)],
+    'workflows',
+    '*, created_by_user:personnel!created_by(id, noms, prenoms), assigned_to_user:personnel!assigned_to(id, noms, prenoms)',
+    filters,
+    { orderBy: { column: 'created_at', ascending: false } }
+  );
+};
+
+export const useWorkflowTemplatesQuery = (filters?: Record<string, any>) => {
+  const { useTenantQueryWithCache } = useTenantQuery();
+  
+  return useTenantQueryWithCache(
+    ['workflow-templates', JSON.stringify(filters)],
+    'workflow_templates',
+    '*, created_by_user:personnel!created_by(id, noms, prenoms)',
+    filters,
+    { orderBy: { column: 'created_at', ascending: false } }
+  );
+};
+
+export const useWorkflowExecutionsQuery = (workflowId?: string) => {
+  const { useTenantQueryWithCache } = useTenantQuery();
+  
+  return useTenantQueryWithCache(
+    ['workflow-executions', workflowId || 'all'],
+    'workflow_executions',
+    '*, workflow:workflows!workflow_id(id, name), executor:personnel!executor_id(id, noms, prenoms)',
+    workflowId ? { workflow_id: workflowId } : undefined,
+    { orderBy: { column: 'started_at', ascending: false } }
+  );
+};
+
+export const useWorkflowSettingsQuery = () => {
+  const { useTenantQueryWithCache } = useTenantQuery();
+  
+  return useTenantQueryWithCache(
+    ['workflow-settings'],
+    'workflow_settings',
+    '*',
+    undefined,
+    { orderBy: { column: 'setting_type', ascending: true } }
+  );
+};
+
+export const useWorkflowTriggersQuery = (workflowId?: string) => {
+  const { useTenantQueryWithCache } = useTenantQuery();
+  
+  return useTenantQueryWithCache(
+    ['workflow-triggers', workflowId || 'all'],
+    'workflow_triggers',
+    '*, workflow:workflows!workflow_id(id, name)',
+    workflowId ? { workflow_id: workflowId } : undefined,
+    { orderBy: { column: 'created_at', ascending: false } }
+  );
+};
+
+export const useWorkflowActionsQuery = (workflowId?: string) => {
+  const { useTenantQueryWithCache } = useTenantQuery();
+  
+  return useTenantQueryWithCache(
+    ['workflow-actions', workflowId || 'all'],
+    'workflow_actions',
+    '*, workflow:workflows!workflow_id(id, name)',
+    workflowId ? { workflow_id: workflowId } : undefined,
+    { orderBy: { column: 'execution_order', ascending: true } }
+  );
+};
+
+// Workflow mutations
+export const useWorkflowMutation = (operation: 'insert' | 'update' | 'delete' | 'upsert') => {
+  const { useTenantMutation } = useTenantQuery();
+  
+  return useTenantMutation('workflows', operation, {
+    invalidateQueries: ['workflows', 'workflow-executions']
+  });
+};
+
+export const useWorkflowTemplateMutation = (operation: 'insert' | 'update' | 'delete') => {
+  const { useTenantMutation } = useTenantQuery();
+  
+  return useTenantMutation('workflow_templates', operation, {
+    invalidateQueries: ['workflow-templates']
+  });
+};
+
+export const useWorkflowExecutionMutation = (operation: 'insert' | 'update' | 'delete') => {
+  const { useTenantMutation } = useTenantQuery();
+  
+  return useTenantMutation('workflow_executions', operation, {
+    invalidateQueries: ['workflow-executions', 'workflows']
+  });
+};
+
+export const useWorkflowSettingMutation = (operation: 'insert' | 'update' | 'delete' | 'upsert') => {
+  const { useTenantMutation } = useTenantQuery();
+  
+  return useTenantMutation('workflow_settings', operation, {
+    invalidateQueries: ['workflow-settings']
+  });
+};
+
+export const useWorkflowTriggerMutation = (operation: 'insert' | 'update' | 'delete') => {
+  const { useTenantMutation } = useTenantQuery();
+  
+  return useTenantMutation('workflow_triggers', operation, {
+    invalidateQueries: ['workflow-triggers']
+  });
+};
+
+export const useWorkflowActionMutation = (operation: 'insert' | 'update' | 'delete') => {
+  const { useTenantMutation } = useTenantQuery();
+  
+  return useTenantMutation('workflow_actions', operation, {
+    invalidateQueries: ['workflow-actions']
+  });
+};
