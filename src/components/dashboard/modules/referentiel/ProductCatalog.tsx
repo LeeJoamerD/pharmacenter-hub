@@ -90,8 +90,8 @@ const ProductCatalog = () => {
 
   // Récupération des données avec gestion des colonnes manquantes
   const { data: products = [], isLoading } = useTenantQueryWithCache(
-    ['products'],
-    'produits',
+    ['products-v2'], // Changement de clé pour éviter le cache
+    'produits', 
     'id, libelle_produit, code_cip, laboratoire, prix_achat, prix_vente, taux_tva, stock_limite, quantite_stock, famille_id, rayon_id, dci_id, categorie_tarification_id, is_active, id_produit_source, quantite_unites_details_source, niveau_detail, created_at',
     { is_active: true }
   );
@@ -153,15 +153,15 @@ const ProductCatalog = () => {
 
   // Mutations
   const createMutation = useTenantMutation('produits', 'insert', {
-    invalidateQueries: ['products'],
+    invalidateQueries: ['products-v2'],
   });
 
   const updateMutation = useTenantMutation('produits', 'update', {
-    invalidateQueries: ['products'],
+    invalidateQueries: ['products-v2'],
   });
 
   const deleteMutation = useTenantMutation('produits', 'delete', {
-    invalidateQueries: ['products'],
+    invalidateQueries: ['products-v2'],
   });
 
   // Form setup
