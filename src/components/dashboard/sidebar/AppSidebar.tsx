@@ -31,11 +31,6 @@ const AppSidebar = ({
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const { personnel } = useAuth();
   
-  // Vérifier les permissions en utilisant le rôle du personnel
-  const userRole = personnel?.role || 'Employé';
-  const roleConfig = ROLES[userRole];
-  const hasStockAccess = roleConfig?.permissions.includes(PERMISSIONS.STOCK_VIEW) || false;
-  
   const handleLogout = () => {
     toast({
       title: "Déconnexion",
@@ -219,32 +214,30 @@ const AppSidebar = ({
                   </SidebarMenuSub>
                 )}
               </SidebarMenuItem>
-              {hasStockAccess && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton 
-                    className={activeModule === 'stock' ? 'bg-primary/10 text-primary' : ''} 
-                    onClick={() => handleMenuClick('stock')}
-                  >
-                    <Package className="h-5 w-5 text-orange-600" />
-                    <span>Stock</span>
-                  </SidebarMenuButton>
-                  {expandedMenus.includes('stock') && (
-                    <SidebarMenuSub>
-                      {subMenus.stock.map((item, index) => (
-                        <SidebarMenuSubItem key={index}>
-                          <SidebarMenuSubButton 
-                            onClick={() => handleMenuClick('stock', item.name.toLowerCase().replace(' ', '-'))}
-                            className={`cursor-pointer ${activeSubModule === item.name.toLowerCase().replace(' ', '-') ? 'bg-primary/10 text-primary' : ''}`}
-                          >
-                            <item.icon className="h-4 w-4" />
-                            <span>{item.name}</span>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  )}
-                </SidebarMenuItem>
-              )}
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  className={activeModule === 'stock' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => handleMenuClick('stock')}
+                >
+                  <Package className="h-5 w-5 text-orange-600" />
+                  <span>Stock</span>
+                </SidebarMenuButton>
+                {expandedMenus.includes('stock') && (
+                  <SidebarMenuSub>
+                    {subMenus.stock.map((item, index) => (
+                      <SidebarMenuSubItem key={index}>
+                        <SidebarMenuSubButton 
+                          onClick={() => handleMenuClick('stock', item.name.toLowerCase().replace(' ', '-'))}
+                          className={`cursor-pointer ${activeSubModule === item.name.toLowerCase().replace(' ', '-') ? 'bg-primary/10 text-primary' : ''}`}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.name}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                )}
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton 
                   className={activeModule === 'ventes' ? 'bg-primary/10 text-primary' : ''} 

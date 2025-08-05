@@ -1,10 +1,7 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, Package, AlertTriangle, XCircle, DollarSign, Search, Shield } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useAuth } from '@/contexts/AuthContext';
-import { PERMISSIONS, ROLES } from '@/types/permissions';
+import { Eye, Package, AlertTriangle, XCircle, DollarSign, Search } from 'lucide-react';
 import AvailableProducts from './tabs/AvailableProducts';
 import LowStockProducts from './tabs/LowStockProducts';
 import OutOfStockProducts from './tabs/OutOfStockProducts';
@@ -14,49 +11,6 @@ import { useCurrentStock } from '@/hooks/useCurrentStock';
 
 const CurrentStockTab = () => {
   const { metrics, isLoading } = useCurrentStock();
-  const { personnel } = useAuth();
-  
-  // Debug pour voir les valeurs
-  console.log('CurrentStockTab - personnel:', personnel);
-  console.log('CurrentStockTab - role:', personnel?.role);
-  
-  // Vérifier les permissions en utilisant le rôle du personnel
-  const userRole = personnel?.role || 'Employé';
-  const roleConfig = ROLES[userRole];
-  
-  console.log('CurrentStockTab - userRole:', userRole);
-  console.log('CurrentStockTab - roleConfig:', roleConfig);
-  
-  // Si le rôle n'existe pas dans ROLES, utiliser un rôle par défaut
-  const finalRoleConfig = roleConfig || ROLES['Employé'];
-  const hasStockAccess = finalRoleConfig?.permissions.includes(PERMISSIONS.STOCK_VIEW) || false;
-  
-  console.log('CurrentStockTab - hasStockAccess:', hasStockAccess);
-
-  // Vérification des permissions
-  if (!hasStockAccess) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Stock Actuel</h2>
-          <p className="text-muted-foreground">
-            Consultation temps réel des disponibilités
-          </p>
-        </div>
-        
-        <Alert className="border-destructive/50">
-          <Shield className="h-4 w-4" />
-          <AlertDescription>
-            <div className="space-y-2">
-              <p><strong>Accès refusé</strong></p>
-              <p>Vous n'avez pas les permissions nécessaires pour consulter le stock actuel.</p>
-              <p><strong>Permission requise :</strong> {PERMISSIONS.STOCK_VIEW}</p>
-            </div>
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
