@@ -4,7 +4,14 @@ import { LotTracker } from "../LotTracker";
 import { LotDetails } from "../LotDetails";
 import { ExpirationAlert } from "../ExpirationAlert";
 import { FIFOConfig } from "../FIFOConfig";
-import { Package, AlertTriangle, Settings, Activity } from "lucide-react";
+import { SalesIntegration } from "../integrations/SalesIntegration";
+import { InventoryIntegration } from "../integrations/InventoryIntegration";
+import { LotAnalytics } from "../advanced/LotAnalytics";
+import { LotOptimization } from "../advanced/LotOptimization";
+import { 
+  Package, AlertTriangle, Settings, Activity, 
+  ShoppingCart, Clipboard, BarChart3, Target 
+} from "lucide-react";
 
 export const StockLotsTab = () => {
   return (
@@ -17,7 +24,7 @@ export const StockLotsTab = () => {
       </div>
 
       <Tabs defaultValue="tracker" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="tracker" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Suivi
@@ -33,6 +40,22 @@ export const StockLotsTab = () => {
           <TabsTrigger value="fifo" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             Configuration FIFO
+          </TabsTrigger>
+          <TabsTrigger value="sales" className="flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4" />
+            Intégration Ventes
+          </TabsTrigger>
+          <TabsTrigger value="inventory" className="flex items-center gap-2">
+            <Clipboard className="h-4 w-4" />
+            Réconciliation
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Analytics
+          </TabsTrigger>
+          <TabsTrigger value="optimization" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Optimisation
           </TabsTrigger>
         </TabsList>
 
@@ -90,6 +113,22 @@ export const StockLotsTab = () => {
               <FIFOConfig />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="sales">
+          <SalesIntegration />
+        </TabsContent>
+
+        <TabsContent value="inventory">
+          <InventoryIntegration />
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <LotAnalytics />
+        </TabsContent>
+
+        <TabsContent value="optimization">
+          <LotOptimization />
         </TabsContent>
       </Tabs>
     </div>
