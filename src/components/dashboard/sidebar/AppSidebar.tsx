@@ -227,8 +227,8 @@ const AppSidebar = ({
                     {subMenus.stock.map((item, index) => (
                       <SidebarMenuSubItem key={index}>
                         <SidebarMenuSubButton 
-                          onClick={() => handleMenuClick('stock', item.name.toLowerCase().replace(' ', '-'))}
-                          className={`cursor-pointer ${activeSubModule === item.name.toLowerCase().replace(' ', '-') ? 'bg-primary/10 text-primary' : ''}`}
+                          onClick={() => handleMenuClick('stock', item.name.toLowerCase())}
+                          className={`cursor-pointer ${activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}`}
                         >
                           <item.icon className="h-4 w-4" />
                           <span>{item.name}</span>
