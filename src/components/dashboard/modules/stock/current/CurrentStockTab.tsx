@@ -16,10 +16,22 @@ const CurrentStockTab = () => {
   const { metrics, isLoading } = useCurrentStock();
   const { personnel } = useAuth();
   
+  // Debug pour voir les valeurs
+  console.log('CurrentStockTab - personnel:', personnel);
+  console.log('CurrentStockTab - role:', personnel?.role);
+  
   // Vérifier les permissions en utilisant le rôle du personnel
   const userRole = personnel?.role || 'Employé';
   const roleConfig = ROLES[userRole];
-  const hasStockAccess = roleConfig?.permissions.includes(PERMISSIONS.STOCK_VIEW) || false;
+  
+  console.log('CurrentStockTab - userRole:', userRole);
+  console.log('CurrentStockTab - roleConfig:', roleConfig);
+  
+  // Si le rôle n'existe pas dans ROLES, utiliser un rôle par défaut
+  const finalRoleConfig = roleConfig || ROLES['Employé'];
+  const hasStockAccess = finalRoleConfig?.permissions.includes(PERMISSIONS.STOCK_VIEW) || false;
+  
+  console.log('CurrentStockTab - hasStockAccess:', hasStockAccess);
 
   // Vérification des permissions
   if (!hasStockAccess) {
