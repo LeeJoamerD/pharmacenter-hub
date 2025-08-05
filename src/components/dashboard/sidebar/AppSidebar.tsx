@@ -10,8 +10,8 @@ import { Home, ShoppingCart, Package, Calculator, BarChart,
   Clipboard, ChartBar, RefreshCw, DollarSign, CreditCard, Receipt, Briefcase, Target, 
   Building, Banknote, Smartphone, Wrench, Map, Globe, Palette, Search, TrendingUp, 
   Eye, GraduationCap, Folder, Paperclip, Zap } from 'lucide-react';
-import { useHasPermission } from '@/hooks/usePermissions';
-import { PERMISSIONS } from '@/types/permissions';
+import { useAuth } from '@/contexts/AuthContext';
+import { PERMISSIONS, ROLES } from '@/types/permissions';
 
 interface AppSidebarProps {
   activeModule: string;
@@ -29,7 +29,12 @@ const AppSidebar = ({
   const { toast } = useToast();
   const navigate = useNavigate();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
-  const hasStockAccess = useHasPermission(PERMISSIONS.STOCK_VIEW);
+  const { personnel } = useAuth();
+  
+  // Vérifier les permissions en utilisant le rôle du personnel
+  const userRole = personnel?.role || 'Employé';
+  const roleConfig = ROLES[userRole];
+  const hasStockAccess = roleConfig?.permissions.includes(PERMISSIONS.STOCK_VIEW) || false;
   
   const handleLogout = () => {
     toast({

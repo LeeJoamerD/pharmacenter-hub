@@ -3,8 +3,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, Package, AlertTriangle, XCircle, DollarSign, Search, Shield } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useHasPermission } from '@/hooks/usePermissions';
-import { PERMISSIONS } from '@/types/permissions';
+import { useAuth } from '@/contexts/AuthContext';
+import { PERMISSIONS, ROLES } from '@/types/permissions';
 import AvailableProducts from './tabs/AvailableProducts';
 import LowStockProducts from './tabs/LowStockProducts';
 import OutOfStockProducts from './tabs/OutOfStockProducts';
@@ -14,7 +14,12 @@ import { useCurrentStock } from '@/hooks/useCurrentStock';
 
 const CurrentStockTab = () => {
   const { metrics, isLoading } = useCurrentStock();
-  const hasStockAccess = useHasPermission(PERMISSIONS.STOCK_VIEW);
+  const { personnel } = useAuth();
+  
+  // Vérifier les permissions en utilisant le rôle du personnel
+  const userRole = personnel?.role || 'Employé';
+  const roleConfig = ROLES[userRole];
+  const hasStockAccess = roleConfig?.permissions.includes(PERMISSIONS.STOCK_VIEW) || false;
 
   // Vérification des permissions
   if (!hasStockAccess) {
