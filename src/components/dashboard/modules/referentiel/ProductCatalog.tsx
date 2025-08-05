@@ -80,6 +80,7 @@ const ProductCatalog = () => {
   const [familleFilter, setFamilleFilter] = useState("all");
   const [rayonFilter, setRayonFilter] = useState("all");
   const [stockFilter, setStockFilter] = useState("all");
+  const [detailFilter, setDetailFilter] = useState("all"); // Nouveau filtre pour les détails
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -122,7 +123,8 @@ const ProductCatalog = () => {
 
   // Filtrage des produits
   const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.code_cip?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesFamille = !familleFilter || familleFilter === "all" || product.famille_id === familleFilter;
     const matchesRayon = !rayonFilter || rayonFilter === "all" || product.rayon_id === rayonFilter;
     
@@ -136,8 +138,18 @@ const ProductCatalog = () => {
         matchesStock = (product.quantite_stock || 0) > (product.stock_limite || 0);
       }
     }
+
+    // Filtre pour les produits détails
+    let matchesDetail = true;
+    if (detailFilter && detailFilter !== "all") {
+      if (detailFilter === "non_details") {
+        matchesDetail = (product.niveau_detail || 1) === 1; // Produits source uniquement
+      } else if (detailFilter === "details") {
+        matchesDetail = (product.niveau_detail || 1) > 1; // Produits détails uniquement
+      }
+    }
     
-    return matchesSearch && matchesFamille && matchesRayon && matchesStock;
+    return matchesSearch && matchesFamille && matchesRayon && matchesStock && matchesDetail;
   });
 
   // Mutations
@@ -162,6 +174,7 @@ const ProductCatalog = () => {
     setFamilleFilter("all");
     setRayonFilter("all");
     setStockFilter("all");
+    setDetailFilter("all");
   };
 
   const handleAddProduct = () => {
@@ -193,11 +206,12 @@ const ProductCatalog = () => {
   };
 
   const handleDetailProduct = (product: Product) => {
-    // Vérifier que c'est un produit source (niveau_detail = 1)
-    if (product.niveau_detail !== 1) {
+    // Permettre la création de détails jusqu'au niveau 2 (niveau 3 interdit)
+    const currentLevel = product.niveau_detail || 1;
+    if (currentLevel >= 3) {
       toast({ 
         title: "Attention", 
-        description: "Seuls les produits sources peuvent être détaillés", 
+        description: "Impossible de créer le détail d'un produit de niveau 3 ou plus", 
         variant: "destructive" 
       });
       return;
@@ -229,7 +243,7 @@ const ProductCatalog = () => {
       code_produit: newCodeCip, // Utiliser le même que code_cip
       id_produit_source: sourceProduct.id,
       quantite_unites_details_source: quantity,
-      niveau_detail: 2, // Produit détail
+      niveau_detail: (sourceProduct.niveau_detail || 1) + 1, // Incrémenter le niveau
       created_at: undefined,
       updated_at: undefined
     };
@@ -362,6 +376,17 @@ const ProductCatalog = () => {
             </SelectContent>
           </Select>
 
+          <Select value={detailFilter} onValueChange={setDetailFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Type de produit" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les produits</SelectItem>
+              <SelectItem value="non_details">Non détails</SelectItem>
+              <SelectItem value="details">Détails</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Button variant="outline" onClick={clearFilters}>
             <Filter className="h-4 w-4 mr-2" />
             Effacer filtres
@@ -390,15 +415,18 @@ const ProductCatalog = () => {
             <TableBody>
               {filteredProducts.map((product) => (
                  <TableRow key={product.id}>
-                    <TableCell>
-                      <div className="font-medium">
-                        {product.libelle_produit}
-                        {product.niveau_detail === 2 && (
-                          <Badge variant="secondary" className="ml-2">Détail</Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                   <TableCell>{product.code_cip || product.code_produit || 'N/A'}</TableCell>
+                     <TableCell>
+                       <div className="font-medium">
+                         {product.libelle_produit}
+                         {(product.niveau_detail || 1) > 1 && (
+                           <Badge variant="secondary" className="ml-2">
+                             <Layers className="h-3 w-3 mr-1" />
+                             Détail N{product.niveau_detail}
+                           </Badge>
+                         )}
+                       </div>
+                     </TableCell>
+                   <TableCell>{product.code_cip || 'N/A'}</TableCell>
                    <TableCell>
                      {families.find(f => f.id === product.famille_id)?.libelle_famille || 'N/A'}
                    </TableCell>
@@ -426,16 +454,16 @@ const ProductCatalog = () => {
                        >
                          <Edit className="h-4 w-4" />
                        </Button>
-                       {product.niveau_detail === 1 && (
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={() => handleDetailProduct(product)}
-                           title="Créer un produit détail"
-                         >
-                           <Layers className="h-4 w-4" />
-                         </Button>
-                       )}
+                        {(product.niveau_detail || 1) < 3 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDetailProduct(product)}
+                            title="Créer un produit détail"
+                          >
+                            <Layers className="h-4 w-4" />
+                          </Button>
+                        )}
                        <Button
                          variant="outline"
                          size="sm"

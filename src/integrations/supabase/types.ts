@@ -2580,7 +2580,6 @@ export type Database = {
           categorie_tarification_id: string | null
           centime_additionnel: number | null
           code_cip: string | null
-          code_produit: string | null
           created_at: string
           dci_id: string | null
           famille_id: string | null
@@ -2612,7 +2611,6 @@ export type Database = {
           categorie_tarification_id?: string | null
           centime_additionnel?: number | null
           code_cip?: string | null
-          code_produit?: string | null
           created_at?: string
           dci_id?: string | null
           famille_id?: string | null
@@ -2644,7 +2642,6 @@ export type Database = {
           categorie_tarification_id?: string | null
           centime_additionnel?: number | null
           code_cip?: string | null
-          code_produit?: string | null
           created_at?: string
           dci_id?: string | null
           famille_id?: string | null
