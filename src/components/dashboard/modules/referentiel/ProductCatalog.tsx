@@ -38,7 +38,6 @@ interface Product {
   dci_id?: string;
   categorie_tarification_id?: string;
   libelle_produit: string;
-  code_produit?: string;
   code_cip?: string;
   laboratoire?: string;
   prix_achat?: number;
@@ -93,7 +92,7 @@ const ProductCatalog = () => {
   const { data: products = [], isLoading } = useTenantQueryWithCache(
     ['products'],
     'produits',
-    'id, libelle_produit, code_produit, code_cip, laboratoire, prix_achat, prix_vente, taux_tva, stock_limite, quantite_stock, famille_id, rayon_id, dci_id, categorie_tarification_id, is_active, id_produit_source, quantite_unites_details_source, niveau_detail, created_at',
+    'id, libelle_produit, code_cip, laboratoire, prix_achat, prix_vente, taux_tva, stock_limite, quantite_stock, famille_id, rayon_id, dci_id, categorie_tarification_id, is_active, id_produit_source, quantite_unites_details_source, niveau_detail, created_at',
     { is_active: true }
   );
 
@@ -181,7 +180,7 @@ const ProductCatalog = () => {
     setEditingProduct(null);
     reset({
       libelle_produit: "",
-      code_produit: "",
+      code_cip: "",
       laboratoire: "",
       prix_achat: 0,
       prix_vente: 0,
@@ -240,7 +239,6 @@ const ProductCatalog = () => {
       id: undefined, // Nouveau produit
       libelle_produit: newLibelle,
       code_cip: newCodeCip,
-      code_produit: newCodeCip, // Utiliser le même que code_cip
       id_produit_source: sourceProduct.id,
       quantite_unites_details_source: quantity,
       niveau_detail: (sourceProduct.niveau_detail || 1) + 1, // Incrémenter le niveau
