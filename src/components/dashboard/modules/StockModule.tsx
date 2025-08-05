@@ -1,7 +1,7 @@
 import React from 'react';
 import StockDashboard from './stock/StockDashboard';
 import CurrentStockTab from './stock/current/CurrentStockTab';
-import StockLotsTab from './stock/tabs/StockLotsTab';
+import { StockLotsTab } from './stock/tabs/StockLotsTab';
 import StockApprovisionnementTab from './stock/tabs/StockApprovisionnementTab';
 import StockMouvementsTab from './stock/tabs/StockMouvementsTab';
 import StockInventairesTab from './stock/tabs/StockInventairesTab';
