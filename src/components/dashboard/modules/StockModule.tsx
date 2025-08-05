@@ -1,6 +1,6 @@
 import React from 'react';
 import StockDashboard from './stock/StockDashboard';
-import StockProductsTab from './stock/tabs/StockProductsTab';
+import CurrentStockTab from './stock/current/CurrentStockTab';
 import StockLotsTab from './stock/tabs/StockLotsTab';
 import StockApprovisionnementTab from './stock/tabs/StockApprovisionnementTab';
 import StockMouvementsTab from './stock/tabs/StockMouvementsTab';
@@ -17,8 +17,8 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
 
   const renderContent = () => {
     switch (activeSubModule) {
-      case 'produits':
-        return <StockProductsTab />;
+      case 'stock actuel':
+        return <CurrentStockTab />;
       case 'lots':
         return <StockLotsTab />;
       case 'approvisionnement':
