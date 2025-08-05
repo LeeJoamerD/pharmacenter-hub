@@ -1,316 +1,231 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { 
-  Search, 
-  Filter, 
-  Calendar, 
-  Package, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock,
-  Eye,
-  Edit,
-  BarChart3
-} from 'lucide-react';
+import { useState } from "react";
+import { useLots } from "@/hooks/useLots";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Filter, Eye, Calendar, Package, MapPin, AlertTriangle } from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
-interface Lot {
-  id: string;
-  numero: string;
-  produit: string;
-  fournisseur: string;
-  dateReception: string;
-  dateExpiration: string;
-  quantiteInitiale: number;
-  quantiteActuelle: number;
-  statut: 'actif' | 'perime' | 'critique' | 'epuise';
-  emplacement: string;
-  prix: number;
-}
+export const LotTracker = () => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedLot, setSelectedLot] = useState<string | null>(null);
 
-const LotTracker = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('tous');
-  const [selectedSupplier, setSelectedSupplier] = useState('tous');
-
-  // Données mockées des lots
-  const lots: Lot[] = [
-    {
-      id: '1',
-      numero: 'LOT001-2024',
-      produit: 'Paracétamol 500mg',
-      fournisseur: 'Laboratoire Alpha',
-      dateReception: '2024-01-15',
-      dateExpiration: '2025-01-15',
-      quantiteInitiale: 1000,
-      quantiteActuelle: 750,
-      statut: 'actif',
-      emplacement: 'A-01-B',
-      prix: 25000
-    },
-    {
-      id: '2',
-      numero: 'LOT002-2024',
-      produit: 'Ibuprofène 200mg',
-      fournisseur: 'Pharma Beta',
-      dateReception: '2024-02-10',
-      dateExpiration: '2025-08-15',
-      quantiteInitiale: 500,
-      quantiteActuelle: 50,
-      statut: 'critique',
-      emplacement: 'B-02-A',
-      prix: 15000
-    },
-    {
-      id: '3',
-      numero: 'LOT003-2024',
-      produit: 'Amoxicilline 250mg',
-      fournisseur: 'Laboratoire Gamma',
-      dateReception: '2024-03-05',
-      dateExpiration: '2024-12-31',
-      quantiteInitiale: 200,
-      quantiteActuelle: 180,
-      statut: 'perime',
-      emplacement: 'C-01-C',
-      prix: 35000
-    },
-    {
-      id: '4',
-      numero: 'LOT004-2024',
-      produit: 'Vitamine C 500mg',
-      fournisseur: 'NutriPharma',
-      dateReception: '2024-04-20',
-      dateExpiration: '2026-04-20',
-      quantiteInitiale: 800,
-      quantiteActuelle: 800,
-      statut: 'actif',
-      emplacement: 'D-03-A',
-      prix: 12000
-    },
-    {
-      id: '5',
-      numero: 'LOT005-2024',
-      produit: 'Aspirine 100mg',
-      fournisseur: 'Laboratoire Alpha',
-      dateReception: '2024-05-12',
-      dateExpiration: '2025-05-12',
-      quantiteInitiale: 300,
-      quantiteActuelle: 0,
-      statut: 'epuise',
-      emplacement: 'A-02-B',
-      prix: 18000
-    }
-  ];
-
-  const fournisseurs = [...new Set(lots.map(lot => lot.fournisseur))];
-
-  const filteredLots = lots.filter(lot => {
-    const matchesSearch = lot.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         lot.produit.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = selectedStatus === 'tous' || lot.statut === selectedStatus;
-    const matchesSupplier = selectedSupplier === 'tous' || lot.fournisseur === selectedSupplier;
-    
-    return matchesSearch && matchesStatus && matchesSupplier;
+  const { useLotsQuery, calculateDaysToExpiration, determineUrgencyLevel } = useLots();
+  
+  const { data: lots, isLoading, error } = useLotsQuery({
+    ...(statusFilter !== "all" && { statut_lot: statusFilter }),
   });
 
-  const getStatusColor = (statut: string) => {
-    switch (statut) {
-      case 'actif': return 'bg-green-100 text-green-800';
-      case 'critique': return 'bg-orange-100 text-orange-800';
-      case 'perime': return 'bg-red-100 text-red-800';
-      case 'epuise': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const filteredLots = lots?.filter(lot =>
+    lot.numero_lot.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    lot.produit?.nom_produit.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
+
+  const getUrgencyColor = (level: string) => {
+    switch (level) {
+      case 'critique': return 'destructive';
+      case 'eleve': return 'destructive';
+      case 'moyen': return 'outline';
+      case 'faible': return 'secondary';
+      default: return 'secondary';
     }
   };
 
-  const getStatusIcon = (statut: string) => {
-    switch (statut) {
-      case 'actif': return <CheckCircle className="h-4 w-4" />;
-      case 'critique': return <AlertTriangle className="h-4 w-4" />;
-      case 'perime': return <AlertTriangle className="h-4 w-4" />;
-      case 'epuise': return <Clock className="h-4 w-4" />;
-      default: return <Clock className="h-4 w-4" />;
-    }
+  const getStockLevel = (initial: number, remaining: number) => {
+    const percentage = (remaining / initial) * 100;
+    if (percentage <= 10) return { level: 'Critique', color: 'destructive' };
+    if (percentage <= 30) return { level: 'Bas', color: 'destructive' };
+    if (percentage <= 70) return { level: 'Moyen', color: 'outline' };
+    return { level: 'Bon', color: 'secondary' };
   };
 
-  const getProgressPercentage = (actuelle: number, initiale: number) => {
-    return Math.round((actuelle / initiale) * 100);
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-muted-foreground">Chargement des lots...</div>
+      </div>
+    );
+  }
 
-  const getProgressColor = (percentage: number) => {
-    if (percentage > 50) return 'bg-green-500';
-    if (percentage > 20) return 'bg-orange-500';
-    return 'bg-red-500';
-  };
+  if (error) {
+    return (
+      <div className="text-center p-8">
+        <div className="text-destructive mb-2">Erreur de chargement</div>
+        <p className="text-muted-foreground">Impossible de charger les lots</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {/* Filtres et recherche */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Rechercher un lot ou un produit..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[200px]">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Filtrer par statut" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les statuts</SelectItem>
+            <SelectItem value="actif">Actif</SelectItem>
+            <SelectItem value="expire">Expiré</SelectItem>
+            <SelectItem value="epuise">Épuisé</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Statistiques rapides */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Lots Actifs</p>
-                <p className="text-2xl font-bold">{lots.filter(l => l.statut === 'actif').length}</p>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <Package className="h-8 w-8 text-blue-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Total Lots</p>
+                <p className="text-2xl font-bold">{filteredLots.length}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-orange-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Stock Critique</p>
-                <p className="text-2xl font-bold">{lots.filter(l => l.statut === 'critique').length}</p>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <Calendar className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Expiration Proche</p>
+                <p className="text-2xl font-bold text-orange-600">
+                  {filteredLots.filter(lot => 
+                    lot.date_peremption && calculateDaysToExpiration(lot.date_peremption) <= 30
+                  ).length}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-red-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Périmés</p>
-                <p className="text-2xl font-bold">{lots.filter(l => l.statut === 'perime').length}</p>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <AlertTriangle className="h-8 w-8 text-red-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Stock Critique</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {filteredLots.filter(lot => 
+                    (lot.quantite_restante / lot.quantite_initiale) * 100 <= 10
+                  ).length}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Total Lots</p>
-                <p className="text-2xl font-bold">{lots.length}</p>
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <MapPin className="h-8 w-8 text-green-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-muted-foreground">Emplacements</p>
+                <p className="text-2xl font-bold">
+                  {new Set(filteredLots.map(lot => lot.emplacement).filter(Boolean)).size}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filtres et recherche */}
+      {/* Table des lots */}
       <Card>
         <CardHeader>
-          <CardTitle>Suivi des Lots</CardTitle>
-          <CardDescription>Vue d'ensemble de tous les lots en stock</CardDescription>
+          <CardTitle>Liste des Lots</CardTitle>
+          <CardDescription>
+            Tous les lots disponibles avec leurs informations essentielles
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Rechercher par numéro de lot ou produit..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tous">Tous les statuts</SelectItem>
-                <SelectItem value="actif">Actif</SelectItem>
-                <SelectItem value="critique">Critique</SelectItem>
-                <SelectItem value="perime">Périmé</SelectItem>
-                <SelectItem value="epuise">Épuisé</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Fournisseur" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="tous">Tous les fournisseurs</SelectItem>
-                {fournisseurs.map(fournisseur => (
-                  <SelectItem key={fournisseur} value={fournisseur}>
-                    {fournisseur}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Tableau des lots */}
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Numéro de Lot</TableHead>
+                  <TableHead>Numéro Lot</TableHead>
                   <TableHead>Produit</TableHead>
-                  <TableHead>Fournisseur</TableHead>
-                  <TableHead>Expiration</TableHead>
                   <TableHead>Stock</TableHead>
-                  <TableHead>Progression</TableHead>
-                  <TableHead>Statut</TableHead>
+                  <TableHead>Expiration</TableHead>
+                  <TableHead>Urgence</TableHead>
+                  <TableHead>Emplacement</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredLots.map((lot) => {
-                  const percentage = getProgressPercentage(lot.quantiteActuelle, lot.quantiteInitiale);
+                  const daysToExpiration = lot.date_peremption ? calculateDaysToExpiration(lot.date_peremption) : null;
+                  const urgencyLevel = daysToExpiration !== null ? determineUrgencyLevel(daysToExpiration) : 'faible';
+                  const stockLevel = getStockLevel(lot.quantite_initiale, lot.quantite_restante);
+
                   return (
                     <TableRow key={lot.id}>
-                      <TableCell className="font-medium">{lot.numero}</TableCell>
-                      <TableCell>{lot.produit}</TableCell>
-                      <TableCell>{lot.fournisseur}</TableCell>
+                      <TableCell className="font-medium">{lot.numero_lot}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          {new Date(lot.dateExpiration).toLocaleDateString('fr-FR')}
+                        <div>
+                          <div className="font-medium">{lot.produit?.nom_produit}</div>
+                          <div className="text-sm text-muted-foreground">{lot.produit?.forme_pharmaceutique}</div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">
-                          <div>{lot.quantiteActuelle} / {lot.quantiteInitiale}</div>
-                          <div className="text-muted-foreground">unités</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="w-full">
-                          <div className="flex justify-between text-sm mb-1">
-                            <span>{percentage}%</span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span>{lot.quantite_restante}/{lot.quantite_initiale}</span>
+                            <Badge variant={stockLevel.color as any}>{stockLevel.level}</Badge>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className={`h-2 rounded-full ${getProgressColor(percentage)}`}
-                              style={{ width: `${percentage}%` }}
-                            ></div>
+                          <div className="text-sm text-muted-foreground">
+                            {Math.round((lot.quantite_restante / lot.quantite_initiale) * 100)}%
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${getStatusColor(lot.statut)} flex items-center gap-1 w-fit`}>
-                          {getStatusIcon(lot.statut)}
-                          {lot.statut}
+                        {lot.date_peremption ? (
+                          <div>
+                            <div>{format(new Date(lot.date_peremption), 'dd/MM/yyyy', { locale: fr })}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {daysToExpiration !== null && daysToExpiration >= 0 
+                                ? `${daysToExpiration} jours`
+                                : 'Expiré'
+                              }
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Non définie</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getUrgencyColor(urgencyLevel) as any}>
+                          {urgencyLevel.charAt(0).toUpperCase() + urgencyLevel.slice(1)}
                         </Badge>
                       </TableCell>
+                      <TableCell>{lot.emplacement || 'Non défini'}</TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedLot(lot.id)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -323,5 +238,3 @@ const LotTracker = () => {
     </div>
   );
 };
-
-export default LotTracker;
