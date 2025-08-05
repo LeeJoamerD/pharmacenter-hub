@@ -69,7 +69,7 @@ const AvailableProducts = () => {
                 <SelectValue placeholder="Toutes les familles" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Toutes les familles</SelectItem>
+                <SelectItem value="all">Toutes les familles</SelectItem>
                 {families.map((family: any) => (
                   <SelectItem key={family.id} value={family.id}>
                     {family.libelle_famille}
@@ -83,7 +83,7 @@ const AvailableProducts = () => {
                 <SelectValue placeholder="Tous les rayons" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tous les rayons</SelectItem>
+                <SelectItem value="all">Tous les rayons</SelectItem>
                 {rayons.map((rayon: any) => (
                   <SelectItem key={rayon.id} value={rayon.id}>
                     {rayon.libelle_rayon}

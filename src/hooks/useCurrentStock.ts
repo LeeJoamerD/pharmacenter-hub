@@ -124,12 +124,12 @@ export const useCurrentStock = () => {
     }
 
     // Filtre par famille
-    if (selectedFamily && product.famille_id !== selectedFamily) {
+    if (selectedFamily && selectedFamily !== 'all' && product.famille_id !== selectedFamily) {
       return false;
     }
 
     // Filtre par rayon
-    if (selectedRayon && product.rayon_id !== selectedRayon) {
+    if (selectedRayon && selectedRayon !== 'all' && product.rayon_id !== selectedRayon) {
       return false;
     }
 
