@@ -641,6 +641,90 @@ export type Database = {
         }
         Relationships: []
       }
+      document_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_system: boolean | null
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          author_id: string | null
+          category: string
+          created_at: string
+          description: string | null
+          file_path: string | null
+          file_size: number
+          file_type: string
+          file_url: string | null
+          id: string
+          name: string
+          original_filename: string
+          tags: string[] | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          category: string
+          created_at?: string
+          description?: string | null
+          file_path?: string | null
+          file_size: number
+          file_type: string
+          file_url?: string | null
+          id?: string
+          name: string
+          original_filename: string
+          tags?: string[] | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          file_path?: string | null
+          file_size?: number
+          file_type?: string
+          file_url?: string | null
+          id?: string
+          name?: string
+          original_filename?: string
+          tags?: string[] | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ecritures_comptables: {
         Row: {
           created_at: string

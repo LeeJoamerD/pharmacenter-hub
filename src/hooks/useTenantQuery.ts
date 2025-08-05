@@ -245,3 +245,44 @@ export const useNetworkMessagesQuery = (channelId?: string) => {
     }
   );
 };
+
+// Documents hooks
+export const useDocumentsQuery = (filters?: Record<string, any>) => {
+  const { useTenantQueryWithCache } = useTenantQuery();
+  
+  return useTenantQueryWithCache(
+    ['documents', JSON.stringify(filters)],
+    'documents',
+    '*, author:personnel!author_id(id, noms, prenoms)',
+    filters,
+    { orderBy: { column: 'created_at', ascending: false } }
+  );
+};
+
+export const useDocumentCategoriesQuery = () => {
+  const { useTenantQueryWithCache } = useTenantQuery();
+  
+  return useTenantQueryWithCache(
+    ['document-categories'],
+    'document_categories',
+    '*',
+    undefined,
+    { orderBy: { column: 'name', ascending: true } }
+  );
+};
+
+export const useDocumentMutation = (operation: 'insert' | 'update' | 'delete') => {
+  const { useTenantMutation } = useTenantQuery();
+  
+  return useTenantMutation('documents', operation, {
+    invalidateQueries: ['documents', 'document-categories']
+  });
+};
+
+export const useDocumentCategoryMutation = (operation: 'insert' | 'update' | 'delete') => {
+  const { useTenantMutation } = useTenantQuery();
+  
+  return useTenantMutation('document_categories', operation, {
+    invalidateQueries: ['document-categories']
+  });
+};

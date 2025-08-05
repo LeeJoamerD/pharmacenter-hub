@@ -1,93 +1,283 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Search, Upload, FileText, Download, Eye, Trash2, Filter, FolderOpen } from 'lucide-react';
+import { Search, Upload, FileText, Download, Eye, Trash2, Filter, FolderOpen, Edit, Plus } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/contexts/TenantContext';
+import { useDocumentsQuery, useDocumentCategoriesQuery, useDocumentMutation, useDocumentCategoryMutation } from '@/hooks/useTenantQuery';
 
 interface Document {
   id: string;
   name: string;
-  type: string;
+  original_filename: string;
+  file_type: string;
+  file_size: number;
   category: string;
-  size: string;
-  uploadDate: string;
-  author: string;
-  description: string;
+  description?: string;
   tags: string[];
+  file_path?: string;
+  file_url?: string;
+  author_id?: string;
+  author?: { id: string; noms: string; prenoms: string };
+  created_at: string;
+  updated_at: string;
+}
+
+interface DocumentCategory {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  is_system: boolean;
+}
+
+interface DocumentForm {
+  name: string;
+  category: string;
+  description: string;
+  tags: string;
+  file?: File;
 }
 
 const DocumentModule = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<Document | null>(null);
+  const [formData, setFormData] = useState<DocumentForm>({
+    name: '',
+    category: '',
+    description: '',
+    tags: ''
+  });
+  
+  const { toast } = useToast();
+  const { currentUser } = useTenant();
 
-  // Mock data - sera remplacé par de vraies données
-  const [documents] = useState<Document[]>([
-    {
-      id: '1',
-      name: 'Manuel Utilisateur PharmaSoft.pdf',
-      type: 'PDF',
-      category: 'Manuel',
-      size: '2.5 MB',
-      uploadDate: '2024-01-15',
-      author: 'Admin',
-      description: 'Manuel complet d\'utilisation du logiciel PharmaSoft',
-      tags: ['manuel', 'formation', 'guide']
-    },
-    {
-      id: '2',
-      name: 'Procédure Inventaire.docx',
-      type: 'DOCX',
-      category: 'Procédure',
-      size: '1.2 MB',
-      uploadDate: '2024-01-10',
-      author: 'Manager',
-      description: 'Procédure détaillée pour la réalisation des inventaires',
-      tags: ['inventaire', 'procédure', 'stock']
-    },
-    {
-      id: '3',
-      name: 'Rapport Ventes Q4.xlsx',
-      type: 'XLSX',
-      category: 'Rapport',
-      size: '800 KB',
-      uploadDate: '2024-01-08',
-      author: 'Comptable',
-      description: 'Rapport détaillé des ventes du quatrième trimestre',
-      tags: ['ventes', 'rapport', 'Q4']
-    },
-    {
-      id: '4',
-      name: 'Certificat ISO.pdf',
-      type: 'PDF',
-      category: 'Certification',
-      size: '500 KB',
-      uploadDate: '2024-01-05',
-      author: 'Qualité',
-      description: 'Certificat de conformité ISO de la pharmacie',
-      tags: ['iso', 'certificat', 'qualité']
-    }
-  ]);
+  // Queries
+  const { data: documents = [], isLoading: documentsLoading, refetch: refetchDocuments } = useDocumentsQuery();
+  const { data: categories = [], isLoading: categoriesLoading } = useDocumentCategoriesQuery();
 
-  const categories = ['all', 'Manuel', 'Procédure', 'Rapport', 'Certification', 'Formation'];
+  // Mutations
+  const createDocument = useDocumentMutation('insert');
+  const updateDocument = useDocumentMutation('update');
+  const deleteDocument = useDocumentMutation('delete');
 
-  const filteredDocuments = documents.filter(doc => {
+  // Filters
+  const filteredDocuments = documents.filter((doc: Document) => {
     const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         doc.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
                          doc.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = selectedCategory === 'all' || doc.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const getFileIcon = (type: string) => {
-    return <FileText className="h-8 w-8 text-blue-500" />;
+  // Format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
+
+  // Format date
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString('fr-FR');
+  };
+
+  // Get author name
+  const getAuthorName = (document: Document): string => {
+    if (document.author) {
+      return `${document.author.prenoms} ${document.author.noms}`;
+    }
+    return 'Système';
+  };
+
+  // Get file icon based on type
+  const getFileIcon = (type: string) => {
+    const iconClasses = "h-8 w-8";
+    switch (type.toLowerCase()) {
+      case 'pdf':
+        return <FileText className={`${iconClasses} text-red-500`} />;
+      case 'doc':
+      case 'docx':
+        return <FileText className={`${iconClasses} text-blue-500`} />;
+      case 'xls':
+      case 'xlsx':
+        return <FileText className={`${iconClasses} text-green-500`} />;
+      case 'ppt':
+      case 'pptx':
+        return <FileText className={`${iconClasses} text-orange-500`} />;
+      case 'txt':
+        return <FileText className={`${iconClasses} text-gray-500`} />;
+      default:
+        return <FileText className={`${iconClasses} text-purple-500`} />;
+    }
+  };
+
+  // Reset form
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      category: '',
+      description: '',
+      tags: ''
+    });
+    setEditingDocument(null);
+  };
+
+  // Handle file upload
+  const handleFileUpload = async () => {
+    if (!formData.file || !formData.name || !formData.category) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez remplir tous les champs obligatoires.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const tagsArray = formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      
+      const documentData = {
+        name: formData.name,
+        original_filename: formData.file.name,
+        file_type: formData.file.type || formData.file.name.split('.').pop()?.toUpperCase() || 'UNKNOWN',
+        file_size: formData.file.size,
+        category: formData.category,
+        description: formData.description || null,
+        tags: tagsArray,
+        author_id: currentUser?.id || null,
+        // Note: Dans une vraie application, le fichier serait uploadé vers un storage
+        // et on aurait file_path et file_url
+        file_path: `/documents/${formData.file.name}`,
+        file_url: null
+      };
+
+      await createDocument.mutateAsync(documentData);
+      
+      toast({
+        title: "Succès",
+        description: "Document ajouté avec succès.",
+      });
+      
+      setIsUploadDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout du document:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter le document.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle edit
+  const handleEdit = (document: Document) => {
+    setEditingDocument(document);
+    setFormData({
+      name: document.name,
+      category: document.category,
+      description: document.description || '',
+      tags: document.tags.join(', ')
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  // Handle update
+  const handleUpdate = async () => {
+    if (!editingDocument || !formData.name || !formData.category) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez remplir tous les champs obligatoires.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const tagsArray = formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      
+      const updateData = {
+        id: editingDocument.id,
+        name: formData.name,
+        category: formData.category,
+        description: formData.description || null,
+        tags: tagsArray
+      };
+
+      await updateDocument.mutateAsync(updateData);
+      
+      toast({
+        title: "Succès",
+        description: "Document modifié avec succès.",
+      });
+      
+      setIsEditDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      console.error('Erreur lors de la modification du document:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de modifier le document.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle delete
+  const handleDelete = async (document: Document) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) {
+      return;
+    }
+
+    try {
+      await deleteDocument.mutateAsync({ id: document.id });
+      
+      toast({
+        title: "Succès",
+        description: "Document supprimé avec succès.",
+      });
+    } catch (error) {
+      console.error('Erreur lors de la suppression du document:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le document.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle download (simulation)
+  const handleDownload = (document: Document) => {
+    toast({
+      title: "Info",
+      description: "Fonctionnalité de téléchargement à implémenter.",
+    });
+  };
+
+  // Handle view (simulation)
+  const handleView = (document: Document) => {
+    toast({
+      title: "Info",
+      description: "Fonctionnalité de visualisation à implémenter.",
+    });
+  };
+
+  if (documentsLoading || categoriesLoading) {
+    return <div className="flex items-center justify-center p-8">Chargement...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -115,48 +305,131 @@ const DocumentModule = () => {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="file">Fichier</Label>
-                <Input id="file" type="file" />
+                <Label htmlFor="file">Fichier *</Label>
+                <Input 
+                  id="file" 
+                  type="file" 
+                  onChange={(e) => setFormData({...formData, file: e.target.files?.[0]})}
+                />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="name">Nom du document</Label>
-                <Input id="name" placeholder="Nom du document" />
+                <Label htmlFor="name">Nom du document *</Label>
+                <Input 
+                  id="name" 
+                  placeholder="Nom du document" 
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="category">Catégorie</Label>
-                <Select>
+                <Label htmlFor="category">Catégorie *</Label>
+                <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner une catégorie" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="manuel">Manuel</SelectItem>
-                    <SelectItem value="procedure">Procédure</SelectItem>
-                    <SelectItem value="rapport">Rapport</SelectItem>
-                    <SelectItem value="certification">Certification</SelectItem>
-                    <SelectItem value="formation">Formation</SelectItem>
+                    {categories.map((category: DocumentCategory) => (
+                      <SelectItem key={category.id} value={category.name}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea id="description" placeholder="Description du document" />
+                <Textarea 
+                  id="description" 
+                  placeholder="Description du document" 
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="tags">Tags (séparés par des virgules)</Label>
-                <Input id="tags" placeholder="manuel, formation, guide" />
+                <Input 
+                  id="tags" 
+                  placeholder="manuel, formation, guide" 
+                  value={formData.tags}
+                  onChange={(e) => setFormData({...formData, tags: e.target.value})}
+                />
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)}>
+              <Button variant="outline" onClick={() => {setIsUploadDialogOpen(false); resetForm();}}>
                 Annuler
               </Button>
-              <Button onClick={() => setIsUploadDialogOpen(false)}>
-                Télécharger
+              <Button onClick={handleFileUpload} disabled={createDocument.isPending}>
+                {createDocument.isPending ? 'Téléchargement...' : 'Télécharger'}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Modifier le Document</DialogTitle>
+            <DialogDescription>
+              Modifiez les informations du document
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">Nom du document *</Label>
+              <Input 
+                id="edit-name" 
+                placeholder="Nom du document" 
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-category">Catégorie *</Label>
+              <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une catégorie" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category: DocumentCategory) => (
+                    <SelectItem key={category.id} value={category.name}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea 
+                id="edit-description" 
+                placeholder="Description du document" 
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-tags">Tags (séparés par des virgules)</Label>
+              <Input 
+                id="edit-tags" 
+                placeholder="manuel, formation, guide" 
+                value={formData.tags}
+                onChange={(e) => setFormData({...formData, tags: e.target.value})}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => {setIsEditDialogOpen(false); resetForm();}}>
+              Annuler
+            </Button>
+            <Button onClick={handleUpdate} disabled={updateDocument.isPending}>
+              {updateDocument.isPending ? 'Modification...' : 'Modifier'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Filters */}
       <Card>
@@ -181,9 +454,9 @@ const DocumentModule = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Toutes catégories</SelectItem>
-                  {categories.slice(1).map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                  {categories.map((category: DocumentCategory) => (
+                    <SelectItem key={category.id} value={category.name}>
+                      {category.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -252,45 +525,48 @@ const DocumentModule = () => {
               <Card key={doc.id} className="hover:shadow-md transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      {getFileIcon(doc.type)}
-                      <Badge variant="secondary">{doc.type}</Badge>
-                    </div>
-                    <Badge variant="outline">{doc.category}</Badge>
-                  </div>
-                  <CardTitle className="text-sm">{doc.name}</CardTitle>
-                  <CardDescription className="text-xs">
-                    {doc.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Taille: {doc.size}</span>
-                      <span>{doc.uploadDate}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {doc.tags.map((tag, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex justify-between items-center pt-2">
-                      <span className="text-xs text-muted-foreground">
-                        Par {doc.author}
-                      </span>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="ghost">
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="ghost">
-                          <Download className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="ghost">
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
+                     <div className="flex items-center space-x-2">
+                       {getFileIcon(doc.file_type)}
+                       <Badge variant="secondary">{doc.file_type}</Badge>
+                     </div>
+                     <Badge variant="outline">{doc.category}</Badge>
+                   </div>
+                   <CardTitle className="text-sm">{doc.name}</CardTitle>
+                   <CardDescription className="text-xs">
+                     {doc.description}
+                   </CardDescription>
+                 </CardHeader>
+                 <CardContent className="pt-0">
+                   <div className="space-y-2">
+                     <div className="flex justify-between text-xs text-muted-foreground">
+                       <span>Taille: {formatFileSize(doc.file_size)}</span>
+                       <span>{formatDate(doc.created_at)}</span>
+                     </div>
+                     <div className="flex flex-wrap gap-1">
+                       {doc.tags.map((tag, index) => (
+                         <Badge key={index} variant="outline" className="text-xs">
+                           {tag}
+                         </Badge>
+                       ))}
+                     </div>
+                     <div className="flex justify-between items-center pt-2">
+                       <span className="text-xs text-muted-foreground">
+                         Par {getAuthorName(doc)}
+                       </span>
+                       <div className="flex gap-1">
+                         <Button size="sm" variant="ghost" onClick={() => handleView(doc)}>
+                           <Eye className="h-3 w-3" />
+                         </Button>
+                         <Button size="sm" variant="ghost" onClick={() => handleEdit(doc)}>
+                           <Edit className="h-3 w-3" />
+                         </Button>
+                         <Button size="sm" variant="ghost" onClick={() => handleDownload(doc)}>
+                           <Download className="h-3 w-3" />
+                         </Button>
+                         <Button size="sm" variant="ghost" onClick={() => handleDelete(doc)}>
+                           <Trash2 className="h-3 w-3" />
+                         </Button>
+                       </div>
                     </div>
                   </div>
                 </CardContent>
@@ -305,35 +581,38 @@ const DocumentModule = () => {
               <div className="divide-y">
                 {filteredDocuments.map((doc) => (
                   <div key={doc.id} className="flex items-center justify-between p-4 hover:bg-muted/50">
-                    <div className="flex items-center space-x-4">
-                      {getFileIcon(doc.type)}
-                      <div>
-                        <div className="font-medium">{doc.name}</div>
-                        <div className="text-sm text-muted-foreground">{doc.description}</div>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant="outline" className="text-xs">{doc.category}</Badge>
-                          <Badge variant="secondary" className="text-xs">{doc.type}</Badge>
-                          <span className="text-xs text-muted-foreground">{doc.size}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="text-right text-sm">
-                        <div className="text-muted-foreground">Par {doc.author}</div>
-                        <div className="text-muted-foreground">{doc.uploadDate}</div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="ghost">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
+                     <div className="flex items-center space-x-4">
+                       {getFileIcon(doc.file_type)}
+                       <div>
+                         <div className="font-medium">{doc.name}</div>
+                         <div className="text-sm text-muted-foreground">{doc.description}</div>
+                         <div className="flex items-center space-x-2 mt-1">
+                           <Badge variant="outline" className="text-xs">{doc.category}</Badge>
+                           <Badge variant="secondary" className="text-xs">{doc.file_type}</Badge>
+                           <span className="text-xs text-muted-foreground">{formatFileSize(doc.file_size)}</span>
+                         </div>
+                       </div>
+                     </div>
+                     <div className="flex items-center space-x-2">
+                       <div className="text-right text-sm">
+                         <div className="text-muted-foreground">Par {getAuthorName(doc)}</div>
+                         <div className="text-muted-foreground">{formatDate(doc.created_at)}</div>
+                       </div>
+                       <div className="flex gap-1">
+                         <Button size="sm" variant="ghost" onClick={() => handleView(doc)}>
+                           <Eye className="h-4 w-4" />
+                         </Button>
+                         <Button size="sm" variant="ghost" onClick={() => handleEdit(doc)}>
+                           <Edit className="h-4 w-4" />
+                         </Button>
+                         <Button size="sm" variant="ghost" onClick={() => handleDownload(doc)}>
+                           <Download className="h-4 w-4" />
+                         </Button>
+                         <Button size="sm" variant="ghost" onClick={() => handleDelete(doc)}>
+                           <Trash2 className="h-4 w-4" />
+                         </Button>
+                       </div>
+                     </div>
                   </div>
                 ))}
               </div>
