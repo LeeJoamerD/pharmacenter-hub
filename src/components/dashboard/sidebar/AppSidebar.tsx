@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +10,8 @@ import { Home, ShoppingCart, Package, Calculator, BarChart,
   Clipboard, ChartBar, RefreshCw, DollarSign, CreditCard, Receipt, Briefcase, Target, 
   Building, Banknote, Smartphone, Wrench, Map, Globe, Palette, Search, TrendingUp, 
   Eye, GraduationCap, Folder, Paperclip, Zap } from 'lucide-react';
+import { useHasPermission } from '@/hooks/usePermissions';
+import { PERMISSIONS } from '@/types/permissions';
 
 interface AppSidebarProps {
   activeModule: string;
@@ -28,6 +29,7 @@ const AppSidebar = ({
   const { toast } = useToast();
   const navigate = useNavigate();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const hasStockAccess = useHasPermission(PERMISSIONS.STOCK_VIEW);
   
   const handleLogout = () => {
     toast({
@@ -212,30 +214,32 @@ const AppSidebar = ({
                   </SidebarMenuSub>
                 )}
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton 
-                  className={activeModule === 'stock' ? 'bg-primary/10 text-primary' : ''} 
-                  onClick={() => handleMenuClick('stock')}
-                >
-                  <Package className="h-5 w-5 text-orange-600" />
-                  <span>Stock</span>
-                </SidebarMenuButton>
-                {expandedMenus.includes('stock') && (
-                  <SidebarMenuSub>
-                    {subMenus.stock.map((item, index) => (
-                      <SidebarMenuSubItem key={index}>
-                        <SidebarMenuSubButton 
-                          onClick={() => handleMenuClick('stock', item.name.toLowerCase())}
-                          className={`cursor-pointer ${activeSubModule === item.name.toLowerCase() ? 'bg-primary/10 text-primary' : ''}`}
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.name}</span>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
-                )}
-              </SidebarMenuItem>
+              {hasStockAccess && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    className={activeModule === 'stock' ? 'bg-primary/10 text-primary' : ''} 
+                    onClick={() => handleMenuClick('stock')}
+                  >
+                    <Package className="h-5 w-5 text-orange-600" />
+                    <span>Stock</span>
+                  </SidebarMenuButton>
+                  {expandedMenus.includes('stock') && (
+                    <SidebarMenuSub>
+                      {subMenus.stock.map((item, index) => (
+                        <SidebarMenuSubItem key={index}>
+                          <SidebarMenuSubButton 
+                            onClick={() => handleMenuClick('stock', item.name.toLowerCase().replace(' ', '-'))}
+                            className={`cursor-pointer ${activeSubModule === item.name.toLowerCase().replace(' ', '-') ? 'bg-primary/10 text-primary' : ''}`}
+                          >
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.name}</span>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  )}
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton 
                   className={activeModule === 'ventes' ? 'bg-primary/10 text-primary' : ''} 
