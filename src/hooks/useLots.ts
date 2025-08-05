@@ -163,7 +163,7 @@ export const useLots = () => {
   };
 
   // Créer un nouveau lot
-  const createLotMutation = useTenantMutation('lots', {
+  const createLotMutation = useTenantMutation('lots', 'insert', {
     onSuccess: () => {
       toast.success('Lot créé avec succès');
       queryClient.invalidateQueries({ queryKey: ['lots'] });
@@ -174,9 +174,7 @@ export const useLots = () => {
   });
 
   // Mettre à jour un lot
-  const updateLotMutation = useTenantMutation({
-    tableName: 'lots',
-    mutationType: 'update',
+  const updateLotMutation = useTenantMutation('lots', 'update', {
     onSuccess: () => {
       toast.success('Lot mis à jour avec succès');
       queryClient.invalidateQueries({ queryKey: ['lots'] });
@@ -187,9 +185,7 @@ export const useLots = () => {
   });
 
   // Supprimer un lot
-  const deleteLotMutation = useTenantMutation({
-    tableName: 'lots',
-    mutationType: 'delete',
+  const deleteLotMutation = useTenantMutation('lots', 'delete', {
     onSuccess: () => {
       toast.success('Lot supprimé avec succès');
       queryClient.invalidateQueries({ queryKey: ['lots'] });

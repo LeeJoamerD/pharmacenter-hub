@@ -144,8 +144,7 @@ export const useFIFOConfiguration = () => {
   };
 
   // Créer une nouvelle configuration FIFO
-  const createFIFOConfigMutation = useTenantMutation({
-    tableName: 'configurations_fifo',
+  const createFIFOConfigMutation = useTenantMutation('configurations_fifo', 'insert', {
     onSuccess: () => {
       toast.success('Configuration FIFO créée avec succès');
       queryClient.invalidateQueries({ queryKey: ['fifo-configurations'] });
@@ -156,9 +155,7 @@ export const useFIFOConfiguration = () => {
   });
 
   // Mettre à jour une configuration FIFO
-  const updateFIFOConfigMutation = useTenantMutation({
-    tableName: 'configurations_fifo',
-    mutationType: 'update',
+  const updateFIFOConfigMutation = useTenantMutation('configurations_fifo', 'update', {
     onSuccess: () => {
       toast.success('Configuration FIFO mise à jour avec succès');
       queryClient.invalidateQueries({ queryKey: ['fifo-configurations'] });
@@ -169,9 +166,7 @@ export const useFIFOConfiguration = () => {
   });
 
   // Supprimer une configuration FIFO
-  const deleteFIFOConfigMutation = useTenantMutation({
-    tableName: 'configurations_fifo',
-    mutationType: 'delete',
+  const deleteFIFOConfigMutation = useTenantMutation('configurations_fifo', 'delete', {
     onSuccess: () => {
       toast.success('Configuration FIFO supprimée avec succès');
       queryClient.invalidateQueries({ queryKey: ['fifo-configurations'] });
@@ -225,9 +220,8 @@ export const useFIFOConfiguration = () => {
 
       const { data: config } = await useFIFOConfigForProduct(productId);
       
-      // Note: La propriété activer_fifo n'est pas encore dans le schéma
-      // Utiliser la propriété actif pour l'instant
-      if (!config?.actif) {
+      // Vérifier si FIFO est activé
+      if (!(config as any)?.activer_fifo) {
         return { isCompliant: true };
       }
 

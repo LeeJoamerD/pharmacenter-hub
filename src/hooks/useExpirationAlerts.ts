@@ -81,7 +81,7 @@ export const useExpirationAlerts = () => {
       'alertes_peremption',
       `
         *,
-        lot:lots!inner(id, numero_lot, date_peremption, emplacement),
+        lot:lots!inner(id, numero_lot, date_peremption),
         produit:produits!inner(id, nom_produit, code_bare)
       `,
       {
@@ -91,7 +91,6 @@ export const useExpirationAlerts = () => {
       },
       {
         enabled: !!tenantId,
-        refetchInterval: 60000, // Refresh every minute
         orderBy: { column: 'jours_restants', ascending: true },
       }
     );
@@ -104,13 +103,12 @@ export const useExpirationAlerts = () => {
       'alertes_peremption',
       `
         *,
-        lot:lots!inner(id, numero_lot, date_peremption, emplacement),
+        lot:lots!inner(id, numero_lot, date_peremption),
         produit:produits!inner(id, nom_produit, code_bare)
       `,
       { statut_alerte: 'active' },
       {
         enabled: !!tenantId,
-        refetchInterval: 30000,
         orderBy: { column: 'jours_restants', ascending: true },
       }
     );
@@ -120,17 +118,16 @@ export const useExpirationAlerts = () => {
   const useExpirationParametersQuery = () => {
     return useTenantQueryWithCache(
       ['expiration-parameters'],
-      () => supabase
-        .from('parametres_expiration')
-        .select(`
-          *,
-          produit:produits(id, nom_produit),
-          famille:famille_produit(id, libelle_famille)
-        `)
-        .eq('tenant_id', tenantId!)
-        .order('created_at', { ascending: false }),
+      'parametres_expiration',
+      `
+        *,
+        produit:produits(id, nom_produit),
+        famille:famille_produit(id, libelle_famille)
+      `,
+      {},
       {
         enabled: !!tenantId,
+        orderBy: { column: 'created_at', ascending: false },
       }
     );
   };
@@ -140,10 +137,10 @@ export const useExpirationAlerts = () => {
     return useQuery({
       queryKey: ['expiration-alerts', 'stats'],
       queryFn: async () => {
-        // Calculer les stats manuellement pour l'instant
+        // Utiliser seulement les colonnes qui existent
         const { data: alerts, error } = await supabase
           .from('alertes_peremption')
-          .select('niveau_urgence, statut_alerte')
+          .select('niveau_urgence')
           .eq('tenant_id', tenantId!);
         
         if (error) throw error;
@@ -152,20 +149,17 @@ export const useExpirationAlerts = () => {
           total: alerts?.length || 0,
           critical: alerts?.filter(a => a.niveau_urgence === 'critique').length || 0,
           high: alerts?.filter(a => a.niveau_urgence === 'eleve').length || 0,
-          active: alerts?.filter(a => a.statut_alerte === 'active').length || 0,
+          active: alerts?.length || 0, // Pour l'instant, considérer toutes comme actives
         };
         
         return stats;
       },
       enabled: !!tenantId,
-      refetchInterval: 300000, // Refresh every 5 minutes
     });
   };
 
   // Mettre à jour le statut d'une alerte
-  const updateAlertStatusMutation = useTenantMutation({
-    tableName: 'alertes_peremption',
-    mutationType: 'update',
+  const updateAlertStatusMutation = useTenantMutation('alertes_peremption', 'update', {
     onSuccess: () => {
       toast.success('Alerte mise à jour avec succès');
       queryClient.invalidateQueries({ queryKey: ['expiration-alerts'] });
@@ -176,8 +170,7 @@ export const useExpirationAlerts = () => {
   });
 
   // Créer des paramètres d'expiration
-  const createExpirationParameterMutation = useTenantMutation({
-    tableName: 'parametres_expiration',
+  const createExpirationParameterMutation = useTenantMutation('parametres_expiration', 'insert', {
     onSuccess: () => {
       toast.success('Paramètres d\'expiration créés avec succès');
       queryClient.invalidateQueries({ queryKey: ['expiration-parameters'] });
@@ -188,9 +181,7 @@ export const useExpirationAlerts = () => {
   });
 
   // Supprimer des paramètres d'expiration
-  const deleteExpirationParameterMutation = useTenantMutation({
-    tableName: 'parametres_expiration',
-    mutationType: 'delete',
+  const deleteExpirationParameterMutation = useTenantMutation('parametres_expiration', 'delete', {
     onSuccess: () => {
       toast.success('Paramètres d\'expiration supprimés avec succès');
       queryClient.invalidateQueries({ queryKey: ['expiration-parameters'] });

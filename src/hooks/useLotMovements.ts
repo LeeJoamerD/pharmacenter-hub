@@ -9,7 +9,7 @@ export interface LotMovement {
   tenant_id: string;
   lot_id: string;
   type_mouvement: 'entree' | 'sortie' | 'ajustement' | 'transfert' | 'retour' | 'destruction';
-  quantite: number;
+  quantite_mouvement: number;
   date_mouvement: string;
   reference_document?: string;
   notes?: string;
@@ -33,7 +33,7 @@ export interface LotMovementWithDetails extends LotMovement {
 export interface CreateLotMovementInput {
   lot_id: string;
   type_mouvement: 'entree' | 'sortie' | 'ajustement' | 'transfert' | 'retour' | 'destruction';
-  quantite: number;
+  quantite_mouvement: number;
   date_mouvement?: string;
   reference_document?: string;
   notes?: string;
@@ -85,14 +85,12 @@ export const useLotMovements = () => {
   const useLotMovementsForLot = (lotId: string) => {
     return useTenantQueryWithCache(
       ['lot-movements', 'lot', lotId],
-      () => supabase
-        .from('mouvements_lots')
-        .select('*')
-        .eq('tenant_id', tenantId!)
-        .eq('lot_id', lotId)
-        .order('date_mouvement', { ascending: false }),
+      'mouvements_lots',
+      '*',
+      { lot_id: lotId },
       {
         enabled: !!tenantId && !!lotId,
+        orderBy: { column: 'date_mouvement', ascending: false },
       }
     );
   };
@@ -105,15 +103,15 @@ export const useLotMovements = () => {
         // Calculer les stats manuellement pour l'instant
         const { data: movements, error } = await supabase
           .from('mouvements_lots')
-          .select('type_mouvement, quantite')
+          .select('type_mouvement, quantite_mouvement')
           .eq('tenant_id', tenantId!)
           .eq('lot_id', lotId || '');
         
         if (error) throw error;
         
         const stats = {
-          total_entries: movements?.filter(m => m.type_mouvement === 'entree').reduce((sum, m) => sum + m.quantite, 0) || 0,
-          total_exits: movements?.filter(m => m.type_mouvement === 'sortie').reduce((sum, m) => sum + m.quantite, 0) || 0,
+          total_entries: movements?.filter(m => m.type_mouvement === 'entree').reduce((sum, m) => sum + m.quantite_mouvement, 0) || 0,
+          total_exits: movements?.filter(m => m.type_mouvement === 'sortie').reduce((sum, m) => sum + m.quantite_mouvement, 0) || 0,
           total_adjustments: movements?.filter(m => m.type_mouvement === 'ajustement').length || 0,
           total_transfers: movements?.filter(m => m.type_mouvement === 'transfert').length || 0,
           total_returns: movements?.filter(m => m.type_mouvement === 'retour').length || 0,
@@ -140,7 +138,6 @@ export const useLotMovements = () => {
       {},
       {
         enabled: !!tenantId,
-        refetchInterval: 30000,
         limit: limit,
         orderBy: { column: 'date_mouvement', ascending: false },
       }
@@ -148,8 +145,7 @@ export const useLotMovements = () => {
   };
 
   // Créer un nouveau mouvement de lot
-  const createLotMovementMutation = useTenantMutation({
-    tableName: 'mouvements_lots',
+  const createLotMovementMutation = useTenantMutation('mouvements_lots', 'insert', {
     onSuccess: () => {
       toast.success('Mouvement enregistré avec succès');
       queryClient.invalidateQueries({ queryKey: ['lot-movements'] });
@@ -161,9 +157,7 @@ export const useLotMovements = () => {
   });
 
   // Supprimer un mouvement (avec confirmation)
-  const deleteLotMovementMutation = useTenantMutation({
-    tableName: 'mouvements_lots',
-    mutationType: 'delete',
+  const deleteLotMovementMutation = useTenantMutation('mouvements_lots', 'delete', {
     onSuccess: () => {
       toast.success('Mouvement supprimé avec succès');
       queryClient.invalidateQueries({ queryKey: ['lot-movements'] });
