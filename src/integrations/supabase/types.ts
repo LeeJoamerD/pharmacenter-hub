@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      alertes_peremption: {
+        Row: {
+          actions_recommandees: string[] | null
+          created_at: string | null
+          date_alerte: string | null
+          date_traitement: string | null
+          id: string
+          jours_restants: number | null
+          lot_id: string
+          niveau_urgence: string | null
+          notes: string | null
+          produit_id: string
+          quantite_concernee: number | null
+          statut: string | null
+          tenant_id: string
+          traite_par_id: string | null
+          type_alerte: string
+          updated_at: string | null
+        }
+        Insert: {
+          actions_recommandees?: string[] | null
+          created_at?: string | null
+          date_alerte?: string | null
+          date_traitement?: string | null
+          id?: string
+          jours_restants?: number | null
+          lot_id: string
+          niveau_urgence?: string | null
+          notes?: string | null
+          produit_id: string
+          quantite_concernee?: number | null
+          statut?: string | null
+          tenant_id: string
+          traite_par_id?: string | null
+          type_alerte: string
+          updated_at?: string | null
+        }
+        Update: {
+          actions_recommandees?: string[] | null
+          created_at?: string | null
+          date_alerte?: string | null
+          date_traitement?: string | null
+          id?: string
+          jours_restants?: number | null
+          lot_id?: string
+          niveau_urgence?: string | null
+          notes?: string | null
+          produit_id?: string
+          quantite_concernee?: number | null
+          statut?: string | null
+          tenant_id?: string
+          traite_par_id?: string | null
+          type_alerte?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alertes_peremption_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alertes_peremption_traite_par_id_fkey"
+            columns: ["traite_par_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assureurs: {
         Row: {
           adresse: string | null
@@ -417,6 +489,66 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      configurations_fifo: {
+        Row: {
+          actif: boolean | null
+          action_automatique: boolean | null
+          created_at: string | null
+          delai_alerte_jours: number | null
+          famille_id: string | null
+          id: string
+          priorite: number | null
+          produit_id: string | null
+          tenant_id: string
+          tolerance_delai_jours: number | null
+          type_regle: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          action_automatique?: boolean | null
+          created_at?: string | null
+          delai_alerte_jours?: number | null
+          famille_id?: string | null
+          id?: string
+          priorite?: number | null
+          produit_id?: string | null
+          tenant_id: string
+          tolerance_delai_jours?: number | null
+          type_regle?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          action_automatique?: boolean | null
+          created_at?: string | null
+          delai_alerte_jours?: number | null
+          famille_id?: string | null
+          id?: string
+          priorite?: number | null
+          produit_id?: string | null
+          tenant_id?: string
+          tolerance_delai_jours?: number | null
+          type_regle?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "configurations_fifo_famille_id_fkey"
+            columns: ["famille_id"]
+            isOneToOne: false
+            referencedRelation: "famille_produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "configurations_fifo_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       conges_employes: {
         Row: {
@@ -1731,43 +1863,84 @@ export type Database = {
       lots: {
         Row: {
           created_at: string
+          date_fabrication: string | null
           date_peremption: string | null
+          date_reception: string | null
+          emplacement: string | null
+          fournisseur_id: string | null
           id: string
+          notes: string | null
           numero_lot: string
+          prix_achat_unitaire: number | null
+          prix_vente_suggere: number | null
           produit_id: string
           quantite_initiale: number
           quantite_restante: number
+          reception_id: string | null
+          statut: string | null
           tenant_id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          date_fabrication?: string | null
           date_peremption?: string | null
+          date_reception?: string | null
+          emplacement?: string | null
+          fournisseur_id?: string | null
           id?: string
+          notes?: string | null
           numero_lot: string
+          prix_achat_unitaire?: number | null
+          prix_vente_suggere?: number | null
           produit_id: string
           quantite_initiale: number
           quantite_restante: number
+          reception_id?: string | null
+          statut?: string | null
           tenant_id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          date_fabrication?: string | null
           date_peremption?: string | null
+          date_reception?: string | null
+          emplacement?: string | null
+          fournisseur_id?: string | null
           id?: string
+          notes?: string | null
           numero_lot?: string
+          prix_achat_unitaire?: number | null
+          prix_vente_suggere?: number | null
           produit_id?: string
           quantite_initiale?: number
           quantite_restante?: number
+          reception_id?: string | null
+          statut?: string | null
           tenant_id?: string
           updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "lots_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lots_produit_id_fkey"
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lots_reception_id_fkey"
+            columns: ["reception_id"]
+            isOneToOne: false
+            referencedRelation: "receptions_fournisseurs"
             referencedColumns: ["id"]
           },
         ]
@@ -1828,6 +2001,100 @@ export type Database = {
             columns: ["session_caisse_id"]
             isOneToOne: false
             referencedRelation: "sessions_caisse"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mouvements_lots: {
+        Row: {
+          agent_id: string | null
+          created_at: string | null
+          date_mouvement: string | null
+          emplacement_destination: string | null
+          emplacement_source: string | null
+          id: string
+          lot_destination_id: string | null
+          lot_id: string
+          metadata: Json | null
+          motif: string | null
+          prix_unitaire: number | null
+          produit_id: string
+          quantite_apres: number
+          quantite_avant: number
+          quantite_mouvement: number
+          reference_document: string | null
+          reference_id: string | null
+          reference_type: string | null
+          tenant_id: string
+          type_mouvement: string
+          valeur_mouvement: number | null
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string | null
+          date_mouvement?: string | null
+          emplacement_destination?: string | null
+          emplacement_source?: string | null
+          id?: string
+          lot_destination_id?: string | null
+          lot_id: string
+          metadata?: Json | null
+          motif?: string | null
+          prix_unitaire?: number | null
+          produit_id: string
+          quantite_apres: number
+          quantite_avant: number
+          quantite_mouvement: number
+          reference_document?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id: string
+          type_mouvement: string
+          valeur_mouvement?: number | null
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string | null
+          date_mouvement?: string | null
+          emplacement_destination?: string | null
+          emplacement_source?: string | null
+          id?: string
+          lot_destination_id?: string | null
+          lot_id?: string
+          metadata?: Json | null
+          motif?: string | null
+          prix_unitaire?: number | null
+          produit_id?: string
+          quantite_apres?: number
+          quantite_avant?: number
+          quantite_mouvement?: number
+          reference_document?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id?: string
+          type_mouvement?: string
+          valeur_mouvement?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mouvements_lots_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_lots_lot_destination_id_fkey"
+            columns: ["lot_destination_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_lots_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
             referencedColumns: ["id"]
           },
         ]
@@ -1946,6 +2213,72 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parametres_expiration: {
+        Row: {
+          action_auto_alerte: boolean | null
+          action_auto_blocage: boolean | null
+          created_at: string | null
+          delai_alerte_jours: number | null
+          delai_bloquant_jours: number | null
+          delai_critique_jours: number | null
+          famille_id: string | null
+          id: string
+          notifications_dashboard: boolean | null
+          notifications_email: boolean | null
+          produit_id: string | null
+          tenant_id: string
+          type_parametre: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          action_auto_alerte?: boolean | null
+          action_auto_blocage?: boolean | null
+          created_at?: string | null
+          delai_alerte_jours?: number | null
+          delai_bloquant_jours?: number | null
+          delai_critique_jours?: number | null
+          famille_id?: string | null
+          id?: string
+          notifications_dashboard?: boolean | null
+          notifications_email?: boolean | null
+          produit_id?: string | null
+          tenant_id: string
+          type_parametre?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          action_auto_alerte?: boolean | null
+          action_auto_blocage?: boolean | null
+          created_at?: string | null
+          delai_alerte_jours?: number | null
+          delai_bloquant_jours?: number | null
+          delai_critique_jours?: number | null
+          famille_id?: string | null
+          id?: string
+          notifications_dashboard?: boolean | null
+          notifications_email?: boolean | null
+          produit_id?: string | null
+          tenant_id?: string
+          type_parametre?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parametres_expiration_famille_id_fkey"
+            columns: ["famille_id"]
+            isOneToOne: false
+            referencedRelation: "famille_produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parametres_expiration_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
             referencedColumns: ["id"]
           },
         ]
@@ -3943,6 +4276,10 @@ export type Database = {
         Args: { ip_address: string; user_agent: string; personnel_id: string }
         Returns: number
       }
+      calculer_jours_restants_expiration: {
+        Args: { date_peremption: string }
+        Returns: number
+      }
       check_cross_tenant_permission: {
         Args: {
           source_tenant: string
@@ -3987,6 +4324,10 @@ export type Database = {
       detect_suspicious_patterns: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      determiner_niveau_urgence: {
+        Args: { jours_restants: number }
+        Returns: string
       }
       disconnect_pharmacy_session: {
         Args: { p_session_token: string }
