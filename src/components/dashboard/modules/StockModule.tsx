@@ -17,12 +17,12 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
 
   const renderContent = () => {
     switch (activeSubModule) {
+      case 'approvisionnement':
+        return <StockApprovisionnementTab />;
       case 'stock actuel':
         return <CurrentStockTab />;
       case 'lots':
         return <StockLotsTab />;
-      case 'approvisionnement':
-        return <StockApprovisionnementTab />;
       case 'mouvements':
         return <StockMouvementsTab />;
       case 'inventaires':
