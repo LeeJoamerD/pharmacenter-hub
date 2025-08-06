@@ -5,23 +5,22 @@ import { useToast } from '@/hooks/use-toast';
 export interface Product {
   id: string;
   tenant_id: string;
-  categorie_tarification_id: string | null;
-  centime_additionnel: number | null;
+  libelle_produit: string;
   code_cip: string | null;
-  dci_id: string | null;
   famille_id: string | null;
-  famille_produit_id: string | null;
-  id_produit_source: string | null;
-  nom_produit: string;
-  code_barre: string | null;
-  prix_achat_moyen: number | null;
-  prix_vente_unitaire: number | null;
-  tva_applicable: number | null;
-  stock_minimum: number | null;
-  stock_maximum: number | null;
-  unite_mesure: string | null;
-  forme_pharmaceutique: string | null;
-  dosage: string | null;
+  rayon_id: string | null;
+  dci_id: string | null;
+  laboratoires_id: string | null;
+  categorie_tarification_id: string | null;
+  prix_achat: number | null;
+  prix_vente_ht: number | null;
+  tva: number | null;
+  centime_additionnel: number | null;
+  prix_vente_ttc: number | null;
+  taux_tva: number | null;
+  taux_centime_additionnel: number | null;
+  stock_limite: number | null;
+  stock_alerte: number | null;
   is_active: boolean | null;
   created_at: string;
   updated_at: string;
@@ -42,7 +41,7 @@ export const useProducts = () => {
         .from('produits')
         .select('*')
         .eq('is_active', true)
-        .order('nom_produit');
+        .order('libelle_produit');
 
       if (error) throw error;
       setProducts((data || []) as unknown as Product[]);
@@ -64,9 +63,9 @@ export const useProducts = () => {
       const { data, error } = await supabase
         .from('produits')
         .select('*')
-        .or(`nom_produit.ilike.%${searchTerm}%,code_barre.ilike.%${searchTerm}%`)
+        .or(`libelle_produit.ilike.%${searchTerm}%,code_cip.ilike.%${searchTerm}%`)
         .eq('is_active', true)
-        .order('nom_produit')
+        .order('libelle_produit')
         .limit(10);
 
       if (error) throw error;

@@ -2916,25 +2916,22 @@ export type Database = {
           created_at: string
           dci_id: string | null
           famille_id: string | null
-          famille_produit_id: string | null
           id: string
           id_produit_source: string | null
           is_active: boolean | null
-          laboratoire: string | null
+          laboratoires_id: string | null
           libelle_produit: string
           niveau_detail: number | null
           prix_achat: number | null
-          prix_vente: number | null
           prix_vente_ht: number | null
           prix_vente_ttc: number | null
-          quantite_stock: number | null
           quantite_unites_details_source: number | null
           rayon_id: string | null
-          rayon_produit_id: string | null
           reference_agent_enregistrement_id: string | null
           reference_agent_modification_id: string | null
           stock_alerte: number | null
           stock_limite: number | null
+          taux_centime_additionnel: number | null
           taux_tva: number | null
           tenant_id: string
           tva: number | null
@@ -2947,25 +2944,22 @@ export type Database = {
           created_at?: string
           dci_id?: string | null
           famille_id?: string | null
-          famille_produit_id?: string | null
           id?: string
           id_produit_source?: string | null
           is_active?: boolean | null
-          laboratoire?: string | null
+          laboratoires_id?: string | null
           libelle_produit: string
           niveau_detail?: number | null
           prix_achat?: number | null
-          prix_vente?: number | null
           prix_vente_ht?: number | null
           prix_vente_ttc?: number | null
-          quantite_stock?: number | null
           quantite_unites_details_source?: number | null
           rayon_id?: string | null
-          rayon_produit_id?: string | null
           reference_agent_enregistrement_id?: string | null
           reference_agent_modification_id?: string | null
           stock_alerte?: number | null
           stock_limite?: number | null
+          taux_centime_additionnel?: number | null
           taux_tva?: number | null
           tenant_id: string
           tva?: number | null
@@ -2978,25 +2972,22 @@ export type Database = {
           created_at?: string
           dci_id?: string | null
           famille_id?: string | null
-          famille_produit_id?: string | null
           id?: string
           id_produit_source?: string | null
           is_active?: boolean | null
-          laboratoire?: string | null
+          laboratoires_id?: string | null
           libelle_produit?: string
           niveau_detail?: number | null
           prix_achat?: number | null
-          prix_vente?: number | null
           prix_vente_ht?: number | null
           prix_vente_ttc?: number | null
-          quantite_stock?: number | null
           quantite_unites_details_source?: number | null
           rayon_id?: string | null
-          rayon_produit_id?: string | null
           reference_agent_enregistrement_id?: string | null
           reference_agent_modification_id?: string | null
           stock_alerte?: number | null
           stock_limite?: number | null
+          taux_centime_additionnel?: number | null
           taux_tva?: number | null
           tenant_id?: string
           tva?: number | null
@@ -3025,6 +3016,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_produits_laboratoires"
+            columns: ["laboratoires_id"]
+            isOneToOne: false
+            referencedRelation: "laboratoires"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_produits_rayon"
             columns: ["rayon_id"]
             isOneToOne: false
@@ -3036,13 +3034,6 @@ export type Database = {
             columns: ["categorie_tarification_id"]
             isOneToOne: false
             referencedRelation: "categorie_tarification"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "produits_famille_produit_id_fkey"
-            columns: ["famille_produit_id"]
-            isOneToOne: false
-            referencedRelation: "famille_produit"
             referencedColumns: ["id"]
           },
           {

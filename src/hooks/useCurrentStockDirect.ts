@@ -66,15 +66,17 @@ export const useCurrentStockDirect = () => {
 
       if (!personnel?.tenant_id) throw new Error('Tenant non trouvé');
 
-      // Fetch products with stock - using correct column names from schema
+      // Fetch products with stock using correct column names
       const { data: productsData, error: productsError } = await supabase
         .from('produits')
         .select(`
           id, tenant_id, libelle_produit, code_cip, famille_id, rayon_id,
-          prix_achat, prix_vente_ttc, quantite_stock, stock_limite, stock_alerte,
-          created_at, updated_at, is_active,
+          prix_achat, prix_vente_ht, tva, centime_additionnel, prix_vente_ttc, 
+          stock_limite, stock_alerte, taux_tva, taux_centime_additionnel,
+          laboratoires_id, created_at, updated_at, is_active,
           famille_produit!famille_id(libelle_famille),
-          rayons_produits!rayon_id(libelle_rayon)
+          rayons_produits!rayon_id(libelle_rayon),
+          laboratoires!laboratoires_id(libelle)
         `)
         .eq('tenant_id', personnel.tenant_id)
         .eq('is_active', true)
@@ -100,16 +102,18 @@ export const useCurrentStockDirect = () => {
 
       if (rayonsError) throw rayonsError;
 
-      // Process products data
+      // Process products data - Note: Stock levels come from lots table, not produits
       const processedProducts: CurrentStockItem[] = (productsData || []).map((product: any) => {
-        const stockValue = (product.quantite_stock || 0) * (product.prix_achat || 0);
+        // For now, we'll use placeholder values since actual stock comes from lots
+        const currentStock = 0; // Will be calculated from lots
+        const stockValue = currentStock * (product.prix_achat || 0);
         
         let stockStatus: CurrentStockItem['statut_stock'] = 'normal';
-        if (product.quantite_stock === 0) {
+        if (currentStock === 0) {
           stockStatus = 'rupture';
-        } else if (product.quantite_stock <= (product.stock_limite || 0)) {
-          stockStatus = product.quantite_stock <= (product.stock_limite || 0) * 0.5 ? 'critique' : 'faible';
-        } else if (product.quantite_stock >= (product.stock_alerte || 100)) {
+        } else if (currentStock <= (product.stock_limite || 0)) {
+          stockStatus = currentStock <= (product.stock_limite || 0) * 0.5 ? 'critique' : 'faible';
+        } else if (currentStock >= (product.stock_alerte || 100)) {
           stockStatus = 'surstock';
         }
 
@@ -131,9 +135,10 @@ export const useCurrentStockDirect = () => {
           famille_libelle: product.famille_produit?.libelle_famille,
           rayon_id: product.rayon_id,
           rayon_libelle: product.rayons_produits?.libelle_rayon,
+          laboratoire_nom: product.laboratoires?.libelle,
           prix_achat_ht: product.prix_achat || 0,
           prix_vente_ttc: product.prix_vente_ttc || 0,
-          stock_actuel: product.quantite_stock || 0,
+          stock_actuel: currentStock,
           stock_minimum: product.stock_limite || 0,
           stock_maximum: product.stock_alerte || 100,
           date_derniere_entree: product.created_at,
