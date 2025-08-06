@@ -20,7 +20,7 @@ export class StockUpdateService {
       // Enregistrer le mouvement
       const { error: movementError } = await supabase
         .from('stock_mouvements')
-        .insert([{
+        .insert({
           produit_id: movement.produit_id,
           lot_id: movement.lot_id,
           quantite: movement.quantite,
@@ -29,7 +29,7 @@ export class StockUpdateService {
           reference_id: movement.reference_id,
           agent_id: movement.agent_id,
           date_mouvement: new Date().toISOString()
-        }]);
+        });
 
       if (movementError) throw movementError;
 
@@ -120,7 +120,7 @@ export class StockUpdateService {
           // Créer le lot
           const { data: lot, error: lotError } = await supabase
             .from('lots')
-            .insert([{
+            .insert({
               produit_id: ligne.produit_id,
               numero_lot: ligne.numero_lot,
               date_peremption: ligne.date_expiration,
@@ -128,8 +128,8 @@ export class StockUpdateService {
               quantite_restante: ligne.quantite_acceptee,
               prix_achat_unitaire: ligne.prix_achat_unitaire || 0,
               fournisseur_id: receptionData.fournisseur_id,
-              date_reception: new Date().toDateString()
-            }])
+              date_reception: new Date().toISOString().split('T')[0]
+            })
             .select()
             .single();
 

@@ -16,7 +16,6 @@ export interface SupplierOrder {
     nom: string;
     email: string | null;
   };
-  lignes?: OrderLine[];
 }
 
 export interface OrderLine {
@@ -28,11 +27,6 @@ export interface OrderLine {
   prix_achat_unitaire_attendu: number | null;
   created_at: string;
   updated_at: string;
-  // Relations
-  produit?: {
-    nom_produit: string;
-    code_barre: string | null;
-  };
 }
 
 export const useSupplierOrders = () => {

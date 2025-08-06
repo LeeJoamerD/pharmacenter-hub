@@ -32,10 +32,6 @@ export interface ReceptionLine {
   date_expiration: string | null;
   statut: 'conforme' | 'non-conforme' | 'partiellement-conforme';
   commentaire: string | null;
-  produit?: {
-    nom_produit: string;
-    code_barre: string | null;
-  };
 }
 
 export const useReceptions = () => {
