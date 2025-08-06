@@ -10,6 +10,8 @@ import { useSuppliers } from "@/hooks/useSuppliers";
 import { useSupplierOrders } from "@/hooks/useSupplierOrders";
 import { useReceptions } from "@/hooks/useReceptions";
 import { useTransporters } from "@/hooks/useTransporters";
+import { useOrderLines } from "@/hooks/useOrderLines";
+import { useOrderTracking } from "@/hooks/useOrderTracking";
 
 const StockApprovisionnementTab = () => {
   const [activeTab, setActiveTab] = useState('liste');
@@ -19,6 +21,8 @@ const StockApprovisionnementTab = () => {
   const orders = useSupplierOrders();
   const receptions = useReceptions();
   const transporters = useTransporters();
+  const orderLines = useOrderLines();
+  const orderTracking = useOrderTracking();
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

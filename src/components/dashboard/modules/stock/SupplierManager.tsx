@@ -56,40 +56,20 @@ const SupplierManager = ({ suppliers: propSuppliers = [], loading, onCreateSuppl
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
   // Transform real suppliers to match expected structure
-  const suppliers = propSuppliers.length > 0 
-    ? propSuppliers.map(supplier => ({
-        ...supplier,
-        contact: supplier.telephone_appel || 'Non renseigné',
-        telephone: supplier.telephone_appel || 'Non renseigné',
-        ville: 'Non renseigné',
-        pays: 'Congo',
-        statut: 'actif' as const,
-        note: 4.0,
-        delaiLivraison: 7,
-        conditionsPaiement: '30 jours fin de mois',
-        totalCommandes: 0,
-        montantTotal: 0,
-        derniereLivraison: new Date().toISOString().split('T')[0]
-      }))
-    : [
-        {
-          id: '1',
-          nom: 'Laboratoire Alpha',
-          contact: 'Dr. Martin Dubois',
-          email: 'contact@alpha.com',
-          telephone: '+33 1 23 45 67 89',
-          adresse: '123 Rue de la Santé',
-          ville: 'Paris',
-          pays: 'France',
-          statut: 'actif' as const,
-          note: 4.5,
-          delaiLivraison: 7,
-          conditionsPaiement: '30 jours fin de mois',
-          totalCommandes: 45,
-          montantTotal: 2750000,
-          derniereLivraison: '2024-12-01'
-        }
-      ];
+  const suppliers = propSuppliers.map(supplier => ({
+    ...supplier,
+    contact: supplier.telephone_appel || 'Non renseigné',
+    telephone: supplier.telephone_appel || 'Non renseigné',
+    ville: 'Non renseigné',
+    pays: 'Cameroun',
+    statut: 'actif' as const,
+    note: 4.0,
+    delaiLivraison: 7,
+    conditionsPaiement: '30 jours fin de mois',
+    totalCommandes: 0,
+    montantTotal: 0,
+    derniereLivraison: new Date().toISOString().split('T')[0]
+  }));
 
   const filteredSuppliers = suppliers.filter(supplier => {
     const matchesSearch = supplier.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||

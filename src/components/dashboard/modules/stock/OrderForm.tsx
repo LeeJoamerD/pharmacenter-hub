@@ -18,6 +18,8 @@ import {
   Trash2,
   ShoppingCart
 } from 'lucide-react';
+import { useProducts } from '@/hooks/useProducts';
+import { useToast } from '@/hooks/use-toast';
 
 interface OrderLine {
   id: string;
@@ -39,38 +41,27 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   const [selectedSupplier, setSelectedSupplier] = useState('');
   const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
   const [searchProduct, setSearchProduct] = useState('');
+  const [notes, setNotes] = useState('');
+  const { toast } = useToast();
 
-  // Use real suppliers or fallback to mock data
-  const suppliers = propSuppliers.length > 0 ? propSuppliers : [
-    { id: '1', nom: 'Laboratoire Alpha', email: 'contact@alpha.com' },
-    { id: '2', nom: 'Pharma Beta', email: 'commandes@beta.com' },
-    { id: '3', nom: 'Laboratoire Gamma', email: 'orders@gamma.com' },
-    { id: '4', nom: 'NutriPharma', email: 'achats@nutripharma.com' }
-  ];
-
-  // Données mockées des produits
-  const products = [
-    { id: '1', nom: 'Paracétamol 500mg', reference: 'PAR500', prix: 25000, stock: 100 },
-    { id: '2', nom: 'Ibuprofène 200mg', reference: 'IBU200', prix: 15000, stock: 50 },
-    { id: '3', nom: 'Amoxicilline 250mg', reference: 'AMO250', prix: 35000, stock: 75 },
-    { id: '4', nom: 'Vitamine C 500mg', reference: 'VIT500', prix: 12000, stock: 200 },
-    { id: '5', nom: 'Aspirine 100mg', reference: 'ASP100', prix: 18000, stock: 150 }
-  ];
+  // Use real suppliers and products
+  const suppliers = propSuppliers;
+  const { products } = useProducts();
 
   const filteredProducts = products.filter(product =>
-    product.nom.toLowerCase().includes(searchProduct.toLowerCase()) ||
-    product.reference.toLowerCase().includes(searchProduct.toLowerCase())
+    product.libelle_produit.toLowerCase().includes(searchProduct.toLowerCase()) ||
+    (product.code_cip && product.code_cip.toLowerCase().includes(searchProduct.toLowerCase()))
   );
 
   const addOrderLine = (product: any) => {
     const newLine: OrderLine = {
       id: Date.now().toString(),
-      produit: product.nom,
-      reference: product.reference,
+      produit: product.libelle_produit,
+      reference: product.code_cip || 'N/A',
       quantite: 1,
-      prixUnitaire: product.prix,
+      prixUnitaire: product.prix_achat || 0,
       remise: 0,
-      total: product.prix
+      total: product.prix_achat || 0
     };
     setOrderLines([...orderLines, newLine]);
     setSearchProduct('');
@@ -103,6 +94,55 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   };
 
   const { sousTotal, tva, totalGeneral } = calculateTotals();
+
+  const handleSaveOrder = async (statut: string) => {
+    try {
+      if (!selectedSupplier) {
+        toast({
+          title: "Erreur",
+          description: "Veuillez sélectionner un fournisseur",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (orderLines.length === 0) {
+        toast({
+          title: "Erreur",
+          description: "Veuillez ajouter au moins un produit",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const orderData = {
+        fournisseur_id: selectedSupplier,
+        statut: statut,
+        date_commande: (document.getElementById('dateCommande') as HTMLInputElement)?.value || new Date().toISOString().split('T')[0],
+        notes: notes,
+        lignes: orderLines.map(line => ({
+          produit_id: products.find(p => p.libelle_produit === line.produit)?.id,
+          quantite_commandee: line.quantite,
+          prix_achat_unitaire_attendu: line.prixUnitaire
+        }))
+      };
+
+      await onCreateOrder(orderData);
+      
+      // Reset form
+      setSelectedSupplier('');
+      setOrderLines([]);
+      setNotes('');
+      setSearchProduct('');
+      
+      toast({
+        title: "Succès",
+        description: `Commande ${statut === 'En cours' ? 'sauvegardée' : 'envoyée'} avec succès`,
+      });
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -196,18 +236,18 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
             <div className="border rounded-lg p-4 mb-4 bg-muted/50">
               <h4 className="font-medium mb-3">Produits trouvés :</h4>
               <div className="space-y-2">
-                {filteredProducts.map(product => (
-                  <div key={product.id} className="flex items-center justify-between p-2 bg-background rounded border">
-                    <div>
-                      <span className="font-medium">{product.nom}</span>
-                      <span className="text-muted-foreground ml-2">({product.reference})</span>
-                      <Badge variant="outline" className="ml-2">{product.prix.toLocaleString()} F CFA</Badge>
-                    </div>
-                    <Button size="sm" onClick={() => addOrderLine(product)}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                 {filteredProducts.map(product => (
+                   <div key={product.id} className="flex items-center justify-between p-2 bg-background rounded border">
+                     <div>
+                       <span className="font-medium">{product.libelle_produit}</span>
+                       <span className="text-muted-foreground ml-2">({product.code_cip || 'N/A'})</span>
+                       <Badge variant="outline" className="ml-2">{(product.prix_achat || 0).toLocaleString()} F CFA</Badge>
+                     </div>
+                     <Button size="sm" onClick={() => addOrderLine(product)}>
+                       <Plus className="h-4 w-4" />
+                     </Button>
+                   </div>
+                 ))}
               </div>
             </div>
           )}
@@ -316,23 +356,32 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
           <div className="space-y-4">
             <div>
               <Label htmlFor="notes">Notes et commentaires</Label>
-              <Textarea
-                id="notes"
-                placeholder="Instructions particulières, conditions de livraison, etc."
-                rows={3}
-              />
+               <Textarea
+                 id="notes"
+                 value={notes}
+                 onChange={(e) => setNotes(e.target.value)}
+                 placeholder="Instructions particulières, conditions de livraison, etc."
+                 rows={3}
+               />
             </div>
             
-            <div className="flex gap-4 justify-end">
-              <Button variant="outline">
-                <Save className="mr-2 h-4 w-4" />
-                Sauvegarder Brouillon
-              </Button>
-              <Button>
-                <Send className="mr-2 h-4 w-4" />
-                Envoyer Commande
-              </Button>
-            </div>
+             <div className="flex gap-4 justify-end">
+               <Button 
+                 variant="outline"
+                 onClick={() => handleSaveOrder('En cours')}
+                 disabled={loading || !selectedSupplier || orderLines.length === 0}
+               >
+                 <Save className="mr-2 h-4 w-4" />
+                 Sauvegarder Brouillon
+               </Button>
+               <Button
+                 onClick={() => handleSaveOrder('Confirmé')}
+                 disabled={loading || !selectedSupplier || orderLines.length === 0}
+               >
+                 <Send className="mr-2 h-4 w-4" />
+                 Envoyer Commande
+               </Button>
+             </div>
           </div>
         </CardContent>
       </Card>

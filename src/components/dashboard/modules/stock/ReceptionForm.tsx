@@ -19,6 +19,9 @@ import {
   FileText,
   Camera
 } from 'lucide-react';
+import { useOrderLines } from '@/hooks/useOrderLines';
+import { useReceptionLines } from '@/hooks/useReceptionLines';
+import { useToast } from '@/hooks/use-toast';
 
 interface ReceptionLine {
   id: string;
@@ -44,43 +47,39 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
   const [selectedOrder, setSelectedOrder] = useState('');
   const [receptionLines, setReceptionLines] = useState<ReceptionLine[]>([]);
   const [scannedBarcode, setScannedBarcode] = useState('');
+  const [bonLivraison, setBonLivraison] = useState('');
+  const [transporteur, setTransporteur] = useState('');
+  const [observations, setObservations] = useState('');
+  const { toast } = useToast();
+  
+  const { orderLines } = useOrderLines(selectedOrder);
+  const { createReceptionLine } = useReceptionLines();
 
-  // Use real orders or fallback to mock data
-  const pendingOrders = propOrders.length > 0 ? propOrders : [
-    { id: '1', numero: 'CMD-2024-001', fournisseur: 'Laboratoire Alpha', datePrevue: '2024-12-15' },
-    { id: '2', numero: 'CMD-2024-002', fournisseur: 'Pharma Beta', datePrevue: '2024-12-16' },
-    { id: '3', numero: 'CMD-2024-003', fournisseur: 'Laboratoire Gamma', datePrevue: '2024-12-17' }
-  ];
+  // Use real orders with pending status
+  const pendingOrders = propOrders.filter(order => 
+    ['En cours', 'Confirmé', 'Expédié'].includes(order.statut)
+  ).map(order => ({
+    ...order,
+    numero: `CMD-${new Date(order.date_commande || order.created_at).getFullYear()}-${String(order.id).slice(-3).padStart(3, '0')}`,
+    fournisseur: order.fournisseur?.nom || 'Fournisseur inconnu',
+    datePrevue: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  }));
 
-  // Simulation du chargement d'une commande
+  // Load order details from real data
   const loadOrderDetails = (orderId: string) => {
-    const mockLines: ReceptionLine[] = [
-      {
-        id: '1',
-        produit: 'Paracétamol 500mg',
-        reference: 'PAR500',
-        quantiteCommandee: 100,
-        quantiteRecue: 100,
-        quantiteAcceptee: 100,
-        numeroLot: '',
-        dateExpiration: '',
-        statut: 'conforme',
-        commentaire: ''
-      },
-      {
-        id: '2',
-        produit: 'Ibuprofène 200mg',
-        reference: 'IBU200',
-        quantiteCommandee: 50,
-        quantiteRecue: 45,
-        quantiteAcceptee: 45,
-        numeroLot: '',
-        dateExpiration: '',
-        statut: 'partiellement-conforme',
-        commentaire: ''
-      }
-    ];
-    setReceptionLines(mockLines);
+    const lines: ReceptionLine[] = orderLines.map(line => ({
+      id: line.id,
+      produit: line.produit?.libelle_produit || 'Produit inconnu',
+      reference: line.produit?.code_cip || 'N/A',
+      quantiteCommandee: line.quantite_commandee,
+      quantiteRecue: line.quantite_commandee, // Default to commanded quantity
+      quantiteAcceptee: line.quantite_commandee,
+      numeroLot: '',
+      dateExpiration: '',
+      statut: 'conforme',
+      commentaire: ''
+    }));
+    setReceptionLines(lines);
   };
 
   const updateReceptionLine = (id: string, field: keyof ReceptionLine, value: any) => {
@@ -125,6 +124,63 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
     // Logique de traitement du code-barres
     console.log('Code-barres scanné:', scannedBarcode);
     setScannedBarcode('');
+  };
+
+  const handleSaveReception = async (isValidated: boolean) => {
+    try {
+      if (!selectedOrder) {
+        toast({
+          title: "Erreur",
+          description: "Veuillez sélectionner une commande",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const selectedOrderData = pendingOrders.find(o => o.id === selectedOrder);
+      if (!selectedOrderData) {
+        toast({
+          title: "Erreur",
+          description: "Commande introuvable",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const receptionData = {
+        commande_id: selectedOrder,
+        fournisseur_id: selectedOrderData.fournisseur_id,
+        date_reception: new Date().toISOString(),
+        reference_facture: bonLivraison,
+        observations: observations,
+        lignes: receptionLines.map(line => ({
+          produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
+          quantite_commandee: line.quantiteCommandee,
+          quantite_recue: line.quantiteRecue,
+          quantite_acceptee: line.quantiteAcceptee,
+          numero_lot: line.numeroLot,
+          date_expiration: line.dateExpiration || null,
+          statut: line.statut,
+          commentaire: line.commentaire
+        }))
+      };
+
+      await onCreateReception(receptionData);
+      
+      // Reset form
+      setSelectedOrder('');
+      setReceptionLines([]);
+      setBonLivraison('');
+      setTransporteur('');
+      setObservations('');
+      
+      toast({
+        title: "Succès",
+        description: `Réception ${isValidated ? 'validée' : 'sauvegardée'} avec succès`,
+      });
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
+    }
   };
 
   return (
@@ -173,18 +229,22 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
             <div className="space-y-4">
               <div>
                 <Label htmlFor="bonLivraison">Bon de livraison</Label>
-                <Input
-                  id="bonLivraison"
-                  placeholder="Numéro du bon de livraison"
-                />
+                 <Input
+                   id="bonLivraison"
+                   value={bonLivraison}
+                   onChange={(e) => setBonLivraison(e.target.value)}
+                   placeholder="Numéro du bon de livraison"
+                 />
               </div>
               
               <div>
                 <Label htmlFor="transporteur">Transporteur</Label>
-                <Input
-                  id="transporteur"
-                  placeholder="Nom du transporteur"
-                />
+                 <Input
+                   id="transporteur"
+                   value={transporteur}
+                   onChange={(e) => setTransporteur(e.target.value)}
+                   placeholder="Nom du transporteur"
+                 />
               </div>
             </div>
           </div>
@@ -332,23 +392,32 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
               
               <div>
                 <Label htmlFor="observations">Observations générales</Label>
-                <Textarea
-                  id="observations"
-                  placeholder="Observations sur l'état général de la livraison..."
-                  rows={3}
-                />
+                 <Textarea
+                   id="observations"
+                   value={observations}
+                   onChange={(e) => setObservations(e.target.value)}
+                   placeholder="Observations sur l'état général de la livraison..."
+                   rows={3}
+                 />
               </div>
               
-              <div className="flex gap-4 justify-end">
-                <Button variant="outline">
-                  <Save className="mr-2 h-4 w-4" />
-                  Sauvegarder
-                </Button>
-                <Button>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Valider Réception
-                </Button>
-              </div>
+               <div className="flex gap-4 justify-end">
+                 <Button 
+                   variant="outline"
+                   onClick={() => handleSaveReception(false)}
+                   disabled={loading || !selectedOrder || receptionLines.length === 0}
+                 >
+                   <Save className="mr-2 h-4 w-4" />
+                   Sauvegarder
+                 </Button>
+                 <Button
+                   onClick={() => handleSaveReception(true)}
+                   disabled={loading || !selectedOrder || receptionLines.length === 0}
+                 >
+                   <CheckCircle className="mr-2 h-4 w-4" />
+                   Valider Réception
+                 </Button>
+               </div>
             </div>
           </CardContent>
         </Card>

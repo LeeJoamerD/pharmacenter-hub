@@ -31,14 +31,23 @@ import { useToast } from '@/hooks/use-toast';
 
 interface Order {
   id: string;
-  numero: string;
-  fournisseur: string;
-  dateCommande: string;
-  dateLivraison: string;
-  statut: 'brouillon' | 'envoyee' | 'confirmee' | 'partielle' | 'livree' | 'annulee';
-  totalHT: number;
-  nbProduits: number;
-  responsable: string;
+  tenant_id: string;
+  fournisseur_id: string;
+  date_commande: string;
+  agent_id?: string;
+  statut: string;
+  created_at: string;
+  updated_at: string;
+  // Relations
+  fournisseur?: {
+    nom: string;
+    email?: string;
+    telephone_appel?: string;
+  };
+  agent?: {
+    noms: string;
+    prenoms: string;
+  };
 }
 
 interface OrderListProps {
@@ -59,43 +68,18 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
   const { toast } = useToast();
   const ordersPerPage = 10;
 
-  // Transform real orders data to match expected structure
-  const orders = propOrders.length > 0 ? propOrders.map(order => ({
+  // Display real orders data
+  const orders = propOrders.map(order => ({
     ...order,
     numero: `CMD-${new Date(order.date_commande || order.created_at).getFullYear()}-${String(order.id).slice(-3).padStart(3, '0')}`,
     fournisseur: order.fournisseur?.nom || 'Fournisseur inconnu',
     fournisseur_nom: order.fournisseur?.nom || 'Fournisseur inconnu',
     dateCommande: order.date_commande || order.created_at,
-    dateLivraison: order.date_livraison_prevue || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    dateLivraison: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     totalHT: 0, // Will be calculated from order lines
     nbProduits: 0, // Will be calculated from order lines
-    responsable: order.agent?.noms || 'Non assigné'
-  })) : [
-    {
-      id: '1',
-      numero: 'CMD-2024-001',
-      fournisseur: 'Laboratoire Alpha',
-      fournisseur_nom: 'Laboratoire Alpha',
-      dateCommande: '2024-12-01',
-      dateLivraison: '2024-12-15',
-      statut: 'confirmee',
-      totalHT: 125000,
-      nbProduits: 15,
-      responsable: 'Marie Dupont'
-    },
-    {
-      id: '2',
-      numero: 'CMD-2024-002',
-      fournisseur: 'Pharma Beta',
-      fournisseur_nom: 'Pharma Beta',
-      dateCommande: '2024-12-02',
-      dateLivraison: '2024-12-16',
-      statut: 'envoyee',
-      totalHT: 85000,
-      nbProduits: 8,
-      responsable: 'Jean Martin'
-    }
-  ];
+    responsable: order.agent ? `${order.agent.prenoms} ${order.agent.noms}` : 'Non assigné'
+  }));
 
   const fournisseurs = useMemo(() => 
     [...new Set(orders.map(order => order.fournisseur_nom || order.fournisseur))],
