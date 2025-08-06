@@ -96,7 +96,7 @@ export class SupplyAnalyticsService {
     ];
   }
 
-  static async getDeliveryAnalytics(): Promise<DeliveryAnalytics[]> {
+  static async getDeliveryAnalytics(months: number = 6): Promise<DeliveryAnalytics[]> {
     return Array.from({ length: 6 }, (_, i) => {
       const date = new Date();
       date.setMonth(date.getMonth() - (5 - i));

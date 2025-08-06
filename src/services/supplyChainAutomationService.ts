@@ -150,7 +150,7 @@ export class SupplyChainAutomationService {
     }
   }
 
-  static async updateOrderStatus(orderId: string, newStatus: string): Promise<boolean> {
+  static async updateOrderStatus(orderId: string, newStatus: string, reason?: string): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('commandes_fournisseurs')
