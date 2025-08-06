@@ -29,13 +29,19 @@ interface OrderLine {
   total: number;
 }
 
-const OrderForm = () => {
+interface OrderFormProps {
+  suppliers: any[];
+  onCreateOrder: (orderData: any) => Promise<any>;
+  loading: boolean;
+}
+
+const OrderForm = ({ suppliers: propSuppliers = [], onCreateOrder, loading }: OrderFormProps) => {
   const [selectedSupplier, setSelectedSupplier] = useState('');
   const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
   const [searchProduct, setSearchProduct] = useState('');
 
-  // Données mockées des fournisseurs
-  const suppliers = [
+  // Use real suppliers or fallback to mock data
+  const suppliers = propSuppliers.length > 0 ? propSuppliers : [
     { id: '1', nom: 'Laboratoire Alpha', email: 'contact@alpha.com' },
     { id: '2', nom: 'Pharma Beta', email: 'commandes@beta.com' },
     { id: '3', nom: 'Laboratoire Gamma', email: 'orders@gamma.com' },

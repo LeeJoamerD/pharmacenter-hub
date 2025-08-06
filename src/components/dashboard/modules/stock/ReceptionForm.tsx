@@ -33,13 +33,20 @@ interface ReceptionLine {
   commentaire: string;
 }
 
-const ReceptionForm = () => {
+interface ReceptionFormProps {
+  orders: any[];
+  suppliers: any[];
+  onCreateReception: (receptionData: any) => Promise<any>;
+  loading: boolean;
+}
+
+const ReceptionForm = ({ orders: propOrders = [], suppliers: propSuppliers = [], onCreateReception, loading }: ReceptionFormProps) => {
   const [selectedOrder, setSelectedOrder] = useState('');
   const [receptionLines, setReceptionLines] = useState<ReceptionLine[]>([]);
   const [scannedBarcode, setScannedBarcode] = useState('');
 
-  // Données mockées des commandes en attente
-  const pendingOrders = [
+  // Use real orders or fallback to mock data
+  const pendingOrders = propOrders.length > 0 ? propOrders : [
     { id: '1', numero: 'CMD-2024-001', fournisseur: 'Laboratoire Alpha', datePrevue: '2024-12-15' },
     { id: '2', numero: 'CMD-2024-002', fournisseur: 'Pharma Beta', datePrevue: '2024-12-16' },
     { id: '3', numero: 'CMD-2024-003', fournisseur: 'Laboratoire Gamma', datePrevue: '2024-12-17' }

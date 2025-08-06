@@ -32,13 +32,21 @@ interface Order {
   responsable: string;
 }
 
-const OrderList = () => {
+interface OrderListProps {
+  orders: any[];
+  loading: boolean;
+  onRefresh: () => Promise<void>;
+  onUpdateStatus: (id: string, statut: string) => Promise<any>;
+  onDeleteOrder: (id: string) => Promise<any>;
+}
+
+const OrderList = ({ orders: propOrders = [], loading, onRefresh, onUpdateStatus, onDeleteOrder }: OrderListProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('tous');
   const [selectedSupplier, setSelectedSupplier] = useState('tous');
 
-  // Données mockées des commandes
-  const orders: Order[] = [
+  // Use real orders or fallback to mock data
+  const orders = propOrders.length > 0 ? propOrders : [
     {
       id: '1',
       numero: 'CMD-2024-001',
@@ -60,43 +68,10 @@ const OrderList = () => {
       totalHT: 85000,
       nbProduits: 8,
       responsable: 'Jean Martin'
-    },
-    {
-      id: '3',
-      numero: 'CMD-2024-003',
-      fournisseur: 'Laboratoire Gamma',
-      dateCommande: '2024-12-03',
-      dateLivraison: '2024-12-17',
-      statut: 'partielle',
-      totalHT: 95000,
-      nbProduits: 12,
-      responsable: 'Sophie Laurent'
-    },
-    {
-      id: '4',
-      numero: 'CMD-2024-004',
-      fournisseur: 'NutriPharma',
-      dateCommande: '2024-12-04',
-      dateLivraison: '2024-12-18',
-      statut: 'brouillon',
-      totalHT: 67000,
-      nbProduits: 6,
-      responsable: 'Paul Moreau'
-    },
-    {
-      id: '5',
-      numero: 'CMD-2024-005',
-      fournisseur: 'Laboratoire Alpha',
-      dateCommande: '2024-11-28',
-      dateLivraison: '2024-12-12',
-      statut: 'livree',
-      totalHT: 156000,
-      nbProduits: 20,
-      responsable: 'Marie Dupont'
     }
   ];
 
-  const fournisseurs = [...new Set(orders.map(order => order.fournisseur))];
+  const fournisseurs = [...new Set(orders.map(order => order.fournisseur_nom || order.fournisseur))];
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||

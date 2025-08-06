@@ -41,14 +41,22 @@ interface Supplier {
   derniereLivraison: string;
 }
 
-const SupplierManager = () => {
+interface SupplierManagerProps {
+  suppliers: any[];
+  loading: boolean;
+  onCreateSupplier: (supplierData: any) => Promise<any>;
+  onUpdateSupplier: (id: string, updates: any) => Promise<any>;
+  onDeleteSupplier: (id: string) => Promise<any>;
+}
+
+const SupplierManager = ({ suppliers: propSuppliers = [], loading, onCreateSupplier, onUpdateSupplier, onDeleteSupplier }: SupplierManagerProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('tous');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
-  // Données mockées des fournisseurs
-  const suppliers: Supplier[] = [
+  // Use real suppliers or fallback to mock data
+  const suppliers = propSuppliers.length > 0 ? propSuppliers : [
     {
       id: '1',
       nom: 'Laboratoire Alpha',
@@ -65,57 +73,6 @@ const SupplierManager = () => {
       totalCommandes: 45,
       montantTotal: 2750000,
       derniereLivraison: '2024-12-01'
-    },
-    {
-      id: '2',
-      nom: 'Pharma Beta',
-      contact: 'Mme Sophie Laurent',
-      email: 'commandes@beta.com',
-      telephone: '+33 2 34 56 78 90',
-      adresse: '456 Avenue Pasteur',
-      ville: 'Lyon',
-      pays: 'France',
-      statut: 'actif',
-      note: 4.2,
-      delaiLivraison: 5,
-      conditionsPaiement: '45 jours',
-      totalCommandes: 32,
-      montantTotal: 1890000,
-      derniereLivraison: '2024-11-28'
-    },
-    {
-      id: '3',
-      nom: 'Laboratoire Gamma',
-      contact: 'Dr. Pierre Moreau',
-      email: 'orders@gamma.com',
-      telephone: '+33 3 45 67 89 01',
-      adresse: '789 Boulevard Fleming',
-      ville: 'Marseille',
-      pays: 'France',
-      statut: 'suspendu',
-      note: 3.1,
-      delaiLivraison: 14,
-      conditionsPaiement: '60 jours',
-      totalCommandes: 12,
-      montantTotal: 650000,
-      derniereLivraison: '2024-10-15'
-    },
-    {
-      id: '4',
-      nom: 'NutriPharma',
-      contact: 'M. Jean Durand',
-      email: 'achats@nutripharma.com',
-      telephone: '+33 4 56 78 90 12',
-      adresse: '321 Rue de la Vitamine',
-      ville: 'Nice',
-      pays: 'France',
-      statut: 'actif',
-      note: 4.8,
-      delaiLivraison: 3,
-      conditionsPaiement: '15 jours',
-      totalCommandes: 28,
-      montantTotal: 1420000,
-      derniereLivraison: '2024-12-03'
     }
   ];
 

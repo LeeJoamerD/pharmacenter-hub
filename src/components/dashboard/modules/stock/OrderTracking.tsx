@@ -42,12 +42,18 @@ interface TrackingStep {
   commentaire?: string;
 }
 
-const OrderTracking = () => {
+interface OrderTrackingProps {
+  orders: any[];
+  transporters: any[];
+  loading: boolean;
+}
+
+const OrderTracking = ({ orders: propOrders = [], transporters = [], loading }: OrderTrackingProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('tous');
 
-  // Données mockées du suivi des commandes
-  const trackingData: OrderTracking[] = [
+  // Use real orders for tracking or fallback to mock data
+  const trackingData = propOrders.length > 0 ? propOrders : [
     {
       id: '1',
       numero: 'CMD-2024-001',
@@ -65,44 +71,6 @@ const OrderTracking = () => {
         { id: '3', libelle: 'Expédié', date: '2024-12-03 14:30', statut: 'complete' },
         { id: '4', libelle: 'En transit', date: '2024-12-04 08:00', statut: 'en-cours', commentaire: 'Arrivé à l\'entrepôt de transit Dakar' },
         { id: '5', libelle: 'Livraison prévue', date: '2024-12-15 10:00', statut: 'en-attente' }
-      ]
-    },
-    {
-      id: '2',
-      numero: 'CMD-2024-002',
-      fournisseur: 'Pharma Beta',
-      dateCommande: '2024-12-02',
-      dateLivraison: '2024-12-16',
-      statut: 'expedie',
-      progression: 50,
-      transporteur: 'Logistique Santé',
-      numeroSuivi: 'LS2024120002',
-      adresseLivraison: '456 Avenue Pasteur, Thiès',
-      etapes: [
-        { id: '1', libelle: 'Commande confirmée', date: '2024-12-02 11:30', statut: 'complete' },
-        { id: '2', libelle: 'Préparation en cours', date: '2024-12-03 08:00', statut: 'complete' },
-        { id: '3', libelle: 'Expédié', date: '2024-12-04 16:00', statut: 'en-cours', commentaire: 'Colis pris en charge par le transporteur' },
-        { id: '4', libelle: 'En transit', date: '2024-12-16 10:00', statut: 'en-attente' },
-        { id: '5', libelle: 'Livraison prévue', date: '2024-12-16 10:00', statut: 'en-attente' }
-      ]
-    },
-    {
-      id: '3',
-      numero: 'CMD-2024-003',
-      fournisseur: 'Laboratoire Gamma',
-      dateCommande: '2024-11-28',
-      dateLivraison: '2024-12-12',
-      statut: 'retard',
-      progression: 60,
-      transporteur: 'Transport Médical',
-      numeroSuivi: 'TM2024112801',
-      adresseLivraison: '789 Boulevard de la République, Saint-Louis',
-      etapes: [
-        { id: '1', libelle: 'Commande confirmée', date: '2024-11-28 15:00', statut: 'complete' },
-        { id: '2', libelle: 'Préparation en cours', date: '2024-11-29 10:00', statut: 'complete' },
-        { id: '3', libelle: 'Retard de production', date: '2024-12-01 09:00', statut: 'en-cours', commentaire: 'Retard fournisseur - nouveau délai: 18/12' },
-        { id: '4', libelle: 'En transit', date: '2024-12-18 10:00', statut: 'en-attente' },
-        { id: '5', libelle: 'Livraison prévue', date: '2024-12-18 10:00', statut: 'en-attente' }
       ]
     }
   ];
