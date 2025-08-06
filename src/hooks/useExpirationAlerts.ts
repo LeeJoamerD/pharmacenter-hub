@@ -81,8 +81,8 @@ export const useExpirationAlerts = () => {
       'alertes_peremption',
       `
         *,
-        lot:lots!inner(id, numero_lot, date_peremption),
-        produit:produits!inner(id, libelle_produit, code_cip)
+        lot:lots(id, numero_lot, date_peremption),
+        produit:produits(id, libelle_produit, code_cip)
       `,
       {
         ...(filters?.niveau_urgence && { niveau_urgence: filters.niveau_urgence }),
@@ -103,8 +103,8 @@ export const useExpirationAlerts = () => {
       'alertes_peremption',
       `
         *,
-        lot:lots!inner(id, numero_lot, date_peremption),
-        produit:produits!inner(id, libelle_produit, code_cip)
+        lot:lots(id, numero_lot, date_peremption),
+        produit:produits(id, libelle_produit, code_cip)
       `,
       { statut_alerte: 'active' },
       {

@@ -1,22 +1,36 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { StockUpdateService } from '@/services/stockUpdateService';
+import { useToast } from '@/hooks/use-toast';
+
+export interface StockMetrics {
+  totalProduits: number;
+  stockFaible: number;
+  expirationProche: number;
+  commandesEnCours: number;
+  valeurStock: number;
+  mouvementsRecents: number;
+}
 
 export const useStockMetrics = () => {
-  const [stockMetrics, setStockMetrics] = useState({
+  const [metrics, setMetrics] = useState<StockMetrics>({
     totalProduits: 0,
     stockFaible: 0,
     expirationProche: 0,
     commandesEnCours: 0,
     valeurStock: 0,
-    mouvementsJour: 0
+    mouvementsRecents: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const getCurrentTenantId = async (): Promise<string | null> => {
+  const fetchStockMetrics = async () => {
     try {
+      setLoading(true);
+      
+      // Get current user's tenant_id
       const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return null;
+      if (!user.user) throw new Error('Utilisateur non authentifié');
 
       const { data: personnel } = await supabase
         .from('personnel')
@@ -24,20 +38,11 @@ export const useStockMetrics = () => {
         .eq('auth_user_id', user.user.id)
         .single();
 
-      return personnel?.tenant_id || null;
-    } catch (error) {
-      console.error('Erreur lors de la récupération du tenant_id:', error);
-      return null;
-    }
-  };
+      if (!personnel?.tenant_id) throw new Error('Tenant non trouvé');
 
-  const loadMetrics = async () => {
-    try {
-      setLoading(true);
-      const tenantId = await getCurrentTenantId();
-      if (!tenantId) return;
+      const tenantId = personnel.tenant_id;
 
-      // Charger les métriques réelles depuis la base de données
+      // Exécuter toutes les requêtes en parallèle
       const [
         productsResult,
         lowStockResult,
@@ -52,12 +57,12 @@ export const useStockMetrics = () => {
           .select('id')
           .eq('tenant_id', tenantId),
         
-        // Stock faible (produits avec stock < stock_minimal)
+        // Stock faible (produits avec stock < stock_limite)
         supabase
           .from('produits')
           .select(`
-            id, stock_minimal,
-            lots!inner(quantite_restante)
+            id, stock_limite,
+            lots(quantite_restante)
           `)
           .eq('tenant_id', tenantId),
         
@@ -68,27 +73,27 @@ export const useStockMetrics = () => {
           .eq('tenant_id', tenantId)
           .gte('date_peremption', new Date().toISOString().split('T')[0])
           .lte('date_peremption', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]),
-        
+
         // Commandes en cours
         supabase
           .from('commandes_fournisseurs')
           .select('id')
           .eq('tenant_id', tenantId)
-          .in('statut', ['En cours', 'Expédiée']),
-        
-        // Valeur du stock (simulation - calcul basé sur les lots)
+          .in('statut', ['En cours', 'Confirmé', 'Expédié']),
+
+        // Valeur du stock
         supabase
           .from('lots')
           .select('quantite_restante, prix_achat_unitaire')
           .eq('tenant_id', tenantId)
           .gt('quantite_restante', 0),
-        
-        // Mouvements du jour
+
+        // Mouvements récents (7 derniers jours)
         supabase
           .from('stock_mouvements')
           .select('id')
           .eq('tenant_id', tenantId)
-          .gte('date_mouvement', new Date().toISOString().split('T')[0])
+          .gte('date_mouvement', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       ]);
 
       // Traitement des résultats
@@ -98,7 +103,7 @@ export const useStockMetrics = () => {
       if (lowStockResult.status === 'fulfilled' && lowStockResult.value.data) {
         stockFaible = lowStockResult.value.data.filter((product: any) => {
           const totalStock = product.lots?.reduce((sum: number, lot: any) => sum + lot.quantite_restante, 0) || 0;
-          return totalStock <= (product.stock_minimal || 0);
+          return totalStock <= (product.stock_limite || 0);
         }).length;
       }
       
@@ -108,34 +113,42 @@ export const useStockMetrics = () => {
       let valeurStock = 0;
       if (stockValueResult.status === 'fulfilled' && stockValueResult.value.data) {
         valeurStock = stockValueResult.value.data.reduce((sum: number, lot: any) => {
-          return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || 0));
+          return sum + (lot.quantite_restante * (lot.prix_achat_unitaire || 0));
         }, 0);
       }
       
-      const mouvementsJour = movementsResult.status === 'fulfilled' ? (movementsResult.value.data?.length || 0) : 0;
+      const mouvementsRecents = movementsResult.status === 'fulfilled' ? (movementsResult.value.data?.length || 0) : 0;
 
-      setStockMetrics({
+      setMetrics({
         totalProduits,
         stockFaible,
         expirationProche,
         commandesEnCours,
-        valeurStock: Math.round(valeurStock),
-        mouvementsJour
+        valeurStock,
+        mouvementsRecents,
       });
-    } catch (error) {
-      console.error('Erreur lors du chargement des métriques:', error);
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des métriques';
+      setError(errorMessage);
+      toast({
+        title: "Erreur",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadMetrics();
+    fetchStockMetrics();
   }, []);
 
-  return { 
-    ...stockMetrics, 
+  return {
+    metrics,
     loading,
-    refresh: loadMetrics 
+    error,
+    refetch: fetchStockMetrics,
   };
 };

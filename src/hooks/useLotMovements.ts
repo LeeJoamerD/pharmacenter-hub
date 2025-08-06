@@ -68,7 +68,7 @@ export const useLotMovements = () => {
       'mouvements_lots',
       `
         *,
-        lot:lots!inner(id, numero_lot, produit_id)
+        lot:lots(id, numero_lot, produit_id)
       `,
       {
         ...(filters?.lot_id && { lot_id: filters.lot_id }),
@@ -133,7 +133,7 @@ export const useLotMovements = () => {
       'mouvements_lots',
       `
         *,
-        lot:lots!inner(id, numero_lot, produit_id)
+        lot:lots(id, numero_lot, produit_id)
       `,
       {},
       {

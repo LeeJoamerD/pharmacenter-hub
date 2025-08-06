@@ -20,7 +20,7 @@ export class SupplyReportsService {
         .from('produits')
         .select(`
           id, libelle_produit, stock_limite, stock_alerte,
-          lots!inner(quantite_restante, prix_achat_unitaire)
+          lots(quantite_restante, prix_achat_unitaire)
         `)
         .eq('is_active', true);
 
@@ -121,10 +121,10 @@ export class SupplyReportsService {
         .from('receptions_fournisseurs')
         .select(`
           id, date_reception, reference_facture,
-          fournisseurs!inner(nom),
-          lots!inner(
+          fournisseurs(nom),
+          lots(
             quantite_initiale, prix_achat_unitaire,
-            produits!inner(libelle_produit, famille_id)
+            produits(libelle_produit, famille_id)
           )
         `)
         .gte('date_reception', startDate)

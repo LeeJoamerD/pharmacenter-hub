@@ -29,7 +29,7 @@ const StockDashboard = () => {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stockMetrics.totalProduits.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{stockMetrics.metrics.totalProduits.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               +12% par rapport au mois dernier
             </p>
@@ -42,7 +42,7 @@ const StockDashboard = () => {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{stockMetrics.stockFaible}</div>
+            <div className="text-2xl font-bold text-destructive">{stockMetrics.metrics.stockFaible}</div>
             <p className="text-xs text-muted-foreground">
               Produits sous seuil critique
             </p>
@@ -55,7 +55,7 @@ const StockDashboard = () => {
             <Tag className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stockMetrics.expirationProche}</div>
+            <div className="text-2xl font-bold text-yellow-600">{stockMetrics.metrics.expirationProche}</div>
             <p className="text-xs text-muted-foreground">
               Dans les 30 prochains jours
             </p>
@@ -68,7 +68,7 @@ const StockDashboard = () => {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stockMetrics.commandesEnCours}</div>
+            <div className="text-2xl font-bold">{stockMetrics.metrics.commandesEnCours}</div>
             <p className="text-xs text-muted-foreground">
               Fournisseurs en attente
             </p>
@@ -81,7 +81,7 @@ const StockDashboard = () => {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stockMetrics.valeurStock.toLocaleString()} F CFA</div>
+            <div className="text-2xl font-bold">{stockMetrics.metrics.valeurStock.toLocaleString()} F CFA</div>
             <p className="text-xs text-muted-foreground">
               Valorisation totale
             </p>
@@ -94,7 +94,7 @@ const StockDashboard = () => {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stockMetrics.mouvementsJour}</div>
+            <div className="text-2xl font-bold">{stockMetrics.metrics.mouvementsRecents}</div>
             <p className="text-xs text-muted-foreground">
               Entrées/Sorties aujourd'hui
             </p>
