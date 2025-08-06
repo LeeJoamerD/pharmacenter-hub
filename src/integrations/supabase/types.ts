@@ -1018,6 +1018,75 @@ export type Database = {
           },
         ]
       }
+      evaluations_fournisseurs: {
+        Row: {
+          commande_id: string | null
+          commentaires: string | null
+          created_at: string
+          date_evaluation: string
+          evaluateur_id: string | null
+          fournisseur_id: string
+          id: string
+          note_delai: number | null
+          note_globale: number | null
+          note_prix: number | null
+          note_qualite: number | null
+          note_service: number | null
+          recommande: boolean | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          commande_id?: string | null
+          commentaires?: string | null
+          created_at?: string
+          date_evaluation?: string
+          evaluateur_id?: string | null
+          fournisseur_id: string
+          id?: string
+          note_delai?: number | null
+          note_globale?: number | null
+          note_prix?: number | null
+          note_qualite?: number | null
+          note_service?: number | null
+          recommande?: boolean | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          commande_id?: string | null
+          commentaires?: string | null
+          created_at?: string
+          date_evaluation?: string
+          evaluateur_id?: string | null
+          fournisseur_id?: string
+          id?: string
+          note_delai?: number | null
+          note_globale?: number | null
+          note_prix?: number | null
+          note_qualite?: number | null
+          note_service?: number | null
+          recommande?: boolean | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluations_fournisseurs_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commandes_fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluations_fournisseurs_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercices_comptables: {
         Row: {
           created_at: string
@@ -3675,6 +3744,63 @@ export type Database = {
           },
         ]
       }
+      suivi_commandes: {
+        Row: {
+          agent_id: string | null
+          commande_id: string
+          commentaire: string | null
+          created_at: string
+          date_changement: string
+          id: string
+          numero_suivi: string | null
+          statut: string
+          tenant_id: string
+          transporteur_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          commande_id: string
+          commentaire?: string | null
+          created_at?: string
+          date_changement?: string
+          id?: string
+          numero_suivi?: string | null
+          statut: string
+          tenant_id: string
+          transporteur_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          commande_id?: string
+          commentaire?: string | null
+          created_at?: string
+          date_changement?: string
+          id?: string
+          numero_suivi?: string | null
+          statut?: string
+          tenant_id?: string
+          transporteur_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suivi_commandes_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commandes_fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suivi_commandes_transporteur_id_fkey"
+            columns: ["transporteur_id"]
+            isOneToOne: false
+            referencedRelation: "transporteurs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_security_config: {
         Row: {
           allow_cross_tenant_read: boolean
@@ -3721,6 +3847,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      transporteurs: {
+        Row: {
+          adresse: string | null
+          contact_principal: string | null
+          created_at: string
+          delai_livraison_standard: number | null
+          email: string | null
+          id: string
+          is_active: boolean
+          nom: string
+          notes: string | null
+          tarif_base: number | null
+          tarif_par_km: number | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          tenant_id: string
+          updated_at: string
+          zone_couverture: string[] | null
+        }
+        Insert: {
+          adresse?: string | null
+          contact_principal?: string | null
+          created_at?: string
+          delai_livraison_standard?: number | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          nom: string
+          notes?: string | null
+          tarif_base?: number | null
+          tarif_par_km?: number | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id: string
+          updated_at?: string
+          zone_couverture?: string[] | null
+        }
+        Update: {
+          adresse?: string | null
+          contact_principal?: string | null
+          created_at?: string
+          delai_livraison_standard?: number | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          nom?: string
+          notes?: string | null
+          tarif_base?: number | null
+          tarif_par_km?: number | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string
+          updated_at?: string
+          zone_couverture?: string[] | null
+        }
+        Relationships: []
       }
       tva_declaration: {
         Row: {
