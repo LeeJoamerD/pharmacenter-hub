@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useLaboratories } from '@/hooks/useLaboratories';
@@ -6,8 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -29,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Edit, Trash2, Search, Filter, Layers } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Product {
@@ -44,25 +42,10 @@ interface Product {
   categorie_tarification_id?: string;
   prix_achat?: number;
   prix_vente_ht?: number;
-  tva?: number;
-  centime_additionnel?: number;
   prix_vente_ttc?: number;
-  taux_tva?: number;
-  taux_centime_additionnel?: number;
   stock_limite?: number;
   stock_alerte?: number;
-  description?: string;
-  posologie?: string;
-  contre_indications?: string;
-  effets_secondaires?: string;
-  forme_pharmaceutique?: string;
-  dosage?: string;
-  conditionnement?: string;
   is_active?: boolean;
-  is_detail?: boolean;
-  id_produit_source?: string;
-  quantite_unites_details_source?: number;
-  niveau_detail?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -92,8 +75,6 @@ const ProductCatalogNew = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [familleFilter, setFamilleFilter] = useState("all");
   const [rayonFilter, setRayonFilter] = useState("all");
-  const [stockFilter, setStockFilter] = useState("all");
-  const [detailFilter, setDetailFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
@@ -101,16 +82,13 @@ const ProductCatalogNew = () => {
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
   const { laboratories, loading: labLoading } = useLaboratories();
 
-  // Récupération des données avec les nouvelles colonnes
+  // Récupération des données
   const { data: products = [], isLoading } = useTenantQueryWithCache(
-    ['products-v3'],
+    ['products-catalog'],
     'produits', 
     `id, libelle_produit, code_cip, famille_id, rayon_id, laboratoires_id, 
-     dci_id, categorie_tarification_id, prix_achat, prix_vente_ht, tva, 
-     centime_additionnel, prix_vente_ttc, taux_tva, taux_centime_additionnel,
-     stock_limite, stock_alerte, description, posologie, contre_indications,
-     effets_secondaires, forme_pharmaceutique, dosage, conditionnement,
-     is_active, id_produit_source, quantite_unites_details_source, niveau_detail, created_at`,
+     dci_id, categorie_tarification_id, prix_achat, prix_vente_ht, 
+     prix_vente_ttc, stock_limite, stock_alerte, is_active, created_at`,
     { is_active: true }
   );
 
@@ -145,68 +123,29 @@ const ProductCatalogNew = () => {
     const matchesFamille = !familleFilter || familleFilter === "all" || product.famille_id === familleFilter;
     const matchesRayon = !rayonFilter || rayonFilter === "all" || product.rayon_id === rayonFilter;
     
-    // Filtre pour les produits détails
-    let matchesDetail = true;
-    if (detailFilter && detailFilter !== "all") {
-      if (detailFilter === "non_details") {
-        matchesDetail = (product.niveau_detail || 1) === 1;
-      } else if (detailFilter === "details") {
-        matchesDetail = (product.niveau_detail || 1) > 1;
-      }
-    }
-    
-    return matchesSearch && matchesFamille && matchesRayon && matchesDetail;
+    return matchesSearch && matchesFamille && matchesRayon;
   });
 
   // Mutations
   const createMutation = useTenantMutation('produits', 'insert', {
-    invalidateQueries: ['products-v3'],
+    invalidateQueries: ['products-catalog'],
   });
 
   const updateMutation = useTenantMutation('produits', 'update', {
-    invalidateQueries: ['products-v3'],
+    invalidateQueries: ['products-catalog'],
   });
 
   const deleteMutation = useTenantMutation('produits', 'delete', {
-    invalidateQueries: ['products-v3'],
+    invalidateQueries: ['products-catalog'],
   });
 
-  // Form setup avec calcul automatique des prix
+  // Form setup simple sans calculs automatiques
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<Product>();
-  
-  // Watchers pour le calcul automatique
-  const watchedPrixAchat = watch('prix_achat');
-  const watchedPrixVenteHT = watch('prix_vente_ht');
-  const watchedTauxTVA = watch('taux_tva');
-  const watchedTauxCentimeAdditionnel = watch('taux_centime_additionnel');
-
-  // Calcul automatique des prix
-  useEffect(() => {
-    const prixVenteHT = watchedPrixVenteHT || 0;
-    const tauxTVA = watchedTauxTVA || 0;
-    const tauxCentime = watchedTauxCentimeAdditionnel || 0;
-
-    if (prixVenteHT > 0) {
-      // Calcul TVA
-      const tva = (prixVenteHT * tauxTVA) / 100;
-      setValue('tva', Number(tva.toFixed(2)));
-      
-      // Calcul Centime additionnel
-      const centimeAdditionnel = (tva * tauxCentime) / 100;
-      setValue('centime_additionnel', Number(centimeAdditionnel.toFixed(2)));
-      
-      // Calcul Prix TTC
-      const prixTTC = prixVenteHT + tva + centimeAdditionnel;
-      setValue('prix_vente_ttc', Number(prixTTC.toFixed(2)));
-    }
-  }, [watchedPrixVenteHT, watchedTauxTVA, watchedTauxCentimeAdditionnel, setValue]);
 
   const clearFilters = () => {
     setSearchTerm("");
     setFamilleFilter("all");
     setRayonFilter("all");
-    setStockFilter("all");
-    setDetailFilter("all");
   };
 
   const handleAddProduct = () => {
@@ -216,11 +155,7 @@ const ProductCatalogNew = () => {
       code_cip: "",
       prix_achat: 0,
       prix_vente_ht: 0,
-      tva: 0,
-      centime_additionnel: 0,
       prix_vente_ttc: 0,
-      taux_tva: 19.25, // Défaut TVA Cameroun
-      taux_centime_additionnel: 0,
       stock_limite: 0,
       stock_alerte: 0,
       is_active: true,
@@ -327,16 +262,6 @@ const ProductCatalogNew = () => {
             </SelectContent>
           </Select>
 
-          <Select value={detailFilter} onValueChange={setDetailFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Type de produit" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les produits</SelectItem>
-              <SelectItem value="non_details">Non détails</SelectItem>
-              <SelectItem value="details">Détails</SelectItem>
-            </SelectContent>
-          </Select>
 
           <Button variant="outline" onClick={clearFilters}>
             <Filter className="h-4 w-4 mr-2" />
@@ -363,17 +288,11 @@ const ProductCatalogNew = () => {
                </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProducts.map((product) => (
+               {filteredProducts.map((product) => (
                  <TableRow key={product.id}>
                      <TableCell>
                        <div className="font-medium">
                          {product.libelle_produit}
-                         {(product.niveau_detail || 1) > 1 && (
-                           <Badge variant="secondary" className="ml-2">
-                             <Layers className="h-3 w-3 mr-1" />
-                             Détail N{product.niveau_detail}
-                           </Badge>
-                         )}
                        </div>
                      </TableCell>
                    <TableCell>{product.code_cip || 'N/A'}</TableCell>
@@ -432,14 +351,14 @@ const ProductCatalogNew = () => {
             </DialogHeader>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Section 1: Informations générales - 2 colonnes */}
+              {/* Section 1: Informations principales - 2 colonnes */}
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="libelle_produit">Nom du produit *</Label>
+                    <Label htmlFor="libelle_produit">Libellé Produit *</Label>
                     <Input
                       id="libelle_produit"
-                      {...register("libelle_produit", { required: "Le nom est requis" })}
+                      {...register("libelle_produit", { required: "Le libellé est requis" })}
                       placeholder="Nom du produit"
                     />
                     {errors.libelle_produit && (
@@ -448,45 +367,41 @@ const ProductCatalogNew = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="code_cip">Code CIP</Label>
+                    <Label htmlFor="code_cip">Code CIP *</Label>
                     <Input
                       id="code_cip"
-                      {...register("code_cip")}
+                      {...register("code_cip", { required: "Le code CIP est requis" })}
                       placeholder="Code CIP"
                     />
+                    {errors.code_cip && (
+                      <p className="text-sm text-destructive mt-1">{errors.code_cip.message}</p>
+                    )}
                   </div>
 
                   <div>
-                    <Label htmlFor="forme_pharmaceutique">Forme pharmaceutique</Label>
+                    <Label htmlFor="stock_limite">Limite de stock</Label>
                     <Input
-                      id="forme_pharmaceutique"
-                      {...register("forme_pharmaceutique")}
-                      placeholder="Ex: Comprimé, Gélule, Sirop..."
+                      id="stock_limite"
+                      type="number"
+                      {...register("stock_limite", { valueAsNumber: true })}
+                      placeholder="0"
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="dosage">Dosage</Label>
+                    <Label htmlFor="stock_alerte">Alerte boursière</Label>
                     <Input
-                      id="dosage"
-                      {...register("dosage")}
-                      placeholder="Ex: 500mg, 250ml..."
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="conditionnement">Conditionnement</Label>
-                    <Input
-                      id="conditionnement"
-                      {...register("conditionnement")}
-                      placeholder="Ex: Boîte de 20, Flacon de 100ml..."
+                      id="stock_alerte"
+                      type="number"
+                      {...register("stock_alerte", { valueAsNumber: true })}
+                      placeholder="0"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="famille_id">Famille</Label>
+                    <Label htmlFor="famille_id">Famille Produit</Label>
                     <Select onValueChange={(value) => setValue('famille_id', value)} value={watch('famille_id') || ""}>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner une famille" />
@@ -502,7 +417,7 @@ const ProductCatalogNew = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="rayon_id">Rayon</Label>
+                    <Label htmlFor="rayon_id">Rayon Produit</Label>
                     <Select onValueChange={(value) => setValue('rayon_id', value)} value={watch('rayon_id') || ""}>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un rayon" />
@@ -518,15 +433,15 @@ const ProductCatalogNew = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="laboratoires_id">Laboratoire</Label>
-                    <Select onValueChange={(value) => setValue('laboratoires_id', value)} value={watch('laboratoires_id') || ""}>
+                    <Label htmlFor="categorie_tarification_id">Catégorie Tarification *</Label>
+                    <Select onValueChange={(value) => setValue('categorie_tarification_id', value)} value={watch('categorie_tarification_id') || ""}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un laboratoire" />
+                        <SelectValue placeholder="Sélectionner une catégorie" />
                       </SelectTrigger>
                       <SelectContent>
-                        {laboratories.map((lab) => (
-                          <SelectItem key={lab.id} value={lab.id}>
-                            {lab.libelle}
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.libelle_categorie}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -550,15 +465,15 @@ const ProductCatalogNew = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="categorie_tarification_id">Catégorie de tarification</Label>
-                    <Select onValueChange={(value) => setValue('categorie_tarification_id', value)} value={watch('categorie_tarification_id') || ""}>
+                    <Label htmlFor="laboratoires_id">Laboratoire</Label>
+                    <Select onValueChange={(value) => setValue('laboratoires_id', value)} value={watch('laboratoires_id') || ""}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une catégorie" />
+                        <SelectValue placeholder="Sélectionner un laboratoire" />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.libelle_categorie}
+                        {laboratories.map((lab) => (
+                          <SelectItem key={lab.id} value={lab.id}>
+                            {lab.libelle}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -567,10 +482,13 @@ const ProductCatalogNew = () => {
                 </div>
               </div>
 
-              {/* Section 2: Prix - 4 colonnes */}
+              {/* Section 2: Prix - en ligne avec le texte explicatif */}
               <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold mb-4">Tarification</h3>
-                <div className="grid grid-cols-4 gap-4">
+                <h3 className="text-lg font-semibold mb-2">Tarifs</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Les prix seront calculés à l'approvisionnement, ici la modification des prix est facultative.
+                </p>
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <Label htmlFor="prix_achat">Prix d'achat HT (FCFA)</Label>
                     <Input
@@ -594,129 +512,14 @@ const ProductCatalogNew = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="taux_tva">Taux TVA (%)</Label>
+                    <Label htmlFor="prix_vente_ttc">Prix de vente TTC (FCFA)</Label>
                     <Input
-                      id="taux_tva"
+                      id="prix_vente_ttc"
                       type="number"
                       step="0.01"
-                      {...register("taux_tva", { valueAsNumber: true })}
-                      placeholder="19.25"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="taux_centime_additionnel">Taux Centime Additionnel (%)</Label>
-                    <Input
-                      id="taux_centime_additionnel"
-                      type="number"
-                      step="0.01"
-                      {...register("taux_centime_additionnel", { valueAsNumber: true })}
+                      {...register("prix_vente_ttc", { valueAsNumber: true })}
                       placeholder="0.00"
                     />
-                  </div>
-                </div>
-
-                {/* Section calculée - lecture seule */}
-                <div className="grid grid-cols-3 gap-4 mt-4 p-4 bg-muted/50 rounded-lg">
-                  <div>
-                    <Label>TVA calculée (FCFA)</Label>
-                    <Input
-                      value={(watch('tva') || 0).toFixed(2)}
-                      disabled
-                      className="bg-background"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Centime Additionnel calculé (FCFA)</Label>
-                    <Input
-                      value={(watch('centime_additionnel') || 0).toFixed(2)}
-                      disabled
-                      className="bg-background"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Prix de vente TTC (FCFA)</Label>
-                    <Input
-                      value={(watch('prix_vente_ttc') || 0).toFixed(2)}
-                      disabled
-                      className="bg-background font-semibold"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 3: Stock - 2 colonnes */}
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold mb-4">Gestion de stock</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="stock_limite">Stock limite</Label>
-                    <Input
-                      id="stock_limite"
-                      type="number"
-                      {...register("stock_limite", { valueAsNumber: true })}
-                      placeholder="0"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="stock_alerte">Stock d'alerte</Label>
-                    <Input
-                      id="stock_alerte"
-                      type="number"
-                      {...register("stock_alerte", { valueAsNumber: true })}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 4: Informations médicales */}
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold mb-4">Informations médicales</h3>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      {...register("description")}
-                      placeholder="Description du produit..."
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="posologie">Posologie</Label>
-                      <Textarea
-                        id="posologie"
-                        {...register("posologie")}
-                        placeholder="Instructions de dosage..."
-                        rows={3}
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="contre_indications">Contre-indications</Label>
-                      <Textarea
-                        id="contre_indications"
-                        {...register("contre_indications")}
-                        placeholder="Contre-indications..."
-                        rows={3}
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="effets_secondaires">Effets secondaires</Label>
-                      <Textarea
-                        id="effets_secondaires"
-                        {...register("effets_secondaires")}
-                        placeholder="Effets secondaires possibles..."
-                        rows={3}
-                      />
-                    </div>
                   </div>
                 </div>
               </div>
