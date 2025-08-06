@@ -7,12 +7,12 @@ import LowStockProducts from './tabs/LowStockProducts';
 import OutOfStockProducts from './tabs/OutOfStockProducts';
 import StockValuation from './tabs/StockValuation';
 import QuickStockCheck from './tabs/QuickStockCheck';
-import { useCurrentStock } from '@/hooks/useCurrentStock';
+import { useCurrentStockDirect } from '@/hooks/useCurrentStockDirect';
 
 const CurrentStockTab = () => {
-  const { metrics, isLoading } = useCurrentStock();
+  const { metrics, loading, error } = useCurrentStockDirect();
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -25,6 +25,27 @@ const CurrentStockTab = () => {
             </Card>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <div className="text-destructive mb-2">Erreur de chargement du stock actuel</div>
+              <div className="text-sm text-muted-foreground mb-4">{error}</div>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+              >
+                Recharger la page
+              </button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
