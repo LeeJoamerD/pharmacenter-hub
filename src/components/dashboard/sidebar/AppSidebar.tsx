@@ -72,9 +72,9 @@ const AppSidebar = ({
       { name: 'Configuration', icon: Settings }
     ],
     stock: [
+      { name: 'Approvisionnement', icon: Clipboard },
       { name: 'Stock Actuel', icon: Eye },
       { name: 'Lots', icon: Tag },
-      { name: 'Approvisionnement', icon: Clipboard },
       { name: 'Mouvements', icon: ChartBar },
       { name: 'Inventaires', icon: Clipboard },
       { name: 'Alertes', icon: RefreshCw },
