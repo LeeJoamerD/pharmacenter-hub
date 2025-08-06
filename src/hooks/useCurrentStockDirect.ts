@@ -73,8 +73,8 @@ export const useCurrentStockDirect = () => {
           id, tenant_id, libelle_produit, code_produit, famille_id, rayon_id,
           prix_achat_ht, prix_vente_ttc, stock_actuel, stock_minimum, stock_maximum,
           date_derniere_entree, date_derniere_sortie, is_active,
-          famille_produit!inner(libelle_famille),
-          rayons_produits!inner(libelle_rayon)
+          famille_produit!famille_id(libelle_famille),
+          rayons_produits!rayon_id(libelle_rayon)
         `)
         .eq('tenant_id', personnel.tenant_id)
         .eq('is_active', true)
