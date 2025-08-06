@@ -33,8 +33,23 @@ export const useOrderTracking = (commandeId?: string) => {
   const fetchOrderTracking = async (orderId?: string) => {
     try {
       setLoading(true);
-      // For now, create mock data until suivi_commandes table is created
-      setTrackings([]);
+      let query = supabase
+        .from('suivi_commandes')
+        .select(`
+          *,
+          agent:personnel!agent_id(noms, prenoms),
+          transporteur:transporteurs!transporteur_id(nom)
+        `)
+        .order('date_changement', { ascending: false });
+
+      if (orderId) {
+        query = query.eq('commande_id', orderId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      setTrackings((data as any) || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement du suivi des commandes';
       setError(errorMessage);
@@ -57,7 +72,37 @@ export const useOrderTracking = (commandeId?: string) => {
     numero_suivi?: string;
   }) => {
     try {
-      // Update the order status directly for now
+      // Get current user's tenant_id and personnel_id
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Utilisateur non authentifié');
+
+      const { data: personnel } = await supabase
+        .from('personnel')
+        .select('tenant_id, id')
+        .eq('auth_user_id', user.user.id)
+        .single();
+
+      if (!personnel?.tenant_id) throw new Error('Tenant non trouvé');
+
+      // Create tracking entry
+      const { data: tracking, error: trackingError } = await supabase
+        .from('suivi_commandes')
+        .insert({
+          tenant_id: personnel.tenant_id,
+          commande_id: trackingData.commande_id,
+          statut: trackingData.statut,
+          commentaire: trackingData.commentaire,
+          agent_id: trackingData.agent_id || personnel.id,
+          transporteur_id: trackingData.transporteur_id,
+          numero_suivi: trackingData.numero_suivi,
+          date_changement: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (trackingError) throw trackingError;
+
+      // Update the order status
       const { error: updateError } = await supabase
         .from('commandes_fournisseurs')
         .update({ statut: trackingData.statut })
@@ -65,14 +110,17 @@ export const useOrderTracking = (commandeId?: string) => {
 
       if (updateError) throw updateError;
 
+      // Refresh tracking data
+      await fetchOrderTracking(trackingData.commande_id);
+
       toast({
         title: "Succès",
-        description: "Statut de commande mis à jour avec succès",
+        description: "Suivi ajouté avec succès",
       });
       
-      return { id: 'temp', ...trackingData } as OrderTracking;
+      return tracking;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la mise à jour du statut';
+      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de l\'ajout du suivi';
       toast({
         title: "Erreur",
         description: errorMessage,

@@ -30,8 +30,14 @@ export const useTransporters = () => {
   const fetchTransporters = async () => {
     try {
       setLoading(true);
-      // For now, create mock data until transporteurs table is created
-      setTransporters([]);
+      const { data, error } = await supabase
+        .from('transporteurs')
+        .select('*')
+        .eq('is_active', true)
+        .order('nom');
+
+      if (error) throw error;
+      setTransporters(data || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des transporteurs';
       setError(errorMessage);
@@ -47,22 +53,36 @@ export const useTransporters = () => {
 
   const createTransporter = async (transporterData: Omit<Transporter, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>) => {
     try {
-      // Mock implementation until table is created
-      const newTransporter: Transporter = {
-        id: `temp-${Date.now()}`,
-        tenant_id: 'temp',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        ...transporterData
-      };
+      // Get current user's tenant_id
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Utilisateur non authentifié');
 
-      setTransporters(prev => [...prev, newTransporter]);
+      const { data: personnel } = await supabase
+        .from('personnel')
+        .select('tenant_id')
+        .eq('auth_user_id', user.user.id)
+        .single();
+
+      if (!personnel?.tenant_id) throw new Error('Tenant non trouvé');
+
+      const { data, error } = await supabase
+        .from('transporteurs')
+        .insert({
+          ...transporterData,
+          tenant_id: personnel.tenant_id
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setTransporters(prev => [...prev, data]);
       toast({
         title: "Succès",
         description: "Transporteur créé avec succès",
       });
       
-      return newTransporter;
+      return data;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la création du transporteur';
       toast({
@@ -76,8 +96,17 @@ export const useTransporters = () => {
 
   const updateTransporter = async (id: string, updates: Partial<Transporter>) => {
     try {
+      const { data, error } = await supabase
+        .from('transporteurs')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
       setTransporters(prev => prev.map(transporter => 
-        transporter.id === id ? { ...transporter, ...updates } : transporter
+        transporter.id === id ? { ...transporter, ...data } : transporter
       ));
       
       toast({
@@ -85,7 +114,7 @@ export const useTransporters = () => {
         description: "Transporteur modifié avec succès",
       });
       
-      return updates;
+      return data;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la modification du transporteur';
       toast({
@@ -99,6 +128,13 @@ export const useTransporters = () => {
 
   const deleteTransporter = async (id: string) => {
     try {
+      const { error } = await supabase
+        .from('transporteurs')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
       setTransporters(prev => prev.filter(transporter => transporter.id !== id));
       toast({
         title: "Succès",

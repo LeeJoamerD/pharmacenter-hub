@@ -14,7 +14,8 @@ export interface OrderLine {
   // Relations
   produit?: {
     libelle_produit: string;
-    stock_limite: number;
+    code_cip: string;
+    famille_id: string | null;
   };
 }
 
@@ -31,9 +32,9 @@ export const useOrderLines = (commandeId?: string) => {
         .from('lignes_commande_fournisseur')
         .select(`
           *,
-          produit:produits!produit_id(libelle_produit, stock_limite)
+          produit:produits!produit_id(libelle_produit, code_cip, famille_id)
         `)
-        .order('created_at');
+        .order('created_at', { ascending: false });
 
       if (orderId) {
         query = query.eq('commande_id', orderId);
@@ -42,7 +43,7 @@ export const useOrderLines = (commandeId?: string) => {
       const { data, error } = await query;
 
       if (error) throw error;
-      setOrderLines((data || []) as unknown as OrderLine[]);
+      setOrderLines((data as any) || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des lignes de commande';
       setError(errorMessage);
@@ -56,7 +57,7 @@ export const useOrderLines = (commandeId?: string) => {
     }
   };
 
-  const createOrderLine = async (orderLineData: {
+  const createOrderLine = async (lineData: {
     commande_id: string;
     produit_id: string;
     quantite_commandee: number;
@@ -78,22 +79,21 @@ export const useOrderLines = (commandeId?: string) => {
       const { data, error } = await supabase
         .from('lignes_commande_fournisseur')
         .insert({
-          ...orderLineData,
-          tenant_id: personnel.tenant_id
+          tenant_id: personnel.tenant_id,
+          ...lineData
         })
-        .select(`
-          *,
-          produit:produits!produit_id(libelle_produit, stock_limite)
-        `)
+        .select()
         .single();
 
       if (error) throw error;
 
-      setOrderLines(prev => [...prev, data as unknown as OrderLine]);
       toast({
         title: "Succès",
         description: "Ligne de commande créée avec succès",
       });
+
+      // Refresh order lines
+      await fetchOrderLines(commandeId);
       
       return data;
     } catch (err) {
@@ -113,16 +113,13 @@ export const useOrderLines = (commandeId?: string) => {
         .from('lignes_commande_fournisseur')
         .update(updates)
         .eq('id', id)
-        .select(`
-          *,
-          produit:produits!produit_id(libelle_produit, stock_limite)
-        `)
+        .select()
         .single();
 
       if (error) throw error;
 
       setOrderLines(prev => prev.map(line => 
-        line.id === id ? { ...line, ...data } as unknown as OrderLine : line
+        line.id === id ? { ...line, ...data } : line
       ));
       
       toast({
@@ -167,12 +164,15 @@ export const useOrderLines = (commandeId?: string) => {
     }
   };
 
-  const calculateLineTotal = (line: OrderLine): number => {
-    return line.quantite_commandee * (line.prix_achat_unitaire_attendu || 0);
+  const getTotalAmount = (): number => {
+    return orderLines.reduce((total, line) => {
+      const unitPrice = line.prix_achat_unitaire_attendu || 0;
+      return total + (line.quantite_commandee * unitPrice);
+    }, 0);
   };
 
-  const calculateOrderTotal = (): number => {
-    return orderLines.reduce((total, line) => total + calculateLineTotal(line), 0);
+  const getTotalQuantity = (): number => {
+    return orderLines.reduce((total, line) => total + line.quantite_commandee, 0);
   };
 
   useEffect(() => {
@@ -186,8 +186,8 @@ export const useOrderLines = (commandeId?: string) => {
     createOrderLine,
     updateOrderLine,
     deleteOrderLine,
-    calculateLineTotal,
-    calculateOrderTotal,
+    getTotalAmount,
+    getTotalQuantity,
     refetch: () => fetchOrderLines(commandeId),
   };
 };
