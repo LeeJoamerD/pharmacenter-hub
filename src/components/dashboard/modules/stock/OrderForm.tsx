@@ -35,7 +35,7 @@ interface OrderFormProps {
   loading: boolean;
 }
 
-const OrderForm = ({ suppliers: propSuppliers = [], onCreateOrder, loading }: OrderFormProps) => {
+const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], onCreateOrder, loading }) => {
   const [selectedSupplier, setSelectedSupplier] = useState('');
   const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
   const [searchProduct, setSearchProduct] = useState('');

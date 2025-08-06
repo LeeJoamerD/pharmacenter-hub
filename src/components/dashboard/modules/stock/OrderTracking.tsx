@@ -48,7 +48,7 @@ interface OrderTrackingProps {
   loading: boolean;
 }
 
-const OrderTracking = ({ orders: propOrders = [], transporters = [], loading }: OrderTrackingProps) => {
+const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], transporters = [], loading }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('tous');
 

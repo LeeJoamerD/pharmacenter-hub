@@ -40,7 +40,7 @@ interface OrderListProps {
   onDeleteOrder: (id: string) => Promise<any>;
 }
 
-const OrderList = ({ orders: propOrders = [], loading, onRefresh, onUpdateStatus, onDeleteOrder }: OrderListProps) => {
+const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading, onRefresh, onUpdateStatus, onDeleteOrder }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('tous');
   const [selectedSupplier, setSelectedSupplier] = useState('tous');

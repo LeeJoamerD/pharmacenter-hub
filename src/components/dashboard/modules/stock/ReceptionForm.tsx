@@ -40,7 +40,7 @@ interface ReceptionFormProps {
   loading: boolean;
 }
 
-const ReceptionForm = ({ orders: propOrders = [], suppliers: propSuppliers = [], onCreateReception, loading }: ReceptionFormProps) => {
+const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], suppliers: propSuppliers = [], onCreateReception, loading }) => {
   const [selectedOrder, setSelectedOrder] = useState('');
   const [receptionLines, setReceptionLines] = useState<ReceptionLine[]>([]);
   const [scannedBarcode, setScannedBarcode] = useState('');
