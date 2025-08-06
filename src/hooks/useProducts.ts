@@ -5,21 +5,28 @@ import { useToast } from '@/hooks/use-toast';
 export interface Product {
   id: string;
   tenant_id: string;
+  categorie_tarification_id: string | null;
+  centime_additionnel: number | null;
+  code_cip: string | null;
+  dci_id: string | null;
+  famille_id: string | null;
+  famille_produit_id: string | null;
+  id_produit_source: string | null;
   nom_produit: string;
   code_barre: string | null;
-  famille_id: string | null;
-  dci_id: string | null;
-  prix_achat_moyen: number;
-  prix_vente_unitaire: number;
-  tva_applicable: number;
-  stock_minimum: number;
-  stock_maximum: number;
-  unite_mesure: string;
+  prix_achat_moyen: number | null;
+  prix_vente_unitaire: number | null;
+  tva_applicable: number | null;
+  stock_minimum: number | null;
+  stock_maximum: number | null;
+  unite_mesure: string | null;
   forme_pharmaceutique: string | null;
   dosage: string | null;
-  is_active: boolean;
+  is_active: boolean | null;
   created_at: string;
   updated_at: string;
+  // Additional fields that might exist in database
+  [key: string]: any;
 }
 
 export const useProducts = () => {
@@ -38,7 +45,7 @@ export const useProducts = () => {
         .order('nom_produit');
 
       if (error) throw error;
-      setProducts(data || []);
+      setProducts((data || []) as unknown as Product[]);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des produits';
       setError(errorMessage);

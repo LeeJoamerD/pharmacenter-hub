@@ -48,7 +48,10 @@ export const useSuppliers = () => {
     try {
       const { data, error } = await supabase
         .from('fournisseurs')
-        .insert(supplierData)
+        .insert({
+          ...supplierData,
+          tenant_id: (await supabase.from('personnel').select('tenant_id').eq('auth_user_id', (await supabase.auth.getUser()).data.user?.id).single()).data?.tenant_id
+        })
         .select()
         .single();
 

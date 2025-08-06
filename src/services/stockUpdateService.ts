@@ -13,14 +13,39 @@ export interface StockMovement {
 
 export class StockUpdateService {
   /**
+   * Get current user's tenant_id
+   */
+  private static async getCurrentTenantId(): Promise<string | null> {
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return null;
+
+      const { data: personnel } = await supabase
+        .from('personnel')
+        .select('tenant_id')
+        .eq('auth_user_id', user.user.id)
+        .single();
+
+      return personnel?.tenant_id || null;
+    } catch (error) {
+      console.error('Erreur lors de la récupération du tenant_id:', error);
+      return null;
+    }
+  }
+
+  /**
    * Enregistre un mouvement de stock et met à jour les quantités
    */
   static async recordStockMovement(movement: StockMovement): Promise<void> {
     try {
+      const tenantId = await this.getCurrentTenantId();
+      if (!tenantId) throw new Error('Utilisateur non autorisé');
+
       // Enregistrer le mouvement
       const { error: movementError } = await supabase
         .from('stock_mouvements')
         .insert({
+          tenant_id: tenantId,
           produit_id: movement.produit_id,
           lot_id: movement.lot_id,
           quantite: movement.quantite,
@@ -115,12 +140,16 @@ export class StockUpdateService {
     agent_id?: string;
   }): Promise<void> {
     try {
+      const tenantId = await this.getCurrentTenantId();
+      if (!tenantId) throw new Error('Utilisateur non autorisé');
+
       for (const ligne of receptionData.lignes) {
         if (ligne.quantite_acceptee > 0) {
           // Créer le lot
           const { data: lot, error: lotError } = await supabase
             .from('lots')
             .insert({
+              tenant_id: tenantId,
               produit_id: ligne.produit_id,
               numero_lot: ligne.numero_lot,
               date_peremption: ligne.date_expiration,
