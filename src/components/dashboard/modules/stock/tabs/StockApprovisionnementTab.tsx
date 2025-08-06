@@ -6,9 +6,19 @@ import OrderForm from '../OrderForm';
 import ReceptionForm from '../ReceptionForm';
 import SupplierManager from '../SupplierManager';
 import OrderTracking from '../OrderTracking';
+import { useSuppliers } from "@/hooks/useSuppliers";
+import { useSupplierOrders } from "@/hooks/useSupplierOrders";
+import { useReceptions } from "@/hooks/useReceptions";
+import { useTransporters } from "@/hooks/useTransporters";
 
 const StockApprovisionnementTab = () => {
   const [activeTab, setActiveTab] = useState('liste');
+  
+  // Initialize all hooks for real data management
+  const suppliers = useSuppliers();
+  const orders = useSupplierOrders();
+  const receptions = useReceptions();
+  const transporters = useTransporters();
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -46,23 +56,48 @@ const StockApprovisionnementTab = () => {
       </TabsList>
       
       <TabsContent value="liste">
-        <OrderList />
+        <OrderList 
+          orders={orders.orders}
+          loading={orders.loading}
+          onRefresh={orders.refetch}
+          onUpdateStatus={orders.updateOrderStatus}
+          onDeleteOrder={orders.deleteOrder}
+        />
       </TabsContent>
       
       <TabsContent value="commandes">
-        <OrderForm />
+        <OrderForm 
+          suppliers={suppliers.suppliers}
+          onCreateOrder={orders.createOrder}
+          loading={orders.loading}
+        />
       </TabsContent>
       
       <TabsContent value="receptions">
-        <ReceptionForm />
+        <ReceptionForm 
+          orders={orders.orders}
+          suppliers={suppliers.suppliers}
+          onCreateReception={receptions.createReception}
+          loading={receptions.loading}
+        />
       </TabsContent>
       
       <TabsContent value="fournisseurs">
-        <SupplierManager />
+        <SupplierManager 
+          suppliers={suppliers.suppliers}
+          loading={suppliers.loading}
+          onCreateSupplier={suppliers.createSupplier}
+          onUpdateSupplier={suppliers.updateSupplier}
+          onDeleteSupplier={suppliers.deleteSupplier}
+        />
       </TabsContent>
       
       <TabsContent value="suivi">
-        <OrderTracking />
+        <OrderTracking 
+          orders={orders.orders}
+          transporters={transporters.transporters}
+          loading={orders.loading}
+        />
       </TabsContent>
     </Tabs>
   );
