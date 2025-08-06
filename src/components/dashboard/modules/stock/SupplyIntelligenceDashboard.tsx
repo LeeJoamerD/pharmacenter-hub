@@ -233,7 +233,7 @@ export const SupplyIntelligenceDashboard = () => {
                         <p className="font-medium">{rec.stock_actuel} unités</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Stock minimum</p>
+                        <p className="text-muted-foreground">Stock limite</p>
                         <p className="font-medium">{rec.stock_minimum} unités</p>
                       </div>
                       <div>

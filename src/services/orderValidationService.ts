@@ -159,7 +159,7 @@ export class OrderValidationService {
       }
 
       if (!product.is_active) {
-        result.errors.push(`Produit inactif: ${(product as any).nom_produit || 'Nom inconnu'}`);
+        result.errors.push(`Produit inactif: ${(product as any).libelle_produit || 'Nom inconnu'}`);
         return result;
       }
 
@@ -170,19 +170,19 @@ export class OrderValidationService {
 
       // Vérifier les seuils de stock
       const currentStock = await this.getCurrentStock(ligne.produit_id);
-      const stockMinimum = (product as any).stock_minimum || 0;
-      const stockMaximum = (product as any).stock_maximum || 0;
+      const stockLimite = (product as any).stock_limite || 0;
+      const stockAlerte = (product as any).stock_alerte || 0;
 
-      if (currentStock <= stockMinimum) {
-        result.suggestions.push(`Stock critique pour ${(product as any).nom_produit || 'Produit'} (${currentStock} unités)`);
+      if (currentStock <= stockLimite) {
+        result.suggestions.push(`Stock critique pour ${(product as any).libelle_produit || 'Produit'} (${currentStock} unités)`);
       }
 
-      // Suggestion de quantité optimale
-      if (stockMaximum > 0) {
-        const quantiteOptimale = Math.max(stockMaximum - currentStock, 0);
+      // Suggestion de quantité optimale basée sur l'alerte
+      if (stockAlerte > 0) {
+        const quantiteOptimale = Math.max(stockAlerte * 2 - currentStock, 0);
         if (quantiteOptimale > 0 && Math.abs(ligne.quantite_commandee - quantiteOptimale) > quantiteOptimale * 0.2) {
           result.suggestions.push(
-            `Quantité suggérée pour ${(product as any).nom_produit || 'Produit'}: ${quantiteOptimale} unités (stock max: ${stockMaximum})`
+            `Quantité suggérée pour ${(product as any).libelle_produit || 'Produit'}: ${quantiteOptimale} unités (seuil alerte: ${stockAlerte})`
           );
         }
       }
@@ -193,17 +193,17 @@ export class OrderValidationService {
           result.errors.push('Le prix d\'achat ne peut pas être négatif');
         }
 
-        // Comparaison avec le prix moyen historique
-        if ((product as any).prix_achat_moyen && ligne.prix_achat_unitaire_attendu > 0) {
-          const difference = ((ligne.prix_achat_unitaire_attendu - (product as any).prix_achat_moyen) / (product as any).prix_achat_moyen) * 100;
+        // Comparaison avec le prix d'achat actuel
+        if ((product as any).prix_achat && ligne.prix_achat_unitaire_attendu > 0) {
+          const difference = ((ligne.prix_achat_unitaire_attendu - (product as any).prix_achat) / (product as any).prix_achat) * 100;
           
           if (difference > 20) {
             result.warnings.push(
-              `Prix d'achat élevé pour ${(product as any).nom_produit || 'Produit'} (+${difference.toFixed(1)}% vs moyenne)`
+              `Prix d'achat élevé pour ${(product as any).libelle_produit || 'Produit'} (+${difference.toFixed(1)}% vs prix actuel)`
             );
           } else if (difference < -20) {
             result.warnings.push(
-              `Prix d'achat très bas pour ${(product as any).nom_produit || 'Produit'} (${difference.toFixed(1)}% vs moyenne) - Vérifier la qualité`
+              `Prix d'achat très bas pour ${(product as any).libelle_produit || 'Produit'} (${difference.toFixed(1)}% vs prix actuel) - Vérifier la qualité`
             );
           }
         }
@@ -380,14 +380,14 @@ export class OrderValidationService {
         .select(`
           lignes_commande_fournisseur(
             produit_id,
-            produits(nom_produit)
+            produits(libelle_produit)
           )
         `)
         .eq('fournisseur_id', fournisseurId)
         .limit(5);
 
       const allProducts = orders?.flatMap(o => 
-        o.lignes_commande_fournisseur?.map(l => (l.produits as any)?.nom_produit).filter(Boolean)
+        o.lignes_commande_fournisseur?.map(l => (l.produits as any)?.libelle_produit).filter(Boolean)
       ) || [];
 
       return [...new Set(allProducts)].filter(name => name && !currentProductIds.includes(name));

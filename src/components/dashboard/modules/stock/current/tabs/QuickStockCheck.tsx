@@ -222,8 +222,8 @@ const QuickStockCheck = () => {
                             <div className="font-semibold text-lg">{product.stock_actuel}</div>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Stock Minimum:</span>
-                            <div>{product.stock_minimum}</div>
+                            <span className="text-muted-foreground">Stock Limite:</span>
+                            <div>{product.stock_limite}</div>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Prix de Vente:</span>

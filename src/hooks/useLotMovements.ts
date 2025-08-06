@@ -25,8 +25,8 @@ export interface LotMovementWithDetails extends LotMovement {
   };
   produit?: {
     id: string;
-    nom_produit: string;
-    code_bare: string;
+    libelle_produit: string;
+    code_cip: string;
   };
 }
 

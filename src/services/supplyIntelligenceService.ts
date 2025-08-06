@@ -35,47 +35,47 @@ export class SupplyIntelligenceService {
       const mockProducts = [
         {
           id: '1',
-          nom: 'Paracétamol 500mg',
-          stock_minimum: 100,
-          stock_maximum: 500,
+          libelle_produit: 'Paracétamol 500mg',
+          stock_limite: 100,
+          stock_alerte: 500,
           stock_actuel: 50
         },
         {
           id: '2',
-          nom: 'Amoxicilline 250mg',
-          stock_minimum: 50,
-          stock_maximum: 200,
+          libelle_produit: 'Amoxicilline 250mg',
+          stock_limite: 50,
+          stock_alerte: 200,
           stock_actuel: 0
         },
         {
           id: '3',
-          nom: 'Vitamine C 500mg',
-          stock_minimum: 200,
-          stock_maximum: 1000,
+          libelle_produit: 'Vitamine C 500mg',
+          stock_limite: 200,
+          stock_alerte: 1000,
           stock_actuel: 150
         }
       ];
 
       for (const product of mockProducts) {
         const stockActuel = product.stock_actuel;
-        const stockMinimum = product.stock_minimum || 0;
-        const stockMaximum = product.stock_maximum || stockMinimum * 2;
+        const stockLimite = product.stock_limite || 0;
+        const stockAlerte = product.stock_alerte || stockLimite * 2;
 
-        if (stockActuel <= stockMinimum) {
-          const quantiteSuggeree = Math.max(stockMaximum - stockActuel, stockMinimum);
+        if (stockActuel <= stockLimite) {
+          const quantiteSuggeree = Math.max(stockAlerte - stockActuel, stockLimite);
           
           let urgence: 'low' | 'medium' | 'high' | 'critical' = 'medium';
           if (stockActuel === 0) urgence = 'critical';
-          else if (stockActuel < stockMinimum * 0.5) urgence = 'high';
+          else if (stockActuel < stockLimite * 0.5) urgence = 'high';
 
           recommendations.push({
             produit_id: product.id,
-            nom_produit: product.nom,
+            nom_produit: product.libelle_produit,
             stock_actuel: stockActuel,
-            stock_minimum: stockMinimum,
+            stock_minimum: stockLimite,
             quantite_suggere: quantiteSuggeree,
             urgence,
-            raison: stockActuel === 0 ? 'Stock épuisé' : 'Stock sous le seuil minimum'
+            raison: stockActuel === 0 ? 'Stock épuisé' : 'Stock sous le seuil critique'
           });
         }
       }
@@ -179,7 +179,7 @@ export class SupplyIntelligenceService {
             type: 'low_stock',
             priority: rec.urgence === 'critical' ? 'critical' : 'high',
             title: `Stock ${rec.urgence === 'critical' ? 'épuisé' : 'faible'}`,
-            message: `${rec.nom_produit}: ${rec.stock_actuel} unités restantes (min: ${rec.stock_minimum})`,
+            message: `${rec.nom_produit}: ${rec.stock_actuel} unités restantes (limite: ${rec.stock_minimum})`,
             metadata: rec,
             created_at: new Date().toISOString(),
             read: false
@@ -192,7 +192,7 @@ export class SupplyIntelligenceService {
         .from('lots')
         .select(`
           id, numero_lot, date_peremption, quantite_restante,
-          produits!inner(nom_produit)
+          produits!inner(libelle_produit)
         `)
         .not('date_peremption', 'is', null)
         .gt('quantite_restante', 0)
@@ -208,7 +208,7 @@ export class SupplyIntelligenceService {
           type: 'expiry_alert',
           priority: daysToExpiry <= 7 ? 'critical' : 'high',
           title: 'Produit proche de l\'expiration',
-          message: `${(lot as any).produits?.nom_produit} (Lot ${lot.numero_lot}) expire dans ${daysToExpiry} jours`,
+          message: `${(lot as any).produits?.libelle_produit} (Lot ${lot.numero_lot}) expire dans ${daysToExpiry} jours`,
           metadata: { lot, daysToExpiry },
           created_at: new Date().toISOString(),
           read: false

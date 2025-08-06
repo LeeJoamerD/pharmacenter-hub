@@ -181,7 +181,7 @@ const OutOfStockProducts = () => {
                             <div>
                               <div className="font-medium">{product.libelle_produit}</div>
                               <div className="text-sm text-muted-foreground">
-                                Min: {product.stock_minimum} • Max: {product.stock_maximum}
+                                Limite: {product.stock_limite} • Alerte: {product.stock_alerte}
                               </div>
                             </div>
                           </TableCell>
@@ -225,7 +225,7 @@ const OutOfStockProducts = () => {
                           <TableCell>
                             <div className="text-sm">
                               <div className="font-medium">
-                                {(product.prix_vente_ttc * product.stock_minimum).toLocaleString()} FCFA
+                                {(product.prix_vente_ttc * product.stock_limite).toLocaleString()} FCFA
                               </div>
                               <div className="text-muted-foreground">potentiel perdu</div>
                             </div>

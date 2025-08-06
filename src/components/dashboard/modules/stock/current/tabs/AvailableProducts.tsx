@@ -164,7 +164,7 @@ const AvailableProducts = () => {
                       <TableCell>
                         <div className="font-semibold">{product.stock_actuel}</div>
                         <div className="text-sm text-muted-foreground">
-                          Min: {product.stock_minimum}
+                          Limite: {product.stock_limite}
                         </div>
                       </TableCell>
                       <TableCell>

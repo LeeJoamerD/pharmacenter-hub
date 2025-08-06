@@ -114,7 +114,7 @@ export const LotAnalytics = () => {
       return {
         lotId: lot.id,
         lotNumber: lot.numero_lot,
-        productName: lot.produit?.nom_produit || 'Produit inconnu',
+        productName: lot.produit?.libelle_produit || 'Produit inconnu',
         rotationAnalysis,
         fifoAnalysis,
         expirationRisk,

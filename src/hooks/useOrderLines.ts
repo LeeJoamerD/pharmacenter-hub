@@ -13,9 +13,8 @@ export interface OrderLine {
   updated_at: string;
   // Relations
   produit?: {
-    nom_produit: string;
-    unite_mesure: string;
-    stock_minimum: number;
+    libelle_produit: string;
+    stock_limite: number;
   };
 }
 
@@ -32,7 +31,7 @@ export const useOrderLines = (commandeId?: string) => {
         .from('lignes_commande_fournisseur')
         .select(`
           *,
-          produit:produits!produit_id(nom_produit, unite_mesure, stock_minimum)
+          produit:produits!produit_id(libelle_produit, stock_limite)
         `)
         .order('created_at');
 
@@ -84,7 +83,7 @@ export const useOrderLines = (commandeId?: string) => {
         })
         .select(`
           *,
-          produit:produits!produit_id(nom_produit, unite_mesure, stock_minimum)
+          produit:produits!produit_id(libelle_produit, stock_limite)
         `)
         .single();
 
@@ -116,7 +115,7 @@ export const useOrderLines = (commandeId?: string) => {
         .eq('id', id)
         .select(`
           *,
-          produit:produits!produit_id(nom_produit, unite_mesure, stock_minimum)
+          produit:produits!produit_id(libelle_produit, stock_limite)
         `)
         .single();
 

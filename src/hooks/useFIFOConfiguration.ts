@@ -21,7 +21,7 @@ export interface FIFOConfiguration {
 export interface FIFOConfigurationWithDetails extends FIFOConfiguration {
   produit?: {
     id: string;
-    nom_produit: string;
+    libelle_produit: string;
   };
   famille?: {
     id: string;
@@ -55,7 +55,7 @@ export const useFIFOConfiguration = () => {
       'configurations_fifo',
       `
         *,
-        produit:produits(id, nom_produit),
+        produit:produits(id, libelle_produit),
         famille:famille_produit(id, libelle_famille)
       `,
       {},
@@ -73,7 +73,7 @@ export const useFIFOConfiguration = () => {
       'configurations_fifo',
       `
         *,
-        produit:produits(id, nom_produit),
+        produit:produits(id, libelle_produit),
         famille:famille_produit(id, libelle_famille)
       `,
       { id: configId },

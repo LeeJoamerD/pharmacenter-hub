@@ -30,8 +30,8 @@ export interface ExpirationAlertWithDetails extends ExpirationAlert {
   };
   produit?: {
     id: string;
-    nom_produit: string;
-    code_bare: string;
+    libelle_produit: string;
+    code_cip: string;
   };
 }
 
@@ -82,7 +82,7 @@ export const useExpirationAlerts = () => {
       `
         *,
         lot:lots!inner(id, numero_lot, date_peremption),
-        produit:produits!inner(id, nom_produit, code_bare)
+        produit:produits!inner(id, libelle_produit, code_cip)
       `,
       {
         ...(filters?.niveau_urgence && { niveau_urgence: filters.niveau_urgence }),
@@ -104,7 +104,7 @@ export const useExpirationAlerts = () => {
       `
         *,
         lot:lots!inner(id, numero_lot, date_peremption),
-        produit:produits!inner(id, nom_produit, code_bare)
+        produit:produits!inner(id, libelle_produit, code_cip)
       `,
       { statut_alerte: 'active' },
       {
@@ -121,7 +121,7 @@ export const useExpirationAlerts = () => {
       'parametres_expiration',
       `
         *,
-        produit:produits(id, nom_produit),
+        produit:produits(id, libelle_produit),
         famille:famille_produit(id, libelle_famille)
       `,
       {},

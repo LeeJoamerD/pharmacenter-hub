@@ -229,8 +229,8 @@ export class ReceptionValidationService {
         if (avgExpiryDays > 0 && Math.abs(daysToExpiry - avgExpiryDays) > avgExpiryDays * 0.5) {
           result.warnings.push('Date d\'expiration inhabituelle pour ce produit');
         }
-      } else if ((product as any).forme_pharmaceutique) {
-        result.warnings.push('Date d\'expiration manquante pour un produit pharmaceutique');
+      } else {
+        result.warnings.push('Date d\'expiration manquante - Recommandée pour tous les produits');
       }
 
       // Validation des écarts de quantité

@@ -86,7 +86,7 @@ const CriticalStock = () => {
                       {product.stock_actuel}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Min: {product.stock_minimum}
+                      Limite: {product.stock_limite}
                     </div>
                   </div>
                 </div>

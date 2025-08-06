@@ -148,12 +148,12 @@ const LowStockProducts = () => {
                       if (a.statut_stock === 'critique' && b.statut_stock !== 'critique') return -1;
                       if (b.statut_stock === 'critique' && a.statut_stock !== 'critique') return 1;
                       
-                      const aPercentage = getStockPercentage(a.stock_actuel, a.stock_minimum);
-                      const bPercentage = getStockPercentage(b.stock_actuel, b.stock_minimum);
+                      const aPercentage = getStockPercentage(a.stock_actuel, a.stock_limite);
+                      const bPercentage = getStockPercentage(b.stock_actuel, b.stock_limite);
                       return aPercentage - bPercentage;
                     })
                     .map((product) => {
-                      const stockPercentage = getStockPercentage(product.stock_actuel, product.stock_minimum);
+                      const stockPercentage = getStockPercentage(product.stock_actuel, product.stock_limite);
                       
                       return (
                         <TableRow key={product.id}>
@@ -170,7 +170,7 @@ const LowStockProducts = () => {
                             <div className="font-semibold text-lg">{product.stock_actuel}</div>
                           </TableCell>
                           <TableCell>
-                            <div className="text-muted-foreground">{product.stock_minimum}</div>
+                            <div className="text-muted-foreground">{product.stock_limite}</div>
                           </TableCell>
                           <TableCell>
                             <div className="space-y-2">

@@ -65,13 +65,13 @@ const ReportBuilder = () => {
       { id: 'date_vente', name: 'Date de vente', type: 'date', category: 'Transaction' },
       { id: 'montant', name: 'Montant', type: 'number', category: 'Transaction' },
       { id: 'quantite', name: 'Quantité', type: 'number', category: 'Transaction' },
-      { id: 'nom_produit', name: 'Nom produit', type: 'text', category: 'Produit' },
+      { id: 'libelle_produit', name: 'Nom produit', type: 'text', category: 'Produit' },
       { id: 'categorie', name: 'Catégorie', type: 'text', category: 'Produit' },
       { id: 'nom_client', name: 'Nom client', type: 'text', category: 'Client' },
       { id: 'caissier', name: 'Caissier', type: 'text', category: 'Personnel' }
     ],
     stock: [
-      { id: 'nom_produit', name: 'Nom produit', type: 'text', category: 'Produit' },
+      { id: 'libelle_produit', name: 'Nom produit', type: 'text', category: 'Produit' },
       { id: 'quantite_stock', name: 'Quantité en stock', type: 'number', category: 'Stock' },
       { id: 'seuil_minimum', name: 'Seuil minimum', type: 'number', category: 'Stock' },
       { id: 'date_expiration', name: 'Date expiration', type: 'date', category: 'Stock' },

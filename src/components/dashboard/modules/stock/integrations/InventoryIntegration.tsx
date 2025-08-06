@@ -91,7 +91,7 @@ export const InventoryIntegration = () => {
           newDiscrepancies.push({
             lotId: lot.id,
             lotNumber: lot.numero_lot,
-            productName: lot.produit?.nom_produit || 'Produit inconnu',
+            productName: lot.produit?.libelle_produit || 'Produit inconnu',
             theoreticalQuantity: lot.quantite_restante,
             physicalQuantity: physicalCount,
             difference,
@@ -288,7 +288,7 @@ export const InventoryIntegration = () => {
                           {allLots?.map((lot) => (
                             <TableRow key={lot.id}>
                               <TableCell className="font-medium">{lot.numero_lot}</TableCell>
-                              <TableCell>{lot.produit?.nom_produit}</TableCell>
+                              <TableCell>{lot.produit?.libelle_produit}</TableCell>
                               <TableCell>{lot.quantite_restante}</TableCell>
                               <TableCell>
                                 <Input
@@ -399,7 +399,7 @@ export const InventoryIntegration = () => {
                         return (
                           <TableRow key={lot.id}>
                             <TableCell className="font-medium">{lot.numero_lot}</TableCell>
-                            <TableCell>{lot.produit?.nom_produit}</TableCell>
+                            <TableCell>{lot.produit?.libelle_produit}</TableCell>
                             <TableCell>{lot.quantite_restante}</TableCell>
                             <TableCell>
                               <Badge variant={percentage <= 10 ? 'destructive' : 'outline'}>

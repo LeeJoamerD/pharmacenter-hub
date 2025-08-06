@@ -28,7 +28,7 @@ export const LotDetails = () => {
 
   const filteredLots = lots?.filter(lot =>
     lot.numero_lot.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lot.produit?.nom_produit.toLowerCase().includes(searchTerm.toLowerCase())
+    lot.produit?.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
   const calculateUsagePercentage = (initial: number, remaining: number) => {
@@ -63,7 +63,7 @@ export const LotDetails = () => {
               <SelectContent>
                 {filteredLots.map((lot) => (
                   <SelectItem key={lot.id} value={lot.id}>
-                    {lot.numero_lot} - {lot.produit?.nom_produit}
+                    {lot.numero_lot} - {lot.produit?.libelle_produit}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -174,7 +174,7 @@ export const LotDetails = () => {
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Nom:</span>
-                          <span className="font-medium">{selectedLot.produit?.nom_produit}</span>
+                          <span className="font-medium">{selectedLot.produit?.libelle_produit}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Code-barres:</span>

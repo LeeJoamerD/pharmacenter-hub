@@ -23,7 +23,7 @@ export const LotTracker = () => {
 
   const filteredLots = lots?.filter(lot =>
     lot.numero_lot.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lot.produit?.nom_produit.toLowerCase().includes(searchTerm.toLowerCase())
+    lot.produit?.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
   const getUrgencyColor = (level: string) => {
@@ -182,8 +182,8 @@ export const LotTracker = () => {
                       <TableCell className="font-medium">{lot.numero_lot}</TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{lot.produit?.nom_produit}</div>
-                          <div className="text-sm text-muted-foreground">{lot.produit?.forme_pharmaceutique}</div>
+                          <div className="font-medium">{lot.produit?.libelle_produit}</div>
+                          <div className="text-sm text-muted-foreground">{lot.produit?.code_cip}</div>
                         </div>
                       </TableCell>
                       <TableCell>

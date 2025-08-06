@@ -14,8 +14,8 @@ export interface CurrentStockItem {
   prix_achat_ht: number;
   prix_vente_ttc: number;
   stock_actuel: number;
-  stock_minimum: number;
-  stock_maximum: number;
+  stock_limite: number;
+  stock_alerte: number;
   date_derniere_entree?: string;
   date_derniere_sortie?: string;
   valeur_stock: number;
@@ -139,8 +139,8 @@ export const useCurrentStockDirect = () => {
           prix_achat_ht: product.prix_achat || 0,
           prix_vente_ttc: product.prix_vente_ttc || 0,
           stock_actuel: currentStock,
-          stock_minimum: product.stock_limite || 0,
-          stock_maximum: product.stock_alerte || 100,
+          stock_limite: product.stock_limite || 0,
+          stock_alerte: product.stock_alerte || 100,
           date_derniere_entree: product.created_at,
           date_derniere_sortie: product.updated_at,
           valeur_stock: stockValue,
@@ -224,7 +224,7 @@ export const useCurrentStockDirect = () => {
           niveau_alerte: 'danger',
           message: `Stock critique: ${product.stock_actuel} unités restantes`,
           stock_actuel: product.stock_actuel,
-          stock_minimum: product.stock_minimum
+          stock_minimum: product.stock_limite
         });
       } else if (product.statut_stock === 'faible') {
         alerts.push({
@@ -235,7 +235,7 @@ export const useCurrentStockDirect = () => {
           niveau_alerte: 'warning',
           message: `Stock faible: ${product.stock_actuel} unités restantes`,
           stock_actuel: product.stock_actuel,
-          stock_minimum: product.stock_minimum
+          stock_minimum: product.stock_limite
         });
       } else if (product.statut_stock === 'surstock') {
         alerts.push({
@@ -246,7 +246,7 @@ export const useCurrentStockDirect = () => {
           niveau_alerte: 'info',
           message: `Surstock détecté: ${product.stock_actuel} unités`,
           stock_actuel: product.stock_actuel,
-          stock_maximum: product.stock_maximum
+          stock_maximum: product.stock_alerte
         });
       }
     });

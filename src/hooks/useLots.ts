@@ -32,9 +32,8 @@ export interface Lot {
 export interface LotWithDetails extends Lot {
   produit?: {
     id: string;
-    nom_produit: string;
-    code_bare: string;
-    forme_pharmaceutique: string;
+    libelle_produit: string;
+    code_cip: string;
   };
   fournisseur?: {
     id: string;
@@ -86,7 +85,7 @@ export const useLots = () => {
       'lots',
       `
         *,
-        produit:produits!inner(id, nom_produit, code_bare, forme_pharmaceutique),
+        produit:produits!inner(id, libelle_produit, code_cip),
         fournisseur:fournisseurs(id, nom)
       `,
       {
@@ -107,7 +106,7 @@ export const useLots = () => {
       'lots',
       `
         *,
-        produit:produits!inner(id, nom_produit, code_bare, forme_pharmaceutique, famille_id),
+        produit:produits!inner(id, libelle_produit, code_cip, famille_id),
         fournisseur:fournisseurs(id, nom)
       `,
       { id: lotId },
@@ -125,7 +124,7 @@ export const useLots = () => {
       'lots',
       `
         *,
-        produit:produits!inner(id, nom_produit)
+        produit:produits!inner(id, libelle_produit)
       `,
       {},
       {
@@ -148,7 +147,7 @@ export const useLots = () => {
           .from('lots')
           .select(`
             *,
-            produit:produits!inner(id, nom_produit, code_bare)
+            produit:produits!inner(id, libelle_produit, code_cip)
           `)
           .eq('tenant_id', tenantId!)
           .lte('date_peremption', futureDate.toISOString().split('T')[0])

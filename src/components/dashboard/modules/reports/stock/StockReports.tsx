@@ -46,19 +46,19 @@ const StockReports = () => {
 
   // Données simulées pour les analyses de stock
   const stockLevelsData = [
-    { categorie: 'Médicaments Génériques', stock_actuel: 1250, stock_minimum: 800, stock_maximum: 2000, valorisation: 8500000 },
-    { categorie: 'Médicaments Spécialisés', stock_actuel: 450, stock_minimum: 300, stock_maximum: 800, valorisation: 12000000 },
-    { categorie: 'Parapharmacie', stock_actuel: 780, stock_minimum: 500, stock_maximum: 1200, valorisation: 3200000 },
-    { categorie: 'Matériel Médical', stock_actuel: 320, stock_minimum: 200, stock_maximum: 500, valorisation: 2800000 },
-    { categorie: 'Produits Cosmétiques', stock_actuel: 890, stock_minimum: 600, stock_maximum: 1500, valorisation: 1900000 }
+    { categorie: 'Médicaments Génériques', stock_actuel: 1250, stock_limite: 800, stock_alerte: 2000, valorisation: 8500000 },
+    { categorie: 'Médicaments Spécialisés', stock_actuel: 450, stock_limite: 300, stock_alerte: 800, valorisation: 12000000 },
+    { categorie: 'Parapharmacie', stock_actuel: 780, stock_limite: 500, stock_alerte: 1200, valorisation: 3200000 },
+    { categorie: 'Matériel Médical', stock_actuel: 320, stock_limite: 200, stock_alerte: 500, valorisation: 2800000 },
+    { categorie: 'Produits Cosmétiques', stock_actuel: 890, stock_limite: 600, stock_alerte: 1500, valorisation: 1900000 }
   ];
 
   const criticalStockData = [
-    { produit: 'Doliprane 1000mg', stock_actuel: 12, stock_minimum: 50, statut: 'critique', expiration: '15/03/2024' },
-    { produit: 'Amoxicilline 500mg', stock_actuel: 8, stock_minimum: 30, statut: 'critique', expiration: '22/04/2024' },
-    { produit: 'Spasfon Lyoc', stock_actuel: 25, stock_minimum: 40, statut: 'attention', expiration: '10/05/2024' },
-    { produit: 'Efferalgan 500mg', stock_actuel: 35, stock_minimum: 60, statut: 'attention', expiration: '28/03/2024' },
-    { produit: 'Dafalgan Codéine', stock_actuel: 5, stock_minimum: 25, statut: 'critique', expiration: '05/04/2024' }
+    { produit: 'Doliprane 1000mg', stock_actuel: 12, stock_limite: 50, statut: 'critique', expiration: '15/03/2024' },
+    { produit: 'Amoxicilline 500mg', stock_actuel: 8, stock_limite: 30, statut: 'critique', expiration: '22/04/2024' },
+    { produit: 'Spasfon Lyoc', stock_actuel: 25, stock_limite: 40, statut: 'attention', expiration: '10/05/2024' },
+    { produit: 'Efferalgan 500mg', stock_actuel: 35, stock_limite: 60, statut: 'attention', expiration: '28/03/2024' },
+    { produit: 'Dafalgan Codéine', stock_actuel: 5, stock_limite: 25, statut: 'critique', expiration: '05/04/2024' }
   ];
 
   const expiryAlertsData = [
@@ -239,8 +239,8 @@ const StockReports = () => {
             <CardContent>
               <div className="space-y-6">
                 {stockLevelsData.map((item, index) => {
-                  const status = getStockStatus(item.stock_actuel, item.stock_minimum, item.stock_maximum);
-                  const percentage = (item.stock_actuel / item.stock_maximum) * 100;
+                  const status = getStockStatus(item.stock_actuel, item.stock_limite, item.stock_alerte);
+                  const percentage = (item.stock_actuel / item.stock_alerte) * 100;
                   
                   return (
                     <div key={index} className="space-y-3">
@@ -260,8 +260,8 @@ const StockReports = () => {
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Min: {item.stock_minimum}</span>
-                          <span>Max: {item.stock_maximum}</span>
+                          <span>Limite: {item.stock_limite}</span>
+                          <span>Alerte: {item.stock_alerte}</span>
                         </div>
                         <Progress value={percentage} className="h-2" />
                       </div>
@@ -299,7 +299,7 @@ const StockReports = () => {
                       <div>
                         <p className="font-medium">{item.produit}</p>
                         <p className="text-sm text-muted-foreground">
-                          Stock: {item.stock_actuel} / Min: {item.stock_minimum}
+                          Stock: {item.stock_actuel} / Limite: {item.stock_limite}
                         </p>
                       </div>
                     </div>

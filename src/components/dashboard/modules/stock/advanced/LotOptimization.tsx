@@ -169,7 +169,7 @@ export const LotOptimization = () => {
                   description: `Prioriser la vente du lot ${suggestedLot.numero_lot} selon les règles FIFO`,
                   lotId: suggestedLot.id,
                   lotNumber: suggestedLot.numero_lot,
-                  productName: suggestedLot.produit?.nom_produit || 'Produit inconnu',
+                  productName: suggestedLot.produit?.libelle_produit || 'Produit inconnu',
                   currentValue: 0,
                   suggestedValue: 1,
                   expectedBenefit: 'Conformité aux règles de rotation'
@@ -194,7 +194,7 @@ export const LotOptimization = () => {
               description: `Stock critique à ${stockPercentage.toFixed(1)}% - Commande recommandée`,
               lotId: lot.id,
               lotNumber: lot.numero_lot,
-              productName: lot.produit?.nom_produit || 'Produit inconnu',
+              productName: lot.produit?.libelle_produit || 'Produit inconnu',
               currentValue: lot.quantite_restante,
               suggestedValue: lot.quantite_initiale,
               expectedBenefit: 'Éviter la rupture de stock'

@@ -19,18 +19,16 @@ export interface Client {
 
 export interface Produit {
   id: number;
-  nom: string;
-  code_barre?: string;
-  forme_pharmaceutique?: string;
-  dosage?: string;
+  libelle_produit: string;
+  code_cip?: string;
   prix_unitaire: number;
   prix_public: number;
   taux_tva: number;
   famille_id?: number;
   dci_id?: number;
-  laboratoire_id?: number;
+  laboratoires_id?: number;
   prescription_requise: boolean;
-  stock_critique?: number;
+  stock_limite?: number;
   actif: boolean;
 }
 

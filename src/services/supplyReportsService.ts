@@ -19,7 +19,7 @@ export class SupplyReportsService {
       const { data: stockLevels } = await supabase
         .from('produits')
         .select(`
-          id, nom_produit, stock_minimum, stock_maximum,
+          id, libelle_produit, stock_limite, stock_alerte,
           lots!inner(quantite_restante, prix_achat_unitaire)
         `)
         .eq('is_active', true);
@@ -29,7 +29,7 @@ export class SupplyReportsService {
         .from('stock_mouvements')
         .select(`
           id, type_mouvement, quantite, date_mouvement,
-          produits!inner(nom_produit)
+          produits!inner(libelle_produit)
         `)
         .gte('date_mouvement', startDate)
         .lte('date_mouvement', endDate);
@@ -124,7 +124,7 @@ export class SupplyReportsService {
           fournisseurs!inner(nom),
           lots!inner(
             quantite_initiale, prix_achat_unitaire,
-            produits!inner(nom_produit, famille_id)
+            produits!inner(libelle_produit, famille_id)
           )
         `)
         .gte('date_reception', startDate)
@@ -215,19 +215,19 @@ export class SupplyReportsService {
 
       totalValue += valeurStock;
 
-      const stockMin = (product as any).stock_minimum || 0;
-      const stockMax = (product as any).stock_maximum || stockMin * 2;
+      const stockLimite = (product as any).stock_limite || 0;
+      const stockAlerte = (product as any).stock_alerte || stockLimite * 2;
 
-      if (stockActuel <= stockMin) lowStockCount++;
-      if (stockActuel >= stockMax) overstockCount++;
+      if (stockActuel <= stockLimite) lowStockCount++;
+      if (stockActuel >= stockAlerte) overstockCount++;
 
       productAnalysis.push({
-        nom_produit: (product as any).nom_produit,
+        nom_produit: (product as any).libelle_produit,
         stock_actuel: stockActuel,
-        stock_minimum: stockMin,
-        stock_maximum: stockMax,
+        stock_minimum: stockLimite,
+        stock_maximum: stockAlerte,
         valeur_stock: valeurStock,
-        statut: stockActuel <= stockMin ? 'Faible' : stockActuel >= stockMax ? 'Excès' : 'Normal'
+        statut: stockActuel <= stockLimite ? 'Faible' : stockActuel >= stockAlerte ? 'Excès' : 'Normal'
       });
     }
 
@@ -253,7 +253,7 @@ export class SupplyReportsService {
       byDate[date] = (byDate[date] || 0) + Math.abs(movement.quantite);
 
       // Par produit
-      const produit = (movement as any).produits?.nom_produit || 'Inconnu';
+      const produit = (movement as any).produits?.libelle_produit || 'Inconnu';
       productMovements[produit] = (productMovements[produit] || 0) + Math.abs(movement.quantite);
     }
 
