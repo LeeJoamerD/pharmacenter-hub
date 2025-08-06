@@ -86,16 +86,20 @@ export const useReceptions = () => {
     try {
       // Get current user's tenant_id
       const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Utilisateur non authentifié');
+
       const { data: personnel } = await supabase
         .from('personnel')
         .select('tenant_id')
-        .eq('auth_user_id', user.user?.id)
+        .eq('auth_user_id', user.user.id)
         .single();
+
+      if (!personnel?.tenant_id) throw new Error('Tenant non trouvé');
 
       const { data: reception, error: receptionError } = await supabase
         .from('receptions_fournisseurs')
         .insert({
-          tenant_id: personnel?.tenant_id,
+          tenant_id: personnel.tenant_id,
           commande_id: receptionData.commande_id,
           fournisseur_id: receptionData.fournisseur_id,
           date_reception: receptionData.date_reception || new Date().toISOString(),
@@ -113,7 +117,7 @@ export const useReceptions = () => {
           const { error: lotError } = await supabase
             .from('lots')
             .insert({
-              tenant_id: personnel?.tenant_id,
+              tenant_id: personnel.tenant_id,
               produit_id: ligne.produit_id,
               numero_lot: ligne.numero_lot,
               date_peremption: ligne.date_expiration,

@@ -66,17 +66,21 @@ export const useOrderLines = (commandeId?: string) => {
     try {
       // Get current user's tenant_id
       const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Utilisateur non authentifié');
+
       const { data: personnel } = await supabase
         .from('personnel')
         .select('tenant_id')
-        .eq('auth_user_id', user.user?.id)
+        .eq('auth_user_id', user.user.id)
         .single();
+
+      if (!personnel?.tenant_id) throw new Error('Tenant non trouvé');
 
       const { data, error } = await supabase
         .from('lignes_commande_fournisseur')
         .insert({
           ...orderLineData,
-          tenant_id: personnel?.tenant_id
+          tenant_id: personnel.tenant_id
         })
         .select(`
           *,

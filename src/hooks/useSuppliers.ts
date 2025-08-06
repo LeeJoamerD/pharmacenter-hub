@@ -46,11 +46,23 @@ export const useSuppliers = () => {
 
   const createSupplier = async (supplierData: Omit<Supplier, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>) => {
     try {
+      // Get current user's tenant_id
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Utilisateur non authentifié');
+
+      const { data: personnel } = await supabase
+        .from('personnel')
+        .select('tenant_id')
+        .eq('auth_user_id', user.user.id)
+        .single();
+
+      if (!personnel?.tenant_id) throw new Error('Tenant non trouvé');
+
       const { data, error } = await supabase
         .from('fournisseurs')
         .insert({
           ...supplierData,
-          tenant_id: (await supabase.from('personnel').select('tenant_id').eq('auth_user_id', (await supabase.auth.getUser()).data.user?.id).single()).data?.tenant_id
+          tenant_id: personnel.tenant_id
         })
         .select()
         .single();

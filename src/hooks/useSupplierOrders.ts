@@ -75,16 +75,20 @@ export const useSupplierOrders = () => {
     try {
       // Get current user's tenant_id
       const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Utilisateur non authentifié');
+
       const { data: personnel } = await supabase
         .from('personnel')
         .select('tenant_id')
-        .eq('auth_user_id', user.user?.id)
+        .eq('auth_user_id', user.user.id)
         .single();
+
+      if (!personnel?.tenant_id) throw new Error('Tenant non trouvé');
 
       const { data: order, error: orderError } = await supabase
         .from('commandes_fournisseurs')
         .insert({
-          tenant_id: personnel?.tenant_id,
+          tenant_id: personnel.tenant_id,
           fournisseur_id: orderData.fournisseur_id,
           date_commande: orderData.date_commande || new Date().toISOString(),
           agent_id: orderData.agent_id,
@@ -97,7 +101,7 @@ export const useSupplierOrders = () => {
 
       // Ajouter les lignes de commande
       const lignesData = orderData.lignes.map(ligne => ({
-        tenant_id: personnel?.tenant_id,
+        tenant_id: personnel.tenant_id,
         commande_id: order.id,
         ...ligne
       }));
