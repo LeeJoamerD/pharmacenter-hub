@@ -55,30 +55,45 @@ const SupplierManager = ({ suppliers: propSuppliers = [], loading, onCreateSuppl
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
-  // Use real suppliers or fallback to mock data
-  const suppliers = propSuppliers.length > 0 ? propSuppliers : [
-    {
-      id: '1',
-      nom: 'Laboratoire Alpha',
-      contact: 'Dr. Martin Dubois',
-      email: 'contact@alpha.com',
-      telephone: '+33 1 23 45 67 89',
-      adresse: '123 Rue de la Santé',
-      ville: 'Paris',
-      pays: 'France',
-      statut: 'actif',
-      note: 4.5,
-      delaiLivraison: 7,
-      conditionsPaiement: '30 jours fin de mois',
-      totalCommandes: 45,
-      montantTotal: 2750000,
-      derniereLivraison: '2024-12-01'
-    }
-  ];
+  // Transform real suppliers to match expected structure
+  const suppliers = propSuppliers.length > 0 
+    ? propSuppliers.map(supplier => ({
+        ...supplier,
+        contact: supplier.telephone_appel || 'Non renseigné',
+        telephone: supplier.telephone_appel || 'Non renseigné',
+        ville: 'Non renseigné',
+        pays: 'Congo',
+        statut: 'actif' as const,
+        note: 4.0,
+        delaiLivraison: 7,
+        conditionsPaiement: '30 jours fin de mois',
+        totalCommandes: 0,
+        montantTotal: 0,
+        derniereLivraison: new Date().toISOString().split('T')[0]
+      }))
+    : [
+        {
+          id: '1',
+          nom: 'Laboratoire Alpha',
+          contact: 'Dr. Martin Dubois',
+          email: 'contact@alpha.com',
+          telephone: '+33 1 23 45 67 89',
+          adresse: '123 Rue de la Santé',
+          ville: 'Paris',
+          pays: 'France',
+          statut: 'actif' as const,
+          note: 4.5,
+          delaiLivraison: 7,
+          conditionsPaiement: '30 jours fin de mois',
+          totalCommandes: 45,
+          montantTotal: 2750000,
+          derniereLivraison: '2024-12-01'
+        }
+      ];
 
   const filteredSuppliers = suppliers.filter(supplier => {
-    const matchesSearch = supplier.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         supplier.contact.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = supplier.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         supplier.contact?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === 'tous' || supplier.statut === selectedStatus;
     
     return matchesSearch && matchesStatus;
@@ -153,7 +168,7 @@ const SupplierManager = ({ suppliers: propSuppliers = [], loading, onCreateSuppl
               <Star className="h-5 w-5 text-yellow-600" />
               <div>
                 <p className="text-sm text-muted-foreground">Note Moyenne</p>
-                <p className="text-2xl font-bold">{(suppliers.reduce((sum, s) => sum + s.note, 0) / suppliers.length).toFixed(1)}</p>
+                <p className="text-2xl font-bold">{suppliers.length > 0 ? (suppliers.reduce((sum, s) => sum + (s.note || 0), 0) / suppliers.length).toFixed(1) : '0.0'}</p>
               </div>
             </div>
           </CardContent>
@@ -254,8 +269,8 @@ const SupplierManager = ({ suppliers: propSuppliers = [], loading, onCreateSuppl
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <div className="font-medium">{supplier.totalCommandes} commandes</div>
-                        <div className="text-muted-foreground">{supplier.montantTotal.toLocaleString()} F CFA</div>
+                        <div className="font-medium">{supplier.totalCommandes || 0} commandes</div>
+                        <div className="text-muted-foreground">{(supplier.montantTotal || 0).toLocaleString()} F CFA</div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -328,7 +343,7 @@ const SupplierManager = ({ suppliers: propSuppliers = [], loading, onCreateSuppl
                   <p className="text-sm text-muted-foreground">Commandes</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">{selectedSupplier.montantTotal.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-green-600">{(selectedSupplier.montantTotal || 0).toLocaleString()}</p>
                   <p className="text-sm text-muted-foreground">F CFA Total</p>
                 </div>
                 <div className="text-center">
