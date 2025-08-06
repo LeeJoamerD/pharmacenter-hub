@@ -66,15 +66,15 @@ export const useCurrentStockDirect = () => {
 
       if (!personnel?.tenant_id) throw new Error('Tenant non trouvé');
 
-      // Fetch products with stock
+      // Fetch products with stock - using specific foreign key names to avoid ambiguity
       const { data: productsData, error: productsError } = await supabase
         .from('produits')
         .select(`
           id, tenant_id, libelle_produit, code_produit, famille_id, rayon_id,
           prix_achat_ht, prix_vente_ttc, stock_actuel, stock_minimum, stock_maximum,
           date_derniere_entree, date_derniere_sortie, is_active,
-          famille_produit!famille_id(libelle_famille),
-          rayons_produits!rayon_id(libelle_rayon)
+          famille_produit:famille_id(libelle_famille),
+          rayons_produits:rayon_id(libelle_rayon)
         `)
         .eq('tenant_id', personnel.tenant_id)
         .eq('is_active', true)
