@@ -66,15 +66,15 @@ export const useCurrentStockDirect = () => {
 
       if (!personnel?.tenant_id) throw new Error('Tenant non trouvé');
 
-      // Fetch products with stock - using specific foreign key names to avoid ambiguity
+      // Fetch products with stock - using correct column names from schema
       const { data: productsData, error: productsError } = await supabase
         .from('produits')
         .select(`
-          id, tenant_id, libelle_produit, code_produit, famille_id, rayon_id,
-          prix_achat_ht, prix_vente_ttc, stock_actuel, stock_minimum, stock_maximum,
-          date_derniere_entree, date_derniere_sortie, is_active,
-          famille_produit:famille_id(libelle_famille),
-          rayons_produits:rayon_id(libelle_rayon)
+          id, tenant_id, libelle_produit, code_cip, famille_id, rayon_id,
+          prix_achat, prix_vente_ttc, quantite_stock, stock_limite, stock_alerte,
+          created_at, updated_at, is_active,
+          famille_produit!famille_id(libelle_famille),
+          rayons_produits!rayon_id(libelle_rayon)
         `)
         .eq('tenant_id', personnel.tenant_id)
         .eq('is_active', true)
@@ -102,21 +102,21 @@ export const useCurrentStockDirect = () => {
 
       // Process products data
       const processedProducts: CurrentStockItem[] = (productsData || []).map((product: any) => {
-        const stockValue = (product.stock_actuel || 0) * (product.prix_achat_ht || 0);
+        const stockValue = (product.quantite_stock || 0) * (product.prix_achat || 0);
         
         let stockStatus: CurrentStockItem['statut_stock'] = 'normal';
-        if (product.stock_actuel === 0) {
+        if (product.quantite_stock === 0) {
           stockStatus = 'rupture';
-        } else if (product.stock_actuel <= (product.stock_minimum || 0)) {
-          stockStatus = product.stock_actuel <= (product.stock_minimum || 0) * 0.5 ? 'critique' : 'faible';
-        } else if (product.stock_actuel >= (product.stock_maximum || 100)) {
+        } else if (product.quantite_stock <= (product.stock_limite || 0)) {
+          stockStatus = product.quantite_stock <= (product.stock_limite || 0) * 0.5 ? 'critique' : 'faible';
+        } else if (product.quantite_stock >= (product.stock_alerte || 100)) {
           stockStatus = 'surstock';
         }
 
         // Calcul de la rotation basé sur les mouvements récents (simplifié)
         let rotation: CurrentStockItem['rotation'] = 'normale';
-        const daysSinceLastMovement = product.date_derniere_sortie 
-          ? Math.floor((Date.now() - new Date(product.date_derniere_sortie).getTime()) / (1000 * 60 * 60 * 24))
+        const daysSinceLastMovement = product.updated_at 
+          ? Math.floor((Date.now() - new Date(product.updated_at).getTime()) / (1000 * 60 * 60 * 24))
           : 999;
         
         if (daysSinceLastMovement < 7) rotation = 'rapide';
@@ -126,18 +126,18 @@ export const useCurrentStockDirect = () => {
           id: product.id,
           tenant_id: product.tenant_id,
           libelle_produit: product.libelle_produit,
-          code_produit: product.code_produit,
+          code_produit: product.code_cip || '',
           famille_id: product.famille_id,
           famille_libelle: product.famille_produit?.libelle_famille,
           rayon_id: product.rayon_id,
           rayon_libelle: product.rayons_produits?.libelle_rayon,
-          prix_achat_ht: product.prix_achat_ht || 0,
+          prix_achat_ht: product.prix_achat || 0,
           prix_vente_ttc: product.prix_vente_ttc || 0,
-          stock_actuel: product.stock_actuel || 0,
-          stock_minimum: product.stock_minimum || 0,
-          stock_maximum: product.stock_maximum || 100,
-          date_derniere_entree: product.date_derniere_entree,
-          date_derniere_sortie: product.date_derniere_sortie,
+          stock_actuel: product.quantite_stock || 0,
+          stock_minimum: product.stock_limite || 0,
+          stock_maximum: product.stock_alerte || 100,
+          date_derniere_entree: product.created_at,
+          date_derniere_sortie: product.updated_at,
           valeur_stock: stockValue,
           statut_stock: stockStatus,
           rotation
