@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,8 @@ import {
   Phone,
   Building
 } from 'lucide-react';
+import { useOrderTracking, type OrderTracking as OrderTrackingData } from '@/hooks/useOrderTracking';
+import type { SupplierOrder } from '@/hooks/useSupplierOrders';
 
 interface OrderTracking {
   id: string;
@@ -43,7 +45,7 @@ interface TrackingStep {
 }
 
 interface OrderTrackingProps {
-  orders: any[];
+  orders: SupplierOrder[];
   transporters: any[];
   loading: boolean;
 }
@@ -51,29 +53,96 @@ interface OrderTrackingProps {
 const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], transporters = [], loading }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('tous');
+  const { trackings, getTrackingHistory, getLatestStatus, getStatusColor: getTrackingStatusColor } = useOrderTracking();
 
-  // Use real orders for tracking or fallback to mock data
-  const trackingData = propOrders.length > 0 ? propOrders : [
-    {
-      id: '1',
-      numero: 'CMD-2024-001',
-      fournisseur: 'Laboratoire Alpha',
-      dateCommande: '2024-12-01',
-      dateLivraison: '2024-12-15',
-      statut: 'en-transit',
-      progression: 75,
-      transporteur: 'Express Pharma',
-      numeroSuivi: 'EP2024120001',
-      adresseLivraison: '123 Rue de la Pharmacie, Dakar',
-      etapes: [
-        { id: '1', libelle: 'Commande confirmée', date: '2024-12-01 10:00', statut: 'complete' },
-        { id: '2', libelle: 'Préparation en cours', date: '2024-12-02 09:00', statut: 'complete' },
-        { id: '3', libelle: 'Expédié', date: '2024-12-03 14:30', statut: 'complete' },
-        { id: '4', libelle: 'En transit', date: '2024-12-04 08:00', statut: 'en-cours', commentaire: 'Arrivé à l\'entrepôt de transit Dakar' },
-        { id: '5', libelle: 'Livraison prévue', date: '2024-12-15 10:00', statut: 'en-attente' }
-      ]
+  // Map database statuses to display statuses
+  const mapDatabaseStatus = (dbStatus: string | null): string => {
+    switch (dbStatus?.toLowerCase()) {
+      case 'en cours': return 'preparation';
+      case 'confirmé': return 'preparation';
+      case 'expédié': return 'expedie';
+      case 'en transit': return 'en-transit';
+      case 'livré': return 'livre';
+      case 'annulé': return 'retard';
+      default: return 'preparation';
     }
-  ];
+  };
+
+  // Calculate progression based on status
+  const calculateProgression = (statut: string): number => {
+    switch (statut) {
+      case 'preparation': return 25;
+      case 'expedie': return 50;
+      case 'en-transit': return 75;
+      case 'livre': return 100;
+      case 'retard': return 0;
+      default: return 0;
+    }
+  };
+
+  // Transform database orders to display format
+  const trackingData = useMemo(() => {
+    if (propOrders.length === 0) {
+      return [{
+        id: '1',
+        numero: 'CMD-2024-001',
+        fournisseur: 'Laboratoire Alpha',
+        dateCommande: '2024-12-01',
+        dateLivraison: '2024-12-15',
+        statut: 'en-transit',
+        progression: 75,
+        transporteur: 'Express Pharma',
+        numeroSuivi: 'EP2024120001',
+        adresseLivraison: '123 Rue de la Pharmacie, Dakar',
+        etapes: [
+          { id: '1', libelle: 'Commande confirmée', date: '2024-12-01 10:00', statut: 'complete' },
+          { id: '2', libelle: 'Préparation en cours', date: '2024-12-02 09:00', statut: 'complete' },
+          { id: '3', libelle: 'Expédié', date: '2024-12-03 14:30', statut: 'complete' },
+          { id: '4', libelle: 'En transit', date: '2024-12-04 08:00', statut: 'en-cours', commentaire: 'Arrivé à l\'entrepôt de transit Dakar' },
+          { id: '5', libelle: 'Livraison prévue', date: '2024-12-15 10:00', statut: 'en-attente' }
+        ]
+      }];
+    }
+
+    return propOrders.map(order => {
+      const displayStatus = mapDatabaseStatus(order.statut);
+      const orderTrackings = getTrackingHistory(order.id);
+      
+      // Convert tracking history to display steps
+      const etapes = orderTrackings.map((tracking, index) => ({
+        id: tracking.id,
+        libelle: tracking.statut || 'Étape',
+        date: tracking.date_changement || new Date().toISOString(),
+        statut: index === 0 ? 'en-cours' : 'complete',
+        commentaire: tracking.commentaire || undefined
+      }));
+
+      // Add default steps if no tracking history
+      if (etapes.length === 0) {
+        etapes.push({
+          id: '1',
+          libelle: 'Commande créée',
+          date: order.created_at,
+          statut: 'complete' as const,
+          commentaire: undefined
+        });
+      }
+
+      return {
+        id: order.id,
+        numero: `CMD-${order.id.slice(-6)}`,
+        fournisseur: order.fournisseur?.nom || 'Fournisseur non défini',
+        dateCommande: order.date_commande || order.created_at,
+        dateLivraison: '', // To be calculated based on expected delivery
+        statut: displayStatus,
+        progression: calculateProgression(displayStatus),
+        transporteur: 'Transport Standard', // Default transporter
+        numeroSuivi: `TRK${order.id.slice(-8)}`,
+        adresseLivraison: 'Adresse de livraison',
+        etapes
+      };
+    });
+  }, [propOrders, trackings, getTrackingHistory]);
 
   const filteredTracking = (trackingData || []).filter(order => {
     const matchesSearch = (order.numero || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
