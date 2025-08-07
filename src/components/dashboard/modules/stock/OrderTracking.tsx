@@ -76,8 +76,8 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
   ];
 
   const filteredTracking = trackingData.filter(order => {
-    const matchesSearch = order.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.fournisseur.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (order.numero || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (order.fournisseur || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === 'tous' || order.statut === selectedStatus;
     
     return matchesSearch && matchesStatus;
