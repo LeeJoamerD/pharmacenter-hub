@@ -37,8 +37,7 @@ export const useOrderTracking = (commandeId?: string) => {
         .from('suivi_commandes')
         .select(`
           *,
-          agent:personnel(noms, prenoms),
-          transporteur:transporteurs(nom)
+          transporteur:transporteurs!transporteur_id(nom)
         `)
         .order('date_changement', { ascending: false });
 

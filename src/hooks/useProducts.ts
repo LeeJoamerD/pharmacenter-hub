@@ -45,10 +45,7 @@ export const useProducts = () => {
       const { data, error } = await supabase
         .from('produits')
         .select(`
-          *,
-          famille:famille_produit(libelle_famille),
-          rayon:rayons(nom_rayon),
-          dci:dci(nom_dci)
+          *
         `)
         .eq('is_active', true)
         .order('libelle_produit', { ascending: true });
