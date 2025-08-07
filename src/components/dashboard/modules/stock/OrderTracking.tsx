@@ -75,7 +75,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
     }
   ];
 
-  const filteredTracking = trackingData.filter(order => {
+  const filteredTracking = (trackingData || []).filter(order => {
     const matchesSearch = (order.numero || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (order.fournisseur || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === 'tous' || order.statut === selectedStatus;
@@ -263,7 +263,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
                     <div className="lg:col-span-2">
                       <h4 className="font-medium mb-4">Historique du suivi</h4>
                       <div className="space-y-3">
-                        {order.etapes.map((etape, index) => (
+                        {(order.etapes || []).map((etape, index) => (
                           <div key={etape.id} className="flex items-start gap-3">
                             <div className="flex-shrink-0 mt-1">
                               {getStepIcon(etape.statut)}
