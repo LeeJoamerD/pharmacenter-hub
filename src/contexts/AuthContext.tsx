@@ -26,7 +26,7 @@ interface AuthContextType {
   updateSecurityContext: () => Promise<void>;
   connectPharmacy: (email: string, password: string) => Promise<{ error: Error | null }>;
   createPharmacySession: () => Promise<{ error: Error | null }>;
-  disconnectPharmacy: () => void;
+  disconnectPharmacy: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -81,6 +81,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (pharmacyData) {
             setPharmacy(pharmacyData);
+
+            // Créer automatiquement une session pharmacie si aucune n'existe
+            try {
+              if (!connectedPharmacy && !localStorage.getItem('pharmacy_session')) {
+                const { data: sessionData, error: sessionError } = await supabase.rpc('create_pharmacy_session', {
+                  p_pharmacy_id: pharmacyData.id,
+                  p_ip_address: null,
+                  p_user_agent: navigator.userAgent
+                });
+
+                if (!sessionError && sessionData && (sessionData as any).session_token) {
+                  const sessionResult = sessionData as { session_token: string; expires_at: string };
+                  setConnectedPharmacy({
+                    ...pharmacyData,
+                    sessionToken: sessionResult.session_token
+                  });
+                  localStorage.setItem('pharmacy_session', JSON.stringify({
+                    sessionToken: sessionResult.session_token,
+                    expiresAt: sessionResult.expires_at
+                  }));
+                }
+              }
+            } catch (e) {
+              console.error('Error creating pharmacy session:', e);
+            }
           }
         }
       }
