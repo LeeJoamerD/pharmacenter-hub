@@ -167,34 +167,15 @@ export function Hero() {
             <FadeIn delay={0.3} className="flex flex-col sm:flex-row gap-4">
               {/* Gestion des pharmacies - Logique harmonisée */}
               {!isPharmacyConnected ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      size="lg" 
-                      className="button-hover-effect bg-primary hover:bg-primary/90 text-white"
-                      disabled={loading}
-                    >
-                      <Building2 size={16} className="mr-2" />
-                      {loading ? 'Chargement...' : 'Connecter votre Pharmacie'}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="bg-white dark:bg-gray-800 border shadow-lg">
-                    <DropdownMenuItem onClick={handleCreatePharmacy}>
-                      Créer une pharmacie
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/pharmacy-connection')}>
-                      Se connecter (Email/Mot de passe)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handlePharmacyConnection}>
-                      Connexion rapide (Google)
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/test-interface')}>
-                      <TestTube className="mr-2 h-4 w-4" />
-                      Interface de test
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button 
+                  size="lg" 
+                  className="button-hover-effect bg-primary hover:bg-primary/90 text-white"
+                  disabled={loading}
+                  onClick={handleCreatePharmacy}
+                >
+                  <Building2 size={16} className="mr-2" />
+                  {loading ? 'Chargement...' : 'Connecter votre Pharmacie'}
+                </Button>
               ) : (
                 /* État connecté - Affichage unifié */
                 <DropdownMenu>

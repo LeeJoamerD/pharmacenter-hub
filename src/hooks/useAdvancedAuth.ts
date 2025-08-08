@@ -18,7 +18,7 @@ interface PasswordValidation {
 }
 
 export const useAdvancedAuth = () => {
-  const { personnel, pharmacy } = useAuth();
+  const { personnel, pharmacy, connectedPharmacy } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const validatePassword = async (password: string): Promise<PasswordValidation> => {
@@ -180,6 +180,13 @@ export const useAdvancedAuth = () => {
     setLoading(true);
     
     try {
+      // Empêcher la connexion utilisateur sans pharmacie connectée
+      if (!pharmacy?.id && !connectedPharmacy) {
+        await logLoginAttempt(email, false, 'No pharmacy connected');
+        setLoading(false);
+        return { error: new Error('Aucune pharmacie connectée. Veuillez connecter votre pharmacie avant de vous connecter.') };
+      }
+
       // 1. Vérifier les tentatives de connexion
       const attemptCheck = await checkLoginAttempts(email);
       

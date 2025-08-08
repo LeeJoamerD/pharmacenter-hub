@@ -198,6 +198,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
+      // Empêcher la connexion utilisateur sans pharmacie connectée
+      if (!connectedPharmacy) {
+        return { error: new Error('Aucune pharmacie connectée. Veuillez connecter votre pharmacie d\'abord.') };
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -321,7 +326,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    // Désactiver les sessions actives
+    // Désactiver les sessions actives de l'utilisateur
     if (personnel?.id) {
       await supabase
         .from('user_sessions')
@@ -330,18 +335,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('is_active', true);
     }
 
-    // Déconnecter la session pharmacie si elle existe
-    if (connectedPharmacy?.sessionToken) {
-      await disconnectPharmacy();
-    }
-
+    // Important: Ne pas déconnecter la pharmacie ici
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setPersonnel(null);
-    setPharmacy(null);
+    setPharmacy(null); // La pharmacie liée au personnel est réinitialisée, mais la session pharmacie reste active
     setSecurityLevel('standard');
     setRequires2FA(false);
+    // Ne pas toucher à connectedPharmacy afin de garder la session pharmacie active
   };
 
   const value = {
