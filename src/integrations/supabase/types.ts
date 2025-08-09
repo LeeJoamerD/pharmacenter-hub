@@ -4554,6 +4554,10 @@ export type Database = {
         }
         Returns: Json
       }
+      resolve_oauth_personnel_link: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       setup_cross_tenant_security_triggers: {
         Args: Record<PropertyKey, never>
         Returns: undefined
