@@ -17,6 +17,8 @@ import PharmacyConnection from "./pages/PharmacyConnection";
 import PharmacyLogin from "./pages/PharmacyLogin";
 import TestInterface from "./pages/TestInterface";
 import NotFound from "./pages/NotFound";
+import UserLogin from "./pages/UserLogin";
+import UserRegister from "./pages/UserRegister";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +41,8 @@ const App = () => (
                     <Route path="/pharmacy-creation" element={<PharmacyCreation />} />
                     <Route path="/pharmacy-connection" element={<PharmacyConnection />} />
                     <Route path="/pharmacy-login" element={<PharmacyLogin />} />
+                    <Route path="/user-login" element={<UserLogin />} />
+                    <Route path="/user-register" element={<UserRegister />} />
                     <Route path="/test-interface" element={<TestInterface />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

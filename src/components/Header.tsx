@@ -204,6 +204,8 @@ export function Header() {
                 variant="ghost"
                 size="icon"
                 className="text-foreground hover:bg-muted/50 opacity-60"
+                aria-label="Se connecter"
+                onClick={() => navigate('/user-login')}
               >
                 <User size={20} />
               </Button>

@@ -2540,6 +2540,9 @@ export type Database = {
           date_recrutement: string | null
           email: string | null
           fonction: string | null
+          google_phone: string | null
+          google_user_id: string | null
+          google_verified: boolean
           id: string
           is_active: boolean | null
           limite_dette: number | null
@@ -2573,6 +2576,9 @@ export type Database = {
           date_recrutement?: string | null
           email?: string | null
           fonction?: string | null
+          google_phone?: string | null
+          google_user_id?: string | null
+          google_verified?: boolean
           id?: string
           is_active?: boolean | null
           limite_dette?: number | null
@@ -2606,6 +2612,9 @@ export type Database = {
           date_recrutement?: string | null
           email?: string | null
           fonction?: string | null
+          google_phone?: string | null
+          google_user_id?: string | null
+          google_verified?: boolean
           id?: string
           is_active?: boolean | null
           limite_dette?: number | null
@@ -4463,6 +4472,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_google_verified: {
+        Args: { tenant_id: string; email: string }
+        Returns: Json
+      }
       check_login_attempts: {
         Args: { email: string; tenant_id: string }
         Returns: Json
@@ -4481,6 +4494,10 @@ export type Database = {
       }
       create_admin_personnel: {
         Args: { pharmacy_id: string; admin_data: Json }
+        Returns: Json
+      }
+      create_personnel_for_user: {
+        Args: { pharmacy_id: string; data: Json }
         Returns: Json
       }
       create_pharmacy_for_user: {
@@ -4506,6 +4523,10 @@ export type Database = {
       disconnect_pharmacy_session: {
         Args: { p_session_token: string }
         Returns: boolean
+      }
+      find_personnel_for_current_user: {
+        Args: { tenant_id: string }
+        Returns: Json
       }
       get_current_user_tenant_id: {
         Args: Record<PropertyKey, never>
