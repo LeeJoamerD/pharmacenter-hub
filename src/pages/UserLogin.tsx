@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, Shield, LogIn as LogInIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,17 +33,9 @@ const UserLogin = () => {
     }
   }, []);
 
-  const disabledReason = useMemo(() => {
-    if (!connectedPharmacy) return "Veuillez d'abord connecter votre pharmacie";
-    return null;
-  }, [connectedPharmacy]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!connectedPharmacy) {
-      toast.error("Aucune pharmacie connectée. Connectez-la avant de vous connecter.");
-      return;
-    }
 
     if (!email || !password) {
       toast.error("Veuillez renseigner l'email et le mot de passe");
@@ -87,10 +79,6 @@ const UserLogin = () => {
   };
 
   const handleGoogle = async () => {
-    if (!connectedPharmacy) {
-      toast.error("Aucune pharmacie connectée. Connectez-la avant de vous connecter.");
-      return;
-    }
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -165,9 +153,6 @@ const UserLogin = () => {
             <p className="text-sm text-muted-foreground">Accédez à votre espace utilisateur</p>
           </CardHeader>
           <CardContent>
-            {disabledReason && (
-              <div className="mb-4 text-sm text-destructive">{disabledReason}</div>
-            )}
             <form onSubmit={handleEmailLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Adresse Email</Label>
@@ -180,7 +165,7 @@ const UserLogin = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-9"
-                    disabled={!!disabledReason || loading}
+                    disabled={loading}
                     required
                     autoComplete="email"
                   />
@@ -197,13 +182,13 @@ const UserLogin = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-9"
-                    disabled={!!disabledReason || loading}
+                    disabled={loading}
                     required
                     autoComplete="current-password"
                   />
                 </div>
               </div>
-              <Button type="submit" className="w-full" disabled={!!disabledReason || loading}>
+              <Button type="submit" className="w-full" disabled={loading}>
                 <LogInIcon className="mr-2 h-4 w-4" /> Se connecter
               </Button>
             </form>
@@ -215,7 +200,7 @@ const UserLogin = () => {
               variant="outline"
               className="w-full"
               onClick={handleGoogle}
-              disabled={!!disabledReason || loading}
+              disabled={loading}
             >
               Continuer avec Google
             </Button>
@@ -226,7 +211,6 @@ const UserLogin = () => {
                 type="button"
                 onClick={handleGoogle}
                 className="text-primary hover:underline"
-                disabled={!!disabledReason || loading}
               >
                 Créez-en-un
               </button>
