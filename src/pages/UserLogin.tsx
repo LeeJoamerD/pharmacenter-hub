@@ -100,38 +100,48 @@ const UserLogin = () => {
     }
   };
 
-  // Au retour d'OAuth Google: si session active -> vérifier existence de personnel
+  // Au retour d'OAuth Google: si session active -> résoudre le statut et rediriger
   useEffect(() => {
     let mounted = true;
     (async () => {
       const { data } = await supabase.auth.getSession();
       const session = data.session;
-      if (!mounted || !session || !connectedPharmacy) return;
+      if (!mounted || !session) return;
 
+      setLoading(true);
       try {
-        const { data: existsData, error } = await supabase.rpc("find_personnel_for_current_user", {
-          tenant_id: connectedPharmacy.id,
-        });
+        const { data: resolveData, error } = await supabase.rpc("resolve_oauth_personnel_link");
         if (error) throw error;
-        const exists = (existsData as any)?.exists;
-        if (exists) {
-          toast.success("Connexion réussie");
-          navigate("/");
-        } else {
-          // Rediriger vers l'inscription utilisateur
-          navigate("/user-register");
+        const status = (resolveData as any)?.status;
+        switch (status) {
+          case "active":
+          case "linked_and_activated":
+            toast.success("Connexion réussie");
+            navigate("/");
+            break;
+          case "inactive_linked":
+            toast.error("Votre compte est inactif. Contactez l’administrateur.");
+            await supabase.auth.signOut();
+            navigate("/");
+            break;
+          case "new_user":
+            navigate("/user-register");
+            break;
+          default:
+            // Aucune action
+            break;
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error(e);
-        // En cas d'erreur, rester sur place
+        toast.error(e.message || "Erreur lors de la résolution de l'authentification");
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     })();
     return () => {
       mounted = false;
     };
-  }, [connectedPharmacy, navigate]);
+  }, [navigate]);
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4 py-12">
