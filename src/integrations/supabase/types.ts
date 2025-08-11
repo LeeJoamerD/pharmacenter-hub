@@ -4545,6 +4545,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      mark_personnel_google_verified: {
+        Args: { p_tenant_id?: string }
+        Returns: Json
+      }
       register_pharmacy_with_admin: {
         Args: {
           pharmacy_data: Json

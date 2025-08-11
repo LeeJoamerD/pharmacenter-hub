@@ -129,6 +129,16 @@ const UserLogin = () => {
 
       setLoading(true);
       try {
+        // Marquer le compte comme vérifié Google pour la pharmacie connectée
+        const markGoogleVerified = async () => {
+          try {
+            if (!connectedPharmacy?.id) return;
+            await supabase.rpc("mark_personnel_google_verified", { p_tenant_id: connectedPharmacy.id });
+          } catch (e) {
+            console.error(e);
+          }
+        };
+
         // S'assurer qu'un profil personnel existe pour la pharmacie connectée
         const ensurePersonnelInConnectedPharmacy = async (session: any) => {
           if (!connectedPharmacy?.id) {
@@ -173,6 +183,7 @@ const UserLogin = () => {
         switch (status) {
           case "active":
           case "linked_and_activated":
+            await markGoogleVerified();
             await ensurePersonnelInConnectedPharmacy(session);
             toast.success("Connexion réussie");
             navigate("/");
@@ -183,6 +194,7 @@ const UserLogin = () => {
             navigate("/");
             break;
           case "new_user":
+            await markGoogleVerified();
             await ensurePersonnelInConnectedPharmacy(session);
             toast.success("Compte créé et connecté");
             navigate("/");
