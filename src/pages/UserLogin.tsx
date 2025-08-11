@@ -104,6 +104,25 @@ const UserLogin = () => {
   useEffect(() => {
     let mounted = true;
     (async () => {
+      // 1) Capturer une éventuelle erreur OAuth dans l'URL et l'afficher
+      try {
+        const url = new URL(window.location.href);
+        const searchErr = url.searchParams.get("error") || url.searchParams.get("error_description");
+        const hash = url.hash ? new URLSearchParams(url.hash.replace(/^#/, "")) : null;
+        const hashErr = hash?.get("error") || hash?.get("error_description");
+        const oauthError = searchErr || hashErr;
+        if (oauthError) {
+          toast.error(decodeURIComponent(oauthError));
+          // Nettoyer l'URL pour éviter de réafficher le message au refresh
+          url.searchParams.delete("error");
+          url.searchParams.delete("error_description");
+          window.history.replaceState({}, document.title, url.pathname + url.search);
+        }
+      } catch (e) {
+        // ignore parsing errors
+      }
+
+      // 2) Vérifier la session et résoudre le lien personnel
       const { data } = await supabase.auth.getSession();
       const session = data.session;
       if (!mounted || !session) return;
@@ -125,10 +144,11 @@ const UserLogin = () => {
             navigate("/");
             break;
           case "new_user":
+            toast.message("Bienvenue !", { description: "Finalisez votre inscription pour accéder à l’application." });
             navigate("/user-register");
             break;
           default:
-            // Aucune action
+            toast.error("Connexion Google incomplète. Réessayez.");
             break;
         }
       } catch (e: any) {
