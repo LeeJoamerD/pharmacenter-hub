@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, Shield, LogIn as LogInIcon } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Shield, LogIn as LogInIcon, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,8 +17,8 @@ const UserLogin = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-
   // SEO
   useEffect(() => {
     document.title = "Connexion utilisateur | PharmaSoft";
@@ -129,12 +129,51 @@ const UserLogin = () => {
 
       setLoading(true);
       try {
+        // S'assurer qu'un profil personnel existe pour la pharmacie connectée
+        const ensurePersonnelInConnectedPharmacy = async (session: any) => {
+          if (!connectedPharmacy?.id) {
+            toast.error("Aucune pharmacie connectée. Veuillez d'abord vous connecter à une pharmacie.");
+            return false;
+          }
+          const { data: fpData, error: fpErr } = await supabase.rpc("find_personnel_for_current_user", {
+            tenant_id: connectedPharmacy.id,
+          });
+          if (fpErr) throw fpErr;
+          if ((fpData as any)?.exists) return true;
+
+          const meta: any = session.user.user_metadata || {};
+          const fullName: string | undefined = meta.name;
+          const prenoms = meta.given_name || meta.first_name || (fullName ? fullName.split(" ")[0] : "");
+          const noms = meta.family_name || meta.last_name || (fullName ? fullName.split(" ").slice(1).join(" ") : "");
+
+          const payload = {
+            noms,
+            prenoms,
+            email: session.user.email,
+            telephone: meta.phone_number || null,
+            google_verified: true,
+            google_user_id: session.user.id,
+            google_phone: meta.phone_number || null,
+          };
+
+          const { data: cpData, error: cpErr } = await supabase.rpc("create_personnel_for_user", {
+            pharmacy_id: connectedPharmacy.id,
+            data: payload,
+          });
+          if (cpErr) throw cpErr;
+          if (!(cpData as any)?.success) {
+            throw new Error((cpData as any)?.error || "Création du profil utilisateur échouée");
+          }
+          return true;
+        };
+
         const { data: resolveData, error } = await supabase.rpc("resolve_oauth_personnel_link");
         if (error) throw error;
         const status = (resolveData as any)?.status;
         switch (status) {
           case "active":
           case "linked_and_activated":
+            await ensurePersonnelInConnectedPharmacy(session);
             toast.success("Connexion réussie");
             navigate("/");
             break;
@@ -144,13 +183,15 @@ const UserLogin = () => {
             navigate("/");
             break;
           case "new_user":
-            toast.message("Bienvenue !", { description: "Finalisez votre inscription pour accéder à l’application." });
-            navigate("/user-register");
+            await ensurePersonnelInConnectedPharmacy(session);
+            toast.success("Compte créé et connecté");
+            navigate("/");
             break;
           default:
             toast.error("Connexion Google incomplète. Réessayez.");
             break;
         }
+
       } catch (e: any) {
         console.error(e);
         toast.error(e.message || "Erreur lors de la résolution de l'authentification");
@@ -207,15 +248,27 @@ const UserLogin = () => {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-9"
+                    className="pl-9 pr-10"
                     disabled={loading}
                     required
                     autoComplete="current-password"
                   />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
