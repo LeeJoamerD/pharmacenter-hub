@@ -5,6 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdvancedAuth } from "@/hooks/useAdvancedAuth";
@@ -15,10 +25,13 @@ const UserLogin = () => {
   const { connectedPharmacy } = useAuth();
   const { enhancedSignIn } = useAdvancedAuth();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
+const [showPassword, setShowPassword] = useState(false);
+const [loading, setLoading] = useState(false);
+const [forgotOpen, setForgotOpen] = useState(false);
+const [forgotEmail, setForgotEmail] = useState("");
+const [resetSending, setResetSending] = useState(false);
   // SEO
   useEffect(() => {
     document.title = "Connexion utilisateur | PharmaSoft";
@@ -78,27 +91,49 @@ const UserLogin = () => {
     }
   };
 
-  const handleGoogle = async () => {
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/user-login`,
-          queryParams: {
-            access_type: "offline",
-            prompt: "select_account",
-          },
+const handleGoogle = async () => {
+  setLoading(true);
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/user-login`,
+        queryParams: {
+          access_type: "offline",
+          prompt: "select_account",
         },
-      });
-      if (error) throw error;
-      // OAuth redirigera vers cette page; un effet ci-dessous gère la suite
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Erreur OAuth Google");
-      setLoading(false);
-    }
-  };
+      },
+    });
+    if (error) throw error;
+    // OAuth redirigera vers cette page; un effet ci-dessous gère la suite
+  } catch (err: any) {
+    console.error(err);
+    toast.error(err.message || "Erreur OAuth Google");
+    setLoading(false);
+  }
+};
+
+const handleForgotPassword = async () => {
+  if (!forgotEmail) {
+    toast.error("Veuillez saisir votre email");
+    return;
+  }
+  setResetSending(true);
+  try {
+    const redirectUrl = `${window.location.origin}/password-reset`;
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: redirectUrl,
+    });
+    if (error) throw error;
+    toast.success("Email de réinitialisation envoyé");
+    setForgotOpen(false);
+  } catch (e: any) {
+    console.error(e);
+    toast.error(e.message || "Erreur lors de l'envoi");
+  } finally {
+    setResetSending(false);
+  }
+};
 
   // Au retour d'OAuth Google: si session active -> résoudre le statut et rediriger
   useEffect(() => {
@@ -177,32 +212,46 @@ const UserLogin = () => {
           return true;
         };
 
-        const { data: resolveData, error } = await supabase.rpc("resolve_oauth_personnel_link");
-        if (error) throw error;
-        const status = (resolveData as any)?.status;
-        switch (status) {
-          case "active":
-          case "linked_and_activated":
-            await markGoogleVerified();
-            await ensurePersonnelInConnectedPharmacy(session);
-            toast.success("Connexion réussie");
-            navigate("/");
-            break;
-          case "inactive_linked":
-            toast.error("Votre compte est inactif. Contactez l’administrateur.");
-            await supabase.auth.signOut();
-            navigate("/");
-            break;
-          case "new_user":
-            await markGoogleVerified();
-            await ensurePersonnelInConnectedPharmacy(session);
-            toast.success("Compte créé et connecté");
-            navigate("/");
-            break;
-          default:
-            toast.error("Connexion Google incomplète. Réessayez.");
-            break;
-        }
+const { data: resolveData, error } = await supabase.rpc("resolve_oauth_personnel_link");
+if (error) throw error;
+const status = (resolveData as any)?.status;
+const hasEmailIdentity = Array.isArray((session.user as any)?.identities)
+  ? (session.user as any).identities.some((i: any) => i.provider === "email")
+  : false;
+
+switch (status) {
+  case "active":
+  case "linked_and_activated":
+    await markGoogleVerified();
+    await ensurePersonnelInConnectedPharmacy(session);
+    toast.success("Connexion réussie");
+    if (!hasEmailIdentity) {
+      toast.info("Définissez un mot de passe pour activer la connexion email");
+      navigate("/set-password");
+    } else {
+      navigate("/");
+    }
+    break;
+  case "inactive_linked":
+    toast.error("Votre compte est inactif. Contactez l’administrateur.");
+    await supabase.auth.signOut();
+    navigate("/");
+    break;
+  case "new_user":
+    await markGoogleVerified();
+    await ensurePersonnelInConnectedPharmacy(session);
+    toast.success("Compte créé et connecté");
+    if (!hasEmailIdentity) {
+      toast.info("Définissez un mot de passe pour activer la connexion email");
+      navigate("/set-password");
+    } else {
+      navigate("/");
+    }
+    break;
+  default:
+    toast.error("Connexion Google incomplète. Réessayez.");
+    break;
+}
 
       } catch (e: any) {
         console.error(e);
@@ -283,9 +332,18 @@ const UserLogin = () => {
                   </button>
                 </div>
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                <LogInIcon className="mr-2 h-4 w-4" /> Se connecter
-              </Button>
+<Button type="submit" className="w-full" disabled={loading}>
+  <LogInIcon className="mr-2 h-4 w-4" /> Se connecter
+</Button>
+<div className="mt-2 text-right">
+  <button
+    type="button"
+    onClick={() => setForgotOpen(true)}
+    className="text-sm text-primary hover:underline"
+  >
+    Mot de passe oublié ?
+  </button>
+</div>
             </form>
 
             <div className="my-4 text-center text-sm text-muted-foreground">Ou</div>
@@ -318,6 +376,33 @@ const UserLogin = () => {
             </div>
           </CardContent>
         </Card>
+
+        <AlertDialog open={forgotOpen} onOpenChange={setForgotOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Réinitialiser le mot de passe</AlertDialogTitle>
+              <AlertDialogDescription>
+                Entrez votre adresse email et nous vous enverrons un lien de réinitialisation.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="forgot-email">Email</Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                placeholder="nom@exemple.com"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={resetSending}>Annuler</AlertDialogCancel>
+              <AlertDialogAction onClick={handleForgotPassword} disabled={resetSending}>
+                Envoyer le lien
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </main>
   );

@@ -19,6 +19,8 @@ import TestInterface from "./pages/TestInterface";
 import NotFound from "./pages/NotFound";
 import UserLogin from "./pages/UserLogin";
 import UserRegister from "./pages/UserRegister";
+import SetPassword from "./pages/SetPassword";
+import PasswordReset from "./pages/PasswordReset";
 
 const queryClient = new QueryClient();
 
@@ -41,9 +43,11 @@ const App = () => (
                     <Route path="/pharmacy-creation" element={<PharmacyCreation />} />
                     <Route path="/pharmacy-connection" element={<PharmacyConnection />} />
                     <Route path="/pharmacy-login" element={<PharmacyLogin />} />
-                    <Route path="/user-login" element={<UserLogin />} />
-                    <Route path="/user-register" element={<UserRegister />} />
-                    <Route path="/test-interface" element={<TestInterface />} />
+<Route path="/user-login" element={<UserLogin />} />
+<Route path="/user-register" element={<UserRegister />} />
+<Route path="/set-password" element={<SetPassword />} />
+<Route path="/password-reset" element={<PasswordReset />} />
+<Route path="/test-interface" element={<TestInterface />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </BrowserRouter>
