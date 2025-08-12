@@ -147,7 +147,11 @@ const handleForgotPassword = async () => {
         const hashErr = hash?.get("error") || hash?.get("error_description");
         const oauthError = searchErr || hashErr;
         if (oauthError) {
-          toast.error(decodeURIComponent(oauthError));
+          const decoded = decodeURIComponent(oauthError);
+          const friendly = decoded.includes('server_error')
+            ? "Échec de l'authentification Google (server_error). Réessayez ou créez un compte par email."
+            : decoded;
+          toast.error(friendly);
           // Nettoyer l'URL pour éviter de réafficher le message au refresh
           url.searchParams.delete("error");
           url.searchParams.delete("error_description");
@@ -263,7 +267,7 @@ switch (status) {
     return () => {
       mounted = false;
     };
-  }, [navigate]);
+  }, [navigate, connectedPharmacy?.id]);
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4 py-12">
@@ -362,7 +366,7 @@ switch (status) {
               Vous n'avez pas encore de compte ?{" "}
               <button
                 type="button"
-                onClick={handleGoogle}
+                onClick={() => navigate("/user-register")}
                 className="text-primary hover:underline"
               >
                 Créez-en-un
