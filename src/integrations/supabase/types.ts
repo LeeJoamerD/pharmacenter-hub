@@ -4480,6 +4480,10 @@ export type Database = {
         Args: { email: string; tenant_id: string }
         Returns: Json
       }
+      check_pharmacy_email_exists: {
+        Args: { email_to_check: string }
+        Returns: Json
+      }
       check_user_permission: {
         Args: { required_roles: string[] }
         Returns: boolean

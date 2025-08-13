@@ -316,24 +316,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Fonction connectPharmacy simplifiée - pour l'authentification email/password
+  // Fonction connectPharmacy - authentification avec Supabase Auth uniquement
   const connectPharmacy = async (email: string, password: string) => {
     try {
-      // Authentifier l'utilisateur
+      console.log('AUTH: Tentative de connexion pharmacie avec email:', email);
+      
+      // Vérifier d'abord que l'email existe dans les pharmacies
+      const { data: pharmacyCheck, error: checkError } = await supabase.rpc('check_pharmacy_email_exists', {
+        email_to_check: email
+      });
+
+      if (checkError) {
+        console.error('AUTH: Erreur vérification email pharmacie:', checkError);
+        return { error: new Error('Erreur lors de la vérification de l\'email') };
+      }
+
+      const result = pharmacyCheck as { exists: boolean; has_auth_account?: boolean; google_verified?: boolean };
+      
+      if (!result.exists) {
+        return { error: new Error('Aucune pharmacie trouvée avec cet email') };
+      }
+
+      if (!result.has_auth_account) {
+        return { error: new Error('Cette pharmacie n\'a pas encore de compte d\'authentification configuré') };
+      }
+
+      if (!result.google_verified) {
+        return { error: new Error('Cette pharmacie doit d\'abord valider son compte via Google OAuth') };
+      }
+
+      // Authentifier avec Supabase Auth (pas les mots de passe dans la table pharmacies)
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (authError || !authData.user) {
+        console.error('AUTH: Erreur authentification Supabase:', authError);
         return { error: new Error('Email ou mot de passe incorrect') };
       }
 
-      // Les données seront récupérées automatiquement par fetchUserData
-      // via le listener onAuthStateChange
+      console.log('AUTH: Connexion pharmacie réussie');
+      
+      // Les données (personnel, pharmacie) seront récupérées automatiquement 
+      // par fetchUserData via le listener onAuthStateChange
       
       return { error: null };
     } catch (error) {
+      console.error('AUTH: Exception connectPharmacy:', error);
       return { error: error as Error };
     }
   };

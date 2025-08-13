@@ -15,6 +15,8 @@ import PharmacyRegistration from "./pages/PharmacyRegistration";
 import PharmacyCreation from "./pages/PharmacyCreation";
 import PharmacyConnection from "./pages/PharmacyConnection";
 import PharmacyLogin from "./pages/PharmacyLogin";
+import PharmacyPasswordReset from "./pages/PharmacyPasswordReset";
+import PharmacySetPassword from "./pages/PharmacySetPassword";
 import TestInterface from "./pages/TestInterface";
 import NotFound from "./pages/NotFound";
 import UserLogin from "./pages/UserLogin";
@@ -43,11 +45,13 @@ const App = () => (
                     <Route path="/pharmacy-creation" element={<PharmacyCreation />} />
                     <Route path="/pharmacy-connection" element={<PharmacyConnection />} />
                     <Route path="/pharmacy-login" element={<PharmacyLogin />} />
-<Route path="/user-login" element={<UserLogin />} />
-<Route path="/user-register" element={<UserRegister />} />
-<Route path="/set-password" element={<SetPassword />} />
-<Route path="/password-reset" element={<PasswordReset />} />
-<Route path="/test-interface" element={<TestInterface />} />
+                    <Route path="/pharmacy-password-reset" element={<PharmacyPasswordReset />} />
+                    <Route path="/pharmacy-set-password" element={<PharmacySetPassword />} />
+                    <Route path="/user-login" element={<UserLogin />} />
+                    <Route path="/user-register" element={<UserRegister />} />
+                    <Route path="/set-password" element={<SetPassword />} />
+                    <Route path="/password-reset" element={<PasswordReset />} />
+                    <Route path="/test-interface" element={<TestInterface />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </BrowserRouter>

@@ -39,14 +39,14 @@ export function Hero() {
     return () => subscription.unsubscribe();
   }, [pharmacy, connectedPharmacy]);
 
-  const handleCreatePharmacy = async () => {
-    console.log('HERO: Lancement de l\'authentification Google pour création pharmacie...');
+  const handlePharmacyAuthentication = async () => {
+    console.log('HERO: Lancement de l\'authentification Google pour pharmacie...');
     
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/pharmacy-creation`,
+          redirectTo: `${window.location.origin}/`,
           queryParams: {
             access_type: 'offline',
             prompt: 'select_account'
@@ -58,13 +58,52 @@ export function Hero() {
         console.error('HERO: Erreur authentification Google:', error);
         alert('Erreur lors de l\'authentification: ' + error.message);
       } else {
-        console.log('HERO: Authentification Google lancée pour création pharmacie');
+        console.log('HERO: Authentification Google lancée');
       }
     } catch (error) {
       console.error('HERO: Exception authentification Google:', error);
       alert('Erreur inattendue lors de l\'authentification');
     }
   };
+
+  // Vérifier l'email pharmacie après OAuth et rediriger
+  useEffect(() => {
+    const checkPharmacyEmailAndRedirect = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasOAuthReturn = urlParams.has('code') || urlParams.has('access_token');
+      
+      if (hasOAuthReturn && currentUser?.email) {
+        console.log('HERO: Retour OAuth détecté, vérification email pharmacie...');
+        
+        try {
+          const { data, error } = await supabase.rpc('check_pharmacy_email_exists', {
+            email_to_check: currentUser.email
+          });
+
+          if (error) {
+            console.error('HERO: Erreur vérification email pharmacie:', error);
+            return;
+          }
+
+          const result = data as { exists: boolean; pharmacy_id?: string; google_verified?: boolean };
+          
+          if (result.exists) {
+            console.log('HERO: Pharmacie existante trouvée, redirection vers connexion...');
+            navigate(`/pharmacy-connection?email=${encodeURIComponent(currentUser.email)}&google_verified=true`);
+          } else {
+            console.log('HERO: Nouvelle pharmacie, redirection vers création...');
+            navigate('/pharmacy-creation');
+          }
+        } catch (error) {
+          console.error('HERO: Exception vérification email pharmacie:', error);
+        }
+      }
+    };
+
+    if (currentUser) {
+      checkPharmacyEmailAndRedirect();
+    }
+  }, [currentUser, navigate]);
 
   const handlePharmacyDisconnect = () => {
     // Si c'est une session pharmacie, utiliser disconnectPharmacy
@@ -171,7 +210,7 @@ export function Hero() {
                   size="lg" 
                   className="button-hover-effect bg-primary hover:bg-primary/90 text-white"
                   disabled={loading}
-                  onClick={handleCreatePharmacy}
+                  onClick={handlePharmacyAuthentication}
                 >
                   <Building2 size={16} className="mr-2" />
                   {loading ? 'Chargement...' : 'Connecter votre Pharmacie'}
