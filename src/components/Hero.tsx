@@ -41,6 +41,7 @@ export function Hero() {
 
   const handlePharmacyAuthentication = async () => {
     console.log('HERO: Lancement de l\'authentification Google pour pharmacie...');
+    setLoading(true);
     
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -63,6 +64,8 @@ export function Hero() {
     } catch (error) {
       console.error('HERO: Exception authentification Google:', error);
       alert('Erreur inattendue lors de l\'authentification');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -92,7 +95,21 @@ export function Hero() {
             navigate(`/pharmacy-connection?email=${encodeURIComponent(currentUser.email)}&google_verified=true`);
           } else {
             console.log('HERO: Nouvelle pharmacie, redirection vers création...');
-            navigate('/pharmacy-creation');
+            // Extraire les données Google pour pré-remplissage
+            const metadata = currentUser.user_metadata || {};
+            const firstName = metadata.given_name || metadata.first_name || '';
+            const lastName = metadata.family_name || metadata.last_name || metadata.surname || '';
+            const phone = currentUser.phone || metadata.phone_number || metadata.phone || '';
+            
+            const params = new URLSearchParams({
+              email: currentUser.email,
+              prenoms: firstName,
+              noms: lastName,
+              telephone: phone,
+              google_verified: 'true'
+            });
+            
+            navigate(`/pharmacy-creation?${params.toString()}`);
           }
         } catch (error) {
           console.error('HERO: Exception vérification email pharmacie:', error);
@@ -117,62 +134,6 @@ export function Hero() {
     navigate('/');
   };
 
-  const handlePharmacyConnection = async () => {
-    console.log('HERO: Clic sur le bouton Connecter votre Pharmacie');
-    console.log('HERO: Utilisateur actuel:', currentUser ? currentUser.email : 'aucun');
-    
-    // Si l'utilisateur est connecté et a une pharmacie, créer directement une session
-    if (currentUser && pharmacy) {
-      console.log('HERO: Utilisateur connecté avec pharmacie, création session...');
-      setLoading(true);
-      
-      try {
-        const { error } = await createPharmacySession();
-        
-        if (error) {
-          console.error('HERO: Erreur création session:', error);
-          alert('Erreur lors de la création de la session: ' + error.message);
-        } else {
-          console.log('HERO: Session pharmacie créée avec succès');
-        }
-      } catch (error) {
-        console.error('HERO: Exception création session:', error);
-        alert('Erreur inattendue lors de la création de la session');
-      } finally {
-        setLoading(false);
-      }
-    }
-    // Si l'utilisateur n'est pas connecté, lancer l'authentification Google
-    else if (!currentUser) {
-      console.log('HERO: Lancement de l\'authentification Google...');
-      setLoading(true);
-      
-      try {
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: `${window.location.origin}/`
-          }
-        });
-
-        if (error) {
-          console.error('HERO: Erreur authentification Google:', error);
-          alert('Erreur lors de l\'authentification: ' + error.message);
-        } else {
-          console.log('HERO: Authentification Google lancée');
-        }
-      } catch (error) {
-        console.error('HERO: Exception authentification Google:', error);
-        alert('Erreur inattendue lors de l\'authentification');
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      // Si connecté mais pas de pharmacie, rediriger vers la connexion
-      console.log('HERO: Utilisateur connecté sans pharmacie, redirection connexion');
-      navigate('/pharmacy-connection');
-    }
-  };
 
   return (
     <section className="pt-32 pb-20 relative overflow-hidden">

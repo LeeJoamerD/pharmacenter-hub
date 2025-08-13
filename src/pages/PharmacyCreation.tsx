@@ -192,41 +192,29 @@ export default function PharmacyCreation() {
     console.log('PHARMACY-CREATION: Préremplissage terminé. Champs remplis:', Array.from(filledFields));
   };
 
-  // Fonction d'authentification Google
-  const handleGoogleAuth = async () => {
-    try {
-      setIsLoading(true);
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin + window.location.pathname,
-        }
-      });
 
-      if (error) {
-        console.error('Erreur Google Auth:', error);
-        toast({
-          title: "Erreur",
-          description: "Erreur lors de l'authentification Google",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Erreur Google Auth:', error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de l'authentification Google",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Préremplir quand l'utilisateur se connecte avec Google
+  // Préremplir depuis les paramètres URL ou Google
   useEffect(() => {
-    if (user?.email) {
+    const params = new URLSearchParams(window.location.search);
+    const emailParam = params.get('email');
+    const prenomsParam = params.get('prenoms');
+    const nomsParam = params.get('noms');
+    const telephoneParam = params.get('telephone');
+    const googleVerified = params.get('google_verified') === 'true';
+
+    if (emailParam && googleVerified) {
+      console.log('PHARMACY-CREATION: Pré-remplissage depuis paramètres URL...');
+      setIsAuthenticated(true);
+      setFormData(prev => ({
+        ...prev,
+        email: emailParam || '',
+        prenoms: prenomsParam || '',
+        noms: nomsParam || '',
+        telephone: telephoneParam || '',
+        telephone_appel: telephoneParam || ''
+      }));
+      setGoogleDataLoaded(true);
+    } else if (user?.email) {
       console.log('PHARMACY-CREATION: Utilisateur Google détecté, préremplissage...');
       setIsAuthenticated(true);
       fillFormWithGoogleData(user);
@@ -409,44 +397,15 @@ export default function PharmacyCreation() {
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {/* Google Authentication Section */}
-              <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center mt-1">
-                    <Shield className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-sm text-foreground mb-2">
-                      Authentification sécurisée
-                    </h3>
-                    <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-                      Nous utilisons l'authentification Google pour garantir la sécurité de votre compte. 
-                      Vos données seront automatiquement récupérées et certains champs pré-remplis.
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleGoogleAuth}
-                      disabled={isLoading}
-                      className="w-full bg-white hover:bg-gray-50 border-gray-300 text-gray-700 font-medium"
-                    >
-                      {isLoading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Mail className="mr-2 h-4 w-4" />
-                      )}
-                      {isAuthenticated ? "Changer de compte Google" : "Continuer avec Google"}
-                    </Button>
-                    {isAuthenticated && (
-                      <div className="mt-2 flex items-center gap-2 text-xs text-green-600">
-                        <CheckCircle className="w-3 h-3" />
-                        <span>Authentifié avec succès</span>
-                      </div>
-                    )}
+              {/* Status d'authentification simplifié */}
+              {isAuthenticated && (
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-2 text-green-700">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-medium">Authentifié avec Google</span>
                   </div>
                 </div>
-              </div>
+              )}
               
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Informations de la pharmacie */}
