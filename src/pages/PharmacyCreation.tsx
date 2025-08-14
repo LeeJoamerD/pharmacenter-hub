@@ -4,41 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Building2, Phone, MapPin, Mail, Lock, Eye, EyeOff, Check, X, Shield, Loader2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Building2, Phone, MapPin, Mail, Shield, Loader2, CheckCircle } from 'lucide-react';
 import { FadeIn } from '@/components/FadeIn';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import type { User } from '@supabase/supabase-js';
-
-interface PasswordValidation {
-  minLength: boolean;
-  hasUppercase: boolean;
-  hasLowercase: boolean;
-  hasNumber: boolean;
-  hasSpecial: boolean;
-}
-
-interface PharmacyCreationResult {
-  success: boolean;
-  pharmacy_id?: string;
-  error?: string;
-  message?: string;
-}
-
-interface AdminCreationResult {
-  success: boolean;
-  personnel_id?: string;
-  error?: string;
-  message?: string;
-}
 
 export default function PharmacyCreation() {
   const navigate = useNavigate();
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
 
-  // États du formulaire
+  // États du formulaire simplifié
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -54,23 +31,12 @@ export default function PharmacyCreation() {
     noms: '',
     prenoms: '',
     reference_agent: '',
-    telephone: '',
-    password: '',
-    confirmPassword: ''
+    telephone: ''
   });
   
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [googleDataLoaded, setGoogleDataLoaded] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [passwordValidation, setPasswordValidation] = useState<PasswordValidation>({
-    minLength: false,
-    hasUppercase: false,
-    hasLowercase: false,
-    hasNumber: false,
-    hasSpecial: false
-  });
 
   // Fonction pour extraire et formater les données Google
   const extractGoogleData = (user: any) => {
@@ -79,53 +45,25 @@ export default function PharmacyCreation() {
       return null;
     }
     
-    console.log('PHARMACY-CREATION: Extraction des données Google - Utilisateur complet:', user);
+    console.log('PHARMACY-CREATION: Extraction des données Google:', user);
     
     const metadata = user.user_metadata || {};
-    const appMetadata = user.app_metadata || {};
     
-    // Log détaillé de toutes les sources possibles
-    console.log('PHARMACY-CREATION: Sources de données:', {
-      email: user.email,
-      phone: user.phone,
-      user_metadata: metadata,
-      app_metadata: appMetadata,
-      identities: user.identities
-    });
-    
-    // Essayer d'extraire depuis les identités Google si disponibles
-    let googleIdentity = null;
-    if (user.identities && user.identities.length > 0) {
-      googleIdentity = user.identities.find((identity: any) => identity.provider === 'google');
-      console.log('PHARMACY-CREATION: Identité Google trouvée:', googleIdentity);
-    }
-    
-    // Différentes sources pour les données avec priorité
-    const email = user.email || metadata.email || (googleIdentity?.identity_data?.email);
-    const fullName = metadata.full_name || metadata.name || appMetadata.full_name || (googleIdentity?.identity_data?.name) || '';
-    const firstName = metadata.given_name || metadata.first_name || (googleIdentity?.identity_data?.given_name) || '';
-    const lastName = metadata.family_name || metadata.last_name || metadata.surname || (googleIdentity?.identity_data?.family_name) || '';
-    const phone = user.phone || metadata.phone_number || metadata.phone || (googleIdentity?.identity_data?.phone_number) || '';
-    
-    // Si pas de prénom/nom séparés, essayer de les extraire du nom complet
-    let extractedFirstName = firstName;
-    let extractedLastName = lastName;
-    
-    if (!firstName && !lastName && fullName) {
-      const nameParts = fullName.trim().split(' ');
-      extractedFirstName = nameParts[0] || '';
-      extractedLastName = nameParts.slice(1).join(' ') || '';
-    }
+    // Différentes sources pour les données
+    const email = user.email || metadata.email;
+    const firstName = metadata.given_name || metadata.first_name || '';
+    const lastName = metadata.family_name || metadata.last_name || '';
+    const phone = user.phone || metadata.phone_number || metadata.phone || '';
     
     const googleData = {
       email: email || '',
-      prenoms: extractedFirstName || '',
-      noms: extractedLastName || '',
+      prenoms: firstName || '',
+      noms: lastName || '',
       telephone_appel: phone || '',
       telephone: phone || ''
     };
     
-    console.log('PHARMACY-CREATION: Données Google extraites avec succès:', googleData);
+    console.log('PHARMACY-CREATION: Données Google extraites:', googleData);
     return googleData;
   };
 
@@ -148,50 +86,38 @@ export default function PharmacyCreation() {
     setFormData(prev => {
       const newData = { ...prev };
       
-      // Email - préremplir si disponible (même si déjà rempli)
       if (googleData.email) {
         newData.email = googleData.email;
         filledFields.add('email');
-        console.log('PHARMACY-CREATION: Email prérempli:', googleData.email);
       }
       
-      // Prénoms - préremplir si disponible
       if (googleData.prenoms) {
         newData.prenoms = googleData.prenoms;
         filledFields.add('prenoms');
-        console.log('PHARMACY-CREATION: Prénoms préremplis:', googleData.prenoms);
       }
       
-      // Noms - préremplir si disponible
       if (googleData.noms) {
         newData.noms = googleData.noms;
         filledFields.add('noms');
-        console.log('PHARMACY-CREATION: Noms préremplis:', googleData.noms);
       }
       
-      // Téléphone pharmacie - préremplir si disponible
       if (googleData.telephone_appel) {
         newData.telephone_appel = googleData.telephone_appel;
         filledFields.add('telephone_appel');
-        console.log('PHARMACY-CREATION: Téléphone pharmacie prérempli:', googleData.telephone_appel);
       }
       
-      // Téléphone personnel - préremplir si disponible
       if (googleData.telephone) {
         newData.telephone = googleData.telephone;
         filledFields.add('telephone');
-        console.log('PHARMACY-CREATION: Téléphone personnel prérempli:', googleData.telephone);
       }
       
-      console.log('PHARMACY-CREATION: FormData final après préremplissage:', newData);
       return newData;
     });
     
     setGoogleFilledFields(filledFields);
     setGoogleDataLoaded(true);
-    console.log('PHARMACY-CREATION: Préremplissage terminé. Champs remplis:', Array.from(filledFields));
+    console.log('PHARMACY-CREATION: Préremplissage terminé');
   };
-
 
   // Préremplir depuis les paramètres URL ou Google
   useEffect(() => {
@@ -223,28 +149,9 @@ export default function PharmacyCreation() {
     }
   }, [user]);
 
-  // Validation du mot de passe en temps réel
-  const validatePassword = (password: string): PasswordValidation => {
-    return {
-      minLength: password.length >= 8,
-      hasUppercase: /[A-Z]/.test(password),
-      hasLowercase: /[a-z]/.test(password),
-      hasNumber: /\d/.test(password),
-      hasSpecial: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
-    };
-  };
-
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Validation spéciale pour le mot de passe
-    if (field === 'password') {
-      setPasswordValidation(validatePassword(value));
-    }
   };
-
-  const isPasswordValid = Object.values(passwordValidation).every(Boolean);
-  const passwordsMatch = formData.password === formData.confirmPassword;
 
   // Déterminer si un champ est prérempli par Google
   const isFieldFromGoogle = (field: string) => {
@@ -254,24 +161,6 @@ export default function PharmacyCreation() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!isPasswordValid) {
-      toast({
-        title: "Mot de passe invalide",
-        description: "Veuillez respecter tous les critères de sécurité",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!passwordsMatch) {
-      toast({
-        title: "Mots de passe différents",
-        description: "Les mots de passe ne correspondent pas",
-        variant: "destructive"
-      });
-      return;
-    }
-
     if (!user) {
       toast({
         title: "Authentification requise",
@@ -286,8 +175,8 @@ export default function PharmacyCreation() {
     try {
       console.log('PHARMACY-CREATION: Début de la création avec utilisateur Google:', user.email);
 
-      // Étape 1: Créer la pharmacie en utilisant l'utilisateur Google déjà connecté
-      const { data: pharmacyData, error: pharmacyError } = await supabase.rpc('create_pharmacy_for_user', {
+      // Utiliser la fonction RPC unifiée register_pharmacy_with_admin
+      const { data, error } = await supabase.rpc('register_pharmacy_with_admin', {
         pharmacy_data: {
           name: formData.name,
           code: formData.code || `PH${Date.now()}`,
@@ -300,51 +189,33 @@ export default function PharmacyCreation() {
           email: formData.email,
           departement: formData.departement,
           type: formData.type,
-          region: 'Brazzaville',
-          pays: 'république du Congo'
-        }
-      });
-
-      const typedPharmacyData = pharmacyData as unknown as PharmacyCreationResult;
-
-      if (pharmacyError || !typedPharmacyData?.success) {
-        console.error('Erreur lors de la création de la pharmacie:', pharmacyError);
-        toast({
-          title: "Erreur",
-          description: typedPharmacyData?.error || pharmacyError?.message || "Erreur lors de la création de la pharmacie",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('PHARMACY-CREATION: Pharmacie créée avec succès, ID:', typedPharmacyData.pharmacy_id);
-
-      // Étape 2: Lier l'utilisateur comme admin de la pharmacie
-      const { data, error } = await supabase.rpc('create_admin_personnel', {
-        pharmacy_id: typedPharmacyData.pharmacy_id,
+          region: 'République du Congo',
+          pays: 'République du Congo'
+        },
         admin_data: {
           noms: formData.noms,
           prenoms: formData.prenoms,
-          reference_agent: formData.reference_agent,
+          reference_agent: formData.reference_agent || `AG-${Date.now()}`,
           telephone: formData.telephone
-        }
+        },
+        admin_email: user.email,
+        admin_password: '' // Pas besoin de mot de passe pour les utilisateurs Google
       });
 
-      const typedAdminData = data as unknown as AdminCreationResult;
-
-      if (error || !typedAdminData?.success) {
-        console.error('Erreur lors de la création de l\'admin:', error);
+      const result = data as any;
+      if (error || !result?.success) {
+        console.error('PHARMACY-CREATION: Erreur lors de la création:', error);
         toast({
           title: "Erreur",
-          description: typedAdminData?.error || error?.message || "Erreur lors de la création de l'administrateur",
+          description: result?.error || error?.message || "Erreur lors de la création de la pharmacie",
           variant: "destructive",
         });
         return;
       }
 
-      console.log('PHARMACY-CREATION: Admin créé avec succès, ID:', typedAdminData.personnel_id);
+      console.log('PHARMACY-CREATION: Pharmacie et admin créés avec succès:', result);
 
-      // Succès - l'utilisateur reste connecté
+      // Succès complet
       toast({
         title: "Pharmacie créée avec succès",
         description: `Bienvenue ${formData.name} ! Vous pouvez maintenant accéder à votre tableau de bord.`,
@@ -352,11 +223,11 @@ export default function PharmacyCreation() {
 
       console.log('PHARMACY-CREATION: Redirection vers le tableau de bord');
       
-      // Rediriger vers le tableau de bord - l'utilisateur reste connecté
+      // Rediriger vers le tableau de bord
       navigate('/tableau-de-bord');
       
     } catch (error) {
-      console.error('Erreur lors de la création:', error);
+      console.error('PHARMACY-CREATION: Exception lors de la création:', error);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue lors de la création",
@@ -366,12 +237,6 @@ export default function PharmacyCreation() {
       setIsLoading(false);
     }
   };
-
-  const ValidationIcon = ({ isValid }: { isValid: boolean }) => (
-    isValid ? 
-      <Check className="w-4 h-4 text-green-500" /> : 
-      <X className="w-4 h-4 text-red-500" />
-  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 py-8 px-4">
@@ -397,7 +262,7 @@ export default function PharmacyCreation() {
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {/* Status d'authentification simplifié */}
+              {/* Status d'authentification */}
               {isAuthenticated && (
                 <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                   <div className="flex items-center gap-2 text-green-700">
@@ -505,7 +370,7 @@ export default function PharmacyCreation() {
                   </div>
                 </div>
 
-                {/* Informations de connexion */}
+                {/* Informations de connexion simplifiées */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-foreground">Informations de connexion</h3>
                   
@@ -528,103 +393,15 @@ export default function PharmacyCreation() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="password" className="text-sm font-medium">
-                      Mot de passe *
-                    </Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                       <Input
-                         id="password"
-                         type={showPassword ? "text" : "password"}
-                         placeholder="••••••••"
-                         value={formData.password}
-                         onChange={(e) => handleInputChange('password', e.target.value)}
-                         className="pl-10 pr-10 h-11"
-                         disabled={!isAuthenticated}
-                         required
-                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
+                  {/* Section sécurité automatique */}
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <Shield className="w-5 h-5" />
+                      <span className="font-medium">Sécurité automatique</span>
                     </div>
-                    
-                    {/* Validation du mot de passe */}
-                    {formData.password && (
-                      <div className="mt-2 p-3 bg-muted/50 rounded-lg space-y-2">
-                        <div className="text-sm font-medium text-foreground">Critères de sécurité :</div>
-                        <div className="space-y-1">
-                          <div className="flex items-center space-x-2 text-sm">
-                            <ValidationIcon isValid={passwordValidation.minLength} />
-                            <span className={passwordValidation.minLength ? "text-green-700" : "text-red-700"}>
-                              Au moins 8 caractères
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2 text-sm">
-                            <ValidationIcon isValid={passwordValidation.hasUppercase} />
-                            <span className={passwordValidation.hasUppercase ? "text-green-700" : "text-red-700"}>
-                              Une majuscule
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2 text-sm">
-                            <ValidationIcon isValid={passwordValidation.hasLowercase} />
-                            <span className={passwordValidation.hasLowercase ? "text-green-700" : "text-red-700"}>
-                              Une minuscule
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2 text-sm">
-                            <ValidationIcon isValid={passwordValidation.hasNumber} />
-                            <span className={passwordValidation.hasNumber ? "text-green-700" : "text-red-700"}>
-                              Un chiffre
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2 text-sm">
-                            <ValidationIcon isValid={passwordValidation.hasSpecial} />
-                            <span className={passwordValidation.hasSpecial ? "text-green-700" : "text-red-700"}>
-                              Un caractère spécial
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-sm font-medium">
-                      Confirmation du mot de passe *
-                    </Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                       <Input
-                         id="confirmPassword"
-                         type={showConfirmPassword ? "text" : "password"}
-                         placeholder="••••••••"
-                         value={formData.confirmPassword}
-                         onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                         className="pl-10 pr-10 h-11"
-                         disabled={!isAuthenticated}
-                         required
-                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    {formData.confirmPassword && (
-                      <div className="flex items-center space-x-2 text-sm mt-1">
-                        <ValidationIcon isValid={passwordsMatch} />
-                        <span className={passwordsMatch ? "text-green-700" : "text-red-700"}>
-                          Les mots de passe correspondent
-                        </span>
-                      </div>
-                    )}
+                    <p className="text-sm text-blue-600 mt-1">
+                      Votre authentification Google sécurise automatiquement votre compte.
+                    </p>
                   </div>
                 </div>
 
@@ -705,10 +482,21 @@ export default function PharmacyCreation() {
 
                 <Button
                   type="submit"
-                  className="w-full h-11 font-medium"
-                  disabled={isLoading || !isPasswordValid || !passwordsMatch || !isAuthenticated}
+                  size="lg"
+                  className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90"
+                  disabled={!isAuthenticated || isLoading}
                 >
-                  {isLoading ? "Création en cours..." : "Créer ma pharmacie"}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Création en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Building2 className="mr-2 h-5 w-5" />
+                      Créer ma pharmacie
+                    </>
+                  )}
                 </Button>
               </form>
 

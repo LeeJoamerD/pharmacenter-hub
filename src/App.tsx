@@ -11,7 +11,7 @@ import { SystemSettingsProvider } from "@/contexts/SystemSettingsContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Tableau de bord";
-import PharmacyRegistration from "./pages/PharmacyRegistration";
+
 import PharmacyCreation from "./pages/PharmacyCreation";
 import PharmacyConnection from "./pages/PharmacyConnection";
 import PharmacyLogin from "./pages/PharmacyLogin";
@@ -41,7 +41,7 @@ const App = () => (
                     <Route path="/" element={<Index />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/tableau-de-bord" element={<Dashboard />} />
-                    <Route path="/pharmacy-registration" element={<PharmacyRegistration />} />
+                    
                     <Route path="/pharmacy-creation" element={<PharmacyCreation />} />
                     <Route path="/pharmacy-connection" element={<PharmacyConnection />} />
                     <Route path="/pharmacy-login" element={<PharmacyLogin />} />

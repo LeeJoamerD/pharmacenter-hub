@@ -107,35 +107,21 @@ export function Hero() {
           const result = data as { exists: boolean; pharmacy_id?: string; google_verified?: boolean };
           console.log('HERO: Résultat vérification:', result);
           
-          // Construire les URLs de redirection AVANT la déconnexion
-          let redirectUrl: string;
+          // NOUVELLE APPROCHE : Rediriger vers pharmacy-creation pour TOUS les cas
+          // L'utilisateur reste connecté et les données sont préremplies
+          console.log('HERO: Redirection vers pharmacy-creation sans déconnexion...');
           
-          if (result.exists) {
-            console.log('HERO: Pharmacie existante trouvée, préparation redirection vers connexion...');
-            redirectUrl = `/pharmacy-connection?email=${encodeURIComponent(userEmail)}&google_verified=true`;
-          } else {
-            console.log('HERO: Nouvelle pharmacie, préparation redirection vers création...');
-            const params = new URLSearchParams({
-              email: userEmail,
-              prenoms: firstName,
-              noms: lastName,
-              telephone: phone,
-              google_verified: 'true'
-            });
-            redirectUrl = `/pharmacy-creation?${params.toString()}`;
-          }
+          const params = new URLSearchParams({
+            email: userEmail,
+            prenoms: firstName,
+            noms: lastName,
+            telephone: phone,
+            google_verified: 'true'
+          });
           
-          console.log('HERO: URL de redirection construite:', redirectUrl);
-          
-          // Déconnecter l'utilisateur
-          console.log('HERO: Déconnexion utilisateur...');
-          await supabase.auth.signOut();
-          
-          // Utiliser setTimeout pour permettre à la déconnexion de se terminer
-          setTimeout(() => {
-            console.log('HERO: Navigation vers:', redirectUrl);
-            navigate(redirectUrl);
-          }, 100);
+          const redirectUrl = `/pharmacy-creation?${params.toString()}`;
+          console.log('HERO: Navigation directe vers:', redirectUrl);
+          navigate(redirectUrl);
           
         } catch (error) {
           console.error('HERO: Exception vérification email pharmacie:', error);
