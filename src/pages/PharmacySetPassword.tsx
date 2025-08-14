@@ -20,41 +20,74 @@ export default function PharmacySetPassword() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const accessToken = searchParams.get('access_token');
-  const refreshToken = searchParams.get('refresh_token');
+  const [isValidSession, setIsValidSession] = useState(false);
 
   useEffect(() => {
-    // Vérifier si nous avons les tokens nécessaires
-    if (!accessToken || !refreshToken) {
-      toast({
-        title: "Lien invalide",
-        description: "Le lien de réinitialisation est invalide ou a expiré",
-        variant: "destructive"
-      });
-      navigate('/pharmacy-password-reset');
-      return;
-    }
+    const handlePasswordReset = async () => {
+      try {
+        // Supabase gère automatiquement les tokens de réinitialisation dans l'URL
+        // Nous devons juste vérifier si l'utilisateur est authentifié
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Erreur lors de la récupération de la session:', error);
+          toast({
+            title: "Lien invalide",
+            description: "Le lien de réinitialisation est invalide ou a expiré",
+            variant: "destructive"
+          });
+          navigate('/pharmacy-password-reset');
+          return;
+        }
 
-    // Configurer la session avec les tokens
-    const setSession = async () => {
-      const { error } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken
-      });
+        if (!session) {
+          // Essayer de récupérer la session à partir des paramètres d'URL
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          const type = hashParams.get('type');
 
-      if (error) {
-        console.error('Erreur lors de la configuration de la session:', error);
+          if (type === 'recovery' && accessToken && refreshToken) {
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+
+            if (sessionError) {
+              console.error('Erreur lors de la configuration de la session:', sessionError);
+              toast({
+                title: "Session invalide",
+                description: "Impossible de valider votre session. Veuillez réessayer.",
+                variant: "destructive"
+              });
+              navigate('/pharmacy-password-reset');
+              return;
+            }
+            setIsValidSession(true);
+          } else {
+            toast({
+              title: "Lien invalide",
+              description: "Le lien de réinitialisation est invalide ou a expiré",
+              variant: "destructive"
+            });
+            navigate('/pharmacy-password-reset');
+          }
+        } else {
+          setIsValidSession(true);
+        }
+      } catch (error) {
+        console.error('Erreur lors de la gestion du reset:', error);
         toast({
-          title: "Session invalide",
-          description: "Impossible de valider votre session. Veuillez réessayer.",
+          title: "Erreur",
+          description: "Une erreur est survenue lors de la validation du lien",
           variant: "destructive"
         });
         navigate('/pharmacy-password-reset');
       }
     };
 
-    setSession();
-  }, [accessToken, refreshToken, navigate, toast]);
+    handlePasswordReset();
+  }, [navigate, toast]);
 
   const validatePasswords = () => {
     if (password.length < 8) {
@@ -117,6 +150,29 @@ export default function PharmacySetPassword() {
   };
 
   const passwordValidation = validatePasswords();
+
+  // Afficher un indicateur de chargement si la session n'est pas encore validée
+  if (!isValidSession) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 flex items-center justify-center p-4">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+        </div>
+
+        <FadeIn className="w-full max-w-md relative z-10">
+          <Card className="shadow-xl border-0 bg-card/50 backdrop-blur-sm">
+            <CardContent className="py-8 text-center">
+              <div className="mx-auto w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
+                <Building2 className="w-8 h-8 text-primary animate-pulse" />
+              </div>
+              <p className="text-muted-foreground">Validation du lien de réinitialisation...</p>
+            </CardContent>
+          </Card>
+        </FadeIn>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 flex items-center justify-center p-4">
