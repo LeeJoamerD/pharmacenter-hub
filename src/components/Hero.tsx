@@ -107,21 +107,35 @@ export function Hero() {
           const result = data as { exists: boolean; pharmacy_id?: string; google_verified?: boolean };
           console.log('HERO: Résultat vérification:', result);
           
-          // NOUVELLE APPROCHE : Rediriger vers pharmacy-creation pour TOUS les cas
-          // L'utilisateur reste connecté et les données sont préremplies
-          console.log('HERO: Redirection vers pharmacy-creation sans déconnexion...');
-          
-          const params = new URLSearchParams({
-            email: userEmail,
-            prenoms: firstName,
-            noms: lastName,
-            telephone: phone,
-            google_verified: 'true'
-          });
-          
-          const redirectUrl = `/pharmacy-creation?${params.toString()}`;
-          console.log('HERO: Navigation directe vers:', redirectUrl);
-          navigate(redirectUrl);
+          // LOGIQUE CONDITIONNELLE : Rediriger selon l'existence de l'email
+          if (result.exists) {
+            // Email existe -> Redirection vers pharmacy-connection
+            console.log('HERO: Email existe, redirection vers pharmacy-connection...');
+            
+            const params = new URLSearchParams({
+              email: userEmail,
+              google_verified: 'true'
+            });
+            
+            const redirectUrl = `/pharmacy-connection?${params.toString()}`;
+            console.log('HERO: Navigation vers pharmacy-connection:', redirectUrl);
+            navigate(redirectUrl);
+          } else {
+            // Email n'existe pas -> Redirection vers pharmacy-creation
+            console.log('HERO: Email n\'existe pas, redirection vers pharmacy-creation...');
+            
+            const params = new URLSearchParams({
+              email: userEmail,
+              prenoms: firstName,
+              noms: lastName,
+              telephone: phone,
+              google_verified: 'true'
+            });
+            
+            const redirectUrl = `/pharmacy-creation?${params.toString()}`;
+            console.log('HERO: Navigation vers pharmacy-creation:', redirectUrl);
+            navigate(redirectUrl);
+          }
           
         } catch (error) {
           console.error('HERO: Exception vérification email pharmacie:', error);
