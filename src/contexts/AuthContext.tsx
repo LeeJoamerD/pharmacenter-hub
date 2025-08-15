@@ -308,7 +308,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error: new Error('Erreur lors de la vérification de l\'email') };
       }
 
-      const result = pharmacyCheck as { exists: boolean; has_auth_account?: boolean; google_verified?: boolean };
+      const result = pharmacyCheck as { exists: boolean; pharmacy_id?: string; has_auth_account?: boolean; google_verified?: boolean };
       
       if (!result.exists) {
         return { error: new Error('Aucune pharmacie trouvée avec cet email') };
@@ -335,8 +335,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('AUTH: Connexion pharmacie réussie');
       
-      // Les données (personnel, pharmacie) seront récupérées automatiquement 
-      // par fetchUserData via le listener onAuthStateChange
+      // Récupérer les données de la pharmacie immédiatement après l'authentification
+      if (result.pharmacy_id) {
+        const { data: pharmacyData, error: pharmacyError } = await supabase
+          .from('pharmacies')
+          .select('*')
+          .eq('id', result.pharmacy_id)
+          .single();
+
+        if (pharmacyData && !pharmacyError) {
+          // Créer immédiatement une session pharmacie
+          const { data: sessionData, error: sessionError } = await supabase.rpc('create_pharmacy_session', {
+            p_pharmacy_id: pharmacyData.id,
+            p_ip_address: null,
+            p_user_agent: navigator.userAgent
+          });
+
+          if (sessionData && !sessionError) {
+            const sessionResult = sessionData as { session_token: string; expires_at: string };
+            
+            const connectedPharmacyData: ConnectedPharmacy = {
+              ...pharmacyData,
+              sessionToken: sessionResult.session_token
+            };
+
+            // Stocker la pharmacie connectée immédiatement
+            setConnectedPharmacy(connectedPharmacyData);
+            localStorage.setItem('pharmacy_session', JSON.stringify({
+              sessionToken: sessionResult.session_token,
+              expiresAt: sessionResult.expires_at
+            }));
+
+            console.log('AUTH: Session pharmacie créée avec succès');
+          } else {
+            console.warn('AUTH: Impossible de créer la session pharmacie:', sessionError);
+          }
+        }
+      }
+      
+      // Les données utilisateur seront récupérées par fetchUserData via le listener onAuthStateChange
       
       return { error: null };
     } catch (error) {

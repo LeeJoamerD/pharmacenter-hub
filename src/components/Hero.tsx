@@ -9,9 +9,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePharmacyConnection } from '@/hooks/usePharmacyConnection';
 
 export function Hero() {
   const { user, connectedPharmacy, pharmacy, disconnectPharmacy, createPharmacySession } = useAuth();
+  // Debug hook pour suivre l'état de connexion
+  usePharmacyConnection();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);

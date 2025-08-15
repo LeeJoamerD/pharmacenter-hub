@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -2665,7 +2665,6 @@ export type Database = {
           name: string
           niu: string | null
           numero_compte_bancaire: string | null
-          password: string | null
           pays: string | null
           phone: string | null
           photo_exterieur: string | null
@@ -2696,7 +2695,6 @@ export type Database = {
           name: string
           niu?: string | null
           numero_compte_bancaire?: string | null
-          password?: string | null
           pays?: string | null
           phone?: string | null
           photo_exterieur?: string | null
@@ -2727,7 +2725,6 @@ export type Database = {
           name?: string
           niu?: string | null
           numero_compte_bancaire?: string | null
-          password?: string | null
           pays?: string | null
           phone?: string | null
           photo_exterieur?: string | null
@@ -4456,7 +4453,7 @@ export type Database = {
     }
     Functions: {
       calculate_session_risk_score: {
-        Args: { ip_address: string; user_agent: string; personnel_id: string }
+        Args: { ip_address: string; personnel_id: string; user_agent: string }
         Returns: number
       }
       calculer_jours_restants_expiration: {
@@ -4465,15 +4462,15 @@ export type Database = {
       }
       check_cross_tenant_permission: {
         Args: {
-          source_tenant: string
-          target_tenant: string
-          table_name: string
           permission_type: string
+          source_tenant: string
+          table_name: string
+          target_tenant: string
         }
         Returns: boolean
       }
       check_google_verified: {
-        Args: { tenant_id: string; email: string }
+        Args: { email: string; tenant_id: string }
         Returns: Json
       }
       check_login_attempts: {
@@ -4497,11 +4494,11 @@ export type Database = {
         Returns: undefined
       }
       create_admin_personnel: {
-        Args: { pharmacy_id: string; admin_data: Json }
+        Args: { admin_data: Json; pharmacy_id: string }
         Returns: Json
       }
       create_personnel_for_user: {
-        Args: { pharmacy_id: string; data: Json }
+        Args: { data: Json; pharmacy_id: string }
         Returns: Json
       }
       create_pharmacy_for_user: {
@@ -4510,8 +4507,8 @@ export type Database = {
       }
       create_pharmacy_session: {
         Args: {
-          p_pharmacy_id: string
           p_ip_address?: string
+          p_pharmacy_id: string
           p_user_agent?: string
         }
         Returns: Json
@@ -4543,9 +4540,9 @@ export type Database = {
       log_sensitive_operation: {
         Args: {
           operation_type: string
-          table_name: string
           record_data: Json
           risk_level?: string
+          table_name: string
         }
         Returns: undefined
       }
@@ -4555,10 +4552,10 @@ export type Database = {
       }
       register_pharmacy_with_admin: {
         Args: {
-          pharmacy_data: Json
           admin_data: Json
           admin_email: string
           admin_password: string
+          pharmacy_data: Json
         }
         Returns: Json
       }
@@ -4579,7 +4576,7 @@ export type Database = {
         Returns: Json
       }
       validate_tenant_access: {
-        Args: { target_tenant_id: string; operation_type?: string }
+        Args: { operation_type?: string; target_tenant_id: string }
         Returns: boolean
       }
     }
