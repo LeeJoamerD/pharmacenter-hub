@@ -26,17 +26,18 @@ export const useTenant = () => {
 };
 
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, personnel, pharmacy } = useAuth();
+  const { user, personnel, pharmacy, connectedPharmacy } = useAuth();
   const [currentTenant, setCurrentTenant] = useState<Pharmacy | null>(null);
   const [currentUser, setCurrentUser] = useState<Personnel | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Synchroniser avec le contexte Auth
+  // Synchroniser avec le contexte Auth, utiliser connectedPharmacy en fallback
   useEffect(() => {
-    setCurrentTenant(pharmacy);
+    const tenant = pharmacy || connectedPharmacy;
+    setCurrentTenant(tenant);
     setCurrentUser(personnel);
     setIsLoading(false);
-  }, [pharmacy, personnel]);
+  }, [pharmacy, personnel, connectedPharmacy]);
 
   const switchTenant = async (tenantId: string) => {
     if (!user) {

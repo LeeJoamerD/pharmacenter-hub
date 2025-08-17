@@ -31,12 +31,12 @@ export const EmployeeManagement = () => {
 
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
 
-  // Récupérer les employés depuis la table personnel (seulement les employés, pas les utilisateurs système)
+  // Récupérer tous les employés depuis la table personnel
   const { data: employees = [], isLoading, refetch } = useTenantQueryWithCache(
     ['employees'],
     'personnel',
     '*',
-    { auth_user_id: { is: null } },
+    {},
     { 
       orderBy: { column: 'noms', ascending: true }
     }
@@ -155,7 +155,7 @@ export const EmployeeManagement = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer cet employé ?')) {
       deleteMutation.mutate({ id });
     }

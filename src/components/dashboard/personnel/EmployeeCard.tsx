@@ -8,7 +8,7 @@ import { Employee } from './types';
 interface EmployeeCardProps {
   employees: Employee[];
   onEdit: (employee: Employee) => void;
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
 }
 
 export const EmployeeCard = ({ employees, onEdit, onDelete }: EmployeeCardProps) => {
