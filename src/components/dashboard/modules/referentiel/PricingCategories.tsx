@@ -230,7 +230,7 @@ const PricingCategories = () => {
                 className="w-64"
               />
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={handleAddCategory}>
                   <Plus className="h-4 w-4 mr-2" />
