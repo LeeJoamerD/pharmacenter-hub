@@ -11,6 +11,13 @@ interface ConnectedPharmacy extends Pharmacy {
   sessionToken: string;
 }
 
+interface OAuthLinkResult {
+  status: 'active' | 'inactive_linked' | 'linked_and_activated' | 'new_user';
+  personnel_id?: string;
+  tenant_id?: string;
+  google_verified_updated?: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -63,27 +70,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      if (personnelData) {
-        setPersonnel(personnelData);
-
-        // Fetch pharmacy data seulement si l'utilisateur a un tenant_id
-        if (personnelData?.tenant_id) {
-          const { data: pharmacyData, error: pharmacyError } = await supabase
-            .from('pharmacies')
+      // Si aucun personnel trouvé, essayer de résoudre automatiquement le lien OAuth
+      if (!personnelData) {
+        console.log('AUTH: Aucun personnel trouvé, tentative de résolution OAuth...');
+        
+        const { data: linkResult, error: linkError } = await supabase.rpc(
+          'resolve_oauth_personnel_link'
+        );
+        
+        if (linkError) {
+          console.error('AUTH: Erreur lors de la résolution OAuth:', linkError);
+          return;
+        }
+        
+        console.log('AUTH: Résultat résolution OAuth:', linkResult);
+        
+        // Si le lien a été résolu avec succès, re-fetch les données
+        const linkData = linkResult as unknown as OAuthLinkResult;
+        if (linkData?.status === 'active' || linkData?.status === 'linked_and_activated') {
+          const { data: newPersonnelData } = await supabase
+            .from('personnel')
             .select('*')
-            .eq('id', personnelData.tenant_id)
+            .eq('auth_user_id', userId)
             .maybeSingle();
-
-          if (pharmacyError && pharmacyError.code !== 'PGRST116') {
-            console.error('Error fetching pharmacy:', pharmacyError);
-            return;
+          
+          if (newPersonnelData) {
+            setPersonnel(newPersonnelData);
+            
+            // Fetch pharmacy data si tenant_id existe
+            if (newPersonnelData.tenant_id) {
+              const { data: pharmacyData } = await supabase
+                .from('pharmacies')
+                .select('*')
+                .eq('id', newPersonnelData.tenant_id)
+                .maybeSingle();
+              
+              if (pharmacyData) {
+                setPharmacy(pharmacyData);
+              }
+            }
           }
+        } else if (linkData?.status === 'new_user') {
+          console.log('AUTH: Nouvel utilisateur détecté, création de compte requise');
+          // Pour les nouveaux utilisateurs, on laisse le processus normal
+        }
+        
+        return;
+      }
 
-          if (pharmacyData) {
-            setPharmacy(pharmacyData);
-            // Ne plus créer automatiquement de session pharmacie
-            // La pharmacie sera définie mais pas connectée automatiquement
-          }
+      // Personnel trouvé normalement
+      setPersonnel(personnelData);
+
+      // Fetch pharmacy data seulement si l'utilisateur a un tenant_id
+      if (personnelData?.tenant_id) {
+        const { data: pharmacyData, error: pharmacyError } = await supabase
+          .from('pharmacies')
+          .select('*')
+          .eq('id', personnelData.tenant_id)
+          .maybeSingle();
+
+        if (pharmacyError && pharmacyError.code !== 'PGRST116') {
+          console.error('Error fetching pharmacy:', pharmacyError);
+          return;
+        }
+
+        if (pharmacyData) {
+          setPharmacy(pharmacyData);
+          // Ne plus créer automatiquement de session pharmacie
+          // La pharmacie sera définie mais pas connectée automatiquement
         }
       }
 
