@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clipboard, Plus, Package, ShoppingCart, Eye } from 'lucide-react';
+import { Clipboard, Plus, Package, ShoppingCart, Eye, Edit } from 'lucide-react';
 import OrderList from '../OrderList';
 import OrderForm from '../OrderForm';
+import EditOrderTab from '../EditOrderTab';
 import ReceptionForm from '../ReceptionForm';
 import SupplierManager from '../SupplierManager';
 import OrderTracking from '../OrderTracking';
@@ -39,6 +40,12 @@ const StockApprovisionnementTab = () => {
             <span>Commandes</span>
           </div>
         </TabsTrigger>
+        <TabsTrigger value="modifications">
+          <div className="flex items-center gap-2">
+            <Edit className="h-4 w-4" />
+            <span>Modification</span>
+          </div>
+        </TabsTrigger>
         <TabsTrigger value="receptions">
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4" />
@@ -73,6 +80,16 @@ const StockApprovisionnementTab = () => {
         <OrderForm 
           suppliers={suppliers.suppliers}
           onCreateOrder={orders.createOrder}
+          loading={orders.loading}
+        />
+      </TabsContent>
+      
+      <TabsContent value="modifications">
+        <EditOrderTab 
+          orders={orders.orders}
+          suppliers={suppliers.suppliers}
+          onUpdateOrder={orders.updateOrder}
+          onUpdateOrderStatus={orders.updateOrderStatus}
           loading={orders.loading}
         />
       </TabsContent>

@@ -164,6 +164,45 @@ export const useSupplierOrders = () => {
     }
   };
 
+  const updateOrder = async (id: string, updates: {
+    fournisseur_id?: string;
+    date_commande?: string;
+    agent_id?: string;
+  }) => {
+    try {
+      const { data, error } = await supabase
+        .from('commandes_fournisseurs')
+        .update(updates)
+        .eq('id', id)
+        .select(`
+          *,
+          fournisseur:fournisseurs!fournisseur_id(nom, email)
+        `)
+        .single();
+
+      if (error) throw error;
+
+      setOrders(prev => prev.map(order => 
+        order.id === id ? { ...order, ...data } : order
+      ));
+      
+      toast({
+        title: "Succès",
+        description: "Commande mise à jour avec succès",
+      });
+      
+      return data;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la mise à jour de la commande';
+      toast({
+        title: "Erreur",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
+
   const deleteOrder = async (id: string) => {
     try {
       // Supprimer d'abord les lignes de commande
@@ -207,6 +246,7 @@ export const useSupplierOrders = () => {
     loading,
     error,
     createOrder,
+    updateOrder,
     updateOrderStatus,
     deleteOrder,
     refetch: fetchOrders,
