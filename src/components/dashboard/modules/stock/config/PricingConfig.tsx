@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,68 +6,173 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DollarSign, Percent, Plus, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { usePricingSettings } from '@/hooks/usePricingSettings';
+import { useMarginRules } from '@/hooks/useMarginRules';
+import { usePriceCategories } from '@/hooks/usePriceCategories';
+import { useTenant } from '@/contexts/TenantContext';
 
 const PricingConfig = () => {
   const { toast } = useToast();
+  const { tenantId } = useTenant();
+  const { settings, loading: settingsLoading, saveSettings, isUpdating: settingsUpdating } = usePricingSettings();
+  const { rules, loading: rulesLoading, createRule, updateRule, deleteRule, isUpdating: rulesUpdating } = useMarginRules();
+  const { categories, loading: categoriesLoading, createCategory, updateCategory, deleteCategory, isUpdating: categoriesUpdating } = usePriceCategories();
   
   const [pricingConfig, setPricingConfig] = useState({
-    defaultMargin: 30,
-    minimumMargin: 10,
+    defaultMargin: 20,
+    minimumMargin: 5,
     maximumMargin: 100,
-    priceRoundingMethod: 'nearest',
-    priceRoundingValue: 5,
-    autoUpdatePrices: true,
+    priceRoundingMethod: 'Nearest',
+    priceRoundingValue: 0.01,
+    autoUpdatePrices: false,
     includeTaxInPrice: true,
-    defaultTaxRate: 18,
+    defaultTaxRate: 19.25,
+    defaultCentimeAdditionnelRate: 0.175,
     allowDiscounts: true,
-    maxDiscountPercent: 20,
-    requireDiscountApproval: true,
+    maxDiscountPercent: 10,
+    requireDiscountApproval: false,
     showCostToCustomers: false
   });
 
-  const [marginRules, setMarginRules] = useState([
-    { id: 1, category: 'Médicaments', margin: 25, minPrice: 100, maxPrice: 50000, active: true },
-    { id: 2, category: 'Génériques', margin: 35, minPrice: 50, maxPrice: 10000, active: true },
-    { id: 3, category: 'Produits de beauté', margin: 50, minPrice: 500, maxPrice: 25000, active: true },
-    { id: 4, category: 'Matériel médical', margin: 40, minPrice: 1000, maxPrice: 100000, active: false }
-  ]);
-
-  const [priceCategories, setPriceCategories] = useState([
-    { id: 1, name: 'Client normal', multiplier: 1.0, description: 'Prix de vente standard', active: true },
-    { id: 2, name: 'Grossiste', multiplier: 0.85, description: 'Remise grossiste 15%', active: true },
-    { id: 3, name: 'Professionnel santé', multiplier: 0.90, description: 'Remise professionnels 10%', active: true },
-    { id: 4, name: 'Employé', multiplier: 0.80, description: 'Remise employé 20%', active: false }
-  ]);
+  // Load settings from database when available
+  useEffect(() => {
+    if (settings) {
+      setPricingConfig({
+        defaultMargin: settings.default_margin || 20,
+        minimumMargin: settings.minimum_margin || 5,
+        maximumMargin: settings.maximum_margin || 100,
+        priceRoundingMethod: settings.price_rounding_method || 'Nearest',
+        priceRoundingValue: settings.price_rounding_value || 0.01,
+        autoUpdatePrices: settings.auto_update_prices || false,
+        includeTaxInPrice: settings.include_tax_in_price || true,
+        defaultTaxRate: settings.default_tax_rate || 19.25,
+        defaultCentimeAdditionnelRate: settings.default_centime_additionnel_rate || 0.175,
+        allowDiscounts: settings.allow_discounts || true,
+        maxDiscountPercent: settings.max_discount_percent || 10,
+        requireDiscountApproval: settings.require_discount_approval || false,
+        showCostToCustomers: settings.show_cost_to_customers || false
+      });
+    }
+  }, [settings]);
 
   const handleConfigChange = (key: string, value: any) => {
     setPricingConfig(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleMarginRuleChange = (id: number, field: string, value: any) => {
-    setMarginRules(prev => 
-      prev.map(rule => 
-        rule.id === id ? { ...rule, [field]: value } : rule
-      )
-    );
+  const handleMarginRuleChange = async (id: string, field: string, value: any) => {
+    try {
+      await updateRule({ id, [field]: value });
+    } catch (error) {
+      console.error('Error updating margin rule:', error);
+    }
   };
 
-  const handleCategoryChange = (id: number, field: string, value: any) => {
-    setPriceCategories(prev => 
-      prev.map(category => 
-        category.id === id ? { ...category, [field]: value } : category
-      )
-    );
+  const handleCategoryChange = async (id: string, field: string, value: any) => {
+    try {
+      await updateCategory({ id, [field]: value });
+    } catch (error) {
+      console.error('Error updating price category:', error);
+    }
   };
 
-  const handleSave = () => {
-    toast({
-      title: "Configuration tarifaire sauvegardée",
-      description: "Les paramètres de tarification ont été mis à jour.",
-    });
+  const handleCreateMarginRule = async () => {
+    if (!tenantId) return;
+    
+    try {
+      await createRule({
+        tenant_id: tenantId,
+        category: 'Nouvelle catégorie',
+        margin: 20,
+        min_price: 0,
+        active: true
+      });
+    } catch (error) {
+      console.error('Error creating margin rule:', error);
+    }
   };
+
+  const handleCreatePriceCategory = async () => {
+    if (!tenantId) return;
+    
+    try {
+      await createCategory({
+        tenant_id: tenantId,
+        libelle_categorie: 'Nouvelle catégorie',
+        coefficient_prix_vente: 1.0,
+        taux_tva: 19.25,
+        taux_centime_additionnel: 0.175,
+        description: '',
+        is_active: true
+      });
+    } catch (error) {
+      console.error('Error creating price category:', error);
+    }
+  };
+
+  const handleDeleteMarginRule = async (id: string) => {
+    try {
+      await deleteRule(id);
+    } catch (error) {
+      console.error('Error deleting margin rule:', error);
+    }
+  };
+
+  const handleDeletePriceCategory = async (id: string) => {
+    try {
+      await deleteCategory(id);
+    } catch (error) {
+      console.error('Error deleting price category:', error);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!tenantId) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder sans tenant ID.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await saveSettings({
+        tenant_id: tenantId,
+        default_margin: pricingConfig.defaultMargin,
+        minimum_margin: pricingConfig.minimumMargin,
+        maximum_margin: pricingConfig.maximumMargin,
+        price_rounding_method: pricingConfig.priceRoundingMethod,
+        price_rounding_value: pricingConfig.priceRoundingValue,
+        auto_update_prices: pricingConfig.autoUpdatePrices,
+        include_tax_in_price: pricingConfig.includeTaxInPrice,
+        default_tax_rate: pricingConfig.defaultTaxRate,
+        default_centime_additionnel_rate: pricingConfig.defaultCentimeAdditionnelRate,
+        allow_discounts: pricingConfig.allowDiscounts,
+        max_discount_percent: pricingConfig.maxDiscountPercent,
+        require_discount_approval: pricingConfig.requireDiscountApproval,
+        show_cost_to_customers: pricingConfig.showCostToCustomers,
+      });
+    } catch (error) {
+      console.error('Error saving pricing settings:', error);
+    }
+  };
+
+  if (settingsLoading || rulesLoading || categoriesLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
+        </div>
+        <Skeleton className="h-48" />
+        <Skeleton className="h-48" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -178,8 +283,22 @@ const PricingConfig = () => {
                 type="number"
                 min="0"
                 max="50"
+                step="0.01"
                 value={pricingConfig.defaultTaxRate}
                 onChange={(e) => handleConfigChange('defaultTaxRate', Number(e.target.value))}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="defaultCentimeAdditionnelRate">Taux de Centime Additionnel par défaut (%)</Label>
+              <Input
+                id="defaultCentimeAdditionnelRate"
+                type="number"
+                min="0"
+                max="5"
+                step="0.001"
+                value={pricingConfig.defaultCentimeAdditionnelRate}
+                onChange={(e) => handleConfigChange('defaultCentimeAdditionnelRate', Number(e.target.value))}
               />
             </div>
             
@@ -204,7 +323,7 @@ const PricingConfig = () => {
                 Configuration des marges spécifiques par catégorie de produits
               </CardDescription>
             </div>
-            <Button>
+            <Button onClick={handleCreateMarginRule} disabled={rulesUpdating}>
               <Plus className="h-4 w-4 mr-2" />
               Nouvelle règle
             </Button>
@@ -223,9 +342,16 @@ const PricingConfig = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {marginRules.map((rule) => (
+              {rules && rules.map((rule) => (
                 <TableRow key={rule.id}>
-                  <TableCell className="font-medium">{rule.category}</TableCell>
+                  <TableCell className="font-medium">
+                    <Input
+                      type="text"
+                      value={rule.category}
+                      onChange={(e) => handleMarginRuleChange(rule.id, 'category', e.target.value)}
+                      className="w-32"
+                    />
+                  </TableCell>
                   <TableCell>
                     <Input
                       type="number"
@@ -237,16 +363,16 @@ const PricingConfig = () => {
                   <TableCell>
                     <Input
                       type="number"
-                      value={rule.minPrice}
-                      onChange={(e) => handleMarginRuleChange(rule.id, 'minPrice', Number(e.target.value))}
+                      value={rule.min_price}
+                      onChange={(e) => handleMarginRuleChange(rule.id, 'min_price', Number(e.target.value))}
                       className="w-24"
                     />
                   </TableCell>
                   <TableCell>
                     <Input
                       type="number"
-                      value={rule.maxPrice}
-                      onChange={(e) => handleMarginRuleChange(rule.id, 'maxPrice', Number(e.target.value))}
+                      value={rule.max_price || ''}
+                      onChange={(e) => handleMarginRuleChange(rule.id, 'max_price', e.target.value ? Number(e.target.value) : null)}
                       className="w-24"
                     />
                   </TableCell>
@@ -257,10 +383,19 @@ const PricingConfig = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleMarginRuleChange(rule.id, 'active', !rule.active)}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDeleteMarginRule(rule.id)}
+                        disabled={rulesUpdating}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -281,7 +416,7 @@ const PricingConfig = () => {
                 Différents niveaux de prix pour les types de clients
               </CardDescription>
             </div>
-            <Button>
+            <Button onClick={handleCreatePriceCategory} disabled={categoriesUpdating}>
               <Plus className="h-4 w-4 mr-2" />
               Nouvelle catégorie
             </Button>
@@ -299,32 +434,55 @@ const PricingConfig = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {priceCategories.map((category) => (
+              {categories && categories.map((category) => (
                 <TableRow key={category.id}>
-                  <TableCell className="font-medium">{category.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <Input
+                      type="text"
+                      value={category.libelle_categorie}
+                      onChange={(e) => handleCategoryChange(category.id, 'libelle_categorie', e.target.value)}
+                      className="w-32"
+                    />
+                  </TableCell>
                   <TableCell>
                     <Input
                       type="number"
                       step="0.01"
                       min="0.1"
                       max="2.0"
-                      value={category.multiplier}
-                      onChange={(e) => handleCategoryChange(category.id, 'multiplier', Number(e.target.value))}
+                      value={category.coefficient_prix_vente}
+                      onChange={(e) => handleCategoryChange(category.id, 'coefficient_prix_vente', Number(e.target.value))}
                       className="w-20"
                     />
                   </TableCell>
-                  <TableCell>{category.description}</TableCell>
                   <TableCell>
-                    <Badge variant={category.active ? "default" : "secondary"}>
-                      {category.active ? 'Actif' : 'Inactif'}
+                    <Input
+                      type="text"
+                      value={category.description || ''}
+                      onChange={(e) => handleCategoryChange(category.id, 'description', e.target.value)}
+                      className="w-40"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={category.is_active ? "default" : "secondary"}>
+                      {category.is_active ? 'Actif' : 'Inactif'}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleCategoryChange(category.id, 'is_active', !category.is_active)}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDeletePriceCategory(category.id)}
+                        disabled={categoriesUpdating}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -337,8 +495,8 @@ const PricingConfig = () => {
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave}>
-          Sauvegarder la configuration
+        <Button onClick={handleSave} disabled={settingsUpdating}>
+          {settingsUpdating ? 'Sauvegarde...' : 'Sauvegarder la configuration'}
         </Button>
       </div>
     </div>

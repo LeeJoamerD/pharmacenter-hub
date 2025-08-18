@@ -1,41 +1,102 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Settings, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useStockSettings } from '@/hooks/useStockSettings';
+import { useTenant } from '@/contexts/TenantContext';
 
 const StockGeneralConfig = () => {
   const { toast } = useToast();
+  const { tenantId } = useTenant();
+  const { settings, loading, saveSettings, isUpdating } = useStockSettings();
   
   const [config, setConfig] = useState({
-    defaultUnits: 'unité',
-    minimumStockDays: 7,
-    maximumStockDays: 90,
-    autoReorderEnabled: true,
+    defaultUnits: 'Unité',
+    minimumStockDays: 30,
+    maximumStockDays: 365,
+    autoReorderEnabled: false,
     reorderPointDays: 15,
-    safetyStockPercentage: 20,
+    safetyStockPercentage: 10,
     valuationMethod: 'FIFO',
     roundingPrecision: 2,
     allowNegativeStock: false,
     trackExpirationDates: true,
-    requireLotNumbers: true,
-    autoGenerateLots: true
+    requireLotNumbers: false,
+    autoGenerateLots: false
   });
+
+  // Load settings from database when available
+  useEffect(() => {
+    if (settings) {
+      setConfig({
+        defaultUnits: settings.default_units || 'Unité',
+        minimumStockDays: settings.minimum_stock_days || 30,
+        maximumStockDays: settings.maximum_stock_days || 365,
+        autoReorderEnabled: settings.auto_reorder_enabled || false,
+        reorderPointDays: settings.reorder_point_days || 15,
+        safetyStockPercentage: settings.safety_stock_percentage || 10,
+        valuationMethod: settings.valuation_method || 'FIFO',
+        roundingPrecision: settings.rounding_precision || 2,
+        allowNegativeStock: settings.allow_negative_stock || false,
+        trackExpirationDates: settings.track_expiration_dates || true,
+        requireLotNumbers: settings.require_lot_numbers || false,
+        autoGenerateLots: settings.auto_generate_lots || false
+      });
+    }
+  }, [settings]);
 
   const handleConfigChange = (key: string, value: any) => {
     setConfig(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleSave = () => {
-    toast({
-      title: "Configuration sauvegardée",
-      description: "Les paramètres généraux du stock ont été mis à jour.",
-    });
+  const handleSave = async () => {
+    if (!tenantId) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder sans tenant ID.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await saveSettings({
+        tenant_id: tenantId,
+        default_units: config.defaultUnits,
+        minimum_stock_days: config.minimumStockDays,
+        maximum_stock_days: config.maximumStockDays,
+        auto_reorder_enabled: config.autoReorderEnabled,
+        reorder_point_days: config.reorderPointDays,
+        safety_stock_percentage: config.safetyStockPercentage,
+        valuation_method: config.valuationMethod,
+        rounding_precision: config.roundingPrecision,
+        allow_negative_stock: config.allowNegativeStock,
+        track_expiration_dates: config.trackExpirationDates,
+        require_lot_numbers: config.requireLotNumbers,
+        auto_generate_lots: config.autoGenerateLots,
+      });
+    } catch (error) {
+      console.error('Error saving stock settings:', error);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
+        </div>
+        <Skeleton className="h-48" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -94,7 +155,7 @@ const StockGeneralConfig = () => {
                 id="roundingPrecision"
                 type="number"
                 min="0"
-                max="4"
+                max="100"
                 value={config.roundingPrecision}
                 onChange={(e) => handleConfigChange('roundingPrecision', Number(e.target.value))}
               />
@@ -219,8 +280,8 @@ const StockGeneralConfig = () => {
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave}>
-          Sauvegarder la configuration
+        <Button onClick={handleSave} disabled={isUpdating}>
+          {isUpdating ? 'Sauvegarde...' : 'Sauvegarder la configuration'}
         </Button>
       </div>
     </div>

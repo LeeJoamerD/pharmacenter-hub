@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,20 +6,27 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Clock, TrendingDown, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAlertSettings } from '@/hooks/useAlertSettings';
+import { useAlertThresholds } from '@/hooks/useAlertThresholds';
+import { useTenant } from '@/contexts/TenantContext';
 
 const AlertsConfig = () => {
   const { toast } = useToast();
+  const { tenantId } = useTenant();
+  const { settings, loading: settingsLoading, saveSettings, isUpdating: settingsUpdating } = useAlertSettings();
+  const { thresholds, loading: thresholdsLoading, updateThreshold, isUpdating: thresholdsUpdating } = useAlertThresholds();
   
   const [alertConfig, setAlertConfig] = useState({
     lowStockEnabled: true,
     lowStockThreshold: 10,
-    criticalStockThreshold: 3,
+    criticalStockThreshold: 5,
     expirationAlertDays: 30,
     nearExpirationDays: 7,
-    overdueInventoryDays: 90,
-    slowMovingDays: 180,
+    overdueInventoryDays: 365,
+    slowMovingDays: 90,
     emailNotifications: true,
     smsNotifications: false,
     dashboardNotifications: true,
@@ -29,31 +36,84 @@ const AlertsConfig = () => {
     alertEndTime: '18:00'
   });
 
-  const [alertThresholds, setAlertThresholds] = useState([
-    { category: 'Médicaments', threshold: 5, enabled: true },
-    { category: 'Produits de beauté', threshold: 10, enabled: true },
-    { category: 'Matériel médical', threshold: 3, enabled: true },
-    { category: 'Compléments', threshold: 15, enabled: false }
-  ]);
+  // Load settings from database when available
+  useEffect(() => {
+    if (settings) {
+      setAlertConfig({
+        lowStockEnabled: settings.low_stock_enabled || true,
+        lowStockThreshold: settings.low_stock_threshold || 10,
+        criticalStockThreshold: settings.critical_stock_threshold || 5,
+        expirationAlertDays: settings.expiration_alert_days || 30,
+        nearExpirationDays: settings.near_expiration_days || 7,
+        overdueInventoryDays: settings.overdue_inventory_days || 365,
+        slowMovingDays: settings.slow_moving_days || 90,
+        emailNotifications: settings.email_notifications || true,
+        smsNotifications: settings.sms_notifications || false,
+        dashboardNotifications: settings.dashboard_notifications || true,
+        alertFrequency: settings.alert_frequency || 'daily',
+        businessDaysOnly: settings.business_days_only || true,
+        alertStartTime: settings.alert_start_time || '08:00',
+        alertEndTime: settings.alert_end_time || '18:00'
+      });
+    }
+  }, [settings]);
 
   const handleConfigChange = (key: string, value: any) => {
     setAlertConfig(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleThresholdChange = (index: number, field: string, value: any) => {
-    setAlertThresholds(prev => 
-      prev.map((item, i) => 
-        i === index ? { ...item, [field]: value } : item
-      )
-    );
+  const handleThresholdChange = async (id: string, field: string, value: any) => {
+    try {
+      await updateThreshold({ id, [field]: value });
+    } catch (error) {
+      console.error('Error updating threshold:', error);
+    }
   };
 
-  const handleSave = () => {
-    toast({
-      title: "Configuration des alertes sauvegardée",
-      description: "Les paramètres d'alertes ont été mis à jour.",
-    });
+  const handleSave = async () => {
+    if (!tenantId) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder sans tenant ID.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await saveSettings({
+        tenant_id: tenantId,
+        low_stock_enabled: alertConfig.lowStockEnabled,
+        low_stock_threshold: alertConfig.lowStockThreshold,
+        critical_stock_threshold: alertConfig.criticalStockThreshold,
+        expiration_alert_days: alertConfig.expirationAlertDays,
+        near_expiration_days: alertConfig.nearExpirationDays,
+        overdue_inventory_days: alertConfig.overdueInventoryDays,
+        slow_moving_days: alertConfig.slowMovingDays,
+        email_notifications: alertConfig.emailNotifications,
+        sms_notifications: alertConfig.smsNotifications,
+        dashboard_notifications: alertConfig.dashboardNotifications,
+        alert_frequency: alertConfig.alertFrequency,
+        business_days_only: alertConfig.businessDaysOnly,
+        alert_start_time: alertConfig.alertStartTime,
+        alert_end_time: alertConfig.alertEndTime,
+      });
+    } catch (error) {
+      console.error('Error saving alert settings:', error);
+    }
   };
+
+  if (settingsLoading || thresholdsLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
+        </div>
+        <Skeleton className="h-48" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -300,8 +360,8 @@ const AlertsConfig = () => {
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave}>
-          Sauvegarder la configuration
+        <Button onClick={handleSave} disabled={settingsUpdating}>
+          {settingsUpdating ? 'Sauvegarde...' : 'Sauvegarder la configuration'}
         </Button>
       </div>
     </div>
