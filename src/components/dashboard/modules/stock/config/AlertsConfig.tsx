@@ -326,8 +326,8 @@ const AlertsConfig = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {alertThresholds.map((threshold, index) => (
-              <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+            {thresholds?.map((threshold, index) => (
+              <div key={threshold.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center gap-3">
                   <div>
                     <p className="font-medium">{threshold.category}</p>
@@ -342,12 +342,12 @@ const AlertsConfig = () => {
                     min="0"
                     max="1000"
                     value={threshold.threshold}
-                    onChange={(e) => handleThresholdChange(index, 'threshold', Number(e.target.value))}
+                    onChange={(e) => handleThresholdChange(threshold.id, 'threshold', Number(e.target.value))}
                     className="w-20"
                   />
                   <Switch
                     checked={threshold.enabled}
-                    onCheckedChange={(checked) => handleThresholdChange(index, 'enabled', checked)}
+                    onCheckedChange={(checked) => handleThresholdChange(threshold.id, 'enabled', checked)}
                   />
                   <Badge variant={threshold.enabled ? "default" : "secondary"}>
                     {threshold.enabled ? 'Actif' : 'Inactif'}
