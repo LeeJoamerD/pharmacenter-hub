@@ -198,6 +198,9 @@ export const useSalesSettings = () => {
         throw new Error('Impossible de récupérer l\'ID du tenant');
       }
 
+      console.log('💾 Sauvegarde des paramètres de vente:', settingsToSave);
+      console.log('🏢 Tenant ID:', tenantData);
+
       // Save each section individually using upsert
       const parametersData = [
         {

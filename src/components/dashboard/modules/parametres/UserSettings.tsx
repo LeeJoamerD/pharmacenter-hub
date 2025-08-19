@@ -184,7 +184,7 @@ const UserSettings = () => {
           tenant_id: tenantId,
           cle_parametre: 'max_users',
           valeur_parametre: userSettings.maxUsers.toString(),
-          categorie: 'users',
+          categorie: 'general',
           type_parametre: 'number',
           description: 'Nombre maximum d\'utilisateurs autorisés'
         },
