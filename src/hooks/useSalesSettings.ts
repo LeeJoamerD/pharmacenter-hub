@@ -204,9 +204,9 @@ export const useSalesSettings = () => {
           tenant_id: tenantData,
           cle_parametre: 'sales_general',
           valeur_parametre: JSON.stringify(settingsToSave.general),
-          type_parametre: 'system',
+          type_parametre: 'json',
           description: 'Configuration générale des ventes',
-          categorie: 'ventes',
+          categorie: 'business',
           is_modifiable: true,
           is_visible: true
         },
@@ -214,9 +214,9 @@ export const useSalesSettings = () => {
           tenant_id: tenantData,
           cle_parametre: 'sales_tax',
           valeur_parametre: JSON.stringify(settingsToSave.tax),
-          type_parametre: 'system',
+          type_parametre: 'json',
           description: 'Configuration TVA des ventes',
-          categorie: 'ventes',
+          categorie: 'business',
           is_modifiable: true,
           is_visible: true
         },
@@ -224,9 +224,9 @@ export const useSalesSettings = () => {
           tenant_id: tenantData,
           cle_parametre: 'sales_payment',
           valeur_parametre: JSON.stringify(settingsToSave.payment),
-          type_parametre: 'system',
+          type_parametre: 'json',
           description: 'Configuration modes de paiement',
-          categorie: 'ventes',
+          categorie: 'business',
           is_modifiable: true,
           is_visible: true
         },
@@ -234,9 +234,9 @@ export const useSalesSettings = () => {
           tenant_id: tenantData,
           cle_parametre: 'sales_printing',
           valeur_parametre: JSON.stringify(settingsToSave.printing),
-          type_parametre: 'system',
+          type_parametre: 'json',
           description: 'Configuration impression des reçus',
-          categorie: 'ventes',
+          categorie: 'print',
           is_modifiable: true,
           is_visible: true
         },
@@ -244,9 +244,9 @@ export const useSalesSettings = () => {
           tenant_id: tenantData,
           cle_parametre: 'sales_register',
           valeur_parametre: JSON.stringify(settingsToSave.register),
-          type_parametre: 'system',
+          type_parametre: 'json',
           description: 'Configuration des caisses',
-          categorie: 'ventes',
+          categorie: 'business',
           is_modifiable: true,
           is_visible: true
         },
@@ -254,18 +254,21 @@ export const useSalesSettings = () => {
           tenant_id: tenantData,
           cle_parametre: 'sales_alerts',
           valeur_parametre: JSON.stringify(settingsToSave.alerts),
-          type_parametre: 'system',
+          type_parametre: 'json',
           description: 'Configuration des alertes de vente',
-          categorie: 'ventes',
+          categorie: 'security',
           is_modifiable: true,
           is_visible: true
         }
       ];
 
-      // Use single upsert operation with all parameters
+      // Use single upsert operation with all parameters and proper conflict resolution
       const { error } = await supabase
         .from('parametres_systeme')
-        .upsert(parametersData);
+        .upsert(parametersData, { 
+          onConflict: 'tenant_id,cle_parametre',
+          ignoreDuplicates: false 
+        });
 
       if (error) {
         throw error;
