@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,116 +19,30 @@ import {
   Calculator,
   Smartphone,
   Banknote,
-  Ticket
+  Ticket,
+  Loader2
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useSalesSettings } from '@/hooks/useSalesSettings';
 
 const SalesConfiguration = () => {
-  const { toast } = useToast();
-  
-  const [config, setConfig] = useState({
-    // Configuration générale
-    general: {
-      autoSaveTransactions: true,
-      enableBarcodeScan: true,
-      showStockLevels: true,
-      requireCustomerInfo: false,
-      enableQuickSale: true,
-      defaultDiscountType: 'percentage',
-      maxDiscountPercent: 20,
-      enableNegativeStock: false
-    },
-    
-    // Configuration TVA
-    tax: {
-      defaultTaxRate: 18,
-      includeTaxInPrice: true,
-      taxCalculationMethod: 'inclusive',
-      exemptProducts: false,
-      taxRoundingMethod: 'round'
-    },
-    
-    // Modes de paiement
-    payment: {
-      cash: { enabled: true, requireChange: true },
-      card: { enabled: true, minAmount: 0 },
-      mobile: { enabled: true, providers: ['Orange Money', 'MTN Mobile Money', 'Moov Money'] },
-      check: { enabled: false, requireVerification: true },
-      credit: { enabled: true, maxAmount: 500000 },
-      split: { enabled: true, maxMethods: 3 }
-    },
-    
-    // Configuration impression
-    printing: {
-      autoprint: true,
-      receiptTemplate: 'standard',
-      includeBarcode: true,
-      includeQRCode: false,
-      printCustomerCopy: false,
-      receiptFooter: 'Merci de votre visite !',
-      printLogo: true,
-      paperSize: 'thermal_80mm'
-    },
-    
-    // Configuration caisses
-    register: {
-      requireOpeningAmount: true,
-      defaultOpeningAmount: 50000,
-      enableCashDrawer: true,
-      alertLowCash: true,
-      lowCashThreshold: 20000,
-      enableMultipleUsers: true,
-      sessionTimeout: 480 // minutes
-    },
-    
-    // Alertes et notifications
-    alerts: {
-      lowStockAlert: true,
-      expiredProductsAlert: true,
-      dailyReportReminder: true,
-      backupReminder: true,
-      suspiciousActivityAlert: true,
-      highValueTransactionAlert: true,
-      highValueThreshold: 100000
-    }
-  });
+  const { 
+    settings, 
+    loading, 
+    saving, 
+    saveSettings, 
+    resetSettings, 
+    updateSettings, 
+    updatePaymentMethod 
+  } = useSalesSettings();
 
-  const handleConfigChange = (section: string, field: string, value: any) => {
-    setConfig(prev => ({
-      ...prev,
-      [section]: {
-        ...prev[section as keyof typeof prev],
-        [field]: value
-      }
-    }));
-  };
-
-  const handlePaymentMethodChange = (method: string, field: string, value: any) => {
-    setConfig(prev => ({
-      ...prev,
-      payment: {
-        ...prev.payment,
-        [method]: {
-          ...prev.payment[method as keyof typeof prev.payment],
-          [field]: value
-        }
-      }
-    }));
-  };
-
-  const handleSave = () => {
-    toast({
-      title: "Configuration sauvegardée",
-      description: "Les paramètres de vente ont été mis à jour.",
-    });
-  };
-
-  const handleReset = () => {
-    toast({
-      title: "Configuration réinitialisée",
-      description: "Les paramètres ont été remis aux valeurs par défaut.",
-    });
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Chargement des paramètres...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -142,11 +56,18 @@ const SalesConfiguration = () => {
         </div>
         
         <div className="flex items-center space-x-2">
-          <Button variant="outline" onClick={handleReset}>
+          <Button variant="outline" onClick={resetSettings} disabled={saving}>
             Réinitialiser
           </Button>
-          <Button onClick={handleSave}>
-            Sauvegarder
+          <Button onClick={() => saveSettings()} disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Sauvegarde...
+              </>
+            ) : (
+              'Sauvegarder'
+            )}
           </Button>
         </div>
       </div>
@@ -180,8 +101,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="autoSave">Sauvegarde automatique</Label>
                     <Switch
                       id="autoSave"
-                      checked={config.general.autoSaveTransactions}
-                      onCheckedChange={(checked) => handleConfigChange('general', 'autoSaveTransactions', checked)}
+                      checked={settings.general.autoSaveTransactions}
+                      onCheckedChange={(checked) => updateSettings('general', 'autoSaveTransactions', checked)}
                     />
                   </div>
                   
@@ -189,8 +110,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="barcodeScan">Scanner code-barres</Label>
                     <Switch
                       id="barcodeScan"
-                      checked={config.general.enableBarcodeScan}
-                      onCheckedChange={(checked) => handleConfigChange('general', 'enableBarcodeScan', checked)}
+                      checked={settings.general.enableBarcodeScan}
+                      onCheckedChange={(checked) => updateSettings('general', 'enableBarcodeScan', checked)}
                     />
                   </div>
                   
@@ -198,8 +119,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="showStock">Afficher stock</Label>
                     <Switch
                       id="showStock"
-                      checked={config.general.showStockLevels}
-                      onCheckedChange={(checked) => handleConfigChange('general', 'showStockLevels', checked)}
+                      checked={settings.general.showStockLevels}
+                      onCheckedChange={(checked) => updateSettings('general', 'showStockLevels', checked)}
                     />
                   </div>
                   
@@ -207,8 +128,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="requireCustomer">Info client obligatoire</Label>
                     <Switch
                       id="requireCustomer"
-                      checked={config.general.requireCustomerInfo}
-                      onCheckedChange={(checked) => handleConfigChange('general', 'requireCustomerInfo', checked)}
+                      checked={settings.general.requireCustomerInfo}
+                      onCheckedChange={(checked) => updateSettings('general', 'requireCustomerInfo', checked)}
                     />
                   </div>
                 </div>
@@ -217,8 +138,8 @@ const SalesConfiguration = () => {
                   <div className="space-y-2">
                     <Label htmlFor="discountType">Type de remise par défaut</Label>
                     <Select 
-                      value={config.general.defaultDiscountType}
-                      onValueChange={(value) => handleConfigChange('general', 'defaultDiscountType', value)}
+                      value={settings.general.defaultDiscountType}
+                      onValueChange={(value) => updateSettings('general', 'defaultDiscountType', value)}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -235,8 +156,8 @@ const SalesConfiguration = () => {
                     <Input
                       id="maxDiscount"
                       type="number"
-                      value={config.general.maxDiscountPercent}
-                      onChange={(e) => handleConfigChange('general', 'maxDiscountPercent', Number(e.target.value))}
+                      value={settings.general.maxDiscountPercent}
+                      onChange={(e) => updateSettings('general', 'maxDiscountPercent', Number(e.target.value))}
                     />
                   </div>
                   
@@ -244,8 +165,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="negativeStock">Autoriser stock négatif</Label>
                     <Switch
                       id="negativeStock"
-                      checked={config.general.enableNegativeStock}
-                      onCheckedChange={(checked) => handleConfigChange('general', 'enableNegativeStock', checked)}
+                      checked={settings.general.enableNegativeStock}
+                      onCheckedChange={(checked) => updateSettings('general', 'enableNegativeStock', checked)}
                     />
                   </div>
                 </div>
@@ -274,16 +195,16 @@ const SalesConfiguration = () => {
                     <Input
                       id="taxRate"
                       type="number"
-                      value={config.tax.defaultTaxRate}
-                      onChange={(e) => handleConfigChange('tax', 'defaultTaxRate', Number(e.target.value))}
+                      value={settings.tax.defaultTaxRate}
+                      onChange={(e) => updateSettings('tax', 'defaultTaxRate', Number(e.target.value))}
                     />
                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="taxMethod">Méthode de calcul</Label>
                     <Select 
-                      value={config.tax.taxCalculationMethod}
-                      onValueChange={(value) => handleConfigChange('tax', 'taxCalculationMethod', value)}
+                      value={settings.tax.taxCalculationMethod}
+                      onValueChange={(value) => updateSettings('tax', 'taxCalculationMethod', value)}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -298,8 +219,8 @@ const SalesConfiguration = () => {
                   <div className="space-y-2">
                     <Label htmlFor="rounding">Méthode d'arrondi</Label>
                     <Select 
-                      value={config.tax.taxRoundingMethod}
-                      onValueChange={(value) => handleConfigChange('tax', 'taxRoundingMethod', value)}
+                      value={settings.tax.taxRoundingMethod}
+                      onValueChange={(value) => updateSettings('tax', 'taxRoundingMethod', value)}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -318,8 +239,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="includeTax">TVA incluse dans prix</Label>
                     <Switch
                       id="includeTax"
-                      checked={config.tax.includeTaxInPrice}
-                      onCheckedChange={(checked) => handleConfigChange('tax', 'includeTaxInPrice', checked)}
+                      checked={settings.tax.includeTaxInPrice}
+                      onCheckedChange={(checked) => updateSettings('tax', 'includeTaxInPrice', checked)}
                     />
                   </div>
                   
@@ -327,8 +248,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="exemptProducts">Produits exonérés</Label>
                     <Switch
                       id="exemptProducts"
-                      checked={config.tax.exemptProducts}
-                      onCheckedChange={(checked) => handleConfigChange('tax', 'exemptProducts', checked)}
+                      checked={settings.tax.exemptProducts}
+                      onCheckedChange={(checked) => updateSettings('tax', 'exemptProducts', checked)}
                     />
                   </div>
                 </div>
@@ -360,15 +281,15 @@ const SalesConfiguration = () => {
                   <div className="flex items-center justify-between">
                     <Label>Activer</Label>
                     <Switch
-                      checked={config.payment.cash.enabled}
-                      onCheckedChange={(checked) => handlePaymentMethodChange('cash', 'enabled', checked)}
+                      checked={settings.payment.cash.enabled}
+                      onCheckedChange={(checked) => updatePaymentMethod('cash', 'enabled', checked)}
                     />
                   </div>
                   <div className="flex items-center justify-between">
                     <Label>Exiger rendu monnaie</Label>
                     <Switch
-                      checked={config.payment.cash.requireChange}
-                      onCheckedChange={(checked) => handlePaymentMethodChange('cash', 'requireChange', checked)}
+                      checked={settings.payment.cash.requireChange}
+                      onCheckedChange={(checked) => updatePaymentMethod('cash', 'requireChange', checked)}
                     />
                   </div>
                 </div>
@@ -386,16 +307,16 @@ const SalesConfiguration = () => {
                   <div className="flex items-center justify-between">
                     <Label>Activer</Label>
                     <Switch
-                      checked={config.payment.card.enabled}
-                      onCheckedChange={(checked) => handlePaymentMethodChange('card', 'enabled', checked)}
+                      checked={settings.payment.card.enabled}
+                      onCheckedChange={(checked) => updatePaymentMethod('card', 'enabled', checked)}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Montant minimum</Label>
                     <Input
                       type="number"
-                      value={config.payment.card.minAmount}
-                      onChange={(e) => handlePaymentMethodChange('card', 'minAmount', Number(e.target.value))}
+                      value={settings.payment.card.minAmount}
+                      onChange={(e) => updatePaymentMethod('card', 'minAmount', Number(e.target.value))}
                     />
                   </div>
                 </div>
@@ -413,8 +334,8 @@ const SalesConfiguration = () => {
                   <div className="flex items-center justify-between">
                     <Label>Activer</Label>
                     <Switch
-                      checked={config.payment.mobile.enabled}
-                      onCheckedChange={(checked) => handlePaymentMethodChange('mobile', 'enabled', checked)}
+                      checked={settings.payment.mobile.enabled}
+                      onCheckedChange={(checked) => updatePaymentMethod('mobile', 'enabled', checked)}
                     />
                   </div>
                 </div>
@@ -432,16 +353,16 @@ const SalesConfiguration = () => {
                   <div className="flex items-center justify-between">
                     <Label>Activer</Label>
                     <Switch
-                      checked={config.payment.credit.enabled}
-                      onCheckedChange={(checked) => handlePaymentMethodChange('credit', 'enabled', checked)}
+                      checked={settings.payment.credit.enabled}
+                      onCheckedChange={(checked) => updatePaymentMethod('credit', 'enabled', checked)}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Montant maximum</Label>
                     <Input
                       type="number"
-                      value={config.payment.credit.maxAmount}
-                      onChange={(e) => handlePaymentMethodChange('credit', 'maxAmount', Number(e.target.value))}
+                      value={settings.payment.credit.maxAmount}
+                      onChange={(e) => updatePaymentMethod('credit', 'maxAmount', Number(e.target.value))}
                     />
                   </div>
                 </div>
@@ -469,8 +390,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="autoprint">Impression automatique</Label>
                     <Switch
                       id="autoprint"
-                      checked={config.printing.autoprint}
-                      onCheckedChange={(checked) => handleConfigChange('printing', 'autoprint', checked)}
+                      checked={settings.printing.autoprint}
+                      onCheckedChange={(checked) => updateSettings('printing', 'autoprint', checked)}
                     />
                   </div>
                   
@@ -478,8 +399,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="printLogo">Imprimer logo</Label>
                     <Switch
                       id="printLogo"
-                      checked={config.printing.printLogo}
-                      onCheckedChange={(checked) => handleConfigChange('printing', 'printLogo', checked)}
+                      checked={settings.printing.printLogo}
+                      onCheckedChange={(checked) => updateSettings('printing', 'printLogo', checked)}
                     />
                   </div>
                   
@@ -487,16 +408,16 @@ const SalesConfiguration = () => {
                     <Label htmlFor="includeBarcode">Code-barres sur reçu</Label>
                     <Switch
                       id="includeBarcode"
-                      checked={config.printing.includeBarcode}
-                      onCheckedChange={(checked) => handleConfigChange('printing', 'includeBarcode', checked)}
+                      checked={settings.printing.includeBarcode}
+                      onCheckedChange={(checked) => updateSettings('printing', 'includeBarcode', checked)}
                     />
                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="paperSize">Format papier</Label>
                     <Select 
-                      value={config.printing.paperSize}
-                      onValueChange={(value) => handleConfigChange('printing', 'paperSize', value)}
+                      value={settings.printing.paperSize}
+                      onValueChange={(value) => updateSettings('printing', 'paperSize', value)}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -515,8 +436,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="receiptFooter">Pied de page reçu</Label>
                     <Textarea
                       id="receiptFooter"
-                      value={config.printing.receiptFooter}
-                      onChange={(e) => handleConfigChange('printing', 'receiptFooter', e.target.value)}
+                      value={settings.printing.receiptFooter}
+                      onChange={(e) => updateSettings('printing', 'receiptFooter', e.target.value)}
                       rows={3}
                     />
                   </div>
@@ -524,8 +445,8 @@ const SalesConfiguration = () => {
                   <div className="space-y-2">
                     <Label htmlFor="receiptTemplate">Modèle de reçu</Label>
                     <Select 
-                      value={config.printing.receiptTemplate}
-                      onValueChange={(value) => handleConfigChange('printing', 'receiptTemplate', value)}
+                      value={settings.printing.receiptTemplate}
+                      onValueChange={(value) => updateSettings('printing', 'receiptTemplate', value)}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -562,8 +483,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="requireOpening">Fonds de caisse obligatoire</Label>
                     <Switch
                       id="requireOpening"
-                      checked={config.register.requireOpeningAmount}
-                      onCheckedChange={(checked) => handleConfigChange('register', 'requireOpeningAmount', checked)}
+                      checked={settings.register.requireOpeningAmount}
+                      onCheckedChange={(checked) => updateSettings('register', 'requireOpeningAmount', checked)}
                     />
                   </div>
                   
@@ -572,8 +493,8 @@ const SalesConfiguration = () => {
                     <Input
                       id="defaultOpening"
                       type="number"
-                      value={config.register.defaultOpeningAmount}
-                      onChange={(e) => handleConfigChange('register', 'defaultOpeningAmount', Number(e.target.value))}
+                      value={settings.register.defaultOpeningAmount}
+                      onChange={(e) => updateSettings('register', 'defaultOpeningAmount', Number(e.target.value))}
                     />
                   </div>
                   
@@ -581,8 +502,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="cashDrawer">Tiroir-caisse automatique</Label>
                     <Switch
                       id="cashDrawer"
-                      checked={config.register.enableCashDrawer}
-                      onCheckedChange={(checked) => handleConfigChange('register', 'enableCashDrawer', checked)}
+                      checked={settings.register.enableCashDrawer}
+                      onCheckedChange={(checked) => updateSettings('register', 'enableCashDrawer', checked)}
                     />
                   </div>
                 </div>
@@ -592,8 +513,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="alertLowCash">Alerte liquidités faibles</Label>
                     <Switch
                       id="alertLowCash"
-                      checked={config.register.alertLowCash}
-                      onCheckedChange={(checked) => handleConfigChange('register', 'alertLowCash', checked)}
+                      checked={settings.register.alertLowCash}
+                      onCheckedChange={(checked) => updateSettings('register', 'alertLowCash', checked)}
                     />
                   </div>
                   
@@ -602,8 +523,8 @@ const SalesConfiguration = () => {
                     <Input
                       id="lowCashThreshold"
                       type="number"
-                      value={config.register.lowCashThreshold}
-                      onChange={(e) => handleConfigChange('register', 'lowCashThreshold', Number(e.target.value))}
+                      value={settings.register.lowCashThreshold}
+                      onChange={(e) => updateSettings('register', 'lowCashThreshold', Number(e.target.value))}
                     />
                   </div>
                   
@@ -612,8 +533,8 @@ const SalesConfiguration = () => {
                     <Input
                       id="sessionTimeout"
                       type="number"
-                      value={config.register.sessionTimeout}
-                      onChange={(e) => handleConfigChange('register', 'sessionTimeout', Number(e.target.value))}
+                      value={settings.register.sessionTimeout}
+                      onChange={(e) => updateSettings('register', 'sessionTimeout', Number(e.target.value))}
                     />
                   </div>
                 </div>
@@ -641,8 +562,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="lowStock">Alerte stock faible</Label>
                     <Switch
                       id="lowStock"
-                      checked={config.alerts.lowStockAlert}
-                      onCheckedChange={(checked) => handleConfigChange('alerts', 'lowStockAlert', checked)}
+                      checked={settings.alerts.lowStockAlert}
+                      onCheckedChange={(checked) => updateSettings('alerts', 'lowStockAlert', checked)}
                     />
                   </div>
                   
@@ -650,8 +571,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="expiredProducts">Produits expirés</Label>
                     <Switch
                       id="expiredProducts"
-                      checked={config.alerts.expiredProductsAlert}
-                      onCheckedChange={(checked) => handleConfigChange('alerts', 'expiredProductsAlert', checked)}
+                      checked={settings.alerts.expiredProductsAlert}
+                      onCheckedChange={(checked) => updateSettings('alerts', 'expiredProductsAlert', checked)}
                     />
                   </div>
                   
@@ -659,8 +580,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="dailyReport">Rapport quotidien</Label>
                     <Switch
                       id="dailyReport"
-                      checked={config.alerts.dailyReportReminder}
-                      onCheckedChange={(checked) => handleConfigChange('alerts', 'dailyReportReminder', checked)}
+                      checked={settings.alerts.dailyReportReminder}
+                      onCheckedChange={(checked) => updateSettings('alerts', 'dailyReportReminder', checked)}
                     />
                   </div>
                 </div>
@@ -670,8 +591,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="suspiciousActivity">Activité suspecte</Label>
                     <Switch
                       id="suspiciousActivity"
-                      checked={config.alerts.suspiciousActivityAlert}
-                      onCheckedChange={(checked) => handleConfigChange('alerts', 'suspiciousActivityAlert', checked)}
+                      checked={settings.alerts.suspiciousActivityAlert}
+                      onCheckedChange={(checked) => updateSettings('alerts', 'suspiciousActivityAlert', checked)}
                     />
                   </div>
                   
@@ -679,8 +600,8 @@ const SalesConfiguration = () => {
                     <Label htmlFor="highValueTransaction">Transaction élevée</Label>
                     <Switch
                       id="highValueTransaction"
-                      checked={config.alerts.highValueTransactionAlert}
-                      onCheckedChange={(checked) => handleConfigChange('alerts', 'highValueTransactionAlert', checked)}
+                      checked={settings.alerts.highValueTransactionAlert}
+                      onCheckedChange={(checked) => updateSettings('alerts', 'highValueTransactionAlert', checked)}
                     />
                   </div>
                   
@@ -689,8 +610,8 @@ const SalesConfiguration = () => {
                     <Input
                       id="highValueThreshold"
                       type="number"
-                      value={config.alerts.highValueThreshold}
-                      onChange={(e) => handleConfigChange('alerts', 'highValueThreshold', Number(e.target.value))}
+                      value={settings.alerts.highValueThreshold}
+                      onChange={(e) => updateSettings('alerts', 'highValueThreshold', Number(e.target.value))}
                     />
                   </div>
                 </div>
