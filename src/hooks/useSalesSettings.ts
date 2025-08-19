@@ -190,9 +190,18 @@ export const useSalesSettings = () => {
       setSaving(true);
       const settingsToSave = newSettings || settings;
 
+      // Get current tenant ID using the database function
+      const { data: tenantData, error: tenantError } = await supabase
+        .rpc('get_current_user_tenant_id');
+
+      if (tenantError || !tenantData) {
+        throw new Error('Impossible de récupérer l\'ID du tenant');
+      }
+
       // Save each section individually using upsert
-      const savePromises = [
+      const parametersData = [
         {
+          tenant_id: tenantData,
           cle_parametre: 'sales_general',
           valeur_parametre: JSON.stringify(settingsToSave.general),
           type_parametre: 'system',
@@ -202,6 +211,7 @@ export const useSalesSettings = () => {
           is_visible: true
         },
         {
+          tenant_id: tenantData,
           cle_parametre: 'sales_tax',
           valeur_parametre: JSON.stringify(settingsToSave.tax),
           type_parametre: 'system',
@@ -211,6 +221,7 @@ export const useSalesSettings = () => {
           is_visible: true
         },
         {
+          tenant_id: tenantData,
           cle_parametre: 'sales_payment',
           valeur_parametre: JSON.stringify(settingsToSave.payment),
           type_parametre: 'system',
@@ -220,6 +231,7 @@ export const useSalesSettings = () => {
           is_visible: true
         },
         {
+          tenant_id: tenantData,
           cle_parametre: 'sales_printing',
           valeur_parametre: JSON.stringify(settingsToSave.printing),
           type_parametre: 'system',
@@ -229,6 +241,7 @@ export const useSalesSettings = () => {
           is_visible: true
         },
         {
+          tenant_id: tenantData,
           cle_parametre: 'sales_register',
           valeur_parametre: JSON.stringify(settingsToSave.register),
           type_parametre: 'system',
@@ -238,6 +251,7 @@ export const useSalesSettings = () => {
           is_visible: true
         },
         {
+          tenant_id: tenantData,
           cle_parametre: 'sales_alerts',
           valeur_parametre: JSON.stringify(settingsToSave.alerts),
           type_parametre: 'system',
@@ -246,18 +260,15 @@ export const useSalesSettings = () => {
           is_modifiable: true,
           is_visible: true
         }
-      ].map(param =>
-        supabase
-          .from('parametres_systeme')
-          .upsert(param)
-      );
+      ];
 
-      const results = await Promise.all(savePromises);
-      
-      for (const result of results) {
-        if (result.error) {
-          throw result.error;
-        }
+      // Use single upsert operation with all parameters
+      const { error } = await supabase
+        .from('parametres_systeme')
+        .upsert(parametersData);
+
+      if (error) {
+        throw error;
       }
 
       toast({
