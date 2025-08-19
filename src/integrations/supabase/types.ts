@@ -240,7 +240,7 @@ export type Database = {
           record_id: string | null
           status: string | null
           table_name: string | null
-          tenant_id: string
+          tenant_id: string | null
           user_agent: string | null
           user_id: string | null
         }
@@ -256,7 +256,7 @@ export type Database = {
           record_id?: string | null
           status?: string | null
           table_name?: string | null
-          tenant_id: string
+          tenant_id?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
@@ -272,7 +272,7 @@ export type Database = {
           record_id?: string | null
           status?: string | null
           table_name?: string | null
-          tenant_id?: string
+          tenant_id?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
