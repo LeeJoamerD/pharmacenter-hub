@@ -50,170 +50,27 @@ import {
   Router,
   Monitor
 } from 'lucide-react';
-
-interface SystemStatus {
-  id: string;
-  name: string;
-  status: 'online' | 'offline' | 'warning';
-  uptime: string;
-  load: number;
-  memory: number;
-  storage: number;
-}
-
-interface UserPermission {
-  id: string;
-  pharmacy_name: string;
-  user_count: number;
-  admin_count: number;
-  last_access: string;
-  status: 'active' | 'inactive' | 'suspended';
-  permissions: string[];
-}
-
-interface SecurityLog {
-  id: string;
-  timestamp: string;
-  type: 'login' | 'logout' | 'failed_login' | 'permission_change' | 'security_alert';
-  user: string;
-  pharmacy: string;
-  ip_address: string;
-  details: string;
-  severity: 'info' | 'warning' | 'error';
-}
+import { useNetworkAdministration } from '@/hooks/useNetworkAdministration';
 
 const NetworkAdvancedAdministration = () => {
-  const [systemStatus, setSystemStatus] = useState<SystemStatus[]>([]);
-  const [userPermissions, setUserPermissions] = useState<UserPermission[]>([]);
-  const [securityLogs, setSecurityLogs] = useState<SecurityLog[]>([]);
-  const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const [backupEnabled, setBackupEnabled] = useState(true);
+  const {
+    systemComponents,
+    userPermissions,
+    securityLogs,
+    backupJobs,
+    loading,
+    maintenanceMode,
+    updateSystemComponent,
+    updateAdminSetting,
+    createBackupJob,
+    updateBackupJob,
+    refreshSystemStatus,
+    toggleMaintenanceMode,
+    getSetting
+  } = useNetworkAdministration();
+
   const [selectedPharmacy, setSelectedPharmacy] = useState('all');
-
-  useEffect(() => {
-    loadAdministrationData();
-  }, []);
-
-  const loadAdministrationData = () => {
-    // Statut système
-    const mockSystemStatus: SystemStatus[] = [
-      {
-        id: '1',
-        name: 'Serveur Principal',
-        status: 'online',
-        uptime: '15j 8h 23m',
-        load: 45,
-        memory: 67,
-        storage: 23
-      },
-      {
-        id: '2',
-        name: 'Base de Données',
-        status: 'online',
-        uptime: '15j 8h 23m',
-        load: 32,
-        memory: 54,
-        storage: 78
-      },
-      {
-        id: '3',
-        name: 'Serveur Chat',
-        status: 'warning',
-        uptime: '2j 4h 12m',
-        load: 78,
-        memory: 89,
-        storage: 34
-      },
-      {
-        id: '4',
-        name: 'CDN/Médias',
-        status: 'online',
-        uptime: '30j 12h 45m',
-        load: 23,
-        memory: 34,
-        storage: 56
-      }
-    ];
-
-    // Permissions utilisateurs
-    const mockUserPermissions: UserPermission[] = [
-      {
-        id: '1',
-        pharmacy_name: 'Pharmacie Central',
-        user_count: 8,
-        admin_count: 2,
-        last_access: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-        status: 'active',
-        permissions: ['read', 'write', 'admin', 'analytics']
-      },
-      {
-        id: '2',
-        pharmacy_name: 'Pharmacie de la Gare',
-        user_count: 5,
-        admin_count: 1,
-        last_access: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        status: 'active',
-        permissions: ['read', 'write', 'analytics']
-      },
-      {
-        id: '3',
-        pharmacy_name: 'Pharmacie du Centre',
-        user_count: 6,
-        admin_count: 1,
-        last_access: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        status: 'inactive',
-        permissions: ['read', 'write']
-      }
-    ];
-
-    // Logs de sécurité
-    const mockSecurityLogs: SecurityLog[] = [
-      {
-        id: '1',
-        timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-        type: 'login',
-        user: 'Dr. Martin',
-        pharmacy: 'Pharmacie Central',
-        ip_address: '192.168.1.45',
-        details: 'Connexion réussie',
-        severity: 'info'
-      },
-      {
-        id: '2',
-        timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-        type: 'failed_login',
-        user: 'admin@pharma2',
-        pharmacy: 'Pharmacie de la Gare',
-        ip_address: '203.45.67.89',
-        details: 'Tentative de connexion échouée - mot de passe incorrect',
-        severity: 'warning'
-      },
-      {
-        id: '3',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        type: 'permission_change',
-        user: 'Administrateur',
-        pharmacy: 'Système',
-        ip_address: '192.168.1.10',
-        details: 'Modification des permissions pour Pharmacie du Centre',
-        severity: 'info'
-      },
-      {
-        id: '4',
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-        type: 'security_alert',
-        user: 'Système',
-        pharmacy: 'Global',
-        ip_address: 'N/A',
-        details: 'Détection de tentatives de connexion suspectes',
-        severity: 'error'
-      }
-    ];
-
-    setSystemStatus(mockSystemStatus);
-    setUserPermissions(mockUserPermissions);
-    setSecurityLogs(mockSecurityLogs);
-  };
+  const [searchTerm, setSearchTerm] = useState('');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -252,11 +109,11 @@ const NetworkAdvancedAdministration = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button variant="outline" onClick={refreshSystemStatus} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Actualiser
           </Button>
-          <Button variant={maintenanceMode ? "destructive" : "outline"} onClick={() => setMaintenanceMode(!maintenanceMode)}>
+          <Button variant={maintenanceMode ? "destructive" : "outline"} onClick={toggleMaintenanceMode} disabled={loading}>
             <Power className="h-4 w-4 mr-2" />
             {maintenanceMode ? 'Quitter Maintenance' : 'Mode Maintenance'}
           </Button>
@@ -291,7 +148,7 @@ const NetworkAdvancedAdministration = () => {
         {/* Système */}
         <TabsContent value="system" className="space-y-4">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {systemStatus.map((system) => (
+            {systemComponents.map((system) => (
               <Card key={system.id}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
@@ -312,25 +169,25 @@ const NetworkAdvancedAdministration = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs">
                       <span>CPU</span>
-                      <span>{system.load}%</span>
+                      <span>{system.cpu_load}%</span>
                     </div>
-                    <Progress value={system.load} className={`h-2 ${getLoadColor(system.load)}`} />
+                    <Progress value={system.cpu_load} className={`h-2 ${getLoadColor(system.cpu_load)}`} />
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs">
                       <span>RAM</span>
-                      <span>{system.memory}%</span>
+                      <span>{system.memory_usage}%</span>
                     </div>
-                    <Progress value={system.memory} className="h-2" />
+                    <Progress value={system.memory_usage} className="h-2" />
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs">
                       <span>Stockage</span>
-                      <span>{system.storage}%</span>
+                      <span>{system.storage_usage}%</span>
                     </div>
-                    <Progress value={system.storage} className="h-2" />
+                    <Progress value={system.storage_usage} className="h-2" />
                   </div>
 
                   <div className="flex gap-1 pt-2">
@@ -338,8 +195,13 @@ const NetworkAdvancedAdministration = () => {
                       <Monitor className="h-3 w-3 mr-1" />
                       Détails
                     </Button>
-                    <Button variant="outline" size="sm">
-                      <RefreshCw className="h-3 w-3" />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => updateSystemComponent(system.id, { last_check: new Date().toISOString() })}
+                      disabled={loading}
+                    >
+                      <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
                     </Button>
                   </div>
                 </CardContent>
@@ -362,26 +224,47 @@ const NetworkAdvancedAdministration = () => {
                 <div className="space-y-4">
                   <div>
                     <Label>Limite de connexions simultanées</Label>
-                    <Input type="number" defaultValue="1000" className="mt-2" />
+                    <Input 
+                      type="number" 
+                      value={getSetting('network', 'max_connections', '1000')}
+                      onChange={(e) => updateAdminSetting('network', 'max_connections', e.target.value)}
+                      className="mt-2" 
+                    />
                   </div>
                   <div>
                     <Label>Timeout de session (minutes)</Label>
-                    <Input type="number" defaultValue="30" className="mt-2" />
+                    <Input 
+                      type="number" 
+                      value={getSetting('network', 'session_timeout', '30')}
+                      onChange={(e) => updateAdminSetting('network', 'session_timeout', e.target.value)}
+                      className="mt-2" 
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <Label>Rate limiting activé</Label>
-                    <Switch defaultChecked />
+                    <Switch 
+                      checked={getSetting('network', 'rate_limiting') === 'true'}
+                      onCheckedChange={(checked) => updateAdminSetting('network', 'rate_limiting', checked.toString())}
+                    />
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div>
                     <Label>Bande passante maximum (Mbps)</Label>
-                    <Input type="number" defaultValue="100" className="mt-2" />
+                    <Input 
+                      type="number" 
+                      value={getSetting('network', 'max_bandwidth', '100')}
+                      onChange={(e) => updateAdminSetting('network', 'max_bandwidth', e.target.value)}
+                      className="mt-2" 
+                    />
                   </div>
                   <div>
                     <Label>Compression activée</Label>
                     <div className="flex items-center gap-2 mt-2">
-                      <Switch defaultChecked />
+                      <Switch 
+                        checked={getSetting('network', 'compression_enabled') !== 'false'}
+                        onCheckedChange={(checked) => updateAdminSetting('network', 'compression_enabled', checked.toString())}
+                      />
                       <span className="text-sm text-muted-foreground">Réduit la charge réseau de ~40%</span>
                     </div>
                   </div>
@@ -474,20 +357,26 @@ const NetworkAdvancedAdministration = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Authentification 2FA obligatoire</Label>
-                    <p className="text-sm text-muted-foreground">Exiger l'authentification à deux facteurs</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Authentification 2FA obligatoire</Label>
+                      <p className="text-sm text-muted-foreground">Exiger l'authentification à deux facteurs</p>
+                    </div>
+                    <Switch 
+                      checked={getSetting('security', 'require_2fa') === 'true'}
+                      onCheckedChange={(checked) => updateAdminSetting('security', 'require_2fa', checked.toString())}
+                    />
                   </div>
-                  <Switch defaultChecked />
-                </div>
 
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Verrouillage automatique</Label>
                     <p className="text-sm text-muted-foreground">Après 3 tentatives échouées</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={getSetting('security', 'auto_lock') !== 'false'}
+                    onCheckedChange={(checked) => updateAdminSetting('security', 'auto_lock', checked.toString())}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -495,7 +384,10 @@ const NetworkAdvancedAdministration = () => {
                     <Label>Logs détaillés</Label>
                     <p className="text-sm text-muted-foreground">Enregistrer toutes les actions</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={getSetting('security', 'detailed_logs') !== 'false'}
+                    onCheckedChange={(checked) => updateAdminSetting('security', 'detailed_logs', checked.toString())}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -503,7 +395,10 @@ const NetworkAdvancedAdministration = () => {
                     <Label>Alerte intrusion</Label>
                     <p className="text-sm text-muted-foreground">Notification temps réel</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={getSetting('security', 'intrusion_alerts') !== 'false'}
+                    onCheckedChange={(checked) => updateAdminSetting('security', 'intrusion_alerts', checked.toString())}
+                  />
                 </div>
 
                 <Separator />
@@ -589,7 +484,10 @@ const NetworkAdvancedAdministration = () => {
                       <Label>Sauvegarde automatique</Label>
                       <p className="text-sm text-muted-foreground">Sauvegardes quotidiennes à 02h00</p>
                     </div>
-                    <Switch checked={backupEnabled} onCheckedChange={setBackupEnabled} />
+                    <Switch 
+                      checked={getSetting('backup', 'auto_backup_enabled') === 'true'}
+                      onCheckedChange={(checked) => updateAdminSetting('backup', 'auto_backup_enabled', checked.toString())}
+                    />
                   </div>
 
                   <div>
@@ -624,48 +522,46 @@ const NetworkAdvancedAdministration = () => {
                   <div>
                     <Label>Dernières sauvegardes</Label>
                     <div className="space-y-2 mt-2">
-                      <div className="flex items-center justify-between p-2 border rounded">
-                        <div>
-                          <div className="text-sm font-medium">Sauvegarde complète</div>
-                          <div className="text-xs text-muted-foreground">07/07/2025 02:00</div>
+                      {backupJobs.slice(0, 3).map((backup) => (
+                        <div key={backup.id} className="flex items-center justify-between p-2 border rounded">
+                          <div>
+                            <div className="text-sm font-medium">{backup.job_name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {backup.last_run ? new Date(backup.last_run).toLocaleString('fr-FR') : 'Jamais exécuté'}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {backup.last_status === 'success' ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : backup.last_status === 'failed' ? (
+                              <XCircle className="h-4 w-4 text-red-500" />
+                            ) : (
+                              <Clock className="h-4 w-4 text-yellow-500" />
+                            )}
+                            <Button variant="ghost" size="sm">
+                              <Download className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                          <Button variant="ghost" size="sm">
-                            <Download className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
+                      ))}
 
-                      <div className="flex items-center justify-between p-2 border rounded">
-                        <div>
-                          <div className="text-sm font-medium">Sauvegarde messages</div>
-                          <div className="text-xs text-muted-foreground">06/07/2025 02:00</div>
+                      {backupJobs.length === 0 && (
+                        <div className="text-sm text-muted-foreground text-center py-4">
+                          Aucune sauvegarde configurée
                         </div>
-                        <div className="flex items-center gap-1">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                          <Button variant="ghost" size="sm">
-                            <Download className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between p-2 border rounded">
-                        <div>
-                          <div className="text-sm font-medium">Sauvegarde config</div>
-                          <div className="text-xs text-muted-foreground">05/07/2025 02:00</div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                          <Button variant="ghost" size="sm">
-                            <Download className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
 
-                  <Button className="w-full">
+                  <Button 
+                    className="w-full"
+                    onClick={() => createBackupJob({
+                      job_name: `Sauvegarde manuelle ${new Date().toLocaleDateString('fr-FR')}`,
+                      job_type: 'full',
+                      schedule_type: 'manual'
+                    })}
+                    disabled={loading}
+                  >
                     <Archive className="h-4 w-4 mr-2" />
                     Créer Sauvegarde Manuelle
                   </Button>
@@ -688,10 +584,15 @@ const NetworkAdvancedAdministration = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-4 mb-4">
                 <div className="flex items-center gap-2">
                   <Search className="h-4 w-4" />
-                  <Input placeholder="Rechercher dans les logs..." className="w-64" />
+                  <Input 
+                    placeholder="Rechercher dans les logs..." 
+                    className="w-64"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
                 </div>
                 <Select value={selectedPharmacy} onValueChange={setSelectedPharmacy}>
                   <SelectTrigger className="w-48">
@@ -712,7 +613,13 @@ const NetworkAdvancedAdministration = () => {
 
               <ScrollArea className="h-96">
                 <div className="space-y-2">
-                  {securityLogs.map((log) => (
+                  {securityLogs
+                    .filter(log => 
+                      searchTerm === '' || 
+                      log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      log.user.toLowerCase().includes(searchTerm.toLowerCase())
+                    )
+                    .map((log) => (
                     <div key={log.id} className="p-3 border rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
@@ -734,6 +641,12 @@ const NetworkAdvancedAdministration = () => {
                       </div>
                     </div>
                   ))}
+                  
+                  {securityLogs.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Aucun log de sécurité disponible
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
 
@@ -746,10 +659,10 @@ const NetworkAdvancedAdministration = () => {
                     <Download className="h-4 w-4 mr-2" />
                     Exporter
                   </Button>
-                  <Button variant="outline" size="sm">
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Actualiser
-                  </Button>
+                    <Button variant="outline" size="sm" onClick={refreshSystemStatus} disabled={loading}>
+                      <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                      Actualiser
+                    </Button>
                 </div>
               </div>
             </CardContent>

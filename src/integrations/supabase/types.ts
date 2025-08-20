@@ -2503,6 +2503,111 @@ export type Database = {
           },
         ]
       }
+      network_admin_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_sensitive: boolean | null
+          setting_category: string
+          setting_key: string
+          setting_type: string
+          setting_value: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_sensitive?: boolean | null
+          setting_category: string
+          setting_key: string
+          setting_type?: string
+          setting_value?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_sensitive?: boolean | null
+          setting_category?: string
+          setting_key?: string
+          setting_type?: string
+          setting_value?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      network_backup_jobs: {
+        Row: {
+          compression_enabled: boolean | null
+          configuration: Json | null
+          created_at: string | null
+          encryption_enabled: boolean | null
+          id: string
+          is_active: boolean | null
+          job_name: string
+          job_type: string
+          last_run: string | null
+          last_size_mb: number | null
+          last_status: string | null
+          next_run: string | null
+          retention_days: number | null
+          schedule_days: number[] | null
+          schedule_time: string | null
+          schedule_type: string
+          target_path: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          compression_enabled?: boolean | null
+          configuration?: Json | null
+          created_at?: string | null
+          encryption_enabled?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          job_name: string
+          job_type: string
+          last_run?: string | null
+          last_size_mb?: number | null
+          last_status?: string | null
+          next_run?: string | null
+          retention_days?: number | null
+          schedule_days?: number[] | null
+          schedule_time?: string | null
+          schedule_type?: string
+          target_path?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          compression_enabled?: boolean | null
+          configuration?: Json | null
+          created_at?: string | null
+          encryption_enabled?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          job_name?: string
+          job_type?: string
+          last_run?: string | null
+          last_size_mb?: number | null
+          last_status?: string | null
+          next_run?: string | null
+          retention_days?: number | null
+          schedule_days?: number[] | null
+          schedule_time?: string | null
+          schedule_type?: string
+          target_path?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       network_channels: {
         Row: {
           created_at: string
@@ -2553,6 +2658,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      network_maintenance_schedules: {
+        Row: {
+          actual_end: string | null
+          actual_start: string | null
+          affected_systems: string[] | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          maintenance_type: string
+          notification_sent: boolean | null
+          scheduled_end: string
+          scheduled_start: string
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          actual_end?: string | null
+          actual_start?: string | null
+          affected_systems?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          maintenance_type: string
+          notification_sent?: boolean | null
+          scheduled_end: string
+          scheduled_start: string
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          actual_end?: string | null
+          actual_start?: string | null
+          affected_systems?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          maintenance_type?: string
+          notification_sent?: boolean | null
+          scheduled_end?: string
+          scheduled_start?: string
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       network_messages: {
         Row: {
@@ -2620,6 +2779,102 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      network_security_assets: {
+        Row: {
+          asset_name: string
+          asset_type: string
+          configuration: Json | null
+          created_at: string | null
+          expiry_date: string | null
+          id: string
+          last_updated: string | null
+          status: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          asset_name: string
+          asset_type: string
+          configuration?: Json | null
+          created_at?: string | null
+          expiry_date?: string | null
+          id?: string
+          last_updated?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          asset_name?: string
+          asset_type?: string
+          configuration?: Json | null
+          created_at?: string | null
+          expiry_date?: string | null
+          id?: string
+          last_updated?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      network_system_components: {
+        Row: {
+          configuration: Json | null
+          cpu_load: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          ip_address: unknown | null
+          last_check: string | null
+          memory_usage: number | null
+          name: string
+          port: number | null
+          status: string
+          storage_usage: number | null
+          tenant_id: string
+          type: string
+          updated_at: string | null
+          uptime_start: string | null
+        }
+        Insert: {
+          configuration?: Json | null
+          cpu_load?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          ip_address?: unknown | null
+          last_check?: string | null
+          memory_usage?: number | null
+          name: string
+          port?: number | null
+          status?: string
+          storage_usage?: number | null
+          tenant_id: string
+          type: string
+          updated_at?: string | null
+          uptime_start?: string | null
+        }
+        Update: {
+          configuration?: Json | null
+          cpu_load?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          ip_address?: unknown | null
+          last_check?: string | null
+          memory_usage?: number | null
+          name?: string
+          port?: number | null
+          status?: string
+          storage_usage?: number | null
+          tenant_id?: string
+          type?: string
+          updated_at?: string | null
+          uptime_start?: string | null
+        }
+        Relationships: []
       }
       parametres_expiration: {
         Row: {
