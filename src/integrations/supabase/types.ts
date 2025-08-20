@@ -14,6 +14,206 @@ export type Database = {
   }
   public: {
     Tables: {
+      accounting_currencies: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_base_currency: boolean
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_base_currency?: boolean
+          name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_base_currency?: boolean
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      accounting_exchange_rates: {
+        Row: {
+          auto_update_enabled: boolean
+          created_at: string
+          currency_id: string
+          id: string
+          rate: number
+          rate_date: string
+          tenant_id: string
+          update_frequency: string
+          updated_at: string
+        }
+        Insert: {
+          auto_update_enabled?: boolean
+          created_at?: string
+          currency_id: string
+          id?: string
+          rate: number
+          rate_date?: string
+          tenant_id: string
+          update_frequency?: string
+          updated_at?: string
+        }
+        Update: {
+          auto_update_enabled?: boolean
+          created_at?: string
+          currency_id?: string
+          id?: string
+          rate?: number
+          rate_date?: string
+          tenant_id?: string
+          update_frequency?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounting_exchange_rates_currency_id_fkey"
+            columns: ["currency_id"]
+            isOneToOne: false
+            referencedRelation: "accounting_currencies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      accounting_general_config: {
+        Row: {
+          auto_calcul_tva: boolean
+          auto_lettrage: boolean
+          controle_equilibre: boolean
+          created_at: string
+          decimal_places: number
+          id: string
+          periodicite_tva: string
+          plan_comptable: string
+          regime_tva: string
+          saisie_analytique: boolean
+          taux_tva_normal: number
+          taux_tva_reduit: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          auto_calcul_tva?: boolean
+          auto_lettrage?: boolean
+          controle_equilibre?: boolean
+          created_at?: string
+          decimal_places?: number
+          id?: string
+          periodicite_tva?: string
+          plan_comptable?: string
+          regime_tva?: string
+          saisie_analytique?: boolean
+          taux_tva_normal?: number
+          taux_tva_reduit?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          auto_calcul_tva?: boolean
+          auto_lettrage?: boolean
+          controle_equilibre?: boolean
+          created_at?: string
+          decimal_places?: number
+          id?: string
+          periodicite_tva?: string
+          plan_comptable?: string
+          regime_tva?: string
+          saisie_analytique?: boolean
+          taux_tva_normal?: number
+          taux_tva_reduit?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      accounting_journals: {
+        Row: {
+          auto_generation: boolean
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          tenant_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          auto_generation?: boolean
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          tenant_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          auto_generation?: boolean
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      accounting_numbering_rules: {
+        Row: {
+          created_at: string
+          current_number: number
+          format_pattern: string
+          id: string
+          last_reset_date: string | null
+          reset_frequency: string
+          rule_type: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_number?: number
+          format_pattern: string
+          id?: string
+          last_reset_date?: string | null
+          reset_frequency?: string
+          rule_type: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_number?: number
+          format_pattern?: string
+          id?: string
+          last_reset_date?: string | null
+          reset_frequency?: string
+          rule_type?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       alert_settings: {
         Row: {
           alert_end_time: string | null
@@ -4783,6 +4983,14 @@ export type Database = {
       }
       get_current_user_tenant_id: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_next_accounting_number: {
+        Args: {
+          p_journal_code?: string
+          p_rule_type: string
+          p_tenant_id: string
+        }
         Returns: string
       }
       is_system_admin: {
