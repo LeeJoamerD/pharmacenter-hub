@@ -210,7 +210,7 @@ export const useAccountingConfiguration = () => {
       const { data, error } = await supabase
         .from('exercices_comptables')
         .select('*')
-        .order('year', { ascending: false });
+        .order('libelle_exercice', { ascending: false });
       
       if (error) throw error;
       return data;
@@ -220,9 +220,14 @@ export const useAccountingConfiguration = () => {
   // Mutations
   const saveGeneralConfigMutation = useMutation({
     mutationFn: async (config: Partial<AccountingGeneralConfig>) => {
+      const configWithTenant = {
+        ...config,
+        tenant_id: companyInfo?.id || config.tenant_id
+      };
+      
       const { data, error } = await supabase
         .from('accounting_general_config')
-        .upsert(config, { onConflict: 'tenant_id' })
+        .upsert(configWithTenant, { onConflict: 'tenant_id' })
         .select()
         .single();
       
@@ -248,10 +253,18 @@ export const useAccountingConfiguration = () => {
 
   const saveJournalMutation = useMutation({
     mutationFn: async (journal: Partial<AccountingJournal>) => {
+      const journalWithTenant = {
+        ...journal,
+        tenant_id: companyInfo?.id || journal.tenant_id,
+        code: journal.code || '',
+        name: journal.name || '',
+        type: journal.type || ''
+      };
+      
       if (journal.id) {
         const { data, error } = await supabase
           .from('accounting_journals')
-          .update(journal)
+          .update(journalWithTenant)
           .eq('id', journal.id)
           .select()
           .single();
@@ -261,7 +274,7 @@ export const useAccountingConfiguration = () => {
       } else {
         const { data, error } = await supabase
           .from('accounting_journals')
-          .insert(journal)
+          .insert(journalWithTenant)
           .select()
           .single();
         
@@ -314,9 +327,16 @@ export const useAccountingConfiguration = () => {
 
   const saveNumberingRuleMutation = useMutation({
     mutationFn: async (rule: Partial<AccountingNumberingRule>) => {
+      const ruleWithTenant = {
+        ...rule,
+        tenant_id: companyInfo?.id || rule.tenant_id,
+        rule_type: rule.rule_type || '',
+        format_pattern: rule.format_pattern || ''
+      };
+      
       const { data, error } = await supabase
         .from('accounting_numbering_rules')
-        .upsert(rule, { onConflict: 'tenant_id,rule_type' })
+        .upsert(ruleWithTenant, { onConflict: 'tenant_id,rule_type' })
         .select()
         .single();
       
@@ -342,10 +362,17 @@ export const useAccountingConfiguration = () => {
 
   const saveCurrencyMutation = useMutation({
     mutationFn: async (currency: Partial<AccountingCurrency>) => {
+      const currencyWithTenant = {
+        ...currency,
+        tenant_id: companyInfo?.id || currency.tenant_id,
+        code: currency.code || '',
+        name: currency.name || ''
+      };
+      
       if (currency.id) {
         const { data, error } = await supabase
           .from('accounting_currencies')
-          .update(currency)
+          .update(currencyWithTenant)
           .eq('id', currency.id)
           .select()
           .single();
@@ -355,7 +382,7 @@ export const useAccountingConfiguration = () => {
       } else {
         const { data, error } = await supabase
           .from('accounting_currencies')
-          .insert(currency)
+          .insert(currencyWithTenant)
           .select()
           .single();
         
@@ -382,9 +409,16 @@ export const useAccountingConfiguration = () => {
 
   const saveExchangeRateMutation = useMutation({
     mutationFn: async (rate: Partial<AccountingExchangeRate>) => {
+      const rateWithTenant = {
+        ...rate,
+        tenant_id: companyInfo?.id || rate.tenant_id,
+        currency_id: rate.currency_id || '',
+        rate: rate.rate || 1
+      };
+      
       const { data, error } = await supabase
         .from('accounting_exchange_rates')
-        .upsert(rate, { onConflict: 'tenant_id,currency_id,rate_date' })
+        .upsert(rateWithTenant, { onConflict: 'tenant_id,currency_id,rate_date' })
         .select()
         .single();
       
@@ -439,10 +473,19 @@ export const useAccountingConfiguration = () => {
 
   const saveFiscalYearMutation = useMutation({
     mutationFn: async (fiscalYear: Partial<FiscalYear>) => {
+      // Map frontend fields to database fields
+      const fiscalYearData = {
+        tenant_id: companyInfo?.id || fiscalYear.tenant_id,
+        libelle_exercice: fiscalYear.year || '',
+        date_debut: fiscalYear.start_date || '',
+        date_fin: fiscalYear.end_date || '',
+        statut: fiscalYear.status || 'active'
+      };
+      
       if (fiscalYear.id) {
         const { data, error } = await supabase
           .from('exercices_comptables')
-          .update(fiscalYear)
+          .update(fiscalYearData)
           .eq('id', fiscalYear.id)
           .select()
           .single();
@@ -452,7 +495,7 @@ export const useAccountingConfiguration = () => {
       } else {
         const { data, error } = await supabase
           .from('exercices_comptables')
-          .insert(fiscalYear)
+          .insert(fiscalYearData)
           .select()
           .single();
         

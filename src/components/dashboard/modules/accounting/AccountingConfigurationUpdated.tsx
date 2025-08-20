@@ -537,19 +537,19 @@ const AccountingConfiguration = () => {
                 {fiscalYears.map((year) => (
                   <div key={year.id} className="flex items-center justify-between p-4 border rounded-lg animate-fade-in">
                     <div className="flex items-center gap-4">
-                      <div className={`w-3 h-3 rounded-full ${getYearStatusColor(year.status)}`} />
+                      <div className={`w-3 h-3 rounded-full ${getYearStatusColor(year.statut)}`} />
                       <div>
-                        <h4 className="font-medium">Exercice {year.year}</h4>
+                        <h4 className="font-medium">Exercice {year.libelle_exercice}</h4>
                         <p className="text-sm text-muted-foreground">
-                          Du {new Date(year.start_date).toLocaleDateString()} au {new Date(year.end_date).toLocaleDateString()}
+                          Du {new Date(year.date_debut).toLocaleDateString()} au {new Date(year.date_fin).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">
-                        {getYearStatusText(year.status)}
+                        {getYearStatusText(year.statut)}
                       </Badge>
-                      {year.status === 'active' && (
+                      {year.statut === 'active' && (
                         <Badge className="bg-green-500">
                           Actuel
                         </Badge>
@@ -557,7 +557,7 @@ const AccountingConfiguration = () => {
                       <Button size="sm" variant="outline">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      {year.status !== 'active' && (
+                      {year.statut !== 'active' && (
                         <Button 
                           size="sm" 
                           variant="outline"

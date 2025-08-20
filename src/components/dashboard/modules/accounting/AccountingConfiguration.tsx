@@ -42,9 +42,6 @@ const AccountingConfiguration = () => {
   const [editingGeneral, setEditingGeneral] = useState(false);
   const [generalForm, setGeneralForm] = useState<any>({});
   
-  // Get current active year
-  const activeYear = fiscalYears.find(y => y.statut === 'active')?.libelle_exercice || '2024';
-
   const {
     generalConfig,
     journals = [],
@@ -64,6 +61,9 @@ const AccountingConfiguration = () => {
     saveFiscalYear,
     deleteFiscalYear
   } = useAccountingConfiguration();
+
+  // Get current active year
+  const activeYear = fiscalYears.find(y => y.statut === 'active')?.libelle_exercice || '2024';
 
   const handleSaveGeneralConfig = () => {
     if (generalForm && Object.keys(generalForm).length > 0) {
