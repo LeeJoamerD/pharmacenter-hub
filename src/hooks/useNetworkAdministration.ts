@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { useTenantQueryWithCache, useTenantMutation } from './useTenantQuery';
+import { useTenantQuery } from './useTenantQuery';
 
 // Types for network administration
 export interface SystemComponent {
@@ -107,6 +107,7 @@ export interface SecurityLog {
 
 export const useNetworkAdministration = () => {
   const { toast } = useToast();
+  const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
   const [loading, setLoading] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 
@@ -115,121 +116,133 @@ export const useNetworkAdministration = () => {
     data: systemComponents = [], 
     isLoading: componentsLoading,
     refetch: refetchComponents 
-  } = useTenantQueryWithCache({
-    queryKey: ['network-system-components'],
-    table: 'network_system_components',
-    select: '*',
-    orderBy: { column: 'name', ascending: true }
-  });
+  } = useTenantQueryWithCache(
+    ['network-system-components'],
+    'network_system_components',
+    '*',
+    undefined,
+    { orderBy: { column: 'name', ascending: true } }
+  );
 
-  const componentMutation = useTenantMutation({
-    table: 'network_system_components',
-    invalidateQueries: [['network-system-components']]
-  });
+  const componentMutation = useTenantMutation(
+    'network_system_components',
+    'update',
+    { invalidateQueries: ['network-system-components'] }
+  );
 
   // Admin Settings
   const { 
     data: adminSettings = [], 
     isLoading: settingsLoading,
     refetch: refetchSettings 
-  } = useTenantQueryWithCache({
-    queryKey: ['network-admin-settings'],
-    table: 'network_admin_settings',
-    select: '*',
-    orderBy: { column: 'setting_category', ascending: true }
-  });
+  } = useTenantQueryWithCache(
+    ['network-admin-settings'],
+    'network_admin_settings',
+    '*',
+    undefined,
+    { orderBy: { column: 'setting_category', ascending: true } }
+  );
 
-  const settingMutation = useTenantMutation({
-    table: 'network_admin_settings',
-    invalidateQueries: [['network-admin-settings']]
-  });
+  const settingMutation = useTenantMutation(
+    'network_admin_settings',
+    'upsert',
+    { invalidateQueries: ['network-admin-settings'] }
+  );
 
   // Security Assets
   const { 
     data: securityAssets = [], 
     isLoading: securityLoading,
     refetch: refetchSecurity 
-  } = useTenantQueryWithCache({
-    queryKey: ['network-security-assets'],
-    table: 'network_security_assets',
-    select: '*',
-    orderBy: { column: 'asset_name', ascending: true }
-  });
+  } = useTenantQueryWithCache(
+    ['network-security-assets'],
+    'network_security_assets',
+    '*',
+    undefined,
+    { orderBy: { column: 'asset_name', ascending: true } }
+  );
 
-  const securityMutation = useTenantMutation({
-    table: 'network_security_assets',
-    invalidateQueries: [['network-security-assets']]
-  });
+  const securityMutation = useTenantMutation(
+    'network_security_assets',
+    'update',
+    { invalidateQueries: ['network-security-assets'] }
+  );
 
   // Backup Jobs
   const { 
     data: backupJobs = [], 
     isLoading: backupLoading,
     refetch: refetchBackups 
-  } = useTenantQueryWithCache({
-    queryKey: ['network-backup-jobs'],
-    table: 'network_backup_jobs',
-    select: '*',
-    orderBy: { column: 'job_name', ascending: true }
-  });
+  } = useTenantQueryWithCache(
+    ['network-backup-jobs'],
+    'network_backup_jobs',
+    '*',
+    undefined,
+    { orderBy: { column: 'job_name', ascending: true } }
+  );
 
-  const backupMutation = useTenantMutation({
-    table: 'network_backup_jobs',
-    invalidateQueries: [['network-backup-jobs']]
-  });
+  const backupMutation = useTenantMutation(
+    'network_backup_jobs',
+    'insert',
+    { invalidateQueries: ['network-backup-jobs'] }
+  );
 
   // User Sessions and Logs (from existing tables)
   const { 
     data: userSessions = [],
     isLoading: sessionsLoading 
-  } = useTenantQueryWithCache({
-    queryKey: ['user-sessions'],
-    table: 'user_sessions',
-    select: `
-      *,
-      personnel:personnel_id(noms, prenoms, role)
-    `,
-    orderBy: { column: 'created_at', ascending: false }
-  });
+  } = useTenantQueryWithCache(
+    ['user-sessions'],
+    'user_sessions',
+    `*,
+     personnel:personnel_id(noms, prenoms, role)`,
+    undefined,
+    { orderBy: { column: 'created_at', ascending: false } }
+  );
 
   const { 
     data: securityLogs = [],
     isLoading: logsLoading 
-  } = useTenantQueryWithCache({
-    queryKey: ['security-alerts'],
-    table: 'security_alerts',
-    select: '*',
-    orderBy: { column: 'created_at', ascending: false },
-    limit: 50
-  });
+  } = useTenantQueryWithCache(
+    ['security-alerts'],
+    'security_alerts',
+    '*',
+    undefined,
+    { 
+      orderBy: { column: 'created_at', ascending: false },
+      limit: 50
+    }
+  );
 
   const { 
     data: auditLogs = [],
     isLoading: auditLoading 
-  } = useTenantQueryWithCache({
-    queryKey: ['audit-logs'],
-    table: 'audit_logs',
-    select: '*',
-    orderBy: { column: 'created_at', ascending: false },
-    limit: 50
-  });
+  } = useTenantQueryWithCache(
+    ['audit-logs'],
+    'audit_logs',
+    '*',
+    undefined,
+    {
+      orderBy: { column: 'created_at', ascending: false },
+      limit: 50
+    }
+  );
 
   // User Permissions Summary (from personnel and pharmacies)
   const { 
     data: userPermissions = [],
     isLoading: permissionsLoading 
-  } = useTenantQueryWithCache({
-    queryKey: ['user-permissions-summary'],
-    table: 'pharmacies',
-    select: `
-      id,
-      name,
-      status,
-      updated_at,
-      personnel(id, role, is_active, updated_at)
-    `,
-    orderBy: { column: 'name', ascending: true }
-  });
+  } = useTenantQueryWithCache(
+    ['user-permissions-summary'],
+    'pharmacies',
+    `id,
+     name,
+     status,
+     updated_at,
+     personnel(id, role, is_active, updated_at)`,
+    undefined,
+    { orderBy: { column: 'name', ascending: true } }
+  );
 
   // Helper functions
   const getUptime = (uptimeStart: string) => {
@@ -285,7 +298,12 @@ export const useNetworkAdministration = () => {
   const updateSystemComponent = async (id: string, data: Partial<SystemComponent>) => {
     try {
       setLoading(true);
-      await componentMutation.mutateAsync({ id, ...data });
+      const updateMutation = useTenantMutation(
+        'network_system_components',
+        'update',
+        { invalidateQueries: ['network-system-components'] }
+      );
+      await updateMutation.mutateAsync({ id, ...data });
       toast({
         title: "Composant mis à jour",
         description: "Le composant système a été mis à jour avec succès.",
@@ -309,14 +327,25 @@ export const useNetworkAdministration = () => {
         s => s.setting_category === category && s.setting_key === key
       );
 
+      const upsertMutation = useTenantMutation(
+        'network_admin_settings',
+        'upsert',
+        { invalidateQueries: ['network-admin-settings'] }
+      );
+
       if (existingSetting) {
-        await settingMutation.mutateAsync({ 
+        const updateMutation = useTenantMutation(
+          'network_admin_settings',
+          'update',
+          { invalidateQueries: ['network-admin-settings'] }
+        );
+        await updateMutation.mutateAsync({ 
           id: existingSetting.id, 
           setting_value: value,
           updated_at: new Date().toISOString()
         });
       } else {
-        await settingMutation.mutateAsync({ 
+        await upsertMutation.mutateAsync({ 
           setting_category: category,
           setting_key: key,
           setting_value: value,
@@ -342,7 +371,12 @@ export const useNetworkAdministration = () => {
   const createBackupJob = async (jobData: Partial<BackupJob>) => {
     try {
       setLoading(true);
-      await backupMutation.mutateAsync({
+      const insertMutation = useTenantMutation(
+        'network_backup_jobs',
+        'insert',
+        { invalidateQueries: ['network-backup-jobs'] }
+      );
+      await insertMutation.mutateAsync({
         ...jobData,
         job_name: jobData.job_name || '',
         job_type: jobData.job_type || 'full'
@@ -365,7 +399,12 @@ export const useNetworkAdministration = () => {
   const updateBackupJob = async (id: string, data: Partial<BackupJob>) => {
     try {
       setLoading(true);
-      await backupMutation.mutateAsync({ id, ...data });
+      const updateMutation = useTenantMutation(
+        'network_backup_jobs',
+        'update',
+        { invalidateQueries: ['network-backup-jobs'] }
+      );
+      await updateMutation.mutateAsync({ id, ...data });
       toast({
         title: "Tâche de sauvegarde mise à jour",
         description: "La tâche de sauvegarde a été mise à jour avec succès.",
