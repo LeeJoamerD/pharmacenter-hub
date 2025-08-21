@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/use-toast';
 import { 
   Settings,
   Shield,
@@ -53,6 +55,7 @@ import {
 import { useNetworkAdministration } from '@/hooks/useNetworkAdministration';
 
 const NetworkAdvancedAdministration = () => {
+  const { toast } = useToast();
   const {
     systemComponents,
     userPermissions,
@@ -63,6 +66,8 @@ const NetworkAdvancedAdministration = () => {
     updateSystemComponent,
     updateAdminSetting,
     createBackupJob,
+    createManualBackup,
+    renewCertificates,
     updateBackupJob,
     refreshSystemStatus,
     toggleMaintenanceMode,
@@ -71,6 +76,32 @@ const NetworkAdvancedAdministration = () => {
 
   const [selectedPharmacy, setSelectedPharmacy] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [pharmacyDetailsDialog, setPharmacyDetailsDialog] = useState<string | null>(null);
+  const [editPharmacyDialog, setEditPharmacyDialog] = useState<string | null>(null);
+
+  // Handler functions for user management
+  const handleEditPharmacy = (pharmacyId: string) => {
+    setEditPharmacyDialog(pharmacyId);
+    toast({
+      title: "Modification de pharmacie",
+      description: `Configuration de la pharmacie ${pharmacyId} ouverte.`,
+    });
+  };
+
+  const handleViewPharmacyDetails = (pharmacyId: string) => {
+    setPharmacyDetailsDialog(pharmacyId);
+    const pharmacy = userPermissions.find(p => p.id === pharmacyId);
+    toast({
+      title: "Détails de la pharmacie",
+      description: `Affichage des détails pour ${pharmacy?.pharmacy_name || 'la pharmacie sélectionnée'}.`,
+    });
+  };
+
+  // Get pharmacy list for logs filtering
+  const pharmacyList = [
+    { id: 'all', name: 'Toutes les officines' },
+    ...userPermissions.map(p => ({ id: p.id, name: p.pharmacy_name }))
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -298,11 +329,21 @@ const NetworkAdvancedAdministration = () => {
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEditPharmacy(pharmacy.id)}
+                          disabled={loading}
+                        >
                           <Edit className="h-4 w-4 mr-2" />
                           Modifier
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleViewPharmacyDetails(pharmacy.id)}
+                          disabled={loading}
+                        >
                           <Eye className="h-4 w-4 mr-2" />
                           Voir détails
                         </Button>
@@ -455,8 +496,12 @@ const NetworkAdvancedAdministration = () => {
                   </div>
                 </div>
 
-                <Button className="w-full">
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                <Button 
+                  className="w-full"
+                  onClick={renewCertificates}
+                  disabled={loading}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                   Renouveler Certificats
                 </Button>
               </CardContent>
@@ -555,14 +600,10 @@ const NetworkAdvancedAdministration = () => {
 
                   <Button 
                     className="w-full"
-                    onClick={() => createBackupJob({
-                      job_name: `Sauvegarde manuelle ${new Date().toLocaleDateString('fr-FR')}`,
-                      job_type: 'full',
-                      schedule_type: 'manual'
-                    })}
+                    onClick={createManualBackup}
                     disabled={loading}
                   >
-                    <Archive className="h-4 w-4 mr-2" />
+                    <Archive className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                     Créer Sauvegarde Manuelle
                   </Button>
                 </div>
@@ -599,10 +640,11 @@ const NetworkAdvancedAdministration = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Toutes les officines</SelectItem>
-                    <SelectItem value="pharmacy-1">Pharmacie Central</SelectItem>
-                    <SelectItem value="pharmacy-2">Pharmacie de la Gare</SelectItem>
-                    <SelectItem value="pharmacy-3">Pharmacie du Centre</SelectItem>
+                    {pharmacyList.map((pharmacy) => (
+                      <SelectItem key={pharmacy.id} value={pharmacy.id}>
+                        {pharmacy.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Button variant="outline">
@@ -655,7 +697,29 @@ const NetworkAdvancedAdministration = () => {
                   Affichage de {securityLogs.length} événements
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      const csvContent = securityLogs.map(log => 
+                        `${log.timestamp},${log.type},${log.user},${log.pharmacy},${log.ip_address},"${log.details}"`
+                      ).join('\n');
+                      const csvHeader = 'Timestamp,Type,Utilisateur,Pharmacie,IP,Détails\n';
+                      const blob = new Blob([csvHeader + csvContent], { type: 'text/csv' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `logs-securite-${new Date().toISOString().split('T')[0]}.csv`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                      toast({
+                        title: "Export terminé",
+                        description: "Les logs ont été exportés en CSV.",
+                      });
+                    }}
+                  >
                     <Download className="h-4 w-4 mr-2" />
                     Exporter
                   </Button>
