@@ -143,7 +143,7 @@ export const useSystemSettings = () => {
         telephone_whatsapp: pharmacyData.telephone_whatsapp || '',
         departement: pharmacyData.departement || '',
         type: pharmacyData.type || '',
-        taux_centime_additionnel: Number((pharmacyData as any).taux_centime_additionnel) || 0,
+        taux_centime_additionnel: parseFloat(parametresMap.taux_centime_additionnel || '0'),
         
         // Paramètres système (par défaut Congo Brazzaville)
         default_currency: parametresMap.default_currency || 'XOF',
@@ -198,7 +198,6 @@ export const useSystemSettings = () => {
         telephone_whatsapp: updatedSettings.telephone_whatsapp,
         departement: updatedSettings.departement,
         type: updatedSettings.type,
-        taux_centime_additionnel: updatedSettings.taux_centime_additionnel,
       };
 
       // Préparer tous les paramètres système
@@ -206,7 +205,8 @@ export const useSystemSettings = () => {
       
       // Paramètres spécifiques à sauvegarder dans parametres_systeme
       const systemKeys = [
-        'default_currency', 'default_timezone', 'default_language', 'fiscal_year', 'taux_tva',
+        'default_currency', 'default_timezone', 'default_language', 'fiscal_year', 
+        'taux_tva', 'taux_centime_additionnel',
         // Paramètres d'interface
         'interface_theme', 'interface_primary_color', 'interface_font_size', 
         'interface_sidebar_collapsed', 'interface_show_tooltips', 'interface_animations_enabled',
