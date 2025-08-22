@@ -50,7 +50,10 @@ export const usePermissions = () => {
     'permissions',
     '*',
     undefined,
-    { orderBy: { column: 'categorie', ascending: true } }
+    { 
+      orderBy: { column: 'categorie', ascending: true },
+      tenantScoped: false
+    }
   );
 };
 

@@ -18,16 +18,23 @@ export const useTenantQuery = () => {
         orderBy?: { column: string; ascending?: boolean };
         limit?: number;
         single?: boolean;
+        tenantScoped?: boolean;
       }
     ) => {
-      if (!tenantId) {
+      const shouldScopeTenant = options?.tenantScoped ?? true;
+      
+      if (shouldScopeTenant && !tenantId) {
         throw new Error('Tenant ID is required for tenant queries');
       }
 
       let query = (supabase as any)
         .from(tableName)
-        .select(selectQuery)
-        .eq('tenant_id', tenantId);
+        .select(selectQuery);
+        
+      // Only add tenant filter if table is tenant-scoped
+      if (shouldScopeTenant && tenantId) {
+        query = query.eq('tenant_id', tenantId);
+      }
 
       // Ajouter des filtres supplémentaires
       if (additionalFilters) {
@@ -82,10 +89,14 @@ export const useTenantQuery = () => {
       limit?: number;
       single?: boolean;
       enabled?: boolean;
+      tenantScoped?: boolean;
     }
   ) => {
+    const shouldScopeTenant = options?.tenantScoped ?? true;
+    const effectiveQueryKey = shouldScopeTenant ? [tenantId, ...queryKey] : queryKey;
+    
     return useQuery({
-      queryKey: [tenantId, ...queryKey],
+      queryKey: effectiveQueryKey,
       queryFn: async () => {
         const query = createTenantQuery(
           tableName,
@@ -100,7 +111,7 @@ export const useTenantQuery = () => {
         }
         return data;
       },
-      enabled: !!tenantId && (options?.enabled ?? true)
+      enabled: shouldScopeTenant ? (!!tenantId && (options?.enabled ?? true)) : (options?.enabled ?? true)
     });
   };
 
