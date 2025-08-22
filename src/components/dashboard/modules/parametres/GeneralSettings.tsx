@@ -13,15 +13,19 @@ import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { useToast } from '@/hooks/use-toast';
 
 const GeneralSettings = () => {
-  const { settings, loading, saving, saveSettings, updateSettings, getCurrentCurrency, getCurrentTimezone, getCurrentLanguage } = useGlobalSystemSettings();
+  const { settings, loading, saving, saveSettings, getCurrentCurrency, getCurrentTimezone, getCurrentLanguage } = useGlobalSystemSettings();
   const { toast } = useToast();
   const [hasChanges, setHasChanges] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [formData, setFormData] = useState<any>(null);
 
-  // Surveiller les changements pour activer/désactiver le bouton de sauvegarde
+  // Initialiser les données du formulaire quand les settings sont chargés
   useEffect(() => {
-    setHasChanges(false); // Reset lors du chargement initial ou après sauvegarde
-  }, [settings]);
+    if (settings && !formData) {
+      setFormData({ ...settings });
+      setHasChanges(false);
+    }
+  }, [settings, formData]);
 
   // Validation des champs
   const validateField = (field: string, value: any): string | null => {
@@ -43,6 +47,8 @@ const GeneralSettings = () => {
   };
 
   const handleInputChange = (field: string, value: string | number | boolean) => {
+    if (!formData) return;
+    
     // Validation en temps réel
     const error = validateField(field, value);
     setValidationErrors(prev => ({
@@ -50,17 +56,21 @@ const GeneralSettings = () => {
       [field]: error || ''
     }));
 
-    updateSettings({ [field]: value } as any);
+    // Mettre à jour seulement l'état local du formulaire
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
     setHasChanges(true);
   };
 
   const handleSave = async () => {
-    if (!settings) return;
+    if (!formData || !settings) return;
 
     // Validation complète avant sauvegarde
     const errors: Record<string, string> = {};
-    Object.keys(settings).forEach(field => {
-      const error = validateField(field, (settings as any)[field]);
+    Object.keys(formData).forEach(field => {
+      const error = validateField(field, (formData as any)[field]);
       if (error) errors[field] = error;
     });
 
@@ -75,15 +85,36 @@ const GeneralSettings = () => {
     }
 
     try {
-      await saveSettings(settings);
+      // Sauvegarder les données du formulaire
+      await saveSettings(formData);
       setHasChanges(false);
       setValidationErrors({});
-    } catch (error) {
-      // L'erreur est déjà gérée dans le hook
+      toast({
+        title: "Paramètres sauvegardés",
+        description: "Les paramètres système ont été mis à jour avec succès.",
+      });
+    } catch (error: any) {
+      // Gérer les erreurs partielles
+      const errorMessage = error?.message || 'Erreur lors de la sauvegarde';
+      
+      if (errorMessage.includes('pharmacy') || errorMessage.includes('RLS')) {
+        toast({
+          title: "Sauvegarde partielle",
+          description: "Les paramètres système ont été sauvegardés, mais certaines informations de pharmacie n'ont pas pu être mises à jour (permissions insuffisantes).",
+          variant: "default",
+        });
+        setHasChanges(false); // Considérer comme sauvegardé partiellement
+      } else {
+        toast({
+          title: "Erreur de sauvegarde",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  if (loading) {
+  if (loading || !formData) {
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -138,7 +169,7 @@ const GeneralSettings = () => {
               </Label>
               <Input
                 id="name"
-                value={settings.name}
+                value={formData.name || ''}
                 onChange={(e) => handleInputChange('name', e.target.value)}
                 placeholder="Ex: Pharmacie du Centre"
                 className={validationErrors.name ? 'border-red-500' : ''}
@@ -155,7 +186,7 @@ const GeneralSettings = () => {
               </Label>
               <Input
                 id="code"
-                value={settings.code}
+                value={formData.code || ''}
                 onChange={(e) => handleInputChange('code', e.target.value)}
                 placeholder="Ex: PH001"
               />
@@ -168,7 +199,7 @@ const GeneralSettings = () => {
               </Label>
               <Textarea
                 id="address"
-                value={settings.address}
+                value={formData.address || ''}
                 onChange={(e) => handleInputChange('address', e.target.value)}
                 rows={3}
                 placeholder="Adresse détaillée de la pharmacie..."
@@ -180,7 +211,7 @@ const GeneralSettings = () => {
                 <Label htmlFor="city">Ville</Label>
                 <Input
                   id="city"
-                  value={settings.city}
+                  value={formData.city || ''}
                   onChange={(e) => handleInputChange('city', e.target.value)}
                   placeholder="Ex: Douala"
                 />
@@ -189,7 +220,7 @@ const GeneralSettings = () => {
                 <Label htmlFor="region">Région</Label>
                 <Input
                   id="region"
-                  value={settings.region}
+                  value={formData.region || ''}
                   onChange={(e) => handleInputChange('region', e.target.value)}
                   placeholder="Ex: Littoral"
                 />
@@ -206,7 +237,7 @@ const GeneralSettings = () => {
               <Input
                 id="telephone_appel"
                 type="tel"
-                value={settings.telephone_appel}
+                value={formData.telephone_appel || ''}
                 onChange={(e) => handleInputChange('telephone_appel', e.target.value)}
                 placeholder="+237 XXX XXX XXX"
                 className={validationErrors.telephone_appel ? 'border-red-500' : ''}
@@ -224,7 +255,7 @@ const GeneralSettings = () => {
               <Input
                 id="email"
                 type="email"
-                value={settings.email}
+                value={formData.email || ''}
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 placeholder="contact@pharmacie.com"
                 className={validationErrors.email ? 'border-red-500' : ''}
@@ -254,7 +285,7 @@ const GeneralSettings = () => {
                 Devise par défaut
               </Label>
               <Select 
-                value={settings.default_currency} 
+                value={formData.default_currency || ''} 
                 onValueChange={(value) => handleInputChange('default_currency', value)}
               >
                 <SelectTrigger className="w-full">
@@ -285,7 +316,7 @@ const GeneralSettings = () => {
                 Fuseau horaire
               </Label>
               <Select 
-                value={settings.default_timezone} 
+                value={formData.default_timezone || ''} 
                 onValueChange={(value) => handleInputChange('default_timezone', value)}
               >
                 <SelectTrigger className="w-full">
@@ -310,7 +341,7 @@ const GeneralSettings = () => {
             <div className="space-y-2">
               <Label htmlFor="default_language">Langue d'interface</Label>
               <Select 
-                value={settings.default_language} 
+                value={formData.default_language || ''} 
                 onValueChange={(value) => handleInputChange('default_language', value)}
               >
                 <SelectTrigger className="w-full">
@@ -353,7 +384,7 @@ const GeneralSettings = () => {
               <Label htmlFor="fiscal_year">Année fiscale</Label>
               <Input
                 id="fiscal_year"
-                value={settings.fiscal_year}
+                value={formData.fiscal_year || ''}
                 onChange={(e) => handleInputChange('fiscal_year', e.target.value)}
                 placeholder="2024"
               />
@@ -370,7 +401,7 @@ const GeneralSettings = () => {
                 step="0.01"
                 min="0"
                 max="100"
-                value={settings.taux_tva}
+                value={formData.taux_tva || 0}
                 onChange={(e) => handleInputChange('taux_tva', Number(e.target.value))}
                 className={validationErrors.taux_tva ? 'border-red-500' : ''}
               />
@@ -390,7 +421,7 @@ const GeneralSettings = () => {
                 step="0.01"
                 min="0"
                 max="100"
-                value={settings.taux_centime_additionnel}
+                value={formData.taux_centime_additionnel || 0}
                 onChange={(e) => handleInputChange('taux_centime_additionnel', Number(e.target.value))}
                 className={validationErrors.taux_centime_additionnel ? 'border-red-500' : ''}
               />
