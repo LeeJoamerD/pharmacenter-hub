@@ -37,7 +37,10 @@ export const useRoles = () => {
     'roles',
     '*',
     { is_active: true },
-    { orderBy: { column: 'niveau_hierarchique', ascending: true } }
+    { 
+      orderBy: { column: 'niveau_hierarchique', ascending: true },
+      tenantScoped: false // Les rôles sont globaux, pas liés au tenant
+    }
   );
 };
 
@@ -177,11 +180,23 @@ export const useUpdateRolePermissions = () => {
         description: "Les permissions du rôle ont été sauvegardées avec succès.",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Erreur lors de la sauvegarde des permissions:', error);
+      
+      // Messages d'erreur spécifiques
+      let errorMessage = "Une erreur est survenue lors de la sauvegarde des permissions.";
+      
+      if (error?.message?.includes('row-level security') || error?.code === 'PGRST301') {
+        errorMessage = "Vous devez être administrateur de cette pharmacie pour modifier les permissions.";
+      } else if (error?.message?.includes('permission denied') || error?.code === 'PGRST000') {
+        errorMessage = "Permissions insuffisantes pour effectuer cette opération.";
+      } else if (error?.message?.includes('violates foreign key constraint')) {
+        errorMessage = "Erreur de référence: rôle ou permission introuvable.";
+      }
+      
       toast({
-        title: "Erreur",
-        description: "Une erreur est survenue lors de la sauvegarde des permissions.",
+        title: "Erreur de sauvegarde",
+        description: errorMessage,
         variant: "destructive"
       });
     }

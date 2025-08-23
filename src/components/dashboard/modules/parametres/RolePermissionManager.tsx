@@ -41,12 +41,17 @@ export const RolePermissionManager: React.FC = () => {
 
   const updateRolePermissions = useUpdateRolePermissions();
 
-  // Sélectionner le premier rôle par défaut
+  // Sélectionner le premier rôle par défaut et refetch ses permissions
   React.useEffect(() => {
     if (roles.length > 0 && !selectedRoleId) {
       setSelectedRoleId(roles[0].id);
     }
   }, [roles, selectedRoleId]);
+
+  // Réinitialiser les changements locaux quand on change de rôle
+  React.useEffect(() => {
+    setHasChanges(false);
+  }, [selectedRoleId]);
 
   // Grouper les permissions par catégorie
   const groupedPermissions = useMemo(() => {
@@ -107,12 +112,26 @@ export const RolePermissionManager: React.FC = () => {
   // Gestion des erreurs
   if (rolesError || permissionsError) {
     return (
-      <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          Erreur lors du chargement des données : {rolesError?.message || permissionsError?.message}
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Gestion des Rôles et Permissions</h2>
+            <p className="text-muted-foreground">
+              Configurez les permissions pour chaque rôle de votre équipe
+            </p>
+          </div>
+        </div>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Erreur lors du chargement des données. 
+            {rolesError && ` Rôles: ${rolesError.message}`}
+            {permissionsError && ` Permissions: ${permissionsError.message}`}
+            {!roles?.length && !rolesError && " Aucun rôle n'est défini dans le système."}
+            {!permissions?.length && !permissionsError && " Aucune permission n'est définie dans le système."}
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
@@ -158,6 +177,30 @@ export const RolePermissionManager: React.FC = () => {
     );
   }
 
+  // Vérifier s'il y a des données à afficher
+  if (!rolesLoading && !permissionsLoading && (!roles?.length || !permissions?.length)) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Gestion des Rôles et Permissions</h2>
+            <p className="text-muted-foreground">
+              Configurez les permissions pour chaque rôle de votre équipe
+            </p>
+          </div>
+        </div>
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {!roles?.length && "Aucun rôle disponible. "}
+            {!permissions?.length && "Aucune permission disponible. "}
+            Les données de rôles et permissions doivent être configurées par un administrateur système.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   const selectedRole = roles.find(r => r.id === selectedRoleId);
 
   return (
@@ -183,7 +226,7 @@ export const RolePermissionManager: React.FC = () => {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y">
-                {roles?.map((role) => (
+                {roles?.length > 0 ? roles.map((role) => (
                   <button
                     key={role.id}
                     onClick={() => setSelectedRoleId(role.id)}
@@ -203,7 +246,12 @@ export const RolePermissionManager: React.FC = () => {
                       </Badge>
                     </div>
                   </button>
-                ))}
+                )) : (
+                  <div className="p-4 text-center text-muted-foreground">
+                    <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Aucun rôle disponible</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
