@@ -67,32 +67,19 @@ export const useSecurityMonitoring = () => {
     if (!personnel) return;
 
     try {
-      // Vérifier les tentatives d'accès récentes
-      const { data: recentAttempts } = await supabase
-        .from('audit_logs')
-        .select('*')
-        .eq('tenant_id', personnel.tenant_id)
-        .eq('user_id', user?.id)
-        .like('action', '%ACCESS_DENIED%')
-        .gte('created_at', new Date(Date.now() - 60 * 60 * 1000).toISOString()) // 1 heure
-        .order('created_at', { ascending: false });
-
-      if (recentAttempts && recentAttempts.length >= 3) {
-        // Créer une alerte de sécurité
-        await supabase.from('security_alerts').insert({
-          tenant_id: personnel.tenant_id,
-          user_id: user?.id,
-          alert_type: 'suspicious_access_pattern',
-          severity: 'high',
-          description: 'Activité suspecte détectée : tentatives d\'accès répétées',
-          metadata: {
-            denied_attempts: recentAttempts.length,
-            time_window: '1_hour',
-            user_agent: navigator.userAgent,
-            last_attempts: recentAttempts.slice(0, 5)
-          }
-        });
+      // Appeler la fonction RPC pour détecter les patterns suspects
+      const { error } = await supabase.rpc('detect_suspicious_patterns');
+      
+      if (error) {
+        console.error('Erreur détection patterns suspects:', error);
+        return;
       }
+
+      // Recharger les événements et métriques après détection
+      await Promise.all([
+        loadSecurityEvents(),
+        loadSecurityMetrics()
+      ]);
     } catch (error) {
       console.error('Erreur détection activité suspecte:', error);
     }

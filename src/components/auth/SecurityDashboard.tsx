@@ -83,7 +83,7 @@ export const SecurityDashboard: React.FC = () => {
         
         supabase
           .from('security_alerts')
-          .select('count')
+          .select('*', { count: 'exact', head: true })
           .eq('tenant_id', pharmacy.id)
           .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       ]);
@@ -105,10 +105,10 @@ export const SecurityDashboard: React.FC = () => {
         }));
       }
 
-      if (alertsResult.data) {
+      if (alertsResult.count !== null) {
         setStats(prev => ({
           ...prev,
-          securityAlerts: alertsResult.data.length
+          securityAlerts: alertsResult.count || 0
         }));
       }
 
@@ -145,14 +145,26 @@ export const SecurityDashboard: React.FC = () => {
 
   const terminateSession = async (sessionId: string) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from('user_sessions')
         .update({ is_active: false })
         .eq('id', sessionId);
       
+      if (error) {
+        console.error('RLS Error:', error);
+        // Vérifier si c'est une erreur RLS
+        if (error.message.includes('row-level security')) {
+          alert('Vous devez être Admin ou Pharmacien pour terminer les sessions.');
+          return;
+        }
+        throw error;
+      }
+      
+      alert('Session terminée avec succès');
       loadSecurityData();
     } catch (error) {
       console.error('Error terminating session:', error);
+      alert('Erreur lors de la terminaison de la session');
     }
   };
 

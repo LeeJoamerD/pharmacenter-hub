@@ -20,16 +20,23 @@ import {
   PieChart
 } from 'lucide-react';
 import { useSecurityMonitoring } from '@/hooks/useSecurityMonitoring';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const SecuritySurveillance = () => {
+  const { toast } = useToast();
+  const { personnel } = useAuth();
   const {
     events,
     metrics,
     isMonitoring,
     startMonitoring,
     stopMonitoring,
+    trackUserActivity,
+    detectSuspiciousActivity,
     loadSecurityEvents,
     loadSecurityMetrics
   } = useSecurityMonitoring();
@@ -40,6 +47,94 @@ const SecuritySurveillance = () => {
     loadSecurityEvents();
     loadSecurityMetrics();
   }, []);
+
+  // Fonctions pour générer les rapports
+  const generateDailyReport = async () => {
+    try {
+      if (!personnel) return;
+      
+      await trackUserActivity('generate_daily_security_report', { 
+        type: 'daily',
+        timestamp: new Date().toISOString()
+      });
+      
+      toast({
+        title: "Rapport quotidien généré",
+        description: "Le rapport de sécurité quotidien a été créé avec succès.",
+      });
+    } catch (error) {
+      console.error('Error generating daily report:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer le rapport quotidien.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generateWeeklyReport = async () => {
+    try {
+      if (!personnel) return;
+      
+      await trackUserActivity('generate_weekly_security_report', { 
+        type: 'weekly',
+        timestamp: new Date().toISOString()
+      });
+      
+      toast({
+        title: "Rapport hebdomadaire généré",
+        description: "Le rapport de sécurité hebdomadaire a été créé avec succès.",
+      });
+    } catch (error) {
+      console.error('Error generating weekly report:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer le rapport hebdomadaire.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generateComplianceReport = async () => {
+    try {
+      if (!personnel) return;
+      
+      await trackUserActivity('generate_compliance_security_report', { 
+        type: 'compliance',
+        timestamp: new Date().toISOString()
+      });
+      
+      toast({
+        title: "Rapport de conformité généré",
+        description: "Le rapport de conformité de sécurité a été créé avec succès.",
+      });
+    } catch (error) {
+      console.error('Error generating compliance report:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer le rapport de conformité.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Fonction pour analyser les patterns suspects
+  const handleRunPatternAnalysis = async () => {
+    try {
+      await detectSuspiciousActivity();
+      toast({
+        title: "Analyse des patterns terminée",
+        description: "L'analyse des patterns suspects a été exécutée avec succès.",
+      });
+    } catch (error) {
+      console.error('Error running pattern analysis:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'exécuter l'analyse des patterns.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -91,6 +186,15 @@ const SecuritySurveillance = () => {
           >
             {isMonitoring ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
             {isMonitoring ? 'Arrêter' : 'Démarrer'}
+          </Button>
+          <Button
+            onClick={handleRunPatternAnalysis}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <BarChart3 className="h-4 w-4" />
+            Analyser les patterns
           </Button>
         </div>
       </div>
@@ -335,7 +439,7 @@ const SecuritySurveillance = () => {
                     <h4 className="font-medium">Rapport Quotidien</h4>
                     <p className="text-sm text-muted-foreground">Synthèse des événements des dernières 24h</p>
                   </div>
-                  <Button variant="outline" size="sm">Générer</Button>
+                  <Button variant="outline" size="sm" onClick={generateDailyReport}>Générer</Button>
                 </div>
 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -343,7 +447,7 @@ const SecuritySurveillance = () => {
                     <h4 className="font-medium">Rapport Hebdomadaire</h4>
                     <p className="text-sm text-muted-foreground">Analyse des tendances sur 7 jours</p>
                   </div>
-                  <Button variant="outline" size="sm">Générer</Button>
+                  <Button variant="outline" size="sm" onClick={generateWeeklyReport}>Générer</Button>
                 </div>
 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -351,7 +455,7 @@ const SecuritySurveillance = () => {
                     <h4 className="font-medium">Rapport de Conformité</h4>
                     <p className="text-sm text-muted-foreground">Export pour audit de sécurité</p>
                   </div>
-                  <Button variant="outline" size="sm">Générer</Button>
+                  <Button variant="outline" size="sm" onClick={generateComplianceReport}>Générer</Button>
                 </div>
 
                 <div className="text-center text-muted-foreground py-4">
