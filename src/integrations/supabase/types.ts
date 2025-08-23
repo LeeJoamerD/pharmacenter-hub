@@ -3082,7 +3082,7 @@ export type Database = {
           {
             foreignKeyName: "fk_password_policies_tenant"
             columns: ["tenant_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
