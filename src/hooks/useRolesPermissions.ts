@@ -39,7 +39,7 @@ export const useRoles = () => {
     { is_active: true },
     { 
       orderBy: { column: 'niveau_hierarchique', ascending: true },
-      tenantScoped: false // Les rôles sont globaux, pas liés au tenant
+      tenantScoped: true // Les rôles sont maintenant multi-tenant
     }
   );
 };
