@@ -20,8 +20,7 @@ import {
   Shield
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useTenantQuery } from '@/hooks/useTenantQuery';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSafeAuth, useSafeTenantQuery } from '@/hooks/useSafeContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -39,9 +38,9 @@ interface NotificationSettings {
 const SecurityNotifications = () => {
   const { toast } = useToast();
   
-  // Appeler les hooks de manière inconditionnelle pour respecter les règles des hooks React
-  const authContext = useAuth();
-  const tenantContext = useTenantQuery();
+  // Utiliser les hooks sécurisés pour éviter les erreurs de contexte
+  const authContext = useSafeAuth();
+  const tenantContext = useSafeTenantQuery();
   
   const personnel = authContext?.personnel;
   const tenantId = tenantContext?.tenantId;
@@ -49,13 +48,14 @@ const SecurityNotifications = () => {
   const useTenantMutation = tenantContext?.useTenantMutation;
   
   // Vérification que tous les contextes nécessaires sont disponibles
-  if (!personnel || !tenantId || !useTenantQueryWithCache || !useTenantMutation) {
+  if (!authContext || !personnel || !tenantId || !tenantContext || !useTenantQueryWithCache || !useTenantMutation) {
     return (
       <Card>
         <CardContent className="p-6">
           <div className="text-center text-muted-foreground">
-            <p>Impossible de charger les paramètres de notification.</p>
-            <p className="text-sm mt-2">Vérifiez votre connexion et rechargez la page.</p>
+            <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Paramètres de notification non disponibles</p>
+            <p className="text-sm mt-2">Connectez-vous avec votre compte utilisateur pour accéder aux paramètres.</p>
           </div>
         </CardContent>
       </Card>
