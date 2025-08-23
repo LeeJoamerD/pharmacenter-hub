@@ -27,7 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export const SecurityDashboard: React.FC = () => {
   const { toast } = useToast();
-  const { useTenantQueryWithCache } = useTenantQuery();
+  const { tenantId, useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
 
   // Récupérer les politiques de sécurité actuelles
   const { data: passwordPolicies = [] } = useTenantQueryWithCache(
@@ -97,14 +97,21 @@ export const SecurityDashboard: React.FC = () => {
   }, [currentPolicy]);
 
   const handleSavePolicies = async () => {
-    const { useTenantMutation } = useTenantQuery();
+    if (!tenantId) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de déterminer le tenant. Veuillez vous reconnecter.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
       // Sauvegarder ou mettre à jour la politique de mot de passe
       const { error } = await supabase
         .from('password_policies')
         .upsert({
-          tenant_id: (window as any).currentTenantId, // Utilisation d'un tenantId global temporaire
+          tenant_id: tenantId,
           ...policySettings
         }, { 
           onConflict: 'tenant_id',
