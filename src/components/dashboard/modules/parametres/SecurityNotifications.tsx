@@ -156,27 +156,29 @@ const SecurityNotifications = () => {
     try {
       setIsSaving(true);
       
-      // Préparer les données de préférences
+      // Fonction pour déterminer le type de préférence dynamiquement
+      const getPreferenceType = (value: any): string => {
+        if (typeof value === 'boolean') return 'boolean';
+        if (typeof value === 'number') return 'number';
+        if (typeof value === 'object' && value !== null) return 'json';
+        return 'string';
+      };
+      
+      // Préparer les données de préférences avec type dynamique
       const preferencesToUpsert = Object.entries(notificationSettings).map(([key, value]) => ({
         tenant_id: tenantId,
         personnel_id: personnel.id,
         cle_preference: `notif_${key}`,
         valeur_preference: value.toString(),
-        type_preference: 'notification'
+        type_preference: getPreferenceType(value)
       }));
 
-      // Supprimer les anciennes préférences
-      await supabase
-        .from('preferences_utilisateur')
-        .delete()
-        .eq('tenant_id', tenantId)
-        .eq('personnel_id', personnel.id)
-        .like('cle_preference', 'notif_%');
-
-      // Insérer les nouvelles préférences
+      // Upsert avec onConflict au lieu de delete + insert
       const { error } = await supabase
         .from('preferences_utilisateur')
-        .insert(preferencesToUpsert);
+        .upsert(preferencesToUpsert, {
+          onConflict: 'tenant_id,personnel_id,cle_preference'
+        });
 
       if (error) {
         throw error;
