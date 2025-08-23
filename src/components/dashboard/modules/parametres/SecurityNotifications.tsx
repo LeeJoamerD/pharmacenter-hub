@@ -38,8 +38,29 @@ interface NotificationSettings {
 
 const SecurityNotifications = () => {
   const { toast } = useToast();
-  const { personnel } = useAuth();
-  const { tenantId, useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
+  
+  // Appeler les hooks de manière inconditionnelle pour respecter les règles des hooks React
+  const authContext = useAuth();
+  const tenantContext = useTenantQuery();
+  
+  const personnel = authContext?.personnel;
+  const tenantId = tenantContext?.tenantId;
+  const useTenantQueryWithCache = tenantContext?.useTenantQueryWithCache;
+  const useTenantMutation = tenantContext?.useTenantMutation;
+  
+  // Vérification que tous les contextes nécessaires sont disponibles
+  if (!personnel || !tenantId || !useTenantQueryWithCache || !useTenantMutation) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-muted-foreground">
+            <p>Impossible de charger les paramètres de notification.</p>
+            <p className="text-sm mt-2">Vérifiez votre connexion et rechargez la page.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
     email_alerts: true,
