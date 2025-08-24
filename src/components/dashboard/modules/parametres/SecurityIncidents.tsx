@@ -32,7 +32,6 @@ interface IncidentFormData {
   title: string;
   description: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
-  assigned_to?: string;
 }
 
 const SecurityIncidents = () => {
@@ -98,8 +97,7 @@ const SecurityIncidents = () => {
     defaultValues: {
       title: '',
       description: '',
-      severity: 'medium',
-      assigned_to: ''
+      severity: 'medium'
     }
   });
 
@@ -114,8 +112,11 @@ const SecurityIncidents = () => {
     }
 
     createIncidentMutation.mutate({
-      ...data,
+      title: data.title,
+      description: data.description,
+      severity: data.severity,
       status: 'open',
+      incident_type: 'security_breach',
       metadata: {
         created_via: 'security_dashboard',
         timestamp: new Date().toISOString()
