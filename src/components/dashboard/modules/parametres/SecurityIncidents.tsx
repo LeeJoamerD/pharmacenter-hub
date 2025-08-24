@@ -125,9 +125,11 @@ const SecurityIncidents = () => {
   };
 
   const handleStatusChange = async (incidentId: string, newStatus: string) => {
+    console.log('Changing status to:', newStatus);
     updateIncidentMutation.mutate({
       id: incidentId,
-      status: newStatus
+      status: newStatus,
+      updated_at: new Date().toISOString()
     });
   };
 
