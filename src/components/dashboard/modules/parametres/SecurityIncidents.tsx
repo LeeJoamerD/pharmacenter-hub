@@ -144,7 +144,7 @@ const SecurityIncidents = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'open': return 'destructive';
-      case 'investigating': return 'secondary';
+      case 'in_progress': return 'secondary';
       case 'resolved': return 'default';
       case 'closed': return 'outline';
       default: return 'outline';
@@ -164,7 +164,7 @@ const SecurityIncidents = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'open': return <XCircle className="h-4 w-4" />;
-      case 'investigating': return <Eye className="h-4 w-4" />;
+      case 'in_progress': return <Eye className="h-4 w-4" />;
       case 'resolved': return <CheckCircle className="h-4 w-4" />;
       case 'closed': return <CheckCircle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
@@ -206,7 +206,7 @@ const SecurityIncidents = () => {
               <div>
                 <p className="text-sm font-medium">En Investigation</p>
                 <p className="text-2xl font-bold text-orange-500">
-                  {incidents.filter((i: any) => i.status === 'investigating').length}
+                  {incidents.filter((i: any) => i.status === 'in_progress').length}
                 </p>
               </div>
             </div>
@@ -359,7 +359,7 @@ const SecurityIncidents = () => {
               <SelectContent>
                 <SelectItem value="all">Tous les statuts</SelectItem>
                 <SelectItem value="open">Ouvert</SelectItem>
-                <SelectItem value="investigating">Investigation</SelectItem>
+                <SelectItem value="in_progress">Investigation</SelectItem>
                 <SelectItem value="resolved">Résolu</SelectItem>
                 <SelectItem value="closed">Fermé</SelectItem>
               </SelectContent>
@@ -442,7 +442,7 @@ const SecurityIncidents = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="open">Ouvert</SelectItem>
-                            <SelectItem value="investigating">Investigation</SelectItem>
+                            <SelectItem value="in_progress">Investigation</SelectItem>
                             <SelectItem value="resolved">Résolu</SelectItem>
                             <SelectItem value="closed">Fermé</SelectItem>
                           </SelectContent>
