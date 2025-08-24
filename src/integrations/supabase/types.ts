@@ -440,7 +440,7 @@ export type Database = {
           record_id: string | null
           status: string | null
           table_name: string | null
-          tenant_id: string | null
+          tenant_id: string
           user_agent: string | null
           user_id: string | null
         }
@@ -456,7 +456,7 @@ export type Database = {
           record_id?: string | null
           status?: string | null
           table_name?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           user_agent?: string | null
           user_id?: string | null
         }
@@ -472,7 +472,7 @@ export type Database = {
           record_id?: string | null
           status?: string | null
           table_name?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           user_agent?: string | null
           user_id?: string | null
         }
@@ -4079,7 +4079,7 @@ export type Database = {
           resolved_at: string | null
           resolved_by: string | null
           severity: string
-          tenant_id: string | null
+          tenant_id: string
           user_agent: string | null
           user_id: string | null
         }
@@ -4094,7 +4094,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string
-          tenant_id?: string | null
+          tenant_id: string
           user_agent?: string | null
           user_id?: string | null
         }
@@ -4109,7 +4109,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string
-          tenant_id?: string | null
+          tenant_id?: string
           user_agent?: string | null
           user_id?: string | null
         }
@@ -4180,6 +4180,45 @@ export type Database = {
           title?: string
           updated_at?: string
           user_agent?: string | null
+        }
+        Relationships: []
+      }
+      security_reports: {
+        Row: {
+          content: Json | null
+          created_at: string
+          created_by: string | null
+          file_url: string | null
+          id: string
+          params: Json | null
+          status: string
+          tenant_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          content?: Json | null
+          created_at?: string
+          created_by?: string | null
+          file_url?: string | null
+          id?: string
+          params?: Json | null
+          status?: string
+          tenant_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          content?: Json | null
+          created_at?: string
+          created_by?: string | null
+          file_url?: string | null
+          id?: string
+          params?: Json | null
+          status?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string
         }
         Relationships: []
       }
