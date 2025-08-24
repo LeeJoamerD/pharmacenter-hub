@@ -29,6 +29,9 @@ import { fr } from 'date-fns/locale';
 const SecuritySurveillance = () => {
   const { toast } = useToast();
   const { personnel } = useAuth();
+  
+  const [selectedTimeRange, setSelectedTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
+  
   const {
     events,
     metrics,
@@ -38,26 +41,21 @@ const SecuritySurveillance = () => {
     trackUserActivity,
     detectSuspiciousActivity,
     loadSecurityEvents,
-    loadSecurityMetrics
-  } = useSecurityMonitoring();
-
-  const [selectedTimeRange, setSelectedTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
+    loadSecurityMetrics,
+    generateDailyReport: hookGenerateDailyReport,
+    generateWeeklyReport: hookGenerateWeeklyReport,
+    generateComplianceReport: hookGenerateComplianceReport
+  } = useSecurityMonitoring(selectedTimeRange);
 
   useEffect(() => {
-    loadSecurityEvents();
-    loadSecurityMetrics();
-  }, []);
+    loadSecurityEvents(selectedTimeRange);
+    loadSecurityMetrics(selectedTimeRange);
+  }, [selectedTimeRange, loadSecurityEvents, loadSecurityMetrics]);
 
   // Fonctions pour générer les rapports
   const generateDailyReport = async () => {
     try {
-      if (!personnel) return;
-      
-      await trackUserActivity('generate_daily_security_report', { 
-        type: 'daily',
-        timestamp: new Date().toISOString()
-      });
-      
+      await hookGenerateDailyReport();
       toast({
         title: "Rapport quotidien généré",
         description: "Le rapport de sécurité quotidien a été créé avec succès.",
@@ -74,13 +72,7 @@ const SecuritySurveillance = () => {
 
   const generateWeeklyReport = async () => {
     try {
-      if (!personnel) return;
-      
-      await trackUserActivity('generate_weekly_security_report', { 
-        type: 'weekly',
-        timestamp: new Date().toISOString()
-      });
-      
+      await hookGenerateWeeklyReport();
       toast({
         title: "Rapport hebdomadaire généré",
         description: "Le rapport de sécurité hebdomadaire a été créé avec succès.",
@@ -97,13 +89,7 @@ const SecuritySurveillance = () => {
 
   const generateComplianceReport = async () => {
     try {
-      if (!personnel) return;
-      
-      await trackUserActivity('generate_compliance_security_report', { 
-        type: 'compliance',
-        timestamp: new Date().toISOString()
-      });
-      
+      await hookGenerateComplianceReport();
       toast({
         title: "Rapport de conformité généré",
         description: "Le rapport de conformité de sécurité a été créé avec succès.",
