@@ -50,6 +50,20 @@ export interface SystemSettings {
   fiscal_year: string;
   taux_tva: number;
   
+  // Paramètres d'interface normalisés (clés DB)
+  interface_theme?: string;
+  interface_primary_color?: string;
+  interface_font_size?: string;
+  interface_sidebar_collapsed?: string;
+  interface_show_tooltips?: string;
+  interface_animations_activées?: string;
+  interface_compact_mode?: string;
+  interface_grid_density?: string;
+  default_lingual?: string;
+  interface_date_format?: string;
+  interface_number_format?: string;
+  interface_auto_save?: string;
+  
   // Options disponibles
   currencies_available: Currency[];
   timezones_available: Timezone[];
@@ -152,6 +166,20 @@ export const useSystemSettings = () => {
         fiscal_year: parametresMap.fiscal_year || new Date().getFullYear().toString(),
         taux_tva: parseFloat(parametresMap.taux_tva || '19.25'),
         
+        // Paramètres d'interface normalisés
+        interface_theme: parametresMap.interface_theme,
+        interface_primary_color: parametresMap.interface_primary_color,
+        interface_font_size: parametresMap.interface_font_size,
+        interface_sidebar_collapsed: parametresMap.interface_sidebar_collapsed,
+        interface_show_tooltips: parametresMap.interface_show_tooltips,
+        interface_animations_activées: parametresMap.interface_animations_activées,
+        interface_compact_mode: parametresMap.interface_compact_mode,
+        interface_grid_density: parametresMap.interface_grid_density,
+        default_lingual: parametresMap.default_lingual,
+        interface_date_format: parametresMap.interface_date_format,
+        interface_number_format: parametresMap.interface_number_format,
+        interface_auto_save: parametresMap.interface_auto_save,
+        
         // Options disponibles - utiliser les données de la base ou les données par défaut
         currencies_available: parametresMap.currencies_available && parametresMap.currencies_available.length > 0 
           ? parametresMap.currencies_available 
@@ -207,11 +235,11 @@ export const useSystemSettings = () => {
       const systemKeys = [
         'default_currency', 'default_timezone', 'default_language', 'fiscal_year', 
         'taux_tva', 'taux_centime_additionnel',
-        // Paramètres d'interface
+        // Paramètres d'interface (clés normalisées)
         'interface_theme', 'interface_primary_color', 'interface_font_size', 
-        'interface_sidebar_collapsed', 'interface_show_tooltips', 'interface_animations_enabled',
-        'interface_compact_mode', 'interface_grid_density', 'interface_date_format',
-        'interface_number_format', 'interface_auto_save'
+        'interface_sidebar_collapsed', 'interface_show_tooltips', 'interface_animations_activées',
+        'interface_compact_mode', 'interface_grid_density', 'default_lingual',
+        'interface_date_format', 'interface_number_format', 'interface_auto_save'
       ];
       
       systemKeys.forEach(key => {

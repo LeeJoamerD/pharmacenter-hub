@@ -31,44 +31,79 @@ const InterfaceSettings = () => {
 
   const [hasChanges, setHasChanges] = useState(false);
 
+  // Mapping des valeurs normalisées DB vers UI
+  const mapDbToUi = (settings_any: any) => ({
+    theme: mapDbValueToUi(settings_any.interface_theme, 'clair', 'light', { clair: 'light', foncé: 'dark', auto: 'auto' }),
+    primaryColor: mapDbValueToUi(settings_any.interface_primary_color, 'bleu', 'blue', { 
+      bleu: 'blue', vert: 'green', violet: 'purple', orange: 'orange', 
+      rouge: 'red', sarcelle: 'teal', indigo: 'indigo' 
+    }),
+    fontSize: parseInt(settings_any.interface_font_size || '14'),
+    sidebarCollapsed: settings_any.interface_sidebar_collapsed === 'vrai',
+    showTooltips: settings_any.interface_show_tooltips !== 'faux',
+    animationsEnabled: settings_any.interface_animations_activées !== 'faux',
+    compactMode: settings_any.interface_compact_mode === 'vrai',
+    gridDensity: mapDbValueToUi(settings_any.interface_grid_density, 'confortable', 'comfortable', {
+      compact: 'compact', confortable: 'comfortable', spacieux: 'spacious'
+    }),
+    language: settings_any.default_lingual || systemSettings.default_language || 'fr',
+    dateFormat: mapDbValueToUi(settings_any.interface_date_format, 'jj/mm/aaaa', 'dd/mm/yyyy', {
+      'jj/mm/aaaa': 'dd/mm/yyyy', 'mm/jj/aaaa': 'mm/dd/yyyy', 'aaaa-mm-jj': 'yyyy-mm-dd', 'jj-mm-aaaa': 'dd-mm-yyyy'
+    }),
+    numberFormat: mapDbValueToUi(settings_any.interface_number_format, 'français', 'french', {
+      français: 'french', anglais: 'english', espace: 'space'
+    }),
+    autoSave: settings_any.interface_auto_save !== 'faux'
+  });
+
+  // Fonction helper pour mapper les valeurs DB vers UI
+  const mapDbValueToUi = (dbValue: string, dbDefault: string, uiDefault: string, mapping: Record<string, string>) => {
+    const value = dbValue || dbDefault;
+    return mapping[value] || uiDefault;
+  };
+
   // Charger les paramètres depuis la base de données
   useEffect(() => {
     if (systemSettings) {
       const settings_any = systemSettings as any;
-      setSettings({
-        theme: settings_any.interface_theme || 'light',
-        primaryColor: settings_any.interface_primary_color || 'blue',
-        fontSize: parseInt(settings_any.interface_font_size || '14'),
-        sidebarCollapsed: settings_any.interface_sidebar_collapsed === 'true',
-        showTooltips: settings_any.interface_show_tooltips !== 'false',
-        animationsEnabled: settings_any.interface_animations_enabled !== 'false',
-        compactMode: settings_any.interface_compact_mode === 'true',
-        gridDensity: settings_any.interface_grid_density || 'comfortable',
-        language: systemSettings.default_language || 'fr',
-        dateFormat: settings_any.interface_date_format || 'dd/mm/yyyy',
-        numberFormat: settings_any.interface_number_format || 'french',
-        autoSave: settings_any.interface_auto_save !== 'false'
-      });
+      setSettings(mapDbToUi(settings_any));
       setHasChanges(false);
     }
   }, [systemSettings]);
 
+  // Mapping des valeurs UI vers DB normalisées
+  const mapUiToDb = (settings: any) => ({
+    interface_theme: mapUiValueToDb(settings.theme, { light: 'clair', dark: 'foncé', auto: 'auto' }),
+    interface_primary_color: mapUiValueToDb(settings.primaryColor, {
+      blue: 'bleu', green: 'vert', purple: 'violet', orange: 'orange',
+      red: 'rouge', teal: 'sarcelle', indigo: 'indigo'
+    }),
+    interface_font_size: settings.fontSize.toString(),
+    interface_sidebar_collapsed: settings.sidebarCollapsed ? 'vrai' : 'faux',
+    interface_show_tooltips: settings.showTooltips ? 'vrai' : 'faux',
+    interface_animations_activées: settings.animationsEnabled ? 'vrai' : 'faux',
+    interface_compact_mode: settings.compactMode ? 'vrai' : 'faux',
+    interface_grid_density: mapUiValueToDb(settings.gridDensity, {
+      compact: 'compact', comfortable: 'confortable', spacious: 'spacieux'
+    }),
+    default_lingual: settings.language,
+    interface_date_format: mapUiValueToDb(settings.dateFormat, {
+      'dd/mm/yyyy': 'jj/mm/aaaa', 'mm/dd/yyyy': 'mm/jj/aaaa', 'yyyy-mm-dd': 'aaaa-mm-jj', 'dd-mm-yyyy': 'jj-mm-aaaa'
+    }),
+    interface_number_format: mapUiValueToDb(settings.numberFormat, {
+      french: 'français', english: 'anglais', space: 'espace'
+    }),
+    interface_auto_save: settings.autoSave ? 'vrai' : 'faux'
+  });
+
+  // Fonction helper pour mapper les valeurs UI vers DB
+  const mapUiValueToDb = (uiValue: string, mapping: Record<string, string>) => {
+    return mapping[uiValue] || uiValue;
+  };
+
   const handleSave = async () => {
     try {
-      const interfaceParams = {
-        interface_theme: settings.theme,
-        interface_primary_color: settings.primaryColor,
-        interface_font_size: settings.fontSize.toString(),
-        interface_sidebar_collapsed: settings.sidebarCollapsed.toString(),
-        interface_show_tooltips: settings.showTooltips.toString(),
-        interface_animations_enabled: settings.animationsEnabled.toString(),
-        interface_compact_mode: settings.compactMode.toString(),
-        interface_grid_density: settings.gridDensity,
-        default_language: settings.language,
-        interface_date_format: settings.dateFormat,
-        interface_number_format: settings.numberFormat,
-        interface_auto_save: settings.autoSave.toString()
-      };
+      const interfaceParams = mapUiToDb(settings);
 
       await saveSettings(interfaceParams);
       setHasChanges(false);
@@ -129,7 +164,7 @@ const InterfaceSettings = () => {
                 </SelectTrigger>
                 <SelectContent className="z-[100] bg-white dark:bg-gray-800 border shadow-lg">
                   <SelectItem value="light">Clair</SelectItem>
-                  <SelectItem value="dark">Sombre</SelectItem>
+                  <SelectItem value="dark">Foncé</SelectItem>
                   <SelectItem value="auto">Automatique</SelectItem>
                 </SelectContent>
               </Select>
@@ -147,7 +182,7 @@ const InterfaceSettings = () => {
                   <SelectItem value="purple">Violet</SelectItem>
                   <SelectItem value="orange">Orange</SelectItem>
                   <SelectItem value="red">Rouge</SelectItem>
-                  <SelectItem value="teal">Bleu-vert</SelectItem>
+                  <SelectItem value="teal">Sarcelle</SelectItem>
                   <SelectItem value="indigo">Indigo</SelectItem>
                 </SelectContent>
               </Select>
