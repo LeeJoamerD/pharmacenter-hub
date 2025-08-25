@@ -15,6 +15,7 @@ type SystemSettingsContextType = {
   // Fonctions d'aide pour l'intégration
   applyCurrencySettings: () => void;
   applyLanguageSettings: () => void;
+  applyInterfaceSettings: () => void;
   getCurrentCurrency: () => Currency | undefined;
   getCurrentTimezone: () => Timezone | undefined;
   getCurrentLanguage: () => Language | undefined;
@@ -89,6 +90,92 @@ export function SystemSettingsProvider({ children }: { children: ReactNode }) {
     return settings.languages_available.find(l => l.code === settings.default_language);
   };
 
+  // Palette de couleurs HSL pour Tailwind
+  const colorPalettes = {
+    blue: { primary: '221, 83%, 53%', foreground: '210, 40%, 98%' },
+    green: { primary: '142, 76%, 36%', foreground: '355, 20%, 98%' },
+    purple: { primary: '262, 83%, 58%', foreground: '210, 40%, 98%' },
+    orange: { primary: '25, 95%, 53%', foreground: '210, 40%, 98%' },
+    red: { primary: '0, 84%, 60%', foreground: '210, 40%, 98%' },
+    teal: { primary: '173, 58%, 39%', foreground: '210, 40%, 98%' },
+    indigo: { primary: '239, 84%, 67%', foreground: '210, 40%, 98%' }
+  };
+
+  // Appliquer les paramètres d'interface en temps réel
+  const applyInterfaceSettings = () => {
+    if (!settings) return;
+
+    // 1. Appliquer le thème
+    const theme = settings.interface_theme || 'clair';
+    const html = document.documentElement;
+    
+    if (theme === 'foncé') {
+      html.classList.add('dark');
+    } else if (theme === 'clair') {
+      html.classList.remove('dark');
+    } else if (theme === 'auto') {
+      // Mode automatique avec matchMedia
+      const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const applyAutoTheme = () => {
+        if (darkModeQuery.matches) {
+          html.classList.add('dark');
+        } else {
+          html.classList.remove('dark');
+        }
+      };
+      
+      applyAutoTheme();
+      // Écouter les changements de préférence système
+      darkModeQuery.addEventListener('change', applyAutoTheme);
+    }
+
+    // 2. Appliquer la couleur principale
+    const primaryColor = settings.interface_primary_color || 'bleu';
+    const colorKey = primaryColor === 'bleu' ? 'blue' :
+                     primaryColor === 'vert' ? 'green' :
+                     primaryColor === 'violet' ? 'purple' :
+                     primaryColor === 'orange' ? 'orange' :
+                     primaryColor === 'rouge' ? 'red' :
+                     primaryColor === 'sarcelle' ? 'teal' :
+                     primaryColor === 'indigo' ? 'indigo' : 'blue';
+    
+    const palette = colorPalettes[colorKey as keyof typeof colorPalettes];
+    if (palette) {
+      const root = document.documentElement;
+      root.style.setProperty('--primary', palette.primary);
+      root.style.setProperty('--primary-foreground', palette.foreground);
+    }
+
+    // 3. Appliquer la taille de police
+    const fontSize = parseInt(settings.interface_font_size || '14');
+    if (fontSize >= 12 && fontSize <= 20) {
+      document.documentElement.style.fontSize = `${fontSize}px`;
+    }
+
+    // 4. Appliquer les attributs data sur body
+    const body = document.body;
+    
+    // Densité de grille
+    const gridDensity = settings.interface_grid_density || 'confortable';
+    body.dataset.gridDensity = gridDensity;
+    
+    // Mode compact
+    const compactMode = settings.interface_compact_mode === 'vrai';
+    body.dataset.compact = compactMode.toString();
+    
+    // Tooltips
+    const showTooltips = settings.interface_show_tooltips !== 'faux';
+    body.dataset.tooltips = showTooltips.toString();
+    
+    // Animations
+    const animationsEnabled = settings.interface_animations_activées !== 'faux';
+    body.dataset.animations = animationsEnabled.toString();
+    
+    // Sidebar collapsed par défaut (préférence initiale)
+    const sidebarCollapsed = settings.interface_sidebar_collapsed === 'vrai';
+    body.dataset.sidebarCollapsed = sidebarCollapsed.toString();
+  };
+
   // Fonction de sauvegarde étendue qui applique les changements aux autres contextes
   const saveSettingsWithSync = async (updates: Partial<SystemSettings>) => {
     await saveSettings(updates);
@@ -99,6 +186,20 @@ export function SystemSettingsProvider({ children }: { children: ReactNode }) {
     }
     if (updates.default_language) {
       applyLanguageSettings();
+    }
+    
+    // Appliquer les paramètres d'interface si des paramètres d'interface ont changé
+    const interfaceKeys = [
+      'interface_theme', 'interface_primary_color', 'interface_font_size',
+      'interface_sidebar_collapsed', 'interface_show_tooltips', 'interface_animations_activées',
+      'interface_compact_mode', 'interface_grid_density'
+    ];
+    
+    if (interfaceKeys.some(key => key in updates)) {
+      // Petit délai pour s'assurer que les settings sont mis à jour
+      setTimeout(() => {
+        applyInterfaceSettings();
+      }, 100);
     }
   };
 
@@ -111,6 +212,7 @@ export function SystemSettingsProvider({ children }: { children: ReactNode }) {
     refetch,
     applyCurrencySettings,
     applyLanguageSettings,
+    applyInterfaceSettings,
     getCurrentCurrency,
     getCurrentTimezone,
     getCurrentLanguage,

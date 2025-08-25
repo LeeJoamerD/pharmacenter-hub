@@ -60,6 +60,7 @@ export const useGlobalSystemSettings = () => {
     syncWithOtherContexts: () => {
       context.applyCurrencySettings();
       context.applyLanguageSettings();
+      context.applyInterfaceSettings();
     },
   };
 };

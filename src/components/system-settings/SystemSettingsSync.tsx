@@ -3,7 +3,7 @@ import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 
 /**
  * Composant invisible qui synchronise automatiquement les paramètres système
- * avec les autres contextes (Currency, Language) au chargement de l'application
+ * avec les autres contextes (Currency, Language, Interface) au chargement de l'application
  */
 export const SystemSettingsSync = () => {
   const { settings, syncWithOtherContexts } = useGlobalSystemSettings();
