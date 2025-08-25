@@ -110,7 +110,7 @@ const PrintSettings = () => {
                     </SelectItem>
                   ))}
                   {printers.filter(p => p.type === 'standard').length === 0 && (
-                    <SelectItem value="" disabled>Aucune imprimante configurée</SelectItem>
+                    <SelectItem value="none" disabled>Aucune imprimante configurée</SelectItem>
                   )}
                 </SelectContent>
               </Select>
@@ -313,7 +313,7 @@ const PrintSettings = () => {
                     </SelectItem>
                   ))}
                   {printers.filter(p => p.type === 'receipt' || p.type === 'thermal').length === 0 && (
-                    <SelectItem value="" disabled>Aucune imprimante de reçu configurée</SelectItem>
+                    <SelectItem value="none" disabled>Aucune imprimante de reçu configurée</SelectItem>
                   )}
                 </SelectContent>
               </Select>
