@@ -184,8 +184,12 @@ export function SystemSettingsProvider({ children }: { children: ReactNode }) {
     if (updates.default_currency) {
       applyCurrencySettings();
     }
-    if (updates.default_language) {
-      applyLanguageSettings();
+    
+    // Application immédiate des paramètres de langue si modifiés
+    if (updates.default_language || updates.default_lingual) {
+      setTimeout(() => {
+        applyLanguageSettings();
+      }, 200);
     }
     
     // Appliquer les paramètres d'interface si des paramètres d'interface ont changé

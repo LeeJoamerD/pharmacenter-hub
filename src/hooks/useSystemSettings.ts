@@ -228,8 +228,8 @@ export const useSystemSettings = () => {
         type: updatedSettings.type,
       };
 
-      // Préparer tous les paramètres système
-      const systemParams: Record<string, string | undefined> = {};
+      // Préparer tous les paramètres système avec conversion stable
+      const systemParams: Record<string, string> = {};
       
       // Paramètres spécifiques à sauvegarder dans parametres_systeme
       const systemKeys = [
@@ -242,76 +242,124 @@ export const useSystemSettings = () => {
         'interface_date_format', 'interface_number_format', 'interface_auto_save'
       ];
       
+      // Conversion stable vers string pour tous les paramètres
       systemKeys.forEach(key => {
         const value = (updatedSettings as any)[key];
         if (value !== undefined && value !== null) {
-          systemParams[key] = typeof value === 'object' ? JSON.stringify(value) : value.toString();
+          // Conversion robuste vers string
+          if (typeof value === 'object') {
+            systemParams[key] = JSON.stringify(value);
+          } else if (typeof value === 'boolean') {
+            systemParams[key] = value ? 'vrai' : 'faux';
+          } else {
+            systemParams[key] = value.toString();
+          }
         }
       });
 
-      // Mettre à jour la pharmacie
-      const { error: pharmacyError } = await supabase
-        .from('pharmacies')
-        .update(Object.fromEntries(
-          Object.entries(pharmacyFields).filter(([_, value]) => value !== undefined)
-        ))
-        .eq('id', pharmacy.id);
+      // Mettre à jour la pharmacie (seulement les champs définis)
+      const pharmacyFieldsToUpdate = Object.fromEntries(
+        Object.entries(pharmacyFields).filter(([_, value]) => value !== undefined)
+      );
+      
+      if (Object.keys(pharmacyFieldsToUpdate).length > 0) {
+        const { error: pharmacyError } = await supabase
+          .from('pharmacies')
+          .update(pharmacyFieldsToUpdate)
+          .eq('id', pharmacy.id);
 
-      if (pharmacyError) throw pharmacyError;
-
-      // Mettre à jour les paramètres système
-      for (const [key, value] of Object.entries(systemParams)) {
-        if (value !== undefined) {
-          // Vérifier si le paramètre existe déjà
-          const { data: existingParam } = await supabase
-            .from('parametres_systeme')
-            .select('id')
-            .eq('tenant_id', pharmacy.id)
-            .eq('cle_parametre', key)
-            .maybeSingle();
-
-          if (existingParam) {
-            // Mettre à jour
-            const { error } = await supabase
-              .from('parametres_systeme')
-              .update({ valeur_parametre: value })
-              .eq('tenant_id', pharmacy.id)
-              .eq('cle_parametre', key);
-
-            if (error) throw error;
-          } else {
-            // Créer
-            const { error } = await supabase
-              .from('parametres_systeme')
-              .insert({
-                tenant_id: pharmacy.id,
-                cle_parametre: key,
-                valeur_parametre: value,
-                type_parametre: 'string',
-                description: `Paramètre ${key}`,
-                valeur_defaut: value,
-                categorie: 'general'
-              });
-
-            if (error) throw error;
-          }
+        if (pharmacyError) {
+          console.error('Erreur mise à jour pharmacie:', pharmacyError);
+          throw new Error(`Erreur pharmacie: ${pharmacyError.message}`);
         }
       }
 
-      // Mettre à jour l'état local
-      setSettings(prev => prev ? { ...prev, ...updatedSettings } : null);
+      // Traitement robuste des paramètres système avec upserts
+      const parameterErrors: string[] = [];
+      
+      for (const [key, value] of Object.entries(systemParams)) {
+        try {
+          // Utiliser upsert pour optimiser les opérations (insert ou update)
+          const { error } = await supabase
+            .from('parametres_systeme')
+            .upsert({
+              tenant_id: pharmacy.id,
+              cle_parametre: key,
+              valeur_parametre: value,
+              type_parametre: 'string',
+              description: `Paramètre ${key}`,
+              valeur_defaut: value,
+              categorie: key.startsWith('interface_') ? 'interface' : 'general',
+              is_modifiable: true,
+              is_visible: true
+            }, {
+              onConflict: 'tenant_id,cle_parametre'
+            });
 
-      toast({
-        title: "Paramètres sauvegardés",
-        description: "Les paramètres généraux ont été mis à jour avec succès.",
+          if (error) {
+            console.error(`Erreur paramètre ${key}:`, error);
+            parameterErrors.push(`${key}: ${error.message}`);
+          }
+        } catch (paramError) {
+          console.error(`Erreur critique paramètre ${key}:`, paramError);
+          parameterErrors.push(`${key}: erreur critique`);
+        }
+      }
+
+      // Si des erreurs de paramètres mais pas toutes, continuer avec avertissement
+      if (parameterErrors.length > 0 && parameterErrors.length < Object.keys(systemParams).length) {
+        console.warn('Certains paramètres non sauvegardés:', parameterErrors);
+        toast({
+          title: "Sauvegarde partielle",
+          description: `${Object.keys(systemParams).length - parameterErrors.length} paramètres sauvegardés, ${parameterErrors.length} erreurs.`,
+          variant: "destructive"
+        });
+      } else if (parameterErrors.length === Object.keys(systemParams).length && parameterErrors.length > 0) {
+        throw new Error(`Aucun paramètre sauvegardé: ${parameterErrors.join(', ')}`);
+      }
+
+      // Application immédiate des changements de langue si modifiés
+      if (updatedSettings.default_language || updatedSettings.default_lingual) {
+        try {
+          // Déclencher l'application des paramètres de langue
+          // Via le contexte SystemSettings
+          window.dispatchEvent(new CustomEvent('systemSettingsLanguageChanged', {
+            detail: { 
+              language: updatedSettings.default_language || updatedSettings.default_lingual 
+            }
+          }));
+        } catch (langError) {
+          console.warn('Erreur application langue:', langError);
+        }
+      }
+
+      // Mettre à jour l'état local de manière sûre
+      setSettings(prev => {
+        if (!prev) return null;
+        return { ...prev, ...updatedSettings };
       });
+
+      // Toast de succès seulement si tout s'est bien passé
+      if (parameterErrors.length === 0) {
+        toast({
+          title: "Paramètres sauvegardés",
+          description: "Les paramètres système ont été mis à jour avec succès.",
+        });
+      }
+
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
+      
+      // Message d'erreur plus informatif
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder les paramètres.",
+        title: "Erreur de sauvegarde",
+        description: `Impossible de sauvegarder les paramètres: ${errorMessage}`,
         variant: "destructive",
       });
+      
+      // Ne pas mettre à jour l'état local en cas d'erreur
+      throw error;
     } finally {
       setSaving(false);
     }
