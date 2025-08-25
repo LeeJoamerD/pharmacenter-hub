@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,59 +6,30 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Printer, FileText, Settings } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Printer, FileText, Settings, Loader2 } from 'lucide-react';
+import { usePrintSettings } from '@/hooks/usePrintSettings';
 
 const PrintSettings = () => {
-  const { toast } = useToast();
-  
-  const [printSettings, setPrintSettings] = useState({
-    defaultPrinter: 'HP_LaserJet_Pro',
-    paperSize: 'A4',
-    orientation: 'portrait',
-    margin: 10,
-    quality: 'high',
-    colorMode: 'color',
-    enableWatermark: false,
-    watermarkText: 'PharmaSoft',
-    headerEnabled: true,
-    footerEnabled: true,
-    headerText: 'PharmaSoft SARL - Système de Gestion Pharmaceutique',
-    footerText: 'Confidentiel - Usage interne uniquement',
-    logoEnabled: true,
-    logoPosition: 'top-left',
-    fontSize: 12,
-    fontFamily: 'Arial'
-  });
-
-  const [receiptSettings, setReceiptSettings] = useState({
-    receiptPrinter: 'Thermal_Printer_01',
-    receiptWidth: 80,
-    showLogo: true,
-    showAddress: true,
-    showPhone: true,
-    autoOpenCashDrawer: true,
-    printCopies: 1,
-    headerLines: 'PharmaSoft SARL\nAbidjan, Cocody Riviera\nTél: +225 0123456789',
-    footerLines: 'Merci de votre visite!\nÀ bientôt chez PharmaSoft'
-  });
-
-  const handleSavePrintSettings = () => {
-    toast({
-      title: "Paramètres d'impression sauvegardés",
-      description: "La configuration d'impression a été mise à jour.",
-    });
-  };
-
-  const handlePrintTest = () => {
-    toast({
-      title: "Test d'impression lancé",
-      description: "Une page de test est en cours d'impression.",
-    });
-  };
+  const {
+    printSettings,
+    setPrintSettings,
+    receiptSettings,
+    setReceiptSettings,
+    loading,
+    saving,
+    saveSettings,
+    handlePrintTest
+  } = usePrintSettings();
 
   return (
     <div className="space-y-6">
+      {loading && (
+        <div className="flex items-center justify-center p-4">
+          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+          <span>Chargement des paramètres d'impression...</span>
+        </div>
+      )}
+      
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -361,7 +332,8 @@ const PrintSettings = () => {
         <Button variant="outline" onClick={handlePrintTest}>
           Test d'impression
         </Button>
-        <Button onClick={handleSavePrintSettings}>
+        <Button onClick={saveSettings} disabled={saving}>
+          {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
           Sauvegarder les paramètres
         </Button>
       </div>
