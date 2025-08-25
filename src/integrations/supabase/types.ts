@@ -3633,6 +3633,54 @@ export type Database = {
         }
         Relationships: []
       }
+      print_printers: {
+        Row: {
+          connection_type: string
+          created_at: string
+          driver_name: string | null
+          id: string
+          ip_address: string | null
+          is_active: boolean | null
+          is_default: boolean | null
+          name: string
+          paper_sizes: string[] | null
+          port: string | null
+          tenant_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          connection_type?: string
+          created_at?: string
+          driver_name?: string | null
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name: string
+          paper_sizes?: string[] | null
+          port?: string | null
+          tenant_id: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          connection_type?: string
+          created_at?: string
+          driver_name?: string | null
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name?: string
+          paper_sizes?: string[] | null
+          port?: string | null
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       produits: {
         Row: {
           categorie_tarification_id: string | null

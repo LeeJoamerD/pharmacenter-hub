@@ -3,6 +3,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { usePharmaciesQuery } from '@/hooks/useTenantQuery';
 
+interface Printer {
+  id: string;
+  tenant_id: string;
+  name: string;
+  type: string;
+  connection_type: string;
+  ip_address?: string;
+  port?: string;
+  driver_name?: string;
+  paper_sizes: string[];
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 interface PrintSettings {
   defaultPrinter: string;
   paperSize: string;
@@ -103,8 +119,10 @@ export const usePrintSettings = () => {
   
   const [printSettings, setPrintSettings] = useState<PrintSettings>(DEFAULT_PRINT_SETTINGS);
   const [receiptSettings, setReceiptSettings] = useState<ReceiptSettings>(DEFAULT_RECEIPT_SETTINGS);
+  const [printers, setPrinters] = useState<Printer[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [printersLoading, setPrintersLoading] = useState(false);
 
   // Convertir les valeurs de la DB vers les types UI
   const parseDbValue = (value: string, type: 'boolean' | 'number' | 'string'): any => {
@@ -126,6 +144,42 @@ export const usePrintSettings = () => {
     }
     return String(value);
   };
+
+  // Charger les imprimantes depuis la base de données
+  const loadPrinters = useCallback(async () => {
+    if (!pharmacy?.id || pharmacyLoading) return;
+    
+    setPrintersLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('print_printers')
+        .select('*')
+        .eq('tenant_id', pharmacy.id)
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) {
+        console.error('Erreur lors du chargement des imprimantes:', error);
+        toast({
+          variant: "destructive",
+          title: "Erreur de chargement",
+          description: "Impossible de charger les imprimantes."
+        });
+        return;
+      }
+
+      setPrinters(data || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement des imprimantes:', error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Une erreur est survenue lors du chargement des imprimantes."
+      });
+    } finally {
+      setPrintersLoading(false);
+    }
+  }, [pharmacy?.id, pharmacyLoading, toast]);
 
   // Charger les paramètres depuis la base de données
   const loadSettings = useCallback(async () => {
@@ -378,20 +432,154 @@ export const usePrintSettings = () => {
     }, 500);
   }, [printSettings, receiptSettings, toast]);
 
+  // Ajouter une nouvelle imprimante
+  const addPrinter = useCallback(async (printerData: Omit<Printer, 'id' | 'tenant_id' | 'created_at' | 'updated_at'>) => {
+    if (!pharmacy?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('print_printers')
+        .insert({
+          ...printerData,
+          tenant_id: pharmacy.id
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erreur lors de l\'ajout de l\'imprimante:', error);
+        toast({
+          variant: "destructive",
+          title: "Erreur d'ajout",
+          description: "Impossible d'ajouter l'imprimante."
+        });
+        return;
+      }
+
+      setPrinters(prev => [...prev, data]);
+      toast({
+        title: "Imprimante ajoutée",
+        description: "L'imprimante a été ajoutée avec succès."
+      });
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout:', error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Une erreur est survenue lors de l'ajout."
+      });
+    }
+  }, [pharmacy?.id, toast]);
+
+  // Mettre à jour une imprimante
+  const updatePrinter = useCallback(async (id: string, printerData: Partial<Printer>) => {
+    if (!pharmacy?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('print_printers')
+        .update(printerData)
+        .eq('id', id)
+        .eq('tenant_id', pharmacy.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erreur lors de la modification de l\'imprimante:', error);
+        toast({
+          variant: "destructive",
+          title: "Erreur de modification",
+          description: "Impossible de modifier l'imprimante."
+        });
+        return;
+      }
+
+      setPrinters(prev => prev.map(p => p.id === id ? data : p));
+      toast({
+        title: "Imprimante modifiée",
+        description: "L'imprimante a été modifiée avec succès."
+      });
+    } catch (error) {
+      console.error('Erreur lors de la modification:', error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la modification."
+      });
+    }
+  }, [pharmacy?.id, toast]);
+
+  // Supprimer une imprimante
+  const deletePrinter = useCallback(async (id: string) => {
+    if (!pharmacy?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('print_printers')
+        .delete()
+        .eq('id', id)
+        .eq('tenant_id', pharmacy.id);
+
+      if (error) {
+        console.error('Erreur lors de la suppression de l\'imprimante:', error);
+        toast({
+          variant: "destructive",
+          title: "Erreur de suppression",
+          description: "Impossible de supprimer l'imprimante."
+        });
+        return;
+      }
+
+      setPrinters(prev => prev.filter(p => p.id !== id));
+      
+      // Vérifier si l'imprimante supprimée était utilisée dans les paramètres
+      const deletedPrinter = printers.find(p => p.id === id);
+      if (deletedPrinter) {
+        if (printSettings.defaultPrinter === deletedPrinter.name) {
+          setPrintSettings(prev => ({ ...prev, defaultPrinter: '' }));
+        }
+        if (receiptSettings.receiptPrinter === deletedPrinter.name) {
+          setReceiptSettings(prev => ({ ...prev, receiptPrinter: '' }));
+        }
+      }
+
+      toast({
+        title: "Imprimante supprimée",
+        description: "L'imprimante a été supprimée avec succès."
+      });
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la suppression."
+      });
+    }
+  }, [pharmacy?.id, printers, printSettings.defaultPrinter, receiptSettings.receiptPrinter, toast]);
+
   // Charger les paramètres au montage du composant et quand la pharmacie change
   useEffect(() => {
     loadSettings();
-  }, [loadSettings]);
+    loadPrinters();
+  }, [loadSettings, loadPrinters]);
 
   return {
     printSettings,
     setPrintSettings,
     receiptSettings,
     setReceiptSettings,
+    printers,
     loading,
     saving,
+    printersLoading,
     saveSettings,
     handlePrintTest,
-    refetch: loadSettings
+    addPrinter,
+    updatePrinter,
+    deletePrinter,
+    refetch: () => {
+      loadSettings();
+      loadPrinters();
+    }
   };
 };
