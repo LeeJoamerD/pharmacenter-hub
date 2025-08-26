@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -223,7 +224,7 @@ export const useBusinessSettings = () => {
         { cle_parametre: 'online_ordering', valeur_parametre: settingsToSave.onlineOrdering.toString() },
       ];
 
-      // Upsert system parameters
+      // Upsert system parameters using the specific constraint name
       for (const param of systemParams) {
         const { error } = await supabase
           .from('parametres_systeme')
@@ -233,7 +234,7 @@ export const useBusinessSettings = () => {
             type_parametre: 'string',
             ...param,
           }, {
-            onConflict: 'tenant_id,cle_parametre'
+            onConflict: 'unique_tenant_cle_parametre'
           });
 
         if (error) {
