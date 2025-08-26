@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/contexts/TenantContext';
 
 export interface BackupRun {
   id: string;
@@ -45,10 +46,17 @@ export const useBackupRuns = () => {
   });
   
   const { toast } = useToast();
+  const { tenantId, currentUser } = useTenant();
 
   const loadRuns = useCallback(async () => {
+    if (!tenantId) {
+      console.log('BACKUP_RUNS: tenantId not available yet');
+      return;
+    }
+
     try {
       setLoading(true);
+      console.log('BACKUP_RUNS: Loading runs for tenantId:', tenantId);
       
       let query = supabase
         .from('network_backup_runs')
@@ -115,7 +123,7 @@ export const useBackupRuns = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, filters, toast]);
+  }, [tenantId, page, pageSize, filters, toast]);
 
   const updateFilters = useCallback((newFilters: Partial<BackupFilters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
@@ -174,23 +182,24 @@ export const useBackupRuns = () => {
   }, [loadRuns, toast]);
 
   const relaunch = useCallback(async (originalRun: BackupRun) => {
-    try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error('Utilisateur non authentifié');
+    if (!tenantId || !currentUser) {
+      toast({
+        title: "Erreur",
+        description: "Tenant ou utilisateur non disponible. Impossible de relancer la sauvegarde.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-      // Get current personnel info
-      const { data: personnel } = await supabase
-        .from('personnel')
-        .select('id')
-        .eq('auth_user_id', user.user.id)
-        .single();
+    try {
+      console.log('BACKUP_RUNS: Relaunching backup for tenantId:', tenantId, 'triggered_by:', currentUser.id);
 
       const newRun = {
-        tenant_id: originalRun.tenant_id,
+        tenant_id: tenantId,
         status: 'running' as const,
         type: originalRun.type,
         storage_target: originalRun.storage_target,
-        triggered_by: personnel?.id,
+        triggered_by: currentUser.id,
         configuration: originalRun.configuration
       };
 
@@ -230,7 +239,7 @@ export const useBackupRuns = () => {
         variant: "destructive",
       });
     }
-  }, [loadRuns, toast]);
+  }, [tenantId, currentUser, loadRuns, toast]);
 
   const getMetrics = useCallback(() => {
     const now = new Date();

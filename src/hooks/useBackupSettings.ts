@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/contexts/TenantContext';
 
 export interface BackupSettings {
   autoBackup: boolean;
@@ -41,10 +42,17 @@ export const useBackupSettings = () => {
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const { toast } = useToast();
+  const { tenantId, currentUser } = useTenant();
 
   const loadSettings = useCallback(async () => {
+    if (!tenantId) {
+      console.log('BACKUP_SETTINGS: tenantId not available yet');
+      return;
+    }
+
     try {
       setLoading(true);
+      console.log('BACKUP_SETTINGS: Loading settings for tenantId:', tenantId);
       const { data, error } = await supabase
         .from('parametres_systeme')
         .select('cle_parametre, valeur_parametre')
@@ -82,7 +90,7 @@ export const useBackupSettings = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [tenantId, toast]);
 
   const updateSetting = useCallback((key: keyof BackupSettings, value: any) => {
     setSettings(prev => ({
@@ -93,8 +101,18 @@ export const useBackupSettings = () => {
   }, []);
 
   const saveSettings = useCallback(async () => {
+    if (!tenantId) {
+      toast({
+        title: "Erreur",
+        description: "Tenant non disponible. Impossible de sauvegarder.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setSaving(true);
+      console.log('BACKUP_SETTINGS: Saving settings for tenantId:', tenantId);
       
       const updates = Object.entries(settings).map(([key, value]) => {
         const dbKey = settingsMapping[key as keyof typeof settingsMapping];
@@ -113,18 +131,17 @@ export const useBackupSettings = () => {
           valeur_parametre: dbValue,
           type_parametre: 'string',
           categorie: 'backup',
-          description: getParameterDescription(key as keyof BackupSettings)
+          description: getParameterDescription(key as keyof BackupSettings),
+          tenant_id: tenantId
         };
       });
 
       // Upsert all settings
       for (const update of updates) {
+        console.log('BACKUP_SETTINGS: Upserting parameter:', update.cle_parametre, 'for tenant:', tenantId);
         const { error } = await supabase
           .from('parametres_systeme')
-          .upsert({
-            ...update,
-            tenant_id: (await supabase.auth.getUser()).data.user?.user_metadata?.tenant_id
-          }, {
+          .upsert(update, {
             onConflict: 'tenant_id, cle_parametre'
           });
 
@@ -146,26 +163,27 @@ export const useBackupSettings = () => {
     } finally {
       setSaving(false);
     }
-  }, [settings, toast]);
+  }, [settings, tenantId, toast]);
 
   const createManualBackup = useCallback(async (type: string = 'database') => {
-    try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error('Utilisateur non authentifié');
+    if (!tenantId || !currentUser) {
+      toast({
+        title: "Erreur",
+        description: "Tenant ou utilisateur non disponible. Impossible de lancer la sauvegarde.",
+        variant: "destructive",
+      });
+      return null;
+    }
 
-      // Get current personnel info
-      const { data: personnel } = await supabase
-        .from('personnel')
-        .select('id')
-        .eq('auth_user_id', user.user.id)
-        .single();
+    try {
+      console.log('BACKUP_SETTINGS: Creating manual backup for tenantId:', tenantId, 'triggered_by:', currentUser.id);
 
       const backupRun = {
-        tenant_id: user.user.user_metadata?.tenant_id,
+        tenant_id: tenantId,
         status: 'running',
         type: type,
         storage_target: settings.localPath,
-        triggered_by: personnel?.id,
+        triggered_by: currentUser.id,
         configuration: {
           compression: settings.compressionEnabled,
           encryption: settings.encryptionEnabled,
@@ -211,7 +229,7 @@ export const useBackupSettings = () => {
       });
       return null;
     }
-  }, [settings, toast]);
+  }, [settings, tenantId, currentUser, toast]);
 
   useEffect(() => {
     loadSettings();
