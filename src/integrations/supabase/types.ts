@@ -2608,6 +2608,54 @@ export type Database = {
         }
         Relationships: []
       }
+      network_backup_runs: {
+        Row: {
+          completed_at: string | null
+          configuration: Json | null
+          created_at: string
+          id: string
+          is_archived: boolean
+          size_mb: number | null
+          started_at: string
+          status: string
+          storage_target: string | null
+          tenant_id: string
+          triggered_by: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          configuration?: Json | null
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          size_mb?: number | null
+          started_at?: string
+          status?: string
+          storage_target?: string | null
+          tenant_id: string
+          triggered_by?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          configuration?: Json | null
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          size_mb?: number | null
+          started_at?: string
+          status?: string
+          storage_target?: string | null
+          tenant_id?: string
+          triggered_by?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       network_channels: {
         Row: {
           created_at: string
