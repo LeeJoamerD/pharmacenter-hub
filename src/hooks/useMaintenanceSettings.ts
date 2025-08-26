@@ -301,13 +301,21 @@ export const useMaintenanceSettings = () => {
     try {
       const tenantId = await getCurrentTenantId();
       
+      console.log('Refreshing system stats for tenant:', tenantId);
+      
       const { data, error } = await supabase.rpc('refresh_network_system_stats', {
         p_tenant_id: tenantId
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('RPC Error:', error);
+        throw error;
+      }
 
-      refetchStats();
+      console.log('RPC Response:', data);
+      
+      // Refetch the stats to get updated data
+      await refetchStats();
       
       toast({
         title: "Succès",
@@ -318,7 +326,7 @@ export const useMaintenanceSettings = () => {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: "Impossible de rafraîchir les statistiques"
+        description: `Impossible de rafraîchir les statistiques: ${error.message || 'Erreur inconnue'}`
       });
     }
   };
