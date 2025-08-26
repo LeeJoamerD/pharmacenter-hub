@@ -232,8 +232,6 @@ export const useBusinessSettings = () => {
             categorie: 'business',
             type_parametre: 'text',
             ...param,
-          }, {
-            onConflict: 'tenant_id,cle_parametre'
           });
 
         if (error) {
