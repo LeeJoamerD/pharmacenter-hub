@@ -1,68 +1,72 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
-import { Briefcase, Building2, FileText, Calculator } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Briefcase, Building2, FileText } from 'lucide-react';
+import { useBusinessSettings } from '@/hooks/useBusinessSettings';
 
 const BusinessSettings = () => {
-  const { toast } = useToast();
-  
-  const [settings, setSettings] = useState({
-    businessType: 'pharmacy',
-    licenseNumber: 'PHARM-CI-2024-001',
-    licenseExpiry: '2025-12-31',
-    regulatoryBody: 'Ordre des Pharmaciens de Côte d\'Ivoire',
-    taxNumber: 'CI-TAX-123456789',
-    socialSecurityNumber: 'CNPS-987654321',
-    businessHours: {
-      monday: { open: '08:00', close: '18:00', closed: false },
-      tuesday: { open: '08:00', close: '18:00', closed: false },
-      wednesday: { open: '08:00', close: '18:00', closed: false },
-      thursday: { open: '08:00', close: '18:00', closed: false },
-      friday: { open: '08:00', close: '18:00', closed: false },
-      saturday: { open: '08:00', close: '14:00', closed: false },
-      sunday: { open: '00:00', close: '00:00', closed: true }
-    },
-    invoicePrefix: 'FACT',
-    quotationPrefix: 'DEVIS',
-    nextInvoiceNumber: 1001,
-    nextQuotationNumber: 501,
-    defaultPaymentTerms: '30',
-    acceptedPaymentMethods: ['cash', 'card', 'mobile', 'check'],
-    emergencyContact: '+225 0789123456',
-    emergencyService: true,
-    deliveryService: false,
-    onlineOrdering: false
-  });
+  const { 
+    settings, 
+    loading, 
+    saving, 
+    saveSettings, 
+    updateSetting, 
+    updateBusinessHours 
+  } = useBusinessSettings();
 
-  const handleSave = () => {
-    toast({
-      title: "Paramètres métiers sauvegardés",
-      description: "La configuration métier a été mise à jour.",
-    });
+  const handleSave = async () => {
+    await saveSettings(settings);
   };
 
   const handleSettingChange = (key: string, value: any) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    updateSetting(key as keyof typeof settings, value);
   };
 
   const handleHoursChange = (day: string, field: string, value: string | boolean) => {
-    setSettings(prev => ({
-      ...prev,
-      businessHours: {
-        ...prev.businessHours,
-        [day]: {
-          ...prev.businessHours[day as keyof typeof prev.businessHours],
-          [field]: value
-        }
-      }
-    }));
+    updateBusinessHours(day, field, value);
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-64" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-64" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   const days = [
     { key: 'monday', label: 'Lundi' },
@@ -253,8 +257,8 @@ const BusinessSettings = () => {
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave}>
-          Sauvegarder la configuration
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? 'Sauvegarde...' : 'Sauvegarder la configuration'}
         </Button>
       </div>
     </div>
