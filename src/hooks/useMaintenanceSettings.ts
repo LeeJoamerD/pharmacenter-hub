@@ -363,7 +363,7 @@ export const useMaintenanceSettings = () => {
             tenant_id: tenantId,
             task_name: taskName,
             status: 'running',
-            triggered_by: 'manual',
+            triggered_by: null,
             metadata: { manual_trigger: true }
           })
           .select()
