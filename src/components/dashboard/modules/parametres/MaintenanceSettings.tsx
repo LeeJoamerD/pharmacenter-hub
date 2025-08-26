@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Wrench, Database, Activity, AlertTriangle } from 'lucide-react';
+import { Wrench, Database, Activity, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useMaintenanceSettings } from '@/hooks/useMaintenanceSettings';
 
 const MaintenanceSettings = () => {
@@ -15,22 +15,28 @@ const MaintenanceSettings = () => {
     settings,
     systemStats,
     maintenanceTasks,
+    hasUnsavedChanges,
     isLoading,
-    updateSetting,
+    updateLocalSetting,
     saveAllSettings,
+    refreshSystemStats,
     triggerMaintenanceNow
   } = useMaintenanceSettings();
 
   const handleSettingChange = (key: string, value: any) => {
-    updateSetting(key.replace(/([A-Z])/g, '_$1').toLowerCase(), value);
+    updateLocalSetting(key, value);
   };
 
   const handleSave = () => {
-    saveAllSettings(settings);
+    saveAllSettings();
   };
 
   const handleMaintenanceNow = () => {
     triggerMaintenanceNow();
+  };
+
+  const handleRefreshStats = () => {
+    refreshSystemStats();
   };
 
   const getStatusColor = (status: string) => {
@@ -127,9 +133,20 @@ const MaintenanceSettings = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Statistiques Système
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Statistiques Système
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefreshStats}
+                disabled={isLoading}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Rafraîchir
+              </Button>
             </CardTitle>
             <CardDescription>
               État actuel du système
@@ -272,12 +289,16 @@ const MaintenanceSettings = () => {
       </Card>
 
       <div className="flex gap-2">
-        <Button onClick={handleMaintenanceNow} variant="outline">
+        <Button onClick={handleMaintenanceNow} variant="outline" disabled={isLoading}>
           <Wrench className="h-4 w-4 mr-2" />
           Lancer maintenance maintenant
         </Button>
-        <Button onClick={handleSave}>
-          Sauvegarder la configuration
+        <Button 
+          onClick={handleSave} 
+          disabled={isLoading || !hasUnsavedChanges}
+          variant={hasUnsavedChanges ? "default" : "secondary"}
+        >
+          {hasUnsavedChanges ? "Sauvegarder la configuration *" : "Configuration sauvegardée"}
         </Button>
       </div>
     </div>

@@ -5490,6 +5490,10 @@ export type Database = {
         Args: { p_tenant_id?: string }
         Returns: Json
       }
+      refresh_network_system_stats: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       register_pharmacy_with_admin: {
         Args: {
           admin_data: Json

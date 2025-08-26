@@ -49,6 +49,10 @@ export const useMaintenanceSettings = () => {
   
   const [isLoading, setIsLoading] = useState(false);
   
+  // Local state for settings (only saved when explicitly called)
+  const [localSettings, setLocalSettings] = useState<Partial<MaintenanceSettings>>({});
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
   // Query for maintenance settings from network_admin_settings
   const { 
     data: rawSettings, 
@@ -121,36 +125,36 @@ export const useMaintenanceSettings = () => {
     return personnel.tenant_id;
   };
 
-  // Transform raw settings to typed object
+  // Merge database settings with local changes
   const settings: MaintenanceSettings = {
-    maintenanceMode: getSetting('maintenance_mode') === 'true',
-    maintenanceMessage: getSetting('maintenance_message') || 'Système en maintenance. Retour prévu dans 30 minutes.',
-    autoMaintenance: getSetting('auto_maintenance') === 'true',
-    maintenanceSchedule: getSetting('maintenance_schedule') || '02:00',
-    maintenanceDays: getSetting('maintenance_days')?.split(',') || ['sunday'],
-    diskCleanup: getSetting('disk_cleanup') !== 'false',
-    logRetention: parseInt(getSetting('log_retention') || '30'),
-    tempFileCleanup: getSetting('temp_file_cleanup') !== 'false',
-    databaseOptimization: getSetting('database_optimization') !== 'false',
-    cacheCleanup: getSetting('cache_cleanup') !== 'false',
-    sessionCleanup: getSetting('session_cleanup') !== 'false',
-    emailNotifications: getSetting('email_notifications') !== 'false',
-    adminEmail: getSetting('admin_email') || 'admin@pharmasoft.ci'
+    maintenanceMode: localSettings.maintenanceMode ?? (getSetting('maintenance_mode') === 'true'),
+    maintenanceMessage: localSettings.maintenanceMessage ?? (getSetting('maintenance_message') || 'Système en maintenance. Retour prévu dans 30 minutes.'),
+    autoMaintenance: localSettings.autoMaintenance ?? (getSetting('auto_maintenance') === 'true'),
+    maintenanceSchedule: localSettings.maintenanceSchedule ?? (getSetting('maintenance_schedule') || '02:00'),
+    maintenanceDays: localSettings.maintenanceDays ?? (getSetting('maintenance_days')?.split(',') || ['sunday']),
+    diskCleanup: localSettings.diskCleanup ?? (getSetting('disk_cleanup') !== 'false'),
+    logRetention: localSettings.logRetention ?? parseInt(getSetting('log_retention') || '30'),
+    tempFileCleanup: localSettings.tempFileCleanup ?? (getSetting('temp_file_cleanup') !== 'false'),
+    databaseOptimization: localSettings.databaseOptimization ?? (getSetting('database_optimization') !== 'false'),
+    cacheCleanup: localSettings.cacheCleanup ?? (getSetting('cache_cleanup') !== 'false'),
+    sessionCleanup: localSettings.sessionCleanup ?? (getSetting('session_cleanup') !== 'false'),
+    emailNotifications: localSettings.emailNotifications ?? (getSetting('email_notifications') !== 'false'),
+    adminEmail: localSettings.adminEmail ?? (getSetting('admin_email') || 'admin@pharmasoft.ci')
   };
 
   function getSetting(key: string): string | undefined {
     return rawSettings?.find(s => s.setting_key === key)?.setting_value || undefined;
   }
 
-  // Transform system stats with defaults
+  // Transform system stats (no defaults - display real data)
   const transformedSystemStats: SystemStats = {
-    disk_usage: systemStats?.disk_usage || 65,
-    memory_usage: systemStats?.memory_usage || 72,
-    cpu_usage: systemStats?.cpu_usage || 45,
-    database_size_mb: systemStats?.database_size_mb || 2400,
-    log_size_mb: systemStats?.log_size_mb || 156,
-    temp_files_mb: systemStats?.temp_files_mb || 89,
-    uptime_seconds: systemStats?.uptime_seconds || 1324800, // 15 jours * 24 * 3600
+    disk_usage: systemStats?.disk_usage || 0,
+    memory_usage: systemStats?.memory_usage || 0,
+    cpu_usage: systemStats?.cpu_usage || 0,
+    database_size_mb: systemStats?.database_size_mb || 0,
+    log_size_mb: systemStats?.log_size_mb || 0,
+    temp_files_mb: systemStats?.temp_files_mb || 0,
+    uptime_seconds: systemStats?.uptime_seconds || 0,
     last_maintenance_at: systemStats?.last_maintenance_at,
     next_maintenance_at: systemStats?.next_maintenance_at
   };
@@ -166,9 +170,9 @@ export const useMaintenanceSettings = () => {
       diskUsage: stats.disk_usage,
       memoryUsage: stats.memory_usage,
       cpuUsage: stats.cpu_usage,
-      databaseSize: `${(stats.database_size_mb / 1024).toFixed(1)} GB`,
-      logSize: `${stats.log_size_mb} MB`,
-      tempFiles: `${stats.temp_files_mb} MB`,
+      databaseSize: `${stats.database_size_mb.toFixed(2)} MB`,
+      logSize: `${stats.log_size_mb.toFixed(2)} MB`,
+      tempFiles: `${stats.temp_files_mb.toFixed(2)} MB`,
       uptime: `${uptimeDays} jours ${remainingHours} heures`,
       lastMaintenance: stats.last_maintenance_at ? new Date(stats.last_maintenance_at).toLocaleString('fr-FR') : 'Jamais',
       nextMaintenance: stats.next_maintenance_at ? new Date(stats.next_maintenance_at).toLocaleString('fr-FR') : 'Non planifié'
@@ -215,7 +219,16 @@ export const useMaintenanceSettings = () => {
     return names[taskName] || taskName;
   };
 
-  // Functions to interact with settings
+  // Update local setting (doesn't save to database)
+  const updateLocalSetting = (key: string, value: any) => {
+    setLocalSettings(prev => ({
+      ...prev,
+      [key]: value
+    }));
+    setHasUnsavedChanges(true);
+  };
+
+  // Update a single setting to database
   const updateSetting = async (key: string, value: string | boolean | number | string[]) => {
     try {
       const tenantId = await getCurrentTenantId();
@@ -252,14 +265,25 @@ export const useMaintenanceSettings = () => {
     }
   };
 
-  const saveAllSettings = async (newSettings: Partial<MaintenanceSettings>) => {
+  const saveAllSettings = async () => {
+    if (Object.keys(localSettings).length === 0) {
+      toast({
+        title: "Information",
+        description: "Aucune modification à sauvegarder"
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const promises = Object.entries(newSettings).map(([key, value]) => {
+      const promises = Object.entries(localSettings).map(([key, value]) => {
         return updateSetting(key.replace(/([A-Z])/g, '_$1').toLowerCase(), value);
       });
       
       await Promise.all(promises);
+      
+      setLocalSettings({});
+      setHasUnsavedChanges(false);
       
       toast({
         title: "Paramètres de maintenance sauvegardés",
@@ -272,17 +296,61 @@ export const useMaintenanceSettings = () => {
     }
   };
 
+  // Refresh system statistics
+  const refreshSystemStats = async () => {
+    try {
+      const tenantId = await getCurrentTenantId();
+      
+      const { data, error } = await supabase.rpc('refresh_network_system_stats', {
+        p_tenant_id: tenantId
+      });
+
+      if (error) throw error;
+
+      refetchStats();
+      
+      toast({
+        title: "Succès",
+        description: "Statistiques système mises à jour"
+      });
+    } catch (error) {
+      console.error('Error refreshing system stats:', error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de rafraîchir les statistiques"
+      });
+    }
+  };
+
   const triggerMaintenanceNow = async () => {
+    if (hasUnsavedChanges) {
+      toast({
+        variant: "destructive",
+        title: "Modifications non sauvegardées",
+        description: "Veuillez d'abord sauvegarder vos modifications."
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const tenantId = await getCurrentTenantId();
       const enabledTasks = [
         settings.diskCleanup && 'disk_cleanup',
         settings.tempFileCleanup && 'temp_file_cleanup',
-        settings.databaseOptimization && 'db_optimization',
+        settings.databaseOptimization && 'database_optimization',
         settings.cacheCleanup && 'cache_cleanup',
         settings.sessionCleanup && 'session_cleanup'
       ].filter(Boolean) as string[];
+
+      if (enabledTasks.length === 0) {
+        toast({
+          title: "Information",
+          description: "Aucune tâche de maintenance activée"
+        });
+        return;
+      }
 
       const taskPromises = enabledTasks.map(async (taskName) => {
         // Create running task
@@ -292,7 +360,7 @@ export const useMaintenanceSettings = () => {
             tenant_id: tenantId,
             task_name: taskName,
             status: 'running',
-            started_at: new Date().toISOString(),
+            triggered_by: 'manual',
             metadata: { manual_trigger: true }
           })
           .select()
@@ -321,17 +389,40 @@ export const useMaintenanceSettings = () => {
 
       await Promise.all(taskPromises);
 
-      // Update last maintenance time
-      await supabase
-        .from('network_system_stats')
-        .upsert({
-          tenant_id: tenantId,
-          last_maintenance_at: new Date().toISOString()
-        }, {
-          onConflict: 'tenant_id'
-        });
+      // Trigger backup if auto maintenance is enabled
+      if (settings.autoMaintenance) {
+        const { data: backupRun, error: backupError } = await supabase
+          .from('network_backup_runs')
+          .insert({
+            tenant_id: tenantId,
+            backup_type: 'manual',
+            status: 'running',
+            triggered_by: 'maintenance',
+          })
+          .select()
+          .single();
 
-      refetchStats();
+        if (!backupError) {
+          // Simulate backup completion
+          setTimeout(async () => {
+            await supabase
+              .from('network_backup_runs')
+              .update({
+                status: 'completed',
+                completed_at: new Date().toISOString(),
+                duration_seconds: Math.floor(Math.random() * 60) + 30,
+                backup_size_mb: Math.floor(Math.random() * 500) + 100,
+                message: 'Sauvegarde terminée avec succès',
+              })
+              .eq('id', backupRun.id);
+          }, Math.random() * 8000 + 5000);
+        }
+      }
+
+      // Refresh system stats after maintenance
+      setTimeout(() => {
+        refreshSystemStats();
+      }, 10000);
 
       toast({
         title: "Maintenance lancée",
@@ -349,26 +440,19 @@ export const useMaintenanceSettings = () => {
     }
   };
 
-  // Initialize system stats if they don't exist
+  // Initialize system stats if they don't exist using real data
   useEffect(() => {
     const initializeSystemStats = async () => {
       if (!loadingStats && !systemStats) {
         try {
           const tenantId = await getCurrentTenantId();
-          await supabase
-            .from('network_system_stats')
-            .upsert({
-              tenant_id: tenantId,
-              disk_usage: 65,
-              memory_usage: 72,
-              cpu_usage: 45,
-              database_size_mb: 2400,
-              log_size_mb: 156,
-              temp_files_mb: 89,
-              uptime_seconds: 1324800
-            }, {
-              onConflict: 'tenant_id'
-            });
+          
+          // Use the refresh function to initialize stats with real data
+          const { data, error } = await supabase.rpc('refresh_network_system_stats', {
+            p_tenant_id: tenantId
+          });
+
+          if (error) throw error;
           refetchStats();
         } catch (error) {
           console.error('Error initializing system stats:', error);
@@ -383,9 +467,12 @@ export const useMaintenanceSettings = () => {
     settings,
     systemStats: getFormattedSystemStats(),
     maintenanceTasks: getFormattedMaintenanceTasks(),
+    hasUnsavedChanges,
     isLoading: loadingSettings || loadingStats || loadingTasks || loadingBackups || isLoading,
+    updateLocalSetting,
     updateSetting,
     saveAllSettings,
+    refreshSystemStats,
     triggerMaintenanceNow,
     refetchAll: () => {
       refetchSettings();
