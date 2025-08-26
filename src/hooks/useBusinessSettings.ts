@@ -230,7 +230,7 @@ export const useBusinessSettings = () => {
           .upsert({
             tenant_id: pharmacy.id,
             categorie: 'business',
-            type_parametre: 'text',
+            type_parametre: 'string',
             ...param,
           });
 
