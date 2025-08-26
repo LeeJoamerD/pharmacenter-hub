@@ -1,71 +1,36 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Wrench, Database, Server, HardDrive, Activity, AlertTriangle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Wrench, Database, Activity, AlertTriangle } from 'lucide-react';
+import { useMaintenanceSettings } from '@/hooks/useMaintenanceSettings';
 
 const MaintenanceSettings = () => {
-  const { toast } = useToast();
-  
-  const [settings, setSettings] = useState({
-    maintenanceMode: false,
-    maintenanceMessage: 'Système en maintenance. Retour prévu dans 30 minutes.',
-    autoMaintenance: true,
-    maintenanceSchedule: '02:00',
-    maintenanceDays: ['sunday'],
-    diskCleanup: true,
-    logRetention: 30,
-    tempFileCleanup: true,
-    databaseOptimization: true,
-    cacheCleanup: true,
-    sessionCleanup: true,
-    emailNotifications: true,
-    adminEmail: 'admin@pharmasoft.ci'
-  });
-
-  const [systemStats] = useState({
-    diskUsage: 65,
-    memoryUsage: 72,
-    cpuUsage: 45,
-    databaseSize: '2.4 GB',
-    logSize: '156 MB',
-    tempFiles: '89 MB',
-    lastMaintenance: '2024-12-19 02:00:00',
-    nextMaintenance: '2024-12-22 02:00:00',
-    uptime: '15 jours 8 heures'
-  });
-
-  const [maintenanceTasks] = useState([
-    { id: 1, name: 'Nettoyage des logs', status: 'completed', lastRun: '2024-12-19 02:05', duration: '2min' },
-    { id: 2, name: 'Optimisation base de données', status: 'completed', lastRun: '2024-12-19 02:10', duration: '5min' },
-    { id: 3, name: 'Nettoyage cache', status: 'completed', lastRun: '2024-12-19 02:15', duration: '1min' },
-    { id: 4, name: 'Vérification disque', status: 'pending', lastRun: '2024-12-12 02:20', duration: '3min' },
-    { id: 5, name: 'Sauvegarde automatique', status: 'running', lastRun: '2024-12-20 02:00', duration: '10min' }
-  ]);
-
-  const handleSave = () => {
-    toast({
-      title: "Paramètres de maintenance sauvegardés",
-      description: "La configuration de maintenance a été mise à jour.",
-    });
-  };
+  const {
+    settings,
+    systemStats,
+    maintenanceTasks,
+    isLoading,
+    updateSetting,
+    saveAllSettings,
+    triggerMaintenanceNow
+  } = useMaintenanceSettings();
 
   const handleSettingChange = (key: string, value: any) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    updateSetting(key.replace(/([A-Z])/g, '_$1').toLowerCase(), value);
+  };
+
+  const handleSave = () => {
+    saveAllSettings(settings);
   };
 
   const handleMaintenanceNow = () => {
-    toast({
-      title: "Maintenance lancée",
-      description: "Les tâches de maintenance ont été démarrées.",
-    });
+    triggerMaintenanceNow();
   };
 
   const getStatusColor = (status: string) => {

@@ -2761,6 +2761,51 @@ export type Database = {
         }
         Relationships: []
       }
+      network_maintenance_task_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          message: string | null
+          metadata: Json
+          started_at: string
+          status: string
+          task_name: string
+          tenant_id: string
+          triggered_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          message?: string | null
+          metadata?: Json
+          started_at?: string
+          status: string
+          task_name: string
+          tenant_id: string
+          triggered_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          message?: string | null
+          metadata?: Json
+          started_at?: string
+          status?: string
+          task_name?: string
+          tenant_id?: string
+          triggered_by?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       network_messages: {
         Row: {
           channel_id: string
@@ -2921,6 +2966,51 @@ export type Database = {
           type?: string
           updated_at?: string | null
           uptime_start?: string | null
+        }
+        Relationships: []
+      }
+      network_system_stats: {
+        Row: {
+          cpu_usage: number | null
+          created_at: string
+          database_size_mb: number | null
+          disk_usage: number | null
+          last_maintenance_at: string | null
+          log_size_mb: number | null
+          memory_usage: number | null
+          next_maintenance_at: string | null
+          temp_files_mb: number | null
+          tenant_id: string
+          updated_at: string
+          uptime_seconds: number | null
+        }
+        Insert: {
+          cpu_usage?: number | null
+          created_at?: string
+          database_size_mb?: number | null
+          disk_usage?: number | null
+          last_maintenance_at?: string | null
+          log_size_mb?: number | null
+          memory_usage?: number | null
+          next_maintenance_at?: string | null
+          temp_files_mb?: number | null
+          tenant_id: string
+          updated_at?: string
+          uptime_seconds?: number | null
+        }
+        Update: {
+          cpu_usage?: number | null
+          created_at?: string
+          database_size_mb?: number | null
+          disk_usage?: number | null
+          last_maintenance_at?: string | null
+          log_size_mb?: number | null
+          memory_usage?: number | null
+          next_maintenance_at?: string | null
+          temp_files_mb?: number | null
+          tenant_id?: string
+          updated_at?: string
+          uptime_seconds?: number | null
         }
         Relationships: []
       }
