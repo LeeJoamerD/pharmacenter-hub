@@ -53,6 +53,8 @@ import {
   Monitor
 } from 'lucide-react';
 import { useNetworkAdministration } from '@/hooks/useNetworkAdministration';
+import { SystemComponentDetailsDialog } from './dialogs/SystemComponentDetailsDialog';
+import { UserPermissionDialog } from './dialogs/UserPermissionDialog';
 
 const NetworkAdvancedAdministration = () => {
   const { toast } = useToast();
@@ -61,6 +63,8 @@ const NetworkAdvancedAdministration = () => {
     userPermissions,
     securityLogs,
     backupJobs,
+    backupRuns,
+    systemStats,
     loading,
     maintenanceMode,
     updateSystemComponent,
@@ -78,6 +82,7 @@ const NetworkAdvancedAdministration = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [pharmacyDetailsDialog, setPharmacyDetailsDialog] = useState<string | null>(null);
   const [editPharmacyDialog, setEditPharmacyDialog] = useState<string | null>(null);
+  const [componentDetailsDialog, setComponentDetailsDialog] = useState<string | null>(null);
 
   // Handler functions for user management
   const handleEditPharmacy = (pharmacyId: string) => {
@@ -222,7 +227,11 @@ const NetworkAdvancedAdministration = () => {
                   </div>
 
                   <div className="flex gap-1 pt-2">
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setComponentDetailsDialog(system.id)}
+                    >
                       <Monitor className="h-3 w-3 mr-1" />
                       Détails
                     </Button>
@@ -733,6 +742,22 @@ const NetworkAdvancedAdministration = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <SystemComponentDetailsDialog
+        component={systemComponents.find(c => c.id === componentDetailsDialog) || null}
+        open={!!componentDetailsDialog}
+        onOpenChange={(open) => !open && setComponentDetailsDialog(null)}
+        onUpdate={updateSystemComponent}
+        loading={loading}
+      />
+
+      <UserPermissionDialog
+        pharmacy={userPermissions.find(p => p.id === pharmacyDetailsDialog) || null}
+        open={!!pharmacyDetailsDialog}
+        onOpenChange={(open) => !open && setPharmacyDetailsDialog(null)}
+        loading={loading}
+      />
     </div>
   );
 };

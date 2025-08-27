@@ -10,6 +10,7 @@ export interface SystemComponent {
   type: 'server' | 'database' | 'chat' | 'cdn' | 'router' | 'firewall';
   status: 'online' | 'offline' | 'warning' | 'maintenance';
   uptime_start: string;
+  uptime?: string;
   cpu_load: number;
   memory_usage: number;
   storage_usage: number;
@@ -242,6 +243,31 @@ export const useNetworkAdministration = () => {
      personnel(id, role, is_active, updated_at)`,
     undefined,
     { orderBy: { column: 'name', ascending: true } }
+  );
+
+  // Backup Runs
+  const { 
+    data: backupRuns = [],
+    isLoading: backupRunsLoading 
+  } = useTenantQueryWithCache(
+    ['network-backup-runs'],
+    'network_backup_runs',
+    `*,
+     backup_job:backup_job_id(job_name, job_type)`,
+    undefined,
+    { orderBy: { column: 'started_at', ascending: false } }
+  );
+
+  // System Stats
+  const { 
+    data: systemStats = [],
+    isLoading: systemStatsLoading 
+  } = useTenantQueryWithCache(
+    ['network-system-stats'],
+    'network_system_stats',
+    '*',
+    undefined,
+    { orderBy: { column: 'updated_at', ascending: false } }
   );
 
   // Helper functions
@@ -500,6 +526,8 @@ export const useNetworkAdministration = () => {
     adminSettings,
     securityAssets,
     backupJobs,
+    backupRuns,
+    systemStats,
     userPermissions: transformUserPermissions(userPermissions),
     securityLogs: transformSecurityLogs([
       ...securityLogs,
@@ -511,7 +539,7 @@ export const useNetworkAdministration = () => {
     ]),
     
     // State
-    loading: loading || componentsLoading || settingsLoading || securityLoading || backupLoading,
+    loading: loading || componentsLoading || settingsLoading || securityLoading || backupLoading || backupRunsLoading || systemStatsLoading,
     maintenanceMode,
     
     // Actions  
