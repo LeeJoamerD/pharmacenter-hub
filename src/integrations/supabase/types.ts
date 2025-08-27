@@ -2610,6 +2610,7 @@ export type Database = {
       }
       network_backup_runs: {
         Row: {
+          backup_job_id: string | null
           completed_at: string | null
           configuration: Json | null
           created_at: string
@@ -2625,6 +2626,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          backup_job_id?: string | null
           completed_at?: string | null
           configuration?: Json | null
           created_at?: string
@@ -2640,6 +2642,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          backup_job_id?: string | null
           completed_at?: string | null
           configuration?: Json | null
           created_at?: string
@@ -2654,7 +2657,15 @@ export type Database = {
           type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "network_backup_runs_backup_job_id_fkey"
+            columns: ["backup_job_id"]
+            isOneToOne: false
+            referencedRelation: "network_backup_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       network_channels: {
         Row: {

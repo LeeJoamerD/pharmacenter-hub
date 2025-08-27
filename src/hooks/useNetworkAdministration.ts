@@ -144,9 +144,15 @@ export const useNetworkAdministration = () => {
     { orderBy: { column: 'setting_category', ascending: true } }
   );
 
-  const settingMutation = useTenantMutation(
+  const settingUpdateMutation = useTenantMutation(
     'network_admin_settings',
-    'upsert',
+    'update',
+    { invalidateQueries: ['network-admin-settings'] }
+  );
+
+  const settingInsertMutation = useTenantMutation(
+    'network_admin_settings',
+    'insert',
     { invalidateQueries: ['network-admin-settings'] }
   );
 
@@ -349,17 +355,18 @@ export const useNetworkAdministration = () => {
       );
 
       if (existingSetting) {
-        await settingMutation.mutateAsync({ 
+        await settingUpdateMutation.mutateAsync({ 
           id: existingSetting.id, 
           setting_value: value,
           updated_at: new Date().toISOString()
         });
       } else {
-        await settingMutation.mutateAsync({ 
+        await settingInsertMutation.mutateAsync({ 
           setting_category: category,
           setting_key: key,
           setting_value: value,
-          setting_type: typeof value === 'number' ? 'number' : 'string'
+          setting_type: typeof value === 'number' ? 'number' : 'string',
+          is_sensitive: false
         });
       }
 
@@ -367,10 +374,11 @@ export const useNetworkAdministration = () => {
         title: "Paramètre mis à jour",
         description: "Le paramètre a été mis à jour avec succès.",
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Erreur lors de la mise à jour du paramètre:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour le paramètre.",
+        description: error?.message || "Impossible de mettre à jour le paramètre.",
         variant: "destructive",
       });
     } finally {
