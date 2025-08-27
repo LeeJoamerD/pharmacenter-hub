@@ -90,15 +90,15 @@ export function SystemSettingsProvider({ children }: { children: ReactNode }) {
     return settings.languages_available.find(l => l.code === settings.default_language);
   };
 
-  // Palette de couleurs HSL pour Tailwind
+  // Palette de couleurs HSL pour Tailwind (format: H S% L%)
   const colorPalettes = {
-    blue: { primary: '221, 83%, 53%', foreground: '210, 40%, 98%' },
-    green: { primary: '142, 76%, 36%', foreground: '355, 20%, 98%' },
-    purple: { primary: '262, 83%, 58%', foreground: '210, 40%, 98%' },
-    orange: { primary: '25, 95%, 53%', foreground: '210, 40%, 98%' },
-    red: { primary: '0, 84%, 60%', foreground: '210, 40%, 98%' },
-    teal: { primary: '173, 58%, 39%', foreground: '210, 40%, 98%' },
-    indigo: { primary: '239, 84%, 67%', foreground: '210, 40%, 98%' }
+    blue: { primary: '221 83% 53%', foreground: '210 40% 98%' },
+    green: { primary: '142 76% 36%', foreground: '355 20% 98%' },
+    purple: { primary: '262 83% 58%', foreground: '210 40% 98%' },
+    orange: { primary: '25 95% 53%', foreground: '210 40% 98%' },
+    red: { primary: '0 84% 60%', foreground: '210 40% 98%' },
+    teal: { primary: '173 58% 39%', foreground: '210 40% 98%' },
+    indigo: { primary: '239 84% 67%', foreground: '210 40% 98%' }
   };
 
   // Appliquer les paramètres d'interface en temps réel
