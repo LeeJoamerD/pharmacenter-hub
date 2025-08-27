@@ -165,7 +165,31 @@ export const useTenantQuery = () => {
               .eq('tenant_id', tenantId);
             break;
           case 'upsert':
-            query = (supabase as any).from(tableName).upsert(dataWithTenant);
+            // Si un ID est fourni, faire un update au lieu d'un upsert
+            if (variables.id) {
+              console.log('TenantMutation - Converting upsert with ID to update');
+              const { id, ...updateData } = dataWithTenant;
+              query = (supabase as any)
+                .from(tableName)
+                .update(updateData)
+                .eq('id', id)
+                .eq('tenant_id', tenantId);
+            } else if (tableName === 'network_admin_settings') {
+              // Pour network_admin_settings, utiliser la résolution de conflit appropriée
+              if (!variables.setting_category || !variables.setting_key) {
+                throw new Error('setting_category and setting_key are required for network_admin_settings upsert');
+              }
+              console.log('TenantMutation - Using onConflict for network_admin_settings');
+              query = (supabase as any)
+                .from(tableName)
+                .upsert(dataWithTenant, { 
+                  onConflict: 'tenant_id,setting_category,setting_key',
+                  ignoreDuplicates: false 
+                });
+            } else {
+              // Upsert générique pour les autres tables
+              query = (supabase as any).from(tableName).upsert(dataWithTenant);
+            }
             break;
           default:
             throw new Error(`Unsupported operation: ${operation}`);
