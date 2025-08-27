@@ -525,6 +525,135 @@ export const useNetworkAdministration = () => {
     setMaintenanceMode(newValue);
   };
 
+  // New RPC functions for pharmacy-specific operations
+  const getPharmacyOverview = async (pharmacyId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('network_get_pharmacy_overview', {
+        target_tenant_id: pharmacyId
+      });
+      if (error) throw error;
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de récupérer les données de l'officine.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const getPharmacyUsers = async (pharmacyId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('network_list_pharmacy_users', {
+        target_tenant_id: pharmacyId
+      });
+      if (error) throw error;
+      return data || [];
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de récupérer les utilisateurs de l'officine.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const updatePharmacyUser = async (pharmacyId: string, personnelId: string, payload: any) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.rpc('network_update_pharmacy_user', {
+        target_tenant_id: pharmacyId,
+        personnel_id: personnelId,
+        payload: payload
+      });
+      if (error) throw error;
+      toast({
+        title: "Utilisateur mis à jour",
+        description: "L'utilisateur a été mis à jour avec succès.",
+      });
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de mettre à jour l'utilisateur.",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getPharmacyPermissions = async (pharmacyId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('network_get_pharmacy_permissions', {
+        target_tenant_id: pharmacyId
+      });
+      if (error) throw error;
+      return data || [];
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de récupérer les permissions de l'officine.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const togglePharmacyPermission = async (pharmacyId: string, permissionCode: string, enabled: boolean) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.rpc('network_toggle_pharmacy_permission', {
+        target_tenant_id: pharmacyId,
+        permission_code: permissionCode,
+        enabled: enabled
+      });
+      if (error) throw error;
+      toast({
+        title: "Permission mise à jour",
+        description: `Permission ${enabled ? 'activée' : 'désactivée'} avec succès.`,
+      });
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de modifier la permission.",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updatePharmacySecurity = async (pharmacyId: string, settings: any) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.rpc('network_update_security_settings', {
+        target_tenant_id: pharmacyId,
+        settings: settings
+      });
+      if (error) throw error;
+      toast({
+        title: "Sécurité mise à jour",
+        description: "Les paramètres de sécurité ont été mis à jour avec succès.",
+      });
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de mettre à jour les paramètres de sécurité.",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     // Data
     systemComponents: systemComponents.map((component: any) => ({
@@ -560,6 +689,14 @@ export const useNetworkAdministration = () => {
     refreshSystemStatus,
     toggleMaintenanceMode,
     getSetting,
+
+    // Pharmacy-specific RPC functions
+    getPharmacyOverview,
+    getPharmacyUsers,
+    updatePharmacyUser,
+    getPharmacyPermissions,
+    togglePharmacyPermission,
+    updatePharmacySecurity,
     
     // Utility
     getUptime

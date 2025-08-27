@@ -5501,6 +5501,34 @@ export type Database = {
         Args: { p_tenant_id?: string }
         Returns: Json
       }
+      network_get_pharmacy_overview: {
+        Args: { target_tenant_id: string }
+        Returns: Json
+      }
+      network_get_pharmacy_permissions: {
+        Args: { target_tenant_id: string }
+        Returns: Json
+      }
+      network_list_pharmacy_users: {
+        Args: { target_tenant_id: string }
+        Returns: Json
+      }
+      network_toggle_pharmacy_permission: {
+        Args: {
+          enabled: boolean
+          permission_code: string
+          target_tenant_id: string
+        }
+        Returns: Json
+      }
+      network_update_pharmacy_user: {
+        Args: { payload: Json; personnel_id: string; target_tenant_id: string }
+        Returns: Json
+      }
+      network_update_security_settings: {
+        Args: { settings: Json; target_tenant_id: string }
+        Returns: Json
+      }
       refresh_network_system_stats: {
         Args: { p_tenant_id: string }
         Returns: Json
