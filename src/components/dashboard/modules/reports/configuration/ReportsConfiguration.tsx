@@ -14,7 +14,7 @@ import {
   Settings, Shield, Calendar, FileText, Database, Key, Archive,
   Save, Plus, Edit, Trash2, AlertTriangle, Check
 } from 'lucide-react';
-import { useReportSettings } from '@/hooks/useReportSettings';
+import { useReportSettings, ReportSettings } from '@/hooks/useReportSettings';
 import { useReportTemplates } from '@/hooks/useReportTemplates';
 import { useReportPermissions } from '@/hooks/useReportPermissions';
 import { useReportSchedules } from '@/hooks/useReportSchedules';
@@ -24,7 +24,7 @@ import { useReportArchiving } from '@/hooks/useReportArchiving';
 
 const ReportsConfiguration = () => {
   const [activeTab, setActiveTab] = useState('general');
-  const [localSettings, setLocalSettings] = useState({});
+  const [localSettings, setLocalSettings] = useState<ReportSettings>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const reportSettings = useReportSettings();

@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 
-type ReportSettings = {
+export type ReportSettings = {
   default_date_range?: string;
   default_export_formats?: string;
   timezone?: string;
@@ -21,15 +21,15 @@ export function useReportSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: settings = {}, isLoading, error } = useQuery({
+  const { data: settings = {} as ReportSettings, isLoading, error } = useQuery<ReportSettings>({
     queryKey: ['report-settings', tenantId],
-    queryFn: async () => {
-      if (!tenantId) return {};
+    queryFn: async (): Promise<ReportSettings> => {
+      if (!tenantId) return {} as ReportSettings;
 
       const { data, error } = await supabase.rpc('reports_get_configuration');
       if (error) throw error;
       
-      return (data as any)?.general_settings || {};
+      return (data as any)?.general_settings || {} as ReportSettings;
     },
     enabled: !!tenantId,
   });
