@@ -56,6 +56,7 @@ export const UserPermissionDialog: React.FC<UserPermissionDialogProps> = ({
     updatePharmacyUser,
     getPharmacyPermissions,
     togglePharmacyPermission,
+    getPharmacySecuritySettings,
     updatePharmacySecurity
   } = useNetworkAdministration();
 
@@ -86,24 +87,42 @@ export const UserPermissionDialog: React.FC<UserPermissionDialogProps> = ({
       setDataLoading(true);
       
       // Load all data in parallel
-      const [overviewData, usersData, permissionsData] = await Promise.all([
+      const [overviewData, usersData, permissionsData, securityData] = await Promise.all([
         getPharmacyOverview(pharmacy.id),
         getPharmacyUsers(pharmacy.id),
-        getPharmacyPermissions(pharmacy.id)
+        getPharmacyPermissions(pharmacy.id),
+        getPharmacySecuritySettings(pharmacy.id)
       ]);
       
       setOverview(overviewData);
       setUsers(Array.isArray(usersData) ? usersData : []);
       setPermissions(Array.isArray(permissionsData) ? permissionsData : []);
       
-      // Load security settings from form data or set defaults
-      setSecuritySettings({
+      // Load security settings from database or set defaults
+      const defaultSettings = {
         force_2fa: false,
         auto_lock: false,
         detailed_logs: true,
         geo_restriction: false,
         authorized_ips: ''
-      });
+      };
+      
+      // Safely parse security data
+      const parsedSecurityData = securityData && typeof securityData === 'object' ? securityData as Record<string, any> : {};
+      
+      // Merge database settings with defaults
+      const loadedSettings = {
+        ...defaultSettings,
+        ...parsedSecurityData,
+        // Parse authorized_ips if it's a JSON string
+        authorized_ips: parsedSecurityData.authorized_ips ? 
+          (typeof parsedSecurityData.authorized_ips === 'string' ? 
+            JSON.parse(parsedSecurityData.authorized_ips).join('\n') : 
+            parsedSecurityData.authorized_ips) : 
+          ''
+      };
+      
+      setSecuritySettings(loadedSettings);
       
     } catch (error: any) {
       console.error('Erreur lors du chargement des données:', error);
@@ -173,6 +192,31 @@ export const UserPermissionDialog: React.FC<UserPermissionDialogProps> = ({
       };
       
       await updatePharmacySecurity(pharmacy.id, settingsToSave);
+      
+      // Reload security settings to get the updated values
+      const updatedSecurityData = await getPharmacySecuritySettings(pharmacy.id);
+      const defaultSettings = {
+        force_2fa: false,
+        auto_lock: false,
+        detailed_logs: true,
+        geo_restriction: false,
+        authorized_ips: ''
+      };
+      
+      // Safely parse updated security data
+      const parsedUpdatedData = updatedSecurityData && typeof updatedSecurityData === 'object' ? updatedSecurityData as Record<string, any> : {};
+      
+      const refreshedSettings = {
+        ...defaultSettings,
+        ...parsedUpdatedData,
+        authorized_ips: parsedUpdatedData.authorized_ips ? 
+          (typeof parsedUpdatedData.authorized_ips === 'string' ? 
+            JSON.parse(parsedUpdatedData.authorized_ips).join('\n') : 
+            parsedUpdatedData.authorized_ips) : 
+          ''
+      };
+      
+      setSecuritySettings(refreshedSettings);
       setEditMode(false);
     } catch (error) {
       console.error('Erreur lors de la sauvegarde des paramètres de sécurité:', error);

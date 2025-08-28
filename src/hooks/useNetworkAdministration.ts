@@ -629,6 +629,23 @@ export const useNetworkAdministration = () => {
     }
   };
 
+  const getPharmacySecuritySettings = async (pharmacyId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('network_get_security_settings', {
+        target_tenant_id: pharmacyId
+      });
+      if (error) throw error;
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de charger les paramètres de sécurité.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   const updatePharmacySecurity = async (pharmacyId: string, settings: any) => {
     try {
       setLoading(true);
@@ -696,6 +713,7 @@ export const useNetworkAdministration = () => {
     updatePharmacyUser,
     getPharmacyPermissions,
     togglePharmacyPermission,
+    getPharmacySecuritySettings,
     updatePharmacySecurity,
     
     // Utility

@@ -5509,6 +5509,10 @@ export type Database = {
         Args: { target_tenant_id: string }
         Returns: Json
       }
+      network_get_security_settings: {
+        Args: { target_tenant_id: string }
+        Returns: Json
+      }
       network_list_pharmacy_users: {
         Args: { target_tenant_id: string }
         Returns: Json
