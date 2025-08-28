@@ -24,7 +24,12 @@ import { useReportArchiving } from '@/hooks/useReportArchiving';
 
 const ReportsConfiguration = () => {
   const [activeTab, setActiveTab] = useState('general');
-  const [localSettings, setLocalSettings] = useState<ReportSettings>({});
+  const [localSettings, setLocalSettings] = useState<ReportSettings>({
+    default_date_range: '30_days',
+    default_export_formats: 'pdf,xlsx',
+    notifications_enabled: 'true',
+    data_masking_enabled: 'false'
+  });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const reportSettings = useReportSettings();
