@@ -6,32 +6,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
   Settings, 
-  Calendar, 
-  Building2, 
-  BookOpen, 
-  Hash, 
-  Coins, 
   Receipt, 
   Save,
   RefreshCw,
-  CheckCircle,
-  AlertTriangle,
   Info,
-  Plus,
-  Trash2,
-  Edit,
-  X
+  X,
+  Building2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAccountingConfiguration } from '@/hooks/useAccountingConfiguration';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import FiscalYearsSection from './FiscalYearsSection';
+import JournalsSection from './JournalsSection';
+import NumberingRulesSection from './NumberingRulesSection';
+import CurrenciesSection from './CurrenciesSection';
 
 const AccountingConfiguration = () => {
   const { toast } = useToast();
@@ -248,17 +239,7 @@ const AccountingConfiguration = () => {
         </TabsContent>
 
         <TabsContent value="exercices" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Gestion des Exercices Comptables
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>Exercices comptables : {fiscalYears.length} configurés</p>
-            </CardContent>
-          </Card>
+          <FiscalYearsSection />
         </TabsContent>
 
         <TabsContent value="entreprise" className="space-y-6">
@@ -310,45 +291,15 @@ const AccountingConfiguration = () => {
         </TabsContent>
 
         <TabsContent value="journaux" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5" />
-                Configuration des Journaux
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>Journaux comptables : {journals.length} configurés</p>
-            </CardContent>
-          </Card>
+          <JournalsSection />
         </TabsContent>
 
         <TabsContent value="numerotation" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Hash className="h-5 w-5" />
-                Règles de Numérotation
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>Règles de numérotation : {numberingRules.length} configurées</p>
-            </CardContent>
-          </Card>
+          <NumberingRulesSection />
         </TabsContent>
 
         <TabsContent value="devises" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Coins className="h-5 w-5" />
-                Gestion des Devises
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>Devises configurées : {currencies.length}</p>
-            </CardContent>
-          </Card>
+          <CurrenciesSection />
         </TabsContent>
       </Tabs>
     </div>
