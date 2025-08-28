@@ -4183,6 +4183,310 @@ export type Database = {
         }
         Relationships: []
       }
+      report_api_tokens: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          name: string
+          scopes: string[]
+          tenant_id: string
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          scopes?: string[]
+          tenant_id: string
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          scopes?: string[]
+          tenant_id?: string
+          token_hash?: string
+        }
+        Relationships: []
+      }
+      report_archiving_policies: {
+        Row: {
+          created_at: string
+          id: string
+          purge_enabled: boolean
+          retention_days: number
+          storage_location: string | null
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          purge_enabled?: boolean
+          retention_days?: number
+          storage_location?: string | null
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          purge_enabled?: boolean
+          retention_days?: number
+          storage_location?: string | null
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      report_connectors: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_enabled: boolean
+          provider: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          provider: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          provider?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      report_permissions: {
+        Row: {
+          can_create: boolean
+          can_delete: boolean
+          can_export: boolean
+          can_modify: boolean
+          can_view: boolean
+          created_at: string
+          id: string
+          report_key: string
+          subject_id: string
+          subject_type: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          can_create?: boolean
+          can_delete?: boolean
+          can_export?: boolean
+          can_modify?: boolean
+          can_view?: boolean
+          created_at?: string
+          id?: string
+          report_key: string
+          subject_id: string
+          subject_type: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          can_create?: boolean
+          can_delete?: boolean
+          can_export?: boolean
+          can_modify?: boolean
+          can_view?: boolean
+          created_at?: string
+          id?: string
+          report_key?: string
+          subject_id?: string
+          subject_type?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      report_schedules: {
+        Row: {
+          active: boolean
+          created_at: string
+          cron_expr: string | null
+          day_of_month: number | null
+          day_of_week: number | null
+          format: string
+          id: string
+          last_run_at: string | null
+          next_run_at: string | null
+          options: Json
+          recipients: Json
+          report_key: string | null
+          schedule_type: string
+          template_id: string | null
+          tenant_id: string
+          time_of_day: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          cron_expr?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          format?: string
+          id?: string
+          last_run_at?: string | null
+          next_run_at?: string | null
+          options?: Json
+          recipients?: Json
+          report_key?: string | null
+          schedule_type: string
+          template_id?: string | null
+          tenant_id: string
+          time_of_day?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          cron_expr?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          format?: string
+          id?: string
+          last_run_at?: string | null
+          next_run_at?: string | null
+          options?: Json
+          recipients?: Json
+          report_key?: string | null
+          schedule_type?: string
+          template_id?: string | null
+          tenant_id?: string
+          time_of_day?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_schedules_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_template_versions: {
+        Row: {
+          content: Json
+          created_at: string
+          id: string
+          template_id: string
+          tenant_id: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          content: Json
+          created_at?: string
+          id?: string
+          template_id: string
+          tenant_id: string
+          updated_by?: string | null
+          version: number
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          id?: string
+          template_id?: string
+          tenant_id?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_templates: {
+        Row: {
+          category: string
+          content: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_default: boolean
+          name: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          category: string
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          category?: string
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
       roles: {
         Row: {
           created_at: string
@@ -5545,6 +5849,22 @@ export type Database = {
           pharmacy_data: Json
         }
         Returns: Json
+      }
+      reports_apply_archiving_policy: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      reports_get_configuration: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      reports_upsert_settings: {
+        Args: { payload: Json }
+        Returns: undefined
+      }
+      reports_upsert_template: {
+        Args: { template: Json }
+        Returns: string
       }
       resolve_oauth_personnel_link: {
         Args: Record<PropertyKey, never>
