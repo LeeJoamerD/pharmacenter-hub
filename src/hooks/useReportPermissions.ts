@@ -29,11 +29,7 @@ export function useReportPermissions() {
 
       const { data, error } = await supabase
         .from('report_permissions')
-        .select(`
-          *,
-          roles:subject_id(nom_role),
-          personnel:subject_id(noms, prenoms)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;

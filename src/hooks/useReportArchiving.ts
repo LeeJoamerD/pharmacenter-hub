@@ -42,6 +42,8 @@ export function useReportArchiving() {
         .upsert({
           ...policyData,
           tenant_id: tenantId,
+        }, {
+          onConflict: 'tenant_id'
         });
       if (error) throw error;
     },
