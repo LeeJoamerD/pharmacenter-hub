@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/contexts/TenantContext';
 
 export interface AccountingGeneralConfig {
   id: string;
@@ -95,6 +96,7 @@ export interface FiscalYear {
 export const useAccountingConfiguration = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { tenantId } = useTenant();
 
   // Fetch general configuration
   const {
@@ -102,19 +104,21 @@ export const useAccountingConfiguration = () => {
     isLoading: isLoadingGeneral,
     error: generalError
   } = useQuery({
-    queryKey: ['accounting-general-config'],
+    queryKey: ['accounting-general-config', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('accounting_general_config')
         .select('*')
-        .single();
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
       
       if (error && error.code !== 'PGRST116') {
         throw error;
       }
       
       return data;
-    }
+    },
+    enabled: !!tenantId
   });
 
   // Fetch journals
@@ -123,16 +127,18 @@ export const useAccountingConfiguration = () => {
     isLoading: isLoadingJournals,
     error: journalsError
   } = useQuery({
-    queryKey: ['accounting-journals'],
+    queryKey: ['accounting-journals', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('accounting_journals')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('code');
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!tenantId
   });
 
   // Fetch numbering rules
@@ -141,16 +147,18 @@ export const useAccountingConfiguration = () => {
     isLoading: isLoadingNumberingRules,
     error: numberingRulesError
   } = useQuery({
-    queryKey: ['accounting-numbering-rules'],
+    queryKey: ['accounting-numbering-rules', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('accounting_numbering_rules')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('rule_type');
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!tenantId
   });
 
   // Fetch currencies with exchange rates
@@ -159,7 +167,7 @@ export const useAccountingConfiguration = () => {
     isLoading: isLoadingCurrencies,
     error: currenciesError
   } = useQuery({
-    queryKey: ['accounting-currencies'],
+    queryKey: ['accounting-currencies', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('accounting_currencies')
@@ -173,12 +181,14 @@ export const useAccountingConfiguration = () => {
             update_frequency
           )
         `)
+        .eq('tenant_id', tenantId)
         .eq('is_active', true)
         .order('is_base_currency', { ascending: false });
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!tenantId
   });
 
   // Fetch company info from pharmacies table
@@ -187,16 +197,18 @@ export const useAccountingConfiguration = () => {
     isLoading: isLoadingCompany,
     error: companyError
   } = useQuery({
-    queryKey: ['company-info'],
+    queryKey: ['company-info', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('pharmacies')
         .select('*')
-        .single();
+        .eq('id', tenantId)
+        .maybeSingle();
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!tenantId
   });
 
   // Fetch fiscal years
@@ -205,16 +217,18 @@ export const useAccountingConfiguration = () => {
     isLoading: isLoadingFiscalYears,
     error: fiscalYearsError
   } = useQuery({
-    queryKey: ['fiscal-years'],
+    queryKey: ['fiscal-years', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('exercices_comptables')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('libelle_exercice', { ascending: false });
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!tenantId
   });
 
   // Mutations
@@ -222,7 +236,7 @@ export const useAccountingConfiguration = () => {
     mutationFn: async (config: Partial<AccountingGeneralConfig>) => {
       const configWithTenant = {
         ...config,
-        tenant_id: companyInfo?.id || config.tenant_id
+        tenant_id: tenantId
       };
       
       const { data, error } = await supabase
@@ -235,7 +249,7 @@ export const useAccountingConfiguration = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accounting-general-config'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-general-config', tenantId] });
       toast({
         title: "Configuration sauvegardée",
         description: "Les paramètres généraux ont été mis à jour avec succès",
@@ -255,7 +269,7 @@ export const useAccountingConfiguration = () => {
     mutationFn: async (journal: Partial<AccountingJournal>) => {
       const journalWithTenant = {
         ...journal,
-        tenant_id: companyInfo?.id || journal.tenant_id,
+        tenant_id: tenantId,
         code: journal.code || '',
         name: journal.name || '',
         type: journal.type || ''
@@ -283,7 +297,7 @@ export const useAccountingConfiguration = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accounting-journals'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-journals', tenantId] });
       toast({
         title: "Journal sauvegardé",
         description: "Le journal comptable a été mis à jour avec succès",
@@ -309,7 +323,7 @@ export const useAccountingConfiguration = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accounting-journals'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-journals', tenantId] });
       toast({
         title: "Journal supprimé",
         description: "Le journal comptable a été supprimé avec succès",
@@ -329,7 +343,7 @@ export const useAccountingConfiguration = () => {
     mutationFn: async (rule: Partial<AccountingNumberingRule>) => {
       const ruleWithTenant = {
         ...rule,
-        tenant_id: companyInfo?.id || rule.tenant_id,
+        tenant_id: tenantId,
         rule_type: rule.rule_type || '',
         format_pattern: rule.format_pattern || ''
       };
@@ -344,7 +358,7 @@ export const useAccountingConfiguration = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accounting-numbering-rules'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-numbering-rules', tenantId] });
       toast({
         title: "Règle sauvegardée",
         description: "La règle de numérotation a été mise à jour avec succès",
@@ -364,7 +378,7 @@ export const useAccountingConfiguration = () => {
     mutationFn: async (currency: Partial<AccountingCurrency>) => {
       const currencyWithTenant = {
         ...currency,
-        tenant_id: companyInfo?.id || currency.tenant_id,
+        tenant_id: tenantId,
         code: currency.code || '',
         name: currency.name || ''
       };
@@ -391,7 +405,7 @@ export const useAccountingConfiguration = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accounting-currencies'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-currencies', tenantId] });
       toast({
         title: "Devise sauvegardée",
         description: "La devise a été mise à jour avec succès",
@@ -411,7 +425,7 @@ export const useAccountingConfiguration = () => {
     mutationFn: async (rate: Partial<AccountingExchangeRate>) => {
       const rateWithTenant = {
         ...rate,
-        tenant_id: companyInfo?.id || rate.tenant_id,
+        tenant_id: tenantId,
         currency_id: rate.currency_id || '',
         rate: rate.rate || 1
       };
@@ -426,7 +440,7 @@ export const useAccountingConfiguration = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accounting-currencies'] });
+      queryClient.invalidateQueries({ queryKey: ['accounting-currencies', tenantId] });
       toast({
         title: "Taux mis à jour",
         description: "Le taux de change a été mis à jour avec succès",
@@ -447,7 +461,7 @@ export const useAccountingConfiguration = () => {
       const { data, error } = await supabase
         .from('pharmacies')
         .update(info)
-        .eq('id', info.id)
+        .eq('id', tenantId)
         .select()
         .single();
       
@@ -455,7 +469,7 @@ export const useAccountingConfiguration = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['company-info'] });
+      queryClient.invalidateQueries({ queryKey: ['company-info', tenantId] });
       toast({
         title: "Informations mises à jour",
         description: "Les informations de l'entreprise ont été mises à jour avec succès",
@@ -475,7 +489,7 @@ export const useAccountingConfiguration = () => {
     mutationFn: async (fiscalYear: Partial<FiscalYear>) => {
       // Map frontend fields to database fields
       const fiscalYearData = {
-        tenant_id: companyInfo?.id || fiscalYear.tenant_id,
+        tenant_id: tenantId,
         libelle_exercice: fiscalYear.year || '',
         date_debut: fiscalYear.start_date || '',
         date_fin: fiscalYear.end_date || '',
@@ -504,7 +518,7 @@ export const useAccountingConfiguration = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fiscal-years'] });
+      queryClient.invalidateQueries({ queryKey: ['fiscal-years', tenantId] });
       toast({
         title: "Exercice sauvegardé",
         description: "L'exercice comptable a été mis à jour avec succès",
@@ -530,7 +544,7 @@ export const useAccountingConfiguration = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fiscal-years'] });
+      queryClient.invalidateQueries({ queryKey: ['fiscal-years', tenantId] });
       toast({
         title: "Exercice supprimé",
         description: "L'exercice comptable a été supprimé avec succès",
@@ -549,7 +563,7 @@ export const useAccountingConfiguration = () => {
   // Get next accounting number function
   const getNextAccountingNumber = async (ruleType: string, journalCode?: string) => {
     const { data, error } = await supabase.rpc('get_next_accounting_number', {
-      p_tenant_id: companyInfo?.id,
+      p_tenant_id: tenantId,
       p_rule_type: ruleType,
       p_journal_code: journalCode || null
     });
