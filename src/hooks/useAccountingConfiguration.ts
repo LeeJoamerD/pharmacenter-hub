@@ -283,7 +283,10 @@ export const useAccountingConfiguration = () => {
     mutationFn: async (journal: Partial<AccountingJournal>) => {
       const journalWithTenant = {
         ...journal,
-        tenant_id: tenantId
+        tenant_id: tenantId,
+        code: journal.code || '',
+        name: journal.name || '',
+        type: journal.type || ''
       };
       
       if (journal.id) {
@@ -354,7 +357,9 @@ export const useAccountingConfiguration = () => {
     mutationFn: async (rule: Partial<AccountingNumberingRule>) => {
       const ruleWithTenant = {
         ...rule,
-        tenant_id: tenantId
+        tenant_id: tenantId,
+        rule_type: rule.rule_type || '',
+        format_pattern: rule.format_pattern || ''
       };
       
       const { data, error } = await supabase
@@ -387,7 +392,9 @@ export const useAccountingConfiguration = () => {
     mutationFn: async (currency: Partial<AccountingCurrency>) => {
       const currencyWithTenant = {
         ...currency,
-        tenant_id: tenantId
+        tenant_id: tenantId,
+        code: currency.code || '',
+        name: currency.name || ''
       };
       
       if (currency.id) {
@@ -432,7 +439,9 @@ export const useAccountingConfiguration = () => {
     mutationFn: async (rate: Partial<AccountingExchangeRate>) => {
       const rateWithTenant = {
         ...rate,
-        tenant_id: tenantId
+        tenant_id: tenantId,
+        currency_id: rate.currency_id || '',
+        rate: rate.rate || 0
       };
       
       const { data, error } = await supabase
