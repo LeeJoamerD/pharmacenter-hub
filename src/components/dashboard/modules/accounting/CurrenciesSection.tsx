@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,9 +29,8 @@ const CurrenciesSection = () => {
   const [selectedCurrency, setSelectedCurrency] = useState<any>(null);
   
   const [currencyForm, setCurrencyForm] = useState({
-    currency_code: '',
-    currency_name: '',
-    currency_symbol: '',
+    code: '',
+    name: '',
     is_base_currency: false,
     is_active: true
   });
@@ -44,9 +44,8 @@ const CurrenciesSection = () => {
 
   const resetCurrencyForm = () => {
     setCurrencyForm({
-      currency_code: '',
-      currency_name: '',
-      currency_symbol: '',
+      code: '',
+      name: '',
       is_base_currency: false,
       is_active: true
     });
@@ -67,9 +66,8 @@ const CurrenciesSection = () => {
     if (currency) {
       setEditingCurrency(currency);
       setCurrencyForm({
-        currency_code: currency.currency_code || '',
-        currency_name: currency.currency_name || '',
-        currency_symbol: currency.currency_symbol || '',
+        code: currency.code || '',
+        name: currency.name || '',
         is_base_currency: currency.is_base_currency || false,
         is_active: currency.is_active !== false
       });
@@ -201,35 +199,23 @@ const CurrenciesSection = () => {
               </DialogHeader>
               
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="currency_code">Code devise</Label>
-                    <Input
-                      id="currency_code"
-                      value={currencyForm.currency_code}
-                      onChange={(e) => setCurrencyForm({...currencyForm, currency_code: e.target.value.toUpperCase()})}
-                      placeholder="USD, EUR, XAF..."
-                      maxLength={3}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="currency_symbol">Symbole</Label>
-                    <Input
-                      id="currency_symbol"
-                      value={currencyForm.currency_symbol}
-                      onChange={(e) => setCurrencyForm({...currencyForm, currency_symbol: e.target.value})}
-                      placeholder="$, €, FCFA..."
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="code">Code devise</Label>
+                  <Input
+                    id="code"
+                    value={currencyForm.code}
+                    onChange={(e) => setCurrencyForm({...currencyForm, code: e.target.value.toUpperCase()})}
+                    placeholder="USD, EUR, XAF..."
+                    maxLength={3}
+                  />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="currency_name">Nom de la devise</Label>
+                  <Label htmlFor="name">Nom de la devise</Label>
                   <Input
-                    id="currency_name"
-                    value={currencyForm.currency_name}
-                    onChange={(e) => setCurrencyForm({...currencyForm, currency_name: e.target.value})}
+                    id="name"
+                    value={currencyForm.name}
+                    onChange={(e) => setCurrencyForm({...currencyForm, name: e.target.value})}
                     placeholder="Ex: Franc CFA"
                   />
                 </div>
@@ -267,7 +253,7 @@ const CurrenciesSection = () => {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  Taux de change - {selectedCurrency?.currency_name}
+                  Taux de change - {selectedCurrency?.name}
                 </DialogTitle>
                 <DialogDescription>
                   Configurez le taux de change par rapport à la devise de base
@@ -333,7 +319,6 @@ const CurrenciesSection = () => {
               <TableRow>
                 <TableHead>Code</TableHead>
                 <TableHead>Devise</TableHead>
-                <TableHead>Symbole</TableHead>
                 <TableHead>Taux de change</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -342,9 +327,8 @@ const CurrenciesSection = () => {
             <TableBody>
               {currencies.map((currency: any) => (
                 <TableRow key={currency.id}>
-                  <TableCell className="font-mono">{currency.currency_code}</TableCell>
-                  <TableCell className="font-medium">{currency.currency_name}</TableCell>
-                  <TableCell>{currency.currency_symbol}</TableCell>
+                  <TableCell className="font-mono">{currency.code}</TableCell>
+                  <TableCell className="font-medium">{currency.name}</TableCell>
                   <TableCell>{formatExchangeRate(currency)}</TableCell>
                   <TableCell>{getStatusBadge(currency)}</TableCell>
                   <TableCell className="text-right">

@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +27,7 @@ export interface AccountingJournal {
   code: string;
   name: string;
   type: string;
+  description?: string;
   auto_generation: boolean;
   is_active: boolean;
   created_at: string;
@@ -211,9 +213,9 @@ export const useAccountingConfiguration = () => {
     enabled: !!tenantId
   });
 
-  // Fetch fiscal years
+  // Fetch fiscal years - Fixed field mapping
   const {
-    data: fiscalYears = [],
+    data: rawFiscalYears = [],
     isLoading: isLoadingFiscalYears,
     error: fiscalYearsError
   } = useQuery({
@@ -230,6 +232,18 @@ export const useAccountingConfiguration = () => {
     },
     enabled: !!tenantId
   });
+
+  // Map raw fiscal years to expected interface
+  const fiscalYears = rawFiscalYears.map((item: any) => ({
+    id: item.id,
+    tenant_id: item.tenant_id,
+    year: item.libelle_exercice,
+    start_date: item.date_debut,
+    end_date: item.date_fin,
+    status: item.statut,
+    created_at: item.created_at,
+    updated_at: item.updated_at
+  }));
 
   // Mutations
   const saveGeneralConfigMutation = useMutation({
@@ -269,10 +283,7 @@ export const useAccountingConfiguration = () => {
     mutationFn: async (journal: Partial<AccountingJournal>) => {
       const journalWithTenant = {
         ...journal,
-        tenant_id: tenantId,
-        code: journal.code || '',
-        name: journal.name || '',
-        type: journal.type || ''
+        tenant_id: tenantId
       };
       
       if (journal.id) {
@@ -343,9 +354,7 @@ export const useAccountingConfiguration = () => {
     mutationFn: async (rule: Partial<AccountingNumberingRule>) => {
       const ruleWithTenant = {
         ...rule,
-        tenant_id: tenantId,
-        rule_type: rule.rule_type || '',
-        format_pattern: rule.format_pattern || ''
+        tenant_id: tenantId
       };
       
       const { data, error } = await supabase
@@ -378,9 +387,7 @@ export const useAccountingConfiguration = () => {
     mutationFn: async (currency: Partial<AccountingCurrency>) => {
       const currencyWithTenant = {
         ...currency,
-        tenant_id: tenantId,
-        code: currency.code || '',
-        name: currency.name || ''
+        tenant_id: tenantId
       };
       
       if (currency.id) {
@@ -425,9 +432,7 @@ export const useAccountingConfiguration = () => {
     mutationFn: async (rate: Partial<AccountingExchangeRate>) => {
       const rateWithTenant = {
         ...rate,
-        tenant_id: tenantId,
-        currency_id: rate.currency_id || '',
-        rate: rate.rate || 1
+        tenant_id: tenantId
       };
       
       const { data, error } = await supabase
@@ -493,7 +498,7 @@ export const useAccountingConfiguration = () => {
         libelle_exercice: fiscalYear.year || '',
         date_debut: fiscalYear.start_date || '',
         date_fin: fiscalYear.end_date || '',
-        statut: fiscalYear.status || 'active'
+        statut: fiscalYear.status || 'ouvert'
       };
       
       if (fiscalYear.id) {

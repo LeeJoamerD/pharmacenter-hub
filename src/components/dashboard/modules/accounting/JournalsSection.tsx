@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,11 +27,12 @@ const JournalsSection = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingJournal, setEditingJournal] = useState<any>(null);
   const [formData, setFormData] = useState({
-    code_journal: '',
-    libelle_journal: '',
-    type_journal: '',
+    code: '',
+    name: '',
+    type: '',
     description: '',
-    is_active: true
+    is_active: true,
+    auto_generation: false
   });
 
   const journalTypes = [
@@ -44,11 +46,12 @@ const JournalsSection = () => {
 
   const resetForm = () => {
     setFormData({
-      code_journal: '',
-      libelle_journal: '',
-      type_journal: '',
+      code: '',
+      name: '',
+      type: '',
       description: '',
-      is_active: true
+      is_active: true,
+      auto_generation: false
     });
     setEditingJournal(null);
   };
@@ -57,11 +60,12 @@ const JournalsSection = () => {
     if (journal) {
       setEditingJournal(journal);
       setFormData({
-        code_journal: journal.code_journal || '',
-        libelle_journal: journal.libelle_journal || '',
-        type_journal: journal.type_journal || '',
+        code: journal.code || '',
+        name: journal.name || '',
+        type: journal.type || '',
         description: journal.description || '',
-        is_active: journal.is_active !== false
+        is_active: journal.is_active !== false,
+        auto_generation: journal.auto_generation || false
       });
     } else {
       resetForm();
@@ -152,20 +156,20 @@ const JournalsSection = () => {
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="code_journal">Code journal</Label>
+                    <Label htmlFor="code">Code journal</Label>
                     <Input
-                      id="code_journal"
-                      value={formData.code_journal}
-                      onChange={(e) => setFormData({...formData, code_journal: e.target.value})}
+                      id="code"
+                      value={formData.code}
+                      onChange={(e) => setFormData({...formData, code: e.target.value})}
                       placeholder="VT, AC, BQ..."
                     />
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="type_journal">Type de journal</Label>
+                    <Label htmlFor="type">Type de journal</Label>
                     <Select 
-                      value={formData.type_journal} 
-                      onValueChange={(value) => setFormData({...formData, type_journal: value})}
+                      value={formData.type} 
+                      onValueChange={(value) => setFormData({...formData, type: value})}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner un type" />
@@ -182,11 +186,11 @@ const JournalsSection = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="libelle_journal">Libellé</Label>
+                  <Label htmlFor="name">Libellé</Label>
                   <Input
-                    id="libelle_journal"
-                    value={formData.libelle_journal}
-                    onChange={(e) => setFormData({...formData, libelle_journal: e.target.value})}
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
                     placeholder="Ex: Journal des Ventes"
                   />
                 </div>
@@ -235,9 +239,9 @@ const JournalsSection = () => {
             <TableBody>
               {journals.map((journal: any) => (
                 <TableRow key={journal.id}>
-                  <TableCell className="font-mono">{journal.code_journal}</TableCell>
-                  <TableCell className="font-medium">{journal.libelle_journal}</TableCell>
-                  <TableCell>{getJournalTypeLabel(journal.type_journal)}</TableCell>
+                  <TableCell className="font-mono">{journal.code}</TableCell>
+                  <TableCell className="font-medium">{journal.name}</TableCell>
+                  <TableCell>{getJournalTypeLabel(journal.type)}</TableCell>
                   <TableCell>{getStatusBadge(journal.is_active)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex gap-2 justify-end">

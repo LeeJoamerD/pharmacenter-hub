@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          currency_code: string | null
           id: string
           is_active: boolean
           is_base_currency: boolean
@@ -28,6 +29,7 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          currency_code?: string | null
           id?: string
           is_active?: boolean
           is_base_currency?: boolean
@@ -38,6 +40,7 @@ export type Database = {
         Update: {
           code?: string
           created_at?: string
+          currency_code?: string | null
           id?: string
           is_active?: boolean
           is_base_currency?: boolean
@@ -146,34 +149,46 @@ export type Database = {
         Row: {
           auto_generation: boolean
           code: string
+          code_journal: string | null
           created_at: string
+          description: string | null
           id: string
           is_active: boolean
+          libelle_journal: string | null
           name: string
           tenant_id: string
           type: string
+          type_journal: string | null
           updated_at: string
         }
         Insert: {
           auto_generation?: boolean
           code: string
+          code_journal?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           is_active?: boolean
+          libelle_journal?: string | null
           name: string
           tenant_id: string
           type: string
+          type_journal?: string | null
           updated_at?: string
         }
         Update: {
           auto_generation?: boolean
           code?: string
+          code_journal?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           is_active?: boolean
+          libelle_journal?: string | null
           name?: string
           tenant_id?: string
           type?: string
+          type_journal?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -3399,6 +3414,7 @@ export type Database = {
           created_at: string
           departement: string | null
           email: string | null
+          forme_juridique: string | null
           id: string
           logo: string | null
           name: string
@@ -3412,6 +3428,9 @@ export type Database = {
           quartier: string | null
           rccm: string | null
           region: string | null
+          representant_fonction: string | null
+          representant_nom: string | null
+          site_web: string | null
           slogan: string | null
           status: string | null
           telephone_appel: string | null
@@ -3429,6 +3448,7 @@ export type Database = {
           created_at?: string
           departement?: string | null
           email?: string | null
+          forme_juridique?: string | null
           id?: string
           logo?: string | null
           name: string
@@ -3442,6 +3462,9 @@ export type Database = {
           quartier?: string | null
           rccm?: string | null
           region?: string | null
+          representant_fonction?: string | null
+          representant_nom?: string | null
+          site_web?: string | null
           slogan?: string | null
           status?: string | null
           telephone_appel?: string | null
@@ -3459,6 +3482,7 @@ export type Database = {
           created_at?: string
           departement?: string | null
           email?: string | null
+          forme_juridique?: string | null
           id?: string
           logo?: string | null
           name?: string
@@ -3472,6 +3496,9 @@ export type Database = {
           quartier?: string | null
           rccm?: string | null
           region?: string | null
+          representant_fonction?: string | null
+          representant_nom?: string | null
+          site_web?: string | null
           slogan?: string | null
           status?: string | null
           telephone_appel?: string | null
