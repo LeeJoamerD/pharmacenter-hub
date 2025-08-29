@@ -27,7 +27,7 @@ const FiscalYearsSection = () => {
     year: '',
     start_date: '',
     end_date: '',
-    status: 'ouvert'
+    status: 'Ouvert'
   });
 
   const resetForm = () => {
@@ -35,7 +35,7 @@ const FiscalYearsSection = () => {
       year: '',
       start_date: '',
       end_date: '',
-      status: 'ouvert'
+      status: 'Ouvert'
     });
     setEditingYear(null);
   };
@@ -47,7 +47,7 @@ const FiscalYearsSection = () => {
         year: year.year || '',
         start_date: year.start_date || '',
         end_date: year.end_date || '',
-        status: year.status || 'ouvert'
+        status: year.status || 'Ouvert'
       });
     } else {
       resetForm();
@@ -101,7 +101,7 @@ const FiscalYearsSection = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'ouvert':
+      case 'Ouvert':
         return <Badge variant="default" className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Ouvert</Badge>;
       case 'ferme':
         return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Fermé</Badge>;

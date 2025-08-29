@@ -507,7 +507,7 @@ export const useAccountingConfiguration = () => {
         libelle_exercice: fiscalYear.year || '',
         date_debut: fiscalYear.start_date || '',
         date_fin: fiscalYear.end_date || '',
-        statut: fiscalYear.status || 'ouvert'
+        statut: fiscalYear.status || 'Ouvert'
       };
       
       if (fiscalYear.id) {
