@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { StockSettings } from '@/hooks/useStockSettings';
 
 export interface StockMovement {
   produit_id: string;
@@ -36,10 +37,30 @@ export class StockUpdateService {
   /**
    * Enregistre un mouvement de stock et met à jour les quantités
    */
-  static async recordStockMovement(movement: StockMovement): Promise<void> {
+  static async recordStockMovement(movement: StockMovement, settings?: StockSettings): Promise<void> {
     try {
       const tenantId = await this.getCurrentTenantId();
       if (!tenantId) throw new Error('Utilisateur non autorisé');
+
+      // Check negative stock allowance before processing outbound movements
+      if (movement.type_mouvement === 'sortie' || movement.type_mouvement === 'vente') {
+        const currentStock = await this.calculateAvailableStock(movement.produit_id);
+        const newStock = currentStock - Math.abs(movement.quantite);
+        
+        if (newStock < 0 && settings && !settings.allow_negative_stock) {
+          throw new Error(`Stock insuffisant. Stock actuel: ${currentStock}, Quantité demandée: ${Math.abs(movement.quantite)}`);
+        }
+      }
+
+      // Auto-generate lot if required and not provided
+      if (settings?.require_lot_numbers && !movement.lot_id && 
+          (movement.type_mouvement === 'entree' || movement.type_mouvement === 'reception')) {
+        if (settings.auto_generate_lots) {
+          movement.lot_id = await this.generateLotNumber(movement.produit_id, tenantId);
+        } else {
+          throw new Error('Numéro de lot requis pour ce produit');
+        }
+      }
 
       // Enregistrer le mouvement
       const { error: movementError } = await supabase
@@ -277,5 +298,69 @@ export class StockUpdateService {
       console.error('Erreur lors du calcul du stock disponible:', error);
       return 0;
     }
+  }
+
+  /**
+   * Generate automatic lot number
+   */
+  private static async generateLotNumber(produitId: string, tenantId: string): Promise<string> {
+    const date = new Date();
+    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+    
+    // Get product code for lot generation
+    const { data: product } = await supabase
+      .from('produits')
+      .select('code_cip')
+      .eq('id', produitId)
+      .single();
+
+    const productCode = product?.code_cip?.slice(0, 4) || 'PROD';
+    
+    // Find next sequence number for today
+    const { data: existingLots } = await supabase
+      .from('lots')
+      .select('numero_lot')
+      .eq('tenant_id', tenantId)
+      .like('numero_lot', `${productCode}-${dateStr}-%`);
+
+    const sequenceNumber = (existingLots?.length || 0) + 1;
+    return `${productCode}-${dateStr}-${sequenceNumber.toString().padStart(3, '0')}`;
+  }
+
+  /**
+   * Check if product requires lot tracking
+   */
+  static async requiresLotTracking(produitId: string, settings: StockSettings): Promise<boolean> {
+    if (!settings.require_lot_numbers) return false;
+
+    // Could be enhanced to check product-specific requirements
+    return true;
+  }
+
+  /**
+   * Validate stock movement against business rules
+   */
+  static async validateMovement(movement: StockMovement, settings: StockSettings): Promise<string[]> {
+    const errors: string[] = [];
+
+    // Check lot requirements
+    if (settings.require_lot_numbers && !movement.lot_id && 
+        (movement.type_mouvement === 'entree' || movement.type_mouvement === 'reception')) {
+      if (!settings.auto_generate_lots) {
+        errors.push('Numéro de lot requis pour ce type de mouvement');
+      }
+    }
+
+    // Check negative stock allowance
+    if (movement.type_mouvement === 'sortie' || movement.type_mouvement === 'vente') {
+      const currentStock = await this.calculateAvailableStock(movement.produit_id);
+      const newStock = currentStock - Math.abs(movement.quantite);
+      
+      if (newStock < 0 && !settings.allow_negative_stock) {
+        errors.push(`Stock insuffisant. Disponible: ${currentStock}, Demandé: ${Math.abs(movement.quantite)}`);
+      }
+    }
+
+    return errors;
   }
 }

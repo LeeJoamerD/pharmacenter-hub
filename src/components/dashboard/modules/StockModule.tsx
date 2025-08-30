@@ -8,6 +8,7 @@ import StockInventairesTab from './stock/tabs/StockInventairesTab';
 import StockAlertesTab from './stock/tabs/StockAlertesTab';
 import StockAnalysesTab from './stock/tabs/StockAnalysesTab';
 import StockConfigurationTab from './stock/tabs/StockConfigurationTab';
+import StockIntegrationDemo from './stock/StockIntegrationDemo';
 
 interface StockModuleProps {
   activeSubModule: string;
@@ -33,6 +34,8 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
         return <StockAnalysesTab />;
       case 'configuration':
         return <StockConfigurationTab />;
+      case 'integration-demo':
+        return <StockIntegrationDemo />;
       default:
         return <StockDashboard />;
     }

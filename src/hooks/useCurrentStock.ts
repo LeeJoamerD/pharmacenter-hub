@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTenantQuery } from './useTenantQuery';
+import { useStockSettings } from './useStockSettings';
+import { useAlertThresholds } from './useAlertThresholds';
+import { StockValuationService } from '@/services/stockValuationService';
+import { StockUpdateService } from '@/services/stockUpdateService';
 
 export interface CurrentStockItem {
   id: string;
@@ -38,10 +42,13 @@ export interface StockAlert {
 
 export const useCurrentStock = () => {
   const { useTenantQueryWithCache } = useTenantQuery();
+  const { settings: stockSettings } = useStockSettings();
+  const { thresholds } = useAlertThresholds();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFamily, setSelectedFamily] = useState<string>('');
   const [selectedRayon, setSelectedRayon] = useState<string>('');
   const [stockFilter, setStockFilter] = useState<'all' | 'available' | 'low' | 'out' | 'critical'>('all');
+  const [stockData, setStockData] = useState<CurrentStockItem[]>([]);
 
   // Produits avec stock actuel
   const { data: products = [], isLoading, refetch } = useTenantQueryWithCache(
@@ -71,54 +78,89 @@ export const useCurrentStock = () => {
     'id, libelle_rayon'
   );
 
-  // Transformation des données
-  const processedProducts: CurrentStockItem[] = products.map((product: any) => {
-    // Pour l'instant, stock_actuel vient des lots, pas de la table produits
-    const currentStock = 0; // Sera calculé depuis les lots
-    const stockValue = currentStock * (product.prix_achat || 0);
-    
-    let stockStatus: CurrentStockItem['statut_stock'] = 'normal';
-    if (currentStock === 0) {
-      stockStatus = 'rupture';
-    } else if (currentStock <= (product.stock_limite || 0)) {
-      stockStatus = currentStock <= (product.stock_limite || 0) * 0.5 ? 'critique' : 'faible';
-    } else if (currentStock >= (product.stock_alerte || 100)) {
-      stockStatus = 'surstock';
-    }
+  // Process products with enhanced stock calculation
+  useEffect(() => {
+    const processProducts = async () => {
+      if (!products || products.length === 0) {
+        setStockData([]);
+        return;
+      }
 
-    // Calcul de la rotation basé sur les mouvements récents (simplifié)
-    let rotation: CurrentStockItem['rotation'] = 'normale';
-    const daysSinceLastMovement = product.updated_at 
-      ? Math.floor((Date.now() - new Date(product.updated_at).getTime()) / (1000 * 60 * 60 * 24))
-      : 999;
-    
-    if (daysSinceLastMovement < 7) rotation = 'rapide';
-    else if (daysSinceLastMovement > 30) rotation = 'lente';
+      const processedProducts: CurrentStockItem[] = [];
 
-    return {
-      id: product.id,
-      tenant_id: product.tenant_id,
-      libelle_produit: product.libelle_produit,
-      code_produit: product.code_cip || '',
-      famille_id: product.famille_id,
-      famille_libelle: product.famille_produit?.libelle_famille,
-      rayon_id: product.rayon_id,
-      rayon_libelle: product.rayons_produits?.libelle_rayon,
-      prix_achat_ht: product.prix_achat || 0,
-      prix_vente_ttc: product.prix_vente_ttc || 0,
-      stock_actuel: currentStock,
-      stock_limite: product.stock_limite || 0,
-      stock_alerte: product.stock_alerte || 100,
-      date_derniere_entree: product.created_at,
-      date_derniere_sortie: product.updated_at,
-      valeur_stock: stockValue,
-      statut_stock: stockStatus,
-      rotation
+      for (const product of products) {
+        // Calculate actual current stock from lots
+        const currentStock = await StockUpdateService.calculateAvailableStock(product.id);
+        
+        // Get category-specific threshold if available
+        const categoryThreshold = thresholds?.find(t => 
+          t.category === product.famille_produit?.libelle_famille && t.enabled
+        );
+        const effectiveThreshold = categoryThreshold?.threshold || product.stock_limite || 10;
+        
+        // Calculate stock value using configured valuation method
+        let stockValue = currentStock * (product.prix_achat || 0);
+        if (stockSettings && currentStock > 0) {
+          try {
+            const valuation = await StockValuationService.calculateValuation(product.id, stockSettings);
+            stockValue = valuation.totalValue;
+          } catch (error) {
+            console.warn('Valuation calculation failed, using simple method:', error);
+          }
+        }
+
+        // Determine stock status using enhanced logic
+        let stockStatus: CurrentStockItem['statut_stock'] = 'normal';
+        if (currentStock === 0) {
+          stockStatus = 'rupture';
+        } else if (currentStock <= Math.floor(effectiveThreshold * 0.3)) {
+          stockStatus = 'critique';
+        } else if (currentStock <= effectiveThreshold) {
+          stockStatus = 'faible';
+        } else if (currentStock >= (product.stock_alerte || 100)) {
+          stockStatus = 'surstock';
+        }
+
+        // Enhanced rotation calculation
+        let rotation: CurrentStockItem['rotation'] = 'normale';
+        const daysSinceLastMovement = product.updated_at 
+          ? Math.floor((Date.now() - new Date(product.updated_at).getTime()) / (1000 * 60 * 60 * 24))
+          : 999;
+        
+        const slowMovingDays = stockSettings?.minimum_stock_days || 30;
+        if (daysSinceLastMovement < 7) rotation = 'rapide';
+        else if (daysSinceLastMovement > slowMovingDays) rotation = 'lente';
+
+        processedProducts.push({
+          id: product.id,
+          tenant_id: product.tenant_id,
+          libelle_produit: product.libelle_produit,
+          code_produit: product.code_cip || '',
+          famille_id: product.famille_id,
+          famille_libelle: product.famille_produit?.libelle_famille,
+          rayon_id: product.rayon_id,
+          rayon_libelle: product.rayons_produits?.libelle_rayon,
+          prix_achat_ht: product.prix_achat || 0,
+          prix_vente_ttc: product.prix_vente_ttc || 0,
+          stock_actuel: currentStock,
+          stock_limite: effectiveThreshold,
+          stock_alerte: product.stock_alerte || 100,
+          date_derniere_entree: product.created_at,
+          date_derniere_sortie: product.updated_at,
+          valeur_stock: stockValue,
+          statut_stock: stockStatus,
+          rotation
+        });
+      }
+
+      setStockData(processedProducts);
     };
-  });
+
+    processProducts();
+  }, [products, stockSettings, thresholds]);
 
   // Filtrage des produits
-  const filteredProducts = processedProducts.filter(product => {
+  const filteredProducts = stockData.filter(product => {
     // Filtre par terme de recherche
     if (searchTerm && !product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase()) &&
         !product.code_produit.toLowerCase().includes(searchTerm.toLowerCase())) {
