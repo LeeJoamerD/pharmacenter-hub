@@ -5815,6 +5815,20 @@ export type Database = {
         }
         Returns: string
       }
+      get_personnel_basic_info: {
+        Args: { p_tenant_id?: string }
+        Returns: {
+          created_at: string
+          fonction: string
+          id: string
+          is_active: boolean
+          noms: string
+          prenoms: string
+          reference_agent: string
+          role: string
+          tenant_id: string
+        }[]
+      }
       is_system_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
