@@ -5787,6 +5787,10 @@ export type Database = {
         }
         Returns: Json
       }
+      debug_user_connection_state: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       detect_suspicious_patterns: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -5914,6 +5918,10 @@ export type Database = {
       setup_cross_tenant_security_triggers: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      user_has_personnel_record: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
       }
       validate_password_strength: {
         Args: { password: string; tenant_id: string }

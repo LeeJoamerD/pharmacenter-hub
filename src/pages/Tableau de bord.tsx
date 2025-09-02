@@ -1,11 +1,14 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import { SystemSettingsSync } from '@/components/system-settings/SystemSettingsSync';
-import { LogOut } from 'lucide-react';
+import { LogOut, AlertTriangle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Import components
 import AppSidebar from '@/components/dashboard/sidebar/AppSidebar';
@@ -76,9 +79,57 @@ const UserAvatar = ({ initials }: { initials: string }) => (
 );
 
 const Dashboard = () => {
-  const { signOut, personnel, pharmacy, user } = useAuth();
+  const { signOut, personnel, pharmacy, user, connectedPharmacy } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeModule, setActiveModule] = useState('dashboard');
   const [activeSubModule, setActiveSubModule] = useState('');
+
+  // Protection : Vérifier qu'une pharmacie est connectée
+  const activePharmacy = pharmacy || connectedPharmacy;
+  const isPharmacyConnected = !!activePharmacy;
+
+  useEffect(() => {
+    // Vérifier l'état de connexion
+    if (!user) {
+      console.log('DASHBOARD: Aucun utilisateur authentifié, redirection vers accueil');
+      toast({
+        title: "Accès non autorisé",
+        description: "Vous devez vous connecter pour accéder au tableau de bord.",
+        variant: "destructive"
+      });
+      navigate('/');
+      return;
+    }
+
+    if (!isPharmacyConnected) {
+      console.log('DASHBOARD: Aucune pharmacie connectée, redirection vers accueil');
+      toast({
+        title: "Pharmacie requise",
+        description: "Vous devez connecter une pharmacie pour accéder au tableau de bord.",
+        variant: "destructive"
+      });
+      navigate('/');
+      return;
+    }
+
+    console.log('DASHBOARD: Accès autorisé -', 'User:', !!user, 'Pharmacie:', activePharmacy?.name);
+  }, [user, isPharmacyConnected, activePharmacy, navigate, toast]);
+
+  // Afficher un écran de chargement si pas encore connecté
+  if (!user || !isPharmacyConnected) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4 max-w-md">
+          <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto" />
+          <h2 className="text-xl font-semibold">Vérification des accès...</h2>
+          <p className="text-muted-foreground">
+            Vérification de votre connexion et de votre pharmacie
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Calculer les initiales et le nom complet
   const userInitials = getUserInitials(personnel, user);

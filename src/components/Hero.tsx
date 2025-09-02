@@ -29,6 +29,16 @@ export function Hero() {
       const { data: { session } } = await supabase.auth.getSession();
       console.log('HERO: Session initiale:', !!session?.user, 'Pharmacie via tenant:', !!pharmacy, 'Pharmacie session:', !!connectedPharmacy);
       setCurrentUser(session?.user || null);
+      
+      // Debug l'état de connexion si utilisateur présent
+      if (session?.user) {
+        try {
+          const { data: debugState } = await supabase.rpc('debug_user_connection_state');
+          console.log('HERO: État de connexion debug:', debugState);
+        } catch (error) {
+          console.error('HERO: Erreur debug état:', error);
+        }
+      }
     };
 
     checkSession();

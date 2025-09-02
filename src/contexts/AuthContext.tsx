@@ -58,6 +58,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserData = async (userId: string) => {
     try {
+      console.log('AUTH: Fetching user data for:', userId);
+      
+      // Debug: Utiliser la fonction de debug pour diagnostiquer l'état
+      const { data: debugState, error: debugError } = await supabase.rpc('debug_user_connection_state');
+      if (!debugError && debugState) {
+        console.log('AUTH: Debug état connexion:', debugState);
+      }
+
       // Fetch personnel data - utilise maybeSingle pour permettre NULL
       const { data: personnelData, error: personnelError } = await supabase
         .from('personnel')
@@ -65,14 +73,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('auth_user_id', userId)
         .maybeSingle();
 
-      if (personnelError && personnelError.code !== 'PGRST116') {
-        console.error('Error fetching personnel:', personnelError);
-        return;
+      if (personnelError) {
+        console.error('AUTH: Error fetching personnel:', personnelError);
+        // Si erreur RLS ou autre, essayer la résolution OAuth
+        if (personnelError.code === '42501' || personnelError.code === '42P17') {
+          console.log('AUTH: Erreur RLS détectée, tentative résolution OAuth...');
+        } else {
+          return;
+        }
       }
 
-      // Si aucun personnel trouvé, essayer de résoudre automatiquement le lien OAuth
-      if (!personnelData) {
-        console.log('AUTH: Aucun personnel trouvé, tentative de résolution OAuth...');
+      // Si aucun personnel trouvé ou erreur RLS, essayer de résoudre automatiquement le lien OAuth
+      if (!personnelData || personnelError) {
+        console.log('AUTH: Personnel non trouvé ou erreur RLS, tentative résolution OAuth...');
         
         const { data: linkResult, error: linkError } = await supabase.rpc(
           'resolve_oauth_personnel_link'
@@ -88,37 +101,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Si le lien a été résolu avec succès, re-fetch les données
         const linkData = linkResult as unknown as OAuthLinkResult;
         if (linkData?.status === 'active' || linkData?.status === 'linked_and_activated') {
-          const { data: newPersonnelData } = await supabase
+          console.log('AUTH: Lien OAuth résolu, rechargement des données personnel...');
+          
+          const { data: newPersonnelData, error: newPersonnelError } = await supabase
             .from('personnel')
             .select('*')
             .eq('auth_user_id', userId)
             .maybeSingle();
           
+          if (newPersonnelError) {
+            console.error('AUTH: Erreur après résolution OAuth:', newPersonnelError);
+            return;
+          }
+          
           if (newPersonnelData) {
+            console.log('AUTH: Personnel récupéré après résolution:', newPersonnelData.id);
             setPersonnel(newPersonnelData);
             
             // Fetch pharmacy data si tenant_id existe
             if (newPersonnelData.tenant_id) {
-              const { data: pharmacyData } = await supabase
+              const { data: pharmacyData, error: pharmacyError } = await supabase
                 .from('pharmacies')
                 .select('*')
                 .eq('id', newPersonnelData.tenant_id)
                 .maybeSingle();
               
-              if (pharmacyData) {
+              if (pharmacyError) {
+                console.error('AUTH: Erreur chargement pharmacie:', pharmacyError);
+              } else if (pharmacyData) {
+                console.log('AUTH: Pharmacie chargée:', pharmacyData.name);
                 setPharmacy(pharmacyData);
               }
             }
           }
         } else if (linkData?.status === 'new_user') {
           console.log('AUTH: Nouvel utilisateur détecté, création de compte requise');
-          // Pour les nouveaux utilisateurs, on laisse le processus normal
+          // Pour les nouveaux utilisateur, on laisse le processus normal
         }
         
         return;
       }
 
       // Personnel trouvé normalement
+      console.log('AUTH: Personnel trouvé:', personnelData.id, 'tenant:', personnelData.tenant_id);
       setPersonnel(personnelData);
 
       // Fetch pharmacy data seulement si l'utilisateur a un tenant_id
@@ -129,16 +154,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .eq('id', personnelData.tenant_id)
           .maybeSingle();
 
-        if (pharmacyError && pharmacyError.code !== 'PGRST116') {
-          console.error('Error fetching pharmacy:', pharmacyError);
+        if (pharmacyError) {
+          console.error('AUTH: Error fetching pharmacy:', pharmacyError);
           return;
         }
 
         if (pharmacyData) {
+          console.log('AUTH: Pharmacie trouvée:', pharmacyData.name);
           setPharmacy(pharmacyData);
           // Ne plus créer automatiquement de session pharmacie
           // La pharmacie sera définie mais pas connectée automatiquement
         }
+      } else {
+        console.log('AUTH: Personnel sans tenant_id');
       }
 
       // Mettre à jour le contexte de sécurité
