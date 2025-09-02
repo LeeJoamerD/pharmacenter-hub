@@ -46,7 +46,7 @@ export function SystemSettingsProvider({ children }: { children: ReactNode }) {
       // Vérifier si cette devise existe dans le contexte Currency
       const existingCurrency = currencies.find(c => c.code === systemCurrency.code);
       if (existingCurrency) {
-        changeCurrency(existingCurrency);
+        changeCurrency(existingCurrency, false); // Ne pas afficher le toast pour les changements automatiques
       }
     }
   };

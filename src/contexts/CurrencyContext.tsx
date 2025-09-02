@@ -18,7 +18,7 @@ const currencies: Currency[] = [
 type CurrencyContextType = {
   currentCurrency: Currency;
   currencies: Currency[];
-  changeCurrency: (currency: Currency) => void;
+  changeCurrency: (currency: Currency, showToast?: boolean) => void;
   formatPrice: (amount: number) => string;
   convertPrice: (amount: number, fromCurrency?: Currency) => number;
 };
@@ -44,15 +44,17 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     return currencies[0]; // Default to XAF (Franc CFA)
   });
 
-  const changeCurrency = (currency: Currency) => {
+  const changeCurrency = (currency: Currency, showToast: boolean = true) => {
     setCurrentCurrency(currency);
     if (typeof window !== 'undefined') {
       localStorage.setItem('preferredCurrency', JSON.stringify(currency));
     }
-    toast({
-      title: "Devise modifiée",
-      description: `La devise a été changée en ${currency.name} (${currency.code})`,
-    });
+    if (showToast) {
+      toast({
+        title: "Devise modifiée",
+        description: `La devise a été changée en ${currency.name} (${currency.code})`,
+      });
+    }
   };
 
   const formatPrice = (amount: number): string => {
