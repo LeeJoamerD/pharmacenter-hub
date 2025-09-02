@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useLaboratories } from '@/hooks/useLaboratories';
+import { useProducts } from '@/hooks/useProducts';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Product {
@@ -51,6 +52,10 @@ interface Product {
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
+  // Champs pour les produits détails
+  id_produit_source?: string | null;
+  quantite_unites_details_source?: number | null;
+  niveau_detail?: number | null;
 }
 
 interface FamilyProduct {
@@ -82,6 +87,7 @@ const ProductCatalogNew = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [detailsProduct, setDetailsProduct] = useState<Product | null>(null);
+  const [detailQuantity, setDetailQuantity] = useState<number>(1);
   const [isReferencesDialogOpen, setIsReferencesDialogOpen] = useState(false);
   const [referencesData, setReferencesData] = useState<any[]>([]);
   const [referencesProduct, setReferencesProduct] = useState<Product | null>(null);
@@ -90,6 +96,7 @@ const ProductCatalogNew = () => {
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
   const { laboratories, loading: labLoading } = useLaboratories();
   const { personnel } = useAuth();
+  const { createProductDetail } = useProducts();
 
   // Récupération des données
   const { data: products = [], isLoading } = useTenantQueryWithCache(
@@ -97,7 +104,8 @@ const ProductCatalogNew = () => {
     'produits', 
     `id, libelle_produit, code_cip, famille_id, rayon_id, laboratoires_id, 
      dci_id, categorie_tarification_id, prix_achat, prix_vente_ht, 
-     prix_vente_ttc, stock_limite, stock_alerte, is_active, created_at`,
+     prix_vente_ttc, stock_limite, stock_alerte, is_active, created_at,
+     id_produit_source, quantite_unites_details_source, niveau_detail`,
     { is_active: true }
   );
 
@@ -287,7 +295,29 @@ const ProductCatalogNew = () => {
 
   const handleCreateDetails = (product: Product) => {
     setDetailsProduct(product);
+    setDetailQuantity(1);
     setIsDetailsDialogOpen(true);
+  };
+
+  const handleSubmitDetail = async () => {
+    if (!detailsProduct || !detailsProduct.id || detailQuantity < 1) {
+      toast({
+        title: "Erreur de validation",
+        description: "Données de produit invalides ou quantité insuffisante",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createProductDetail(detailsProduct as any, detailQuantity);
+      setIsDetailsDialogOpen(false);
+      setDetailsProduct(null);
+      setDetailQuantity(1);
+    } catch (error) {
+      // L'erreur est déjà gérée dans createProductDetail avec un toast
+      console.error('Erreur lors de la création du détail:', error);
+    }
   };
 
   const onSubmit = async (data: Product) => {
@@ -400,19 +430,20 @@ const ProductCatalogNew = () => {
           <div className="text-center py-8">Chargement...</div>
         ) : (
           <Table>
-            <TableHeader>
-               <TableRow>
-                 <TableHead>Produit</TableHead>
-                 <TableHead>Code CIP</TableHead>
-                 <TableHead>Famille</TableHead>
-                 <TableHead>Rayon</TableHead>
-                 <TableHead>Laboratoire</TableHead>
-                 <TableHead>Prix achat</TableHead>
-                 <TableHead>Prix vente TTC</TableHead>
-                 <TableHead>Stock</TableHead>
-                 <TableHead>Actions</TableHead>
-               </TableRow>
-            </TableHeader>
+             <TableHeader>
+                <TableRow>
+                  <TableHead>Produit</TableHead>
+                  <TableHead>Code CIP</TableHead>
+                  <TableHead>Niveau</TableHead>
+                  <TableHead>Famille</TableHead>
+                  <TableHead>Rayon</TableHead>
+                  <TableHead>Laboratoire</TableHead>
+                  <TableHead>Prix achat</TableHead>
+                  <TableHead>Prix vente TTC</TableHead>
+                  <TableHead>Stock</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+             </TableHeader>
             <TableBody>
                {filteredProducts.map((product) => (
                  <TableRow key={product.id}>
@@ -421,10 +452,17 @@ const ProductCatalogNew = () => {
                          {product.libelle_produit}
                        </div>
                      </TableCell>
-                   <TableCell>{product.code_cip || 'N/A'}</TableCell>
-                   <TableCell>
-                     {families.find(f => f.id === product.famille_id)?.libelle_famille || 'N/A'}
-                   </TableCell>
+                    <TableCell>{product.code_cip || 'N/A'}</TableCell>
+                    <TableCell>
+                      {product.niveau_detail && product.niveau_detail > 1 && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          Détail {product.niveau_detail}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {families.find(f => f.id === product.famille_id)?.libelle_famille || 'N/A'}
+                    </TableCell>
                    <TableCell>
                      {rayons.find(r => r.id === product.rayon_id)?.libelle_rayon || 'N/A'}
                    </TableCell>
@@ -453,14 +491,16 @@ const ProductCatalogNew = () => {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCreateDetails(product)}
-                          title="Créer détails"
-                        >
-                          <Settings className="h-4 w-4" />
-                        </Button>
+                         {(product.niveau_detail ?? 1) < 3 && (
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => handleCreateDetails(product)}
+                             title="Créer détails"
+                           >
+                             <Layers className="h-4 w-4" />
+                           </Button>
+                         )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -675,66 +715,63 @@ const ProductCatalogNew = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Dialog Créer détails */}
+        {/* Dialog Créer le détail d'un produit */}
         <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Créer les détails - {detailsProduct?.libelle_produit}</DialogTitle>
+              <DialogTitle>Créer le détail d'un produit</DialogTitle>
               <DialogDescription>
-                Configurez les paramètres d'expiration et les seuils de stock pour ce produit
+                Crée un produit de niveau {((detailsProduct?.niveau_detail ?? 1) + 1)} à partir du produit source.
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-6">
-              {/* Paramètres d'expiration */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Paramètres d'expiration</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Délai d'alerte (jours)</Label>
-                    <Input type="number" placeholder="90" />
-                  </div>
-                  <div>
-                    <Label>Délai critique (jours)</Label>
-                    <Input type="number" placeholder="30" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Délai bloquant (jours)</Label>
-                    <Input type="number" placeholder="7" />
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input type="checkbox" id="auto-alert" />
-                    <Label htmlFor="auto-alert">Alerte automatique</Label>
-                  </div>
-                </div>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="source-name">Nom du produit Source</Label>
+                <Input
+                  id="source-name"
+                  value={detailsProduct?.libelle_produit || ''}
+                  readOnly
+                  className="bg-muted"
+                />
               </div>
 
-              {/* Seuils de stock */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Seuils de stock</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Stock minimum</Label>
-                    <Input type="number" placeholder="10" />
-                  </div>
-                  <div>
-                    <Label>Stock optimal</Label>
-                    <Input type="number" placeholder="100" />
-                  </div>
-                </div>
+              <div>
+                <Label htmlFor="detail-name">Nom du produit Détail</Label>
+                <Input
+                  id="detail-name"
+                  value={detailsProduct ? `${detailsProduct.libelle_produit} (D)` : ''}
+                  readOnly
+                  className="bg-muted"
+                />
               </div>
 
-              <div className="flex justify-end space-x-2">
+              <div>
+                <Label htmlFor="detail-quantity">Quantité des articles Détails *</Label>
+                <Input
+                  id="detail-quantity"
+                  type="number"
+                  min="1"
+                  value={detailQuantity}
+                  onChange={(e) => setDetailQuantity(parseInt(e.target.value) || 1)}
+                  placeholder="Quantité requise"
+                  required
+                />
+              </div>
+
+              {detailsProduct?.code_cip && (
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p><strong>CIP Source:</strong> {detailsProduct.code_cip}</p>
+                  <p><strong>CIP Détail:</strong> {detailsProduct.code_cip} - {(detailsProduct.niveau_detail ?? 1) + 1}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-2 pt-4">
                 <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>
                   Annuler
                 </Button>
-                <Button onClick={() => {
-                  toast({ title: "Succès", description: "Détails configurés avec succès" });
-                  setIsDetailsDialogOpen(false);
-                }}>
-                  Sauvegarder
+                <Button onClick={handleSubmitDetail} disabled={detailQuantity < 1}>
+                  Créer le détail
                 </Button>
               </div>
             </div>

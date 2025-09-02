@@ -21,6 +21,10 @@ export interface Product {
   is_active?: boolean;
   created_at: string;
   updated_at: string;
+  // Champs pour les produits détails
+  id_produit_source?: string | null;
+  quantite_unites_details_source?: number | null;
+  niveau_detail?: number | null;
   // Relations
   famille?: {
     libelle_famille: string;
@@ -169,6 +173,134 @@ export const useProducts = () => {
     fetchProducts();
   }, []);
 
+  const createProductDetail = async (sourceProduct: Product, quantity: number) => {
+    try {
+      // Validation de base
+      if (!sourceProduct.code_cip) {
+        throw new Error('Le produit source doit avoir un code CIP pour créer un détail');
+      }
+
+      const sourceLevel = sourceProduct.niveau_detail ?? 1;
+      if (sourceLevel >= 3) {
+        throw new Error('Impossible de créer un détail pour un produit de niveau 3');
+      }
+
+      // Get current user's tenant_id
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Utilisateur non authentifié');
+
+      const { data: personnel } = await supabase
+        .from('personnel')
+        .select('tenant_id')
+        .eq('auth_user_id', user.user.id)
+        .single();
+
+      if (!personnel?.tenant_id) throw new Error('Tenant non trouvé');
+
+      // Calculer les propriétés du produit détail
+      const newLevel = sourceLevel + 1;
+      const cipSuffix = ` - ${newLevel}`;
+      const detailCip = sourceProduct.code_cip + cipSuffix;
+      const detailName = sourceProduct.libelle_produit + ' (D)';
+
+      // Vérifier que ce détail direct n'existe pas déjà
+      const { data: existingDetail } = await supabase
+        .from('produits')
+        .select('id, is_active')
+        .eq('id_produit_source', sourceProduct.id)
+        .eq('tenant_id', personnel.tenant_id)
+        .eq('niveau_detail', newLevel)
+        .maybeSingle();
+
+      if (existingDetail) {
+        throw new Error(`Un produit détail de niveau ${newLevel} existe déjà pour ce produit source`);
+      }
+
+      // Vérifier l'unicité du CIP
+      const { data: existingCip } = await supabase
+        .from('produits')
+        .select('id, is_active')
+        .eq('code_cip', detailCip)
+        .eq('tenant_id', personnel.tenant_id)
+        .maybeSingle();
+
+      if (existingCip) {
+        if (existingCip.is_active) {
+          throw new Error('Un produit avec ce code CIP existe déjà et est actif');
+        } else {
+          // Réactiver le produit existant
+          const { data, error } = await supabase
+            .from('produits')
+            .update({
+              libelle_produit: detailName,
+              niveau_detail: newLevel,
+              id_produit_source: sourceProduct.id,
+              quantite_unites_details_source: quantity,
+              is_active: true,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingCip.id)
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          toast({
+            title: "Succès",
+            description: "Produit détail réactivé avec succès",
+          });
+
+          await fetchProducts();
+          return data;
+        }
+      }
+
+      // Créer un nouveau produit détail
+      const { data, error } = await supabase
+        .from('produits')
+        .insert({
+          tenant_id: personnel.tenant_id,
+          libelle_produit: detailName,
+          code_cip: detailCip,
+          famille_id: sourceProduct.famille_id,
+          rayon_id: sourceProduct.rayon_id,
+          dci_id: sourceProduct.dci_id,
+          laboratoires_id: sourceProduct.laboratoires_id,
+          taux_tva: sourceProduct.taux_tva,
+          tva: sourceProduct.tva,
+          prix_achat: sourceProduct.prix_achat,
+          prix_vente_ht: sourceProduct.prix_vente_ht,
+          prix_vente_ttc: sourceProduct.prix_vente_ttc,
+          stock_limite: sourceProduct.stock_limite,
+          stock_alerte: sourceProduct.stock_alerte,
+          is_active: true,
+          id_produit_source: sourceProduct.id,
+          quantite_unites_details_source: quantity,
+          niveau_detail: newLevel
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: "Produit détail créé avec succès",
+      });
+
+      await fetchProducts();
+      return data;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la création du produit détail';
+      toast({
+        title: "Erreur",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
+
   return {
     products,
     loading,
@@ -176,6 +308,7 @@ export const useProducts = () => {
     createProduct,
     updateProduct,
     deleteProduct,
+    createProductDetail,
     refetch: fetchProducts,
   };
 };
