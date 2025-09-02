@@ -25,13 +25,45 @@ const SystemSettingsContext = createContext<SystemSettingsContextType | undefine
 
 export function SystemSettingsProvider({ children }: { children: ReactNode }) {
   const { settings, loading, saving, saveSettings, updateSettings, refetch } = useSystemSettings();
-  const { changeCurrency, currencies } = useCurrency();
-  const { changeLanguage, languages } = useLanguage();
-  const { pharmacy } = useAuth();
+  
+  // Utilisation conditionnelle des hooks pour éviter les erreurs d'ordre d'initialisation
+  const currencyContext = React.useContext(React.createContext<any>(undefined));
+  const languageContext = React.useContext(React.createContext<any>(undefined));
+  const authContext = React.useContext(React.createContext<any>(undefined));
+  
+  // Hooks avec gestion d'erreur
+  let changeCurrency: any = null;
+  let currencies: any[] = [];
+  let changeLanguage: any = null;
+  let languages: any[] = [];
+  let pharmacy: any = null;
+  
+  try {
+    const currencyHook = useCurrency();
+    changeCurrency = currencyHook.changeCurrency;
+    currencies = currencyHook.currencies;
+  } catch (error) {
+    console.warn('CurrencyProvider not available yet');
+  }
+  
+  try {
+    const languageHook = useLanguage();
+    changeLanguage = languageHook.changeLanguage;
+    languages = languageHook.languages;
+  } catch (error) {
+    console.warn('LanguageProvider not available yet');
+  }
+  
+  try {
+    const authHook = useAuth();
+    pharmacy = authHook.pharmacy;
+  } catch (error) {
+    console.warn('AuthProvider not available yet');
+  }
 
   // Appliquer les paramètres de devise au contexte Currency
   const applyCurrencySettings = () => {
-    if (!settings) return;
+    if (!settings || !changeCurrency || !currencies.length) return;
     
     const systemCurrency = getCurrentCurrency();
     if (systemCurrency) {
@@ -53,7 +85,7 @@ export function SystemSettingsProvider({ children }: { children: ReactNode }) {
 
   // Appliquer les paramètres de langue au contexte Language
   const applyLanguageSettings = () => {
-    if (!settings) return;
+    if (!settings || !changeLanguage || !languages.length) return;
     
     const systemLanguage = getCurrentLanguage();
     if (systemLanguage) {
