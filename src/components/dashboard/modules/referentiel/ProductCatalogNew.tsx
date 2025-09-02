@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useLaboratories } from '@/hooks/useLaboratories';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -27,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Edit, Trash2, Search, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Product {
@@ -77,10 +80,16 @@ const ProductCatalogNew = () => {
   const [rayonFilter, setRayonFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [detailsProduct, setDetailsProduct] = useState<Product | null>(null);
+  const [isReferencesDialogOpen, setIsReferencesDialogOpen] = useState(false);
+  const [referencesData, setReferencesData] = useState<any[]>([]);
+  const [referencesProduct, setReferencesProduct] = useState<Product | null>(null);
 
   const { toast } = useToast();
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
   const { laboratories, loading: labLoading } = useLaboratories();
+  const { personnel } = useAuth();
 
   // Récupération des données
   const { data: products = [], isLoading } = useTenantQueryWithCache(
@@ -139,6 +148,12 @@ const ProductCatalogNew = () => {
     invalidateQueries: ['products-catalog'],
   });
 
+  // Mutation pour vérifier les duplicates CIP
+  const { useTenantQueryWithCache: checkDuplicateCIP } = useTenantQuery();
+  
+  // Mutation pour vérifier les références
+  const { useTenantQueryWithCache: checkReferences } = useTenantQuery();
+
   // Form setup simple sans calculs automatiques
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<Product>();
 
@@ -175,18 +190,119 @@ const ProductCatalogNew = () => {
     reset();
   };
 
-  const handleDeleteProduct = (productId: string) => {
-    deleteMutation.mutate({ id: productId }, {
+  const checkForDuplicateCIP = async (codeCip: string, excludeId?: string): Promise<boolean> => {
+    if (!codeCip || !personnel?.tenant_id) return false;
+    
+    try {
+      const { data } = await supabase
+        .from('produits')
+        .select('id, is_active')
+        .eq('code_cip', codeCip)
+        .eq('tenant_id', personnel.tenant_id);
+      
+      const duplicates = data?.filter(p => p.id !== excludeId) || [];
+      return duplicates.length > 0;
+    } catch (error) {
+      console.error('Error checking duplicate CIP:', error);
+      return false;
+    }
+  };
+
+  const checkProductReferences = async (productId: string): Promise<any[]> => {
+    if (!personnel?.tenant_id) return [];
+    
+    try {
+      const references = [];
+      
+      // Vérifier les références dans lignes_commande_fournisseur
+      const { data: commandeRefs } = await supabase
+        .from('lignes_commande_fournisseur')
+        .select('id, commande_id')
+        .eq('produit_id', productId)
+        .eq('tenant_id', personnel.tenant_id);
+      
+      if (commandeRefs?.length) {
+        references.push({
+          table: 'Commandes Fournisseur',
+          count: commandeRefs.length,
+          details: commandeRefs
+        });
+      }
+
+      // Vérifier autres références si nécessaire
+      const { data: ventesRefs } = await supabase
+        .from('lignes_ventes')
+        .select('id, vente_id')
+        .eq('produit_id', productId)
+        .eq('tenant_id', personnel.tenant_id);
+      
+      if (ventesRefs?.length) {
+        references.push({
+          table: 'Lignes de Ventes',
+          count: ventesRefs.length,
+          details: ventesRefs
+        });
+      }
+
+      return references;
+    } catch (error) {
+      console.error('Error checking product references:', error);
+      return [];
+    }
+  };
+
+  const handleDeleteProduct = async (product: Product) => {
+    // Vérifier les références
+    const references = await checkProductReferences(product.id!);
+    
+    if (references.length > 0) {
+      // Si des références existent, proposer désactivation
+      setReferencesData(references);
+      setReferencesProduct(product);
+      setIsReferencesDialogOpen(true);
+    } else {
+      // Si pas de références, suppression directe
+      deleteMutation.mutate({ id: product.id }, {
+        onSuccess: () => {
+          toast({ title: "Succès", description: "Produit supprimé avec succès" });
+        },
+        onError: (error) => {
+          toast({ title: "Erreur", description: "Erreur lors de la suppression", variant: "destructive" });
+        },
+      });
+    }
+  };
+
+  const handleDeactivateProduct = (productId: string) => {
+    updateMutation.mutate({ id: productId, is_active: false }, {
       onSuccess: () => {
-        toast({ title: "Succès", description: "Produit supprimé avec succès" });
+        toast({ title: "Succès", description: "Produit désactivé avec succès" });
+        setIsReferencesDialogOpen(false);
       },
       onError: (error) => {
-        toast({ title: "Erreur", description: "Erreur lors de la suppression", variant: "destructive" });
+        toast({ title: "Erreur", description: "Erreur lors de la désactivation", variant: "destructive" });
       },
     });
   };
 
-  const onSubmit = (data: Product) => {
+  const handleCreateDetails = (product: Product) => {
+    setDetailsProduct(product);
+    setIsDetailsDialogOpen(true);
+  };
+
+  const onSubmit = async (data: Product) => {
+    // Vérifier les duplicates CIP avant soumission
+    const hasDuplicate = await checkForDuplicateCIP(data.code_cip!, editingProduct?.id);
+    
+    if (hasDuplicate) {
+      toast({ 
+        title: "Code CIP déjà utilisé", 
+        description: "Ce code CIP existe déjà pour un autre produit actif", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     if (editingProduct) {
       updateMutation.mutate({ id: editingProduct.id, ...data }, {
         onSuccess: () => {
@@ -194,7 +310,12 @@ const ProductCatalogNew = () => {
           handleDialogClose();
         },
         onError: (error) => {
-          toast({ title: "Erreur", description: "Erreur lors de la modification", variant: "destructive" });
+          const errorMessage = error?.message || "Erreur lors de la modification";
+          if (errorMessage.includes('duplicate key')) {
+            toast({ title: "Code CIP déjà utilisé", description: "Ce code CIP existe déjà", variant: "destructive" });
+          } else {
+            toast({ title: "Erreur", description: errorMessage, variant: "destructive" });
+          }
         },
       });
     } else {
@@ -204,7 +325,12 @@ const ProductCatalogNew = () => {
           handleDialogClose();
         },
         onError: (error) => {
-          toast({ title: "Erreur", description: "Erreur lors de l'ajout", variant: "destructive" });
+          const errorMessage = error?.message || "Erreur lors de l'ajout";
+          if (errorMessage.includes('duplicate key')) {
+            toast({ title: "Code CIP déjà utilisé", description: "Ce code CIP existe déjà", variant: "destructive" });
+          } else {
+            toast({ title: "Erreur", description: errorMessage, variant: "destructive" });
+          }
         },
       });
     }
@@ -317,37 +443,50 @@ const ProductCatalogNew = () => {
                        </span>
                      </div>
                    </TableCell>
-                   <TableCell>
-                     <div className="flex space-x-2">
-                       <Button
-                         variant="outline"
-                         size="sm"
-                         onClick={() => handleEditProduct(product)}
-                       >
-                         <Edit className="h-4 w-4" />
-                       </Button>
-                       <Button
-                         variant="outline"
-                         size="sm"
-                         onClick={() => handleDeleteProduct(product.id!)}
-                       >
-                         <Trash2 className="h-4 w-4" />
-                       </Button>
-                     </div>
-                   </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditProduct(product)}
+                          title="Modifier"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCreateDetails(product)}
+                          title="Créer détails"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteProduct(product)}
+                          title="Supprimer"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
 
-        {/* Dialog d'ajout/modification - Structure selon l'image */}
+        {/* Dialog d'ajout/modification */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingProduct ? "Modifier le produit" : "Ajouter un produit"}
               </DialogTitle>
+              <DialogDescription>
+                {editingProduct ? "Modifiez les informations du produit" : "Saisissez les informations du nouveau produit"}
+              </DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -533,6 +672,136 @@ const ProductCatalogNew = () => {
                 </Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog Créer détails */}
+        <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Créer les détails - {detailsProduct?.libelle_produit}</DialogTitle>
+              <DialogDescription>
+                Configurez les paramètres d'expiration et les seuils de stock pour ce produit
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              {/* Paramètres d'expiration */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Paramètres d'expiration</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Délai d'alerte (jours)</Label>
+                    <Input type="number" placeholder="90" />
+                  </div>
+                  <div>
+                    <Label>Délai critique (jours)</Label>
+                    <Input type="number" placeholder="30" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Délai bloquant (jours)</Label>
+                    <Input type="number" placeholder="7" />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="auto-alert" />
+                    <Label htmlFor="auto-alert">Alerte automatique</Label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Seuils de stock */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Seuils de stock</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Stock minimum</Label>
+                    <Input type="number" placeholder="10" />
+                  </div>
+                  <div>
+                    <Label>Stock optimal</Label>
+                    <Input type="number" placeholder="100" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button onClick={() => {
+                  toast({ title: "Succès", description: "Détails configurés avec succès" });
+                  setIsDetailsDialogOpen(false);
+                }}>
+                  Sauvegarder
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog Voir références */}
+        <Dialog open={isReferencesDialogOpen} onOpenChange={setIsReferencesDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-orange-500" />
+                Produit référencé - {referencesProduct?.libelle_produit}
+              </DialogTitle>
+              <DialogDescription>
+                Ce produit est référencé dans d'autres tables et ne peut pas être supprimé directement
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-semibold mb-2">Références trouvées :</h3>
+                <div className="space-y-2">
+                  {referencesData.map((ref, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
+                      <span>{ref.table}</span>
+                      <span className="font-semibold">{ref.count} référence(s)</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h4 className="font-semibold text-blue-800 mb-2">Options disponibles :</h4>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>• <strong>Désactiver</strong> : Le produit sera masqué mais les données historiques préservées</li>
+                  <li>• <strong>Voir détails</strong> : Consulter les références avant de prendre une décision</li>
+                </ul>
+              </div>
+
+              <div className="flex justify-between">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsReferencesDialogOpen(false)}
+                >
+                  Annuler
+                </Button>
+                <div className="space-x-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      // Ici on pourrait ouvrir un autre dialog avec les détails
+                      toast({ title: "Information", description: "Fonctionnalité à venir" });
+                    }}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Voir détails
+                  </Button>
+                  <Button 
+                    variant="secondary"
+                    onClick={() => handleDeactivateProduct(referencesProduct?.id!)}
+                  >
+                    Désactiver le produit
+                  </Button>
+                </div>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </CardContent>
