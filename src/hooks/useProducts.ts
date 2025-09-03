@@ -199,8 +199,20 @@ export const useProducts = () => {
 
       // Calculer les propriétés du produit détail
       const newLevel = sourceLevel + 1;
-      const cipSuffix = ` - ${newLevel}`;
-      const detailCip = sourceProduct.code_cip + cipSuffix;
+      let detailCip: string;
+      
+      if (newLevel === 3) {
+        // Pour niveau 3, récupérer le CIP racine (niveau 1)
+        let rootCip = sourceProduct.code_cip;
+        if (sourceLevel === 2) {
+          // Si source est niveau 2, enlever le suffixe " - 2" pour obtenir le CIP racine
+          rootCip = sourceProduct.code_cip.replace(/\s*-\s*\d+$/, '');
+        }
+        detailCip = rootCip + ' - 3';
+      } else {
+        detailCip = sourceProduct.code_cip + ` - ${newLevel}`;
+      }
+      
       const detailName = sourceProduct.libelle_produit + ' (D)';
 
       // Vérifier que ce détail direct n'existe pas déjà

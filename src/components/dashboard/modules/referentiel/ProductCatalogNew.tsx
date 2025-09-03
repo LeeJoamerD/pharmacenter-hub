@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Product {
@@ -83,6 +83,7 @@ const ProductCatalogNew = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [familleFilter, setFamilleFilter] = useState("all");
   const [rayonFilter, setRayonFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<'none' | 'dci-asc' | 'dci-desc'>('none');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
@@ -133,15 +134,34 @@ const ProductCatalogNew = () => {
     'id, nom_dci'
   );
 
-  // Filtrage des produits
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (product.code_cip?.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesFamille = !familleFilter || familleFilter === "all" || product.famille_id === familleFilter;
-    const matchesRayon = !rayonFilter || rayonFilter === "all" || product.rayon_id === rayonFilter;
-    
-    return matchesSearch && matchesFamille && matchesRayon;
-  });
+  // Filtrage et tri des produits
+  const filteredAndSortedProducts = (() => {
+    // Filtrage
+    const filtered = products.filter((product) => {
+      const matchesSearch = product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (product.code_cip?.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchesFamille = !familleFilter || familleFilter === "all" || product.famille_id === familleFilter;
+      const matchesRayon = !rayonFilter || rayonFilter === "all" || product.rayon_id === rayonFilter;
+      
+      return matchesSearch && matchesFamille && matchesRayon;
+    });
+
+    // Tri par DCI
+    if (sortBy !== 'none') {
+      return filtered.sort((a, b) => {
+        const dciA = dcis.find(d => d.id === a.dci_id)?.nom_dci || '';
+        const dciB = dcis.find(d => d.id === b.dci_id)?.nom_dci || '';
+        
+        if (sortBy === 'dci-asc') {
+          return dciA.localeCompare(dciB);
+        } else {
+          return dciB.localeCompare(dciA);
+        }
+      });
+    }
+
+    return filtered;
+  })();
 
   // Mutations
   const createMutation = useTenantMutation('produits', 'insert', {
@@ -169,6 +189,7 @@ const ProductCatalogNew = () => {
     setSearchTerm("");
     setFamilleFilter("all");
     setRayonFilter("all");
+    setSortBy('none');
   };
 
   const handleAddProduct = () => {
@@ -418,6 +439,16 @@ const ProductCatalogNew = () => {
             </SelectContent>
           </Select>
 
+          <Select value={sortBy} onValueChange={(value: 'none' | 'dci-asc' | 'dci-desc') => setSortBy(value)}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Tri" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">— Aucun tri —</SelectItem>
+              <SelectItem value="dci-asc">DCI A → Z</SelectItem>
+              <SelectItem value="dci-desc">DCI Z → A</SelectItem>
+            </SelectContent>
+          </Select>
 
           <Button variant="outline" onClick={clearFilters}>
             <Filter className="h-4 w-4 mr-2" />
@@ -435,52 +466,59 @@ const ProductCatalogNew = () => {
                   <TableHead>Produit</TableHead>
                   <TableHead>Code CIP</TableHead>
                   <TableHead>Niveau</TableHead>
-                  <TableHead>Famille</TableHead>
-                  <TableHead>Rayon</TableHead>
-                  <TableHead>Laboratoire</TableHead>
+                  <TableHead>Famille / Rayon</TableHead>
                   <TableHead>Prix achat</TableHead>
                   <TableHead>Prix vente TTC</TableHead>
                   <TableHead>Stock</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
              </TableHeader>
-            <TableBody>
-               {filteredProducts.map((product) => (
-                 <TableRow key={product.id}>
+             <TableBody>
+                {filteredAndSortedProducts.map((product) => (
+                  <TableRow key={product.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Pill className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">
+                              {product.libelle_produit}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {laboratories.find(l => l.id === product.laboratoires_id)?.libelle || 'N/A'}
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                     <TableCell>{product.code_cip || 'N/A'}</TableCell>
                      <TableCell>
-                       <div className="font-medium">
-                         {product.libelle_produit}
+                       {product.niveau_detail && product.niveau_detail > 1 && (
+                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                           Détail {product.niveau_detail}
+                         </span>
+                       )}
+                     </TableCell>
+                     <TableCell>
+                       <div>
+                         <div className="font-medium">
+                           {families.find(f => f.id === product.famille_id)?.libelle_famille || 'N/A'}
+                         </div>
+                         <div className="text-sm text-muted-foreground">
+                           {rayons.find(r => r.id === product.rayon_id)?.libelle_rayon || 'N/A'}
+                         </div>
                        </div>
                      </TableCell>
-                    <TableCell>{product.code_cip || 'N/A'}</TableCell>
+                    <TableCell>{(product.prix_achat || 0).toLocaleString()} FCFA</TableCell>
+                    <TableCell>{(product.prix_vente_ttc || 0).toLocaleString()} FCFA</TableCell>
                     <TableCell>
-                      {product.niveau_detail && product.niveau_detail > 1 && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          Détail {product.niveau_detail}
+                      <div className="flex flex-col">
+                        <span className="text-xs text-muted-foreground">
+                          Limite: {product.stock_limite || 0}
                         </span>
-                      )}
+                        <span className="text-xs text-muted-foreground">
+                          Alerte: {product.stock_alerte || 0}
+                        </span>
+                      </div>
                     </TableCell>
-                    <TableCell>
-                      {families.find(f => f.id === product.famille_id)?.libelle_famille || 'N/A'}
-                    </TableCell>
-                   <TableCell>
-                     {rayons.find(r => r.id === product.rayon_id)?.libelle_rayon || 'N/A'}
-                   </TableCell>
-                   <TableCell>
-                     {laboratories.find(l => l.id === product.laboratoires_id)?.libelle || 'N/A'}
-                   </TableCell>
-                   <TableCell>{(product.prix_achat || 0).toLocaleString()} FCFA</TableCell>
-                   <TableCell>{(product.prix_vente_ttc || 0).toLocaleString()} FCFA</TableCell>
-                   <TableCell>
-                     <div className="flex flex-col">
-                       <span className="text-xs text-muted-foreground">
-                         Limite: {product.stock_limite || 0}
-                       </span>
-                       <span className="text-xs text-muted-foreground">
-                         Alerte: {product.stock_alerte || 0}
-                       </span>
-                     </div>
-                   </TableCell>
                     <TableCell>
                       <div className="flex space-x-1">
                         <Button
@@ -762,7 +800,15 @@ const ProductCatalogNew = () => {
               {detailsProduct?.code_cip && (
                 <div className="text-sm text-muted-foreground space-y-1">
                   <p><strong>CIP Source:</strong> {detailsProduct.code_cip}</p>
-                  <p><strong>CIP Détail:</strong> {detailsProduct.code_cip} - {(detailsProduct.niveau_detail ?? 1) + 1}</p>
+                  <p><strong>CIP Détail:</strong> {(() => {
+                    const newLevel = (detailsProduct.niveau_detail ?? 1) + 1;
+                    if (newLevel === 3) {
+                      // Pour niveau 3, calculer le CIP racine
+                      const rootCip = detailsProduct.code_cip.replace(/\s*-\s*\d+$/, '');
+                      return `${rootCip} - 3`;
+                    }
+                    return `${detailsProduct.code_cip} - ${newLevel}`;
+                  })()}</p>
                 </div>
               )}
 
