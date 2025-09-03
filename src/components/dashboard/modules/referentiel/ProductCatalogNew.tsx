@@ -83,7 +83,7 @@ const ProductCatalogNew = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [familleFilter, setFamilleFilter] = useState("all");
   const [rayonFilter, setRayonFilter] = useState("all");
-  const [sortBy, setSortBy] = useState<'none' | 'dci-asc' | 'dci-desc'>('none');
+  const [dciFilter, setDciFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
@@ -134,33 +134,17 @@ const ProductCatalogNew = () => {
     'id, nom_dci'
   );
 
-  // Filtrage et tri des produits
-  const filteredAndSortedProducts = (() => {
-    // Filtrage
-    const filtered = products.filter((product) => {
+  // Filtrage des produits
+  const filteredProducts = (() => {
+    return products.filter((product) => {
       const matchesSearch = product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (product.code_cip?.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesFamille = !familleFilter || familleFilter === "all" || product.famille_id === familleFilter;
       const matchesRayon = !rayonFilter || rayonFilter === "all" || product.rayon_id === rayonFilter;
+      const matchesDci = dciFilter === "all" || product.dci_id === dciFilter;
       
-      return matchesSearch && matchesFamille && matchesRayon;
+      return matchesSearch && matchesFamille && matchesRayon && matchesDci;
     });
-
-    // Tri par DCI
-    if (sortBy !== 'none') {
-      return filtered.sort((a, b) => {
-        const dciA = dcis.find(d => d.id === a.dci_id)?.nom_dci || '';
-        const dciB = dcis.find(d => d.id === b.dci_id)?.nom_dci || '';
-        
-        if (sortBy === 'dci-asc') {
-          return dciA.localeCompare(dciB);
-        } else {
-          return dciB.localeCompare(dciA);
-        }
-      });
-    }
-
-    return filtered;
   })();
 
   // Mutations
@@ -189,7 +173,7 @@ const ProductCatalogNew = () => {
     setSearchTerm("");
     setFamilleFilter("all");
     setRayonFilter("all");
-    setSortBy('none');
+    setDciFilter("all");
   };
 
   const handleAddProduct = () => {
@@ -439,14 +423,17 @@ const ProductCatalogNew = () => {
             </SelectContent>
           </Select>
 
-          <Select value={sortBy} onValueChange={(value: 'none' | 'dci-asc' | 'dci-desc') => setSortBy(value)}>
+          <Select value={dciFilter} onValueChange={setDciFilter}>
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Tri" />
+              <SelectValue placeholder="DCI" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">— Aucun tri —</SelectItem>
-              <SelectItem value="dci-asc">DCI A → Z</SelectItem>
-              <SelectItem value="dci-desc">DCI Z → A</SelectItem>
+              <SelectItem value="all">Toutes les DCI</SelectItem>
+              {dcis.map((dci) => (
+                <SelectItem key={dci.id} value={dci.id}>
+                  {dci.nom_dci}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -474,7 +461,7 @@ const ProductCatalogNew = () => {
                 </TableRow>
              </TableHeader>
              <TableBody>
-                {filteredAndSortedProducts.map((product) => (
+                {filteredProducts.map((product) => (
                   <TableRow key={product.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
