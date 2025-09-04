@@ -111,23 +111,106 @@ export const useReceptions = () => {
 
       if (receptionError) throw receptionError;
 
-      // Créer les lots pour les quantités acceptées
+      // Gérer les lots et créer les lignes de réception
+      const dateReception = receptionData.date_reception ? new Date(receptionData.date_reception).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      
       for (const ligne of receptionData.lignes) {
-        if (ligne.quantite_acceptee > 0) {
-          const { error: lotError } = await supabase
-            .from('lots')
-            .insert({
-              tenant_id: personnel.tenant_id,
-              produit_id: ligne.produit_id,
-              numero_lot: ligne.numero_lot,
-              date_peremption: ligne.date_expiration,
-              quantite_initiale: ligne.quantite_acceptee,
-              quantite_restante: ligne.quantite_acceptee,
-              prix_achat_unitaire: 0, // À définir selon les données de la commande
-              date_reception: receptionData.date_reception ? new Date(receptionData.date_reception).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
-            });
+        // Créer la ligne de réception (adaptation au schéma existant)
+        const { error: ligneError } = await supabase
+          .from('lignes_reception_fournisseur')
+          .insert({
+            tenant_id: personnel.tenant_id,
+            reception_id: reception.id,
+            produit_id: ligne.produit_id,
+            quantite_recue: ligne.quantite_acceptee, // Utiliser quantite_acceptee comme quantite_recue
+            prix_achat_unitaire_reel: 0, // À définir selon les données de la commande
+            date_peremption: ligne.date_expiration,
+            lot_id: null // Sera mis à jour après création du lot
+          });
 
-          if (lotError) throw lotError;
+        if (ligneError) throw ligneError;
+
+        // Gérer les lots pour les quantités acceptées
+        if (ligne.quantite_acceptee > 0) {
+          // Vérifier si le lot existe déjà
+          const { data: existingLot } = await supabase
+            .from('lots')
+            .select('id, quantite_restante')
+            .eq('tenant_id', personnel.tenant_id)
+            .eq('produit_id', ligne.produit_id)
+            .eq('numero_lot', ligne.numero_lot)
+            .maybeSingle();
+
+          if (existingLot) {
+            // Mettre à jour le lot existant
+            const { error: updateError } = await supabase
+              .from('lots')
+              .update({
+                quantite_restante: existingLot.quantite_restante + ligne.quantite_acceptee,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingLot.id);
+
+            if (updateError) throw updateError;
+
+            // Enregistrer le mouvement d'entrée
+            const { error: mouvementError } = await supabase
+              .from('mouvements_lots')
+              .insert({
+                tenant_id: personnel.tenant_id,
+                lot_id: existingLot.id,
+                produit_id: ligne.produit_id,
+                type_mouvement: 'reception',
+                quantite_avant: existingLot.quantite_restante,
+                quantite_mouvement: ligne.quantite_acceptee,
+                quantite_apres: existingLot.quantite_restante + ligne.quantite_acceptee,
+                reference_id: reception.id,
+                reference_type: 'reception',
+                reference_document: receptionData.reference_facture || `REC-${reception.id.slice(-6)}`,
+                date_mouvement: new Date().toISOString(),
+                motif: 'Réception fournisseur'
+              });
+
+            if (mouvementError) throw mouvementError;
+          } else {
+            // Créer un nouveau lot
+            const { data: newLot, error: lotError } = await supabase
+              .from('lots')
+              .insert({
+                tenant_id: personnel.tenant_id,
+                produit_id: ligne.produit_id,
+                numero_lot: ligne.numero_lot,
+                date_peremption: ligne.date_expiration,
+                quantite_initiale: ligne.quantite_acceptee,
+                quantite_restante: ligne.quantite_acceptee,
+                prix_achat_unitaire: 0, // À définir selon les données de la commande
+                date_reception: dateReception
+              })
+              .select()
+              .single();
+
+            if (lotError) throw lotError;
+
+            // Enregistrer le mouvement d'entrée pour le nouveau lot
+            const { error: mouvementError } = await supabase
+              .from('mouvements_lots')
+              .insert({
+                tenant_id: personnel.tenant_id,
+                lot_id: newLot.id,
+                produit_id: ligne.produit_id,
+                type_mouvement: 'reception',
+                quantite_avant: 0,
+                quantite_mouvement: ligne.quantite_acceptee,
+                quantite_apres: ligne.quantite_acceptee,
+                reference_id: reception.id,
+                reference_type: 'reception',
+                reference_document: receptionData.reference_facture || `REC-${reception.id.slice(-6)}`,
+                date_mouvement: new Date().toISOString(),
+                motif: 'Réception fournisseur - Nouveau lot'
+              });
+
+            if (mouvementError) throw mouvementError;
+          }
         }
       }
 

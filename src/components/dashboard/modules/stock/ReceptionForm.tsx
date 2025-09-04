@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { 
   Package, 
   QrCode, 
@@ -22,6 +24,7 @@ import {
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { useReceptionLines } from '@/hooks/useReceptionLines';
 import { useToast } from '@/hooks/use-toast';
+import { ReceptionValidationService } from '@/services/receptionValidationService';
 
 interface ReceptionLine {
   id: string;
@@ -50,6 +53,11 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
   const [bonLivraison, setBonLivraison] = useState('');
   const [transporteur, setTransporteur] = useState('');
   const [observations, setObservations] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showWarningDialog, setShowWarningDialog] = useState(false);
+  const [pendingValidation, setPendingValidation] = useState<{ isValidated: boolean; warnings: string[] } | null>(null);
+  const [showCameraDialog, setShowCameraDialog] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const { toast } = useToast();
   
   const { orderLines } = useOrderLines(selectedOrder);
@@ -121,13 +129,95 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
   };
 
   const handleBarcodeSubmit = () => {
-    // Logique de traitement du code-barres
-    console.log('Code-barres scanné:', scannedBarcode);
+    if (!scannedBarcode.trim()) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez saisir ou scanner un code-barres",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Chercher le produit dans les lignes de commande
+    const matchingOrderLine = orderLines.find(ol => 
+      ol.produit?.code_cip === scannedBarcode.trim()
+    );
+
+    if (!matchingOrderLine) {
+      toast({
+        title: "Produit non trouvé",
+        description: `Aucun produit avec le code ${scannedBarcode} dans cette commande`,
+        variant: "destructive",
+      });
+      setScannedBarcode('');
+      return;
+    }
+
+    // Mettre à jour la ligne correspondante
+    const existingLine = receptionLines.find(rl => rl.id === matchingOrderLine.id);
+    if (existingLine) {
+      updateReceptionLine(existingLine.id, 'quantiteRecue', existingLine.quantiteRecue + 1);
+      updateReceptionLine(existingLine.id, 'quantiteAcceptee', existingLine.quantiteAcceptee + 1);
+      
+      toast({
+        title: "Produit traité",
+        description: `${matchingOrderLine.produit?.libelle_produit} - Quantité incrémentée`,
+      });
+    }
+
     setScannedBarcode('');
   };
 
-  const handleSaveReception = async (isValidated: boolean) => {
+  const handleCameraOpen = async () => {
     try {
+      if ('BarcodeDetector' in window) {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
+        setCameraStream(stream);
+        setShowCameraDialog(true);
+        
+        // Initialiser le détecteur de codes-barres
+        // @ts-ignore - BarcodeDetector n'est pas encore dans les types TypeScript
+        const barcodeDetector = new BarcodeDetector({
+          formats: ['ean_13', 'ean_8', 'code_128', 'qr_code']
+        });
+        
+        // TODO: Implémenter la détection en temps réel
+        toast({
+          title: "Caméra activée",
+          description: "Scanner activé - Dirigez vers un code-barres",
+        });
+      } else {
+        toast({
+          title: "Scanner non supporté",
+          description: "Utilisez la saisie manuelle ou un lecteur externe",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur caméra",
+        description: "Impossible d'accéder à la caméra",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCameraClose = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setShowCameraDialog(false);
+  };
+
+  const handleSaveReception = async (isValidated: boolean) => {
+    if (isProcessing) return;
+    
+    try {
+      setIsProcessing(true);
+      
       if (!selectedOrder) {
         toast({
           title: "Erreur",
@@ -165,6 +255,25 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
         }))
       };
 
+      // Validation avant enregistrement
+      const validation = await ReceptionValidationService.validateReception(receptionData);
+      
+      if (!validation.isValid) {
+        toast({
+          title: "Erreurs de validation",
+          description: validation.errors.join(', '),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Si des avertissements, demander confirmation
+      if (validation.warnings.length > 0 && !pendingValidation) {
+        setPendingValidation({ isValidated, warnings: validation.warnings });
+        setShowWarningDialog(true);
+        return;
+      }
+
       await onCreateReception(receptionData);
       
       // Reset form
@@ -173,6 +282,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
       setBonLivraison('');
       setTransporteur('');
       setObservations('');
+      setPendingValidation(null);
       
       toast({
         title: "Succès",
@@ -180,6 +290,62 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
       });
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de l'enregistrement de la réception",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleConfirmWithWarnings = async () => {
+    if (!pendingValidation) return;
+    
+    setShowWarningDialog(false);
+    const { isValidated } = pendingValidation;
+    
+    try {
+      const selectedOrderData = pendingOrders.find(o => o.id === selectedOrder);
+      const receptionData = {
+        commande_id: selectedOrder,
+        fournisseur_id: selectedOrderData!.fournisseur_id,
+        date_reception: new Date().toISOString(),
+        reference_facture: bonLivraison,
+        observations: observations,
+        lignes: receptionLines.map(line => ({
+          produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
+          quantite_commandee: line.quantiteCommandee,
+          quantite_recue: line.quantiteRecue,
+          quantite_acceptee: line.quantiteAcceptee,
+          numero_lot: line.numeroLot,
+          date_expiration: line.dateExpiration || null,
+          statut: line.statut,
+          commentaire: line.commentaire
+        }))
+      };
+
+      await onCreateReception(receptionData);
+      
+      // Reset form
+      setSelectedOrder('');
+      setReceptionLines([]);
+      setBonLivraison('');
+      setTransporteur('');
+      setObservations('');
+      setPendingValidation(null);
+      
+      toast({
+        title: "Succès",
+        description: `Réception ${isValidated ? 'validée' : 'sauvegardée'} avec succès`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de l'enregistrement de la réception",
+        variant: "destructive",
+      });
     }
   };
 
@@ -273,7 +439,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
               <QrCode className="mr-2 h-4 w-4" />
               Traiter
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleCameraOpen}>
               <Camera className="mr-2 h-4 w-4" />
               Caméra
             </Button>
@@ -405,23 +571,83 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
                  <Button 
                    variant="outline"
                    onClick={() => handleSaveReception(false)}
-                   disabled={loading || !selectedOrder || receptionLines.length === 0}
+                   disabled={loading || isProcessing || !selectedOrder || receptionLines.length === 0}
                  >
                    <Save className="mr-2 h-4 w-4" />
-                   Sauvegarder
+                   {isProcessing ? 'Traitement...' : 'Sauvegarder'}
                  </Button>
                  <Button
                    onClick={() => handleSaveReception(true)}
-                   disabled={loading || !selectedOrder || receptionLines.length === 0}
+                   disabled={loading || isProcessing || !selectedOrder || receptionLines.length === 0}
                  >
                    <CheckCircle className="mr-2 h-4 w-4" />
-                   Valider Réception
+                   {isProcessing ? 'Validation...' : 'Valider Réception'}
                  </Button>
                </div>
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Dialog d'avertissements */}
+      <AlertDialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Avertissements détectés</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingValidation?.warnings.map((warning, index) => (
+                <div key={index} className="text-amber-600 mb-2">• {warning}</div>
+              ))}
+              <br />
+              Voulez-vous continuer malgré ces avertissements ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowWarningDialog(false);
+              setPendingValidation(null);
+            }}>
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmWithWarnings}>
+              Continuer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog caméra */}
+      <Dialog open={showCameraDialog} onOpenChange={handleCameraClose}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Scanner Code-Barres</DialogTitle>
+            <DialogDescription>
+              Pointez la caméra vers un code-barres pour le scanner automatiquement
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center space-y-4">
+            {cameraStream ? (
+              <video 
+                autoPlay 
+                playsInline 
+                className="w-full max-w-sm rounded-lg border"
+                ref={(video) => {
+                  if (video && cameraStream) {
+                    video.srcObject = cameraStream;
+                  }
+                }}
+              />
+            ) : (
+              <div className="w-full max-w-sm h-64 rounded-lg border flex items-center justify-center text-muted-foreground">
+                Initialisation de la caméra...
+              </div>
+            )}
+            <Button onClick={handleCameraClose} variant="outline">
+              Fermer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
