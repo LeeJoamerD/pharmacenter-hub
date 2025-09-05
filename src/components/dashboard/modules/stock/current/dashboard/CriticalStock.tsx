@@ -69,7 +69,7 @@ const CriticalStock = () => {
                       {product.libelle_produit}
                     </div>
                     <div className="text-xs text-muted-foreground font-mono">
-                      {product.code_produit}
+                      {product.code_cip}
                     </div>
                     <div className="flex gap-1 mt-1">
                       <Badge className={getSeverityColor(product.statut_stock)} variant="outline">

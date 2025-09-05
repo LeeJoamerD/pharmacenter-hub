@@ -9,12 +9,12 @@ export interface CurrentStockItem {
   id: string;
   tenant_id: string;
   libelle_produit: string;
-  code_produit: string;
+  code_cip: string;
   famille_id?: string;
   famille_libelle?: string;
   rayon_id?: string;
   rayon_libelle?: string;
-  prix_achat_ht: number;
+  prix_achat: number;
   prix_vente_ttc: number;
   stock_actuel: number;
   stock_limite: number;
@@ -135,12 +135,12 @@ export const useCurrentStock = () => {
           id: product.id,
           tenant_id: product.tenant_id,
           libelle_produit: product.libelle_produit,
-          code_produit: product.code_cip || '',
+          code_cip: product.code_cip || '',
           famille_id: product.famille_id,
           famille_libelle: product.famille_produit?.libelle_famille,
           rayon_id: product.rayon_id,
           rayon_libelle: product.rayons_produits?.libelle_rayon,
-          prix_achat_ht: product.prix_achat || 0,
+          prix_achat: product.prix_achat || 0,
           prix_vente_ttc: product.prix_vente_ttc || 0,
           stock_actuel: currentStock,
           stock_limite: effectiveThreshold,
@@ -163,7 +163,7 @@ export const useCurrentStock = () => {
   const filteredProducts = stockData.filter(product => {
     // Filtre par terme de recherche
     if (searchTerm && !product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !product.code_produit.toLowerCase().includes(searchTerm.toLowerCase())) {
+        !product.code_cip.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
 

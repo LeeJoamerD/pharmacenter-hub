@@ -165,7 +165,7 @@ const LowStockProducts = () => {
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="font-mono text-sm">{product.code_produit}</TableCell>
+                          <TableCell className="font-mono text-sm">{product.code_cip}</TableCell>
                           <TableCell>
                             <div className="font-semibold text-lg">{product.stock_actuel}</div>
                           </TableCell>

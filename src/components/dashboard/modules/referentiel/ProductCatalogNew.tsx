@@ -47,6 +47,10 @@ interface Product {
   prix_achat?: number;
   prix_vente_ht?: number;
   prix_vente_ttc?: number;
+  tva?: number;
+  taux_tva?: number;
+  centime_additionnel?: number;
+  taux_centime_additionnel?: number;
   stock_limite?: number;
   stock_alerte?: number;
   is_active?: boolean;
@@ -105,7 +109,8 @@ const ProductCatalogNew = () => {
     'produits', 
     `id, libelle_produit, code_cip, famille_id, rayon_id, laboratoires_id, 
      dci_id, categorie_tarification_id, prix_achat, prix_vente_ht, 
-     prix_vente_ttc, stock_limite, stock_alerte, is_active, created_at,
+     prix_vente_ttc, tva, taux_tva, centime_additionnel, taux_centime_additionnel,
+     stock_limite, stock_alerte, is_active, created_at,
      id_produit_source, quantite_unites_details_source, niveau_detail`,
     { is_active: true }
   );

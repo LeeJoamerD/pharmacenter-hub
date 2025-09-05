@@ -245,14 +245,14 @@ const StockValuation = () => {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono text-sm">{product.code_produit}</TableCell>
+                      <TableCell className="font-mono text-sm">{product.code_cip}</TableCell>
                       <TableCell>
                         <div className="font-semibold">{product.stock_actuel}</div>
                         <div className="text-xs text-muted-foreground">unités</div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {product.prix_achat_ht.toLocaleString()} FCFA
+                          {product.prix_achat.toLocaleString()} FCFA
                         </div>
                       </TableCell>
                       <TableCell>

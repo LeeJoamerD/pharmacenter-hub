@@ -24,7 +24,7 @@ const QuickStockCheck = () => {
     setTimeout(() => {
       const results = products.filter(product => 
         product.libelle_produit.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.code_produit.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.code_cip.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (product.famille_libelle && product.famille_libelle.toLowerCase().includes(searchQuery.toLowerCase()))
       ).slice(0, 10); // Limiter à 10 résultats pour une consultation rapide
       
@@ -215,7 +215,7 @@ const QuickStockCheck = () => {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
                             <span className="text-muted-foreground">Code:</span>
-                            <div className="font-mono font-medium">{product.code_produit}</div>
+                            <div className="font-mono font-medium">{product.code_cip}</div>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Stock Actuel:</span>

@@ -21,7 +21,7 @@ const QuickStockSearch = () => {
     const results = products
       .filter(product => 
         product.libelle_produit.toLowerCase().includes(value.toLowerCase()) ||
-        product.code_produit.toLowerCase().includes(value.toLowerCase())
+        product.code_cip.toLowerCase().includes(value.toLowerCase())
       )
       .slice(0, 5); // Limiter à 5 résultats pour une recherche rapide
     
@@ -64,7 +64,7 @@ const QuickStockSearch = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="font-medium text-sm">{product.libelle_produit}</div>
-                    <div className="text-xs text-muted-foreground font-mono">{product.code_produit}</div>
+                    <div className="text-xs text-muted-foreground font-mono">{product.code_cip}</div>
                   </div>
                   <div className="text-right">
                     <div className="font-semibold">{product.stock_actuel}</div>

@@ -154,7 +154,7 @@ const AvailableProducts = () => {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono text-sm">{product.code_produit}</TableCell>
+                      <TableCell className="font-mono text-sm">{product.code_cip}</TableCell>
                       <TableCell>
                         <div className="text-sm">
                           <div>{product.famille_libelle || 'N/A'}</div>
@@ -179,7 +179,7 @@ const AvailableProducts = () => {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div>Achat: {product.prix_achat_ht.toLocaleString()} FCFA</div>
+                          <div>Achat: {product.prix_achat.toLocaleString()} FCFA</div>
                           <div>Vente: {product.prix_vente_ttc.toLocaleString()} FCFA</div>
                         </div>
                       </TableCell>
