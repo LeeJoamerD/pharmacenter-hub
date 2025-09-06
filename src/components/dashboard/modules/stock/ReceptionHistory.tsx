@@ -29,7 +29,7 @@ interface ReceptionHistoryProps {
 const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) => {
   const { receptions, loading } = useReceptions();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedReception, setSelectedReception] = useState<Reception | null>(null);
 
   // Filter receptions based on search and status
@@ -39,7 +39,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
       reception.reference_facture?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       reception.fournisseur?.nom?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = !statusFilter || reception.statut === statusFilter;
+    const matchesStatus = statusFilter === 'all' || reception.statut === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
@@ -106,7 +106,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                 <SelectValue placeholder="Tous les statuts" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tous les statuts</SelectItem>
+                <SelectItem value="all">Tous les statuts</SelectItem>
                 <SelectItem value="En cours">En cours</SelectItem>
                 <SelectItem value="Validé">Validé</SelectItem>
                 <SelectItem value="Annulé">Annulé</SelectItem>
@@ -138,7 +138,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                       <div className="flex flex-col items-center gap-2">
                         <Package className="h-8 w-8 text-muted-foreground" />
                         <p className="text-muted-foreground">
-                          {searchTerm || statusFilter ? 'Aucune réception trouvée' : 'Aucune réception enregistrée'}
+                          {searchTerm || (statusFilter !== 'all') ? 'Aucune réception trouvée' : 'Aucune réception enregistrée'}
                         </p>
                       </div>
                     </TableCell>
