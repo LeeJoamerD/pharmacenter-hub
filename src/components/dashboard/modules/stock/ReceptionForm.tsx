@@ -25,6 +25,7 @@ import { useOrderLines } from '@/hooks/useOrderLines';
 import { useReceptionLines } from '@/hooks/useReceptionLines';
 import { useToast } from '@/hooks/use-toast';
 import { ReceptionValidationService } from '@/services/receptionValidationService';
+import BarcodeScanner from './BarcodeScanner';
 
 interface ReceptionLine {
   id: string;
@@ -37,6 +38,7 @@ interface ReceptionLine {
   dateExpiration: string;
   statut: 'conforme' | 'non-conforme' | 'partiellement-conforme';
   commentaire: string;
+  prixAchatReel?: number;
 }
 
 interface ReceptionFormProps {
@@ -85,7 +87,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
       numeroLot: '',
       dateExpiration: '',
       statut: 'conforme',
-      commentaire: ''
+      commentaire: '',
+      prixAchatReel: 0, // Will be updated from order data if available
     }));
     setReceptionLines(lines);
   };
@@ -242,7 +245,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
         fournisseur_id: selectedOrderData.fournisseur_id,
         date_reception: new Date().toISOString(),
         reference_facture: bonLivraison,
-        observations: observations,
+        notes: observations,
         lignes: receptionLines.map(line => ({
           produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
           quantite_commandee: line.quantiteCommandee,
@@ -251,7 +254,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
           numero_lot: line.numeroLot,
           date_expiration: line.dateExpiration || null,
           statut: line.statut,
-          commentaire: line.commentaire
+          commentaire: line.commentaire,
+          prix_achat_reel: line.prixAchatReel || 0
         }))
       };
 
@@ -313,7 +317,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
         fournisseur_id: selectedOrderData!.fournisseur_id,
         date_reception: new Date().toISOString(),
         reference_facture: bonLivraison,
-        observations: observations,
+        notes: observations,
         lignes: receptionLines.map(line => ({
           produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
           quantite_commandee: line.quantiteCommandee,
@@ -322,7 +326,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
           numero_lot: line.numeroLot,
           date_expiration: line.dateExpiration || null,
           statut: line.statut,
-          commentaire: line.commentaire
+          commentaire: line.commentaire,
+          prix_achat_reel: line.prixAchatReel || 0
         }))
       };
 
@@ -361,7 +366,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
           <CardDescription>Enregistrer la réception d'une commande fournisseur</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-4">
               <div>
                 <Label htmlFor="commande">Commande à réceptionner *</Label>
@@ -413,6 +418,19 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
                  />
               </div>
             </div>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="observations">Notes / Observations</Label>
+                <Textarea
+                  id="observations"
+                  value={observations}
+                  onChange={(e) => setObservations(e.target.value)}
+                  placeholder="Observations sur la réception..."
+                  rows={3}
+                />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -447,6 +465,17 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
         </CardContent>
       </Card>
 
+      {/* Scanner Dialog */}
+      <BarcodeScanner
+        isOpen={showCameraDialog}
+        onClose={handleCameraClose}
+        onScanResult={(barcode) => {
+          setScannedBarcode(barcode);
+          handleBarcodeSubmit();
+        }}
+        title="Scanner de Réception"
+      />
+
       {/* Détail de la réception */}
       {receptionLines.length > 0 && (
         <Card>
@@ -463,6 +492,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
                     <TableHead>Commandé</TableHead>
                     <TableHead>Reçu</TableHead>
                     <TableHead>Accepté</TableHead>
+                    <TableHead>Prix Réel</TableHead>
                     <TableHead>N° Lot</TableHead>
                     <TableHead>Expiration</TableHead>
                     <TableHead>Statut</TableHead>
@@ -492,6 +522,17 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
                           className="w-20"
                           min="0"
                           max={line.quantiteRecue}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={line.prixAchatReel || 0}
+                          onChange={(e) => updateReceptionLine(line.id, 'prixAchatReel', parseFloat(e.target.value) || 0)}
+                          className="w-24"
+                          min="0"
+                          placeholder="Prix réel"
                         />
                       </TableCell>
                       <TableCell>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useStockSettings } from '@/hooks/useStockSettings';
 
 export interface Reception {
   id: string;
@@ -10,6 +11,9 @@ export interface Reception {
   date_reception: string | null;
   agent_id: string | null;
   reference_facture: string | null;
+  numero_reception?: string;
+  statut?: string;
+  notes?: string;
   created_at: string;
   updated_at: string;
   // Relations
@@ -39,6 +43,7 @@ export const useReceptions = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { settings: stockSettings } = useStockSettings();
 
   const fetchReceptions = async () => {
     try {
@@ -81,6 +86,7 @@ export const useReceptions = () => {
       date_expiration?: string;
       statut: 'conforme' | 'non-conforme' | 'partiellement-conforme';
       commentaire?: string;
+      prix_achat_reel?: number;
     }>;
   }) => {
     try {
@@ -123,7 +129,7 @@ export const useReceptions = () => {
             reception_id: reception.id,
             produit_id: ligne.produit_id,
             quantite_recue: ligne.quantite_acceptee, // Utiliser quantite_acceptee comme quantite_recue
-            prix_achat_unitaire_reel: 0, // À définir selon les données de la commande
+            prix_achat_unitaire_reel: ligne.prix_achat_reel || 0,
             date_peremption: ligne.date_expiration,
             lot_id: null // Sera mis à jour après création du lot
           });
@@ -132,16 +138,27 @@ export const useReceptions = () => {
 
         // Gérer les lots pour les quantités acceptées
         if (ligne.quantite_acceptee > 0) {
-          // Vérifier si le lot existe déjà
-          const { data: existingLot } = await supabase
-            .from('lots')
-            .select('id, quantite_restante')
-            .eq('tenant_id', personnel.tenant_id)
-            .eq('produit_id', ligne.produit_id)
-            .eq('numero_lot', ligne.numero_lot)
-            .maybeSingle();
+          let shouldCreateNewLot = false;
+          let existingLot = null;
 
-          if (existingLot) {
+          if (stockSettings.oneLotPerReception) {
+            // Mode "1 lot par réception" : toujours créer un nouveau lot
+            shouldCreateNewLot = true;
+          } else {
+            // Mode par défaut : vérifier si le lot existe déjà
+            const { data: lotData } = await supabase
+              .from('lots')
+              .select('id, quantite_restante')
+              .eq('tenant_id', personnel.tenant_id)
+              .eq('produit_id', ligne.produit_id)
+              .eq('numero_lot', ligne.numero_lot)
+              .maybeSingle();
+            
+            existingLot = lotData;
+            shouldCreateNewLot = !existingLot;
+          }
+
+          if (!shouldCreateNewLot && existingLot) {
             // Mettre à jour le lot existant
             const { error: updateError } = await supabase
               .from('lots')
@@ -173,7 +190,7 @@ export const useReceptions = () => {
 
             if (mouvementError) throw mouvementError;
           } else {
-            // Créer un nouveau lot
+            // Créer un nouveau lot (mode par défaut ou mode "1 lot par réception")
             const { data: newLot, error: lotError } = await supabase
               .from('lots')
               .insert({
@@ -183,7 +200,7 @@ export const useReceptions = () => {
                 date_peremption: ligne.date_expiration,
                 quantite_initiale: ligne.quantite_acceptee,
                 quantite_restante: ligne.quantite_acceptee,
-                prix_achat_unitaire: 0, // À définir selon les données de la commande
+                prix_achat_unitaire: ligne.prix_achat_reel || 0,
                 date_reception: dateReception
               })
               .select()
@@ -206,7 +223,9 @@ export const useReceptions = () => {
                 reference_type: 'reception',
                 reference_document: receptionData.reference_facture || `REC-${reception.id.slice(-6)}`,
                 date_mouvement: new Date().toISOString(),
-                motif: 'Réception fournisseur - Nouveau lot'
+                motif: stockSettings.oneLotPerReception ? 
+                  'Réception fournisseur - Lot distinct par réception' : 
+                  'Réception fournisseur - Nouveau lot'
               });
 
             if (mouvementError) throw mouvementError;

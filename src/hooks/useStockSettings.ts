@@ -1,134 +1,181 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export interface StockSettings {
-  id?: string;
-  tenant_id: string;
-  default_units: string;
-  valuation_method: string;
-  rounding_precision: number;
-  minimum_stock_days: number;
-  maximum_stock_days: number;
-  reorder_point_days: number;
-  safety_stock_percentage: number;
-  auto_reorder_enabled: boolean;
-  allow_negative_stock: boolean;
-  track_expiration_dates: boolean;
-  require_lot_numbers: boolean;
-  auto_generate_lots: boolean;
-  created_at?: string;
-  updated_at?: string;
+  oneLotPerReception: boolean;
+  automaticReceptionValidation: boolean;
+  requireLotNumbers: boolean;
+  alertOnExpirationDays: number;
+  criticalExpirationDays: number;
 }
 
-const DEFAULT_SETTINGS: Omit<StockSettings, 'id' | 'tenant_id' | 'created_at' | 'updated_at'> = {
-  default_units: 'Unité',
-  valuation_method: 'FIFO',
-  rounding_precision: 2,
-  minimum_stock_days: 30,
-  maximum_stock_days: 365,
-  reorder_point_days: 15,
-  safety_stock_percentage: 10.00,
-  auto_reorder_enabled: false,
-  allow_negative_stock: false,
-  track_expiration_dates: true,
-  require_lot_numbers: false,
-  auto_generate_lots: false,
-};
-
 export const useStockSettings = () => {
+  const [settings, setSettings] = useState<StockSettings>({
+    oneLotPerReception: false,
+    automaticReceptionValidation: false,
+    requireLotNumbers: true,
+    alertOnExpirationDays: 90,
+    criticalExpirationDays: 30,
+  });
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  const query = useQuery({
-    queryKey: ['stock-settings'],
-    queryFn: async () => {
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      
       const { data, error } = await supabase
-        .from('stock_settings')
-        .select('*')
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
-
-      return data || null;
-    },
-  });
-
-  const createMutation = useMutation({
-    mutationFn: async (settings: Partial<StockSettings> & { tenant_id: string }) => {
-      const { data, error } = await supabase
-        .from('stock_settings')
-        .insert({
-          ...DEFAULT_SETTINGS,
-          ...settings,
-        })
-        .select()
-        .single();
+        .from('parametres_systeme')
+        .select('cle_parametre, valeur_parametre')
+        .eq('categorie', 'general')
+        .in('cle_parametre', [
+          'stock_one_lot_per_reception',
+          'stock_automatic_reception_validation',
+          'stock_require_lot_numbers',
+          'stock_alert_expiration_days',
+          'stock_critical_expiration_days'
+        ]);
 
       if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stock-settings'] });
-      toast({
-        title: "Configuration créée",
-        description: "Les paramètres de stock ont été créés avec succès.",
+
+      const paramMap = data?.reduce((acc, param) => {
+        acc[param.cle_parametre] = param.valeur_parametre;
+        return acc;
+      }, {} as Record<string, string>) || {};
+
+      setSettings({
+        oneLotPerReception: paramMap.stock_one_lot_per_reception === 'true',
+        automaticReceptionValidation: paramMap.stock_automatic_reception_validation === 'true',
+        requireLotNumbers: paramMap.stock_require_lot_numbers !== 'false',
+        alertOnExpirationDays: parseInt(paramMap.stock_alert_expiration_days) || 90,
+        criticalExpirationDays: parseInt(paramMap.stock_critical_expiration_days) || 30,
       });
-    },
-    onError: (error) => {
+    } catch (err) {
+      console.error('Erreur lors du chargement des paramètres stock:', err);
       toast({
         title: "Erreur",
-        description: "Impossible de créer la configuration de stock.",
+        description: "Impossible de charger les paramètres de stock",
         variant: "destructive",
       });
-      console.error('Error creating stock settings:', error);
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (settings: Partial<StockSettings>) => {
-      const { data, error } = await supabase
-        .from('stock_settings')
-        .update(settings)
-        .eq('tenant_id', settings.tenant_id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stock-settings'] });
-      toast({
-        title: "Configuration mise à jour",
-        description: "Les paramètres de stock ont été sauvegardés avec succès.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder la configuration de stock.",
-        variant: "destructive",
-      });
-      console.error('Error updating stock settings:', error);
-    },
-  });
-
-  const saveSettings = async (settings: Partial<StockSettings> & { tenant_id: string }) => {
-    if (query.data) {
-      return updateMutation.mutateAsync({ ...settings, tenant_id: query.data.tenant_id });
-    } else {
-      return createMutation.mutateAsync(settings);
+    } finally {
+      setLoading(false);
     }
   };
 
+  const updateSettings = async (newSettings: Partial<StockSettings>) => {
+    try {
+      setLoading(true);
+
+      // Prepare parameters for upsert
+      const upsertData = [];
+      
+      // Get current user's tenant_id
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Utilisateur non authentifié');
+
+      const { data: personnel } = await supabase
+        .from('personnel')
+        .select('tenant_id')
+        .eq('auth_user_id', user.user.id)
+        .single();
+
+      if (!personnel?.tenant_id) throw new Error('Tenant non trouvé');
+      
+      if (newSettings.oneLotPerReception !== undefined) {
+        upsertData.push({
+          tenant_id: personnel.tenant_id,
+          cle_parametre: 'stock_one_lot_per_reception',
+          valeur_parametre: newSettings.oneLotPerReception.toString(),
+          type_parametre: 'boolean',
+          categorie: 'general',
+          description: 'Créer un lot distinct pour chaque réception même avec le même numéro de lot fabricant'
+        });
+      }
+
+      if (newSettings.automaticReceptionValidation !== undefined) {
+        upsertData.push({
+          tenant_id: personnel.tenant_id,
+          cle_parametre: 'stock_automatic_reception_validation',
+          valeur_parametre: newSettings.automaticReceptionValidation.toString(),
+          type_parametre: 'boolean',
+          categorie: 'general',
+          description: 'Valider automatiquement les réceptions conformes'
+        });
+      }
+
+      if (newSettings.requireLotNumbers !== undefined) {
+        upsertData.push({
+          tenant_id: personnel.tenant_id,
+          cle_parametre: 'stock_require_lot_numbers',
+          valeur_parametre: newSettings.requireLotNumbers.toString(),
+          type_parametre: 'boolean',
+          categorie: 'general',
+          description: 'Rendre obligatoire la saisie des numéros de lot'
+        });
+      }
+
+      if (newSettings.alertOnExpirationDays !== undefined) {
+        upsertData.push({
+          tenant_id: personnel.tenant_id,
+          cle_parametre: 'stock_alert_expiration_days',
+          valeur_parametre: newSettings.alertOnExpirationDays.toString(),
+          type_parametre: 'number',
+          categorie: 'general',
+          description: 'Nombre de jours avant expiration pour déclencher une alerte'
+        });
+      }
+
+      if (newSettings.criticalExpirationDays !== undefined) {
+        upsertData.push({
+          tenant_id: personnel.tenant_id,
+          cle_parametre: 'stock_critical_expiration_days',
+          valeur_parametre: newSettings.criticalExpirationDays.toString(),
+          type_parametre: 'number',
+          categorie: 'general',
+          description: 'Nombre de jours avant expiration pour déclencher une alerte critique'
+        });
+      }
+
+      if (upsertData.length > 0) {
+        const { error } = await supabase
+          .from('parametres_systeme')
+          .upsert(upsertData, {
+            onConflict: 'tenant_id,cle_parametre',
+            ignoreDuplicates: false
+          });
+
+        if (error) throw error;
+      }
+
+      // Update local state
+      setSettings(prev => ({ ...prev, ...newSettings }));
+
+      toast({
+        title: "Succès",
+        description: "Paramètres de stock mis à jour",
+      });
+    } catch (err) {
+      console.error('Erreur lors de la mise à jour des paramètres:', err);
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour les paramètres",
+        variant: "destructive",
+      });
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
   return {
-    settings: query.data,
-    loading: query.isLoading,
-    error: query.error,
-    saveSettings,
-    isUpdating: updateMutation.isPending || createMutation.isPending,
+    settings,
+    loading,
+    updateSettings,
+    refetch: loadSettings,
   };
 };

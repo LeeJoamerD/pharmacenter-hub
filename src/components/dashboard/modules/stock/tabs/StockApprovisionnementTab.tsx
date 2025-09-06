@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clipboard, Plus, Package, ShoppingCart, Eye, Edit } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Clipboard, Plus, Package, ShoppingCart, Eye, Edit, FileText, Settings } from 'lucide-react';
 import OrderList from '../OrderList';
 import OrderForm from '../OrderForm';
 import EditOrderTab from '../EditOrderTab';
 import ReceptionForm from '../ReceptionForm';
+import ReceptionHistory from '../ReceptionHistory';
 import SupplierManager from '../SupplierManager';
 import OrderTracking from '../OrderTracking';
+import StockSettingsDialog from '../StockSettingsDialog';
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useSupplierOrders } from "@/hooks/useSupplierOrders";
 import { useReceptions } from "@/hooks/useReceptions";
@@ -50,6 +53,12 @@ const StockApprovisionnementTab = () => {
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4" />
             <span>Réceptions</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="historique">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            <span>Historique</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="fournisseurs">
@@ -103,7 +112,20 @@ const StockApprovisionnementTab = () => {
         />
       </TabsContent>
       
+      <TabsContent value="historique">
+        <ReceptionHistory />
+      </TabsContent>
+      
       <TabsContent value="fournisseurs">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-semibold">Gestion des Fournisseurs</h3>
+          <StockSettingsDialog>
+            <Button variant="outline" size="sm">
+              <Settings className="h-4 w-4 mr-2" />
+              Paramètres Stock
+            </Button>
+          </StockSettingsDialog>
+        </div>
         <SupplierManager 
           suppliers={suppliers.suppliers}
           loading={suppliers.loading}
