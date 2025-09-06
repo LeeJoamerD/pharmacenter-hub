@@ -53,7 +53,7 @@ export class StockUpdateService {
       }
 
       // Auto-generate lot if required and not provided
-      if (settings?.require_lot_numbers && !movement.lot_id && 
+      if (settings?.requireLotNumbers && !movement.lot_id && 
           (movement.type_mouvement === 'entree' || movement.type_mouvement === 'reception')) {
         if (settings.auto_generate_lots) {
           movement.lot_id = await this.generateLotNumber(movement.produit_id, tenantId);
@@ -331,7 +331,7 @@ export class StockUpdateService {
    * Check if product requires lot tracking
    */
   static async requiresLotTracking(produitId: string, settings: StockSettings): Promise<boolean> {
-    if (!settings.require_lot_numbers) return false;
+    if (!settings.requireLotNumbers) return false;
 
     // Could be enhanced to check product-specific requirements
     return true;
@@ -344,7 +344,7 @@ export class StockUpdateService {
     const errors: string[] = [];
 
     // Check lot requirements
-    if (settings.require_lot_numbers && !movement.lot_id && 
+    if (settings.requireLotNumbers && !movement.lot_id && 
         (movement.type_mouvement === 'entree' || movement.type_mouvement === 'reception')) {
       if (!settings.auto_generate_lots) {
         errors.push('Numéro de lot requis pour ce type de mouvement');

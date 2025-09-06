@@ -14,7 +14,7 @@ import { useTenant } from '@/contexts/TenantContext';
 const StockGeneralConfig = () => {
   const { toast } = useToast();
   const { tenantId } = useTenant();
-  const { settings, loading, saveSettings, isUpdating } = useStockSettings();
+  const { settings, loading, updateSettings } = useStockSettings();
   
   const [config, setConfig] = useState({
     defaultUnits: 'Unité',
@@ -45,7 +45,7 @@ const StockGeneralConfig = () => {
         roundingPrecision: settings.rounding_precision || 2,
         allowNegativeStock: settings.allow_negative_stock || false,
         trackExpirationDates: settings.track_expiration_dates || true,
-        requireLotNumbers: settings.require_lot_numbers || false,
+        requireLotNumbers: settings.requireLotNumbers || false,
         autoGenerateLots: settings.auto_generate_lots || false
       });
     }
@@ -66,19 +66,18 @@ const StockGeneralConfig = () => {
     }
 
     try {
-      await saveSettings({
-        tenant_id: tenantId,
+      await updateSettings({
         default_units: config.defaultUnits,
         minimum_stock_days: config.minimumStockDays,
         maximum_stock_days: config.maximumStockDays,
         auto_reorder_enabled: config.autoReorderEnabled,
         reorder_point_days: config.reorderPointDays,
         safety_stock_percentage: config.safetyStockPercentage,
-        valuation_method: config.valuationMethod,
+        valuation_method: config.valuationMethod as 'FIFO' | 'LIFO' | 'PMP' | 'CUMP',
         rounding_precision: config.roundingPrecision,
         allow_negative_stock: config.allowNegativeStock,
         track_expiration_dates: config.trackExpirationDates,
-        require_lot_numbers: config.requireLotNumbers,
+        requireLotNumbers: config.requireLotNumbers,
         auto_generate_lots: config.autoGenerateLots,
       });
     } catch (error) {
@@ -280,8 +279,8 @@ const StockGeneralConfig = () => {
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={isUpdating}>
-          {isUpdating ? 'Sauvegarde...' : 'Sauvegarder la configuration'}
+        <Button onClick={handleSave} disabled={loading}>
+          {loading ? 'Sauvegarde...' : 'Sauvegarder la configuration'}
         </Button>
       </div>
     </div>
