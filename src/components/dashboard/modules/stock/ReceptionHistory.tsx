@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,8 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { useReceptions, Reception } from '@/hooks/useReceptions';
+import { useLots, LotWithDetails } from '@/hooks/useLots';
+import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -31,6 +33,12 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedReception, setSelectedReception] = useState<Reception | null>(null);
+  const [showLotsDialog, setShowLotsDialog] = useState(false);
+  const [showMovementsDialog, setShowMovementsDialog] = useState(false);
+  const [receptionLots, setReceptionLots] = useState<LotWithDetails[]>([]);
+  const [receptionMovements, setReceptionMovements] = useState<any[]>([]);
+  const [loadingLots, setLoadingLots] = useState(false);
+  const [loadingMovements, setLoadingMovements] = useState(false);
 
   // Filter receptions based on search and status
   const filteredReceptions = receptions.filter(reception => {
@@ -50,6 +58,66 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
       case 'En cours': return 'bg-yellow-100 text-yellow-800';
       case 'Annulé': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Fetch lots created during reception
+  const fetchReceptionLots = async (receptionId: string) => {
+    setLoadingLots(true);
+    try {
+      const { data, error } = await supabase
+        .from('lots')
+        .select(`
+          *,
+          produit:produits!produit_id(
+            id,
+            libelle_produit,
+            code_cip
+          ),
+          fournisseur:fournisseurs!fournisseur_id(
+            id,
+            nom
+          )
+        `)
+        .eq('reception_id', receptionId);
+
+      if (error) throw error;
+      setReceptionLots(data || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement des lots:', error);
+    } finally {
+      setLoadingLots(false);
+    }
+  };
+
+  // Fetch movements related to reception
+  const fetchReceptionMovements = async (receptionId: string) => {
+    setLoadingMovements(true);
+    try {
+      const { data, error } = await supabase
+        .from('mouvements_lots')
+        .select(`
+          *,
+          lot:lots!lot_id(
+            id,
+            numero_lot,
+            produit:produits!produit_id(
+              id,
+              libelle_produit,
+              code_cip
+            )
+          )
+        `)
+        .eq('reference_id', receptionId)
+        .eq('reference_type', 'reception')
+        .order('date_mouvement', { ascending: false });
+
+      if (error) throw error;
+      setReceptionMovements(data || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement des mouvements:', error);
+    } finally {
+      setLoadingMovements(false);
     }
   };
 
@@ -245,101 +313,238 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
 
                                   {/* Quick actions */}
                                   <div className="flex gap-2 pt-4 border-t">
-                                    <Button variant="outline" size="sm">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => {
+                                        fetchReceptionLots(selectedReception.id);
+                                        setShowLotsDialog(true);
+                                      }}
+                                    >
                                       <ExternalLink className="h-4 w-4 mr-2" />
                                       Voir les lots créés
                                     </Button>
-                                    <Button variant="outline" size="sm">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => {
+                                        fetchReceptionMovements(selectedReception.id);
+                                        setShowMovementsDialog(true);
+                                      }}
+                                    >
                                       <FileText className="h-4 w-4 mr-2" />
                                       Historique des mouvements
                                     </Button>
                                   </div>
-                                </div>
-                              )}
-                            </DialogContent>
-                          </Dialog>
-                          
-                          {onViewReception && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onViewReception(reception)}
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </Button>
-                          )}
+                                 </div>
+                               )}
+                             </DialogContent>
+                           </Dialog>
+                           
+                           {onViewReception && (
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => onViewReception(reception)}
+                             >
+                               <ExternalLink className="h-4 w-4" />
+                             </Button>
+                           )}
+                         </div>
+                       </TableCell>
+                     </TableRow>
+                   ))
+                 )}
+               </TableBody>
+             </Table>
+           </div>
+         </CardContent>
+       </Card>
+
+       {/* Stats Summary */}
+       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+         <Card>
+           <CardContent className="p-4">
+             <div className="flex items-center justify-between">
+               <div>
+                 <p className="text-sm font-medium text-muted-foreground">Total</p>
+                 <p className="text-2xl font-bold">{receptions.length}</p>
+               </div>
+               <Package className="h-8 w-8 text-muted-foreground" />
+             </div>
+           </CardContent>
+         </Card>
+         
+         <Card>
+           <CardContent className="p-4">
+             <div className="flex items-center justify-between">
+               <div>
+                 <p className="text-sm font-medium text-muted-foreground">Validées</p>
+                 <p className="text-2xl font-bold text-green-600">
+                   {receptions.filter(r => r.statut === 'Validé').length}
+                 </p>
+               </div>
+               <CheckCircle className="h-8 w-8 text-green-600" />
+             </div>
+           </CardContent>
+         </Card>
+         
+         <Card>
+           <CardContent className="p-4">
+             <div className="flex items-center justify-between">
+               <div>
+                 <p className="text-sm font-medium text-muted-foreground">En cours</p>
+                 <p className="text-2xl font-bold text-yellow-600">
+                   {receptions.filter(r => r.statut === 'En cours').length}
+                 </p>
+               </div>
+               <Clock className="h-8 w-8 text-yellow-600" />
+             </div>
+           </CardContent>
+         </Card>
+         
+         <Card>
+           <CardContent className="p-4">
+             <div className="flex items-center justify-between">
+               <div>
+                 <p className="text-sm font-medium text-muted-foreground">Ce mois</p>
+                 <p className="text-2xl font-bold">
+                   {receptions.filter(r => {
+                     const receptionDate = new Date(r.created_at);
+                     const currentDate = new Date();
+                     return receptionDate.getMonth() === currentDate.getMonth() &&
+                            receptionDate.getFullYear() === currentDate.getFullYear();
+                   }).length}
+                 </p>
+               </div>
+               <Calendar className="h-8 w-8 text-muted-foreground" />
+             </div>
+           </CardContent>
+         </Card>
+       </div>
+
+      {/* Lots Dialog */}
+      <Dialog open={showLotsDialog} onOpenChange={setShowLotsDialog}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Lots créés lors de la réception</DialogTitle>
+            <DialogDescription>
+              Liste des lots créés lors de la réception {selectedReception?.numero_reception}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="max-h-96 overflow-auto">
+            {loadingLots ? (
+              <div className="text-center py-4">Chargement...</div>
+            ) : receptionLots.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                Aucun lot trouvé pour cette réception
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>N° Lot</TableHead>
+                    <TableHead>Produit</TableHead>
+                    <TableHead>Quantité initiale</TableHead>
+                    <TableHead>Quantité restante</TableHead>
+                    <TableHead>Date péremption</TableHead>
+                    <TableHead>Prix d'achat</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {receptionLots.map((lot) => (
+                    <TableRow key={lot.id}>
+                      <TableCell className="font-medium">{lot.numero_lot}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{lot.produit?.libelle_produit}</div>
+                          <div className="text-sm text-muted-foreground">{lot.produit?.code_cip}</div>
                         </div>
                       </TableCell>
+                      <TableCell>{lot.quantite_initiale}</TableCell>
+                      <TableCell>{lot.quantite_restante}</TableCell>
+                      <TableCell>
+                        {lot.date_peremption ? 
+                          format(new Date(lot.date_peremption), 'dd/MM/yyyy', { locale: fr }) :
+                          '-'
+                        }
+                      </TableCell>
+                      <TableCell>
+                        {lot.prix_achat_unitaire ? `${lot.prix_achat_unitaire} FCFA` : '-'}
+                      </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold">{receptions.length}</p>
+      {/* Movements Dialog */}
+      <Dialog open={showMovementsDialog} onOpenChange={setShowMovementsDialog}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Historique des mouvements</DialogTitle>
+            <DialogDescription>
+              Mouvements de stock liés à la réception {selectedReception?.numero_reception}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="max-h-96 overflow-auto">
+            {loadingMovements ? (
+              <div className="text-center py-4">Chargement...</div>
+            ) : receptionMovements.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground">
+                Aucun mouvement trouvé pour cette réception
               </div>
-              <Package className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Validées</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {receptions.filter(r => r.statut === 'Validé').length}
-                </p>
-              </div>
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">En cours</p>
-                <p className="text-2xl font-bold text-yellow-600">
-                  {receptions.filter(r => r.statut === 'En cours' || !r.statut).length}
-                </p>
-              </div>
-              <Clock className="h-8 w-8 text-yellow-600" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Ce mois</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {receptions.filter(r => {
-                    const receptionDate = new Date(r.date_reception || r.created_at);
-                    const now = new Date();
-                    return receptionDate.getMonth() === now.getMonth() && 
-                           receptionDate.getFullYear() === now.getFullYear();
-                  }).length}
-                </p>
-              </div>
-              <Calendar className="h-8 w-8 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Produit</TableHead>
+                    <TableHead>N° Lot</TableHead>
+                    <TableHead>Quantité</TableHead>
+                    <TableHead>Référence</TableHead>
+                    <TableHead>Motif</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {receptionMovements.map((movement) => (
+                    <TableRow key={movement.id}>
+                      <TableCell>
+                        {format(new Date(movement.date_mouvement), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={movement.type_mouvement === 'entree' ? 'default' : 'secondary'}>
+                          {movement.type_mouvement}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{movement.lot?.produit?.libelle_produit}</div>
+                          <div className="text-sm text-muted-foreground">{movement.lot?.produit?.code_cip}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-mono">{movement.lot?.numero_lot}</TableCell>
+                      <TableCell className="font-medium">
+                        <span className={movement.type_mouvement === 'entree' ? 'text-green-600' : 'text-red-600'}>
+                          {movement.type_mouvement === 'entree' ? '+' : '-'}{movement.quantite_mouvement}
+                        </span>
+                      </TableCell>
+                      <TableCell>{movement.reference_document || '-'}</TableCell>
+                      <TableCell>{movement.motif || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
