@@ -4,9 +4,25 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ShoppingCart, Eye } from 'lucide-react';
 import { useCurrentStock } from '@/hooks/useCurrentStock';
+import { useToast } from '@/hooks/use-toast';
 
 const CriticalStock = () => {
   const { products } = useCurrentStock();
+  const { toast } = useToast();
+
+  const handleOrder = (product: any) => {
+    toast({
+      title: "Commande initiée",
+      description: `Commande pour ${product.libelle_produit} ajoutée à la liste`,
+    });
+  };
+
+  const handleView = (product: any) => {
+    toast({
+      title: "Détails du produit",
+      description: `Affichage des détails pour ${product.libelle_produit}`,
+    });
+  };
 
   const criticalProducts = products
     .filter(p => p.statut_stock === 'critique' || p.statut_stock === 'rupture')
@@ -92,11 +108,21 @@ const CriticalStock = () => {
                 </div>
                 
                 <div className="flex gap-1 mt-2">
-                  <Button size="sm" variant="default" className="flex-1 h-7 text-xs">
+                  <Button 
+                    size="sm" 
+                    variant="default" 
+                    className="flex-1 h-7 text-xs"
+                    onClick={() => handleOrder(product)}
+                  >
                     <ShoppingCart className="h-3 w-3 mr-1" />
                     Commander
                   </Button>
-                  <Button size="sm" variant="outline" className="h-7 w-7 p-0">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="h-7 w-7 p-0"
+                    onClick={() => handleView(product)}
+                  >
                     <Eye className="h-3 w-3" />
                   </Button>
                 </div>

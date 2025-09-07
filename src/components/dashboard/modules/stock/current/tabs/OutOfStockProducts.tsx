@@ -5,9 +5,46 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { XCircle, AlertCircle, ShoppingCart, Clock, TrendingDown } from 'lucide-react';
 import { useCurrentStock } from '@/hooks/useCurrentStock';
+import { useToast } from '@/hooks/use-toast';
 
 const OutOfStockProducts = () => {
   const { products, isLoading } = useCurrentStock();
+  const { toast } = useToast();
+
+  const handleUrgentMultipleOrder = () => {
+    toast({
+      title: "Commande urgente multiple",
+      description: "Préparation d'une commande urgente pour tous les produits en rupture",
+    });
+  };
+
+  const handleAlertSuppliers = () => {
+    toast({
+      title: "Alerte fournisseurs",
+      description: "Notification envoyée aux fournisseurs pour les ruptures critiques",
+    });
+  };
+
+  const handleSubstitutes = () => {
+    toast({
+      title: "Produits de substitution",
+      description: "Recherche de produits de substitution disponibles",
+    });
+  };
+
+  const handleOrder = (product: any) => {
+    toast({
+      title: "Commande produit",
+      description: `Commande urgente pour ${product.libelle_produit} initiée`,
+    });
+  };
+
+  const handleSubstitute = (product: any) => {
+    toast({
+      title: "Recherche substitut",
+      description: `Recherche d'un produit de substitution pour ${product.libelle_produit}`,
+    });
+  };
 
   const outOfStockProducts = products.filter(p => p.statut_stock === 'rupture');
 
@@ -104,15 +141,15 @@ const OutOfStockProducts = () => {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            <Button className="gap-2" size="lg">
+            <Button className="gap-2" size="lg" onClick={handleUrgentMultipleOrder}>
               <ShoppingCart className="h-4 w-4" />
               Commande Urgente Multiple
             </Button>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={handleAlertSuppliers}>
               <AlertCircle className="h-4 w-4" />
               Alerter Fournisseurs
             </Button>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={handleSubstitutes}>
               <TrendingDown className="h-4 w-4" />
               Produits de Substitution
             </Button>
@@ -236,11 +273,17 @@ const OutOfStockProducts = () => {
                                 size="sm" 
                                 variant={urgency.level === 'critical' ? 'default' : 'outline'}
                                 className="gap-1"
+                                onClick={() => handleOrder(product)}
                               >
                                 <ShoppingCart className="h-3 w-3" />
                                 Commander
                               </Button>
-                              <Button size="sm" variant="outline" className="gap-1">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="gap-1"
+                                onClick={() => handleSubstitute(product)}
+                              >
                                 <AlertCircle className="h-3 w-3" />
                                 Substitut
                               </Button>

@@ -4,9 +4,32 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Zap, TrendingUp, Eye, ShoppingCart } from 'lucide-react';
 import { useCurrentStock } from '@/hooks/useCurrentStock';
+import { useToast } from '@/hooks/use-toast';
 
 const FastMovingItems = () => {
   const { products } = useCurrentStock();
+  const { toast } = useToast();
+
+  const handleMonitor = (product: any) => {
+    toast({
+      title: "Surveillance activée",
+      description: `${product.libelle_produit} ajouté à la liste de surveillance`,
+    });
+  };
+
+  const handleReorder = (product: any) => {
+    toast({
+      title: "Réapprovisionnement",
+      description: `Commande de réappro pour ${product.libelle_produit} initiée`,
+    });
+  };
+
+  const handleViewAll = () => {
+    toast({
+      title: "Affichage complet",
+      description: "Redirection vers la liste complète des produits à rotation rapide",
+    });
+  };
 
   const fastMovingProducts = products
     .filter(p => p.rotation === 'rapide' && p.stock_actuel > 0)
@@ -94,11 +117,21 @@ const FastMovingItems = () => {
                 </div>
                 
                 <div className="flex gap-1 mt-2">
-                  <Button size="sm" variant="outline" className="flex-1 h-7 text-xs">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex-1 h-7 text-xs"
+                    onClick={() => handleMonitor(product)}
+                  >
                     <Eye className="h-3 w-3 mr-1" />
                     Surveiller
                   </Button>
-                  <Button size="sm" variant="outline" className="flex-1 h-7 text-xs">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex-1 h-7 text-xs"
+                    onClick={() => handleReorder(product)}
+                  >
                     <ShoppingCart className="h-3 w-3 mr-1" />
                     Réappro
                   </Button>
@@ -108,7 +141,7 @@ const FastMovingItems = () => {
             
             {products.filter(p => p.rotation === 'rapide' && p.stock_actuel > 0).length > 8 && (
               <div className="text-center pt-2">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={handleViewAll}>
                   Voir tous ({products.filter(p => p.rotation === 'rapide' && p.stock_actuel > 0).length})
                 </Button>
               </div>

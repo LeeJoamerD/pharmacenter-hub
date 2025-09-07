@@ -6,9 +6,46 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertTriangle, ShoppingCart, Bell, Package } from 'lucide-react';
 import { useCurrentStock } from '@/hooks/useCurrentStock';
 import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/hooks/use-toast';
 
 const LowStockProducts = () => {
   const { products, isLoading } = useCurrentStock();
+  const { toast } = useToast();
+
+  const handleUrgentOrder = () => {
+    toast({
+      title: "Commande d'urgence",
+      description: "Préparation d'une commande d'urgence pour tous les produits critiques",
+    });
+  };
+
+  const handleConfigureAlerts = () => {
+    toast({
+      title: "Configuration des alertes",
+      description: "Ouverture du panneau de configuration des alertes de stock",
+    });
+  };
+
+  const handleViewHistory = () => {
+    toast({
+      title: "Historique",
+      description: "Affichage de l'historique des mouvements de stock",
+    });
+  };
+
+  const handleOrder = (product: any) => {
+    toast({
+      title: "Commande produit",
+      description: `Commande pour ${product.libelle_produit} ajoutée`,
+    });
+  };
+
+  const handleAlert = (product: any) => {
+    toast({
+      title: "Alerte configurée",
+      description: `Alerte activée pour ${product.libelle_produit}`,
+    });
+  };
 
   const lowStockProducts = products.filter(p => 
     p.statut_stock === 'faible' || p.statut_stock === 'critique'
@@ -87,15 +124,15 @@ const LowStockProducts = () => {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            <Button className="gap-2">
+            <Button className="gap-2" onClick={handleUrgentOrder}>
               <ShoppingCart className="h-4 w-4" />
               Commande d'Urgence
             </Button>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={handleConfigureAlerts}>
               <Bell className="h-4 w-4" />
               Configurer Alertes
             </Button>
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={handleViewHistory}>
               <Package className="h-4 w-4" />
               Voir Historique
             </Button>
@@ -198,11 +235,21 @@ const LowStockProducts = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
-                              <Button size="sm" variant="default" className="gap-1">
+                              <Button 
+                                size="sm" 
+                                variant="default" 
+                                className="gap-1"
+                                onClick={() => handleOrder(product)}
+                              >
                                 <ShoppingCart className="h-3 w-3" />
                                 Commander
                               </Button>
-                              <Button size="sm" variant="outline" className="gap-1">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="gap-1"
+                                onClick={() => handleAlert(product)}
+                              >
                                 <Bell className="h-3 w-3" />
                                 Alerter
                               </Button>

@@ -12,25 +12,27 @@ const QuickStockCheck = () => {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = () => {
-    if (!searchQuery.trim()) {
+  const handleSearch = (query = searchQuery) => {
+    const searchTerm = query.trim();
+    if (!searchTerm) {
       setSearchResults([]);
       return;
     }
 
     setIsSearching(true);
     
-    // Simulation d'une recherche avec délai
+    // Recherche immédiate dans les produits
+    const results = products.filter(product => 
+      product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.code_cip.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.famille_libelle && product.famille_libelle.toLowerCase().includes(searchTerm.toLowerCase()))
+    ).slice(0, 10);
+    
+    // Simulation d'un délai pour une meilleure UX
     setTimeout(() => {
-      const results = products.filter(product => 
-        product.libelle_produit.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.code_cip.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (product.famille_libelle && product.famille_libelle.toLowerCase().includes(searchQuery.toLowerCase()))
-      ).slice(0, 10); // Limiter à 10 résultats pour une consultation rapide
-      
       setSearchResults(results);
       setIsSearching(false);
-    }, 300);
+    }, 200);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -108,7 +110,7 @@ const QuickStockCheck = () => {
                 />
               </div>
               <Button 
-                onClick={handleSearch}
+                onClick={() => handleSearch()}
                 disabled={isLoading || isSearching || !searchQuery.trim()}
                 size="lg"
               >
@@ -134,7 +136,7 @@ const QuickStockCheck = () => {
               className="h-auto p-3 flex flex-col gap-1"
               onClick={() => {
                 setSearchQuery('paracétamol');
-                handleSearch();
+                handleSearch('paracétamol');
               }}
             >
               <Package className="h-4 w-4" />
@@ -145,7 +147,7 @@ const QuickStockCheck = () => {
               className="h-auto p-3 flex flex-col gap-1"
               onClick={() => {
                 setSearchQuery('amoxicilline');
-                handleSearch();
+                handleSearch('amoxicilline');
               }}
             >
               <Package className="h-4 w-4" />
@@ -156,7 +158,7 @@ const QuickStockCheck = () => {
               className="h-auto p-3 flex flex-col gap-1"
               onClick={() => {
                 setSearchQuery('vitamine');
-                handleSearch();
+                handleSearch('vitamine');
               }}
             >
               <Package className="h-4 w-4" />
@@ -167,7 +169,7 @@ const QuickStockCheck = () => {
               className="h-auto p-3 flex flex-col gap-1"
               onClick={() => {
                 setSearchQuery('sirop');
-                handleSearch();
+                handleSearch('sirop');
               }}
             >
               <Package className="h-4 w-4" />
