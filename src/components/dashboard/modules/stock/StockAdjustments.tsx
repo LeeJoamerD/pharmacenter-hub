@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { 
   Plus, 
   Settings, 
@@ -16,83 +17,114 @@ import {
   CheckCircle,
   XCircle,
   Search,
-  Filter
+  Filter,
+  Eye,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { useLotMovements } from '@/hooks/useLotMovements';
+import { useProducts } from '@/hooks/useProducts';
+import { useLots } from '@/hooks/useLots';
+import { supabase } from '@/integrations/supabase/client';
 
-interface StockAdjustment {
-  id: string;
-  date: Date;
-  produit: string;
-  lot: string;
+interface StockAdjustmentMetadata {
+  raison: string;
   stockTheorique: number;
   stockReel: number;
   ecart: number;
-  raison: string;
-  utilisateur: string;
-  statut: 'en_attente' | 'valide' | 'rejete';
   commentaire?: string;
+  statut: 'en_attente' | 'valide' | 'rejete';
+  utilisateur?: string;
+  [key: string]: any; // Index signature for Json compatibility
+}
+
+interface StockAdjustmentMovement {
+  id: string;
+  date_mouvement: string;
+  produit_id: string;
+  lot_id: string;
+  quantite_mouvement: number;
+  metadata: StockAdjustmentMetadata;
+  lot?: {
+    numero_lot: string;
+    quantite_restante: number;
+  };
+  produit?: {
+    libelle_produit: string;
+    code_cip: string;
+  };
 }
 
 const StockAdjustments = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
+  const [selectedAdjustment, setSelectedAdjustment] = useState<StockAdjustmentMovement | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatut, setSelectedStatut] = useState<string>('tous');
   const { toast } = useToast();
 
+  // Hooks pour les données
+  const { useLotMovementsQuery } = useLotMovements();
+  const { products } = useProducts();
+  const { useLotsQuery } = useLots();
+  
+  // Charger les ajustements (mouvements avec type_mouvement='ajustement')
+  const { data: movementsData, isLoading: loadingMovements, refetch: refetchMovements } = useLotMovementsQuery({
+    type_mouvement: 'ajustement'
+  });
+
+  // Charger les lots disponibles
+  const { data: lotsData } = useLotsQuery();
+
   // Formulaire pour nouvel ajustement
   const [formData, setFormData] = useState({
-    produit: '',
-    lot: '',
-    stockTheorique: '',
-    stockReel: '',
+    produit_id: '',
+    lot_id: '',
+    stockTheorique: 0,
+    stockReel: 0,
     raison: '',
     commentaire: ''
   });
 
-  // Données mockées pour les ajustements
-  const ajustements: StockAdjustment[] = [
-    {
-      id: '1',
-      date: new Date('2024-01-15T16:45:00'),
-      produit: 'Paracétamol 500mg',
-      lot: 'LOT001',
-      stockTheorique: 100,
-      stockReel: 95,
-      ecart: -5,
-      raison: 'Casse constatée',
-      utilisateur: 'Marie Dubois',
-      statut: 'valide',
-      commentaire: 'Casse de 5 boîtes due au transport'
-    },
-    {
-      id: '2',
-      date: new Date('2024-01-16T10:30:00'),
-      produit: 'Ibuprofène 200mg',
-      lot: 'LOT002',
-      stockTheorique: 50,
-      stockReel: 53,
-      ecart: 3,
-      raison: 'Erreur de saisie précédente',
-      utilisateur: 'Jean Martin',
-      statut: 'en_attente'
-    },
-    {
-      id: '3',
-      date: new Date('2024-01-16T14:20:00'),
-      produit: 'Aspirine 100mg',
-      lot: 'LOT003',
-      stockTheorique: 75,
-      stockReel: 70,
-      ecart: -5,
-      raison: 'Vol présumé',
-      utilisateur: 'Pierre Durand',
-      statut: 'rejete',
-      commentaire: 'Nécessite investigation supplémentaire'
+  // Convertir les mouvements en ajustements avec détails
+  const ajustements: StockAdjustmentMovement[] = useMemo(() => {
+    if (!movementsData) return [];
+    return movementsData
+      .filter((movement: any) => movement.metadata?.raison)
+      .map((movement: any) => ({
+        id: movement.id,
+        date_mouvement: movement.date_mouvement,
+        produit_id: movement.produit_id,
+        lot_id: movement.lot_id,
+        quantite_mouvement: movement.quantite_mouvement,
+        metadata: movement.metadata as StockAdjustmentMetadata,
+        lot: movement.lot,
+        produit: movement.produit
+      }));
+  }, [movementsData]);
+
+  // Filtrer les lots par produit sélectionné
+  const availableLots = useMemo(() => {
+    if (!lotsData || !formData.produit_id) return [];
+    return lotsData.filter((lot: any) => 
+      lot.produit_id === formData.produit_id && 
+      lot.quantite_restante > 0
+    );
+  }, [lotsData, formData.produit_id]);
+
+  // Mettre à jour le stock théorique quand un lot est sélectionné
+  const selectedLot = useMemo(() => {
+    return availableLots.find((lot: any) => lot.id === formData.lot_id);
+  }, [availableLots, formData.lot_id]);
+
+  React.useEffect(() => {
+    if (selectedLot) {
+      setFormData(prev => ({ ...prev, stockTheorique: selectedLot.quantite_restante }));
     }
-  ];
+  }, [selectedLot]);
 
   const getStatutIcon = (statut: string) => {
     switch (statut) {
@@ -127,11 +159,11 @@ const StockAdjustments = () => {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
-    if (!formData.produit || !formData.lot || !formData.stockTheorique || !formData.stockReel || !formData.raison) {
+    if (!formData.produit_id || !formData.lot_id || !formData.raison) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs obligatoires",
@@ -140,28 +172,133 @@ const StockAdjustments = () => {
       return;
     }
 
-    toast({
-      title: "Ajustement créé",
-      description: "L'ajustement de stock a été enregistré avec succès",
-    });
+    try {
+      const ecart = formData.stockReel - formData.stockTheorique;
+      
+      const metadata: StockAdjustmentMetadata = {
+        raison: formData.raison,
+        stockTheorique: formData.stockTheorique,
+        stockReel: formData.stockReel,
+        ecart,
+        commentaire: formData.commentaire,
+        statut: 'en_attente'
+      };
 
-    setIsDialogOpen(false);
-    setFormData({
-      produit: '',
-      lot: '',
-      stockTheorique: '',
-      stockReel: '',
-      raison: '',
-      commentaire: ''
-    });
+      const { error } = await supabase.rpc('rpc_stock_record_movement', {
+        p_lot_id: formData.lot_id,
+        p_produit_id: formData.produit_id,
+        p_type_mouvement: 'ajustement',
+        p_quantite_mouvement: ecart,
+        p_quantite_reelle: formData.stockReel,
+        p_reference_id: null,
+        p_reference_type: 'ajustement',
+        p_reference_document: null,
+        p_agent_id: null,
+        p_lot_destination_id: null,
+        p_emplacement_source: null,
+        p_emplacement_destination: null,
+        p_motif: formData.raison,
+        p_metadata: metadata
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Ajustement créé",
+        description: "L'ajustement de stock a été enregistré avec succès",
+      });
+
+      setIsDialogOpen(false);
+      setFormData({
+        produit_id: '',
+        lot_id: '',
+        stockTheorique: 0,
+        stockReel: 0,
+        raison: '',
+        commentaire: ''
+      });
+      
+      refetchMovements();
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la création de l'ajustement",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleUpdateStatus = async (movementId: string, newStatus: 'valide' | 'rejete') => {
+    try {
+      const movement = ajustements.find(adj => adj.id === movementId);
+      if (!movement) return;
+
+      const updatedMetadata = {
+        ...movement.metadata,
+        statut: newStatus
+      };
+
+      const { error } = await supabase.rpc('rpc_stock_update_movement', {
+        p_movement_id: movementId,
+        p_new_quantite_mouvement: movement.quantite_mouvement,
+        p_new_reference_document: null,
+        p_new_motif: movement.metadata.raison,
+        p_new_metadata: updatedMetadata
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Statut mis à jour",
+        description: `Ajustement ${newStatus === 'valide' ? 'validé' : 'rejeté'} avec succès`,
+      });
+
+      refetchMovements();
+      setIsDetailSheetOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la mise à jour du statut",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteAdjustment = async (movementId: string) => {
+    if (!confirm("Êtes-vous sûr de vouloir supprimer cet ajustement ?")) return;
+
+    try {
+      const { error } = await supabase.rpc('rpc_stock_delete_movement', {
+        p_movement_id: movementId
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Ajustement supprimé",
+        description: "L'ajustement a été supprimé avec succès",
+      });
+
+      refetchMovements();
+      setIsDetailSheetOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la suppression",
+        variant: "destructive"
+      });
+    }
   };
 
   const filteredAjustements = ajustements.filter(ajustement => {
-    const matchesSearch = ajustement.produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ajustement.lot.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ajustement.raison.toLowerCase().includes(searchTerm.toLowerCase());
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = 
+      ajustement.produit?.libelle_produit?.toLowerCase().includes(searchLower) ||
+      ajustement.lot?.numero_lot?.toLowerCase().includes(searchLower) ||
+      ajustement.metadata.raison?.toLowerCase().includes(searchLower) ||
+      ajustement.metadata.commentaire?.toLowerCase().includes(searchLower);
     
-    const matchesStatut = selectedStatut === 'tous' || ajustement.statut === selectedStatut;
+    const matchesStatut = selectedStatut === 'tous' || ajustement.metadata.statut === selectedStatut;
     
     return matchesSearch && matchesStatut;
   });
@@ -180,12 +317,12 @@ const StockAdjustments = () => {
           </CardContent>
         </Card>
 
-        <Card>
+                <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">En Attente</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {ajustements.filter(a => a.statut === 'en_attente').length}
+                {ajustements.filter(a => a.metadata.statut === 'en_attente').length}
               </p>
             </div>
             <AlertTriangle className="h-8 w-8 text-yellow-600" />
@@ -197,7 +334,7 @@ const StockAdjustments = () => {
             <div>
               <p className="text-sm font-medium text-muted-foreground">Validés</p>
               <p className="text-2xl font-bold text-green-600">
-                {ajustements.filter(a => a.statut === 'valide').length}
+                {ajustements.filter(a => a.metadata.statut === 'valide').length}
               </p>
             </div>
             <CheckCircle className="h-8 w-8 text-green-600" />
@@ -209,7 +346,7 @@ const StockAdjustments = () => {
             <div>
               <p className="text-sm font-medium text-muted-foreground">Rejetés</p>
               <p className="text-2xl font-bold text-red-600">
-                {ajustements.filter(a => a.statut === 'rejete').length}
+                {ajustements.filter(a => a.metadata.statut === 'rejete').length}
               </p>
             </div>
             <XCircle className="h-8 w-8 text-red-600" />
@@ -243,28 +380,36 @@ const StockAdjustments = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="produit">Produit *</Label>
-                      <Select value={formData.produit} onValueChange={(value) => setFormData({...formData, produit: value})}>
+                      <Select value={formData.produit_id} onValueChange={(value) => setFormData({...formData, produit_id: value, lot_id: ''})}>
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner un produit" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="paracetamol">Paracétamol 500mg</SelectItem>
-                          <SelectItem value="ibuprofene">Ibuprofène 200mg</SelectItem>
-                          <SelectItem value="aspirine">Aspirine 100mg</SelectItem>
+                          {products.map((product) => (
+                            <SelectItem key={product.id} value={product.id}>
+                              {product.libelle_produit}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="lot">Lot *</Label>
-                      <Select value={formData.lot} onValueChange={(value) => setFormData({...formData, lot: value})}>
+                      <Select 
+                        value={formData.lot_id} 
+                        onValueChange={(value) => setFormData({...formData, lot_id: value})}
+                        disabled={!formData.produit_id}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner un lot" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="LOT001">LOT001</SelectItem>
-                          <SelectItem value="LOT002">LOT002</SelectItem>
-                          <SelectItem value="LOT003">LOT003</SelectItem>
+                          {availableLots.map((lot) => (
+                            <SelectItem key={lot.id} value={lot.id}>
+                              {lot.numero_lot} (Stock: {lot.quantite_restante})
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -277,9 +422,10 @@ const StockAdjustments = () => {
                         id="stockTheorique"
                         type="number"
                         placeholder="Quantité théorique"
-                        value={formData.stockTheorique}
-                        onChange={(e) => setFormData({...formData, stockTheorique: e.target.value})}
-                        required
+                        value={formData.stockTheorique.toString()}
+                        onChange={(e) => setFormData({...formData, stockTheorique: parseInt(e.target.value) || 0})}
+                        readOnly
+                        className="bg-muted"
                       />
                     </div>
 
@@ -289,12 +435,22 @@ const StockAdjustments = () => {
                         id="stockReel"
                         type="number"
                         placeholder="Quantité réelle comptée"
-                        value={formData.stockReel}
-                        onChange={(e) => setFormData({...formData, stockReel: e.target.value})}
+                        value={formData.stockReel.toString()}
+                        onChange={(e) => setFormData({...formData, stockReel: parseInt(e.target.value) || 0})}
                         required
                       />
                     </div>
                   </div>
+
+                  {formData.stockTheorique > 0 && formData.stockReel > 0 && (
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-sm font-medium">
+                        Écart: <span className={formData.stockReel - formData.stockTheorique > 0 ? 'text-green-600' : 'text-red-600'}>
+                          {formData.stockReel - formData.stockTheorique > 0 ? '+' : ''}{formData.stockReel - formData.stockTheorique}
+                        </span>
+                      </p>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="raison">Raison de l'écart *</Label>
@@ -374,47 +530,167 @@ const StockAdjustments = () => {
                   <TableHead>Écart</TableHead>
                   <TableHead>Raison</TableHead>
                   <TableHead>Statut</TableHead>
-                  <TableHead>Utilisateur</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredAjustements.map((ajustement) => (
                   <TableRow key={ajustement.id}>
                     <TableCell className="font-mono text-sm">
-                      {format(ajustement.date, 'dd/MM/yyyy HH:mm', { locale: fr })}
+                      {format(new Date(ajustement.date_mouvement), 'dd/MM/yyyy HH:mm', { locale: fr })}
                     </TableCell>
-                    <TableCell className="font-medium">{ajustement.produit}</TableCell>
+                    <TableCell className="font-medium">{ajustement.produit?.libelle_produit || 'N/A'}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{ajustement.lot}</Badge>
+                      <Badge variant="outline">{ajustement.lot?.numero_lot || 'N/A'}</Badge>
                     </TableCell>
-                    <TableCell>{ajustement.stockTheorique}</TableCell>
-                    <TableCell>{ajustement.stockReel}</TableCell>
+                    <TableCell>{ajustement.metadata.stockTheorique}</TableCell>
+                    <TableCell>{ajustement.metadata.stockReel}</TableCell>
                     <TableCell>
-                      <span className={ajustement.ecart > 0 ? 'text-green-600' : 'text-red-600'}>
-                        {ajustement.ecart > 0 ? '+' : ''}{ajustement.ecart}
+                      <span className={ajustement.metadata.ecart > 0 ? 'text-green-600' : 'text-red-600'}>
+                        {ajustement.metadata.ecart > 0 ? '+' : ''}{ajustement.metadata.ecart}
                       </span>
                     </TableCell>
-                    <TableCell>{ajustement.raison}</TableCell>
+                    <TableCell>{ajustement.metadata.raison}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {getStatutIcon(ajustement.statut)}
-                        {getStatutBadge(ajustement.statut)}
+                        {getStatutIcon(ajustement.metadata.statut)}
+                        {getStatutBadge(ajustement.metadata.statut)}
                       </div>
                     </TableCell>
-                    <TableCell>{ajustement.utilisateur}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Sheet open={isDetailSheetOpen && selectedAdjustment?.id === ajustement.id} onOpenChange={(open) => {
+                          setIsDetailSheetOpen(open);
+                          if (open) setSelectedAdjustment(ajustement);
+                        }}>
+                          <SheetTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </SheetTrigger>
+                        </Sheet>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
 
-          {filteredAjustements.length === 0 && (
+          {filteredAjustements.length === 0 && !loadingMovements && (
             <div className="text-center py-8 text-muted-foreground">
               Aucun ajustement trouvé pour les critères sélectionnés
             </div>
           )}
+          
+          {loadingMovements && (
+            <div className="text-center py-8 text-muted-foreground">
+              Chargement des ajustements...
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Sheet pour les détails de l'ajustement */}
+      <Sheet open={isDetailSheetOpen} onOpenChange={setIsDetailSheetOpen}>
+        <SheetContent className="sm:max-w-[600px]">
+          {selectedAdjustment && (
+            <>
+              <SheetHeader>
+                <SheetTitle>Détail de l'Ajustement</SheetTitle>
+                <SheetDescription>
+                  Ajustement du {format(new Date(selectedAdjustment.date_mouvement), 'dd MMMM yyyy à HH:mm', { locale: fr })}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="space-y-6 mt-6">
+                {/* Informations du produit et lot */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Produit</Label>
+                    <p className="font-medium">{selectedAdjustment.produit?.libelle_produit}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Lot</Label>
+                    <p className="font-medium">{selectedAdjustment.lot?.numero_lot}</p>
+                  </div>
+                </div>
+
+                {/* Stocks et écart */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Stock Théorique</Label>
+                    <p className="text-lg font-semibold">{selectedAdjustment.metadata.stockTheorique}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Stock Réel</Label>
+                    <p className="text-lg font-semibold">{selectedAdjustment.metadata.stockReel}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Écart</Label>
+                    <p className={`text-lg font-semibold ${selectedAdjustment.metadata.ecart > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {selectedAdjustment.metadata.ecart > 0 ? '+' : ''}{selectedAdjustment.metadata.ecart}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Raison et commentaire */}
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Raison</Label>
+                    <p className="font-medium">{selectedAdjustment.metadata.raison}</p>
+                  </div>
+                  {selectedAdjustment.metadata.commentaire && (
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Commentaire</Label>
+                      <p className="text-sm">{selectedAdjustment.metadata.commentaire}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Statut */}
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium text-muted-foreground">Statut:</Label>
+                  {getStatutIcon(selectedAdjustment.metadata.statut)}
+                  {getStatutBadge(selectedAdjustment.metadata.statut)}
+                </div>
+              </div>
+
+              <SheetFooter className="mt-6">
+                <div className="flex gap-2 w-full">
+                  {selectedAdjustment.metadata.statut === 'en_attente' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => handleUpdateStatus(selectedAdjustment.id, 'valide')}
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Valider
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => handleUpdateStatus(selectedAdjustment.id, 'rejete')}
+                      >
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Rejeter
+                      </Button>
+                    </>
+                  )}
+                  <Button
+                    variant="destructive"
+                    onClick={() => handleDeleteAdjustment(selectedAdjustment.id)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Supprimer
+                  </Button>
+                </div>
+              </SheetFooter>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
