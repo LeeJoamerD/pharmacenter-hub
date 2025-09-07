@@ -5,11 +5,17 @@ export interface StockMovement {
   produit_id: string;
   lot_id?: string;
   quantite: number;
-  type_mouvement: 'entree' | 'sortie' | 'ajustement' | 'reception' | 'vente' | 'retour';
+  type_mouvement: 'entree' | 'sortie' | 'ajustement' | 'vente' | 'retour' | 'destruction' | 'transfert';
   reference_type?: string;
   reference_id?: string;
   agent_id?: string;
   description?: string;
+  motif?: string;
+  emplacement_source?: string;
+  emplacement_destination?: string;
+  lot_destination_id?: string;
+  metadata?: Record<string, any>;
+  quantite_reelle?: number; // Pour les ajustements
 }
 
 export class StockUpdateService {
@@ -35,26 +41,16 @@ export class StockUpdateService {
   }
 
   /**
-   * Enregistre un mouvement de stock et met à jour les quantités
+   * Enregistre un mouvement de stock de manière atomique via RPC
    */
   static async recordStockMovement(movement: StockMovement, settings?: StockSettings): Promise<void> {
     try {
       const tenantId = await this.getCurrentTenantId();
       if (!tenantId) throw new Error('Utilisateur non autorisé');
 
-      // Check negative stock allowance before processing outbound movements
-      if (movement.type_mouvement === 'sortie' || movement.type_mouvement === 'vente') {
-        const currentStock = await this.calculateAvailableStock(movement.produit_id);
-        const newStock = currentStock - Math.abs(movement.quantite);
-        
-        if (newStock < 0 && settings && !settings.allow_negative_stock) {
-          throw new Error(`Stock insuffisant. Stock actuel: ${currentStock}, Quantité demandée: ${Math.abs(movement.quantite)}`);
-        }
-      }
-
       // Auto-generate lot if required and not provided
       if (settings?.requireLotNumbers && !movement.lot_id && 
-          (movement.type_mouvement === 'entree' || movement.type_mouvement === 'reception')) {
+          movement.type_mouvement === 'entree') {
         if (settings.auto_generate_lots) {
           movement.lot_id = await this.generateLotNumber(movement.produit_id, tenantId);
         } else {
@@ -62,28 +58,39 @@ export class StockUpdateService {
         }
       }
 
-      // Enregistrer le mouvement
-      const { error: movementError } = await supabase
-        .from('stock_mouvements')
-        .insert({
-          tenant_id: tenantId,
-          produit_id: movement.produit_id,
-          lot_id: movement.lot_id,
-          quantite: movement.quantite,
-          type_mouvement: movement.type_mouvement,
-          reference_type: movement.reference_type,
-          reference_id: movement.reference_id,
-          agent_id: movement.agent_id,
-          date_mouvement: new Date().toISOString()
-        });
-
-      if (movementError) throw movementError;
-
-      // Mettre à jour les quantités des lots si lot_id est spécifié
-      if (movement.lot_id) {
-        await this.updateLotQuantity(movement.lot_id, movement.quantite, movement.type_mouvement);
+      // Assurer qu'on a un lot_id pour tous les mouvements
+      if (!movement.lot_id) {
+        throw new Error('ID de lot requis pour enregistrer un mouvement');
       }
 
+      // Utiliser la fonction RPC atomique
+      const { data, error } = await supabase.rpc('rpc_stock_record_movement', {
+        p_lot_id: movement.lot_id,
+        p_produit_id: movement.produit_id,
+        p_type_mouvement: movement.type_mouvement,
+        p_quantite_mouvement: Math.abs(movement.quantite),
+        p_motif: movement.motif || movement.description,
+        p_reference_document: movement.reference_id,
+        p_reference_type: movement.reference_type,
+        p_agent_id: movement.agent_id,
+        p_emplacement_source: movement.emplacement_source,
+        p_emplacement_destination: movement.emplacement_destination,
+        p_lot_destination_id: movement.lot_destination_id,
+        p_metadata: movement.metadata || {},
+        p_quantite_reelle: movement.quantite_reelle
+      });
+
+      if (error) {
+        console.error('Erreur RPC:', error);
+        throw new Error(error.message);
+      }
+
+      const result = data as any;
+      if (result && !result.success) {
+        throw new Error(result.error || 'Erreur lors de l\'enregistrement du mouvement');
+      }
+
+      console.log('Mouvement enregistré:', data);
     } catch (error) {
       console.error('Erreur lors de l\'enregistrement du mouvement de stock:', error);
       throw error;
@@ -91,56 +98,67 @@ export class StockUpdateService {
   }
 
   /**
-   * Met à jour la quantité d'un lot
+   * Met à jour un mouvement existant via RPC
    */
-  private static async updateLotQuantity(
-    lotId: string, 
-    quantite: number, 
-    typeMovement: string
+  static async updateStockMovement(
+    movementId: string,
+    updates: {
+      quantite_mouvement?: number;
+      motif?: string;
+      reference_document?: string;
+      metadata?: Record<string, any>;
+      quantite_reelle?: number;
+    }
   ): Promise<void> {
     try {
-      // Récupérer le lot actuel
-      const { data: lot, error: fetchError } = await supabase
-        .from('lots')
-        .select('quantite_restante')
-        .eq('id', lotId)
-        .single();
+      const { data, error } = await supabase.rpc('rpc_stock_update_movement', {
+        p_movement_id: movementId,
+        p_new_quantite_mouvement: updates.quantite_mouvement,
+        p_new_motif: updates.motif,
+        p_new_reference_document: updates.reference_document,
+        p_new_metadata: updates.metadata,
+        p_new_quantite_reelle: updates.quantite_reelle
+      });
 
-      if (fetchError) throw fetchError;
-      if (!lot) throw new Error('Lot non trouvé');
-
-      // Calculer la nouvelle quantité
-      let nouvelleQuantite: number;
-      switch (typeMovement) {
-        case 'entree':
-        case 'reception':
-        case 'retour':
-        case 'ajustement':
-          nouvelleQuantite = lot.quantite_restante + Math.abs(quantite);
-          break;
-        case 'sortie':
-        case 'vente':
-          nouvelleQuantite = lot.quantite_restante - Math.abs(quantite);
-          break;
-        default:
-          throw new Error(`Type de mouvement non supporté: ${typeMovement}`);
+      if (error) {
+        console.error('Erreur RPC update:', error);
+        throw new Error(error.message);
       }
 
-      // Vérifier que la quantité ne devient pas négative
-      if (nouvelleQuantite < 0) {
-        throw new Error('Quantité insuffisante en stock');
+      const result = data as any;
+      if (result && !result.success) {
+        throw new Error(result.error || 'Erreur lors de la mise à jour du mouvement');
       }
 
-      // Mettre à jour le lot
-      const { error: updateError } = await supabase
-        .from('lots')
-        .update({ quantite_restante: nouvelleQuantite })
-        .eq('id', lotId);
-
-      if (updateError) throw updateError;
-
+      console.log('Mouvement mis à jour:', data);
     } catch (error) {
-      console.error('Erreur lors de la mise à jour de la quantité du lot:', error);
+      console.error('Erreur lors de la mise à jour du mouvement:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Supprime un mouvement et annule son effet via RPC
+   */
+  static async deleteStockMovement(movementId: string): Promise<void> {
+    try {
+      const { data, error } = await supabase.rpc('rpc_stock_delete_movement', {
+        p_movement_id: movementId
+      });
+
+      if (error) {
+        console.error('Erreur RPC delete:', error);
+        throw new Error(error.message);
+      }
+
+      const result = data as any;
+      if (result && !result.success) {
+        throw new Error(result.error || 'Erreur lors de la suppression du mouvement');
+      }
+
+      console.log('Mouvement supprimé:', data);
+    } catch (error) {
+      console.error('Erreur lors de la suppression du mouvement:', error);
       throw error;
     }
   }
@@ -190,11 +208,12 @@ export class StockUpdateService {
             produit_id: ligne.produit_id,
             lot_id: lot.id,
             quantite: ligne.quantite_acceptee,
-            type_mouvement: 'reception',
+            type_mouvement: 'entree', // Utiliser 'entree' au lieu de 'reception'
             reference_type: 'commande',
             reference_id: receptionData.commande_id,
             agent_id: receptionData.agent_id,
-            description: `Réception lot ${ligne.numero_lot}`
+            description: `Réception lot ${ligne.numero_lot}`,
+            motif: `Réception fournisseur`
           });
         }
       }
@@ -230,11 +249,12 @@ export class StockUpdateService {
           produit_id: ligne.produit_id,
           lot_id: lotId,
           quantite: ligne.quantite,
-          type_mouvement: 'vente',
+          type_mouvement: 'sortie', // Utiliser 'sortie' au lieu de 'vente'
           reference_type: 'vente',
           reference_id: vente_id,
           agent_id: agent_id,
-          description: `Vente - Sortie de stock`
+          description: `Vente - Sortie de stock`,
+          motif: `Vente produit`
         });
       }
     } catch (error) {
@@ -345,7 +365,7 @@ export class StockUpdateService {
 
     // Check lot requirements
     if (settings.requireLotNumbers && !movement.lot_id && 
-        (movement.type_mouvement === 'entree' || movement.type_mouvement === 'reception')) {
+        movement.type_mouvement === 'entree') {
       if (!settings.auto_generate_lots) {
         errors.push('Numéro de lot requis pour ce type de mouvement');
       }

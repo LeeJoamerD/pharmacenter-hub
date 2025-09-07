@@ -144,8 +144,34 @@ export const useLotMovements = () => {
     );
   };
 
-  // Créer un nouveau mouvement de lot
-  const createLotMovementMutation = useTenantMutation('mouvements_lots', 'insert', {
+  // Créer un nouveau mouvement de lot via RPC atomique
+  const createLotMovementMutation = useMutation({
+    mutationFn: async (input: CreateLotMovementInput) => {
+      const { data, error } = await supabase.rpc('rpc_stock_record_movement', {
+        p_lot_id: input.lot_id,
+        p_produit_id: '', // Sera récupéré depuis le lot
+        p_type_mouvement: input.type_mouvement,
+        p_quantite_mouvement: Math.abs(input.quantite_mouvement),
+        p_motif: input.notes,
+        p_reference_document: input.reference_document,
+        p_reference_type: 'manual',
+        p_agent_id: null,
+        p_emplacement_source: null,
+        p_emplacement_destination: null,
+        p_lot_destination_id: null,
+        p_metadata: {},
+        p_quantite_reelle: input.type_mouvement === 'ajustement' ? input.quantite_mouvement : null
+      });
+
+      if (error) throw new Error(error.message);
+      
+      const result = data as any;
+      if (result && !result.success) {
+        throw new Error(result.error || 'Erreur lors de l\'enregistrement');
+      }
+      
+      return result;
+    },
     onSuccess: () => {
       toast.success('Mouvement enregistré avec succès');
       queryClient.invalidateQueries({ queryKey: ['lot-movements'] });
@@ -156,8 +182,60 @@ export const useLotMovements = () => {
     },
   });
 
-  // Supprimer un mouvement (avec confirmation)
-  const deleteLotMovementMutation = useTenantMutation('mouvements_lots', 'delete', {
+  // Mettre à jour un mouvement via RPC
+  const updateLotMovementMutation = useMutation({
+    mutationFn: async ({ movementId, updates }: { 
+      movementId: string, 
+      updates: {
+        quantite_mouvement?: number;
+        notes?: string;
+        reference_document?: string;
+      }
+    }) => {
+      const { data, error } = await supabase.rpc('rpc_stock_update_movement', {
+        p_movement_id: movementId,
+        p_new_quantite_mouvement: updates.quantite_mouvement,
+        p_new_motif: updates.notes,
+        p_new_reference_document: updates.reference_document,
+        p_new_metadata: null,
+        p_new_quantite_reelle: null
+      });
+
+      if (error) throw new Error(error.message);
+      
+      const result = data as any;
+      if (result && !result.success) {
+        throw new Error(result.error || 'Erreur lors de la mise à jour');
+      }
+      
+      return result;
+    },
+    onSuccess: () => {
+      toast.success('Mouvement mis à jour avec succès');
+      queryClient.invalidateQueries({ queryKey: ['lot-movements'] });
+      queryClient.invalidateQueries({ queryKey: ['lots'] });
+    },
+    onError: (error: any) => {
+      toast.error(`Erreur lors de la mise à jour: ${error.message}`);
+    },
+  });
+
+  // Supprimer un mouvement via RPC (avec rollback automatique)
+  const deleteLotMovementMutation = useMutation({
+    mutationFn: async (movementId: string) => {
+      const { data, error } = await supabase.rpc('rpc_stock_delete_movement', {
+        p_movement_id: movementId
+      });
+
+      if (error) throw new Error(error.message);
+      
+      const result = data as any;
+      if (result && !result.success) {
+        throw new Error(result.error || 'Erreur lors de la suppression');
+      }
+      
+      return result;
+    },
     onSuccess: () => {
       toast.success('Mouvement supprimé avec succès');
       queryClient.invalidateQueries({ queryKey: ['lot-movements'] });
@@ -275,10 +353,12 @@ export const useLotMovements = () => {
     
     // Mutations
     createLotMovement: createLotMovementMutation.mutate,
+    updateLotMovement: updateLotMovementMutation.mutate,
     deleteLotMovement: deleteLotMovementMutation.mutate,
     
     // Loading states
     isCreating: createLotMovementMutation.isPending,
+    isUpdating: updateLotMovementMutation.isPending,
     isDeleting: deleteLotMovementMutation.isPending,
     
     // Utilities
