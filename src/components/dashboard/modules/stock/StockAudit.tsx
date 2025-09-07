@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,21 +22,26 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { useLotMovements } from '@/hooks/useLotMovements';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuditEntry {
   id: string;
-  timestamp: Date;
+  timestamp: string;
   action: string;
   type: 'creation' | 'modification' | 'suppression' | 'consultation';
   utilisateur: string;
-  role: string;
+  role?: string;
   entite: string;
   entiteId: string;
   details: string;
-  adresseIP: string;
+  adresseIP?: string;
   impact: 'faible' | 'moyen' | 'eleve' | 'critique';
   ancienneValeur?: string;
   nouvelleValeur?: string;
+  source: 'audit_logs' | 'movements';
 }
 
 const StockAudit = () => {
@@ -46,95 +51,197 @@ const StockAudit = () => {
   const [selectedUser, setSelectedUser] = useState<string>('tous');
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
+  const [usingFallback, setUsingFallback] = useState(false);
+  const { toast } = useToast();
 
-  // Données mockées pour l'audit trail
-  const auditEntries: AuditEntry[] = [
+  const { useTenantQueryWithCache } = useTenantQuery();
+  const { useLotMovementsQuery } = useLotMovements();
+
+  // Essai 1: Charger depuis audit_logs
+  const { 
+    data: auditLogsData, 
+    isLoading: auditLogsLoading, 
+    error: auditLogsError 
+  } = useTenantQueryWithCache(
+    ['audit-logs', 'stock'],
+    'audit_logs',
+    `
+      id, created_at, action, table_name, record_id, old_values, new_values, 
+      user_id, personnel_id, ip_address, status, error_message
+    `,
     {
-      id: '1',
-      timestamp: new Date('2024-01-15T10:30:00'),
-      action: 'Création produit',
-      type: 'creation',
-      utilisateur: 'Marie Dubois',
-      role: 'Pharmacien',
-      entite: 'Produit',
-      entiteId: 'PROD001',
-      details: 'Nouveau produit: Paracétamol 500mg ajouté au catalogue',
-      adresseIP: '192.168.1.100',
-      impact: 'moyen',
-      nouvelleValeur: 'Paracétamol 500mg - Code: PARA500'
+      table_name: ['mouvements_lots', 'lots']
     },
     {
-      id: '2',
-      timestamp: new Date('2024-01-15T14:15:00'),
-      action: 'Modification stock',
-      type: 'modification',
-      utilisateur: 'Jean Martin',
-      role: 'Préparateur',
-      entite: 'Stock',
-      entiteId: 'STK001',
-      details: 'Mise à jour quantité en stock',
-      adresseIP: '192.168.1.101',
-      impact: 'eleve',
-      ancienneValeur: 'Quantité: 50',
-      nouvelleValeur: 'Quantité: 75'
-    },
-    {
-      id: '3',
-      timestamp: new Date('2024-01-15T16:45:00'),
-      action: 'Ajustement stock',
-      type: 'modification',
-      utilisateur: 'Marie Dubois',
-      role: 'Pharmacien',
-      entite: 'Ajustement',
-      entiteId: 'ADJ001',
-      details: 'Correction de stock pour casse',
-      adresseIP: '192.168.1.100',
-      impact: 'eleve',
-      ancienneValeur: 'Stock: 100',
-      nouvelleValeur: 'Stock: 95 (Casse: -5)'
-    },
-    {
-      id: '4',
-      timestamp: new Date('2024-01-16T09:20:00'),
-      action: 'Création transfert',
-      type: 'creation',
-      utilisateur: 'Pierre Durand',
-      role: 'Responsable',
-      entite: 'Transfert',
-      entiteId: 'TRF001',
-      details: 'Nouveau transfert vers succursale B',
-      adresseIP: '192.168.1.102',
-      impact: 'moyen',
-      nouvelleValeur: 'Transfert 50 unités vers Succursale B'
-    },
-    {
-      id: '5',
-      timestamp: new Date('2024-01-16T11:30:00'),
-      action: 'Consultation rapport',
-      type: 'consultation',
-      utilisateur: 'Sophie Martin',
-      role: 'Directeur',
-      entite: 'Rapport',
-      entiteId: 'RPT001',
-      details: 'Consultation rapport valorisation stock',
-      adresseIP: '192.168.1.103',
-      impact: 'faible'
-    },
-    {
-      id: '6',
-      timestamp: new Date('2024-01-16T15:10:00'),
-      action: 'Suppression lot',
-      type: 'suppression',
-      utilisateur: 'Marie Dubois',
-      role: 'Pharmacien',
-      entite: 'Lot',
-      entiteId: 'LOT999',
-      details: 'Suppression lot périmé',
-      adresseIP: '192.168.1.100',
-      impact: 'critique',
-      ancienneValeur: 'Lot LOT999 - Aspirine 100mg - Exp: 01/01/2024'
+      enabled: true,
+      orderBy: { column: 'created_at', ascending: false }
     }
-  ];
+  );
+
+  // Utiliser le fallback si audit_logs n'est pas accessible
+  useEffect(() => {
+    if (auditLogsError) {
+      setUsingFallback(true);
+    }
+  }, [auditLogsError]);
+
+  // Fallback: Charger depuis mouvements_lots
+  const { data: movementsData, isLoading: movementsLoading } = useLotMovementsQuery();
+
+  // Convertir les données en format audit uniforme
+  const auditEntries: AuditEntry[] = useMemo(() => {
+    // Si audit_logs est accessible, l'utiliser
+    if (auditLogsData && !auditLogsError && !usingFallback) {
+      return auditLogsData.map((log: any) => ({
+        id: log.id,
+        timestamp: log.created_at,
+        action: getActionFromLog(log),
+        type: getTypeFromLog(log),
+        utilisateur: 'Système', // TODO: Récupérer depuis personnel si personnel_id existe
+        role: 'N/A',
+        entite: getEntityFromTableName(log.table_name),
+        entiteId: log.record_id || 'N/A',
+        details: generateDetailsFromLog(log),
+        adresseIP: log.ip_address,
+        impact: determineImpactFromLog(log),
+        ancienneValeur: log.old_values ? JSON.stringify(log.old_values) : undefined,
+        nouvelleValeur: log.new_values ? JSON.stringify(log.new_values) : undefined,
+        source: 'audit_logs'
+      }));
+    }
+
+    // Fallback: Construire audit depuis mouvements_lots
+    if (movementsData) {
+      return movementsData.map((movement: any) => ({
+        id: movement.id,
+        timestamp: movement.created_at || movement.date_mouvement,
+        action: getActionFromMovement(movement),
+        type: 'creation' as const,
+        utilisateur: 'Utilisateur', // TODO: Récupérer depuis personnel si agent_id existe
+        role: 'N/A',
+        entite: 'Mouvement de stock',
+        entiteId: movement.id,
+        details: generateDetailsFromMovement(movement),
+        impact: determineImpactFromMovement(movement),
+        ancienneValeur: `Quantité avant: ${movement.quantite_avant || 0}`,
+        nouvelleValeur: `Quantité après: ${movement.quantite_apres || 0}`,
+        source: 'movements'
+      }));
+    }
+
+    return [];
+  }, [auditLogsData, auditLogsError, movementsData, usingFallback]);
+
+  // Fonctions utilitaires pour traiter les données
+  const getActionFromLog = (log: any) => {
+    const actionMap: { [key: string]: string } = {
+      'INSERT': 'Création',
+      'UPDATE': 'Modification', 
+      'DELETE': 'Suppression',
+      'SELECT': 'Consultation'
+    };
+    return actionMap[log.action] || log.action || 'Action inconnue';
+  };
+
+  const getTypeFromLog = (log: any): AuditEntry['type'] => {
+    const typeMap: { [key: string]: AuditEntry['type'] } = {
+      'INSERT': 'creation',
+      'UPDATE': 'modification',
+      'DELETE': 'suppression', 
+      'SELECT': 'consultation'
+    };
+    return typeMap[log.action] || 'modification';
+  };
+
+  const getEntityFromTableName = (tableName: string) => {
+    const entityMap: { [key: string]: string } = {
+      'mouvements_lots': 'Mouvement de lot',
+      'lots': 'Lot de stock'
+    };
+    return entityMap[tableName] || tableName;
+  };
+
+  const generateDetailsFromLog = (log: any) => {
+    if (log.table_name === 'mouvements_lots') {
+      return `Mouvement de stock - ${log.action}`;
+    }
+    if (log.table_name === 'lots') {
+      return `Lot de stock - ${log.action}`;
+    }
+    return log.action || 'Opération système';
+  };
+
+  const determineImpactFromLog = (log: any): AuditEntry['impact'] => {
+    if (log.action === 'DELETE') return 'critique';
+    if (log.table_name === 'mouvements_lots') return 'eleve';
+    if (log.table_name === 'lots') return 'moyen';
+    return 'faible';
+  };
+
+  const getActionFromMovement = (movement: any) => {
+    const actionMap: { [key: string]: string } = {
+      'entree': 'Entrée de stock',
+      'sortie': 'Sortie de stock',
+      'ajustement': 'Ajustement de stock',
+      'transfert': 'Transfert de stock',
+      'retour': 'Retour de stock',
+      'destruction': 'Destruction de stock'
+    };
+    return actionMap[movement.type_mouvement] || 'Mouvement de stock';
+  };
+
+  const generateDetailsFromMovement = (movement: any) => {
+    const produit = movement.produit?.libelle_produit || 'Produit inconnu';
+    const lot = movement.lot?.numero_lot || 'Lot inconnu';
+    const quantite = movement.quantite_mouvement || 0;
+    
+    return `${produit} - Lot ${lot} - Quantité: ${quantite}${movement.motif ? ` - Motif: ${movement.motif}` : ''}`;
+  };
+
+  const determineImpactFromMovement = (movement: any): AuditEntry['impact'] => {
+    if (movement.type_mouvement === 'destruction') return 'critique';
+    if (['ajustement', 'transfert'].includes(movement.type_mouvement)) return 'eleve';
+    if (['entree', 'sortie'].includes(movement.type_mouvement)) return 'moyen';
+    return 'faible';
+  };
+
+  // Export des données d'audit
+  const handleExportAudit = () => {
+    const csvHeaders = [
+      'Timestamp', 'Action', 'Type', 'Utilisateur', 'Entité', 'ID Entité', 
+      'Impact', 'Détails', 'Ancienne Valeur', 'Nouvelle Valeur'
+    ].join(',');
+
+    const csvData = filteredEntries.map(entry => [
+      format(new Date(entry.timestamp), 'dd/MM/yyyy HH:mm:ss'),
+      entry.action,
+      entry.type,
+      entry.utilisateur,
+      entry.entite,
+      entry.entiteId,
+      entry.impact,
+      `"${entry.details.replace(/"/g, '""')}"`,
+      `"${entry.ancienneValeur?.replace(/"/g, '""') || ''}"`,
+      `"${entry.nouvelleValeur?.replace(/"/g, '""') || ''}"`
+    ].join(',')).join('\n');
+
+    const csv = csvHeaders + '\n' + csvData;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit-stock-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export réussi",
+      description: "Le journal d'audit a été exporté avec succès",
+    });
+  };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -204,11 +311,17 @@ const StockAudit = () => {
     const matchesType = selectedType === 'tous' || entry.type === selectedType;
     const matchesImpact = selectedImpact === 'tous' || entry.impact === selectedImpact;
     const matchesUser = selectedUser === 'tous' || entry.utilisateur === selectedUser;
+
+    // Filtrage par date
+    const entryDate = new Date(entry.timestamp);
+    const matchesDateFrom = !dateFrom || entryDate >= dateFrom;
+    const matchesDateTo = !dateTo || entryDate <= dateTo;
     
-    return matchesSearch && matchesType && matchesImpact && matchesUser;
+    return matchesSearch && matchesType && matchesImpact && matchesUser && matchesDateFrom && matchesDateTo;
   });
 
   const uniqueUsers = [...new Set(auditEntries.map(entry => entry.utilisateur))];
+  const isLoading = auditLogsLoading || movementsLoading;
 
   return (
     <div className="space-y-6">
@@ -266,9 +379,16 @@ const StockAudit = () => {
                 <Shield className="h-5 w-5" />
                 Journal d'Audit
               </CardTitle>
-              <CardDescription>Historique complet des actions utilisateurs et modifications système</CardDescription>
+              <CardDescription>
+                Historique complet des actions utilisateurs et modifications système 
+                {usingFallback && (
+                  <span className="text-orange-600 ml-2">
+                    (Mode dégradé - Données depuis les mouvements)
+                  </span>
+                )}
+              </CardDescription>
             </div>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleExportAudit}>
               <Download className="mr-2 h-4 w-4" />
               Exporter Audit
             </Button>
@@ -372,62 +492,68 @@ const StockAudit = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredEntries.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="font-mono text-sm">
-                      {format(entry.timestamp, 'dd/MM/yyyy HH:mm:ss', { locale: fr })}
-                    </TableCell>
-                    <TableCell className="font-medium">{entry.action}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getTypeIcon(entry.type)}
-                        {getTypeBadge(entry.type)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{entry.utilisateur}</div>
-                        <div className="text-sm text-muted-foreground">{entry.role}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{entry.entite}</div>
-                        <div className="text-sm text-muted-foreground">{entry.entiteId}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {getImpactBadge(entry.impact)}
-                    </TableCell>
-                    <TableCell className="max-w-[300px]">
-                      <div className="truncate" title={entry.details}>
-                        {entry.details}
-                      </div>
-                      {entry.ancienneValeur && (
-                        <div className="text-xs text-red-600 mt-1">
-                          Ancien: {entry.ancienneValeur}
-                        </div>
-                      )}
-                      {entry.nouvelleValeur && (
-                        <div className="text-xs text-green-600 mt-1">
-                          Nouveau: {entry.nouvelleValeur}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                 {filteredEntries.map((entry) => (
+                   <TableRow key={entry.id}>
+                     <TableCell className="font-mono text-sm">
+                       {format(new Date(entry.timestamp), 'dd/MM/yyyy HH:mm:ss', { locale: fr })}
+                     </TableCell>
+                     <TableCell className="font-medium">{entry.action}</TableCell>
+                     <TableCell>
+                       <div className="flex items-center gap-2">
+                         {getTypeIcon(entry.type)}
+                         {getTypeBadge(entry.type)}
+                       </div>
+                     </TableCell>
+                     <TableCell>
+                       <div>
+                         <div className="font-medium">{entry.utilisateur}</div>
+                         {entry.role && <div className="text-sm text-muted-foreground">{entry.role}</div>}
+                       </div>
+                     </TableCell>
+                     <TableCell>
+                       <div>
+                         <div className="font-medium">{entry.entite}</div>
+                         <div className="text-sm text-muted-foreground">{entry.entiteId}</div>
+                       </div>
+                     </TableCell>
+                     <TableCell>
+                       {getImpactBadge(entry.impact)}
+                     </TableCell>
+                     <TableCell className="max-w-[300px]">
+                       <div className="truncate" title={entry.details}>
+                         {entry.details}
+                       </div>
+                       {entry.ancienneValeur && (
+                         <div className="text-xs text-red-600 mt-1">
+                           Ancien: {entry.ancienneValeur}
+                         </div>
+                       )}
+                       {entry.nouvelleValeur && (
+                         <div className="text-xs text-green-600 mt-1">
+                           Nouveau: {entry.nouvelleValeur}
+                         </div>
+                       )}
+                     </TableCell>
+                     <TableCell>
+                       <Button variant="ghost" size="sm">
+                         <Eye className="h-4 w-4" />
+                       </Button>
+                     </TableCell>
+                   </TableRow>
+                 ))}
               </TableBody>
             </Table>
           </div>
 
-          {filteredEntries.length === 0 && (
+          {filteredEntries.length === 0 && !isLoading && (
             <div className="text-center py-8 text-muted-foreground">
               Aucun événement trouvé pour les critères sélectionnés
+            </div>
+          )}
+          
+          {isLoading && (
+            <div className="text-center py-8 text-muted-foreground">
+              Chargement des données d'audit...
             </div>
           )}
         </CardContent>
