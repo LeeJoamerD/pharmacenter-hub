@@ -17,6 +17,12 @@ export const useReferentielMetrics = () => {
     'id'
   );
 
+  const { data: formes = [] } = useTenantQueryWithCache(
+    ['formes-count'],
+    'formes_galeniques',
+    'id'
+  );
+
   const { data: rayons = [] } = useTenantQueryWithCache(
     ['rayons-count'],
     'rayons_produits',
@@ -44,6 +50,7 @@ export const useReferentielMetrics = () => {
   return {
     produits: products?.length || 0,
     familles: families?.length || 0,
+    formes: formes?.length || 0,
     rayons: rayons?.length || 0,
     categories: categories?.length || 0,
     dci: dcis?.length || 0,

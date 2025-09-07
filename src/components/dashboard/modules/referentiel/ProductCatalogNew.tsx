@@ -41,6 +41,7 @@ interface Product {
   code_cip?: string;
   famille_id?: string;
   rayon_id?: string;
+  forme_id?: string;
   laboratoires_id?: string;
   dci_id?: string;
   categorie_tarification_id?: string;
@@ -82,11 +83,17 @@ interface PricingCategory {
   libelle_categorie: string;
 }
 
+interface FormeGalenique {
+  id: string;
+  libelle_forme: string;
+}
+
 const ProductCatalogNew = () => {
   // États locaux
   const [searchTerm, setSearchTerm] = useState("");
   const [familleFilter, setFamilleFilter] = useState("all");
   const [rayonFilter, setRayonFilter] = useState("all");
+  const [formeFilter, setFormeFilter] = useState("all");
   const [dciFilter, setDciFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -107,7 +114,7 @@ const ProductCatalogNew = () => {
   const { data: products = [], isLoading } = useTenantQueryWithCache(
     ['products-catalog'],
     'produits', 
-    `id, libelle_produit, code_cip, famille_id, rayon_id, laboratoires_id, 
+    `id, libelle_produit, code_cip, famille_id, rayon_id, forme_id, laboratoires_id, 
      dci_id, categorie_tarification_id, prix_achat, prix_vente_ht, 
      prix_vente_ttc, tva, taux_tva, centime_additionnel, taux_centime_additionnel,
      stock_limite, stock_alerte, is_active, created_at,
@@ -139,6 +146,12 @@ const ProductCatalogNew = () => {
     'id, nom_dci'
   );
 
+  const { data: formes = [] } = useTenantQueryWithCache(
+    ['formes'],
+    'formes_galeniques',
+    'id, libelle_forme'
+  );
+
   // Filtrage des produits
   const filteredProducts = (() => {
     return products.filter((product) => {
@@ -146,9 +159,10 @@ const ProductCatalogNew = () => {
         (product.code_cip?.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesFamille = !familleFilter || familleFilter === "all" || product.famille_id === familleFilter;
       const matchesRayon = !rayonFilter || rayonFilter === "all" || product.rayon_id === rayonFilter;
+      const matchesForme = formeFilter === "all" || product.forme_id === formeFilter;
       const matchesDci = dciFilter === "all" || product.dci_id === dciFilter;
       
-      return matchesSearch && matchesFamille && matchesRayon && matchesDci;
+      return matchesSearch && matchesFamille && matchesRayon && matchesForme && matchesDci;
     });
   })();
 
@@ -178,6 +192,7 @@ const ProductCatalogNew = () => {
     setSearchTerm("");
     setFamilleFilter("all");
     setRayonFilter("all");
+    setFormeFilter("all");
     setDciFilter("all");
   };
 
@@ -428,6 +443,20 @@ const ProductCatalogNew = () => {
             </SelectContent>
           </Select>
 
+          <Select value={formeFilter} onValueChange={setFormeFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Forme" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les formes</SelectItem>
+              {formes.map((forme) => (
+                <SelectItem key={forme.id} value={forme.id}>
+                  {forme.libelle_forme}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Select value={dciFilter} onValueChange={setDciFilter}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="DCI" />
@@ -454,16 +483,16 @@ const ProductCatalogNew = () => {
         ) : (
           <Table>
              <TableHeader>
-                <TableRow>
-                  <TableHead>Produit</TableHead>
-                  <TableHead>Code CIP</TableHead>
-                  <TableHead>Niveau</TableHead>
-                  <TableHead>Famille / Rayon</TableHead>
-                  <TableHead>Prix achat</TableHead>
-                  <TableHead>Prix vente TTC</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
+                 <TableRow>
+                   <TableHead>Produit</TableHead>
+                   <TableHead>Code CIP</TableHead>
+                   <TableHead>Niveau</TableHead>
+                   <TableHead>Famille / Rayon / Forme</TableHead>
+                   <TableHead>Prix achat</TableHead>
+                   <TableHead>Prix vente TTC</TableHead>
+                   <TableHead>Stock</TableHead>
+                   <TableHead>Actions</TableHead>
+                 </TableRow>
              </TableHeader>
              <TableBody>
                 {filteredProducts.map((product) => (
@@ -496,6 +525,9 @@ const ProductCatalogNew = () => {
                          </div>
                          <div className="text-sm text-muted-foreground">
                            {rayons.find(r => r.id === product.rayon_id)?.libelle_rayon || 'N/A'}
+                         </div>
+                         <div className="text-xs text-muted-foreground">
+                           {formes.find(f => f.id === product.forme_id)?.libelle_forme || 'N/A'}
                          </div>
                        </div>
                      </TableCell>
@@ -635,6 +667,22 @@ const ProductCatalogNew = () => {
                         {rayons.map((rayon) => (
                           <SelectItem key={rayon.id} value={rayon.id}>
                             {rayon.libelle_rayon}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="forme_id">Forme Galénique</Label>
+                    <Select onValueChange={(value) => setValue('forme_id', value)} value={watch('forme_id') || ""}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner une forme" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {formes.map((forme) => (
+                          <SelectItem key={forme.id} value={forme.id}>
+                            {forme.libelle_forme}
                           </SelectItem>
                         ))}
                       </SelectContent>

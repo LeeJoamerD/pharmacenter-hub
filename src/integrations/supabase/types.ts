@@ -1562,6 +1562,33 @@ export type Database = {
           },
         ]
       }
+      formes_galeniques: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          libelle_forme: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          libelle_forme: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          libelle_forme?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fournisseurs: {
         Row: {
           adresse: string | null
@@ -3868,6 +3895,7 @@ export type Database = {
           created_at: string
           dci_id: string | null
           famille_id: string | null
+          forme_id: string | null
           id: string
           id_produit_source: string | null
           is_active: boolean | null
@@ -3896,6 +3924,7 @@ export type Database = {
           created_at?: string
           dci_id?: string | null
           famille_id?: string | null
+          forme_id?: string | null
           id?: string
           id_produit_source?: string | null
           is_active?: boolean | null
@@ -3924,6 +3953,7 @@ export type Database = {
           created_at?: string
           dci_id?: string | null
           famille_id?: string | null
+          forme_id?: string | null
           id?: string
           id_produit_source?: string | null
           is_active?: boolean | null
@@ -3986,6 +4016,13 @@ export type Database = {
             columns: ["categorie_tarification_id"]
             isOneToOne: false
             referencedRelation: "categorie_tarification"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_forme_id_fkey"
+            columns: ["forme_id"]
+            isOneToOne: false
+            referencedRelation: "formes_galeniques"
             referencedColumns: ["id"]
           },
           {
