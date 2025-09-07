@@ -5772,7 +5772,59 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_mouvements_lots_details: {
+        Row: {
+          agent_id: string | null
+          code_cip: string | null
+          created_at: string | null
+          date_mouvement: string | null
+          date_peremption: string | null
+          emplacement_destination: string | null
+          emplacement_source: string | null
+          id: string | null
+          libelle_produit: string | null
+          lot_destination_id: string | null
+          lot_id: string | null
+          lot_quantite_restante: number | null
+          metadata: Json | null
+          motif: string | null
+          numero_lot: string | null
+          prix_unitaire: number | null
+          produit_id: string | null
+          quantite_apres: number | null
+          quantite_avant: number | null
+          quantite_mouvement: number | null
+          reference_document: string | null
+          reference_id: string | null
+          reference_type: string | null
+          tenant_id: string | null
+          type_mouvement: string | null
+          valeur_mouvement: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mouvements_lots_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_lots_lot_destination_id_fkey"
+            columns: ["lot_destination_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_lots_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_session_risk_score: {
@@ -5962,6 +6014,40 @@ export type Database = {
       }
       resolve_oauth_personnel_link: {
         Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      rpc_stock_delete_movement: {
+        Args: { p_movement_id: string }
+        Returns: Json
+      }
+      rpc_stock_record_movement: {
+        Args: {
+          p_agent_id?: string
+          p_emplacement_destination?: string
+          p_emplacement_source?: string
+          p_lot_destination_id?: string
+          p_lot_id: string
+          p_metadata?: Json
+          p_motif?: string
+          p_produit_id: string
+          p_quantite_mouvement: number
+          p_quantite_reelle?: number
+          p_reference_document?: string
+          p_reference_id?: string
+          p_reference_type?: string
+          p_type_mouvement: string
+        }
+        Returns: Json
+      }
+      rpc_stock_update_movement: {
+        Args: {
+          p_movement_id: string
+          p_new_metadata?: Json
+          p_new_motif?: string
+          p_new_quantite_mouvement?: number
+          p_new_quantite_reelle?: number
+          p_new_reference_document?: string
+        }
         Returns: Json
       }
       setup_cross_tenant_security_triggers: {
