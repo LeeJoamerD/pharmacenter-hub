@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { 
   Plus, 
   ArrowRightLeft, 
@@ -18,93 +19,116 @@ import {
   Search,
   Filter,
   Eye,
-  Truck
+  Truck,
+  Edit
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import { useLotMovements } from '@/hooks/useLotMovements';
+import { useProducts } from '@/hooks/useProducts';
+import { useLots } from '@/hooks/useLots';
+import { supabase } from '@/integrations/supabase/client';
 
-interface StockTransfer {
-  id: string;
-  date: Date;
+interface StockTransferMetadata {
   numero: string;
-  produit: string;
-  lot: string;
-  quantite: number;
-  unite: string;
   origine: string;
   destination: string;
-  statut: 'en_cours' | 'en_transit' | 'recu' | 'annule';
-  utilisateurCreation: string;
-  utilisateurReception?: string;
   motif: string;
   commentaire?: string;
+  statut: 'en_cours' | 'en_transit' | 'recu' | 'annule';
+  utilisateurCreation?: string;
+  utilisateurReception?: string;
+  [key: string]: any; // Index signature for Json compatibility
+}
+
+interface StockTransferMovement {
+  id: string;
+  date_mouvement: string;
+  produit_id: string;
+  lot_id: string;
+  quantite_mouvement: number;
+  metadata: StockTransferMetadata;
+  emplacement_source?: string;
+  emplacement_destination?: string;
+  lot?: {
+    numero_lot: string;
+    quantite_restante: number;
+  };
+  produit?: {
+    libelle_produit: string;
+    code_cip: string;
+  };
 }
 
 const StockTransfers = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
+  const [selectedTransfer, setSelectedTransfer] = useState<StockTransferMovement | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatut, setSelectedStatut] = useState<string>('tous');
   const { toast } = useToast();
 
+  // Hooks pour les données
+  const { useLotMovementsQuery } = useLotMovements();
+  const { products } = useProducts();
+  const { useLotsQuery } = useLots();
+  
+  // Charger les transferts (mouvements avec type_mouvement='transfert')
+  const { data: movementsData, isLoading: loadingMovements, refetch: refetchMovements } = useLotMovementsQuery({
+    type_mouvement: 'transfert'
+  });
+
+  // Charger les lots disponibles
+  const { data: lotsData } = useLotsQuery();
+
   // Formulaire pour nouveau transfert
   const [formData, setFormData] = useState({
-    produit: '',
-    lot: '',
-    quantite: '',
+    produit_id: '',
+    lot_id: '',
+    quantite: 0,
     origine: '',
     destination: '',
     motif: '',
     commentaire: ''
   });
 
-  // Données mockées pour les transferts
-  const transferts: StockTransfer[] = [
-    {
-      id: '1',
-      date: new Date('2024-01-16T09:20:00'),
-      numero: 'TRF001',
-      produit: 'Doliprane 1000mg',
-      lot: 'LOT004',
-      quantite: 50,
-      unite: 'boîtes',
-      origine: 'Pharmacie Centrale',
-      destination: 'Succursale B',
-      statut: 'recu',
-      utilisateurCreation: 'Pierre Durand',
-      utilisateurReception: 'Sophie Martin',
-      motif: 'Réapprovisionnement succursale',
-      commentaire: 'Transfert urgent pour rupture de stock'
-    },
-    {
-      id: '2',
-      date: new Date('2024-01-16T14:30:00'),
-      numero: 'TRF002',
-      produit: 'Paracétamol 500mg',
-      lot: 'LOT001',
-      quantite: 25,
-      unite: 'boîtes',
-      origine: 'Pharmacie Centrale',
-      destination: 'Succursale A',
-      statut: 'en_transit',
-      utilisateurCreation: 'Marie Dubois',
-      motif: 'Équilibrage des stocks'
-    },
-    {
-      id: '3',
-      date: new Date('2024-01-17T08:15:00'),
-      numero: 'TRF003',
-      produit: 'Ibuprofène 200mg',
-      lot: 'LOT002',
-      quantite: 30,
-      unite: 'boîtes',
-      origine: 'Succursale A',
-      destination: 'Pharmacie Centrale',
-      statut: 'en_cours',
-      utilisateurCreation: 'Jean Martin',
-      motif: 'Retour de surplus'
-    }
-  ];
+  // Générer un numéro de transfert unique
+  const generateTransferNumber = () => {
+    const date = new Date();
+    const year = date.getFullYear().toString().slice(-2);
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const timestamp = Date.now().toString().slice(-4);
+    return `TRF${year}${month}${timestamp}`;
+  };
+
+  // Convertir les mouvements en transferts avec détails
+  const transferts: StockTransferMovement[] = useMemo(() => {
+    if (!movementsData) return [];
+    return movementsData
+      .filter((movement: any) => movement.metadata?.origine)
+      .map((movement: any) => ({
+        id: movement.id,
+        date_mouvement: movement.date_mouvement,
+        produit_id: movement.produit_id,
+        lot_id: movement.lot_id,
+        quantite_mouvement: movement.quantite_mouvement,
+        metadata: movement.metadata as StockTransferMetadata,
+        emplacement_source: movement.emplacement_source,
+        emplacement_destination: movement.emplacement_destination,
+        lot: movement.lot,
+        produit: movement.produit
+      }));
+  }, [movementsData]);
+
+  // Filtrer les lots par produit sélectionné
+  const availableLots = useMemo(() => {
+    if (!lotsData || !formData.produit_id) return [];
+    return lotsData.filter((lot: any) => 
+      lot.produit_id === formData.produit_id && 
+      lot.quantite_restante > 0
+    );
+  }, [lotsData, formData.produit_id]);
 
   const getStatutIcon = (statut: string) => {
     switch (statut) {
@@ -143,11 +167,11 @@ const StockTransfers = () => {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
-    if (!formData.produit || !formData.lot || !formData.quantite || !formData.origine || !formData.destination || !formData.motif) {
+    if (!formData.produit_id || !formData.lot_id || !formData.quantite || !formData.origine || !formData.destination || !formData.motif) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs obligatoires",
@@ -165,31 +189,102 @@ const StockTransfers = () => {
       return;
     }
 
-    toast({
-      title: "Transfert créé",
-      description: "Le transfert de stock a été créé avec succès",
-    });
+    try {
+      const numeroTransfert = generateTransferNumber();
+      
+      const metadata: StockTransferMetadata = {
+        numero: numeroTransfert,
+        origine: formData.origine,
+        destination: formData.destination,
+        motif: formData.motif,
+        commentaire: formData.commentaire,
+        statut: 'en_cours'
+      };
 
-    setIsDialogOpen(false);
-    setFormData({
-      produit: '',
-      lot: '',
-      quantite: '',
-      origine: '',
-      destination: '',
-      motif: '',
-      commentaire: ''
-    });
+      const { error } = await supabase.rpc('rpc_stock_record_movement', {
+        p_lot_id: formData.lot_id,
+        p_produit_id: formData.produit_id,
+        p_type_mouvement: 'transfert',
+        p_quantite_mouvement: formData.quantite,
+        p_reference_type: 'transfert',
+        p_reference_document: numeroTransfert,
+        p_emplacement_source: formData.origine,
+        p_emplacement_destination: formData.destination,
+        p_motif: formData.motif,
+        p_metadata: metadata
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Transfert créé",
+        description: `Le transfert ${numeroTransfert} a été créé avec succès`,
+      });
+
+      setIsDialogOpen(false);
+      setFormData({
+        produit_id: '',
+        lot_id: '',
+        quantite: 0,
+        origine: '',
+        destination: '',
+        motif: '',
+        commentaire: ''
+      });
+      
+      refetchMovements();
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la création du transfert",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleUpdateStatus = async (movementId: string, newStatus: 'en_cours' | 'en_transit' | 'recu' | 'annule') => {
+    try {
+      const movement = transferts.find(t => t.id === movementId);
+      if (!movement) return;
+
+      const updatedMetadata = {
+        ...movement.metadata,
+        statut: newStatus
+      };
+
+      const { error } = await supabase.rpc('rpc_stock_update_movement', {
+        p_movement_id: movementId,
+        p_new_metadata: updatedMetadata
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Statut mis à jour",
+        description: `Transfert mis à jour vers "${newStatus}"`,
+      });
+
+      refetchMovements();
+      setIsDetailSheetOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la mise à jour du statut",
+        variant: "destructive"
+      });
+    }
   };
 
   const filteredTransferts = transferts.filter(transfert => {
-    const matchesSearch = transfert.produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transfert.lot.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transfert.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transfert.origine.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transfert.destination.toLowerCase().includes(searchTerm.toLowerCase());
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = 
+      transfert.produit?.libelle_produit?.toLowerCase().includes(searchLower) ||
+      transfert.lot?.numero_lot?.toLowerCase().includes(searchLower) ||
+      transfert.metadata.numero?.toLowerCase().includes(searchLower) ||
+      transfert.metadata.origine?.toLowerCase().includes(searchLower) ||
+      transfert.metadata.destination?.toLowerCase().includes(searchLower);
     
-    const matchesStatut = selectedStatut === 'tous' || transfert.statut === selectedStatut;
+    const matchesStatut = selectedStatut === 'tous' || transfert.metadata.statut === selectedStatut;
     
     return matchesSearch && matchesStatut;
   });
@@ -213,7 +308,7 @@ const StockTransfers = () => {
             <div>
               <p className="text-sm font-medium text-muted-foreground">En Transit</p>
               <p className="text-2xl font-bold text-blue-600">
-                {transferts.filter(t => t.statut === 'en_transit').length}
+                {transferts.filter(t => t.metadata.statut === 'en_transit').length}
               </p>
             </div>
             <Truck className="h-8 w-8 text-blue-600" />
@@ -225,7 +320,7 @@ const StockTransfers = () => {
             <div>
               <p className="text-sm font-medium text-muted-foreground">En Cours</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {transferts.filter(t => t.statut === 'en_cours').length}
+                {transferts.filter(t => t.metadata.statut === 'en_cours').length}
               </p>
             </div>
             <Clock className="h-8 w-8 text-yellow-600" />
@@ -237,7 +332,7 @@ const StockTransfers = () => {
             <div>
               <p className="text-sm font-medium text-muted-foreground">Terminés</p>
               <p className="text-2xl font-bold text-green-600">
-                {transferts.filter(t => t.statut === 'recu').length}
+                {transferts.filter(t => t.metadata.statut === 'recu').length}
               </p>
             </div>
             <CheckCircle className="h-8 w-8 text-green-600" />
@@ -271,30 +366,36 @@ const StockTransfers = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="produit">Produit *</Label>
-                      <Select value={formData.produit} onValueChange={(value) => setFormData({...formData, produit: value})}>
+                      <Select value={formData.produit_id} onValueChange={(value) => setFormData({...formData, produit_id: value, lot_id: ''})}>
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner un produit" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="paracetamol">Paracétamol 500mg</SelectItem>
-                          <SelectItem value="ibuprofene">Ibuprofène 200mg</SelectItem>
-                          <SelectItem value="aspirine">Aspirine 100mg</SelectItem>
-                          <SelectItem value="doliprane">Doliprane 1000mg</SelectItem>
+                          {products.map((product) => (
+                            <SelectItem key={product.id} value={product.id}>
+                              {product.libelle_produit}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="lot">Lot *</Label>
-                      <Select value={formData.lot} onValueChange={(value) => setFormData({...formData, lot: value})}>
+                      <Select 
+                        value={formData.lot_id} 
+                        onValueChange={(value) => setFormData({...formData, lot_id: value})}
+                        disabled={!formData.produit_id}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner un lot" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="LOT001">LOT001</SelectItem>
-                          <SelectItem value="LOT002">LOT002</SelectItem>
-                          <SelectItem value="LOT003">LOT003</SelectItem>
-                          <SelectItem value="LOT004">LOT004</SelectItem>
+                          {availableLots.map((lot) => (
+                            <SelectItem key={lot.id} value={lot.id}>
+                              {lot.numero_lot} (Stock: {lot.quantite_restante})
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -306,8 +407,8 @@ const StockTransfers = () => {
                       id="quantite"
                       type="number"
                       placeholder="Quantité"
-                      value={formData.quantite}
-                      onChange={(e) => setFormData({...formData, quantite: e.target.value})}
+                      value={formData.quantite.toString()}
+                      onChange={(e) => setFormData({...formData, quantite: parseInt(e.target.value) || 0})}
                       required
                     />
                   </div>
@@ -429,27 +530,36 @@ const StockTransfers = () => {
               <TableBody>
                 {filteredTransferts.map((transfert) => (
                   <TableRow key={transfert.id}>
-                    <TableCell className="font-medium">{transfert.numero}</TableCell>
+                    <TableCell className="font-medium">{transfert.metadata.numero}</TableCell>
                     <TableCell className="font-mono text-sm">
-                      {format(transfert.date, 'dd/MM/yyyy HH:mm', { locale: fr })}
+                      {format(new Date(transfert.date_mouvement), 'dd/MM/yyyy HH:mm', { locale: fr })}
                     </TableCell>
-                    <TableCell>{transfert.produit}</TableCell>
+                    <TableCell>{transfert.produit?.libelle_produit || 'N/A'}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{transfert.lot}</Badge>
+                      <Badge variant="outline">{transfert.lot?.numero_lot || 'N/A'}</Badge>
                     </TableCell>
-                    <TableCell>{transfert.quantite} {transfert.unite}</TableCell>
-                    <TableCell>{transfert.origine}</TableCell>
-                    <TableCell>{transfert.destination}</TableCell>
+                    <TableCell>{transfert.quantite_mouvement}</TableCell>
+                    <TableCell>{transfert.metadata.origine}</TableCell>
+                    <TableCell>{transfert.metadata.destination}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {getStatutIcon(transfert.statut)}
-                        {getStatutBadge(transfert.statut)}
+                        {getStatutIcon(transfert.metadata.statut)}
+                        {getStatutBadge(transfert.metadata.statut)}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Sheet open={isDetailSheetOpen && selectedTransfer?.id === transfert.id} onOpenChange={(open) => {
+                          setIsDetailSheetOpen(open);
+                          if (open) setSelectedTransfer(transfert);
+                        }}>
+                          <SheetTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </SheetTrigger>
+                        </Sheet>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -457,13 +567,125 @@ const StockTransfers = () => {
             </Table>
           </div>
 
-          {filteredTransferts.length === 0 && (
+          {filteredTransferts.length === 0 && !loadingMovements && (
             <div className="text-center py-8 text-muted-foreground">
               Aucun transfert trouvé pour les critères sélectionnés
             </div>
           )}
+          
+          {loadingMovements && (
+            <div className="text-center py-8 text-muted-foreground">
+              Chargement des transferts...
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Sheet pour les détails du transfert */}
+      <Sheet open={isDetailSheetOpen} onOpenChange={setIsDetailSheetOpen}>
+        <SheetContent className="sm:max-w-[600px]">
+          {selectedTransfer && (
+            <>
+              <SheetHeader>
+                <SheetTitle>Détail du Transfert - {selectedTransfer.metadata.numero}</SheetTitle>
+                <SheetDescription>
+                  Transfert créé le {format(new Date(selectedTransfer.date_mouvement), 'dd MMMM yyyy à HH:mm', { locale: fr })}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="space-y-6 mt-6">
+                {/* Informations du produit et lot */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Produit</Label>
+                    <p className="font-medium">{selectedTransfer.produit?.libelle_produit}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Lot</Label>
+                    <p className="font-medium">{selectedTransfer.lot?.numero_lot}</p>
+                  </div>
+                </div>
+
+                {/* Quantité */}
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Quantité transférée</Label>
+                  <p className="text-lg font-semibold">{selectedTransfer.quantite_mouvement}</p>
+                </div>
+
+                {/* Origine et destination */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Origine</Label>
+                    <p className="font-medium">{selectedTransfer.metadata.origine}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Destination</Label>
+                    <p className="font-medium">{selectedTransfer.metadata.destination}</p>
+                  </div>
+                </div>
+
+                {/* Motif et commentaire */}
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Motif</Label>
+                    <p className="font-medium">{selectedTransfer.metadata.motif}</p>
+                  </div>
+                  {selectedTransfer.metadata.commentaire && (
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Commentaire</Label>
+                      <p className="text-sm">{selectedTransfer.metadata.commentaire}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Statut */}
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium text-muted-foreground">Statut:</Label>
+                  {getStatutIcon(selectedTransfer.metadata.statut)}
+                  {getStatutBadge(selectedTransfer.metadata.statut)}
+                </div>
+
+                {/* Actions de changement de statut */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-muted-foreground">Changer le statut</Label>
+                  <div className="flex gap-2 flex-wrap">
+                    {selectedTransfer.metadata.statut === 'en_cours' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUpdateStatus(selectedTransfer.id, 'en_transit')}
+                      >
+                        <Truck className="mr-2 h-4 w-4" />
+                        Marquer en transit
+                      </Button>
+                    )}
+                    {selectedTransfer.metadata.statut === 'en_transit' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUpdateStatus(selectedTransfer.id, 'recu')}
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Marquer comme reçu
+                      </Button>
+                    )}
+                    {['en_cours', 'en_transit'].includes(selectedTransfer.metadata.statut) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUpdateStatus(selectedTransfer.id, 'annule')}
+                      >
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Annuler
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
