@@ -6021,33 +6021,56 @@ export type Database = {
         Returns: Json
       }
       rpc_stock_record_movement: {
-        Args: {
-          p_agent_id?: string
-          p_emplacement_destination?: string
-          p_emplacement_source?: string
-          p_lot_destination_id?: string
-          p_lot_id: string
-          p_metadata?: Json
-          p_motif?: string
-          p_produit_id: string
-          p_quantite_mouvement: number
-          p_quantite_reelle?: number
-          p_reference_document?: string
-          p_reference_id?: string
-          p_reference_type?: string
-          p_type_mouvement: string
-        }
+        Args:
+          | {
+              p_agent_id?: string
+              p_emplacement_destination?: string
+              p_emplacement_source?: string
+              p_lot_destination_id?: string
+              p_lot_id: string
+              p_metadata?: Json
+              p_motif?: string
+              p_produit_id: string
+              p_quantite_mouvement: number
+              p_quantite_reelle?: number
+              p_reference_document?: string
+              p_reference_id?: string
+              p_reference_type?: string
+              p_type_mouvement: string
+            }
+          | {
+              p_emplacement_destination?: string
+              p_emplacement_source?: string
+              p_lot_id?: string
+              p_metadata?: Json
+              p_motif?: string
+              p_prix_unitaire?: number
+              p_produit_id: string
+              p_quantite_mouvement: number
+              p_reference_document?: string
+              p_reference_id?: string
+              p_reference_type?: string
+              p_type_mouvement: string
+            }
         Returns: Json
       }
       rpc_stock_update_movement: {
-        Args: {
-          p_movement_id: string
-          p_new_metadata?: Json
-          p_new_motif?: string
-          p_new_quantite_mouvement?: number
-          p_new_quantite_reelle?: number
-          p_new_reference_document?: string
-        }
+        Args:
+          | {
+              p_metadata?: Json
+              p_motif?: string
+              p_movement_id: string
+              p_quantite_mouvement?: number
+              p_reference_document?: string
+            }
+          | {
+              p_movement_id: string
+              p_new_metadata?: Json
+              p_new_motif?: string
+              p_new_quantite_mouvement?: number
+              p_new_quantite_reelle?: number
+              p_new_reference_document?: string
+            }
         Returns: Json
       }
       setup_cross_tenant_security_triggers: {
