@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clipboard, Package, ChartBar, TrendingUp } from 'lucide-react';
 import InventorySessions from '../InventorySessions';
@@ -7,8 +7,16 @@ import InventoryReconciliation from '../InventoryReconciliation';
 import InventoryReports from '../InventoryReports';
 
 const StockInventairesTab = () => {
+  const [activeTab, setActiveTab] = useState('sessions');
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('');
+
+  const handleViewSession = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    setActiveTab('saisie');
+  };
+
   return (
-    <Tabs defaultValue="sessions" className="space-y-6">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
       <TabsList>
         <TabsTrigger value="sessions">
           <div className="flex items-center gap-2">
@@ -37,11 +45,11 @@ const StockInventairesTab = () => {
       </TabsList>
       
       <TabsContent value="sessions">
-        <InventorySessions />
+        <InventorySessions onViewSession={handleViewSession} />
       </TabsContent>
       
       <TabsContent value="saisie">
-        <InventoryEntry />
+        <InventoryEntry selectedSessionId={selectedSessionId} />
       </TabsContent>
       
       <TabsContent value="reconciliation">

@@ -22,15 +22,25 @@ import {
 } from 'lucide-react';
 import { useInventoryEntry } from '@/hooks/useInventoryEntry';
 
-const InventoryEntry = () => {
+interface InventoryEntryProps {
+  selectedSessionId?: string;
+}
+
+const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) => {
   const { items, sessions, loading, saveCount: hookSaveCount, refetch } = useInventoryEntry();
-  const [selectedSession, setSelectedSession] = useState<string>('');
+  const [selectedSession, setSelectedSession] = useState<string>(selectedSessionId || '');
   const [scanMode, setScanMode] = useState<'scanner' | 'manuel'>('scanner');
   const [scannedCode, setScannedCode] = useState('');
   const [manualCode, setManualCode] = useState('');
   const [currentQuantity, setCurrentQuantity] = useState('');
   const [currentLocation, setCurrentLocation] = useState('');
   const [isScanning, setIsScanning] = useState(false);
+
+  useEffect(() => {
+    if (selectedSessionId) {
+      setSelectedSession(selectedSessionId);
+    }
+  }, [selectedSessionId]);
 
   useEffect(() => {
     if (selectedSession) {

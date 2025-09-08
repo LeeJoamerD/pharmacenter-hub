@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { 
@@ -23,13 +24,19 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { useInventorySessions } from '@/hooks/useInventorySessions';
+import { useInventorySessions, InventorySession } from '@/hooks/useInventorySessions';
 
-const InventorySessions = () => {
+interface InventorySessionsProps {
+  onViewSession?: (sessionId: string) => void;
+}
+
+const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('tous');
   const [selectedType, setSelectedType] = useState<string>('tous');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<InventorySession | null>(null);
   const [newSession, setNewSession] = useState({
     nom: '',
     description: '',
@@ -38,24 +45,37 @@ const InventorySessions = () => {
     secteurs: ['']
   });
 
-  const { sessions, loading, createSession, startSession } = useInventorySessions();
+  const { sessions, loading, createSession, startSession, stopSession, updateSession } = useInventorySessions();
 
   const handleViewSession = (sessionId: string) => {
-    console.log('Voir session:', sessionId);
-    // TODO: Navigate to session details view
+    if (onViewSession) {
+      onViewSession(sessionId);
+    }
   };
 
   const handleEditSession = (sessionId: string) => {
-    console.log('Modifier session:', sessionId);
-    // TODO: Open edit dialog or navigate to edit view
+    const session = sessions.find(s => s.id === sessionId);
+    if (session) {
+      setEditingSession(session);
+      setIsEditDialogOpen(true);
+    }
   };
 
   const handleStopSession = async (sessionId: string) => {
-    try {
-      // For now, we'll just log it - can be implemented later with a stopSession function
-      console.log('Arrêter session:', sessionId);
-    } catch (error) {
-      console.error('Erreur arrêt session:', error);
+    await stopSession(sessionId);
+  };
+
+  const handleUpdateSession = async () => {
+    if (editingSession) {
+      await updateSession(editingSession.id, {
+        nom: editingSession.nom,
+        description: editingSession.description,
+        type: editingSession.type,
+        responsable: editingSession.responsable,
+        secteurs: editingSession.secteurs
+      });
+      setIsEditDialogOpen(false);
+      setEditingSession(null);
     }
   };
 
@@ -256,6 +276,78 @@ const InventorySessions = () => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            
+            {/* Dialog de modification */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>Modifier la Session d'Inventaire</DialogTitle>
+                  <DialogDescription>
+                    Modifiez les informations de la session d'inventaire
+                  </DialogDescription>
+                </DialogHeader>
+                {editingSession && (
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="edit-nom" className="text-right">
+                        Nom
+                      </Label>
+                      <Input 
+                        id="edit-nom" 
+                        className="col-span-3" 
+                        value={editingSession.nom}
+                        onChange={(e) => setEditingSession(prev => prev ? { ...prev, nom: e.target.value } : null)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="edit-type" className="text-right">
+                        Type
+                      </Label>
+                      <Select 
+                        value={editingSession.type} 
+                        onValueChange={(value) => setEditingSession(prev => prev ? { ...prev, type: value as any } : null)}
+                      >
+                        <SelectTrigger className="col-span-3">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="complet">Complet</SelectItem>
+                          <SelectItem value="partiel">Partiel</SelectItem>
+                          <SelectItem value="cyclique">Cyclique</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="edit-responsable" className="text-right">
+                        Responsable
+                      </Label>
+                      <Input 
+                        id="edit-responsable" 
+                        className="col-span-3" 
+                        value={editingSession.responsable}
+                        onChange={(e) => setEditingSession(prev => prev ? { ...prev, responsable: e.target.value } : null)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="edit-description" className="text-right">
+                        Description
+                      </Label>
+                      <Textarea 
+                        id="edit-description" 
+                        className="col-span-3" 
+                        value={editingSession.description}
+                        onChange={(e) => setEditingSession(prev => prev ? { ...prev, description: e.target.value } : null)}
+                      />
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button type="submit" onClick={handleUpdateSession}>
+                    Modifier Session
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardHeader>
         <CardContent>
@@ -384,14 +476,31 @@ const InventorySessions = () => {
                           </Button>
                         )}
                         {session.statut === 'en_cours' && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleStopSession(session.id)}
-                            title="Arrêter la session"
-                          >
-                            <Square className="h-4 w-4" />
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                title="Arrêter la session"
+                              >
+                                <Square className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Arrêter la session</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Êtes-vous sûr de vouloir arrêter cette session d'inventaire ? Cette action terminera définitivement la session.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleStopSession(session.id)}>
+                                  Arrêter la session
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </div>
                     </TableCell>

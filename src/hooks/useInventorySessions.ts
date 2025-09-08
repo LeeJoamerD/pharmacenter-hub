@@ -210,6 +210,52 @@ export const useInventorySessions = () => {
     }
   };
 
+  const stopSession = async (sessionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('inventaire_sessions')
+        .update({ 
+          statut: 'terminee',
+          date_fin: new Date().toISOString()
+        })
+        .eq('id', sessionId)
+        .eq('tenant_id', tenantId);
+
+      if (error) throw error;
+
+      toast.success('Session arrêtée avec succès');
+      await fetchSessions();
+    } catch (error) {
+      console.error('Erreur arrêt session:', error);
+      toast.error('Erreur lors de l\'arrêt');
+    }
+  };
+
+  const updateSession = async (sessionId: string, sessionData: Partial<InventorySession>) => {
+    try {
+      const { error } = await supabase
+        .from('inventaire_sessions')
+        .update({
+          nom: sessionData.nom,
+          description: sessionData.description,
+          type: sessionData.type,
+          responsable: sessionData.responsable,
+          secteurs: sessionData.secteurs,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sessionId)
+        .eq('tenant_id', tenantId);
+
+      if (error) throw error;
+
+      toast.success('Session modifiée avec succès');
+      await fetchSessions();
+    } catch (error) {
+      console.error('Erreur modification session:', error);
+      toast.error('Erreur lors de la modification');
+    }
+  };
+
   useEffect(() => {
     fetchSessions();
   }, [tenantId]);
@@ -219,6 +265,8 @@ export const useInventorySessions = () => {
     loading,
     createSession,
     startSession,
+    stopSession,
+    updateSession,
     refetch: fetchSessions
   };
 };
