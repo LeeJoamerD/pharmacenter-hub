@@ -23,90 +23,49 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-
-interface InventorySession {
-  id: string;
-  nom: string;
-  description: string;
-  dateCreation: Date;
-  dateDebut?: Date;
-  dateFin?: Date;
-  statut: 'planifiée' | 'en_cours' | 'terminée' | 'suspendue';
-  type: 'complet' | 'partiel' | 'cyclique';
-  responsable: string;
-  participants: string[];
-  secteurs: string[];
-  progression: number;
-  produitsComptes: number;
-  produitsTotal: number;
-  ecarts: number;
-}
+import { useInventorySessions } from '@/hooks/useInventorySessions';
 
 const InventorySessions = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('tous');
   const [selectedType, setSelectedType] = useState<string>('tous');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newSession, setNewSession] = useState({
+    nom: '',
+    description: '',
+    type: 'complet',
+    responsable: '',
+    secteurs: ['']
+  });
 
-  // Données mockées pour les sessions d'inventaire
-  const sessions: InventorySession[] = [
-    {
-      id: '1',
-      nom: 'Inventaire Général Q1 2024',
-      description: 'Inventaire complet de tous les produits pharmaceutiques',
-      dateCreation: new Date('2024-01-01'),
-      dateDebut: new Date('2024-01-15'),
-      dateFin: new Date('2024-01-17'),
-      statut: 'terminée',
-      type: 'complet',
-      responsable: 'Marie Dubois',
-      participants: ['Jean Martin', 'Pierre Durand', 'Sophie Moreau'],
-      secteurs: ['Officine', 'Réserve', 'Frigo'],
-      progression: 100,
-      produitsComptes: 1250,
-      produitsTotal: 1250,
-      ecarts: 15
-    },
-    {
-      id: '2',
-      nom: 'Inventaire Cyclique Antibiotiques',
-      description: 'Contrôle périodique des antibiotiques',
-      dateCreation: new Date('2024-01-20'),
-      dateDebut: new Date('2024-01-25'),
-      statut: 'en_cours',
-      type: 'cyclique',
-      responsable: 'Jean Martin',
-      participants: ['Marie Dubois'],
-      secteurs: ['Officine'],
-      progression: 65,
-      produitsComptes: 78,
-      produitsTotal: 120,
-      ecarts: 3
-    },
-    {
-      id: '3',
-      nom: 'Inventaire Partiel Génériques',
-      description: 'Vérification des médicaments génériques',
-      dateCreation: new Date('2024-02-01'),
-      statut: 'planifiée',
-      type: 'partiel',
-      responsable: 'Sophie Moreau',
-      participants: ['Pierre Durand', 'Jean Martin'],
-      secteurs: ['Réserve'],
-      progression: 0,
-      produitsComptes: 0,
-      produitsTotal: 300,
-      ecarts: 0
+  const { sessions, loading, createSession, startSession } = useInventorySessions();
+
+  const handleCreateSession = async () => {
+    try {
+      await createSession({
+        nom: newSession.nom,
+        description: newSession.description,
+        type: newSession.type,
+        responsable: newSession.responsable,
+        secteurs: newSession.secteurs.filter(s => s.trim() !== '')
+      });
+      setIsCreateDialogOpen(false);
+      setNewSession({ nom: '', description: '', type: 'complet', responsable: '', secteurs: [''] });
+    } catch (error) {
+      console.error('Erreur création session:', error);
     }
-  ];
+  };
 
+  if (loading) {
+    return <div className="flex justify-center p-8">Chargement des sessions...</div>;
+  }
   const getStatusIcon = (statut: string) => {
     switch (statut) {
-      case 'planifiée':
+      case 'planifiee':
         return <Clock className="h-4 w-4 text-yellow-600" />;
       case 'en_cours':
         return <Play className="h-4 w-4 text-blue-600" />;
-      case 'terminée':
+      case 'terminee':
         return <CheckCircle className="h-4 w-4 text-green-600" />;
       case 'suspendue':
         return <XCircle className="h-4 w-4 text-red-600" />;
@@ -117,9 +76,9 @@ const InventorySessions = () => {
 
   const getStatusBadge = (statut: string) => {
     const colors = {
-      planifiée: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      planifiee: 'bg-yellow-100 text-yellow-800 border-yellow-200',
       en_cours: 'bg-blue-100 text-blue-800 border-blue-200',
-      terminée: 'bg-green-100 text-green-800 border-green-200',
+      terminee: 'bg-green-100 text-green-800 border-green-200',
       suspendue: 'bg-red-100 text-red-800 border-red-200'
     };
 
@@ -157,43 +116,43 @@ const InventorySessions = () => {
 
   return (
     <div className="space-y-6">
-      {/* Métriques des sessions */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Sessions Actives</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {sessions.filter(s => s.statut === 'en_cours').length}
-              </p>
-            </div>
-            <Play className="h-8 w-8 text-blue-600" />
-          </CardContent>
-        </Card>
+          {/* Métriques des sessions */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="flex items-center justify-between p-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Sessions Actives</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {sessions.filter(s => s.statut === 'en_cours').length}
+                  </p>
+                </div>
+                <Play className="h-8 w-8 text-blue-600" />
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Sessions Planifiées</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {sessions.filter(s => s.statut === 'planifiée').length}
-              </p>
-            </div>
-            <Clock className="h-8 w-8 text-yellow-600" />
-          </CardContent>
-        </Card>
+            <Card>
+              <CardContent className="flex items-center justify-between p-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Sessions Planifiées</p>
+                  <p className="text-2xl font-bold text-yellow-600">
+                    {sessions.filter(s => s.statut === 'planifiee').length}
+                  </p>
+                </div>
+                <Clock className="h-8 w-8 text-yellow-600" />
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Sessions Terminées</p>
-              <p className="text-2xl font-bold text-green-600">
-                {sessions.filter(s => s.statut === 'terminée').length}
-              </p>
-            </div>
-            <CheckCircle className="h-8 w-8 text-green-600" />
-          </CardContent>
-        </Card>
+            <Card>
+              <CardContent className="flex items-center justify-between p-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Sessions Terminées</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {sessions.filter(s => s.statut === 'terminee').length}
+                  </p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </CardContent>
+            </Card>
 
         <Card>
           <CardContent className="flex items-center justify-between p-4">
@@ -235,13 +194,19 @@ const InventorySessions = () => {
                     <Label htmlFor="nom" className="text-right">
                       Nom
                     </Label>
-                    <Input id="nom" className="col-span-3" placeholder="Nom de la session" />
+                    <Input 
+                      id="nom" 
+                      className="col-span-3" 
+                      placeholder="Nom de la session"
+                      value={newSession.nom}
+                      onChange={(e) => setNewSession(prev => ({ ...prev, nom: e.target.value }))}
+                    />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="type" className="text-right">
                       Type
                     </Label>
-                    <Select>
+                    <Select value={newSession.type} onValueChange={(value) => setNewSession(prev => ({ ...prev, type: value }))}>
                       <SelectTrigger className="col-span-3">
                         <SelectValue placeholder="Type d'inventaire" />
                       </SelectTrigger>
@@ -256,11 +221,17 @@ const InventorySessions = () => {
                     <Label htmlFor="description" className="text-right">
                       Description
                     </Label>
-                    <Textarea id="description" className="col-span-3" placeholder="Description de la session" />
+                    <Textarea 
+                      id="description" 
+                      className="col-span-3" 
+                      placeholder="Description de la session"
+                      value={newSession.description}
+                      onChange={(e) => setNewSession(prev => ({ ...prev, description: e.target.value }))}
+                    />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" onClick={() => setIsCreateDialogOpen(false)}>
+                  <Button type="submit" onClick={handleCreateSession}>
                     Créer Session
                   </Button>
                 </DialogFooter>
@@ -288,9 +259,9 @@ const InventorySessions = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="tous">Tous les statuts</SelectItem>
-                <SelectItem value="planifiée">Planifiée</SelectItem>
+                <SelectItem value="planifiee">Planifiée</SelectItem>
                 <SelectItem value="en_cours">En cours</SelectItem>
-                <SelectItem value="terminée">Terminée</SelectItem>
+                <SelectItem value="terminee">Terminée</SelectItem>
                 <SelectItem value="suspendue">Suspendue</SelectItem>
               </SelectContent>
             </Select>
@@ -373,8 +344,8 @@ const InventorySessions = () => {
                         <Button variant="ghost" size="sm">
                           <Edit className="h-4 w-4" />
                         </Button>
-                        {session.statut === 'planifiée' && (
-                          <Button variant="ghost" size="sm">
+                        {session.statut === 'planifiee' && (
+                          <Button variant="ghost" size="sm" onClick={() => startSession(session.id)}>
                             <Play className="h-4 w-4" />
                           </Button>
                         )}
