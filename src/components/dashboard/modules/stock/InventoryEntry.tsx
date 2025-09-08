@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { 
   Scan,
   Package,
@@ -18,16 +20,18 @@ import {
   Search,
   Trash2,
   Camera,
-  Keyboard
+  Keyboard,
+  Loader2
 } from 'lucide-react';
-import { useInventoryEntry } from '@/hooks/useInventoryEntry';
+import { useInventoryEntry, InventoryItem } from '@/hooks/useInventoryEntry';
+import { toast } from 'sonner';
 
 interface InventoryEntryProps {
   selectedSessionId?: string;
 }
 
 const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) => {
-  const { items, sessions, loading, saveCount: hookSaveCount, refetch } = useInventoryEntry();
+  const { items, sessions, loading, saveCount: hookSaveCount, resetCount: hookResetCount, refetch } = useInventoryEntry();
   const [selectedSession, setSelectedSession] = useState<string>(selectedSessionId || '');
   const [scanMode, setScanMode] = useState<'scanner' | 'manuel'>('scanner');
   const [scannedCode, setScannedCode] = useState('');
@@ -35,6 +39,18 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
   const [currentQuantity, setCurrentQuantity] = useState('');
   const [currentLocation, setCurrentLocation] = useState('');
   const [isScanning, setIsScanning] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [showCameraDialog, setShowCameraDialog] = useState(false);
+  const [resetItemId, setResetItemId] = useState<string | null>(null);
+
+  // Create a map for efficient barcode lookups
+  const itemsByBarcode = useMemo(() => {
+    const map = new Map<string, InventoryItem>();
+    items.forEach(item => map.set(item.codeBarre, item));
+    return map;
+  }, [items]);
 
   useEffect(() => {
     if (selectedSessionId) {
@@ -45,6 +61,12 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
   useEffect(() => {
     if (selectedSession) {
       refetch(selectedSession);
+      // Reset form when session changes
+      setSelectedItem(null);
+      setCurrentQuantity('');
+      setCurrentLocation('');
+      setScannedCode('');
+      setManualCode('');
     }
   }, [selectedSession, refetch]);
 
@@ -64,22 +86,78 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
   };
 
   const processScannedItem = (code: string) => {
-    const item = items.find(item => item.codeBarre === code);
-    if (item && item.statut === 'non_compte') {
-      // Simuler la sélection de l'élément pour comptage
-      console.log(`Produit trouvé: ${item.produit} - Lot: ${item.lot}`);
+    const item = itemsByBarcode.get(code);
+    if (item) {
+      if (item.statut === 'non_compte') {
+        setSelectedItem(item);
+        setCurrentLocation(item.emplacementTheorique);
+        setCurrentQuantity(''); // Let user enter quantity
+      } else {
+        // Item already counted, show current values for editing
+        setSelectedItem(item);
+        setCurrentQuantity(item.quantiteComptee.toString());
+        setCurrentLocation(item.emplacementReel);
+      }
+    } else {
+      // Item not found in session
+      toast.error('Produit non trouvé dans cette session d\'inventaire');
+    }
+  };
+
+  const handleSelectItem = (item: InventoryItem) => {
+    setSelectedItem(item);
+    setCurrentLocation(item.emplacementReel);
+    if (item.statut !== 'non_compte') {
+      setCurrentQuantity(item.quantiteComptee.toString());
+    } else {
+      setCurrentQuantity('');
     }
   };
 
   const saveCount = async () => {
-    if (scannedCode && currentQuantity) {
-      const item = items.find(item => item.codeBarre === scannedCode);
-      if (item) {
-        await hookSaveCount(item.id, parseInt(currentQuantity), currentLocation || item.emplacementTheorique);
-        setCurrentQuantity('');
-        setCurrentLocation('');
-        setScannedCode('');
-      }
+    if (!selectedItem || !currentQuantity || !selectedSession) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const quantity = parseInt(currentQuantity);
+      const location = currentLocation || selectedItem.emplacementTheorique;
+      
+      await hookSaveCount(selectedItem.id, quantity, location, selectedSession);
+      
+      // Reset form after successful save
+      setSelectedItem(null);
+      setCurrentQuantity('');
+      setCurrentLocation('');
+      setScannedCode('');
+      setManualCode('');
+    } catch (error) {
+      // Error handled in hook
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const resetForm = () => {
+    setSelectedItem(null);
+    setCurrentQuantity('');
+    setCurrentLocation('');
+    setScannedCode('');
+    setManualCode('');
+  };
+
+  const handleResetCount = async (itemId: string) => {
+    if (!selectedSession) return;
+    
+    setIsResetting(true);
+    try {
+      await hookResetCount(itemId, selectedSession);
+      setResetItemId(null);
+    } catch (error) {
+      // Error handled in hook
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -225,9 +303,50 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
                         autoFocus
                       />
                     </div>
-                    <Button variant="outline" onClick={() => setIsScanning(!isScanning)}>
-                      <Camera className="h-4 w-4" />
-                    </Button>
+                     <Dialog open={showCameraDialog} onOpenChange={setShowCameraDialog}>
+                       <DialogTrigger asChild>
+                         <Button variant="outline">
+                           <Camera className="h-4 w-4" />
+                         </Button>
+                       </DialogTrigger>
+                       <DialogContent>
+                         <DialogHeader>
+                           <DialogTitle>Scanner avec Caméra</DialogTitle>
+                           <DialogDescription>
+                             Fonctionnalité de scan via caméra disponible prochainement. 
+                             En attendant, utilisez le champ de saisie pour entrer le code-barres manuellement.
+                           </DialogDescription>
+                         </DialogHeader>
+                         <div className="mt-4">
+                           <Label htmlFor="camera-manual-input">Code-barres</Label>
+                           <div className="flex gap-2 mt-1">
+                             <Input
+                               id="camera-manual-input"
+                               placeholder="Entrez le code-barres..."
+                               onKeyDown={(e) => {
+                                 if (e.key === 'Enter' && e.currentTarget.value) {
+                                   processScannedItem(e.currentTarget.value);
+                                   setShowCameraDialog(false);
+                                   e.currentTarget.value = '';
+                                 }
+                               }}
+                             />
+                             <Button 
+                               onClick={() => {
+                                 const input = document.getElementById('camera-manual-input') as HTMLInputElement;
+                                 if (input?.value) {
+                                   processScannedItem(input.value);
+                                   setShowCameraDialog(false);
+                                   input.value = '';
+                                 }
+                               }}
+                             >
+                               <Search className="h-4 w-4" />
+                             </Button>
+                           </div>
+                         </div>
+                       </DialogContent>
+                     </Dialog>
                   </div>
                 </div>
               </div>
@@ -250,39 +369,52 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
               </div>
             )}
 
+            {selectedItem && (
+              <Alert>
+                <Package className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Article sélectionné:</strong> {selectedItem.produit} - Lot: {selectedItem.lot}
+                  <br />
+                  <strong>Quantité théorique:</strong> {selectedItem.quantiteTheorique} {selectedItem.unite}
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="quantity">Quantité Comptée</Label>
                 <Input
                   id="quantity"
                   type="number"
+                  min="0"
                   value={currentQuantity}
                   onChange={(e) => setCurrentQuantity(e.target.value)}
                   placeholder="Quantité réelle..."
+                  disabled={!selectedItem}
                 />
               </div>
               <div>
-                <Label htmlFor="location">Emplacement (optionnel)</Label>
+                <Label htmlFor="location">Emplacement</Label>
                 <Input
                   id="location"
                   value={currentLocation}
                   onChange={(e) => setCurrentLocation(e.target.value)}
                   placeholder="Emplacement réel..."
+                  disabled={!selectedItem}
                 />
               </div>
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={saveCount} disabled={!currentQuantity || !scannedCode}>
-                <Save className="mr-2 h-4 w-4" />
-                Enregistrer
+              <Button 
+                onClick={saveCount} 
+                disabled={!selectedItem || !currentQuantity || isSaving || !selectedSession}
+              >
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {!isSaving && <Save className="mr-2 h-4 w-4" />}
+                {isSaving ? 'Enregistrement...' : 'Enregistrer'}
               </Button>
-              <Button variant="outline" onClick={() => {
-                setCurrentQuantity('');
-                setCurrentLocation('');
-                setScannedCode('');
-                setManualCode('');
-              }}>
+              <Button variant="outline" onClick={resetForm} disabled={isSaving}>
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Réinitialiser
               </Button>
@@ -357,19 +489,52 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          {item.statut === 'non_compte' && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => setScannedCode(item.codeBarre)}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleSelectItem(item)}
+                            disabled={isSaving || isResetting}
+                            title={item.statut === 'non_compte' ? 'Compter cet article' : 'Modifier le comptage'}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
                           {item.statut !== 'non_compte' && (
-                            <Button variant="ghost" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  disabled={isSaving || isResetting}
+                                  title="Réinitialiser le comptage"
+                                >
+                                  {isResetting && resetItemId === item.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Réinitialiser le comptage</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Êtes-vous sûr de vouloir réinitialiser le comptage pour "{item.produit}" ?
+                                    Cette action effacera la quantité comptée et remettra le statut à "non compté".
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => {
+                                      setResetItemId(item.id);
+                                      handleResetCount(item.id);
+                                    }}
+                                  >
+                                    Réinitialiser
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           )}
                         </div>
                       </TableCell>

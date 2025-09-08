@@ -46,10 +46,24 @@ export const useInventoryEntry = () => {
         return;
       }
 
+      // Get current user's tenant_id for multi-tenancy
+      const { data: userData } = await supabase.auth.getUser();
+      const { data: personnelData } = await supabase
+        .from('personnel')
+        .select('tenant_id')
+        .eq('auth_user_id', userData.user?.id)
+        .maybeSingle();
+
+      if (!personnelData?.tenant_id) {
+        toast.error('Session utilisateur non valide');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('inventaire_items')
         .select('*')
         .eq('session_id', sessionId)
+        .eq('tenant_id', personnelData.tenant_id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -96,22 +110,33 @@ export const useInventoryEntry = () => {
     }
   };
 
-  const saveCount = async (itemId: string, count: number, location: string) => {
+  const saveCount = async (itemId: string, count: number, location: string, sessionId: string) => {
     try {
       // Get current user personnel
       const { data: userData } = await supabase.auth.getUser();
       const { data: personnelData } = await supabase
         .from('personnel')
-        .select('id, noms, prenoms')
+        .select('id, noms, prenoms, tenant_id')
         .eq('auth_user_id', userData.user?.id)
-        .single();
+        .maybeSingle();
 
-      const operateurNom = personnelData ? `${personnelData.prenoms} ${personnelData.noms}` : 'Utilisateur';
+      if (!personnelData) {
+        toast.error('Personnel non trouvé');
+        return;
+      }
+
+      const operateurNom = `${personnelData.prenoms} ${personnelData.noms}`;
 
       // Find the item to get its theoretical quantity
       const item = items.find(i => i.id === itemId);
       if (!item) {
         toast.error('Article non trouvé');
+        return;
+      }
+
+      // Validate quantity
+      if (count < 0) {
+        toast.error('La quantité ne peut pas être négative');
         return;
       }
 
@@ -124,10 +149,11 @@ export const useInventoryEntry = () => {
           emplacement_reel: location,
           statut: statut,
           date_comptage: new Date().toISOString(),
-          operateur_id: personnelData?.id,
+          operateur_id: personnelData.id,
           operateur_nom: operateurNom
         })
-        .eq('id', itemId);
+        .eq('id', itemId)
+        .eq('tenant_id', personnelData.tenant_id);
 
       if (error) throw error;
 
@@ -145,11 +171,100 @@ export const useInventoryEntry = () => {
           : item
       ));
 
+      // Update session aggregates
+      await updateSessionAggregates(sessionId, personnelData.tenant_id);
+
       toast.success('Comptage sauvegardé');
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
       toast.error('Erreur lors de la sauvegarde du comptage');
       throw error;
+    }
+  };
+
+  const resetCount = async (itemId: string, sessionId: string) => {
+    try {
+      // Get current user personnel
+      const { data: userData } = await supabase.auth.getUser();
+      const { data: personnelData } = await supabase
+        .from('personnel')
+        .select('tenant_id')
+        .eq('auth_user_id', userData.user?.id)
+        .maybeSingle();
+
+      if (!personnelData) {
+        toast.error('Personnel non trouvé');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('inventaire_items')
+        .update({
+          quantite_comptee: null,
+          emplacement_reel: null,
+          statut: 'non_compte',
+          date_comptage: null,
+          operateur_id: null,
+          operateur_nom: null
+        })
+        .eq('id', itemId)
+        .eq('tenant_id', personnelData.tenant_id);
+
+      if (error) throw error;
+
+      // Update local state
+      setItems(prev => prev.map(item => 
+        item.id === itemId 
+          ? { 
+              ...item, 
+              quantiteComptee: 0, 
+              emplacementReel: item.emplacementTheorique,
+              statut: 'non_compte' as 'non_compte' | 'compte' | 'ecart' | 'valide',
+              dateComptage: undefined,
+              operateur: ''
+            }
+          : item
+      ));
+
+      // Update session aggregates
+      await updateSessionAggregates(sessionId, personnelData.tenant_id);
+
+      toast.success('Comptage réinitialisé');
+    } catch (error) {
+      console.error('Erreur lors de la réinitialisation:', error);
+      toast.error('Erreur lors de la réinitialisation du comptage');
+      throw error;
+    }
+  };
+
+  const updateSessionAggregates = async (sessionId: string, tenantId: string) => {
+    try {
+      // Recalculate aggregates from current items
+      const { data: sessionItems } = await supabase
+        .from('inventaire_items')
+        .select('statut')
+        .eq('session_id', sessionId)
+        .eq('tenant_id', tenantId);
+
+      if (sessionItems) {
+        const total = sessionItems.length;
+        const counted = sessionItems.filter(item => item.statut !== 'non_compte').length;
+        const ecarts = sessionItems.filter(item => item.statut === 'ecart').length;
+        const progression = total > 0 ? Math.round((counted / total) * 100) : 0;
+
+        await supabase
+          .from('inventaire_sessions')
+          .update({
+            produits_total: total,
+            produits_comptes: counted,
+            ecarts: ecarts,
+            progression: progression
+          })
+          .eq('id', sessionId)
+          .eq('tenant_id', tenantId);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour des agrégats:', error);
     }
   };
 
@@ -164,6 +279,7 @@ export const useInventoryEntry = () => {
     loading,
     recordEntry,
     saveCount,
+    resetCount,
     refetch: fetchInventoryItems
   };
 };
