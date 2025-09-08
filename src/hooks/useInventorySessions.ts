@@ -89,13 +89,70 @@ export const useInventorySessions = () => {
   };
 
   const createSession = async (sessionData: any) => {
-    toast.success('Fonctionnalité en cours d\'implémentation');
-    return Promise.resolve();
+    try {
+      if (!tenantId) {
+        toast.error('Aucun tenant trouvé');
+        return;
+      }
+
+      // Get current user personnel
+      const { data: personnelData, error: personnelError } = await supabase
+        .from('personnel')
+        .select('id')
+        .eq('auth_user_id', (await supabase.auth.getUser()).data.user?.id)
+        .single();
+
+      if (personnelError || !personnelData) {
+        toast.error('Utilisateur non trouvé');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('inventaire_sessions')
+        .insert({
+          tenant_id: tenantId,
+          nom: sessionData.nom,
+          description: sessionData.description,
+          type: sessionData.type,
+          responsable: sessionData.responsable,
+          secteurs: sessionData.secteurs,
+          agent_id: personnelData.id,
+          statut: 'planifiee',
+          progression: 0,
+          produits_comptes: 0,
+          produits_total: 0,
+          ecarts: 0
+        });
+
+      if (error) throw error;
+
+      toast.success('Session d\'inventaire créée avec succès');
+      await fetchSessions();
+    } catch (error) {
+      console.error('Erreur création session:', error);
+      toast.error('Erreur lors de la création de la session');
+    }
   };
 
   const startSession = async (sessionId: string) => {
-    toast.success('Session démarrée (mode démo)');
-    return Promise.resolve();
+    try {
+      const { error } = await supabase
+        .from('inventaire_sessions')
+        .update({ 
+          statut: 'en_cours',
+          date_debut: new Date().toISOString()
+        })
+        .eq('id', sessionId)
+        .eq('tenant_id', tenantId);
+
+      if (error) throw error;
+
+      toast.success('Session démarrée avec succès');
+      await fetchSessions();
+    } catch (error) {
+      console.error('Erreur démarrage session:', error);
+      toast.error('Erreur lors du démarrage');
+    }
   };
 
   useEffect(() => {
