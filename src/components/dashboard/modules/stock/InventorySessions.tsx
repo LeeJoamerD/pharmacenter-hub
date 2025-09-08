@@ -40,6 +40,25 @@ const InventorySessions = () => {
 
   const { sessions, loading, createSession, startSession } = useInventorySessions();
 
+  const handleViewSession = (sessionId: string) => {
+    console.log('Voir session:', sessionId);
+    // TODO: Navigate to session details view
+  };
+
+  const handleEditSession = (sessionId: string) => {
+    console.log('Modifier session:', sessionId);
+    // TODO: Open edit dialog or navigate to edit view
+  };
+
+  const handleStopSession = async (sessionId: string) => {
+    try {
+      // For now, we'll just log it - can be implemented later with a stopSession function
+      console.log('Arrêter session:', sessionId);
+    } catch (error) {
+      console.error('Erreur arrêt session:', error);
+    }
+  };
+
   const handleCreateSession = async () => {
     try {
       await createSession({
@@ -338,19 +357,39 @@ const InventorySessions = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleViewSession(session.id)}
+                          title="Voir les détails"
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleEditSession(session.id)}
+                          title="Modifier la session"
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
                         {session.statut === 'planifiee' && (
-                          <Button variant="ghost" size="sm" onClick={() => startSession(session.id)}>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => startSession(session.id)}
+                            title="Démarrer la session"
+                          >
                             <Play className="h-4 w-4" />
                           </Button>
                         )}
                         {session.statut === 'en_cours' && (
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleStopSession(session.id)}
+                            title="Arrêter la session"
+                          >
                             <Square className="h-4 w-4" />
                           </Button>
                         )}
