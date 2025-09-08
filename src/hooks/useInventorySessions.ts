@@ -31,25 +31,8 @@ export const useInventorySessions = () => {
       setLoading(true);
       
       if (!tenantId) {
-        // Mock data when no tenant
-        const mockSessions: InventorySession[] = [
-          {
-            id: '1',
-            nom: 'Inventaire Test',
-            description: 'Session de test',
-            dateCreation: new Date(),
-            statut: 'planifiee',
-            type: 'complet',
-            responsable: 'Test User',
-            participants: [],
-            secteurs: ['Test'],
-            progression: 0,
-            produitsComptes: 0,
-            produitsTotal: 0,
-            ecarts: 0
-          }
-        ];
-        setSessions(mockSessions);
+        console.warn('Aucun tenant trouvé, impossible de charger les sessions d\'inventaire');
+        setSessions([]);
         setLoading(false);
         return;
       }
@@ -129,57 +112,7 @@ export const useInventorySessions = () => {
 
       if (error) throw error;
 
-      // Ajouter quelques articles de test à la session
-      const mockItems = [
-        {
-          tenant_id: tenantId,
-          session_id: sessionInserted.id,
-          code_barre: '3401353460101',
-          produit_nom: 'Paracétamol 1000mg',
-          lot_numero: 'LOT2024001',
-          emplacement_theorique: 'A1-B2',
-          quantite_theorique: 50,
-          unite: 'boîtes',
-          statut: 'non_compte'
-        },
-        {
-          tenant_id: tenantId,
-          session_id: sessionInserted.id,
-          code_barre: '3401353460201',
-          produit_nom: 'Amoxicilline 500mg',
-          lot_numero: 'LOT2024002',
-          emplacement_theorique: 'B3-C1',
-          quantite_theorique: 30,
-          unite: 'boîtes',
-          statut: 'non_compte'
-        },
-        {
-          tenant_id: tenantId,
-          session_id: sessionInserted.id,
-          code_barre: '3401053468451',
-          produit_nom: 'Aspirine 100mg',
-          lot_numero: 'LOT2024003',
-          emplacement_theorique: 'C1-D3',
-          quantite_theorique: 25,
-          unite: 'boîtes',
-          statut: 'non_compte'
-        }
-      ];
-
-      const { error: itemsError } = await supabase
-        .from('inventaire_items')
-        .insert(mockItems);
-
-      if (itemsError) {
-        console.error('Erreur ajout articles:', itemsError);
-        // Continue même si l'ajout des articles échoue
-      }
-
-      // Mettre à jour le total de produits dans la session
-      await supabase
-        .from('inventaire_sessions')
-        .update({ produits_total: mockItems.length })
-        .eq('id', sessionInserted.id);
+      // La session est créée vide - les éléments seront ajoutés par initialisation
 
       toast.success('Session d\'inventaire créée avec succès');
       await fetchSessions();

@@ -6254,6 +6254,10 @@ export type Database = {
           tenant_id: string
         }[]
       }
+      init_inventaire_items: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
       is_system_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean

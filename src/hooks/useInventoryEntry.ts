@@ -268,6 +268,33 @@ export const useInventoryEntry = () => {
     }
   };
 
+  const initializeSessionItems = async (sessionId: string) => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase.rpc('init_inventaire_items', {
+        p_session_id: sessionId
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; error?: string; message?: string; inserted_count?: number };
+
+      if (!result?.success) {
+        toast.error(result?.error || 'Erreur lors de l\'initialisation');
+        return;
+      }
+
+      toast.success(result.message || 'Session initialisée avec succès');
+      await fetchInventoryItems(sessionId);
+    } catch (error) {
+      console.error('Erreur lors de l\'initialisation:', error);
+      toast.error('Erreur lors de l\'initialisation de la session');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchSessions();
     fetchInventoryItems();
@@ -280,6 +307,7 @@ export const useInventoryEntry = () => {
     recordEntry,
     saveCount,
     resetCount,
+    initializeSessionItems,
     refetch: fetchInventoryItems
   };
 };

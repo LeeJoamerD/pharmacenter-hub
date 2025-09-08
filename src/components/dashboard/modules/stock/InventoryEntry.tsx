@@ -31,7 +31,15 @@ interface InventoryEntryProps {
 }
 
 const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) => {
-  const { items, sessions, loading, saveCount: hookSaveCount, resetCount: hookResetCount, refetch } = useInventoryEntry();
+  const { 
+    items, 
+    sessions, 
+    loading, 
+    saveCount: hookSaveCount, 
+    resetCount: hookResetCount, 
+    initializeSessionItems, 
+    refetch 
+  } = useInventoryEntry();
   const [selectedSession, setSelectedSession] = useState<string>(selectedSessionId || '');
   const [scanMode, setScanMode] = useState<'scanner' | 'manuel'>('scanner');
   const [scannedCode, setScannedCode] = useState('');
@@ -426,124 +434,169 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
       {/* Liste des éléments */}
       <Card>
         <CardHeader>
-          <CardTitle>Éléments à Compter</CardTitle>
-          <CardDescription>Liste des produits de la session d'inventaire en cours</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Éléments à Compter</CardTitle>
+              <CardDescription>Liste des produits de la session d'inventaire en cours</CardDescription>
+            </div>
+            {selectedSession && items.length === 0 && !loading && (
+              <Button 
+                onClick={() => initializeSessionItems(selectedSession)}
+                variant="outline"
+                size="sm"
+                disabled={loading}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Initialiser les éléments
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Produit</TableHead>
-                  <TableHead>Lot</TableHead>
-                  <TableHead>Emplacement</TableHead>
-                  <TableHead>Qté Théorique</TableHead>
-                  <TableHead>Qté Comptée</TableHead>
-                  <TableHead>Écart</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((item) => {
-                  const ecart = item.quantiteComptee !== undefined 
-                    ? item.quantiteComptee - item.quantiteTheorique 
-                    : 0;
-                  
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(item.statut)}
-                          {getStatusBadge(item.statut)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium">{item.produit}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{item.lot}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="text-sm">{item.emplacementReel}</div>
-                          {item.emplacementReel !== item.emplacementTheorique && (
-                            <div className="text-xs text-muted-foreground">
-                              Théorique: {item.emplacementTheorique}
-                            </div>
+          {/* Loading state */}
+          {loading && (
+            <div className="text-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+              <p className="text-muted-foreground">Chargement des éléments...</p>
+            </div>
+          )}
+
+          {/* Empty state - no session selected */}
+          {!selectedSession && !loading && (
+            <div className="text-center py-8">
+              <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">Veuillez sélectionner une session d'inventaire</p>
+            </div>
+          )}
+
+          {/* Empty state - session selected but no items */}
+          {selectedSession && !loading && items.length === 0 && (
+            <div className="text-center py-8">
+              <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground mb-4">Aucun élément trouvé pour cette session</p>
+              <p className="text-sm text-muted-foreground">
+                Utilisez le bouton "Initialiser les éléments" pour créer les articles depuis le stock actuel
+              </p>
+            </div>
+          )}
+
+          {/* Items table */}
+          {!loading && items.length > 0 && (
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Produit</TableHead>
+                    <TableHead>Lot</TableHead>
+                    <TableHead>Emplacement</TableHead>
+                    <TableHead>Qté Théorique</TableHead>
+                    <TableHead>Qté Comptée</TableHead>
+                    <TableHead>Écart</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item) => {
+                    const ecart = item.quantiteComptee !== undefined 
+                      ? item.quantiteComptee - item.quantiteTheorique 
+                      : 0;
+                    
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(item.statut)}
+                            {getStatusBadge(item.statut)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">{item.produit}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{item.lot}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="text-sm">{item.emplacementReel}</div>
+                            {item.emplacementReel !== item.emplacementTheorique && (
+                              <div className="text-xs text-muted-foreground">
+                                Théorique: {item.emplacementTheorique}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{item.quantiteTheorique} {item.unite}</TableCell>
+                        <TableCell>
+                          {item.quantiteComptee !== undefined ? (
+                            <span>{item.quantiteComptee} {item.unite}</span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{item.quantiteTheorique} {item.unite}</TableCell>
-                      <TableCell>
-                        {item.quantiteComptee !== undefined ? (
-                          <span>{item.quantiteComptee} {item.unite}</span>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {ecart !== 0 && (
-                          <span className={ecart > 0 ? 'text-green-600' : 'text-red-600'}>
-                            {ecart > 0 ? '+' : ''}{ecart}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleSelectItem(item)}
-                            disabled={isSaving || isResetting}
-                            title={item.statut === 'non_compte' ? 'Compter cet article' : 'Modifier le comptage'}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                          {item.statut !== 'non_compte' && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  disabled={isSaving || isResetting}
-                                  title="Réinitialiser le comptage"
-                                >
-                                  {isResetting && resetItemId === item.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Réinitialiser le comptage</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Êtes-vous sûr de vouloir réinitialiser le comptage pour "{item.produit}" ?
-                                    Cette action effacera la quantité comptée et remettra le statut à "non compté".
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => {
-                                      setResetItemId(item.id);
-                                      handleResetCount(item.id);
-                                    }}
+                        </TableCell>
+                        <TableCell>
+                          {ecart !== 0 && (
+                            <span className={ecart > 0 ? 'text-green-600' : 'text-red-600'}>
+                              {ecart > 0 ? '+' : ''}{ecart}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleSelectItem(item)}
+                              disabled={isSaving || isResetting}
+                              title={item.statut === 'non_compte' ? 'Compter cet article' : 'Modifier le comptage'}
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                            {item.statut !== 'non_compte' && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    disabled={isSaving || isResetting}
+                                    title="Réinitialiser le comptage"
                                   >
-                                    Réinitialiser
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                                    {isResetting && resetItemId === item.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Réinitialiser le comptage</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Êtes-vous sûr de vouloir réinitialiser le comptage pour "{item.produit}" ?
+                                      Cette action effacera la quantité comptée et remettra le statut à "non compté".
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => {
+                                        setResetItemId(item.id);
+                                        handleResetCount(item.id);
+                                      }}
+                                    >
+                                      Réinitialiser
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
