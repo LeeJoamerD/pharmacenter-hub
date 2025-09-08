@@ -20,78 +20,23 @@ import {
   Camera,
   Keyboard
 } from 'lucide-react';
-
-interface InventoryItem {
-  id: string;
-  codeBarre: string;
-  produit: string;
-  lot: string;
-  emplacementTheorique: string;
-  emplacementReel: string;
-  quantiteTheorique: number;
-  quantiteComptee?: number;
-  unite: string;
-  statut: 'non_compte' | 'compte' | 'ecart';
-  dateComptage?: Date;
-  operateur?: string;
-}
+import { useInventoryEntry } from '@/hooks/useInventoryEntry';
 
 const InventoryEntry = () => {
+  const { items, sessions, loading, saveCount: hookSaveCount, refetch } = useInventoryEntry();
   const [selectedSession, setSelectedSession] = useState<string>('');
   const [scanMode, setScanMode] = useState<'scanner' | 'manuel'>('scanner');
   const [scannedCode, setScannedCode] = useState('');
   const [manualCode, setManualCode] = useState('');
   const [currentQuantity, setCurrentQuantity] = useState('');
   const [currentLocation, setCurrentLocation] = useState('');
-  const [items, setItems] = useState<InventoryItem[]>([]);
   const [isScanning, setIsScanning] = useState(false);
 
-  // Données mockées pour les éléments d'inventaire
-  const mockItems: InventoryItem[] = [
-    {
-      id: '1',
-      codeBarre: '3401028310045',
-      produit: 'Paracétamol 500mg',
-      lot: 'LOT001',
-      emplacementTheorique: 'A1-B2',
-      emplacementReel: 'A1-B2',
-      quantiteTheorique: 50,
-      quantiteComptee: 48,
-      unite: 'boîtes',
-      statut: 'ecart',
-      dateComptage: new Date(),
-      operateur: 'Marie Dubois'
-    },
-    {
-      id: '2',
-      codeBarre: '3401056158057',
-      produit: 'Ibuprofène 200mg',
-      lot: 'LOT002',
-      emplacementTheorique: 'B2-C1',
-      emplacementReel: 'B2-C1',
-      quantiteTheorique: 30,
-      quantiteComptee: 30,
-      unite: 'boîtes',
-      statut: 'compte',
-      dateComptage: new Date(),
-      operateur: 'Marie Dubois'
-    },
-    {
-      id: '3',
-      codeBarre: '3401053468451',
-      produit: 'Aspirine 100mg',
-      lot: 'LOT003',
-      emplacementTheorique: 'C1-D3',
-      emplacementReel: 'C1-D3',
-      quantiteTheorique: 25,
-      unite: 'boîtes',
-      statut: 'non_compte'
-    }
-  ];
-
   useEffect(() => {
-    setItems(mockItems);
-  }, []);
+    if (selectedSession) {
+      refetch(selectedSession);
+    }
+  }, [selectedSession, refetch]);
 
   const handleScannerInput = (value: string) => {
     setScannedCode(value);
@@ -116,27 +61,15 @@ const InventoryEntry = () => {
     }
   };
 
-  const saveCount = () => {
+  const saveCount = async () => {
     if (scannedCode && currentQuantity) {
-      const updatedItems = items.map(item => {
-        if (item.codeBarre === scannedCode) {
-          const quantite = parseInt(currentQuantity);
-          return {
-            ...item,
-            quantiteComptee: quantite,
-            emplacementReel: currentLocation || item.emplacementTheorique,
-            statut: (quantite === item.quantiteTheorique ? 'compte' : 'ecart') as InventoryItem['statut'],
-            dateComptage: new Date(),
-            operateur: 'Utilisateur Actuel'
-          };
-        }
-        return item;
-      });
-      
-      setItems(updatedItems);
-      setCurrentQuantity('');
-      setCurrentLocation('');
-      setScannedCode('');
+      const item = items.find(item => item.codeBarre === scannedCode);
+      if (item) {
+        await hookSaveCount(item.id, parseInt(currentQuantity), currentLocation || item.emplacementTheorique);
+        setCurrentQuantity('');
+        setCurrentLocation('');
+        setScannedCode('');
+      }
     }
   };
 
@@ -191,8 +124,11 @@ const InventoryEntry = () => {
                 <SelectValue placeholder="Sélectionner une session" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="session1">Inventaire Général Q1 2024</SelectItem>
-                <SelectItem value="session2">Inventaire Cyclique Antibiotiques</SelectItem>
+                {sessions.map((session) => (
+                  <SelectItem key={session.id} value={session.id}>
+                    {session.nom}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </CardContent>
@@ -327,7 +263,7 @@ const InventoryEntry = () => {
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={saveCount} disabled={!currentQuantity}>
+              <Button onClick={saveCount} disabled={!currentQuantity || !scannedCode}>
                 <Save className="mr-2 h-4 w-4" />
                 Enregistrer
               </Button>
