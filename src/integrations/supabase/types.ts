@@ -1792,6 +1792,104 @@ export type Database = {
           },
         ]
       }
+      inventaire_items: {
+        Row: {
+          code_barre: string
+          created_at: string
+          date_comptage: string | null
+          emplacement_reel: string | null
+          emplacement_theorique: string
+          id: string
+          lot_id: string | null
+          lot_numero: string | null
+          notes: string | null
+          operateur_id: string | null
+          operateur_nom: string | null
+          produit_id: string | null
+          produit_nom: string
+          quantite_comptee: number | null
+          quantite_theorique: number
+          session_id: string
+          statut: string
+          tenant_id: string
+          unite: string
+          updated_at: string
+        }
+        Insert: {
+          code_barre: string
+          created_at?: string
+          date_comptage?: string | null
+          emplacement_reel?: string | null
+          emplacement_theorique?: string
+          id?: string
+          lot_id?: string | null
+          lot_numero?: string | null
+          notes?: string | null
+          operateur_id?: string | null
+          operateur_nom?: string | null
+          produit_id?: string | null
+          produit_nom: string
+          quantite_comptee?: number | null
+          quantite_theorique?: number
+          session_id: string
+          statut?: string
+          tenant_id: string
+          unite?: string
+          updated_at?: string
+        }
+        Update: {
+          code_barre?: string
+          created_at?: string
+          date_comptage?: string | null
+          emplacement_reel?: string | null
+          emplacement_theorique?: string
+          id?: string
+          lot_id?: string | null
+          lot_numero?: string | null
+          notes?: string | null
+          operateur_id?: string | null
+          operateur_nom?: string | null
+          produit_id?: string | null
+          produit_nom?: string
+          quantite_comptee?: number | null
+          quantite_theorique?: number
+          session_id?: string
+          statut?: string
+          tenant_id?: string
+          unite?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventaire_items_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventaire_items_operateur_id_fkey"
+            columns: ["operateur_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventaire_items_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventaire_items_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "inventaire_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventaire_lignes: {
         Row: {
           code_barre: string | null
@@ -6237,6 +6335,53 @@ export type Database = {
       resolve_oauth_personnel_link: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      rpc_inventory_create_session: {
+        Args: {
+          session_description?: string
+          session_name: string
+          session_participants?: string[]
+          session_secteurs?: string[]
+          session_type?: string
+        }
+        Returns: string
+      }
+      rpc_inventory_finalize_session: {
+        Args: { session_id: string }
+        Returns: boolean
+      }
+      rpc_inventory_generate_report: {
+        Args: {
+          report_format?: string
+          report_name: string
+          report_type?: string
+          session_id: string
+        }
+        Returns: string
+      }
+      rpc_inventory_record_entry: {
+        Args: {
+          code_barre: string
+          emplacement?: string
+          quantite?: number
+          session_id: string
+        }
+        Returns: Json
+      }
+      rpc_inventory_save_count: {
+        Args: {
+          emplacement_reel?: string
+          lot_id?: string
+          notes?: string
+          produit_id: string
+          quantite_comptee: number
+          session_id: string
+        }
+        Returns: string
+      }
+      rpc_inventory_start_session: {
+        Args: { session_id: string }
+        Returns: boolean
       }
       rpc_stock_delete_movement: {
         Args: { p_movement_id: string }

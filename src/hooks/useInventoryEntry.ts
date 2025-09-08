@@ -27,7 +27,6 @@ export const useInventoryEntry = () => {
       const { data, error } = await supabase
         .from('inventaire_sessions')
         .select('*')
-        .eq('statut', 'en_cours')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -42,39 +41,35 @@ export const useInventoryEntry = () => {
     try {
       setLoading(true);
       
-      // Pour l'instant, on utilise des données mockées car la table inventaire_items n'existe pas encore
-      const mockItems: InventoryItem[] = [
-        {
-          id: '1',
-          codeBarre: '3401353460101',
-          produit: 'Paracétamol 1000mg',
-          lot: 'LOT2024001',
-          emplacementTheorique: 'A1-B2',
-          emplacementReel: 'A1-B2',
-          quantiteTheorique: 50,
-          quantiteComptee: 48,
-          unite: 'boîtes',
-          statut: 'ecart',
-          dateComptage: new Date(),
-          operateur: 'Marie Dubois'
-        },
-        {
-          id: '2',
-          codeBarre: '3401353460201',
-          produit: 'Amoxicilline 500mg',
-          lot: 'LOT2024002',
-          emplacementTheorique: 'B3-C1',
-          emplacementReel: 'B3-C1',
-          quantiteTheorique: 30,
-          quantiteComptee: 30,
-          unite: 'boîtes',
-          statut: 'compte',
-          dateComptage: new Date(),
-          operateur: 'Jean Martin'
-        }
-      ];
+      if (!sessionId) {
+        setItems([]);
+        return;
+      }
 
-      setItems(mockItems);
+      const { data, error } = await supabase
+        .from('inventaire_items')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const mappedItems: InventoryItem[] = data?.map(item => ({
+        id: item.id,
+        codeBarre: item.code_barre,
+        produit: item.produit_nom,
+        lot: item.lot_numero || '',
+        emplacementTheorique: item.emplacement_theorique,
+        emplacementReel: item.emplacement_reel || item.emplacement_theorique,
+        quantiteTheorique: item.quantite_theorique,
+        quantiteComptee: item.quantite_comptee || 0,
+        unite: item.unite,
+        statut: item.statut as 'non_compte' | 'compte' | 'ecart' | 'valide',
+        dateComptage: item.date_comptage ? new Date(item.date_comptage) : undefined,
+        operateur: item.operateur_nom || ''
+      })) || [];
+
+      setItems(mappedItems);
     } catch (error) {
       console.error('Erreur lors du chargement des articles:', error);
       toast.error('Erreur lors du chargement des articles');
@@ -103,15 +98,49 @@ export const useInventoryEntry = () => {
 
   const saveCount = async (itemId: string, count: number, location: string) => {
     try {
-      // Temporairement mettre à jour localement
+      // Get current user personnel
+      const { data: userData } = await supabase.auth.getUser();
+      const { data: personnelData } = await supabase
+        .from('personnel')
+        .select('id, noms, prenoms')
+        .eq('auth_user_id', userData.user?.id)
+        .single();
+
+      const operateurNom = personnelData ? `${personnelData.prenoms} ${personnelData.noms}` : 'Utilisateur';
+
+      // Find the item to get its theoretical quantity
+      const item = items.find(i => i.id === itemId);
+      if (!item) {
+        toast.error('Article non trouvé');
+        return;
+      }
+
+      const statut = count === item.quantiteTheorique ? 'compte' : 'ecart';
+
+      const { error } = await supabase
+        .from('inventaire_items')
+        .update({
+          quantite_comptee: count,
+          emplacement_reel: location,
+          statut: statut,
+          date_comptage: new Date().toISOString(),
+          operateur_id: personnelData?.id,
+          operateur_nom: operateurNom
+        })
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      // Update local state
       setItems(prev => prev.map(item => 
         item.id === itemId 
           ? { 
               ...item, 
               quantiteComptee: count, 
               emplacementReel: location,
-              statut: count === item.quantiteTheorique ? 'compte' : 'ecart',
-              dateComptage: new Date()
+              statut: statut as 'non_compte' | 'compte' | 'ecart' | 'valide',
+              dateComptage: new Date(),
+              operateur: operateurNom
             }
           : item
       ));
