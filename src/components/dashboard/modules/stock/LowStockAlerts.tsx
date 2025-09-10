@@ -1,101 +1,30 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertTriangle, Package, ShoppingCart, Search, Filter, Download } from 'lucide-react';
-
-interface LowStockItem {
-  id: string;
-  codeProduit: string;
-  nomProduit: string;
-  dci: string;
-  quantiteActuelle: number;
-  seuilMinimum: number;
-  seuilOptimal: number;
-  unite: string;
-  categorie: string;
-  fournisseurPrincipal: string;
-  prixUnitaire: number;
-  valeurStock: number;
-  dernierMouvement: Date;
-  statut: 'critique' | 'faible' | 'attention';
-}
+import { AlertTriangle, Package, ShoppingCart, Search, Filter, Download, Bell } from 'lucide-react';
+import { useLowStockData } from '@/hooks/useLowStockData';
+import { useStockAlerts } from '@/hooks/useStockAlerts';
+import { useSupplierOrders } from '@/hooks/useSupplierOrders';
+import { LowStockActionService } from '@/services/LowStockActionService';
+import { ExportService } from '@/services/ExportService';
+import { useToast } from '@/hooks/use-toast';
 
 const LowStockAlerts = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const { 
+    lowStockItems, 
+    metrics, 
+    categories, 
+    filters, 
+    isLoading 
+  } = useLowStockData();
 
-  // Données mockées
-  const lowStockItems: LowStockItem[] = [
-    {
-      id: '1',
-      codeProduit: 'PAR500',
-      nomProduit: 'Paracétamol 500mg',
-      dci: 'Paracétamol',
-      quantiteActuelle: 5,
-      seuilMinimum: 10,
-      seuilOptimal: 50,
-      unite: 'boîtes',
-      categorie: 'Antalgiques',
-      fournisseurPrincipal: 'PharmaDist',
-      prixUnitaire: 850,
-      valeurStock: 4250,
-      dernierMouvement: new Date('2024-01-14'),
-      statut: 'critique'
-    },
-    {
-      id: '2',
-      codeProduit: 'IBU200',
-      nomProduit: 'Ibuprofène 200mg',
-      dci: 'Ibuprofène',
-      quantiteActuelle: 8,
-      seuilMinimum: 15,
-      seuilOptimal: 40,
-      unite: 'boîtes',
-      categorie: 'Anti-inflammatoires',
-      fournisseurPrincipal: 'MediSupply',
-      prixUnitaire: 1200,
-      valeurStock: 9600,
-      dernierMouvement: new Date('2024-01-13'),
-      statut: 'critique'
-    },
-    {
-      id: '3',
-      codeProduit: 'ASP100',
-      nomProduit: 'Aspirine 100mg',
-      dci: 'Acide acétylsalicylique',
-      quantiteActuelle: 12,
-      seuilMinimum: 20,
-      seuilOptimal: 60,
-      unite: 'boîtes',
-      categorie: 'Antiagrégants',
-      fournisseurPrincipal: 'PharmaDist',
-      prixUnitaire: 750,
-      valeurStock: 9000,
-      dernierMouvement: new Date('2024-01-12'),
-      statut: 'faible'
-    },
-    {
-      id: '4',
-      codeProduit: 'AMX500',
-      nomProduit: 'Amoxicilline 500mg',
-      dci: 'Amoxicilline',
-      quantiteActuelle: 18,
-      seuilMinimum: 25,
-      seuilOptimal: 80,
-      unite: 'boîtes',
-      categorie: 'Antibiotiques',
-      fournisseurPrincipal: 'BioMed',
-      prixUnitaire: 2500,
-      valeurStock: 45000,
-      dernierMouvement: new Date('2024-01-11'),
-      statut: 'attention'
-    }
-  ];
+  const { actions: alertActions } = useStockAlerts();
+  const { actions: orderActions } = useSupplierOrders();
+  const { toast } = useToast();
 
   const getStatusBadge = (statut: string) => {
     const configs = {
@@ -118,17 +47,93 @@ const LowStockAlerts = () => {
     return <AlertTriangle className={`h-4 w-4 ${className}`} />;
   };
 
-  const filteredItems = lowStockItems.filter(item => {
-    const matchesSearch = item.nomProduit.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.codeProduit.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.dci.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === 'all' || item.categorie === filterCategory;
-    const matchesStatus = filterStatus === 'all' || item.statut === filterStatus;
-    
-    return matchesSearch && matchesCategory && matchesStatus;
-  });
+  const handleUrgentOrder = async () => {
+    try {
+      const result = await LowStockActionService.executeOrderAction(lowStockItems);
+      if (result.success) {
+        toast({
+          title: "Commande d'urgence créée",
+          description: `Commande ${result.commande_id} créée avec succès`,
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer la commande d'urgence",
+        variant: "destructive",
+      });
+    }
+  };
 
-  const totalValeurRisque = filteredItems.reduce((sum, item) => sum + item.valeurStock, 0);
+  const handleExport = async () => {
+    try {
+      const result = await ExportService.exportLowStockData(lowStockItems, {
+        format: 'csv',
+        includeMetrics: true
+      });
+      
+      if (result.success) {
+        toast({
+          title: "Export réussi",
+          description: `Fichier ${result.filename} téléchargé`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur d'export",
+        description: "Impossible d'exporter les données",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleProductOrder = async (product: any) => {
+    try {
+      const result = await LowStockActionService.executeOrderAction([product]);
+      if (result.success) {
+        toast({
+          title: "Commande créée",
+          description: `Commande pour ${product.nomProduit} créée`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer la commande",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleProductAlert = async (product: any) => {
+    try {
+      await LowStockActionService.executeAlertAction([product]);
+      toast({
+        title: "Alerte créée",
+        description: `Alerte activée pour ${product.nomProduit}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer l'alerte",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="h-32 bg-muted rounded"></div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -140,9 +145,9 @@ const LowStockAlerts = () => {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{filteredItems.length}</div>
+            <div className="text-2xl font-bold">{metrics.totalItems}</div>
             <p className="text-xs text-muted-foreground">
-              {filteredItems.filter(i => i.statut === 'critique').length} critiques
+              {metrics.criticalItems} critiques
             </p>
           </CardContent>
         </Card>
@@ -153,7 +158,7 @@ const LowStockAlerts = () => {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalValeurRisque.toLocaleString()} F</div>
+            <div className="text-2xl font-bold">{metrics.totalValue.toLocaleString()} F</div>
             <p className="text-xs text-muted-foreground">Stock sous seuil</p>
           </CardContent>
         </Card>
@@ -165,7 +170,7 @@ const LowStockAlerts = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {filteredItems.filter(i => i.statut === 'critique').length + filteredItems.filter(i => i.statut === 'faible').length}
+              {metrics.urgentActions}
             </div>
             <p className="text-xs text-muted-foreground">Commandes nécessaires</p>
           </CardContent>
@@ -185,27 +190,28 @@ const LowStockAlerts = () => {
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Rechercher par nom, code ou DCI..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  value={filters.searchTerm}
+                  onChange={(e) => filters.setSearchTerm(e.target.value)}
                   className="pl-9"
                 />
               </div>
             </div>
             <div className="flex gap-2">
-              <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <Select value={filters.categoryFilter} onValueChange={filters.setCategoryFilter}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Catégorie" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Toutes catégories</SelectItem>
-                  <SelectItem value="Antalgiques">Antalgiques</SelectItem>
-                  <SelectItem value="Anti-inflammatoires">Anti-inflammatoires</SelectItem>
-                  <SelectItem value="Antibiotiques">Antibiotiques</SelectItem>
-                  <SelectItem value="Antiagrégants">Antiagrégants</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.libelle_famille} value={cat.libelle_famille}>
+                      {cat.libelle_famille}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <Select value={filters.statusFilter} onValueChange={filters.setStatusFilter}>
                 <SelectTrigger className="w-32">
                   <SelectValue placeholder="Statut" />
                 </SelectTrigger>
@@ -217,11 +223,11 @@ const LowStockAlerts = () => {
                 </SelectContent>
               </Select>
               
-              <Button variant="outline">
-                <Filter className="h-4 w-4 mr-2" />
-                Filtrer
+              <Button variant="outline" onClick={handleUrgentOrder}>
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                Commande Urgente
               </Button>
-              <Button variant="outline">
+              <Button variant="outline" onClick={handleExport}>
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
@@ -244,7 +250,7 @@ const LowStockAlerts = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredItems.map((item) => (
+                {lowStockItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -282,15 +288,15 @@ const LowStockAlerts = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">
-                      {item.dernierMouvement.toLocaleDateString()}
+                      {item.dernierMouvement ? item.dernierMouvement.toLocaleDateString() : 'N/A'}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => handleProductOrder(item)}>
                           <ShoppingCart className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
-                          <Package className="h-4 w-4" />
+                        <Button variant="ghost" size="sm" onClick={() => handleProductAlert(item)}>
+                          <Bell className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
