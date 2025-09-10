@@ -130,11 +130,11 @@ const AlertsDashboard = () => {
                         <Badge variant={getUrgencyColor(alert.niveau_urgence) as any}>
                           {getTypeLabel(alert.type)}
                         </Badge>
-                        <span className="font-medium">{alert.produit?.libelle_produit || 'Produit inconnu'}</span>
+                        <span className="font-medium">{alert.produit_libelle || 'Produit inconnu'}</span>
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {alert.type === 'stock_faible' && (
-                          <>Quantité concernée: {alert.quantite_concernee} unités</>
+                          <>Quantité concernée: {alert.quantite_actuelle} unités</>
                         )}
                         {alert.type === 'peremption_proche' && alert.jours_restants && (
                           <>Expire dans {alert.jours_restants} jours</>
@@ -147,7 +147,7 @@ const AlertsDashboard = () => {
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {new Date(alert.date_alerte || alert.created_at).toLocaleString()}
+                        {new Date(alert.date_alerte).toLocaleString()}
                       </div>
                     </div>
                   </div>

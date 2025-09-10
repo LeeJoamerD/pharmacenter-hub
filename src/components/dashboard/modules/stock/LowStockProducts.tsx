@@ -21,7 +21,7 @@ const LowStockProducts = () => {
     isLoading 
   } = useLowStockData();
 
-  const { stockData } = useCurrentStock();
+  const { products: stockData } = useCurrentStock();
   const { toast } = useToast();
 
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);

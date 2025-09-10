@@ -22,96 +22,25 @@ import {
   Trash2,
   Edit
 } from 'lucide-react';
-
-interface AlertRule {
-  id: string;
-  nom: string;
-  type: 'stock_faible' | 'peremption' | 'rupture' | 'surstockage';
-  condition: string;
-  seuil: number;
-  unite: string;
-  actif: boolean;
-  notifications: {
-    email: boolean;
-    sms: boolean;
-    dashboard: boolean;
-  };
-  destinataires: string[];
-  delaiAlerte: number; // en minutes
-}
-
-interface GlobalSettings {
-  alertesActives: boolean;
-  frequenceVerification: number; // en minutes
-  retentionHistorique: number; // en jours
-  emailServeur: string;
-  smsProvider: string;
-}
+import { useAlertConfiguration } from '@/hooks/useAlertConfiguration';
 
 const AlertConfiguration = () => {
   const [activeTab, setActiveTab] = useState('regles');
-  const [editingRule, setEditingRule] = useState<AlertRule | null>(null);
+  const { alertRules, globalSettings, isLoading, actions } = useAlertConfiguration();
+  const [editingRule, setEditingRule] = useState<any>(null);
 
-  // Configuration globale mockée
-  const [globalSettings, setGlobalSettings] = useState<GlobalSettings>({
-    alertesActives: true,
-    frequenceVerification: 15,
-    retentionHistorique: 90,
-    emailServeur: 'smtp.pharmacie.sn',
-    smsProvider: 'OrangeSMS'
-  });
-
-  // Règles d'alerte mockées
-  const [alertRules, setAlertRules] = useState<AlertRule[]>([
-    {
-      id: '1',
-      nom: 'Stock Critique Antalgiques',
-      type: 'stock_faible',
-      condition: 'quantite <= seuil_minimum',
-      seuil: 10,
-      unite: 'unités',
-      actif: true,
-      notifications: {
-        email: true,
-        sms: true,
-        dashboard: true
-      },
-      destinataires: ['pharmacien@pharmacie.sn', 'responsable@pharmacie.sn'],
-      delaiAlerte: 0
-    },
-    {
-      id: '2',
-      nom: 'Péremption dans 30 jours',
-      type: 'peremption',
-      condition: 'jours_restants <= seuil',
-      seuil: 30,
-      unite: 'jours',
-      actif: true,
-      notifications: {
-        email: true,
-        sms: false,
-        dashboard: true
-      },
-      destinataires: ['pharmacien@pharmacie.sn'],
-      delaiAlerte: 60
-    },
-    {
-      id: '3',
-      nom: 'Rupture Stock Antibiotiques',
-      type: 'rupture',
-      condition: 'quantite = 0',
-      seuil: 0,
-      unite: 'unités',
-      actif: true,
-      notifications: {
-        email: true,
-        sms: true,
-        dashboard: true
-      },
-      destinataires: ['urgence@pharmacie.sn', 'direction@pharmacie.sn'],
-      delaiAlerte: 0
-    }
-  ]);
+  // Configuration avec les hooks
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="h-32 bg-muted rounded"></div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -139,20 +68,17 @@ const AlertConfiguration = () => {
   };
 
   const handleSaveGlobalSettings = () => {
-    console.log('Sauvegarde des paramètres globaux:', globalSettings);
-    // Ici, on sauvegarderait en base de données
+    if (globalSettings) {
+      actions.saveGlobalSettings(globalSettings);
+    }
   };
 
   const handleToggleRule = (ruleId: string) => {
-    setAlertRules(rules => 
-      rules.map(rule => 
-        rule.id === ruleId ? { ...rule, actif: !rule.actif } : rule
-      )
-    );
+    actions.toggleAlertRule(ruleId);
   };
 
   const handleDeleteRule = (ruleId: string) => {
-    setAlertRules(rules => rules.filter(rule => rule.id !== ruleId));
+    actions.deleteAlertRule(ruleId);
   };
 
   return (
@@ -281,11 +207,11 @@ const AlertConfiguration = () => {
                   <Label htmlFor="email-server">Serveur SMTP</Label>
                   <Input
                     id="email-server"
-                    value={globalSettings.emailServeur}
-                    onChange={(e) => setGlobalSettings(prev => ({
-                      ...prev,
+                    value={globalSettings?.emailServeur || ''}
+                    onChange={(e) => globalSettings && actions.saveGlobalSettings({
+                      ...globalSettings,
                       emailServeur: e.target.value
-                    }))}
+                    })}
                   />
                 </div>
                 <div>
@@ -369,11 +295,11 @@ const AlertConfiguration = () => {
                 </div>
                 <Switch
                   id="alerts-enabled"
-                  checked={globalSettings.alertesActives}
-                  onCheckedChange={(checked) => setGlobalSettings(prev => ({
-                    ...prev,
+                  checked={globalSettings?.alertesActives || false}
+                  onCheckedChange={(checked) => globalSettings && actions.saveGlobalSettings({
+                    ...globalSettings,
                     alertesActives: checked
-                  }))}
+                  })}
                 />
               </div>
 
@@ -384,11 +310,11 @@ const AlertConfiguration = () => {
                     <Input
                       id="check-frequency"
                       type="number"
-                      value={globalSettings.frequenceVerification}
-                      onChange={(e) => setGlobalSettings(prev => ({
-                        ...prev,
+                      value={globalSettings?.frequenceVerification || 15}
+                      onChange={(e) => globalSettings && actions.saveGlobalSettings({
+                        ...globalSettings,
                         frequenceVerification: parseInt(e.target.value) || 15
-                      }))}
+                      })}
                       className="w-20"
                     />
                     <span className="text-sm text-muted-foreground">minutes</span>
@@ -404,11 +330,11 @@ const AlertConfiguration = () => {
                     <Input
                       id="retention-period"
                       type="number"
-                      value={globalSettings.retentionHistorique}
-                      onChange={(e) => setGlobalSettings(prev => ({
-                        ...prev,
+                      value={globalSettings?.retentionHistorique || 90}
+                      onChange={(e) => globalSettings && actions.saveGlobalSettings({
+                        ...globalSettings,
                         retentionHistorique: parseInt(e.target.value) || 90
-                      }))}
+                      })}
                       className="w-20"
                     />
                     <span className="text-sm text-muted-foreground">jours</span>
