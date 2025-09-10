@@ -60,20 +60,13 @@ export const useLowStockData = () => {
     ['products-for-low-stock'],
     'produits',
     `
-      id, tenant_id, libelle_produit, code_cip, dci,
+      id, tenant_id, libelle_produit, code_cip,
       prix_achat, prix_vente_ttc, stock_limite, stock_alerte,
       famille_id, rayon_id, created_at, updated_at, is_active,
       famille_produit!inner(libelle_famille),
       rayons_produits!inner(libelle_rayon)
     `,
     { is_active: true }
-  );
-
-  // Récupérer les fournisseurs principaux
-  const { data: fournisseurs = [] } = useTenantQueryWithCache(
-    ['fournisseurs-for-stock'],
-    'fournisseurs',
-    'id, libelle_fournisseur'
   );
 
   // Récupérer les catégories pour les filtres
@@ -141,14 +134,14 @@ export const useLowStockData = () => {
         else if (daysSinceUpdate > 30) rotation = 'lente';
 
         // Find principal supplier (simplified - could be enhanced)
-        const principalSupplier = fournisseurs.length > 0 ? fournisseurs[0].libelle_fournisseur : 'Non défini';
+        const principalSupplier = 'Non défini';
 
         processedItems.push({
           id: product.id,
           tenant_id: product.tenant_id,
           codeProduit: product.code_cip || '',
           nomProduit: product.libelle_produit,
-          dci: product.dci || '',
+          dci: '',
           quantiteActuelle: currentStock,
           seuilMinimum: effectiveThreshold,
           seuilOptimal: optimalThreshold,
@@ -170,7 +163,7 @@ export const useLowStockData = () => {
     };
 
     processLowStockData();
-  }, [products, thresholds, stockSettings, fournisseurs]);
+  }, [products, thresholds, stockSettings]);
 
   // Calculate metrics
   useEffect(() => {
