@@ -665,6 +665,36 @@ export type Database = {
           },
         ]
       }
+      classes_therapeutiques: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          libelle_classe: string
+          systeme_anatomique: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          libelle_classe: string
+          systeme_anatomique: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          libelle_classe?: string
+          systeme_anatomique?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           adresse: string | null

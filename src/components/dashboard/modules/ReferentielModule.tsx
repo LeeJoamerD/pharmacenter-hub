@@ -11,6 +11,7 @@ import PricingCategories from './referentiel/PricingCategories';
 import DCIManager from './referentiel/DCIManager';
 import ProductCatalog from './referentiel/ProductCatalog';
 import RegulationTracker from './referentiel/RegulationTracker';
+import { TherapeuticClassManager } from './referentiel/TherapeuticClassManager';
 import { useReferentielMetrics, useRecentProducts } from '@/hooks/useReferentielMetrics';
 
 const ReferentielModule = () => {
@@ -175,7 +176,7 @@ const ReferentielModule = () => {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-9">
           <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
           <TabsTrigger value="catalog">Catalogue</TabsTrigger>
           <TabsTrigger value="formes">Formes</TabsTrigger>
@@ -183,6 +184,7 @@ const ReferentielModule = () => {
           <TabsTrigger value="rayons">Rayons</TabsTrigger>
           <TabsTrigger value="categories">Catégories</TabsTrigger>
           <TabsTrigger value="dci">DCI</TabsTrigger>
+          <TabsTrigger value="classes">Classes thérapeutiques</TabsTrigger>
           <TabsTrigger value="reglementations">Réglementations</TabsTrigger>
         </TabsList>
 
@@ -212,6 +214,10 @@ const ReferentielModule = () => {
 
         <TabsContent value="dci">
           <DCIManager />
+        </TabsContent>
+
+        <TabsContent value="classes">
+          <TherapeuticClassManager />
         </TabsContent>
 
         <TabsContent value="reglementations">
