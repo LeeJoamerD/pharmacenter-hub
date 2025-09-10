@@ -4,51 +4,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Package, Clock, TrendingDown, Eye, Settings } from 'lucide-react';
 import AlertsWidget from '../../admin/AlertsWidget';
+import { useLowStockData } from '@/hooks/useLowStockData';
+import { useStockAlerts } from '@/hooks/useStockAlerts';
 
 const AlertsDashboard = () => {
-  const alertsSummary = {
-    stockFaible: 23,
-    peremptionProche: 15,
-    ruptures: 5,
-    alertesActives: 43
-  };
-
-  const recentAlerts = [
-    {
-      id: 1,
-      type: 'stock_faible',
-      produit: 'Paracétamol 500mg',
-      seuil: 10,
-      quantiteActuelle: 5,
-      urgence: 'high',
-      dateCreation: new Date('2024-01-15T10:30:00')
-    },
-    {
-      id: 2,
-      type: 'peremption',
-      produit: 'Ibuprofène 200mg',
-      lot: 'LOT2024-001',
-      dateExpiration: new Date('2024-02-15'),
-      urgence: 'medium',
-      dateCreation: new Date('2024-01-15T09:15:00')
-    },
-    {
-      id: 3,
-      type: 'rupture',
-      produit: 'Aspirine 100mg',
-      derniereVente: new Date('2024-01-14'),
-      urgence: 'high',
-      dateCreation: new Date('2024-01-15T08:45:00')
-    }
-  ];
+  const { metrics } = useLowStockData();
+  const { alerts, stats } = useStockAlerts();
 
   const getUrgencyColor = (urgence: string) => {
     switch (urgence) {
-      case 'high':
+      case 'critique':
+      case 'eleve':
         return 'destructive';
-      case 'medium':
+      case 'moyen':
         return 'default';
-      case 'low':
+      case 'faible':
         return 'secondary';
       default:
         return 'outline';
@@ -59,9 +29,11 @@ const AlertsDashboard = () => {
     switch (type) {
       case 'stock_faible':
         return <Package className="h-4 w-4" />;
-      case 'peremption':
+      case 'peremption_proche':
+      case 'expire':
         return <Clock className="h-4 w-4" />;
       case 'rupture':
+      case 'critique':
         return <AlertTriangle className="h-4 w-4" />;
       default:
         return <AlertTriangle className="h-4 w-4" />;
@@ -72,14 +44,21 @@ const AlertsDashboard = () => {
     switch (type) {
       case 'stock_faible':
         return 'Stock Faible';
-      case 'peremption':
-        return 'Péremption';
+      case 'peremption_proche':
+        return 'Péremption Proche';
+      case 'expire':
+        return 'Expiré';
       case 'rupture':
         return 'Rupture';
+      case 'critique':
+        return 'Critique';
       default:
         return type;
     }
   };
+
+  // Prendre les 5 dernières alertes
+  const recentAlerts = alerts.slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -91,7 +70,7 @@ const AlertsDashboard = () => {
             <TrendingDown className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{alertsSummary.stockFaible}</div>
+            <div className="text-2xl font-bold text-destructive">{stats.byType.stock_faible}</div>
             <p className="text-xs text-muted-foreground">Produits sous seuil</p>
           </CardContent>
         </Card>
@@ -102,7 +81,7 @@ const AlertsDashboard = () => {
             <Clock className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{alertsSummary.peremptionProche}</div>
+            <div className="text-2xl font-bold text-orange-600">{stats.byType.peremption_proche}</div>
             <p className="text-xs text-muted-foreground">Dans 30 jours</p>
           </CardContent>
         </Card>
@@ -113,7 +92,7 @@ const AlertsDashboard = () => {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{alertsSummary.ruptures}</div>
+            <div className="text-2xl font-bold text-destructive">{stats.byType.rupture}</div>
             <p className="text-xs text-muted-foreground">Stock épuisé</p>
           </CardContent>
         </Card>
@@ -124,7 +103,7 @@ const AlertsDashboard = () => {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{alertsSummary.alertesActives}</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">Alertes actives</p>
           </CardContent>
         </Card>
@@ -141,43 +120,52 @@ const AlertsDashboard = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {recentAlerts.map((alert) => (
-              <div key={alert.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  {getTypeIcon(alert.type)}
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant={getUrgencyColor(alert.urgence) as any}>
-                        {getTypeLabel(alert.type)}
-                      </Badge>
-                      <span className="font-medium">{alert.produit}</span>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {alert.type === 'stock_faible' && (
-                        <>Stock actuel: {alert.quantiteActuelle} (seuil: {alert.seuil})</>
-                      )}
-                      {alert.type === 'peremption' && (
-                        <>Lot: {alert.lot} - Expire le {alert.dateExpiration.toLocaleDateString()}</>
-                      )}
-                      {alert.type === 'rupture' && (
-                        <>Dernière vente: {alert.derniereVente?.toLocaleDateString()}</>
-                      )}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {alert.dateCreation.toLocaleString()}
+            {recentAlerts.length > 0 ? (
+              recentAlerts.map((alert) => (
+                <div key={alert.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    {getTypeIcon(alert.type)}
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant={getUrgencyColor(alert.niveau_urgence) as any}>
+                          {getTypeLabel(alert.type)}
+                        </Badge>
+                        <span className="font-medium">{alert.produit?.libelle_produit || 'Produit inconnu'}</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {alert.type === 'stock_faible' && (
+                          <>Quantité concernée: {alert.quantite_concernee} unités</>
+                        )}
+                        {alert.type === 'peremption_proche' && alert.jours_restants && (
+                          <>Expire dans {alert.jours_restants} jours</>
+                        )}
+                        {alert.type === 'expire' && (
+                          <>Produit expiré</>
+                        )}
+                        {alert.type === 'rupture' && (
+                          <>Stock épuisé</>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(alert.date_alerte || alert.created_at).toLocaleString()}
+                      </div>
                     </div>
                   </div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm">
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Aucune alerte récente
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>

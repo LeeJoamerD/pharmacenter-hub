@@ -1,19 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertTriangle, Package, ShoppingCart, Search, Filter, Download, Bell } from 'lucide-react';
+import { AlertTriangle, Package, ShoppingCart, Search, Filter, Download, Bell, Eye } from 'lucide-react';
 import { useLowStockData } from '@/hooks/useLowStockData';
-import { useStockAlerts } from '@/hooks/useStockAlerts';
-import { useSupplierOrders } from '@/hooks/useSupplierOrders';
+import { useCurrentStock } from '@/hooks/useCurrentStock';
 import { LowStockActionService } from '@/services/LowStockActionService';
 import { ExportService } from '@/services/ExportService';
 import { useToast } from '@/hooks/use-toast';
 
-const LowStockAlerts = () => {
+const LowStockProducts = () => {
   const { 
     lowStockItems, 
     metrics, 
@@ -22,9 +21,10 @@ const LowStockAlerts = () => {
     isLoading 
   } = useLowStockData();
 
-  const { actions: { createAlert, markAlertAsTreated } } = useStockAlerts();
-  const { createOrder, updateOrderStatus } = useSupplierOrders();
+  const { stockData } = useCurrentStock();
   const { toast } = useToast();
+
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
   const getStatusBadge = (statut: string) => {
     const configs = {
@@ -33,7 +33,7 @@ const LowStockAlerts = () => {
       attention: { variant: 'secondary', label: 'Attention' }
     };
     
-    const config = configs[statut as keyof typeof configs];
+    const config = configs[statut as keyof typeof configs] || configs.faible;
     return (
       <Badge variant={config.variant as any}>
         {config.label}
@@ -47,21 +47,77 @@ const LowStockAlerts = () => {
     return <AlertTriangle className={`h-4 w-4 ${className}`} />;
   };
 
-  const handleUrgentOrder = async () => {
+  const handleSelectProduct = (productId: string) => {
+    setSelectedProducts(prev => 
+      prev.includes(productId) 
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedProducts.length === lowStockItems.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts(lowStockItems.map(item => item.id));
+    }
+  };
+
+  const handleBulkOrder = async () => {
+    if (selectedProducts.length === 0) {
+      toast({
+        title: "Aucun produit sélectionné",
+        description: "Veuillez sélectionner au moins un produit",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const result = await LowStockActionService.executeOrderAction(lowStockItems);
+      const selectedItems = lowStockItems.filter(item => selectedProducts.includes(item.id));
+      const result = await LowStockActionService.executeOrderAction(selectedItems);
+      
       if (result.success) {
         toast({
-          title: "Commande d'urgence créée",
-          description: `Commande ${result.commande_id} créée avec succès`,
+          title: "Commande groupée créée",
+          description: `Commande ${result.commande_id} créée pour ${selectedProducts.length} produits`,
         });
+        setSelectedProducts([]);
       } else {
         throw new Error(result.error);
       }
     } catch (error) {
       toast({
         title: "Erreur",
-        description: "Impossible de créer la commande d'urgence",
+        description: "Impossible de créer la commande groupée",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBulkAlert = async () => {
+    if (selectedProducts.length === 0) {
+      toast({
+        title: "Aucun produit sélectionné",
+        description: "Veuillez sélectionner au moins un produit",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const selectedItems = lowStockItems.filter(item => selectedProducts.includes(item.id));
+      await LowStockActionService.executeAlertAction(selectedItems);
+      
+      toast({
+        title: "Alertes créées",
+        description: `Alertes activées pour ${selectedProducts.length} produits`,
+      });
+      setSelectedProducts([]);
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer les alertes",
         variant: "destructive",
       });
     }
@@ -89,40 +145,6 @@ const LowStockAlerts = () => {
     }
   };
 
-  const handleProductOrder = async (product: any) => {
-    try {
-      const result = await LowStockActionService.executeOrderAction([product]);
-      if (result.success) {
-        toast({
-          title: "Commande créée",
-          description: `Commande pour ${product.nomProduit} créée`,
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de créer la commande",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleProductAlert = async (product: any) => {
-    try {
-      await LowStockActionService.executeAlertAction([product]);
-      toast({
-        title: "Alerte créée",
-        description: `Alerte activée pour ${product.nomProduit}`,
-      });
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de créer l'alerte",
-        variant: "destructive",
-      });
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -141,7 +163,7 @@ const LowStockAlerts = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Produits en Alerte</CardTitle>
+            <CardTitle className="text-sm font-medium">Produits en Stock Faible</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -170,18 +192,22 @@ const LowStockAlerts = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {metrics.urgentActions}
+              {selectedProducts.length || metrics.urgentActions}
             </div>
-            <p className="text-xs text-muted-foreground">Commandes nécessaires</p>
+            <p className="text-xs text-muted-foreground">
+              {selectedProducts.length > 0 ? 'Sélectionnés' : 'Commandes nécessaires'}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filtres et recherche */}
+      {/* Filtres et actions */}
       <Card>
         <CardHeader>
-          <CardTitle>Surveillance Stock Faible</CardTitle>
-          <CardDescription>Produits nécessitant un réapprovisionnement urgent</CardDescription>
+          <CardTitle>Produits en Stock Faible</CardTitle>
+          <CardDescription>
+            Gestion des produits nécessitant un réapprovisionnement
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -196,7 +222,7 @@ const LowStockAlerts = () => {
                 />
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Select value={filters.categoryFilter} onValueChange={filters.setCategoryFilter}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Catégorie" />
@@ -223,10 +249,6 @@ const LowStockAlerts = () => {
                 </SelectContent>
               </Select>
               
-              <Button variant="outline" onClick={handleUrgentOrder}>
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Commande Urgente
-              </Button>
               <Button variant="outline" onClick={handleExport}>
                 <Download className="h-4 w-4 mr-2" />
                 Export
@@ -234,24 +256,60 @@ const LowStockAlerts = () => {
             </div>
           </div>
 
-          {/* Table des alertes */}
+          {/* Actions groupées */}
+          {selectedProducts.length > 0 && (
+            <div className="mb-4 p-4 bg-muted rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-medium">{selectedProducts.length} produit(s) sélectionné(s)</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleBulkAlert}>
+                    <Bell className="h-4 w-4 mr-2" />
+                    Créer Alertes
+                  </Button>
+                  <Button onClick={handleBulkOrder}>
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    Commande Groupée
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Table des produits */}
           <div className="border rounded-lg">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <input
+                      type="checkbox"
+                      checked={selectedProducts.length === lowStockItems.length && lowStockItems.length > 0}
+                      onChange={handleSelectAll}
+                      className="rounded"
+                    />
+                  </TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead>Produit</TableHead>
                   <TableHead>Stock Actuel</TableHead>
                   <TableHead>Seuils</TableHead>
                   <TableHead>Fournisseur</TableHead>
                   <TableHead>Valeur</TableHead>
-                  <TableHead>Dernier Mvt</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {lowStockItems.map((item) => (
                   <TableRow key={item.id}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={selectedProducts.includes(item.id)}
+                        onChange={() => handleSelectProduct(item.id)}
+                        className="rounded"
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {getStatusIcon(item.statut)}
@@ -262,7 +320,7 @@ const LowStockAlerts = () => {
                       <div>
                         <div className="font-medium">{item.nomProduit}</div>
                         <div className="text-sm text-muted-foreground">
-                          {item.codeProduit} - {item.dci}
+                          {item.codeProduit}
                         </div>
                       </div>
                     </TableCell>
@@ -278,7 +336,9 @@ const LowStockAlerts = () => {
                         <div className="text-muted-foreground">Opt: {item.seuilOptimal}</div>
                       </div>
                     </TableCell>
-                    <TableCell>{item.fournisseurPrincipal}</TableCell>
+                    <TableCell className="text-sm">
+                      {item.fournisseurPrincipal || 'Non défini'}
+                    </TableCell>
                     <TableCell>
                       <div className="text-right">
                         <div>{item.valeurStock.toLocaleString()} F</div>
@@ -287,15 +347,15 @@ const LowStockAlerts = () => {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm">
-                      {item.dernierMouvement ? item.dernierMouvement.toLocaleDateString() : 'N/A'}
-                    </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => handleProductOrder(item)}>
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm">
                           <ShoppingCart className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleProductAlert(item)}>
+                        <Button variant="ghost" size="sm">
                           <Bell className="h-4 w-4" />
                         </Button>
                       </div>
@@ -305,10 +365,16 @@ const LowStockAlerts = () => {
               </TableBody>
             </Table>
           </div>
+
+          {lowStockItems.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              Aucun produit en stock faible trouvé
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   );
 };
 
-export default LowStockAlerts;
+export default LowStockProducts;
