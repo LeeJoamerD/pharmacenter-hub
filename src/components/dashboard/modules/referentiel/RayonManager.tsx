@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -15,6 +16,7 @@ interface RayonProduct {
   id: string;
   tenant_id: string;
   libelle_rayon: string;
+  description?: string;
   created_at: string;
   updated_at: string;
 }
@@ -41,7 +43,7 @@ const RayonManager = () => {
         description: "Le rayon de produits a été ajouté avec succès.",
       });
       setIsDialogOpen(false);
-      form.reset({ libelle_rayon: '' });
+      form.reset({ libelle_rayon: '', description: '' });
     },
     onError: (error: any) => {
       toast({
@@ -61,7 +63,7 @@ const RayonManager = () => {
       });
       setIsDialogOpen(false);
       setEditingRayon(null);
-      form.reset({ libelle_rayon: '' });
+      form.reset({ libelle_rayon: '', description: '' });
     },
     onError: (error: any) => {
       toast({
@@ -96,7 +98,8 @@ const RayonManager = () => {
 
   const form = useForm<Partial<RayonProduct>>({
     defaultValues: {
-      libelle_rayon: ''
+      libelle_rayon: '',
+      description: ''
     }
   });
 
@@ -106,7 +109,7 @@ const RayonManager = () => {
 
   const handleAddRayon = () => {
     setEditingRayon(null);
-    form.reset({ libelle_rayon: '' });
+    form.reset({ libelle_rayon: '', description: '' });
     setIsDialogOpen(true);
   };
 
@@ -126,11 +129,13 @@ const RayonManager = () => {
     if (editingRayon) {
       updateRayon.mutate({
         id: editingRayon.id,
-        libelle_rayon: data.libelle_rayon!
+        libelle_rayon: data.libelle_rayon!,
+        description: data.description
       });
     } else {
       createRayon.mutate({
-        libelle_rayon: data.libelle_rayon!
+        libelle_rayon: data.libelle_rayon!,
+        description: data.description
       });
     }
   };
@@ -186,6 +191,20 @@ const RayonManager = () => {
                         </FormItem>
                       )}
                     />
+                    
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} placeholder="Description du rayon de produits..." />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     <DialogFooter>
                       <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -210,13 +229,14 @@ const RayonManager = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Libellé du rayon</TableHead>
+                  <TableHead>Description</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredRayons.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={2} className="text-center py-4">
+                    <TableCell colSpan={3} className="text-center py-4">
                       Aucun rayon trouvé
                     </TableCell>
                   </TableRow>
@@ -224,6 +244,7 @@ const RayonManager = () => {
                   filteredRayons.map((rayon) => (
                     <TableRow key={rayon.id}>
                       <TableCell className="font-medium">{rayon.libelle_rayon}</TableCell>
+                      <TableCell>{rayon.description || '-'}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <Button

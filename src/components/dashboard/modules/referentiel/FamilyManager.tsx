@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -14,6 +15,7 @@ interface FamilyProduct {
   id: string;
   tenant_id: string;
   libelle_famille: string;
+  description?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -53,7 +55,8 @@ const FamilyManager = () => {
 
   const form = useForm<FamilyProduct>({
     defaultValues: {
-      libelle_famille: ''
+      libelle_famille: '',
+      description: ''
     }
   });
 
@@ -63,7 +66,7 @@ const FamilyManager = () => {
 
   const handleAddFamily = () => {
     setEditingFamily(null);
-    form.reset({ libelle_famille: '' });
+    form.reset({ libelle_famille: '', description: '' });
     setIsDialogOpen(true);
   };
 
@@ -147,19 +150,32 @@ const FamilyManager = () => {
             
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="libelle_famille"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Libellé de la famille</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Médicaments, Parapharmacie..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                     <FormField
+                       control={form.control}
+                       name="libelle_famille"
+                       render={({ field }) => (
+                         <FormItem>
+                           <FormLabel>Libellé de la famille</FormLabel>
+                           <FormControl>
+                             <Input placeholder="Ex: Médicaments, Parapharmacie..." {...field} />
+                           </FormControl>
+                           <FormMessage />
+                         </FormItem>
+                       )}
+                     />
+                     <FormField
+                       control={form.control}
+                       name="description"
+                       render={({ field }) => (
+                         <FormItem>
+                           <FormLabel>Description</FormLabel>
+                           <FormControl>
+                             <Textarea placeholder="Description de la famille de produits..." {...field} />
+                           </FormControl>
+                           <FormMessage />
+                         </FormItem>
+                       )}
+                     />
                 
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={handleDialogClose}>
@@ -186,14 +202,16 @@ const FamilyManager = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Libellé</TableHead>
+                <TableHead>Description</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredFamilies.map((family) => (
-                <TableRow key={family.id}>
-                  <TableCell>{family.libelle_famille}</TableCell>
-                  <TableCell className="text-right">
+               {filteredFamilies.map((family) => (
+                 <TableRow key={family.id}>
+                   <TableCell>{family.libelle_famille}</TableCell>
+                   <TableCell>{family.description || '-'}</TableCell>
+                   <TableCell className="text-right">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -213,13 +231,13 @@ const FamilyManager = () => {
                   </TableCell>
                 </TableRow>
               ))}
-              {filteredFamilies.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={2} className="text-center py-4 text-muted-foreground">
-                    Aucune famille trouvée
-                  </TableCell>
-                </TableRow>
-              )}
+               {filteredFamilies.length === 0 && (
+                 <TableRow>
+                   <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                     Aucune famille trouvée
+                   </TableCell>
+                 </TableRow>
+               )}
             </TableBody>
           </Table>
         )}
