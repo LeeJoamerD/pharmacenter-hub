@@ -4244,6 +4244,7 @@ export type Database = {
         Row: {
           categorie_tarification_id: string | null
           centime_additionnel: number | null
+          classe_therapeutique_id: string | null
           code_cip: string | null
           created_at: string
           dci_id: string | null
@@ -4273,6 +4274,7 @@ export type Database = {
         Insert: {
           categorie_tarification_id?: string | null
           centime_additionnel?: number | null
+          classe_therapeutique_id?: string | null
           code_cip?: string | null
           created_at?: string
           dci_id?: string | null
@@ -4302,6 +4304,7 @@ export type Database = {
         Update: {
           categorie_tarification_id?: string | null
           centime_additionnel?: number | null
+          classe_therapeutique_id?: string | null
           code_cip?: string | null
           created_at?: string
           dci_id?: string | null
@@ -4334,6 +4337,13 @@ export type Database = {
             columns: ["categorie_tarification_id"]
             isOneToOne: false
             referencedRelation: "categorie_tarification"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_produits_classe_therapeutique"
+            columns: ["classe_therapeutique_id"]
+            isOneToOne: false
+            referencedRelation: "classes_therapeutiques"
             referencedColumns: ["id"]
           },
           {

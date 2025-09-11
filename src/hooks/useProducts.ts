@@ -10,6 +10,7 @@ export interface Product {
   famille_id?: string;
   rayon_id?: string;
   dci_id?: string;
+  classe_therapeutique_id?: string;
   laboratoires_id?: string;
   prix_achat?: number;
   prix_vente_ht?: number;
@@ -277,6 +278,7 @@ export const useProducts = () => {
           famille_id: sourceProduct.famille_id,
           rayon_id: sourceProduct.rayon_id,
           dci_id: sourceProduct.dci_id,
+          classe_therapeutique_id: sourceProduct.classe_therapeutique_id,
           laboratoires_id: sourceProduct.laboratoires_id,
           taux_tva: sourceProduct.taux_tva,
           tva: sourceProduct.tva,

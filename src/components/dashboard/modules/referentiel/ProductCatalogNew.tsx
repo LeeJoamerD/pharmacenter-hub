@@ -44,6 +44,7 @@ interface Product {
   forme_id?: string;
   laboratoires_id?: string;
   dci_id?: string;
+  classe_therapeutique_id?: string;
   categorie_tarification_id?: string;
   prix_achat?: number;
   prix_vente_ht?: number;
@@ -88,6 +89,12 @@ interface FormeGalenique {
   libelle_forme: string;
 }
 
+interface TherapeuticClass {
+  id: string;
+  libelle_classe: string;
+  systeme_anatomique: string;
+}
+
 const ProductCatalogNew = () => {
   // États locaux
   const [searchTerm, setSearchTerm] = useState("");
@@ -95,6 +102,7 @@ const ProductCatalogNew = () => {
   const [rayonFilter, setRayonFilter] = useState("all");
   const [formeFilter, setFormeFilter] = useState("all");
   const [dciFilter, setDciFilter] = useState("all");
+  const [classeFilter, setClasseFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
@@ -115,7 +123,7 @@ const ProductCatalogNew = () => {
     ['products-catalog'],
     'produits', 
     `id, libelle_produit, code_cip, famille_id, rayon_id, forme_id, laboratoires_id, 
-     dci_id, categorie_tarification_id, prix_achat, prix_vente_ht, 
+     dci_id, classe_therapeutique_id, categorie_tarification_id, prix_achat, prix_vente_ht, 
      prix_vente_ttc, tva, taux_tva, centime_additionnel, taux_centime_additionnel,
      stock_limite, stock_alerte, is_active, created_at,
      id_produit_source, quantite_unites_details_source, niveau_detail`,
@@ -152,6 +160,12 @@ const ProductCatalogNew = () => {
     'id, libelle_forme'
   );
 
+  const { data: classes = [] } = useTenantQueryWithCache(
+    ['therapeutic-classes'],
+    'classes_therapeutiques',
+    'id, libelle_classe, systeme_anatomique'
+  );
+
   // Filtrage des produits
   const filteredProducts = (() => {
     return products.filter((product) => {
@@ -161,8 +175,9 @@ const ProductCatalogNew = () => {
       const matchesRayon = !rayonFilter || rayonFilter === "all" || product.rayon_id === rayonFilter;
       const matchesForme = formeFilter === "all" || product.forme_id === formeFilter;
       const matchesDci = dciFilter === "all" || product.dci_id === dciFilter;
+      const matchesClasse = classeFilter === "all" || product.classe_therapeutique_id === classeFilter;
       
-      return matchesSearch && matchesFamille && matchesRayon && matchesForme && matchesDci;
+      return matchesSearch && matchesFamille && matchesRayon && matchesForme && matchesDci && matchesClasse;
     });
   })();
 
@@ -194,6 +209,7 @@ const ProductCatalogNew = () => {
     setRayonFilter("all");
     setFormeFilter("all");
     setDciFilter("all");
+    setClasseFilter("all");
   };
 
   const handleAddProduct = () => {
@@ -471,6 +487,20 @@ const ProductCatalogNew = () => {
             </SelectContent>
           </Select>
 
+          <Select value={classeFilter} onValueChange={setClasseFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Classe thérapeutique" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les classes</SelectItem>
+              {classes.map((classe) => (
+                <SelectItem key={classe.id} value={classe.id}>
+                  {classe.libelle_classe}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Button variant="outline" onClick={clearFilters}>
             <Filter className="h-4 w-4 mr-2" />
             Effacer filtres
@@ -526,9 +556,14 @@ const ProductCatalogNew = () => {
                          <div className="text-sm text-muted-foreground">
                            {rayons.find(r => r.id === product.rayon_id)?.libelle_rayon || 'N/A'}
                          </div>
-                         <div className="text-xs text-muted-foreground">
-                           {formes.find(f => f.id === product.forme_id)?.libelle_forme || 'N/A'}
-                         </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formes.find(f => f.id === product.forme_id)?.libelle_forme || 'N/A'}
+                          </div>
+                          {product.classe_therapeutique_id && (
+                            <div className="text-xs text-muted-foreground">
+                              {classes.find(c => c.id === product.classe_therapeutique_id)?.libelle_classe || 'N/A'}
+                            </div>
+                          )}
                        </div>
                      </TableCell>
                     <TableCell>{(product.prix_achat || 0).toLocaleString()} FCFA</TableCell>
@@ -715,6 +750,22 @@ const ProductCatalogNew = () => {
                         {dcis.map((dci) => (
                           <SelectItem key={dci.id} value={dci.id}>
                             {dci.nom_dci}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="classe_therapeutique_id">Classe thérapeutique</Label>
+                    <Select onValueChange={(value) => setValue('classe_therapeutique_id', value)} value={watch('classe_therapeutique_id') || ""}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner une classe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classes.map((classe) => (
+                          <SelectItem key={classe.id} value={classe.id}>
+                            {classe.libelle_classe} — {classe.systeme_anatomique}
                           </SelectItem>
                         ))}
                       </SelectContent>
