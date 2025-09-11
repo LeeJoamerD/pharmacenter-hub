@@ -6,16 +6,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
 import { Plus, Search, Edit, Trash2, Pill } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { VOIES_ADMINISTRATION } from '@/constants/voiesAdministration';
 
 interface FormeGalenique {
   id: string;
   tenant_id: string;
   libelle_forme: string;
   description?: string;
+  voie_administration?: string;
   created_at: string;
   updated_at: string;
 }
@@ -41,7 +44,7 @@ const FormesManager = () => {
         description: "La forme galénique a été ajoutée avec succès.",
       });
       setIsDialogOpen(false);
-      form.reset({ libelle_forme: '', description: '' });
+      form.reset({ libelle_forme: '', description: '', voie_administration: '' });
     },
     onError: (error: any) => {
       toast({
@@ -61,7 +64,7 @@ const FormesManager = () => {
       });
       setIsDialogOpen(false);
       setEditingForme(null);
-      form.reset({ libelle_forme: '', description: '' });
+      form.reset({ libelle_forme: '', description: '', voie_administration: '' });
     },
     onError: (error: any) => {
       toast({
@@ -97,18 +100,20 @@ const FormesManager = () => {
   const form = useForm<Partial<FormeGalenique>>({
     defaultValues: {
       libelle_forme: '',
-      description: ''
+      description: '',
+      voie_administration: ''
     }
   });
 
   const filteredFormes = formes.filter(forme =>
     forme.libelle_forme.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (forme.description && forme.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    (forme.description && forme.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (forme.voie_administration && forme.voie_administration.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleAddForme = () => {
     setEditingForme(null);
-    form.reset({ libelle_forme: '', description: '' });
+    form.reset({ libelle_forme: '', description: '', voie_administration: '' });
     setIsDialogOpen(true);
   };
 
@@ -129,12 +134,14 @@ const FormesManager = () => {
       updateForme.mutate({
         id: editingForme.id,
         libelle_forme: data.libelle_forme!,
-        description: data.description || null
+        description: data.description || null,
+        voie_administration: data.voie_administration || null
       });
     } else {
       createForme.mutate({
         libelle_forme: data.libelle_forme!,
-        description: data.description || null
+        description: data.description || null,
+        voie_administration: data.voie_administration || null
       });
     }
   };
@@ -191,19 +198,44 @@ const FormesManager = () => {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} placeholder="Description de la forme galénique (optionnel)" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                     <FormField
+                       control={form.control}
+                       name="description"
+                       render={({ field }) => (
+                         <FormItem>
+                           <FormLabel>Description</FormLabel>
+                           <FormControl>
+                             <Textarea {...field} placeholder="Description de la forme galénique (optionnel)" />
+                           </FormControl>
+                           <FormMessage />
+                         </FormItem>
+                       )}
+                     />
+
+                     <FormField
+                       control={form.control}
+                       name="voie_administration"
+                       render={({ field }) => (
+                         <FormItem>
+                           <FormLabel>Voie d'administration</FormLabel>
+                           <Select onValueChange={field.onChange} value={field.value || ''}>
+                             <FormControl>
+                               <SelectTrigger>
+                                 <SelectValue placeholder="Sélectionner une voie d'administration" />
+                               </SelectTrigger>
+                             </FormControl>
+                             <SelectContent>
+                               {VOIES_ADMINISTRATION.map((voie) => (
+                                 <SelectItem key={voie} value={voie}>
+                                   {voie}
+                                 </SelectItem>
+                               ))}
+                             </SelectContent>
+                           </Select>
+                           <FormMessage />
+                         </FormItem>
+                       )}
+                     />
 
                     <DialogFooter>
                       <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -225,27 +257,31 @@ const FormesManager = () => {
             <div className="text-center py-4 text-red-500">Erreur: {error.message}</div>
           ) : (
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Libellé de la forme</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+               <TableHeader>
+                 <TableRow>
+                   <TableHead>Libellé de la forme</TableHead>
+                   <TableHead>Description</TableHead>
+                   <TableHead>Voie d'administration</TableHead>
+                   <TableHead>Actions</TableHead>
+                 </TableRow>
+               </TableHeader>
               <TableBody>
-                {filteredFormes.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-center py-4">
-                      Aucune forme galénique trouvée
-                    </TableCell>
-                  </TableRow>
+                 {filteredFormes.length === 0 ? (
+                   <TableRow>
+                     <TableCell colSpan={4} className="text-center py-4">
+                       Aucune forme galénique trouvée
+                     </TableCell>
+                   </TableRow>
                 ) : (
                   filteredFormes.map((forme) => (
-                    <TableRow key={forme.id}>
-                      <TableCell className="font-medium">{forme.libelle_forme}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {forme.description || 'Aucune description'}
-                      </TableCell>
+                     <TableRow key={forme.id}>
+                       <TableCell className="font-medium">{forme.libelle_forme}</TableCell>
+                       <TableCell className="text-muted-foreground">
+                         {forme.description || 'Aucune description'}
+                       </TableCell>
+                       <TableCell className="text-muted-foreground">
+                         {forme.voie_administration || 'Non spécifiée'}
+                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <Button

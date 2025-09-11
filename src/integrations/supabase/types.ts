@@ -1603,6 +1603,7 @@ export type Database = {
           libelle_forme: string
           tenant_id: string
           updated_at: string
+          voie_administration: string | null
         }
         Insert: {
           created_at?: string
@@ -1611,6 +1612,7 @@ export type Database = {
           libelle_forme: string
           tenant_id: string
           updated_at?: string
+          voie_administration?: string | null
         }
         Update: {
           created_at?: string
@@ -1619,6 +1621,7 @@ export type Database = {
           libelle_forme?: string
           tenant_id?: string
           updated_at?: string
+          voie_administration?: string | null
         }
         Relationships: []
       }
