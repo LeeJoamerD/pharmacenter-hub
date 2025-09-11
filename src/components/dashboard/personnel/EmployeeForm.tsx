@@ -19,9 +19,10 @@ interface EmployeeFormProps {
   onSubmit: (data: EmployeeFormData) => void;
   isEdit?: boolean;
   onCancel: () => void;
+  isLoading?: boolean;
 }
 
-export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: EmployeeFormProps) => (
+export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoading = false }: EmployeeFormProps) => (
   <Form {...form}>
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
       <ScrollArea className="h-[400px] pr-4">
@@ -32,9 +33,15 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="noms"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Noms</FormLabel>
+                  <FormLabel>
+                    Noms <span className="text-destructive">*</span>
+                  </FormLabel>
                   <FormControl>
-                    <Input placeholder="Nom de famille" {...field} />
+                    <Input 
+                      placeholder="Nom de famille" 
+                      {...field}
+                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -45,7 +52,9 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="prenoms"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Prénoms</FormLabel>
+                  <FormLabel>
+                    Prénoms <span className="text-destructive">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input placeholder="Prénoms" {...field} />
                   </FormControl>
@@ -61,7 +70,9 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="fonction"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Fonction</FormLabel>
+                  <FormLabel>
+                    Fonction <span className="text-destructive">*</span>
+                  </FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -89,7 +100,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="profession"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Profession</FormLabel>
+                  <FormLabel>Profession (optionnel)</FormLabel>
                   <FormControl>
                     <Input placeholder="Profession" {...field} />
                   </FormControl>
@@ -104,7 +115,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
             name="adresse"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Adresse</FormLabel>
+                <FormLabel>Adresse (optionnel)</FormLabel>
                 <FormControl>
                   <Textarea 
                     placeholder="Adresse complète"
@@ -123,7 +134,9 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="telephone_appel"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Téléphone d'appel</FormLabel>
+                  <FormLabel>
+                    Téléphone d'appel <span className="text-destructive">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input placeholder="+237 6XX XXX XXX ou 6XX XXX XXX" {...field} />
                   </FormControl>
@@ -155,7 +168,9 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>
+                    Email <span className="text-destructive">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input placeholder="email@exemple.com" type="email" {...field} />
                   </FormControl>
@@ -168,7 +183,9 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="niu_cni"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>NIU/CNI</FormLabel>
+                  <FormLabel>
+                    NIU/CNI <span className="text-destructive">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input placeholder="Numéro d'identification unique" {...field} />
                   </FormControl>
@@ -184,7 +201,9 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="date_naissance"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Date de naissance</FormLabel>
+                  <FormLabel>
+                    Date de naissance <span className="text-destructive">*</span>
+                  </FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -229,7 +248,9 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="date_recrutement"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Date de recrutement</FormLabel>
+                  <FormLabel>
+                    Date de recrutement <span className="text-destructive">*</span>
+                  </FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -275,7 +296,9 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="situation_familiale"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Situation familiale</FormLabel>
+                  <FormLabel>
+                    Situation familiale <span className="text-destructive">*</span>
+                  </FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -320,7 +343,9 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="statut_contractuel"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Statut contractuel</FormLabel>
+                  <FormLabel>
+                    Statut contractuel <span className="text-destructive">*</span>
+                  </FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
@@ -343,7 +368,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="numero_cnss"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Numéro CNSS</FormLabel>
+                  <FormLabel>Numéro CNSS (optionnel)</FormLabel>
                   <FormControl>
                     <Input placeholder="Numéro CNSS" {...field} />
                   </FormControl>
@@ -359,7 +384,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
               name="salaire_base"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Salaire de base</FormLabel>
+                  <FormLabel>Salaire de base (optionnel)</FormLabel>
                   <FormControl>
                     <Input 
                       type="number" 
@@ -396,8 +421,14 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel }: Emplo
         <Button type="button" variant="outline" onClick={onCancel}>
           Annuler
         </Button>
-        <Button type="submit">
-          {isEdit ? 'Modifier' : 'Créer'}
+        <Button 
+          type="submit" 
+          disabled={isLoading}
+        >
+          {isLoading 
+            ? 'Enregistrement...' 
+            : (isEdit ? 'Modifier' : 'Créer')
+          }
         </Button>
       </div>
     </form>

@@ -109,16 +109,28 @@ export const EmployeeManagement = () => {
 
   const handleSubmit = (data: EmployeeFormData) => {
     try {
+      // Normaliser les données avant soumission
+      const normalizedData = {
+        ...data,
+        // Convertir les strings vides en null pour les champs optionnels
+        adresse: data.adresse || null,
+        telephone_whatsapp: data.telephone_whatsapp || null,
+        profession: data.profession || null,
+        photo_identite: data.photo_identite || null,
+        numero_cnss: data.numero_cnss || null,
+        salaire_base: data.salaire_base || null
+      };
+
       if (editingEmployee) {
         updateMutation.mutate({ 
           id: editingEmployee.id, 
-          ...data,
+          ...normalizedData,
           role: 'Employé', // Rôle par défaut pour les employés
           is_active: true
         });
       } else {
         createMutation.mutate({
-          ...data,
+          ...normalizedData,
           role: 'Employé', // Rôle par défaut pour les employés
           is_active: true,
           // Générer reference_agent automatiquement
@@ -134,23 +146,23 @@ export const EmployeeManagement = () => {
   const handleEdit = (employee: Employee) => {
     setEditingEmployee(employee);
     form.reset({
-      noms: employee.noms,
-      prenoms: employee.prenoms,
-      fonction: employee.fonction,
+      noms: employee.noms || '',
+      prenoms: employee.prenoms || '',
+      fonction: employee.fonction || '',
       adresse: employee.adresse || '',
-      telephone_appel: employee.telephone_appel,
+      telephone_appel: employee.telephone_appel || '',
       telephone_whatsapp: employee.telephone_whatsapp || '',
-      email: employee.email,
-      niu_cni: employee.niu_cni,
+      email: employee.email || '',
+      niu_cni: employee.niu_cni || '',
       profession: employee.profession || '',
-      date_naissance: employee.date_naissance,
-      date_recrutement: employee.date_recrutement,
+      date_naissance: employee.date_naissance || '',
+      date_recrutement: employee.date_recrutement || '',
       photo_identite: employee.photo_identite || '',
       salaire_base: employee.salaire_base || 0,
-      situation_familiale: employee.situation_familiale,
-      nombre_enfants: employee.nombre_enfants,
+      situation_familiale: employee.situation_familiale || '',
+      nombre_enfants: employee.nombre_enfants || 0,
       numero_cnss: employee.numero_cnss || '',
-      statut_contractuel: employee.statut_contractuel
+      statut_contractuel: employee.statut_contractuel || ''
     });
     setIsDialogOpen(true);
   };
@@ -280,6 +292,7 @@ export const EmployeeManagement = () => {
                 onSubmit={handleSubmit}
                 isEdit={!!editingEmployee}
                 onCancel={handleCancel}
+                isLoading={createMutation?.isPending || updateMutation?.isPending}
               />
             </DialogContent>
           </Dialog>

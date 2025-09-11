@@ -1,24 +1,42 @@
 import * as z from 'zod';
 
 export const employeeSchema = z.object({
-  noms: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
-  prenoms: z.string().min(2, "Le prénom doit contenir au moins 2 caractères"),
+  noms: z.string().min(1, "Le nom est requis")
+    .min(2, "Le nom doit contenir au moins 2 caractères")
+    .transform(val => val.toUpperCase()),
+  prenoms: z.string().min(1, "Le prénom est requis")
+    .min(2, "Le prénom doit contenir au moins 2 caractères"),
   fonction: z.string().min(1, "La fonction est requise"),
-  adresse: z.string().optional(),
-  telephone_appel: z.string()
+  adresse: z.string()
+    .transform(val => val === "" ? undefined : val)
+    .optional(),
+  telephone_appel: z.string().min(1, "Le téléphone est requis")
     .min(8, "Le numéro de téléphone doit contenir au moins 8 caractères")
     .regex(/^[\d+\-\s()\.]+$/, "Format de téléphone invalide"),
-  telephone_whatsapp: z.string().optional(),
-  email: z.string().email("Email invalide"),
+  telephone_whatsapp: z.string()
+    .transform(val => val === "" ? undefined : val)
+    .optional(),
+  email: z.string().min(1, "L'email est requis")
+    .email("Email invalide"),
   niu_cni: z.string().min(1, "Le NIU/CNI est requis"),
-  profession: z.string().optional(),
+  profession: z.string()
+    .transform(val => val === "" ? undefined : val)
+    .optional(),
   date_naissance: z.string().min(1, "La date de naissance est requise"),
   date_recrutement: z.string().min(1, "La date de recrutement est requise"),
-  photo_identite: z.string().optional(),
-  salaire_base: z.number().min(0, "Le salaire doit être positif").optional(),
+  photo_identite: z.string()
+    .transform(val => val === "" ? undefined : val)
+    .optional(),
+  salaire_base: z.number()
+    .min(0, "Le salaire doit être positif")
+    .optional(),
   situation_familiale: z.string().min(1, "La situation familiale est requise"),
-  nombre_enfants: z.number().min(0, "Le nombre d'enfants doit être positif").default(0),
-  numero_cnss: z.string().optional(),
+  nombre_enfants: z.number()
+    .min(0, "Le nombre d'enfants doit être positif")
+    .default(0),
+  numero_cnss: z.string()
+    .transform(val => val === "" ? undefined : val)
+    .optional(),
   statut_contractuel: z.string().min(1, "Le statut contractuel est requis")
 });
 
