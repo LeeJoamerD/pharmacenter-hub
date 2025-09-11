@@ -665,6 +665,36 @@ export type Database = {
           },
         ]
       }
+      classes_therapeutiques: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          libelle_classe: string
+          systeme_anatomique: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          libelle_classe: string
+          systeme_anatomique: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          libelle_classe?: string
+          systeme_anatomique?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           adresse: string | null
@@ -4307,6 +4337,13 @@ export type Database = {
             columns: ["categorie_tarification_id"]
             isOneToOne: false
             referencedRelation: "categorie_tarification"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_produits_classe_therapeutique"
+            columns: ["classe_therapeutique_id"]
+            isOneToOne: false
+            referencedRelation: "classes_therapeutiques"
             referencedColumns: ["id"]
           },
           {
