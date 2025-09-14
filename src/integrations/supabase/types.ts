@@ -229,6 +229,63 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_rules: {
+        Row: {
+          conditions: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          last_triggered_at: string | null
+          name: string
+          notification_channels: string[] | null
+          priority: string | null
+          recipients: Json | null
+          rule_type: string
+          tenant_id: string
+          threshold_operator: string | null
+          threshold_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_triggered_at?: string | null
+          name: string
+          notification_channels?: string[] | null
+          priority?: string | null
+          recipients?: Json | null
+          rule_type: string
+          tenant_id: string
+          threshold_operator?: string | null
+          threshold_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_triggered_at?: string | null
+          name?: string
+          notification_channels?: string[] | null
+          priority?: string | null
+          recipients?: Json | null
+          rule_type?: string
+          tenant_id?: string
+          threshold_operator?: string | null
+          threshold_value?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       alert_settings: {
         Row: {
           alert_end_time: string | null
@@ -1659,6 +1716,75 @@ export type Database = {
           nom?: string
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      global_alert_settings: {
+        Row: {
+          alert_retention_days: number | null
+          auto_cleanup_enabled: boolean | null
+          business_days: number[] | null
+          business_end_time: string | null
+          business_hours_only: boolean | null
+          business_start_time: string | null
+          check_frequency_minutes: number | null
+          created_at: string
+          default_email_template: string | null
+          default_sms_template: string | null
+          default_whatsapp_template: string | null
+          duplicate_alert_cooldown_minutes: number | null
+          escalation_delay_minutes: number | null
+          escalation_enabled: boolean | null
+          id: string
+          max_alerts_per_hour: number | null
+          max_escalation_level: number | null
+          system_enabled: boolean | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          alert_retention_days?: number | null
+          auto_cleanup_enabled?: boolean | null
+          business_days?: number[] | null
+          business_end_time?: string | null
+          business_hours_only?: boolean | null
+          business_start_time?: string | null
+          check_frequency_minutes?: number | null
+          created_at?: string
+          default_email_template?: string | null
+          default_sms_template?: string | null
+          default_whatsapp_template?: string | null
+          duplicate_alert_cooldown_minutes?: number | null
+          escalation_delay_minutes?: number | null
+          escalation_enabled?: boolean | null
+          id?: string
+          max_alerts_per_hour?: number | null
+          max_escalation_level?: number | null
+          system_enabled?: boolean | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          alert_retention_days?: number | null
+          auto_cleanup_enabled?: boolean | null
+          business_days?: number[] | null
+          business_end_time?: string | null
+          business_hours_only?: boolean | null
+          business_start_time?: string | null
+          check_frequency_minutes?: number | null
+          created_at?: string
+          default_email_template?: string | null
+          default_sms_template?: string | null
+          default_whatsapp_template?: string | null
+          duplicate_alert_cooldown_minutes?: number | null
+          escalation_delay_minutes?: number | null
+          escalation_enabled?: boolean | null
+          id?: string
+          max_alerts_per_hour?: number | null
+          max_escalation_level?: number | null
+          system_enabled?: boolean | null
           tenant_id?: string
           updated_at?: string
         }
@@ -3423,6 +3549,90 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
           uptime_seconds?: number | null
+        }
+        Relationships: []
+      }
+      notification_configurations: {
+        Row: {
+          created_at: string
+          email_enabled: boolean | null
+          email_from_address: string | null
+          email_from_name: string | null
+          email_smtp_host: string | null
+          email_smtp_password: string | null
+          email_smtp_port: number | null
+          email_smtp_user: string | null
+          email_template: string | null
+          email_use_tls: boolean | null
+          id: string
+          sms_api_key: string | null
+          sms_api_url: string | null
+          sms_enabled: boolean | null
+          sms_provider: string | null
+          sms_sender_name: string | null
+          sms_template: string | null
+          tenant_id: string
+          updated_at: string
+          whatsapp_access_token: string | null
+          whatsapp_business_account_id: string | null
+          whatsapp_enabled: boolean | null
+          whatsapp_phone_number_id: string | null
+          whatsapp_templates: Json | null
+          whatsapp_webhook_verify_token: string | null
+        }
+        Insert: {
+          created_at?: string
+          email_enabled?: boolean | null
+          email_from_address?: string | null
+          email_from_name?: string | null
+          email_smtp_host?: string | null
+          email_smtp_password?: string | null
+          email_smtp_port?: number | null
+          email_smtp_user?: string | null
+          email_template?: string | null
+          email_use_tls?: boolean | null
+          id?: string
+          sms_api_key?: string | null
+          sms_api_url?: string | null
+          sms_enabled?: boolean | null
+          sms_provider?: string | null
+          sms_sender_name?: string | null
+          sms_template?: string | null
+          tenant_id: string
+          updated_at?: string
+          whatsapp_access_token?: string | null
+          whatsapp_business_account_id?: string | null
+          whatsapp_enabled?: boolean | null
+          whatsapp_phone_number_id?: string | null
+          whatsapp_templates?: Json | null
+          whatsapp_webhook_verify_token?: string | null
+        }
+        Update: {
+          created_at?: string
+          email_enabled?: boolean | null
+          email_from_address?: string | null
+          email_from_name?: string | null
+          email_smtp_host?: string | null
+          email_smtp_password?: string | null
+          email_smtp_port?: number | null
+          email_smtp_user?: string | null
+          email_template?: string | null
+          email_use_tls?: boolean | null
+          id?: string
+          sms_api_key?: string | null
+          sms_api_url?: string | null
+          sms_enabled?: boolean | null
+          sms_provider?: string | null
+          sms_sender_name?: string | null
+          sms_template?: string | null
+          tenant_id?: string
+          updated_at?: string
+          whatsapp_access_token?: string | null
+          whatsapp_business_account_id?: string | null
+          whatsapp_enabled?: boolean | null
+          whatsapp_phone_number_id?: string | null
+          whatsapp_templates?: Json | null
+          whatsapp_webhook_verify_token?: string | null
         }
         Relationships: []
       }
