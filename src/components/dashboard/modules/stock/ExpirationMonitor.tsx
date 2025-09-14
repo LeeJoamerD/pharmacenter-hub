@@ -5,111 +5,48 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Clock, AlertTriangle, Package, Calendar, Search, Download, Tag } from 'lucide-react';
-
-interface ExpirationItem {
-  id: string;
-  codeProduit: string;
-  nomProduit: string;
-  lot: string;
-  quantite: number;
-  unite: string;
-  dateExpiration: Date;
-  joursRestants: number;
-  valeurStock: number;
-  fournisseur: string;
-  emplacement: string;
-  statut: 'expire' | 'critique' | 'proche' | 'attention';
-}
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Clock, AlertTriangle, Package, Calendar, Search, Download, Tag, CheckCircle, X, RefreshCw, Eye, MessageSquare } from 'lucide-react';
+import { useExpirationAlerts } from '@/hooks/useExpirationAlerts';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 const ExpirationMonitor = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPeriod, setFilterPeriod] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [selectedAlert, setSelectedAlert] = useState<any>(null);
+  const [actionNotes, setActionNotes] = useState('');
 
-  // Données mockées
-  const expirationItems: ExpirationItem[] = [
-    {
-      id: '1',
-      codeProduit: 'IBU200',
-      nomProduit: 'Ibuprofène 200mg',
-      lot: 'LOT2024-001',
-      quantite: 25,
-      unite: 'boîtes',
-      dateExpiration: new Date('2024-02-15'),
-      joursRestants: 31,
-      valeurStock: 30000,
-      fournisseur: 'MediSupply',
-      emplacement: 'A1-B2',
-      statut: 'proche'
-    },
-    {
-      id: '2',
-      codeProduit: 'PAR500',
-      nomProduit: 'Paracétamol 500mg',
-      lot: 'LOT2024-002',
-      quantite: 15,
-      unite: 'boîtes',
-      dateExpiration: new Date('2024-01-25'),
-      joursRestants: 10,
-      valeurStock: 12750,
-      fournisseur: 'PharmaDist',
-      emplacement: 'B2-C1',
-      statut: 'critique'
-    },
-    {
-      id: '3',
-      codeProduit: 'AMX500',
-      nomProduit: 'Amoxicilline 500mg',
-      lot: 'LOT2023-045',
-      quantite: 8,
-      unite: 'boîtes',
-      dateExpiration: new Date('2024-01-18'),
-      joursRestants: 3,
-      valeurStock: 20000,
-      fournisseur: 'BioMed',
-      emplacement: 'C1-D3',
-      statut: 'critique'
-    },
-    {
-      id: '4',
-      codeProduit: 'ASP100',
-      nomProduit: 'Aspirine 100mg',
-      lot: 'LOT2023-089',
-      quantite: 5,
-      unite: 'boîtes',
-      dateExpiration: new Date('2024-01-16'),
-      joursRestants: 1,
-      valeurStock: 3750,
-      fournisseur: 'PharmaDist',
-      emplacement: 'D3-E1',
-      statut: 'expire'
-    },
-    {
-      id: '5',
-      codeProduit: 'DIC75',
-      nomProduit: 'Diclofénac 75mg',
-      lot: 'LOT2024-003',
-      quantite: 40,
-      unite: 'boîtes',
-      dateExpiration: new Date('2024-03-20'),
-      joursRestants: 65,
-      valeurStock: 48000,
-      fournisseur: 'MediSupply',
-      emplacement: 'E1-F2',
-      statut: 'attention'
-    }
-  ];
+  const {
+    useExpirationAlertsQuery,
+    useAlertStatsQuery,
+    updateAlertStatus,
+    isUpdatingStatus,
+    getUrgencyColor,
+    getAlertTypeLabel,
+    getRecommendedActions,
+    generateExpirationAlerts,
+  } = useExpirationAlerts();
+
+  // Récupérer les alertes avec filtres
+  const { data: alerts = [], isLoading, refetch } = useExpirationAlertsQuery({
+    ...(filterStatus !== 'all' && { statut_alerte: filterStatus }),
+  });
+
+  const { data: stats } = useAlertStatsQuery();
 
   const getStatusBadge = (statut: string) => {
     const configs = {
-      expire: { variant: 'destructive', label: 'Expiré' },
-      critique: { variant: 'destructive', label: 'Critique' },
-      proche: { variant: 'default', label: 'Proche' },
-      attention: { variant: 'secondary', label: 'Attention' }
+      active: { variant: 'destructive', label: 'Active' },
+      traitee: { variant: 'default', label: 'Traitée' },
+      ignoree: { variant: 'secondary', label: 'Ignorée' }
     };
     
-    const config = configs[statut as keyof typeof configs];
+    const config = configs[statut as keyof typeof configs] || { variant: 'outline', label: statut };
     return (
       <Badge variant={config.variant as any}>
         {config.label}
@@ -117,33 +54,121 @@ const ExpirationMonitor = () => {
     );
   };
 
-  const getStatusIcon = (statut: string) => {
-    const className = statut === 'expire' || statut === 'critique' ? 'text-red-500' : 
-                     statut === 'proche' ? 'text-orange-500' : 'text-yellow-500';
+  const getStatusIcon = (niveau: string) => {
+    const className = niveau === 'critique' ? 'text-red-500' : 
+                     niveau === 'eleve' ? 'text-orange-500' : 
+                     niveau === 'moyen' ? 'text-yellow-500' : 'text-blue-500';
     return <Clock className={`h-4 w-4 ${className}`} />;
   };
 
-  const filteredItems = expirationItems.filter(item => {
-    const matchesSearch = item.nomProduit.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.codeProduit.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.lot.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredAlerts = alerts.filter((alert: any) => {
+    const produitNom = alert.produit?.libelle_produit || '';
+    const produitCode = alert.produit?.code_cip || '';
+    const lotNumero = alert.lot?.numero_lot || '';
+    
+    const matchesSearch = produitNom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         produitCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         lotNumero.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesPeriod = filterPeriod === 'all' || 
-                         (filterPeriod === '7' && item.joursRestants <= 7) ||
-                         (filterPeriod === '30' && item.joursRestants <= 30) ||
-                         (filterPeriod === '90' && item.joursRestants <= 90);
+                         (filterPeriod === '7' && alert.jours_restants <= 7) ||
+                         (filterPeriod === '30' && alert.jours_restants <= 30) ||
+                         (filterPeriod === '90' && alert.jours_restants <= 90);
     
-    const matchesStatus = filterStatus === 'all' || item.statut === filterStatus;
+    const matchesStatus = filterStatus === 'all' || alert.statut === filterStatus;
     
     return matchesSearch && matchesPeriod && matchesStatus;
   });
 
   const summary = {
-    expires: filteredItems.filter(i => i.statut === 'expire').length,
-    critiques: filteredItems.filter(i => i.statut === 'critique').length,
-    proches: filteredItems.filter(i => i.statut === 'proche').length,
-    totalValeur: filteredItems.reduce((sum, item) => sum + item.valeurStock, 0)
+    expires: filteredAlerts.filter((a: any) => a.jours_restants <= 0).length,
+    critiques: filteredAlerts.filter((a: any) => a.niveau_urgence === 'critique').length,
+    proches: filteredAlerts.filter((a: any) => a.jours_restants > 0 && a.jours_restants <= 30).length,
+    totalValeur: filteredAlerts.reduce((sum: number, alert: any) => {
+      // Calcul approximatif de la valeur (à ajuster selon vos données)
+      return sum + (alert.quantite_concernee * 1000); // Prix unitaire fictif
+    }, 0)
   };
+
+  const handleMarkAsTreated = async (alert: any) => {
+    try {
+      await updateAlertStatus({
+        id: alert.id,
+        statut: 'traitee',
+        notes: actionNotes || 'Alerte marquée comme traitée',
+        traite_par_id: 'current-user-id' // À remplacer par l'ID utilisateur réel
+      });
+      setSelectedAlert(null);
+      setActionNotes('');
+      toast.success('Alerte marquée comme traitée');
+    } catch (error) {
+      toast.error('Erreur lors du traitement de l\'alerte');
+    }
+  };
+
+  const handleMarkAsIgnored = async (alert: any) => {
+    try {
+      await updateAlertStatus({
+        id: alert.id,
+        statut: 'ignoree',
+        notes: actionNotes || 'Alerte ignorée',
+        traite_par_id: 'current-user-id' // À remplacer par l'ID utilisateur réel
+      });
+      setSelectedAlert(null);
+      setActionNotes('');
+      toast.success('Alerte ignorée');
+    } catch (error) {
+      toast.error('Erreur lors de l\'ignorance de l\'alerte');
+    }
+  };
+
+  const handleGenerateAlerts = async () => {
+    try {
+      await generateExpirationAlerts();
+      refetch();
+    } catch (error) {
+      // L'erreur est déjà gérée dans le hook
+    }
+  };
+
+  const exportToCSV = () => {
+    const csvData = filteredAlerts.map((alert: any) => ({
+      'Produit': alert.produit?.libelle_produit || '',
+      'Code': alert.produit?.code_cip || '',
+      'Lot': alert.lot?.numero_lot || '',
+      'Quantité': alert.quantite_concernee,
+      'Date Expiration': alert.lot?.date_peremption,
+      'Jours Restants': alert.jours_restants,
+      'Niveau': alert.niveau_urgence,
+      'Statut': alert.statut,
+      'Type': alert.type_alerte
+    }));
+
+    const csv = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `alertes-peremption-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="animate-pulse">
+            <div className="h-32 bg-muted rounded"></div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -197,8 +222,16 @@ const ExpirationMonitor = () => {
       {/* Surveillance des expirations */}
       <Card>
         <CardHeader>
-          <CardTitle>Surveillance des Expirations</CardTitle>
-          <CardDescription>Suivi des médicaments approchant de leur date d'expiration</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Surveillance des Expirations</CardTitle>
+              <CardDescription>Suivi des médicaments approchant de leur date d'expiration</CardDescription>
+            </div>
+            <Button onClick={handleGenerateAlerts} disabled={isUpdatingStatus}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${isUpdatingStatus ? 'animate-spin' : ''}`} />
+              Générer Alertes
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -232,14 +265,13 @@ const ExpirationMonitor = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous</SelectItem>
-                  <SelectItem value="expire">Expiré</SelectItem>
-                  <SelectItem value="critique">Critique</SelectItem>
-                  <SelectItem value="proche">Proche</SelectItem>
-                  <SelectItem value="attention">Attention</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="traitee">Traitée</SelectItem>
+                  <SelectItem value="ignoree">Ignorée</SelectItem>
                 </SelectContent>
               </Select>
               
-              <Button variant="outline">
+              <Button variant="outline" onClick={exportToCSV}>
                 <Download className="h-4 w-4 mr-2" />
                 Export
               </Button>
@@ -257,69 +289,159 @@ const ExpirationMonitor = () => {
                   <TableHead>Quantité</TableHead>
                   <TableHead>Expiration</TableHead>
                   <TableHead>Jours Restants</TableHead>
-                  <TableHead>Valeur</TableHead>
-                  <TableHead>Emplacement</TableHead>
+                  <TableHead>Type d'Alerte</TableHead>
+                  <TableHead>Urgence</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(item.statut)}
-                        {getStatusBadge(item.statut)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{item.nomProduit}</div>
-                        <div className="text-sm text-muted-foreground">{item.codeProduit}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {item.lot}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-center">
-                        <div className="font-medium">{item.quantite}</div>
-                        <div className="text-xs text-muted-foreground">{item.unite}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {item.dateExpiration.toLocaleDateString()}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className={`text-center font-medium ${
-                        item.joursRestants <= 0 ? 'text-red-600' :
-                        item.joursRestants <= 7 ? 'text-red-500' :
-                        item.joursRestants <= 30 ? 'text-orange-500' : 'text-green-600'
-                      }`}>
-                        {item.joursRestants <= 0 ? 'Expiré' : `${item.joursRestants}j`}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {item.valeurStock.toLocaleString()} F
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">{item.emplacement}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm">
-                          <Tag className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Package className="h-4 w-4" />
-                        </Button>
-                      </div>
+                {filteredAlerts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                      Aucune alerte d'expiration trouvée
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  filteredAlerts.map((alert: any) => (
+                    <TableRow key={alert.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(alert.niveau_urgence)}
+                          {getStatusBadge(alert.statut)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{alert.produit?.libelle_produit}</div>
+                          <div className="text-sm text-muted-foreground">{alert.produit?.code_cip}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {alert.lot?.numero_lot}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-center">
+                          <div className="font-medium">{alert.quantite_concernee}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {alert.lot?.date_peremption ? 
+                            format(new Date(alert.lot.date_peremption), 'dd/MM/yyyy', { locale: fr })
+                            : 'N/A'
+                          }
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className={`text-center font-medium ${
+                          alert.jours_restants <= 0 ? 'text-red-600' :
+                          alert.jours_restants <= 7 ? 'text-red-500' :
+                          alert.jours_restants <= 30 ? 'text-orange-500' : 'text-green-600'
+                        }`}>
+                          {alert.jours_restants <= 0 ? 'Expiré' : `${alert.jours_restants}j`}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {getAlertTypeLabel(alert.type_alerte)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getUrgencyColor(alert.niveau_urgence)}>
+                          {alert.niveau_urgence}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => setSelectedAlert(alert)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Détails de l'Alerte</DialogTitle>
+                                <DialogDescription>
+                                  Actions recommandées et traitement de l'alerte
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label>Actions Recommandées</Label>
+                                  <div className="mt-2 space-y-2">
+                                    {getRecommendedActions(alert.jours_restants, alert.quantite_concernee).map((action: string, index: number) => (
+                                      <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded">
+                                        <Tag className="h-4 w-4" />
+                                        <span className="text-sm">{action}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                                
+                                <div>
+                                  <Label htmlFor="action-notes">Notes de traitement</Label>
+                                  <Textarea
+                                    id="action-notes"
+                                    placeholder="Ajouter des notes sur l'action prise..."
+                                    value={actionNotes}
+                                    onChange={(e) => setActionNotes(e.target.value)}
+                                    className="mt-2"
+                                  />
+                                </div>
+                                
+                                <div className="flex gap-2 pt-4">
+                                  <Button 
+                                    onClick={() => handleMarkAsTreated(alert)}
+                                    disabled={isUpdatingStatus}
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Marquer comme Traitée
+                                  </Button>
+                                  <Button 
+                                    variant="outline"
+                                    onClick={() => handleMarkAsIgnored(alert)}
+                                    disabled={isUpdatingStatus}
+                                  >
+                                    <X className="h-4 w-4 mr-2" />
+                                    Ignorer
+                                  </Button>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          
+                          {alert.statut === 'active' && (
+                            <>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleMarkAsTreated(alert)}
+                                disabled={isUpdatingStatus}
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleMarkAsIgnored(alert)}
+                                disabled={isUpdatingStatus}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>

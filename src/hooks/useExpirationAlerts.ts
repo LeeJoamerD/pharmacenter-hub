@@ -14,9 +14,11 @@ export interface ExpirationAlert {
   jours_restants: number;
   quantite_concernee: number;
   actions_recommandees: string[];
-  statut_alerte: 'active' | 'traitee' | 'ignoree';
+  statut: 'active' | 'traitee' | 'ignoree';
+  date_alerte: string;
   date_traitement?: string;
-  notes_traitement?: string;
+  traite_par_id?: string;
+  notes?: string;
   created_at: string;
   updated_at: string;
 }
@@ -42,9 +44,12 @@ export interface ExpirationParameter {
   famille_id?: string;
   delai_alerte_jours: number;
   delai_critique_jours: number;
-  actions_automatiques: string[];
-  notification_email: boolean;
-  notification_sms: boolean;
+  delai_bloquant_jours: number;
+  action_auto_alerte: boolean;
+  action_auto_blocage: boolean;
+  notifications_email: boolean;
+  notifications_dashboard: boolean;
+  type_parametre: 'famille' | 'produit';
   created_at: string;
   updated_at: string;
 }
@@ -54,15 +59,19 @@ export interface CreateExpirationParameterInput {
   famille_id?: string;
   delai_alerte_jours: number;
   delai_critique_jours: number;
-  actions_automatiques?: string[];
-  notification_email?: boolean;
-  notification_sms?: boolean;
+  delai_bloquant_jours?: number;
+  action_auto_alerte?: boolean;
+  action_auto_blocage?: boolean;
+  notifications_email?: boolean;
+  notifications_dashboard?: boolean;
+  type_parametre?: 'famille' | 'produit';
 }
 
 export interface UpdateAlertStatusInput {
   id: string;
-  statut_alerte: 'active' | 'traitee' | 'ignoree';
-  notes_traitement?: string;
+  statut: 'active' | 'traitee' | 'ignoree';
+  notes?: string;
+  traite_par_id?: string;
 }
 
 export const useExpirationAlerts = () => {
@@ -86,7 +95,7 @@ export const useExpirationAlerts = () => {
       `,
       {
         ...(filters?.niveau_urgence && { niveau_urgence: filters.niveau_urgence }),
-        ...(filters?.statut_alerte && { statut_alerte: filters.statut_alerte }),
+        ...(filters?.statut_alerte && { statut: filters.statut_alerte }),
         ...(filters?.produit_id && { produit_id: filters.produit_id }),
       },
       {
@@ -106,7 +115,7 @@ export const useExpirationAlerts = () => {
         lot:lots(id, numero_lot, date_peremption),
         produit:produits(id, libelle_produit, code_cip)
       `,
-      { statut_alerte: 'active' },
+      { statut: 'active' },
       {
         enabled: !!tenantId,
         orderBy: { column: 'jours_restants', ascending: true },
@@ -122,7 +131,7 @@ export const useExpirationAlerts = () => {
       `
         *,
         produit:produits(id, libelle_produit),
-        famille:famille_produit(id, libelle_famille)
+        famille:familles_produit(id, libelle_famille)
       `,
       {},
       {
