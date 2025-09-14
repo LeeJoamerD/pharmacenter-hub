@@ -6274,6 +6274,10 @@ export type Database = {
         Args: { tenant_id: string }
         Returns: Json
       }
+      generer_alertes_expiration_automatiques: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_current_user_tenant_id: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -6320,6 +6324,10 @@ export type Database = {
       mark_personnel_google_verified: {
         Args: { p_tenant_id?: string }
         Returns: Json
+      }
+      nettoyer_alertes_expiration_anciennes: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       network_get_pharmacy_overview: {
         Args: { target_tenant_id: string }

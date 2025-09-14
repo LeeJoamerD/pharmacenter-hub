@@ -235,11 +235,19 @@ export const useExpirationAlerts = () => {
   // Générer manuellement les alertes d'expiration
   const generateExpirationAlerts = async () => {
     try {
-      // Pour l'instant, simuler la génération d'alertes
-      // TODO: Implémenter la fonction RPC quand elle sera disponible
-      toast.success('Alertes d\'expiration générées avec succès');
-      queryClient.invalidateQueries({ queryKey: ['expiration-alerts'] });
-      return true;
+      const { data, error } = await supabase.rpc('generer_alertes_expiration_automatiques');
+      
+      if (error) throw error;
+      
+      const result = data as { success: boolean; alertes_generees?: number; error?: string };
+      
+      if (result?.success) {
+        toast.success(`${result.alertes_generees || 0} alertes générées avec succès`);
+        queryClient.invalidateQueries({ queryKey: ['expiration-alerts'] });
+        return result;
+      } else {
+        throw new Error(result?.error || 'Erreur inconnue lors de la génération');
+      }
     } catch (error: any) {
       toast.error(`Erreur lors de la génération: ${error.message}`);
       throw error;
