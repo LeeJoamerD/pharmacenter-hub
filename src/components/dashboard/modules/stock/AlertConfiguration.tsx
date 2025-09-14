@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,17 +20,32 @@ import {
   Save,
   Plus,
   Trash2,
-  Edit
+  Edit,
+  Loader2
 } from 'lucide-react';
 import { useAlertConfiguration } from '@/hooks/useAlertConfiguration';
 import { useAlertRules } from '@/hooks/useAlertRules';
 import { useNotificationSettings } from '@/hooks/useNotificationSettings';
 import { useGlobalAlertSettings } from '@/hooks/useGlobalAlertSettings';
 import AlertRuleDialog from './AlertRuleDialog';
+import WhatsAppTemplateDialog from './WhatsAppTemplateDialog';
 
 const AlertConfiguration = () => {
   const [activeTab, setActiveTab] = useState('regles');
   const [editingRule, setEditingRule] = useState<any>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  
+  // Local state for forms
+  const [localEmailSettings, setLocalEmailSettings] = useState<any>({});
+  const [localSmsSettings, setLocalSmsSettings] = useState<any>({});
+  const [localWhatsappSettings, setLocalWhatsappSettings] = useState<any>({});
+  const [localGlobalSettings, setLocalGlobalSettings] = useState<any>({});
+  
+  // State for unsaved changes indicators
+  const [hasEmailChanges, setHasEmailChanges] = useState(false);
+  const [hasSmsChanges, setHasSmsChanges] = useState(false);
+  const [hasWhatsappChanges, setHasWhatsappChanges] = useState(false);
+  const [hasGlobalChanges, setHasGlobalChanges] = useState(false);
   
   // Real data hooks
   const { rules, loading: rulesLoading, createRule, updateRule, deleteRule, toggleRule, isUpdating: rulesUpdating } = useAlertRules();
@@ -39,6 +54,55 @@ const AlertConfiguration = () => {
   
   // Legacy hook (to be phased out)
   const { alertRules, globalSettings, isLoading, actions } = useAlertConfiguration();
+
+  // Initialize local settings when data loads
+  useEffect(() => {
+    if (notificationSettings) {
+      setLocalEmailSettings({
+        email_enabled: notificationSettings.email_enabled || false,
+        email_smtp_host: notificationSettings.email_smtp_host || '',
+        email_smtp_port: notificationSettings.email_smtp_port || 587,
+        email_smtp_user: notificationSettings.email_smtp_user || '',
+        email_smtp_password: notificationSettings.email_smtp_password || '',
+        email_template: notificationSettings.email_template || '',
+      });
+      setLocalSmsSettings({
+        sms_enabled: notificationSettings.sms_enabled || false,
+        sms_provider: notificationSettings.sms_provider || '',
+        sms_api_key: notificationSettings.sms_api_key || '',
+        sms_api_url: notificationSettings.sms_api_url || '',
+        sms_sender_name: notificationSettings.sms_sender_name || '',
+        sms_template: notificationSettings.sms_template || '',
+      });
+      setLocalWhatsappSettings({
+        whatsapp_enabled: notificationSettings.whatsapp_enabled || false,
+        whatsapp_business_account_id: notificationSettings.whatsapp_business_account_id || '',
+        whatsapp_access_token: notificationSettings.whatsapp_access_token || '',
+        whatsapp_phone_number_id: notificationSettings.whatsapp_phone_number_id || '',
+        whatsapp_templates: notificationSettings.whatsapp_templates || [],
+      });
+    }
+  }, [notificationSettings]);
+
+  useEffect(() => {
+    if (globalAlertSettings) {
+      setLocalGlobalSettings({
+        system_enabled: globalAlertSettings.system_enabled ?? true,
+        check_frequency_minutes: globalAlertSettings.check_frequency_minutes ?? 60,
+        business_hours_only: globalAlertSettings.business_hours_only ?? true,
+        business_start_time: globalAlertSettings.business_start_time ?? '08:00',
+        business_end_time: globalAlertSettings.business_end_time ?? '18:00',
+        business_days: globalAlertSettings.business_days ?? [1, 2, 3, 4, 5],
+        alert_retention_days: globalAlertSettings.alert_retention_days ?? 90,
+        auto_cleanup_enabled: globalAlertSettings.auto_cleanup_enabled ?? true,
+        escalation_enabled: globalAlertSettings.escalation_enabled ?? false,
+        escalation_delay_minutes: globalAlertSettings.escalation_delay_minutes ?? 60,
+        max_escalation_level: globalAlertSettings.max_escalation_level ?? 3,
+        max_alerts_per_hour: globalAlertSettings.max_alerts_per_hour ?? 100,
+        duplicate_alert_cooldown_minutes: globalAlertSettings.duplicate_alert_cooldown_minutes ?? 30,
+      });
+    }
+  }, [globalAlertSettings]);
 
   // Configuration avec les hooks
   if (isLoading || rulesLoading || notificationLoading || globalLoading) {
@@ -78,10 +142,70 @@ const AlertConfiguration = () => {
     return labels[type as keyof typeof labels] || type;
   };
 
+  // Save handlers
+  const handleSaveEmailSettings = async () => {
+    await saveNotificationSettings(localEmailSettings);
+    setHasEmailChanges(false);
+  };
+
+  const handleSaveSmsSettings = async () => {
+    await saveNotificationSettings(localSmsSettings);
+    setHasSmsChanges(false);
+  };
+
+  const handleSaveWhatsappSettings = async () => {
+    await saveNotificationSettings(localWhatsappSettings);
+    setHasWhatsappChanges(false);
+  };
+
   const handleSaveGlobalSettings = async () => {
-    if (globalAlertSettings) {
-      await saveGlobalSettings2(globalAlertSettings);
+    await saveGlobalSettings2(localGlobalSettings);
+    setHasGlobalChanges(false);
+  };
+
+  // Test handlers with validation
+  const handleTestEmail = () => {
+    const { email_smtp_host, email_smtp_port, email_smtp_user, email_smtp_password } = localEmailSettings;
+    if (!email_smtp_host || !email_smtp_user || !email_smtp_password) {
+      return testEmailConnection({ 
+        host: '', 
+        port: 0, 
+        user: '', 
+        password: '', 
+        use_tls: false 
+      });
     }
+    testEmailConnection({
+      host: email_smtp_host,
+      port: email_smtp_port,
+      user: email_smtp_user,
+      password: email_smtp_password,
+      use_tls: true
+    });
+  };
+
+  const handleTestSms = () => {
+    const { sms_provider, sms_api_key, sms_sender_name } = localSmsSettings;
+    if (!sms_provider || !sms_api_key) {
+      return testSMSConnection({ provider: '', api_key: '', sender_name: '' });
+    }
+    testSMSConnection({
+      provider: sms_provider,
+      api_key: sms_api_key,
+      sender_name: sms_sender_name
+    });
+  };
+
+  const handleTestWhatsapp = () => {
+    const { whatsapp_business_account_id, whatsapp_access_token, whatsapp_phone_number_id } = localWhatsappSettings;
+    if (!whatsapp_business_account_id || !whatsapp_access_token || !whatsapp_phone_number_id) {
+      return testWhatsAppConnection({ business_account_id: '', access_token: '', phone_number_id: '' });
+    }
+    testWhatsAppConnection({
+      business_account_id: whatsapp_business_account_id,
+      access_token: whatsapp_access_token,
+      phone_number_id: whatsapp_phone_number_id
+    });
   };
 
   const handleToggleRule = async (ruleId: string) => {
@@ -130,6 +254,23 @@ const AlertConfiguration = () => {
                 <AlertRuleDialog 
                   onSave={async (ruleData) => {
                     await createRule(ruleData as any);
+                    setDialogOpen(false);
+                  }}
+                  isUpdating={rulesUpdating}
+                />
+                <AlertRuleDialog 
+                  rule={editingRule}
+                  isOpen={dialogOpen}
+                  onOpenChange={(open) => {
+                    setDialogOpen(open);
+                    if (!open) setEditingRule(null);
+                  }}
+                  onSave={async (ruleData) => {
+                    if (editingRule) {
+                      await updateRule(editingRule.id, ruleData);
+                    }
+                    setDialogOpen(false);
+                    setEditingRule(null);
                   }}
                   isUpdating={rulesUpdating}
                 />
@@ -188,14 +329,12 @@ const AlertConfiguration = () => {
                             <Button 
                               variant="ghost" 
                               size="sm"
+                              onClick={() => {
+                                setEditingRule(rule);
+                                setDialogOpen(true);
+                              }}
+                              disabled={rulesUpdating}
                             >
-                              <AlertRuleDialog 
-                                rule={rule}
-                                onSave={async (ruleData) => {
-                                  await updateRule(rule.id, ruleData);
-                                }}
-                                isUpdating={rulesUpdating}
-                              />
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button 
@@ -229,9 +368,10 @@ const AlertConfiguration = () => {
                   <Label htmlFor="email-enabled">Email activé</Label>
                   <Switch
                     id="email-enabled"
-                    checked={notificationSettings?.email_enabled || false}
-                    onCheckedChange={async (checked) => {
-                      await saveNotificationSettings({ email_enabled: checked });
+                    checked={localEmailSettings.email_enabled || false}
+                    onCheckedChange={(checked) => {
+                      setLocalEmailSettings(prev => ({ ...prev, email_enabled: checked }));
+                      setHasEmailChanges(true);
                     }}
                   />
                 </div>
@@ -239,9 +379,10 @@ const AlertConfiguration = () => {
                   <Label htmlFor="email-server">Serveur SMTP</Label>
                   <Input
                     id="email-server"
-                    value={notificationSettings?.email_smtp_host || ''}
-                    onChange={async (e) => {
-                      await saveNotificationSettings({ email_smtp_host: e.target.value });
+                    value={localEmailSettings.email_smtp_host || ''}
+                    onChange={(e) => {
+                      setLocalEmailSettings(prev => ({ ...prev, email_smtp_host: e.target.value }));
+                      setHasEmailChanges(true);
                     }}
                     placeholder="smtp.gmail.com"
                   />
@@ -251,9 +392,10 @@ const AlertConfiguration = () => {
                   <Input 
                     id="email-port" 
                     type="number" 
-                    value={notificationSettings?.email_smtp_port || 587}
-                    onChange={async (e) => {
-                      await saveNotificationSettings({ email_smtp_port: parseInt(e.target.value) });
+                    value={localEmailSettings.email_smtp_port || 587}
+                    onChange={(e) => {
+                      setLocalEmailSettings(prev => ({ ...prev, email_smtp_port: parseInt(e.target.value) || 587 }));
+                      setHasEmailChanges(true);
                     }}
                     placeholder="587" 
                   />
@@ -263,9 +405,10 @@ const AlertConfiguration = () => {
                   <Input 
                     id="email-user" 
                     type="email" 
-                    value={notificationSettings?.email_smtp_user || ''}
-                    onChange={async (e) => {
-                      await saveNotificationSettings({ email_smtp_user: e.target.value });
+                    value={localEmailSettings.email_smtp_user || ''}
+                    onChange={(e) => {
+                      setLocalEmailSettings(prev => ({ ...prev, email_smtp_user: e.target.value }));
+                      setHasEmailChanges(true);
                     }}
                     placeholder="alerts@pharmacie.sn" 
                   />
@@ -275,9 +418,10 @@ const AlertConfiguration = () => {
                   <Input 
                     id="email-password" 
                     type="password" 
-                    value={notificationSettings?.email_smtp_password || ''}
-                    onChange={async (e) => {
-                      await saveNotificationSettings({ email_smtp_password: e.target.value });
+                    value={localEmailSettings.email_smtp_password || ''}
+                    onChange={(e) => {
+                      setLocalEmailSettings(prev => ({ ...prev, email_smtp_password: e.target.value }));
+                      setHasEmailChanges(true);
                     }}
                     placeholder="••••••••••••" 
                   />
@@ -286,27 +430,37 @@ const AlertConfiguration = () => {
                   <Label htmlFor="email-template">Modèle d'Email</Label>
                   <Textarea 
                     id="email-template" 
-                    value={notificationSettings?.email_template || ''}
-                    onChange={async (e) => {
-                      await saveNotificationSettings({ email_template: e.target.value });
+                    value={localEmailSettings.email_template || ''}
+                    onChange={(e) => {
+                      setLocalEmailSettings(prev => ({ ...prev, email_template: e.target.value }));
+                      setHasEmailChanges(true);
                     }}
                     placeholder="Bonjour,\n\nUne alerte a été déclenchée : {alerte}\n\nCordialement,\nSystème de gestion"
                     rows={4}
                   />
                 </div>
-                <Button 
-                  variant="outline" 
-                  onClick={() => testEmailConnection({
-                    host: notificationSettings?.email_smtp_host || '',
-                    port: notificationSettings?.email_smtp_port || 587,
-                    user: notificationSettings?.email_smtp_user || '',
-                    password: notificationSettings?.email_smtp_password || '',
-                    use_tls: notificationSettings?.email_use_tls || true
-                  })}
-                  disabled={notificationUpdating}
-                >
-                  Tester Connexion Email
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleTestEmail}
+                    disabled={notificationUpdating}
+                  >
+                    Tester Connexion Email
+                  </Button>
+                  <Button 
+                    onClick={handleSaveEmailSettings}
+                    disabled={!hasEmailChanges || notificationUpdating}
+                    variant={hasEmailChanges ? "default" : "secondary"}
+                  >
+                    {notificationUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                    {hasEmailChanges ? 'Sauvegarder' : 'Sauvegardé'}
+                  </Button>
+                </div>
+                {hasEmailChanges && (
+                  <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
+                    Modifications non sauvegardées
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -320,18 +474,20 @@ const AlertConfiguration = () => {
                   <Label htmlFor="sms-enabled">SMS activé</Label>
                   <Switch
                     id="sms-enabled"
-                    checked={notificationSettings?.sms_enabled || false}
-                    onCheckedChange={async (checked) => {
-                      await saveNotificationSettings({ sms_enabled: checked });
+                    checked={localSmsSettings.sms_enabled || false}
+                    onCheckedChange={(checked) => {
+                      setLocalSmsSettings(prev => ({ ...prev, sms_enabled: checked }));
+                      setHasSmsChanges(true);
                     }}
                   />
                 </div>
                 <div>
                   <Label htmlFor="sms-provider">Fournisseur SMS</Label>
                   <Select 
-                    value={notificationSettings?.sms_provider || ''} 
-                    onValueChange={async (value) => {
-                      await saveNotificationSettings({ sms_provider: value });
+                    value={localSmsSettings.sms_provider || ''} 
+                    onValueChange={(value) => {
+                      setLocalSmsSettings(prev => ({ ...prev, sms_provider: value }));
+                      setHasSmsChanges(true);
                     }}
                   >
                     <SelectTrigger>
@@ -350,9 +506,10 @@ const AlertConfiguration = () => {
                   <Input 
                     id="sms-api-key" 
                     type="password" 
-                    value={notificationSettings?.sms_api_key || ''}
-                    onChange={async (e) => {
-                      await saveNotificationSettings({ sms_api_key: e.target.value });
+                    value={localSmsSettings.sms_api_key || ''}
+                    onChange={(e) => {
+                      setLocalSmsSettings(prev => ({ ...prev, sms_api_key: e.target.value }));
+                      setHasSmsChanges(true);
                     }}
                     placeholder="••••••••••••" 
                   />
@@ -361,9 +518,10 @@ const AlertConfiguration = () => {
                   <Label htmlFor="sms-api-url">URL API</Label>
                   <Input 
                     id="sms-api-url" 
-                    value={notificationSettings?.sms_api_url || ''}
-                    onChange={async (e) => {
-                      await saveNotificationSettings({ sms_api_url: e.target.value });
+                    value={localSmsSettings.sms_api_url || ''}
+                    onChange={(e) => {
+                      setLocalSmsSettings(prev => ({ ...prev, sms_api_url: e.target.value }));
+                      setHasSmsChanges(true);
                     }}
                     placeholder="https://api.sms-provider.com/send" 
                   />
@@ -372,9 +530,10 @@ const AlertConfiguration = () => {
                   <Label htmlFor="sms-sender">Expéditeur</Label>
                   <Input 
                     id="sms-sender" 
-                    value={notificationSettings?.sms_sender_name || ''}
-                    onChange={async (e) => {
-                      await saveNotificationSettings({ sms_sender_name: e.target.value });
+                    value={localSmsSettings.sms_sender_name || ''}
+                    onChange={(e) => {
+                      setLocalSmsSettings(prev => ({ ...prev, sms_sender_name: e.target.value }));
+                      setHasSmsChanges(true);
                     }}
                     placeholder="PHARMACIE" 
                     maxLength={11} 
@@ -384,9 +543,10 @@ const AlertConfiguration = () => {
                   <Label htmlFor="sms-template">Modèle de SMS</Label>
                   <Textarea 
                     id="sms-template" 
-                    value={notificationSettings?.sms_template || ''}
-                    onChange={async (e) => {
-                      await saveNotificationSettings({ sms_template: e.target.value });
+                    value={localSmsSettings.sms_template || ''}
+                    onChange={(e) => {
+                      setLocalSmsSettings(prev => ({ ...prev, sms_template: e.target.value }));
+                      setHasSmsChanges(true);
                     }}
                     placeholder="ALERTE STOCK: {produit} - {message}"
                     rows={3}
@@ -396,17 +556,28 @@ const AlertConfiguration = () => {
                     Maximum 160 caractères
                   </p>
                 </div>
-                <Button 
-                  variant="outline" 
-                  onClick={() => testSMSConnection({
-                    provider: notificationSettings?.sms_provider || '',
-                    api_key: notificationSettings?.sms_api_key || '',
-                    sender_name: notificationSettings?.sms_sender_name || ''
-                  })}
-                  disabled={notificationUpdating}
-                >
-                  Tester Connexion SMS
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleTestSms}
+                    disabled={notificationUpdating}
+                  >
+                    Tester Connexion SMS
+                  </Button>
+                  <Button 
+                    onClick={handleSaveSmsSettings}
+                    disabled={!hasSmsChanges || notificationUpdating}
+                    variant={hasSmsChanges ? "default" : "secondary"}
+                  >
+                    {notificationUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                    {hasSmsChanges ? 'Sauvegarder' : 'Sauvegardé'}
+                  </Button>
+                </div>
+                {hasSmsChanges && (
+                  <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
+                    Modifications non sauvegardées
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -420,86 +591,80 @@ const AlertConfiguration = () => {
                   <Label htmlFor="whatsapp-enabled">WhatsApp activé</Label>
                   <Switch
                     id="whatsapp-enabled"
-                    checked={notificationSettings?.whatsapp_enabled || false}
-                    onCheckedChange={async (checked) => {
-                      await saveNotificationSettings({ whatsapp_enabled: checked });
+                    checked={localWhatsappSettings.whatsapp_enabled || false}
+                    onCheckedChange={(checked) => {
+                      setLocalWhatsappSettings(prev => ({ ...prev, whatsapp_enabled: checked }));
+                      setHasWhatsappChanges(true);
                     }}
                   />
                 </div>
                 <div>
                   <Label htmlFor="whatsapp-business-id">Business Account ID</Label>
-                  <Input
-                    id="whatsapp-business-id"
-                    value={notificationSettings?.whatsapp_business_account_id || ''}
-                    onChange={async (e) => {
-                      await saveNotificationSettings({ whatsapp_business_account_id: e.target.value });
+                  <Input 
+                    id="whatsapp-business-id" 
+                    value={localWhatsappSettings.whatsapp_business_account_id || ''}
+                    onChange={(e) => {
+                      setLocalWhatsappSettings(prev => ({ ...prev, whatsapp_business_account_id: e.target.value }));
+                      setHasWhatsappChanges(true);
                     }}
-                    placeholder="123456789012345"
+                    placeholder="123456789012345" 
                   />
                 </div>
                 <div>
-                  <Label htmlFor="whatsapp-access-token">Access Token</Label>
-                  <Input
-                    id="whatsapp-access-token"
-                    type="password"
-                    value={notificationSettings?.whatsapp_access_token || ''}
-                    onChange={async (e) => {
-                      await saveNotificationSettings({ whatsapp_access_token: e.target.value });
+                  <Label htmlFor="whatsapp-token">Access Token</Label>
+                  <Input 
+                    id="whatsapp-token" 
+                    type="password" 
+                    value={localWhatsappSettings.whatsapp_access_token || ''}
+                    onChange={(e) => {
+                      setLocalWhatsappSettings(prev => ({ ...prev, whatsapp_access_token: e.target.value }));
+                      setHasWhatsappChanges(true);
                     }}
-                    placeholder="••••••••••••"
+                    placeholder="••••••••••••" 
                   />
                 </div>
                 <div>
                   <Label htmlFor="whatsapp-phone-id">Phone Number ID</Label>
-                  <Input
-                    id="whatsapp-phone-id"
-                    value={notificationSettings?.whatsapp_phone_number_id || ''}
-                    onChange={async (e) => {
-                      await saveNotificationSettings({ whatsapp_phone_number_id: e.target.value });
+                  <Input 
+                    id="whatsapp-phone-id" 
+                    value={localWhatsappSettings.whatsapp_phone_number_id || ''}
+                    onChange={(e) => {
+                      setLocalWhatsappSettings(prev => ({ ...prev, whatsapp_phone_number_id: e.target.value }));
+                      setHasWhatsappChanges(true);
                     }}
-                    placeholder="123456789012345"
+                    placeholder="12345678901234567890" 
                   />
                 </div>
-                <div>
-                  <Label htmlFor="whatsapp-webhook-token">Webhook Verify Token</Label>
-                  <Input
-                    id="whatsapp-webhook-token"
-                    value={notificationSettings?.whatsapp_webhook_verify_token || ''}
-                    onChange={async (e) => {
-                      await saveNotificationSettings({ whatsapp_webhook_verify_token: e.target.value });
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleTestWhatsapp}
+                    disabled={notificationUpdating}
+                  >
+                    Tester Connexion WhatsApp
+                  </Button>
+                  <WhatsAppTemplateDialog
+                    templates={localWhatsappSettings.whatsapp_templates || []}
+                    onTemplatesChange={(templates) => {
+                      setLocalWhatsappSettings(prev => ({ ...prev, whatsapp_templates: templates }));
+                      setHasWhatsappChanges(true);
                     }}
-                    placeholder="mon-token-secret"
-                  />
-                </div>
-                <div>
-                  <Label>Templates WhatsApp Approuvés</Label>
-                  <div className="border rounded-lg p-3 bg-muted/50">
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {Array.isArray(notificationSettings?.whatsapp_templates) ? notificationSettings.whatsapp_templates.length : 0} template(s) configuré(s)
-                    </p>
-                    <Button variant="outline" size="sm">
-                      Gérer les Templates
-                    </Button>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="whatsapp-test-number">Numéro de test</Label>
-                  <Input
-                    id="whatsapp-test-number"
-                    placeholder="+221771234567"
                   />
                 </div>
                 <Button 
-                  variant="outline" 
-                  onClick={() => testWhatsAppConnection({
-                    business_account_id: notificationSettings?.whatsapp_business_account_id || '',
-                    access_token: notificationSettings?.whatsapp_access_token || '',
-                    phone_number_id: notificationSettings?.whatsapp_phone_number_id || ''
-                  })}
-                  disabled={notificationUpdating}
+                  onClick={handleSaveWhatsappSettings}
+                  disabled={!hasWhatsappChanges || notificationUpdating}
+                  variant={hasWhatsappChanges ? "default" : "secondary"}
+                  className="w-full"
                 >
-                  Tester Connexion WhatsApp
+                  {notificationUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  {hasWhatsappChanges ? 'Sauvegarder' : 'Sauvegardé'}
                 </Button>
+                {hasWhatsappChanges && (
+                  <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
+                    Modifications non sauvegardées
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -523,9 +688,10 @@ const AlertConfiguration = () => {
                 </div>
                 <Switch
                   id="alerts-enabled"
-                  checked={globalAlertSettings?.system_enabled || false}
-                  onCheckedChange={async (checked) => {
-                    await saveGlobalSettings2({ system_enabled: checked });
+                  checked={localGlobalSettings.system_enabled ?? true}
+                  onCheckedChange={(checked) => {
+                    setLocalGlobalSettings(prev => ({ ...prev, system_enabled: checked }));
+                    setHasGlobalChanges(true);
                   }}
                 />
               </div>
@@ -537,9 +703,10 @@ const AlertConfiguration = () => {
                     <Input
                       id="check-frequency"
                       type="number"
-                      value={globalAlertSettings?.check_frequency_minutes || 60}
-                      onChange={async (e) => {
-                        await saveGlobalSettings2({ check_frequency_minutes: parseInt(e.target.value) || 60 });
+                      value={localGlobalSettings.check_frequency_minutes ?? 60}
+                      onChange={(e) => {
+                        setLocalGlobalSettings(prev => ({ ...prev, check_frequency_minutes: parseInt(e.target.value) || 60 }));
+                        setHasGlobalChanges(true);
                       }}
                       className="w-20"
                     />
@@ -556,9 +723,10 @@ const AlertConfiguration = () => {
                     <Input
                       id="retention-period"
                       type="number"
-                      value={globalAlertSettings?.alert_retention_days || 90}
-                      onChange={async (e) => {
-                        await saveGlobalSettings2({ alert_retention_days: parseInt(e.target.value) || 90 });
+                      value={localGlobalSettings.alert_retention_days ?? 90}
+                      onChange={(e) => {
+                        setLocalGlobalSettings(prev => ({ ...prev, alert_retention_days: parseInt(e.target.value) || 90 }));
+                        setHasGlobalChanges(true);
                       }}
                       className="w-20"
                     />
@@ -579,9 +747,10 @@ const AlertConfiguration = () => {
                     </p>
                   </div>
                   <Switch
-                    checked={globalAlertSettings?.business_hours_only || false}
-                    onCheckedChange={async (checked) => {
-                      await saveGlobalSettings2({ business_hours_only: checked });
+                    checked={localGlobalSettings.business_hours_only ?? true}
+                    onCheckedChange={(checked) => {
+                      setLocalGlobalSettings(prev => ({ ...prev, business_hours_only: checked }));
+                      setHasGlobalChanges(true);
                     }}
                   />
                 </div>
@@ -594,24 +763,26 @@ const AlertConfiguration = () => {
                     </p>
                   </div>
                   <Switch
-                    checked={globalAlertSettings?.escalation_enabled || false}
-                    onCheckedChange={async (checked) => {
-                      await saveGlobalSettings2({ escalation_enabled: checked });
+                    checked={localGlobalSettings.escalation_enabled ?? false}
+                    onCheckedChange={(checked) => {
+                      setLocalGlobalSettings(prev => ({ ...prev, escalation_enabled: checked }));
+                      setHasGlobalChanges(true);
                     }}
                   />
                 </div>
               </div>
 
-              {globalAlertSettings?.business_hours_only && (
+              {localGlobalSettings.business_hours_only && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="business-start">Heure d'ouverture</Label>
                     <Input
                       id="business-start"
                       type="time"
-                      value={globalAlertSettings?.business_start_time || '08:00'}
-                      onChange={async (e) => {
-                        await saveGlobalSettings2({ business_start_time: e.target.value });
+                      value={localGlobalSettings.business_start_time ?? '08:00'}
+                      onChange={(e) => {
+                        setLocalGlobalSettings(prev => ({ ...prev, business_start_time: e.target.value }));
+                        setHasGlobalChanges(true);
                       }}
                     />
                   </div>
@@ -620,9 +791,10 @@ const AlertConfiguration = () => {
                     <Input
                       id="business-end"
                       type="time"
-                      value={globalAlertSettings?.business_end_time || '18:00'}
-                      onChange={async (e) => {
-                        await saveGlobalSettings2({ business_end_time: e.target.value });
+                      value={localGlobalSettings.business_end_time ?? '18:00'}
+                      onChange={(e) => {
+                        setLocalGlobalSettings(prev => ({ ...prev, business_end_time: e.target.value }));
+                        setHasGlobalChanges(true);
                       }}
                     />
                   </div>
@@ -630,14 +802,28 @@ const AlertConfiguration = () => {
               )}
 
               <div className="flex gap-2">
-                <Button onClick={handleSaveGlobalSettings} disabled={globalUpdating}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {globalUpdating ? 'Sauvegarde...' : 'Sauvegarder'}
-                </Button>
-                <Button variant="outline" onClick={testConfiguration} disabled={globalUpdating}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => testConfiguration()}
+                  disabled={globalUpdating}
+                >
                   Tester Configuration
                 </Button>
+                <Button 
+                  onClick={handleSaveGlobalSettings}
+                  disabled={!hasGlobalChanges || globalUpdating}
+                  variant={hasGlobalChanges ? "default" : "secondary"}
+                >
+                  {globalUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  {hasGlobalChanges ? 'Sauvegarder' : 'Sauvegardé'}
+                </Button>
               </div>
+              
+              {hasGlobalChanges && (
+                <div className="text-sm text-orange-600 bg-orange-50 p-2 rounded">
+                  Modifications non sauvegardées
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

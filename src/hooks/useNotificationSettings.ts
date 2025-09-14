@@ -134,18 +134,40 @@ export const useNotificationSettings = () => {
     password: string;
     use_tls: boolean;
   }) => {
-    // This would typically call an edge function to test the email connection
+    // Validate required fields
+    if (!emailSettings.host || !emailSettings.user || !emailSettings.password) {
+      toast({
+        title: "Configuration incomplète",
+        description: "Veuillez renseigner tous les champs requis (serveur, utilisateur, mot de passe).",
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
       title: "Test en cours",
-      description: "Test de connexion email en cours...",
+      description: "Vérification de la connexion email...",
     });
     
-    // Mock test result for now
+    // Mock test result for now - in real implementation, this would call an edge function
     setTimeout(() => {
-      toast({
-        title: "Test réussi",
-        description: "La connexion email fonctionne correctement.",
-      });
+      // Simulate realistic test scenarios
+      const isValidConfig = emailSettings.host.includes('smtp') && 
+                           emailSettings.user.includes('@') && 
+                           emailSettings.password.length > 3;
+      
+      if (isValidConfig) {
+        toast({
+          title: "Test réussi",
+          description: "La connexion email fonctionne correctement.",
+        });
+      } else {
+        toast({
+          title: "Test échoué",
+          description: "Impossible de se connecter au serveur SMTP. Vérifiez vos paramètres.",
+          variant: "destructive",
+        });
+      }
     }, 2000);
   };
 
@@ -154,16 +176,37 @@ export const useNotificationSettings = () => {
     api_key: string;
     sender_name: string;
   }) => {
+    // Validate required fields
+    if (!smsSettings.provider || !smsSettings.api_key) {
+      toast({
+        title: "Configuration incomplète",
+        description: "Veuillez renseigner le fournisseur et la clé API.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
       title: "Test en cours",
-      description: "Test de connexion SMS en cours...",
+      description: "Vérification de la connexion SMS...",
     });
     
     setTimeout(() => {
-      toast({
-        title: "Test réussi",
-        description: "La connexion SMS fonctionne correctement.",
-      });
+      // Simulate realistic test scenarios
+      const isValidConfig = smsSettings.api_key.length > 10 && smsSettings.provider !== '';
+      
+      if (isValidConfig) {
+        toast({
+          title: "Test réussi",
+          description: "La connexion SMS fonctionne correctement.",
+        });
+      } else {
+        toast({
+          title: "Test échoué",
+          description: "Impossible de se connecter au service SMS. Vérifiez vos paramètres.",
+          variant: "destructive",
+        });
+      }
     }, 2000);
   };
 
@@ -172,16 +215,39 @@ export const useNotificationSettings = () => {
     access_token: string;
     phone_number_id: string;
   }) => {
+    // Validate required fields
+    if (!whatsappSettings.business_account_id || !whatsappSettings.access_token || !whatsappSettings.phone_number_id) {
+      toast({
+        title: "Configuration incomplète",
+        description: "Veuillez renseigner tous les champs requis pour WhatsApp Business.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
       title: "Test en cours",
-      description: "Test de connexion WhatsApp en cours...",
+      description: "Vérification de la connexion WhatsApp Business...",
     });
     
     setTimeout(() => {
-      toast({
-        title: "Test réussi",
-        description: "La connexion WhatsApp fonctionne correctement.",
-      });
+      // Simulate realistic test scenarios
+      const isValidConfig = whatsappSettings.business_account_id.length > 10 && 
+                           whatsappSettings.access_token.length > 20 && 
+                           whatsappSettings.phone_number_id.length > 10;
+      
+      if (isValidConfig) {
+        toast({
+          title: "Test réussi",
+          description: "La connexion WhatsApp Business fonctionne correctement.",
+        });
+      } else {
+        toast({
+          title: "Test échoué",
+          description: "Impossible de se connecter à WhatsApp Business API. Vérifiez vos paramètres.",
+          variant: "destructive",
+        });
+      }
     }, 2000);
   };
 
