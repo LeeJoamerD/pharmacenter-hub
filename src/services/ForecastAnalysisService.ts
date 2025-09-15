@@ -1,5 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
-
 export interface ForecastProduct {
   id: string;
   nom: string;
@@ -43,95 +41,100 @@ export class ForecastAnalysisService {
     stats: ForecastStats;
     recommendations: ForecastRecommendation[];
   }> {
-    try {
-      // Get base product data
-      let query = supabase
-        .from('produits')
-        .select(`
-          id,
-          libelle_produit,
-          famille_produit:famille_id (
-            id,
-            libelle_famille
-          ),
-          lots!inner (
-            quantite_restante
-          )
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true);
-
-      if (filters.category && filters.category !== 'all') {
-        query = query.eq('famille_id', filters.category);
+    // Mock data for now - will be replaced with real data later
+    const mockProducts: ForecastProduct[] = [
+      {
+        id: '1',
+        nom: 'Doliprane 1000mg',
+        stockActuel: 150,
+        prevision1Mois: 120,
+        prevision3Mois: 80,
+        prevision6Mois: 20,
+        fiabilite: 85,
+        tendance: 'baisse',
+        recommandation: 'Commande urgente',
+        quantiteRecommandee: 200,
+        famille: { id: '1', libelle_famille: 'Antalgiques' }
+      },
+      {
+        id: '2',
+        nom: 'Amoxicilline 500mg',
+        stockActuel: 75,
+        prevision1Mois: 65,
+        prevision3Mois: 45,
+        prevision6Mois: 15,
+        fiabilite: 92,
+        tendance: 'stable',
+        recommandation: 'Surveiller',
+        quantiteRecommandee: 100,
+        famille: { id: '2', libelle_famille: 'Antibiotiques' }
+      },
+      {
+        id: '3',
+        nom: 'Sérum physiologique',
+        stockActuel: 300,
+        prevision1Mois: 280,
+        prevision3Mois: 250,
+        prevision6Mois: 180,
+        fiabilite: 78,
+        tendance: 'hausse',
+        recommandation: 'Stock optimal',
+        quantiteRecommandee: 0,
+        famille: { id: '3', libelle_famille: 'Consommables' }
+      },
+      {
+        id: '4',
+        nom: 'Aspirine 100mg',
+        stockActuel: 45,
+        prevision1Mois: 38,
+        prevision3Mois: 25,
+        prevision6Mois: 5,
+        fiabilite: 88,
+        tendance: 'baisse',
+        recommandation: 'Commande urgente',
+        quantiteRecommandee: 150,
+        famille: { id: '1', libelle_famille: 'Antalgiques' }
+      },
+      {
+        id: '5',
+        nom: 'Vitamines B Complex',
+        stockActuel: 220,
+        prevision1Mois: 200,
+        prevision3Mois: 160,
+        prevision6Mois: 100,
+        fiabilite: 75,
+        tendance: 'stable',
+        recommandation: 'Surstockage',
+        quantiteRecommandee: 0,
+        famille: { id: '4', libelle_famille: 'Vitamines' }
       }
+    ];
 
-      const { data: products, error: productsError } = await query;
-      if (productsError) throw productsError;
-
-      const forecastProducts: ForecastProduct[] = (products || []).map((product) => {
-        const currentStock = product.lots?.reduce((sum: number, lot: any) => 
-          sum + (lot.quantite_restante || 0), 0) || 0;
-
-        // Mock calculations for now
-        const month1 = Math.max(0, currentStock - Math.floor(Math.random() * 50));
-        const month3 = Math.max(0, month1 - Math.floor(Math.random() * 100));
-        const month6 = Math.max(0, month3 - Math.floor(Math.random() * 150));
-        const reliability = Math.floor(Math.random() * 30) + 70;
-        
-        let recommendation = 'Stock optimal';
-        let recommendedQty = 0;
-        
-        if (month1 <= 10) {
-          recommendation = 'Commande urgente';
-          recommendedQty = 100;
-        } else if (month3 <= 30) {
-          recommendation = 'Surveiller';
-          recommendedQty = 50;
-        } else if (currentStock > month6 * 2) {
-          recommendation = 'Surstockage';
-        }
-
-        return {
-          id: product.id,
-          nom: product.libelle_produit || 'Produit inconnu',
-          stockActuel: currentStock,
-          prevision1Mois: month1,
-          prevision3Mois: month3,
-          prevision6Mois: month6,
-          fiabilite: reliability,
-          tendance: Math.random() > 0.5 ? 'stable' : Math.random() > 0.5 ? 'hausse' : 'baisse',
-          recommandation: recommendation,
-          quantiteRecommandee: recommendedQty,
-          famille: product.famille_produit ? {
-            id: product.famille_produit.id,
-            libelle_famille: product.famille_produit.libelle_famille
-          } : undefined
-        };
-      });
-
-      // Apply filters
-      let filteredProducts = forecastProducts;
-      if (filters.recommendation && filters.recommendation !== 'all') {
-        filteredProducts = forecastProducts.filter(p => 
-          p.recommandation === filters.recommendation
-        );
-      }
-
-      const stats = this.calculateStats(forecastProducts);
-      const recommendations = this.calculateRecommendations(forecastProducts);
-
-      return { products: filteredProducts, stats, recommendations };
-    } catch (error) {
-      console.error('Error fetching forecast data:', error);
-      throw error;
+    // Apply filters
+    let filteredProducts = mockProducts;
+    
+    if (filters.category && filters.category !== 'all') {
+      filteredProducts = filteredProducts.filter(p => p.famille?.id === filters.category);
     }
+    
+    if (filters.recommendation && filters.recommendation !== 'all') {
+      filteredProducts = filteredProducts.filter(p => p.recommandation === filters.recommendation);
+    }
+
+    const stats = this.calculateStats(mockProducts);
+    const recommendations = this.calculateRecommendations(mockProducts);
+
+    // Simulate async operation
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    return { products: filteredProducts, stats, recommendations };
   }
 
   private static calculateStats(products: ForecastProduct[]): ForecastStats {
     const totalProduits = products.length;
     const fiabiliteMoyenne = totalProduits > 0 ? 
       Math.round(products.reduce((sum, p) => sum + p.fiabilite, 0) / totalProduits) : 0;
-    const valeurPrevisionnelle = products.reduce((sum, p) => sum + (p.prevision1Mois * 10), 0);
+    const valeurPrevisionnelle = Math.round(products.reduce((sum, p) => sum + (p.prevision1Mois * 10), 0));
     const alertesStock = products.filter(p => 
       p.recommandation === 'Commande urgente' || p.recommandation === 'Surveiller'
     ).length;
@@ -144,36 +147,44 @@ export class ForecastAnalysisService {
     if (total === 0) return [];
 
     const counts: Record<string, number> = {};
+    
     products.forEach(product => {
       const type = product.recommandation;
       counts[type] = (counts[type] || 0) + 1;
     });
 
-    return Object.entries(counts).map(([type, count]) => ({
-      type,
-      count,
-      percentage: Math.round((count / total) * 100)
-    }));
+    const results: ForecastRecommendation[] = [];
+    Object.keys(counts).forEach(type => {
+      results.push({
+        type: type,
+        count: counts[type],
+        percentage: Math.round((counts[type] / total) * 100)
+      });
+    });
+
+    return results;
   }
 
-  static async getProductFamilies(tenantId: string) {
-    const { data, error } = await supabase
-      .from('famille_produit')
-      .select('id, libelle_famille')
-      .eq('tenant_id', tenantId)
-      .eq('is_active', true)
-      .order('libelle_famille');
+  static async getProductFamilies(tenantId: string): Promise<Array<{id: string; libelle_famille: string}>> {
+    // Mock data for families
+    const mockFamilies = [
+      { id: '1', libelle_famille: 'Antalgiques' },
+      { id: '2', libelle_famille: 'Antibiotiques' },
+      { id: '3', libelle_famille: 'Consommables' },
+      { id: '4', libelle_famille: 'Vitamines' }
+    ];
 
-    if (error) throw error;
-    return data || [];
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return mockFamilies;
   }
 
   static async exportForecastData(
     tenantId: string,
-    filters: any = {},
+    filters: Record<string, string> = {},
     format: 'pdf' | 'excel' = 'pdf'
-  ) {
+  ): Promise<{success: boolean; message: string; url?: string}> {
     await new Promise(resolve => setTimeout(resolve, 1000));
+    
     return {
       success: true,
       message: `Export ${format.toUpperCase()} généré avec succès`,
@@ -181,8 +192,9 @@ export class ForecastAnalysisService {
     };
   }
 
-  static async runForecastCalculation(tenantId: string) {
+  static async runForecastCalculation(tenantId: string): Promise<{success: boolean; message: string}> {
     await new Promise(resolve => setTimeout(resolve, 2000));
+    
     return {
       success: true,
       message: 'Calcul des prévisions terminé avec succès'
