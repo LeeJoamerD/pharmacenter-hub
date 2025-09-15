@@ -190,11 +190,6 @@ export class ExportService {
       </html>
     `;
   }
-        filename: '',
-        error: error instanceof Error ? error.message : 'Erreur d\'export'
-      };
-    }
-  }
 
   /**
    * Export alerts data
