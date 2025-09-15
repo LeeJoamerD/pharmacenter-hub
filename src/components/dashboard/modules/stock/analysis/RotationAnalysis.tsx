@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,101 +15,31 @@ import {
   Download,
   Eye,
   BarChart3,
-  Calendar
+  Calendar,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
-
-interface RotationProduct {
-  id: string;
-  nom: string;
-  categorie: string;
-  stockMoyen: number;
-  consommationAnnuelle: number;
-  tauxRotation: number;
-  dureeEcoulement: number; // en jours
-  statut: 'excellent' | 'bon' | 'moyen' | 'faible' | 'critique';
-  evolution: number;
-  dernierMouvement: Date;
-}
+import { useRotationAnalysis } from '@/hooks/useRotationAnalysis';
 
 const RotationAnalysis = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('annuel');
-  const [selectedCategory, setSelectedCategory] = useState('toutes');
-  const [selectedStatus, setSelectedStatus] = useState('tous');
-
-  // Données mockées pour l'analyse de rotation
-  const products: RotationProduct[] = [
-    {
-      id: '1',
-      nom: 'Paracétamol 500mg',
-      categorie: 'Antalgiques',
-      stockMoyen: 1200,
-      consommationAnnuelle: 14400,
-      tauxRotation: 12.0,
-      dureeEcoulement: 30,
-      statut: 'excellent',
-      evolution: 8.5,
-      dernierMouvement: new Date('2024-01-25')
-    },
-    {
-      id: '2',
-      nom: 'Doliprane 1000mg',
-      categorie: 'Antalgiques',
-      stockMoyen: 800,
-      consommationAnnuelle: 7200,
-      tauxRotation: 9.0,
-      dureeEcoulement: 40,
-      statut: 'bon',
-      evolution: 3.2,
-      dernierMouvement: new Date('2024-01-24')
-    },
-    {
-      id: '3',
-      nom: 'Amoxicilline 1g',
-      categorie: 'Antibiotiques',
-      stockMoyen: 600,
-      consommationAnnuelle: 3600,
-      tauxRotation: 6.0,
-      dureeEcoulement: 60,
-      statut: 'moyen',
-      evolution: -1.5,
-      dernierMouvement: new Date('2024-01-20')
-    },
-    {
-      id: '4',
-      nom: 'Vitamines B Complex',
-      categorie: 'Compléments',
-      stockMoyen: 400,
-      consommationAnnuelle: 800,
-      tauxRotation: 2.0,
-      dureeEcoulement: 180,
-      statut: 'faible',
-      evolution: -5.8,
-      dernierMouvement: new Date('2024-01-10')
-    },
-    {
-      id: '5',
-      nom: 'Sirop ancienne formule',
-      categorie: 'Sirops',
-      stockMoyen: 250,
-      consommationAnnuelle: 125,
-      tauxRotation: 0.5,
-      dureeEcoulement: 720,
-      statut: 'critique',
-      evolution: -12.3,
-      dernierMouvement: new Date('2023-12-15')
-    }
-  ];
-
-  const rotationStats = {
-    excellent: products.filter(p => p.statut === 'excellent').length,
-    bon: products.filter(p => p.statut === 'bon').length,
-    moyen: products.filter(p => p.statut === 'moyen').length,
-    faible: products.filter(p => p.statut === 'faible').length,
-    critique: products.filter(p => p.statut === 'critique').length
-  };
-
-  const moyenneRotation = products.reduce((sum, p) => sum + p.tauxRotation, 0) / products.length;
-  const totalValeurStock = products.reduce((sum, p) => sum + (p.stockMoyen * 2.5), 0); // Prix estimé 2.5€
+  // Utiliser le hook personnalisé pour les données réelles
+  const {
+    filteredProducts,
+    metrics,
+    stats,
+    families,
+    loading,
+    error,
+    selectedPeriod,
+    selectedCategory,
+    selectedStatus,
+    setSelectedPeriod,
+    setSelectedCategory,
+    setSelectedStatus,
+    refreshData,
+    exportData,
+    getRecommendations
+  } = useRotationAnalysis();
 
   const getStatusIcon = (statut: string) => {
     switch (statut) {
@@ -160,11 +90,28 @@ const RotationAnalysis = () => {
     return 'text-red-700';
   };
 
-  const filteredProducts = products.filter(product => {
-    const matchesCategory = selectedCategory === 'toutes' || product.categorie === selectedCategory;
-    const matchesStatus = selectedStatus === 'tous' || product.statut === selectedStatus;
-    return matchesCategory && matchesStatus;
-  });
+  // Gérer les états de chargement et d'erreur
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Chargement de l'analyse de rotation...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center p-8">
+        <AlertTriangle className="h-12 w-12 text-red-600 mx-auto mb-4" />
+        <p className="text-red-600 mb-4">{error}</p>
+        <Button onClick={refreshData} variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Réessayer
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -174,8 +121,8 @@ const RotationAnalysis = () => {
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Rotation Moyenne</p>
-              <p className={`text-2xl font-bold ${getRotationColor(moyenneRotation)}`}>
-                {moyenneRotation.toFixed(1)}
+              <p className={`text-2xl font-bold ${getRotationColor(metrics.rotationMoyenne)}`}>
+                {metrics.rotationMoyenne.toFixed(1)}
               </p>
               <p className="text-xs text-muted-foreground">Tours/an</p>
             </div>
@@ -187,7 +134,7 @@ const RotationAnalysis = () => {
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Produits Analysés</p>
-              <p className="text-2xl font-bold">{products.length}</p>
+              <p className="text-2xl font-bold">{metrics.produitsAnalyses}</p>
               <p className="text-xs text-muted-foreground">Articles suivis</p>
             </div>
             <Package className="h-8 w-8 text-blue-600" />
@@ -198,7 +145,7 @@ const RotationAnalysis = () => {
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Valeur Analysée</p>
-              <p className="text-2xl font-bold">{totalValeurStock.toLocaleString('fr-FR')} €</p>
+              <p className="text-2xl font-bold">{metrics.valeurAnalysee.toLocaleString('fr-FR')} FCFA</p>
               <p className="text-xs text-muted-foreground">Stock évalué</p>
             </div>
             <BarChart3 className="h-8 w-8 text-purple-600" />
@@ -210,7 +157,7 @@ const RotationAnalysis = () => {
             <div>
               <p className="text-sm font-medium text-muted-foreground">Alertes Rotation</p>
               <p className="text-2xl font-bold text-red-600">
-                {rotationStats.faible + rotationStats.critique}
+                {metrics.alertesRotation}
               </p>
               <p className="text-xs text-muted-foreground">Produits lents</p>
             </div>
@@ -228,27 +175,27 @@ const RotationAnalysis = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{rotationStats.excellent}</div>
+              <div className="text-2xl font-bold text-green-600">{stats.excellent}</div>
               <div className="text-sm text-muted-foreground">Excellent</div>
               <div className="text-xs text-green-600">&gt; 10 tours/an</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{rotationStats.bon}</div>
+              <div className="text-2xl font-bold text-blue-600">{stats.bon}</div>
               <div className="text-sm text-muted-foreground">Bon</div>
               <div className="text-xs text-blue-600">6-10 tours/an</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{rotationStats.moyen}</div>
+              <div className="text-2xl font-bold text-orange-600">{stats.moyen}</div>
               <div className="text-sm text-muted-foreground">Moyen</div>
               <div className="text-xs text-orange-600">3-6 tours/an</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{rotationStats.faible}</div>
+              <div className="text-2xl font-bold text-red-600">{stats.faible}</div>
               <div className="text-sm text-muted-foreground">Faible</div>
               <div className="text-xs text-red-600">1-3 tours/an</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-700">{rotationStats.critique}</div>
+              <div className="text-2xl font-bold text-red-700">{stats.critique}</div>
               <div className="text-sm text-muted-foreground">Critique</div>
               <div className="text-xs text-red-700">&lt; 1 tour/an</div>
             </div>
@@ -282,10 +229,11 @@ const RotationAnalysis = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="toutes">Toutes catégories</SelectItem>
-                <SelectItem value="Antalgiques">Antalgiques</SelectItem>
-                <SelectItem value="Antibiotiques">Antibiotiques</SelectItem>
-                <SelectItem value="Compléments">Compléments</SelectItem>
-                <SelectItem value="Sirops">Sirops</SelectItem>
+                {families.map((family) => (
+                  <SelectItem key={family.id} value={family.libelle_famille}>
+                    {family.libelle_famille}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -303,9 +251,14 @@ const RotationAnalysis = () => {
               </SelectContent>
             </Select>
 
-            <Button>
+            <Button onClick={() => exportData('csv')} disabled={loading}>
               <Download className="mr-2 h-4 w-4" />
-              Exporter
+              Exporter CSV
+            </Button>
+            
+            <Button onClick={refreshData} variant="outline" disabled={loading}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Actualiser
             </Button>
           </div>
         </CardContent>
@@ -381,10 +334,24 @@ const RotationAnalysis = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            // TODO: Implémenter la vue détaillée du produit
+                            console.log('Voir détails:', product.id);
+                          }}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            // Exporter les données d'un seul produit
+                            exportData('csv');
+                          }}
+                        >
                           <Download className="h-4 w-4" />
                         </Button>
                       </div>
