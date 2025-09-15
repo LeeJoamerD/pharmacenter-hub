@@ -1554,6 +1554,144 @@ export type Database = {
         }
         Relationships: []
       }
+      forecast_calculation_history: {
+        Row: {
+          calculation_parameters: Json | null
+          calculation_run_id: string
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          products_processed: number | null
+          started_at: string
+          status: string
+          tenant_id: string
+          total_products: number | null
+        }
+        Insert: {
+          calculation_parameters?: Json | null
+          calculation_run_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          products_processed?: number | null
+          started_at?: string
+          status?: string
+          tenant_id: string
+          total_products?: number | null
+        }
+        Update: {
+          calculation_parameters?: Json | null
+          calculation_run_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          products_processed?: number | null
+          started_at?: string
+          status?: string
+          tenant_id?: string
+          total_products?: number | null
+        }
+        Relationships: []
+      }
+      forecast_calculations: {
+        Row: {
+          accuracy_score: number | null
+          calculation_date: string
+          confidence_interval_lower: number
+          confidence_interval_upper: number
+          created_at: string
+          forecast_date: string
+          forecast_method: string
+          id: string
+          predicted_demand: number
+          produit_id: string
+          seasonality_factor: number | null
+          tenant_id: string
+          trend: string | null
+        }
+        Insert: {
+          accuracy_score?: number | null
+          calculation_date?: string
+          confidence_interval_lower?: number
+          confidence_interval_upper?: number
+          created_at?: string
+          forecast_date: string
+          forecast_method: string
+          id?: string
+          predicted_demand?: number
+          produit_id: string
+          seasonality_factor?: number | null
+          tenant_id: string
+          trend?: string | null
+        }
+        Update: {
+          accuracy_score?: number | null
+          calculation_date?: string
+          confidence_interval_lower?: number
+          confidence_interval_upper?: number
+          created_at?: string
+          forecast_date?: string
+          forecast_method?: string
+          id?: string
+          predicted_demand?: number
+          produit_id?: string
+          seasonality_factor?: number | null
+          tenant_id?: string
+          trend?: string | null
+        }
+        Relationships: []
+      }
+      forecast_settings: {
+        Row: {
+          confidence_level: number
+          created_at: string
+          famille_id: string | null
+          forecast_horizon_days: number
+          forecast_method: string
+          historical_period_days: number
+          id: string
+          min_sales_threshold: number
+          produit_id: string | null
+          seasonality_enabled: boolean
+          tenant_id: string
+          trend_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          confidence_level?: number
+          created_at?: string
+          famille_id?: string | null
+          forecast_horizon_days?: number
+          forecast_method?: string
+          historical_period_days?: number
+          id?: string
+          min_sales_threshold?: number
+          produit_id?: string | null
+          seasonality_enabled?: boolean
+          tenant_id: string
+          trend_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          confidence_level?: number
+          created_at?: string
+          famille_id?: string | null
+          forecast_horizon_days?: number
+          forecast_method?: string
+          historical_period_days?: number
+          id?: string
+          min_sales_threshold?: number
+          produit_id?: string | null
+          seasonality_enabled?: boolean
+          tenant_id?: string
+          trend_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       formations_employes: {
         Row: {
           certificat_requis: boolean | null
@@ -6403,6 +6541,29 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_average_consumption: {
+        Args: {
+          p_days_back?: number
+          p_produit_id: string
+          p_tenant_id: string
+        }
+        Returns: number
+      }
+      calculate_product_forecast: {
+        Args: {
+          p_forecast_days?: number
+          p_method?: string
+          p_produit_id: string
+          p_tenant_id: string
+        }
+        Returns: {
+          confidence_lower: number
+          confidence_upper: number
+          forecast_date: string
+          predicted_demand: number
+          trend: string
+        }[]
+      }
       calculate_session_risk_score: {
         Args: { ip_address: string; personnel_id: string; user_agent: string }
         Returns: number

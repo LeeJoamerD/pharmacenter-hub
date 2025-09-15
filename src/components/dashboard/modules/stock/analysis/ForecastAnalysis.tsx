@@ -1,124 +1,78 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
-  Eye, 
   TrendingUp, 
-  TrendingDown,
-  Calendar,
-  Package,
-  AlertTriangle,
-  CheckCircle,
+  TrendingDown, 
+  Minus, 
+  AlertTriangle, 
+  CheckCircle, 
+  Eye,
   Download,
-  BarChart3,
-  LineChart,
-  Target
+  RefreshCw,
+  Package,
+  Calculator,
+  Target,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
-
-interface ForecastProduct {
-  id: string;
-  nom: string;
-  categorie: string;
-  stockActuel: number;
-  consommationMoyenne: number; // par mois
-  prevision1Mois: number;
-  prevision3Mois: number;
-  prevision6Mois: number;
-  fiabilite: number; // %
-  tendance: 'hausse' | 'baisse' | 'stable';
-  seuil: number;
-  recommandation: 'commander' | 'surveiller' | 'diminuer' | 'normal';
-  prochainOrder: Date;
-  quantiteRecommandee: number;
-}
+import { useForecastAnalysis } from '@/hooks/useForecastAnalysis';
+import type { ForecastProduct } from '@/services/ForecastAnalysisService';
 
 const ForecastAnalysis = () => {
-  const [selectedHorizon, setSelectedHorizon] = useState('3mois');
-  const [selectedCategory, setSelectedCategory] = useState('toutes');
-  const [selectedRecommendation, setSelectedRecommendation] = useState('toutes');
+  const {
+    // Data
+    products,
+    stats: forecastStats,
+    recommendations,
+    families,
+    
+    // State
+    loading,
+    error,
+    
+    // Filters
+    selectedHorizon,
+    selectedCategory,
+    selectedRecommendation,
+    
+    // Actions
+    setSelectedHorizon,
+    setSelectedCategory,
+    setSelectedRecommendation,
+    refreshData,
+    exportData,
+    runCalculation
+  } = useForecastAnalysis();
 
-  // Données mockées pour les prévisions
-  const products: ForecastProduct[] = [
-    {
-      id: '1',
-      nom: 'Paracétamol 500mg',
-      categorie: 'Antalgiques',
-      stockActuel: 1200,
-      consommationMoyenne: 400,
-      prevision1Mois: 380,
-      prevision3Mois: 1140,
-      prevision6Mois: 2400,
-      fiabilite: 92,
-      tendance: 'stable',
-      seuil: 500,
-      recommandation: 'normal',
-      prochainOrder: new Date('2024-02-15'),
-      quantiteRecommandee: 1500
-    },
-    {
-      id: '2',
-      nom: 'Doliprane 1000mg',
-      categorie: 'Antalgiques',
-      stockActuel: 350,
-      consommationMoyenne: 300,
-      prevision1Mois: 320,
-      prevision3Mois: 960,
-      prevision6Mois: 2100,
-      fiabilite: 88,
-      tendance: 'hausse',
-      seuil: 400,
-      recommandation: 'commander',
-      prochainOrder: new Date('2024-02-01'),
-      quantiteRecommandee: 2000
-    },
-    {
-      id: '3',
-      nom: 'Amoxicilline 1g',
-      categorie: 'Antibiotiques',
-      stockActuel: 800,
-      consommationMoyenne: 150,
-      prevision1Mois: 140,
-      prevision3Mois: 420,
-      prevision6Mois: 840,
-      fiabilite: 85,
-      tendance: 'baisse',
-      seuil: 200,
-      recommandation: 'surveiller',
-      prochainOrder: new Date('2024-03-01'),
-      quantiteRecommandee: 1000
-    },
-    {
-      id: '4',
-      nom: 'Vitamines B Complex',
-      categorie: 'Compléments',
-      stockActuel: 600,
-      consommationMoyenne: 50,
-      prevision1Mois: 45,
-      prevision3Mois: 135,
-      prevision6Mois: 270,
-      fiabilite: 70,
-      tendance: 'baisse',
-      seuil: 100,
-      recommandation: 'diminuer',
-      prochainOrder: new Date('2024-04-15'),
-      quantiteRecommandee: 200
-    }
-  ];
+  // Handle loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Chargement des prévisions...</span>
+      </div>
+    );
+  }
 
-  const forecastStats = {
-    commander: products.filter(p => p.recommandation === 'commander').length,
-    surveiller: products.filter(p => p.recommandation === 'surveiller').length,
-    diminuer: products.filter(p => p.recommandation === 'diminuer').length,
-    normal: products.filter(p => p.recommandation === 'normal').length
-  };
+  // Handle error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 space-y-4">
+        <AlertTriangle className="h-8 w-8 text-destructive" />
+        <p className="text-center text-destructive">{error}</p>
+        <Button onClick={refreshData} variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Réessayer
+        </Button>
+      </div>
+    );
+  }
 
-  const fiabiliteMoyenne = products.reduce((sum, p) => sum + p.fiabilite, 0) / products.length;
-  const valeurPrevisionnelle = products.reduce((sum, p) => sum + (p.prevision3Mois * 2.5), 0); // Prix estimé 2.5€
-
+  // Helper functions pour les badges et icônes
   const getTendanceIcon = (tendance: string) => {
     switch (tendance) {
       case 'hausse':
@@ -126,7 +80,7 @@ const ForecastAnalysis = () => {
       case 'baisse':
         return <TrendingDown className="h-4 w-4 text-red-600" />;
       default:
-        return <BarChart3 className="h-4 w-4 text-blue-600" />;
+        return <Minus className="h-4 w-4 text-blue-600" />;
     }
   };
 
@@ -145,18 +99,19 @@ const ForecastAnalysis = () => {
 
     return (
       <Badge className={colors[tendance as keyof typeof colors] || 'bg-gray-100 text-gray-800'}>
-        {labels[tendance as keyof typeof labels] || tendance}
+        {getTendanceIcon(tendance)}
+        <span className="ml-1">{labels[tendance as keyof typeof labels] || tendance}</span>
       </Badge>
     );
   };
 
   const getRecommendationIcon = (recommandation: string) => {
     switch (recommandation) {
-      case 'commander':
+      case 'Commande urgente':
         return <AlertTriangle className="h-4 w-4 text-red-600" />;
-      case 'surveiller':
+      case 'Surveiller':
         return <Eye className="h-4 w-4 text-orange-600" />;
-      case 'diminuer':
+      case 'Surstockage':
         return <TrendingDown className="h-4 w-4 text-purple-600" />;
       default:
         return <CheckCircle className="h-4 w-4 text-green-600" />;
@@ -165,22 +120,16 @@ const ForecastAnalysis = () => {
 
   const getRecommendationBadge = (recommandation: string) => {
     const colors = {
-      commander: 'bg-red-100 text-red-800 border-red-200',
-      surveiller: 'bg-orange-100 text-orange-800 border-orange-200',
-      diminuer: 'bg-purple-100 text-purple-800 border-purple-200',
-      normal: 'bg-green-100 text-green-800 border-green-200'
-    };
-
-    const labels = {
-      commander: 'Commander',
-      surveiller: 'Surveiller',
-      diminuer: 'Réduire stock',
-      normal: 'Normal'
+      'Commande urgente': 'bg-red-100 text-red-800 border-red-200',
+      'Surveiller': 'bg-orange-100 text-orange-800 border-orange-200',
+      'Surstockage': 'bg-purple-100 text-purple-800 border-purple-200',
+      'Stock optimal': 'bg-green-100 text-green-800 border-green-200'
     };
 
     return (
       <Badge className={colors[recommandation as keyof typeof colors] || 'bg-gray-100 text-gray-800'}>
-        {labels[recommandation as keyof typeof labels] || recommandation}
+        {getRecommendationIcon(recommandation)}
+        <span className="ml-1">{recommandation}</span>
       </Badge>
     );
   };
@@ -192,37 +141,36 @@ const ForecastAnalysis = () => {
     return 'text-red-600';
   };
 
-  const filteredProducts = products.filter(product => {
-    const matchesCategory = selectedCategory === 'toutes' || product.categorie === selectedCategory;
-    const matchesRecommendation = selectedRecommendation === 'toutes' || product.recommandation === selectedRecommendation;
-    return matchesCategory && matchesRecommendation;
-  });
-
+  // Get prediction value based on selected horizon
   const getPrevisionValue = (product: ForecastProduct) => {
     switch (selectedHorizon) {
-      case '1mois':
-        return product.prevision1Mois;
-      case '3mois':
-        return product.prevision3Mois;
-      case '6mois':
-        return product.prevision6Mois;
-      default:
-        return product.prevision3Mois;
+      case '1': return product.prevision1Mois;
+      case '3': return product.prevision3Mois;
+      case '6': return product.prevision6Mois;
+      default: return product.prevision1Mois;
     }
   };
 
+  // Calculate recommendation distribution for display
+  const recommendationDistribution = recommendations.length > 0 ? recommendations : [
+    { type: 'Stock optimal', count: 0, percentage: 0 },
+    { type: 'Surveiller', count: 0, percentage: 0 },
+    { type: 'Commande urgente', count: 0, percentage: 0 },
+    { type: 'Surstockage', count: 0, percentage: 0 }
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Métriques de prévision */}
+      {/* Métriques principales */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Fiabilité Moyenne</p>
-              <p className={`text-2xl font-bold ${getFiabiliteColor(fiabiliteMoyenne)}`}>
-                {fiabiliteMoyenne.toFixed(1)}%
+              <p className={`text-2xl font-bold ${getFiabiliteColor(forecastStats.fiabiliteMoyenne)}`}>
+                {forecastStats.fiabiliteMoyenne}%
               </p>
-              <p className="text-xs text-muted-foreground">Précision modèle</p>
+              <p className="text-xs text-muted-foreground">Précision du modèle</p>
             </div>
             <Target className="h-8 w-8 text-green-600" />
           </CardContent>
@@ -232,7 +180,7 @@ const ForecastAnalysis = () => {
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Produits Analysés</p>
-              <p className="text-2xl font-bold">{products.length}</p>
+              <p className="text-2xl font-bold">{forecastStats.totalProduits}</p>
               <p className="text-xs text-muted-foreground">Articles suivis</p>
             </div>
             <Package className="h-8 w-8 text-blue-600" />
@@ -243,23 +191,21 @@ const ForecastAnalysis = () => {
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Valeur Prévisionnelle</p>
-              <p className="text-2xl font-bold">{valeurPrevisionnelle.toLocaleString('fr-FR')} €</p>
-              <p className="text-xs text-muted-foreground">3 mois</p>
+              <p className="text-2xl font-bold">{forecastStats.valeurPrevisionnelle.toLocaleString('fr-FR')} €</p>
+              <p className="text-xs text-muted-foreground">Estimée</p>
             </div>
-            <BarChart3 className="h-8 w-8 text-purple-600" />
+            <Calculator className="h-8 w-8 text-purple-600" />
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Actions Urgentes</p>
-              <p className="text-2xl font-bold text-red-600">
-                {forecastStats.commander}
-              </p>
-              <p className="text-xs text-muted-foreground">À commander</p>
+              <p className="text-sm font-medium text-muted-foreground">Alertes Stock</p>
+              <p className="text-2xl font-bold text-red-600">{forecastStats.alertesStock}</p>
+              <p className="text-xs text-muted-foreground">Actions requises</p>
             </div>
-            <AlertTriangle className="h-8 w-8 text-red-600" />
+            <AlertCircle className="h-8 w-8 text-red-600" />
           </CardContent>
         </Card>
       </div>
@@ -267,170 +213,178 @@ const ForecastAnalysis = () => {
       {/* Distribution des recommandations */}
       <Card>
         <CardHeader>
-          <CardTitle>Recommandations d'Actions</CardTitle>
-          <CardDescription>Répartition des actions recommandées par l'algorithme de prévision</CardDescription>
+          <CardTitle>Répartition des Recommandations</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{forecastStats.commander}</div>
-              <div className="text-sm text-muted-foreground">À Commander</div>
-              <div className="text-xs text-red-600">Action urgente</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{forecastStats.surveiller}</div>
-              <div className="text-sm text-muted-foreground">À Surveiller</div>
-              <div className="text-xs text-orange-600">Suivi renforcé</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{forecastStats.diminuer}</div>
-              <div className="text-sm text-muted-foreground">À Réduire</div>
-              <div className="text-xs text-purple-600">Surstock détecté</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{forecastStats.normal}</div>
-              <div className="text-sm text-muted-foreground">Normale</div>
-              <div className="text-xs text-green-600">Situation stable</div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-4 gap-4 mb-4">
+              {recommendationDistribution.map((rec, index) => {
+                const colors = {
+                  'Stock optimal': 'text-green-600',
+                  'Surveiller': 'text-yellow-600',
+                  'Commande urgente': 'text-red-600',
+                  'Surstockage': 'text-blue-600'
+                };
+                return (
+                  <div key={index} className="text-center">
+                    <div className={`text-2xl font-bold ${colors[rec.type as keyof typeof colors] || 'text-gray-600'}`}>
+                      {rec.count}
+                    </div>
+                    <div className="text-sm text-gray-600">{rec.type}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Filtres */}
+      {/* Filtres et Actions */}
       <Card>
         <CardHeader>
-          <CardTitle>Paramètres de Prévision</CardTitle>
-          <CardDescription>Configurez l'horizon et les critères d'analyse prévisionnelle</CardDescription>
+          <CardTitle>Paramètres et Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4">
-            <Select value={selectedHorizon} onValueChange={setSelectedHorizon}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Horizon prévisionnel" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1mois">1 mois</SelectItem>
-                <SelectItem value="3mois">3 mois</SelectItem>
-                <SelectItem value="6mois">6 mois</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center space-x-4">
+              <Select value={selectedHorizon} onValueChange={setSelectedHorizon}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Horizon" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 mois</SelectItem>
+                  <SelectItem value="3">3 mois</SelectItem>
+                  <SelectItem value="6">6 mois</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Catégorie" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="toutes">Toutes catégories</SelectItem>
-                <SelectItem value="Antalgiques">Antalgiques</SelectItem>
-                <SelectItem value="Antibiotiques">Antibiotiques</SelectItem>
-                <SelectItem value="Compléments">Compléments</SelectItem>
-              </SelectContent>
-            </Select>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Toutes les catégories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les catégories</SelectItem>
+                  {families.map((family) => (
+                    <SelectItem key={family.id} value={family.id}>
+                      {family.libelle_famille}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Select value={selectedRecommendation} onValueChange={setSelectedRecommendation}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Recommandation" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="toutes">Toutes actions</SelectItem>
-                <SelectItem value="commander">À commander</SelectItem>
-                <SelectItem value="surveiller">À surveiller</SelectItem>
-                <SelectItem value="diminuer">À réduire</SelectItem>
-                <SelectItem value="normal">Normal</SelectItem>
-              </SelectContent>
-            </Select>
+              <Select value={selectedRecommendation} onValueChange={setSelectedRecommendation}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Toutes les recommandations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les recommandations</SelectItem>
+                  <SelectItem value="Commande urgente">Commande urgente</SelectItem>
+                  <SelectItem value="Surveiller">Surveiller</SelectItem>
+                  <SelectItem value="Stock optimal">Stock optimal</SelectItem>
+                  <SelectItem value="Surstockage">Surstockage</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Button>
-              <Download className="mr-2 h-4 w-4" />
-              Exporter Prévisions
-            </Button>
-
-            <Button variant="outline">
-              <LineChart className="mr-2 h-4 w-4" />
-              Recalculer Modèle
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={refreshData}
+                disabled={loading}
+              >
+                <RefreshCw className="h-4 w-4 mr-1" />
+                Actualiser
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => exportData('pdf')}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Exporter PDF
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => exportData('excel')}
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Exporter Excel
+              </Button>
+              <Button 
+                variant="default" 
+                size="sm"
+                onClick={runCalculation}
+                disabled={loading}
+              >
+                <Calculator className="h-4 w-4 mr-1" />
+                Recalculer
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Tableau des prévisions */}
+      {/* Tableau détaillé des prévisions */}
       <Card>
         <CardHeader>
           <CardTitle>Prévisions Détaillées</CardTitle>
-          <CardDescription>Analyse prévisionnelle avec recommandations d'actions par produit</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Produit</TableHead>
+                <TableHead className="text-center">Stock Actuel</TableHead>
+                <TableHead className="text-center">Prévision</TableHead>
+                <TableHead className="text-center">Fiabilité</TableHead>
+                <TableHead className="text-center">Tendance</TableHead>
+                <TableHead className="text-center">Recommandation</TableHead>
+                <TableHead className="text-center">Qté Recommandée</TableHead>
+                <TableHead className="text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {products.length === 0 ? (
                 <TableRow>
-                  <TableHead>Produit</TableHead>
-                  <TableHead className="text-right">Stock Actuel</TableHead>
-                  <TableHead className="text-right">Prévision</TableHead>
-                  <TableHead className="text-right">Fiabilité</TableHead>
-                  <TableHead>Tendance</TableHead>
-                  <TableHead>Recommandation</TableHead>
-                  <TableHead className="text-right">Qté Recommandée</TableHead>
-                  <TableHead>Prochain Ordre</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableCell colSpan={8} className="text-center py-8">
+                    <div className="flex flex-col items-center space-y-2">
+                      <Package className="h-8 w-8 text-muted-foreground" />
+                      <p className="text-muted-foreground">Aucune prévision disponible</p>
+                      <Button onClick={runCalculation} variant="outline" size="sm">
+                        <Calculator className="h-4 w-4 mr-2" />
+                        Générer les prévisions
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProducts.map((product) => (
+              ) : (
+                products.map((product) => (
                   <TableRow key={product.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{product.nom}</div>
-                        <div className="text-sm text-muted-foreground">{product.categorie}</div>
-                      </div>
+                    <TableCell className="font-medium">{product.nom}</TableCell>
+                    <TableCell className="text-center">{product.stockActuel}</TableCell>
+                    <TableCell className="text-center">{getPrevisionValue(product)}</TableCell>
+                    <TableCell className="text-center">{product.fiabilite}%</TableCell>
+                    <TableCell className="text-center">
+                      {getTendanceBadge(product.tendance)}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {product.stockActuel.toLocaleString('fr-FR')}
+                    <TableCell className="text-center">
+                      {getRecommendationBadge(product.recommandation)}
                     </TableCell>
-                    <TableCell className="text-right font-mono font-semibold">
-                      {getPrevisionValue(product).toLocaleString('fr-FR')}
+                    <TableCell className="text-center">
+                      {product.quantiteRecommandee > 0 ? product.quantiteRecommandee : '-'}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex flex-col items-end">
-                        <span className={`font-mono font-semibold ${getFiabiliteColor(product.fiabilite)}`}>
-                          {product.fiabilite}%
-                        </span>
-                        <Progress value={product.fiabilite} className="w-16 h-2" />
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getTendanceIcon(product.tendance)}
-                        {getTendanceBadge(product.tendance)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getRecommendationIcon(product.recommandation)}
-                        {getRecommendationBadge(product.recommandation)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {product.quantiteRecommandee.toLocaleString('fr-FR')}
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {product.prochainOrder.toLocaleDateString('fr-FR')}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </div>
+                    <TableCell className="text-center">
+                      <Button variant="ghost" size="sm">
+                        <Eye className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>
