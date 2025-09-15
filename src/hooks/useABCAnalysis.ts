@@ -73,9 +73,22 @@ export const useABCAnalysis = (): UseABCAnalysisReturn => {
       const result = await ABCAnalysisService.performABCAnalysis(filters);
       setAnalysis(result);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erreur lors du chargement de l\'analyse ABC';
+      let message = 'Erreur lors du chargement de l\'analyse ABC';
+      
+      if (err instanceof Error) {
+        if (err.message === 'NO_SALES_DATA') {
+          message = 'NO_SALES_DATA';
+        } else {
+          message = err.message;
+        }
+      }
+      
       setError(message);
-      toast.error(message);
+      
+      // Ne pas afficher de toast pour l'absence de données de vente
+      if (message !== 'NO_SALES_DATA') {
+        toast.error(message);
+      }
     } finally {
       setLoading(false);
     }

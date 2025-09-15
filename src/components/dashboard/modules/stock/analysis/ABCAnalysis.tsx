@@ -24,7 +24,8 @@ import {
   RefreshCw,
   Calendar,
   Filter,
-  AlertTriangle
+  AlertTriangle,
+  ShoppingCart
 } from 'lucide-react';
 
 const ABCAnalysis = () => {
@@ -94,6 +95,29 @@ const ABCAnalysis = () => {
   };
 
   if (error) {
+    if (error === 'NO_SALES_DATA') {
+      return (
+        <div className="flex items-center justify-center p-12">
+          <div className="text-center max-w-md">
+            <ShoppingCart className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
+            <h3 className="text-xl font-semibold mb-3">Aucune donnée de vente disponible</h3>
+            <p className="text-muted-foreground mb-6">
+              Veuillez d'abord saisir des ventes pour générer une analyse ABC.
+            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                L'analyse ABC nécessite des données de vente pour classer vos produits selon leur performance.
+              </p>
+              <Button onClick={refetchData} variant="outline">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Actualiser
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">

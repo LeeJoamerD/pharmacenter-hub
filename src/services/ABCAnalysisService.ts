@@ -161,6 +161,11 @@ export class ABCAnalysisService {
         throw error;
       }
 
+      // Vérifier s'il y a des données de vente
+      if (!salesData || salesData.length === 0) {
+        throw new Error('NO_SALES_DATA');
+      }
+
       // Agrégation des données par produit
       const productSales = new Map();
       let totalCA = 0;
@@ -194,6 +199,12 @@ export class ABCAnalysisService {
       });
 
       const products = Array.from(productSales.values());
+      
+      // Vérification finale s'il n'y a pas de produits avec des ventes
+      if (products.length === 0) {
+        throw new Error('NO_SALES_DATA');
+      }
+
       return { products, totalCA };
 
     } catch (error) {
