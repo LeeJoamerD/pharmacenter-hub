@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
 import { Plus, Search, Edit, Trash2, Pill } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -16,11 +17,15 @@ interface DCI {
   id: string;
   nom_dci: string;
   description?: string;
-  classe_therapeutique?: string;
+  classe_therapeutique_id?: string;
   contre_indications?: string;
   effets_secondaires?: string;
   posologie?: string;
   produits_associes: number;
+  classes_therapeutiques?: {
+    id: string;
+    libelle_classe: string;
+  };
 }
 
 const DCIManager = () => {
@@ -29,7 +34,13 @@ const DCIManager = () => {
   const { data: dcis = [], isLoading, refetch } = useTenantQueryWithCache(
     ['dci'],
     'dci',
-    '*'
+    '*, classes_therapeutiques(id, libelle_classe)'
+  );
+
+  const { data: classesTherapeutiques = [] } = useTenantQueryWithCache(
+    ['classes_therapeutiques'],
+    'classes_therapeutiques',
+    'id, libelle_classe'
   );
 
   const createDCI = useTenantMutation('dci', 'insert');
@@ -45,7 +56,7 @@ const DCIManager = () => {
     defaultValues: {
       nom_dci: '',
       description: '',
-      classe_therapeutique: '',
+      classe_therapeutique_id: '',
       contre_indications: '',
       effets_secondaires: '',
       posologie: '',
@@ -55,7 +66,7 @@ const DCIManager = () => {
 
   const filteredDCIs = dcis.filter((dci: DCI) =>
     dci.nom_dci.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dci.classe_therapeutique?.toLowerCase().includes(searchTerm.toLowerCase())
+    dci.classes_therapeutiques?.libelle_classe?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleAddDCI = () => {
@@ -176,13 +187,24 @@ const DCIManager = () => {
 
                     <FormField
                       control={form.control}
-                      name="classe_therapeutique"
+                      name="classe_therapeutique_id"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Classe thérapeutique</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Ex: Antalgiques non opioïdes" />
-                          </FormControl>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Sélectionnez une classe thérapeutique" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {classesTherapeutiques.map((classe: any) => (
+                                <SelectItem key={classe.id} value={classe.id}>
+                                  {classe.libelle_classe}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -282,7 +304,7 @@ const DCIManager = () => {
                   <TableRow key={dci.id}>
                     <TableCell className="font-medium">{dci.nom_dci}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{dci.classe_therapeutique || '-'}</Badge>
+                      <Badge variant="secondary">{dci.classes_therapeutiques?.libelle_classe || '-'}</Badge>
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{dci.description || '-'}</TableCell>
                     <TableCell>

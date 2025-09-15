@@ -1399,7 +1399,7 @@ export type Database = {
       }
       dci: {
         Row: {
-          classe_therapeutique: string | null
+          classe_therapeutique_id: string | null
           contre_indications: string | null
           created_at: string
           description: string | null
@@ -1412,7 +1412,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          classe_therapeutique?: string | null
+          classe_therapeutique_id?: string | null
           contre_indications?: string | null
           created_at?: string
           description?: string | null
@@ -1425,7 +1425,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          classe_therapeutique?: string | null
+          classe_therapeutique_id?: string | null
           contre_indications?: string | null
           created_at?: string
           description?: string | null
@@ -1437,7 +1437,15 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_dci_classe_therapeutique"
+            columns: ["classe_therapeutique_id"]
+            isOneToOne: false
+            referencedRelation: "classes_therapeutiques"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       document_categories: {
         Row: {
