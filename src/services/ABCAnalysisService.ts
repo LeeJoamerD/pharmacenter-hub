@@ -133,7 +133,7 @@ export class ABCAnalysisService {
             famille_id,
             categorie_tarification_id,
             famille_produit(libelle_famille),
-            categorie_tarification(libelle_categorie)
+            categorie_tarification!categorie_tarification_id(libelle_categorie)
           )
         `)
         .eq('tenant_id', tenantId)
