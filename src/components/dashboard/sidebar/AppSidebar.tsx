@@ -65,11 +65,9 @@ const AppSidebar = ({
       { name: 'Partenaires', icon: Handshake },
       { name: 'Référentiel', icon: Package },
       { name: 'Clients', icon: User },
-      { name: 'Sécurité', icon: Lock },
       { name: 'Documents', icon: Clipboard },
       { name: 'Analytics', icon: ChartBar },
-      { name: 'Workflows', icon: RefreshCw },
-      { name: 'Configuration', icon: Settings }
+      { name: 'Workflows', icon: RefreshCw }
     ],
     stock: [
       { name: 'Approvisionnement', icon: Clipboard },
