@@ -48,6 +48,148 @@ export class ExportService {
       console.error('Export error:', error);
       return {
         success: false,
+        error: error instanceof Error ? error.message : 'Erreur inconnue',
+        downloadUrl: '',
+        filename: ''
+      };
+    }
+  }
+
+  static async exportABCAnalysisData(items: any[], options: ExportOptions): Promise<ExportResult> {
+    try {
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const filename = `analyse-abc-${timestamp}`;
+
+      switch (options.format) {
+        case 'csv':
+          return await this.exportABCToCSV(items, filename);
+        case 'excel':
+          return await this.exportABCToExcel(items, filename, options);
+        case 'pdf':
+          return await this.exportABCToPDF(items, filename, options);
+        default:
+          throw new Error('Format d\'export non supporté');
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'export ABC:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur inconnue',
+        downloadUrl: '',
+        filename: ''
+      };
+    }
+  }
+
+  // Méthodes spécifiques pour l'analyse ABC
+  static async exportABCToCSV(items: any[], filename: string): Promise<ExportResult> {
+    try {
+      const csvHeader = 'Produit,Catégorie,Classe ABC,Chiffre d\'Affaires,% CA,% Cumulé,Quantité Vendue,Rotation,Stock Actuel\n';
+      const csvRows = items.map(item => 
+        `"${item.nom}","${item.categorie}","${item.classe}",${item.chiffreAffaires},${item.pourcentageCA.toFixed(2)},${item.pourcentageCumule.toFixed(2)},${item.quantiteVendue},${item.rotation.toFixed(2)},${item.stockActuel}`
+      ).join('\n');
+      
+      const csvContent = csvHeader + csvRows;
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      
+      return {
+        success: true,
+        downloadUrl: url,
+        filename: `${filename}.csv`,
+        error: ''
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur lors de l\'export CSV',
+        downloadUrl: '',
+        filename: ''
+      };
+    }
+  }
+
+  static async exportABCToExcel(items: any[], filename: string, options: ExportOptions): Promise<ExportResult> {
+    return this.exportABCToCSV(items, filename);
+  }
+
+  static async exportABCToPDF(items: any[], filename: string, options: ExportOptions): Promise<ExportResult> {
+    try {
+      const htmlContent = this.generateABCHTMLReport(items, options);
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      
+      return {
+        success: true,
+        downloadUrl: url,
+        filename: `${filename}.html`,
+        error: ''
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erreur lors de l\'export PDF',
+        downloadUrl: '',
+        filename: ''
+      };
+    }
+  }
+
+  static generateABCHTMLReport(items: any[], options: ExportOptions): string {
+    const totalCA = items.reduce((sum, item) => sum + item.chiffreAffaires, 0);
+    const classeACount = items.filter(item => item.classe === 'A').length;
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Analyse ABC - Rapport Détaillé</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; font-size: 12px; }
+          th { background-color: #f8f9fa; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>Analyse ABC - Classification Pareto</h1>
+          <p>Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Produit</th>
+              <th>Catégorie</th>
+              <th>Classe</th>
+              <th>CA</th>
+              <th>% CA</th>
+              <th>% Cumulé</th>
+              <th>Qté Vendue</th>
+              <th>Rotation</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map((item, index) => `
+              <tr>
+                <td>${item.nom}</td>
+                <td>${item.categorie}</td>
+                <td><strong>${item.classe}</strong></td>
+                <td>${item.chiffreAffaires.toLocaleString('fr-FR')} €</td>
+                <td>${item.pourcentageCA.toFixed(2)}%</td>
+                <td>${item.pourcentageCumule.toFixed(2)}%</td>
+                <td>${item.quantiteVendue.toLocaleString('fr-FR')}</td>
+                <td>${item.rotation.toFixed(2)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+  }
         filename: '',
         error: error instanceof Error ? error.message : 'Erreur d\'export'
       };
