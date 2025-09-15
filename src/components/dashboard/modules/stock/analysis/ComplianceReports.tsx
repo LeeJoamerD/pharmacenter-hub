@@ -18,32 +18,15 @@ import {
   Shield,
   FileText,
   Clock,
-  Award
+  Award,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useCompliance, useComplianceFilters } from '@/hooks/useCompliance';
 
-interface ComplianceItem {
-  id: string;
-  categorie: string;
-  exigence: string;
-  description: string;
-  statut: 'conforme' | 'non_conforme' | 'en_cours' | 'expire';
-  dernierControle: Date;
-  prochainControle: Date;
-  responsable: string;
-  urgence: 'basse' | 'moyenne' | 'haute' | 'critique';
-  scoreConformite: number;
-  actions: string[];
-}
-
-interface ComplianceMetrics {
-  conformite: number;
-  nonConformite: number;
-  enCours: number;
-  expire: number;
-  scoreGlobal: number;
-}
+// Types are now imported from the service
 
 const ComplianceReports = () => {
   const [selectedCategory, setSelectedCategory] = useState('toutes');
@@ -51,82 +34,74 @@ const ComplianceReports = () => {
   const [selectedUrgency, setSelectedUrgency] = useState('toutes');
   const [dateFrom, setDateFrom] = useState<Date>();
 
-  // Données mockées pour la conformité
-  const complianceItems: ComplianceItem[] = [
-    {
-      id: '1',
-      categorie: 'Conservation',
-      exigence: 'Température frigo (2-8°C)',
-      description: 'Surveillance continue de la température pour les produits thermosensibles',
-      statut: 'conforme',
-      dernierControle: new Date('2024-01-25T10:00:00'),
-      prochainControle: new Date('2024-02-01T10:00:00'),
-      responsable: 'Marie Dubois',
-      urgence: 'basse',
-      scoreConformite: 98,
-      actions: ['Contrôle quotidien', 'Calibration mensuelle']
-    },
-    {
-      id: '2',
-      categorie: 'Stupéfiants',
-      exigence: 'Coffre-fort agréé',
-      description: 'Stockage sécurisé des substances stupéfiantes selon réglementation',
-      statut: 'conforme',
-      dernierControle: new Date('2024-01-20T14:30:00'),
-      prochainControle: new Date('2024-04-20T14:30:00'),
-      responsable: 'Jean Martin',
-      urgence: 'haute',
-      scoreConformite: 100,
-      actions: ['Double clé', 'Inventaire mensuel', 'Journal des mouvements']
-    },
-    {
-      id: '3',
-      categorie: 'Traçabilité',
-      exigence: 'Numéros de lot',
-      description: 'Traçabilité complète des lots de la réception à la dispensation',
-      statut: 'en_cours',
-      dernierControle: new Date('2024-01-15T09:00:00'),
-      prochainControle: new Date('2024-01-30T09:00:00'),
-      responsable: 'Sophie Moreau',
-      urgence: 'moyenne',
-      scoreConformite: 85,
-      actions: ['Mise à jour système', 'Formation équipe']
-    },
-    {
-      id: '4',
-      categorie: 'Péremption',
-      exigence: 'FIFO obligatoire',
-      description: 'Application stricte de la règle First In, First Out',
-      statut: 'non_conforme',
-      dernierControle: new Date('2024-01-18T16:00:00'),
-      prochainControle: new Date('2024-01-28T16:00:00'),
-      responsable: 'Pierre Durand',
-      urgence: 'haute',
-      scoreConformite: 65,
-      actions: ['Réorganisation rayons', 'Procédure FIFO', 'Contrôle quotidien']
-    },
-    {
-      id: '5',
-      categorie: 'Documentation',
-      exigence: 'Dossier qualité',
-      description: 'Maintien à jour du dossier qualité pharmaceutique',
-      statut: 'expire',
-      dernierControle: new Date('2023-12-15T11:00:00'),
-      prochainControle: new Date('2024-01-15T11:00:00'),
-      responsable: 'Marie Dubois',
-      urgence: 'critique',
-      scoreConformite: 40,
-      actions: ['Mise à jour urgente', 'Revue complète', 'Validation direction']
-    }
-  ];
+  // Use the compliance hook for real data
+  const {
+    complianceItems,
+    metrics,
+    categories,
+    isLoading,
+    error,
+    exportComplianceReport,
+    generateAuditReport,
+    refreshAll
+  } = useCompliance();
 
-  const metrics: ComplianceMetrics = {
-    conformite: complianceItems.filter(item => item.statut === 'conforme').length,
-    nonConformite: complianceItems.filter(item => item.statut === 'non_conforme').length,
-    enCours: complianceItems.filter(item => item.statut === 'en_cours').length,
-    expire: complianceItems.filter(item => item.statut === 'expire').length,
-    scoreGlobal: complianceItems.reduce((sum, item) => sum + item.scoreConformite, 0) / complianceItems.length
+  // Apply filters
+  const { filteredItems } = useComplianceFilters(complianceItems, {
+    category: selectedCategory,
+    status: selectedStatus,
+    urgency: selectedUrgency,
+    dateFrom
+  });
+
+  // Handle export
+  const handleExportReport = () => {
+    exportComplianceReport({
+      category: selectedCategory,
+      status: selectedStatus,
+      urgency: selectedUrgency,
+      dateFrom
+    });
   };
+
+  // Handle audit report
+  const handleAuditReport = () => {
+    generateAuditReport();
+  };
+
+  // Handle refresh
+  const handleRefresh = () => {
+    refreshAll();
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Chargement des données de conformité...</span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-lg font-semibold text-red-600">Erreur de chargement</p>
+          <p className="text-muted-foreground mb-4">
+            Impossible de charger les données de conformité
+          </p>
+          <Button onClick={handleRefresh} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Réessayer
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const getStatusIcon = (statut: string) => {
     switch (statut) {
@@ -207,12 +182,7 @@ const ComplianceReports = () => {
     return 'text-red-600';
   };
 
-  const filteredItems = complianceItems.filter(item => {
-    const matchesCategory = selectedCategory === 'toutes' || item.categorie === selectedCategory;
-    const matchesStatus = selectedStatus === 'tous' || item.statut === selectedStatus;
-    const matchesUrgency = selectedUrgency === 'toutes' || item.urgence === selectedUrgency;
-    return matchesCategory && matchesStatus && matchesUrgency;
-  });
+  // filteredItems is now handled by the useComplianceFilters hook
 
   return (
     <div className="space-y-6">
@@ -322,11 +292,11 @@ const ComplianceReports = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="toutes">Toutes catégories</SelectItem>
-                <SelectItem value="Conservation">Conservation</SelectItem>
-                <SelectItem value="Stupéfiants">Stupéfiants</SelectItem>
-                <SelectItem value="Traçabilité">Traçabilité</SelectItem>
-                <SelectItem value="Péremption">Péremption</SelectItem>
-                <SelectItem value="Documentation">Documentation</SelectItem>
+                {categories.map(category => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -373,14 +343,19 @@ const ComplianceReports = () => {
               </PopoverContent>
             </Popover>
 
-            <Button>
+            <Button onClick={handleExportReport}>
               <Download className="mr-2 h-4 w-4" />
               Rapport Conformité
             </Button>
 
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleAuditReport}>
               <FileText className="mr-2 h-4 w-4" />
               Audit Complet
+            </Button>
+
+            <Button variant="outline" onClick={handleRefresh}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Actualiser
             </Button>
           </div>
         </CardContent>
