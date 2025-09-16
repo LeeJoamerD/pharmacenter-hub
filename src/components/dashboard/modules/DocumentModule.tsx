@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Search, Upload, FileText, Download, Eye, Trash2, Filter, FolderOpen, Edit, Plus, Settings } from 'lucide-react';
+import { Search, Upload, FileText, Download, Eye, Trash2, Filter, FolderOpen, Edit, Plus, Settings, Mail, Sparkles } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/contexts/TenantContext';
 import { useDocumentsQuery, useDocumentCategoriesQuery, useDocumentMutation, useDocumentCategoryMutation } from '@/hooks/useTenantQuery';
 import DocumentCategoryManager from './DocumentCategoryManager';
+import AIDocumentGenerator from './documents/AIDocumentGenerator';
+import CourrierManager from './documents/CourrierManager';
+import EmailManager from './documents/EmailManager';
+import TemplateManager from './documents/TemplateManager';
 
 interface Document {
   id: string;
@@ -620,6 +624,22 @@ const DocumentModule = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+        
+        <TabsContent value="courriers">
+          <CourrierManager />
+        </TabsContent>
+        
+        <TabsContent value="emails">
+          <EmailManager />
+        </TabsContent>
+        
+        <TabsContent value="ai-generator">
+          <AIDocumentGenerator />
+        </TabsContent>
+        
+        <TabsContent value="templates">
+          <TemplateManager />
         </TabsContent>
         
         <TabsContent value="categories" className="space-y-4">

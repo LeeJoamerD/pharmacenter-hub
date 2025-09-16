@@ -229,6 +229,87 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_configurations: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          max_tokens: number | null
+          model: string | null
+          provider: string | null
+          settings: Json | null
+          temperature: number | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_tokens?: number | null
+          model?: string | null
+          provider?: string | null
+          settings?: Json | null
+          temperature?: number | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_tokens?: number | null
+          model?: string | null
+          provider?: string | null
+          settings?: Json | null
+          temperature?: number | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ai_templates: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          is_system: boolean | null
+          name: string
+          prompt_template: string
+          tenant_id: string | null
+          type: string
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_system?: boolean | null
+          name: string
+          prompt_template: string
+          tenant_id?: string | null
+          type: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_system?: boolean | null
+          name?: string
+          prompt_template?: string
+          tenant_id?: string | null
+          type?: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: []
+      }
       alert_rules: {
         Row: {
           conditions: Json
@@ -1482,10 +1563,16 @@ export type Database = {
       }
       documents: {
         Row: {
+          ai_generated: boolean | null
           author_id: string | null
           category: string
           created_at: string
           description: string | null
+          document_type: string | null
+          due_date: string | null
+          email_from: string | null
+          email_subject: string | null
+          email_to: string | null
           file_path: string | null
           file_size: number
           file_type: string
@@ -1493,15 +1580,26 @@ export type Database = {
           id: string
           name: string
           original_filename: string
+          priority: string | null
+          recipient: string | null
+          sender: string | null
+          status: string | null
           tags: string[] | null
+          template_id: string | null
           tenant_id: string
           updated_at: string
         }
         Insert: {
+          ai_generated?: boolean | null
           author_id?: string | null
           category: string
           created_at?: string
           description?: string | null
+          document_type?: string | null
+          due_date?: string | null
+          email_from?: string | null
+          email_subject?: string | null
+          email_to?: string | null
           file_path?: string | null
           file_size: number
           file_type: string
@@ -1509,15 +1607,26 @@ export type Database = {
           id?: string
           name: string
           original_filename: string
+          priority?: string | null
+          recipient?: string | null
+          sender?: string | null
+          status?: string | null
           tags?: string[] | null
+          template_id?: string | null
           tenant_id: string
           updated_at?: string
         }
         Update: {
+          ai_generated?: boolean | null
           author_id?: string | null
           category?: string
           created_at?: string
           description?: string | null
+          document_type?: string | null
+          due_date?: string | null
+          email_from?: string | null
+          email_subject?: string | null
+          email_to?: string | null
           file_path?: string | null
           file_size?: number
           file_type?: string
@@ -1525,7 +1634,12 @@ export type Database = {
           id?: string
           name?: string
           original_filename?: string
+          priority?: string | null
+          recipient?: string | null
+          sender?: string | null
+          status?: string | null
           tags?: string[] | null
+          template_id?: string | null
           tenant_id?: string
           updated_at?: string
         }
@@ -1609,6 +1723,68 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emails: {
+        Row: {
+          classification: string | null
+          content: string | null
+          created_at: string | null
+          document_id: string | null
+          from_email: string | null
+          id: string
+          priority: string | null
+          processed: boolean | null
+          received_at: string | null
+          subject: string | null
+          suggested_response: string | null
+          summary: string | null
+          tenant_id: string
+          to_email: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          classification?: string | null
+          content?: string | null
+          created_at?: string | null
+          document_id?: string | null
+          from_email?: string | null
+          id?: string
+          priority?: string | null
+          processed?: boolean | null
+          received_at?: string | null
+          subject?: string | null
+          suggested_response?: string | null
+          summary?: string | null
+          tenant_id: string
+          to_email?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          classification?: string | null
+          content?: string | null
+          created_at?: string | null
+          document_id?: string | null
+          from_email?: string | null
+          id?: string
+          priority?: string | null
+          processed?: boolean | null
+          received_at?: string | null
+          subject?: string | null
+          suggested_response?: string | null
+          summary?: string | null
+          tenant_id?: string
+          to_email?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emails_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
         ]
