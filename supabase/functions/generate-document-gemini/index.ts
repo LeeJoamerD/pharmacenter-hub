@@ -135,7 +135,7 @@ serve(async (req) => {
                 templateType === 'procedure' ? 'Qualité' : 'Manuel',
       description: `Document généré automatiquement via IA Gemini`,
       tags: ['IA', 'Gemini', 'Généré'],
-      file_size: Buffer.byteLength(generatedText, 'utf8'),
+      file_size: new TextEncoder().encode(generatedText).length,
       author_id: user.id,
       document_type: 'ai_generated',
       ai_generated: true,
