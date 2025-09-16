@@ -522,6 +522,10 @@ const DocumentModule = () => {
         <TabsList>
           <TabsTrigger value="grid">Vue Grille</TabsTrigger>
           <TabsTrigger value="list">Vue Liste</TabsTrigger>
+          <TabsTrigger value="courriers"><Mail className="w-4 h-4 mr-2" />Courriers</TabsTrigger>
+          <TabsTrigger value="emails"><Mail className="w-4 h-4 mr-2" />Emails</TabsTrigger>
+          <TabsTrigger value="ai-generator"><Sparkles className="w-4 h-4 mr-2" />Rédaction IA</TabsTrigger>
+          <TabsTrigger value="templates"><FileText className="w-4 h-4 mr-2" />Templates</TabsTrigger>
           <TabsTrigger value="categories">Catégories</TabsTrigger>
         </TabsList>
         
