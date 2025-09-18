@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Edit, Trash2, UserCheck } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, UserCheck, Phone, MessageCircle, AtSign } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -426,9 +426,8 @@ const ConventionedManager = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Établissement</TableHead>
-                <TableHead>Contact</TableHead>
+                <TableHead>Contacts</TableHead>
                 <TableHead>Taux (%)</TableHead>
-                <TableHead>Caution</TableHead>
                 <TableHead>Limite dette</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -436,7 +435,7 @@ const ConventionedManager = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={5} className="text-center py-8">
                     Chargement...
                   </TableCell>
                 </TableRow>
@@ -444,17 +443,36 @@ const ConventionedManager = () => {
                 filteredConventionnes.map((conv) => (
                   <TableRow key={conv.id}>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{conv.noms}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {conv.ville} {conv.niu && `• NIU: ${conv.niu}`}
+                      <div className="flex items-start gap-2">
+                        <UserCheck className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <div className="font-medium">{conv.noms}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {conv.ville} {conv.niu && `• NIU: ${conv.niu}`}
+                          </div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm">
-                        {conv.telephone_appel && <div>{conv.telephone_appel}</div>}
-                        {conv.email && <div>{conv.email}</div>}
+                      <div className="text-sm space-y-1">
+                        {conv.telephone_appel && (
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {conv.telephone_appel}
+                          </div>
+                        )}
+                        {conv.telephone_whatsapp && (
+                          <div className="flex items-center gap-1 text-green-600">
+                            <MessageCircle className="h-3 w-3" />
+                            {conv.telephone_whatsapp}
+                          </div>
+                        )}
+                        {conv.email && (
+                          <div className="flex items-center gap-1">
+                            <AtSign className="h-3 w-3" />
+                            {conv.email}
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -462,9 +480,6 @@ const ConventionedManager = () => {
                         <div>TM: {conv.taux_ticket_moderateur || 0}%</div>
                         <div>Remise: {conv.taux_remise_automatique || 0}%</div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {(conv.caution || 0).toLocaleString()} XAF
                     </TableCell>
                     <TableCell>
                       {(conv.limite_dette || 0).toLocaleString()} XAF
@@ -484,6 +499,7 @@ const ConventionedManager = () => {
                           size="sm"
                           onClick={() => handleDelete(conv.id)}
                           disabled={deleteMutation.isPending}
+                          className="text-red-500 hover:text-red-600"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

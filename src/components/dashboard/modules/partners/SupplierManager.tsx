@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Edit, Trash2, Truck } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Truck, Phone, MessageCircle, AtSign } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -316,20 +316,36 @@ const SupplierManager = () => {
                 filteredFournisseurs.map((fournisseur) => (
                   <TableRow key={fournisseur.id}>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{fournisseur.nom}</div>
-                        {fournisseur.niu && (
-                          <div className="text-sm text-muted-foreground">NIU: {fournisseur.niu}</div>
-                        )}
+                      <div className="flex items-start gap-2">
+                        <Truck className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <div className="font-medium">{fournisseur.nom}</div>
+                          {fournisseur.niu && (
+                            <div className="text-sm text-muted-foreground">NIU: {fournisseur.niu}</div>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm">
-                        {fournisseur.telephone_appel && <div>📞 {fournisseur.telephone_appel}</div>}
-                        {fournisseur.telephone_whatsapp && (
-                          <div className="text-green-600">💬 {fournisseur.telephone_whatsapp}</div>
+                      <div className="text-sm space-y-1">
+                        {fournisseur.telephone_appel && (
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {fournisseur.telephone_appel}
+                          </div>
                         )}
-                        {fournisseur.email && <div>✉️ {fournisseur.email}</div>}
+                        {fournisseur.telephone_whatsapp && (
+                          <div className="flex items-center gap-1 text-green-600">
+                            <MessageCircle className="h-3 w-3" />
+                            {fournisseur.telephone_whatsapp}
+                          </div>
+                        )}
+                        {fournisseur.email && (
+                          <div className="flex items-center gap-1">
+                            <AtSign className="h-3 w-3" />
+                            {fournisseur.email}
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -352,6 +368,7 @@ const SupplierManager = () => {
                           size="sm"
                           onClick={() => handleDelete(fournisseur.id)}
                           disabled={deleteMutation.isPending}
+                          className="text-red-500 hover:text-red-600"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

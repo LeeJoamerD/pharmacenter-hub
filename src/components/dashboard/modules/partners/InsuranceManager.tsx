@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Edit, Trash2, Shield } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Shield, Phone, MessageCircle, AtSign } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -318,8 +318,8 @@ const InsuranceManager = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Assureur</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Ville</TableHead>
+                <TableHead>Contacts</TableHead>
+                <TableHead>Adresse</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -333,26 +333,44 @@ const InsuranceManager = () => {
               ) : filteredAssureurs.map((assureur: any) => (
                 <TableRow key={assureur.id}>
                   <TableCell>
-                    <div>
-                      <div className="font-medium">{assureur.libelle_assureur}</div>
-                      {assureur.niu && (
-                        <div className="text-sm text-muted-foreground">NIU: {assureur.niu}</div>
+                    <div className="flex items-start gap-2">
+                      <Shield className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <div className="font-medium">{assureur.libelle_assureur}</div>
+                        {assureur.niu && (
+                          <div className="text-sm text-muted-foreground">NIU: {assureur.niu}</div>
+                        )}
+                        {assureur.contact_principal && (
+                          <div className="text-sm text-muted-foreground">Contact: {assureur.contact_principal}</div>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm space-y-1">
+                      {assureur.telephone_appel && (
+                        <div className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          {assureur.telephone_appel}
+                        </div>
                       )}
-                      {assureur.contact_principal && (
-                        <div className="text-sm text-muted-foreground">Contact: {assureur.contact_principal}</div>
+                      {assureur.telephone_whatsapp && (
+                        <div className="flex items-center gap-1 text-green-600">
+                          <MessageCircle className="h-3 w-3" />
+                          {assureur.telephone_whatsapp}
+                        </div>
+                      )}
+                      {assureur.email && (
+                        <div className="flex items-center gap-1">
+                          <AtSign className="h-3 w-3" />
+                          {assureur.email}
+                        </div>
                       )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm">
-                      {assureur.telephone_appel && <div>📞 {assureur.telephone_appel}</div>}
-                      {assureur.telephone_whatsapp && <div className="text-green-600">💬 {assureur.telephone_whatsapp}</div>}
-                      {assureur.email && <div>✉️ {assureur.email}</div>}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {assureur.ville || '-'}
+                    <div className="text-sm text-muted-foreground max-w-xs truncate">
+                      {assureur.adresse || 'Non renseignée'}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -370,6 +388,7 @@ const InsuranceManager = () => {
                         size="sm"
                         onClick={() => handleDelete(assureur.id)}
                         disabled={deleteMutation.isPending}
+                        className="text-red-500 hover:text-red-600"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

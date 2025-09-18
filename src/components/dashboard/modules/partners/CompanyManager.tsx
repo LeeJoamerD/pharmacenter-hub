@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
-import { Plus, Search, Edit, Trash2, Building } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Building, Phone, MessageCircle, AtSign } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useQueryClient } from '@tanstack/react-query';
@@ -317,8 +317,8 @@ const Societes = () => {
                     <TableHeader>
                     <TableRow>
                         <TableHead>Nom de la société</TableHead>
-                        <TableHead>Téléphone</TableHead>
-                        <TableHead>Email</TableHead>
+                        <TableHead>Contacts</TableHead>
+                        <TableHead>Adresse</TableHead>
                         <TableHead>Limite dette</TableHead>
                         <TableHead>Actions</TableHead>
                     </TableRow>
@@ -326,16 +326,56 @@ const Societes = () => {
                     <TableBody>
                     {filteredSocietes.map(societe => (
                         <TableRow key={societe.id}>
-                        <TableCell className="font-medium">{societe.libelle_societe}</TableCell>
-                        <TableCell>{societe.telephone_appel}</TableCell>
-                        <TableCell>{societe.email}</TableCell>
+                        <TableCell>
+                          <div className="flex items-start gap-2">
+                            <Building className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <div className="font-medium">{societe.libelle_societe}</div>
+                              {societe.niu && (
+                                <div className="text-sm text-muted-foreground">NIU: {societe.niu}</div>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm space-y-1">
+                            {societe.telephone_appel && (
+                              <div className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {societe.telephone_appel}
+                              </div>
+                            )}
+                            {societe.telephone_whatsapp && (
+                              <div className="flex items-center gap-1 text-green-600">
+                                <MessageCircle className="h-3 w-3" />
+                                {societe.telephone_whatsapp}
+                              </div>
+                            )}
+                            {societe.email && (
+                              <div className="flex items-center gap-1">
+                                <AtSign className="h-3 w-3" />
+                                {societe.email}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-muted-foreground max-w-xs truncate">
+                            {societe.adresse || 'Non renseignée'}
+                          </div>
+                        </TableCell>
                         <TableCell>{societe.limite_dette}</TableCell>
                         <TableCell>
                             <div className="flex space-x-2">
                             <Button variant="outline" size="icon" onClick={() => handleEdit(societe)}>
                                 <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="icon" onClick={() => deleteSociete.mutate({ id: societe.id })}>
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              onClick={() => deleteSociete.mutate({ id: societe.id })}
+                              className="text-red-500 hover:text-red-600"
+                            >
                                 <Trash2 className="h-4 w-4" />
                             </Button>
                             </div>
