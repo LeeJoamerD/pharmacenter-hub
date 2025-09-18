@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Edit, Trash2, FlaskConical, Globe } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, FlaskConical, Globe, Phone, MessageCircle, AtSign } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -294,8 +294,8 @@ const LaboratoryManager = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Laboratoire</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Communication</TableHead>
+                <TableHead>Contacts siège social</TableHead>
+                <TableHead>Contacts délégation locale</TableHead>
                 <TableHead>Date création</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -321,9 +321,13 @@ const LaboratoryManager = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm">
-                      {labo.email_siege && <div>✉️ Siège: {labo.email_siege}</div>}
-                      {labo.email_delegation_local && <div>✉️ Local: {labo.email_delegation_local}</div>}
+                    <div className="text-sm space-y-1">
+                      {labo.email_siege && (
+                        <div className="flex items-center gap-1">
+                          <AtSign className="h-3 w-3" />
+                          {labo.email_siege}
+                        </div>
+                      )}
                       {labo.pays_siege && (
                         <div className="flex items-center gap-1">
                           <Globe className="h-3 w-3" />
@@ -333,12 +337,24 @@ const LaboratoryManager = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm">
+                    <div className="text-sm space-y-1">
                       {labo.telephone_appel_delegation_local && (
-                        <div>📞 {labo.telephone_appel_delegation_local}</div>
+                        <div className="flex items-center gap-1">
+                          <Phone className="h-3 w-3" />
+                          {labo.telephone_appel_delegation_local}
+                        </div>
                       )}
                       {labo.telephone_whatsapp_delegation_local && (
-                        <div className="text-green-600">💬 {labo.telephone_whatsapp_delegation_local}</div>
+                        <div className="flex items-center gap-1 text-green-600">
+                          <MessageCircle className="h-3 w-3" />
+                          {labo.telephone_whatsapp_delegation_local}
+                        </div>
+                      )}
+                      {labo.email_delegation_local && (
+                        <div className="flex items-center gap-1">
+                          <AtSign className="h-3 w-3" />
+                          {labo.email_delegation_local}
+                        </div>
                       )}
                     </div>
                   </TableCell>
@@ -362,6 +378,7 @@ const LaboratoryManager = () => {
                         size="sm"
                         onClick={() => handleDelete(labo.id)}
                         disabled={deleteMutation.isPending}
+                        className="text-red-500 hover:text-red-600"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
