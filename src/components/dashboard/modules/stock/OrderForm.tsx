@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ import {
   ShoppingCart
 } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
 
 interface OrderLine {
@@ -42,11 +43,22 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
   const [searchProduct, setSearchProduct] = useState('');
   const [notes, setNotes] = useState('');
+  const [editableTva, setEditableTva] = useState<number>(18);
+  const [editableCentimeAdditionnel, setEditableCentimeAdditionnel] = useState<number>(5);
   const { toast } = useToast();
 
   // Use real suppliers and products
   const suppliers = propSuppliers;
   const { products } = useProducts();
+  const { settings } = useSystemSettings();
+
+  // Initialize system settings rates
+  useEffect(() => {
+    if (settings) {
+      setEditableTva(settings.taux_tva || 18);
+      setEditableCentimeAdditionnel(settings.taux_centime_additionnel || 5);
+    }
+  }, [settings]);
 
   const filteredProducts = products.filter(product =>
     product.libelle_produit.toLowerCase().includes(searchProduct.toLowerCase()) ||
@@ -88,12 +100,13 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
 
   const calculateTotals = () => {
     const sousTotal = orderLines.reduce((sum, line) => sum + line.total, 0);
-    const tva = sousTotal * 0.18; // 18% TVA
-    const totalGeneral = sousTotal + tva;
-    return { sousTotal, tva, totalGeneral };
+    const centimeAdditionnel = sousTotal * (editableCentimeAdditionnel / 100);
+    const tva = (sousTotal + centimeAdditionnel) * (editableTva / 100);
+    const totalGeneral = sousTotal + centimeAdditionnel + tva;
+    return { sousTotal, centimeAdditionnel, tva, totalGeneral };
   };
 
-  const { sousTotal, tva, totalGeneral } = calculateTotals();
+  const { sousTotal, centimeAdditionnel, tva, totalGeneral } = calculateTotals();
 
   const handleSaveOrder = async (statut: string) => {
     try {
@@ -115,9 +128,19 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
         return;
       }
 
+      // Determine final status based on action
+      let finalStatus = statut;
+      if (statut === 'Brouillon') {
+        finalStatus = 'Brouillon';
+      } else if (statut === 'En cours') {
+        finalStatus = 'En cours';
+      } else if (statut === 'Confirmé') {
+        finalStatus = 'Confirmé';
+      }
+
       const orderData = {
         fournisseur_id: selectedSupplier,
-        statut: statut,
+        statut: finalStatus,
         date_commande: (document.getElementById('dateCommande') as HTMLInputElement)?.value || new Date().toISOString().split('T')[0],
         notes: notes,
         lignes: orderLines.map(line => ({
@@ -135,12 +158,23 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
       setNotes('');
       setSearchProduct('');
       
+      const statusMessage = {
+        'Brouillon': 'sauvegardée comme brouillon',
+        'En cours': 'sauvegardée en cours',
+        'Confirmé': 'confirmée et envoyée'
+      }[finalStatus] || 'sauvegardée';
+      
       toast({
         title: "Succès",
-        description: `Commande ${statut === 'En cours' ? 'sauvegardée' : 'envoyée'} avec succès`,
+        description: `Commande ${statusMessage} avec succès`,
       });
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la sauvegarde de la commande",
+        variant: "destructive",
+      });
     }
   };
 
@@ -327,14 +361,40 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
             {/* Totaux */}
             <div className="mt-6 border-t pt-4">
               <div className="flex justify-end">
-                <div className="w-64 space-y-2">
+                <div className="w-80 space-y-3">
                   <div className="flex justify-between">
                     <span>Sous-total HT :</span>
                     <span className="font-medium">{sousTotal.toLocaleString()} F CFA</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>TVA (18%) :</span>
-                    <span className="font-medium">{tva.toLocaleString()} F CFA</span>
+                  <div className="flex justify-between items-center">
+                    <span>Centime Additionnel :</span>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={editableCentimeAdditionnel}
+                        onChange={(e) => setEditableCentimeAdditionnel(parseFloat(e.target.value) || 0)}
+                        className="w-16 h-8 text-right"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                      />
+                      <span>% = {centimeAdditionnel.toLocaleString()} F CFA</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>TVA :</span>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={editableTva}
+                        onChange={(e) => setEditableTva(parseFloat(e.target.value) || 0)}
+                        className="w-16 h-8 text-right"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                      />
+                      <span>% = {tva.toLocaleString()} F CFA</span>
+                    </div>
                   </div>
                   <div className="flex justify-between text-lg font-bold border-t pt-2">
                     <span>Total TTC :</span>
@@ -368,18 +428,26 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
              <div className="flex gap-4 justify-end">
                <Button 
                  variant="outline"
-                 onClick={() => handleSaveOrder('En cours')}
+                 onClick={() => handleSaveOrder('Brouillon')}
                  disabled={loading || !selectedSupplier || orderLines.length === 0}
                >
                  <Save className="mr-2 h-4 w-4" />
                  Sauvegarder Brouillon
+               </Button>
+               <Button 
+                 variant="secondary"
+                 onClick={() => handleSaveOrder('En cours')}
+                 disabled={loading || !selectedSupplier || orderLines.length === 0}
+               >
+                 <FileText className="mr-2 h-4 w-4" />
+                 Mettre En Cours
                </Button>
                <Button
                  onClick={() => handleSaveOrder('Confirmé')}
                  disabled={loading || !selectedSupplier || orderLines.length === 0}
                >
                  <Send className="mr-2 h-4 w-4" />
-                 Envoyer Commande
+                 Confirmer Commande
                </Button>
              </div>
           </div>

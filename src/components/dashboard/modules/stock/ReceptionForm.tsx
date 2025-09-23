@@ -26,6 +26,7 @@ import { useReceptionLines } from '@/hooks/useReceptionLines';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
 import { ReceptionValidationService } from '@/services/receptionValidationService';
+import { OrderStatusValidationService } from '@/services/orderStatusValidationService';
 import BarcodeScanner from './BarcodeScanner';
 
 interface ReceptionLine {
@@ -46,10 +47,17 @@ interface ReceptionFormProps {
   orders: any[];
   suppliers: any[];
   onCreateReception: (receptionData: any) => Promise<any>;
+  onUpdateOrderStatus?: (orderId: string, status: string) => Promise<any>;
   loading: boolean;
 }
 
-const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], suppliers: propSuppliers = [], onCreateReception, loading }) => {
+const ReceptionForm: React.FC<ReceptionFormProps> = ({ 
+  orders: propOrders = [], 
+  suppliers: propSuppliers = [], 
+  onCreateReception, 
+  onUpdateOrderStatus,
+  loading 
+}) => {
   const [selectedOrder, setSelectedOrder] = useState('');
   const [receptionLines, setReceptionLines] = useState<ReceptionLine[]>([]);
   const [scannedBarcode, setScannedBarcode] = useState('');
@@ -69,9 +77,9 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
   const { createReceptionLine } = useReceptionLines();
   const { settings } = useSystemSettings();
 
-  // Use real orders with pending status
+  // Use real orders with appropriate statuses for reception
   const pendingOrders = propOrders.filter(order => 
-    ['En cours', 'Confirmé', 'Expédié'].includes(order.statut)
+    ['Confirmé', 'Expédié', 'Livré'].includes(order.statut)
   ).map(order => ({
     ...order,
     numero: `CMD-${new Date(order.date_commande || order.created_at).getFullYear()}-${String(order.id).slice(-3).padStart(3, '0')}`,
@@ -262,6 +270,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
         return;
       }
 
+      // Validate reception data
       const receptionData = {
         commande_id: selectedOrder,
         fournisseur_id: selectedOrderData.fournisseur_id,
@@ -281,7 +290,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
         }))
       };
 
-      // Validation avant enregistrement
+      // Reception validation
       const validation = await ReceptionValidationService.validateReception(receptionData);
       
       if (!validation.isValid) {
@@ -293,14 +302,46 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
         return;
       }
 
-      // Si des avertissements, demander confirmation
+      // Handle warnings if present and not already confirmed
       if (validation.warnings.length > 0 && !pendingValidation) {
         setPendingValidation({ isValidated, warnings: validation.warnings });
         setShowWarningDialog(true);
         return;
       }
 
+      // Create the reception
       await onCreateReception(receptionData);
+
+      // Update order status based on validation and current status
+      if (isValidated && onUpdateOrderStatus) {
+        const currentStatus = selectedOrderData.statut;
+        let targetStatus = 'Réceptionné';
+
+        // Check if status transition is allowed
+        const statusValidation = OrderStatusValidationService.canTransitionTo(currentStatus, targetStatus);
+        if (statusValidation.canTransition) {
+          await onUpdateOrderStatus(selectedOrder, targetStatus);
+          toast({
+            title: "Statut mis à jour",
+            description: `Commande ${targetStatus.toLowerCase()}`,
+          });
+        } else {
+          // Try intermediate status if direct transition not allowed
+          if (currentStatus === 'Confirmé' || currentStatus === 'Expédié') {
+            const intermediateStatus = OrderStatusValidationService.getNextLogicalStatus(currentStatus);
+            if (intermediateStatus) {
+              const intermediateValidation = OrderStatusValidationService.canTransitionTo(currentStatus, intermediateStatus);
+              if (intermediateValidation.canTransition) {
+                await onUpdateOrderStatus(selectedOrder, intermediateStatus);
+                toast({
+                  title: "Statut mis à jour",
+                  description: `Commande ${intermediateStatus.toLowerCase()}`,
+                });
+              }
+            }
+          }
+        }
+      }
       
       // Reset form
       setSelectedOrder('');

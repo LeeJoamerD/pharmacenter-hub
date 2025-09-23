@@ -22,6 +22,7 @@ import { useOrderLines } from '@/hooks/useOrderLines';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
 import { OrderValidationService } from '@/services/orderValidationService';
+import { OrderStatusValidationService } from '@/services/orderStatusValidationService';
 
 interface EditOrderTabProps {
   orders: any[];
@@ -67,13 +68,29 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
     const checkModifyPermission = async () => {
       if (selectedOrderId) {
         try {
-          const result = await OrderValidationService.canModifyOrder(selectedOrderId);
-          const canModifyOrder = typeof result === 'boolean' ? result : result.canModify;
-          setCanModify(canModifyOrder);
-          if (!canModifyOrder) {
-            setValidationError('Cette commande ne peut plus être modifiée en raison de son statut actuel.');
+          // Get current order status
+          const selectedOrder = draftOrders.find(order => order.id === selectedOrderId);
+          const currentStatus = selectedOrder?.statut || 'En cours';
+          
+          // Use new status validation service
+          const validation = OrderStatusValidationService.canModifyOrder(currentStatus);
+          setCanModify(validation.canModify);
+          
+          if (!validation.canModify) {
+            setValidationError(validation.errors.join(', ') || 'Cette commande ne peut plus être modifiée.');
           } else {
             setValidationError('');
+          }
+          
+          // Show warnings if any
+          if (validation.warnings.length > 0) {
+            validation.warnings.forEach(warning => {
+              toast({
+                title: "Attention",
+                description: warning,
+                variant: "default",
+              });
+            });
           }
         } catch (error) {
           console.error('Erreur lors de la vérification des permissions:', error);
@@ -84,7 +101,7 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
     };
 
     checkModifyPermission();
-  }, [selectedOrderId]);
+  }, [selectedOrderId, toast]);
 
   // Load order details when selected and initialize system settings
   useEffect(() => {
@@ -178,34 +195,80 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
         return;
       }
 
+      // Get current order status
+      const selectedOrder = draftOrders.find(order => order.id === selectedOrderId);
+      const currentStatus = selectedOrder?.statut || 'En cours';
+
+      // Validate status transition
+      const statusValidation = OrderStatusValidationService.canTransitionTo(currentStatus, statut);
+      if (!statusValidation.canTransition) {
+        toast({
+          title: "Transition non autorisée",
+          description: statusValidation.errors.join(', '),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Show warnings if any
+      if (statusValidation.warnings.length > 0) {
+        statusValidation.warnings.forEach(warning => {
+          toast({
+            title: "Attention",
+            description: warning,
+            variant: "default",
+          });
+        });
+      }
+
+      // Validate order data
+      const orderData = {
+        fournisseur_id: selectedSupplier,
+        date_commande: orderDate,
+        lignes: orderLines
+      };
+
+      const dataValidation = OrderStatusValidationService.validateOrderData(orderData, statut);
+      if (!dataValidation.canTransition) {
+        toast({
+          title: "Données invalides",
+          description: dataValidation.errors.join(', '),
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Update order header information
       await onUpdateOrder(selectedOrderId, {
         fournisseur_id: selectedSupplier,
         date_commande: orderDate
       });
 
-      // Update status if sending order
-      if (statut === 'Confirmé') {
-        await onUpdateOrderStatus(selectedOrderId, 'Confirmé');
+      // Update status if different from current
+      if (statut !== currentStatus) {
+        await onUpdateOrderStatus(selectedOrderId, statut);
         
-        // Reset selection since order is no longer "En cours"
-        setSelectedOrderId('');
-        setSelectedSupplier('');
-        setOrderDate('');
-        setNotes('');
-        
-        toast({
-          title: "Succès",
-          description: "Commande envoyée avec succès",
-        });
-      } else {
-        toast({
-          title: "Succès",
-          description: "Commande sauvegardée avec succès",
-        });
+        // Reset selection if order is no longer modifiable
+        const newStatusInfo = OrderStatusValidationService.canModifyOrder(statut);
+        if (!newStatusInfo.canModify) {
+          setSelectedOrderId('');
+          setSelectedSupplier('');
+          setOrderDate('');
+          setNotes('');
+        }
       }
+        
+      toast({
+        title: "Succès",
+        description: statut === 'Confirmé' ? "Commande confirmée avec succès" : "Commande sauvegardée avec succès",
+      });
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la sauvegarde de la commande",
+        variant: "destructive",
+      });
     }
   };
 
@@ -502,17 +565,17 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                    <Button 
                      variant="outline"
                      onClick={() => handleSaveOrder('En cours')}
-                     disabled={loading || !selectedSupplier || orderLines.length === 0}
+                     disabled={loading || !selectedSupplier || orderLines.length === 0 || !canModify}
                    >
                      <Save className="mr-2 h-4 w-4" />
-                     Sauvegarder Brouillon
+                     Sauvegarder
                    </Button>
                    <Button
                      onClick={() => handleSaveOrder('Confirmé')}
-                     disabled={loading || !selectedSupplier || orderLines.length === 0}
+                     disabled={loading || !selectedSupplier || orderLines.length === 0 || !canModify}
                    >
                      <Send className="mr-2 h-4 w-4" />
-                     Envoyer Commande
+                     Confirmer Commande
                    </Button>
                  </div>
               </div>
