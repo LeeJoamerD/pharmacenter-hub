@@ -62,8 +62,8 @@ export const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps>
       <Progress value={score} className="h-2" />
       
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <div className={`flex items-center gap-1 ${checks.length ? 'text-green-600' : 'text-red-600'}`}>
-          {checks.length ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+        <div className={`flex items-center gap-1 ${password.length >= 8 ? 'text-green-600' : 'text-red-600'}`}>
+          {password.length >= 8 ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
           Au moins 8 caractères
         </div>
         

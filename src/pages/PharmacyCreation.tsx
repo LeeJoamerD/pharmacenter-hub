@@ -1,21 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Building2, Phone, MapPin, Mail, Shield, Loader2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Building2, Phone, MapPin, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { FadeIn } from '@/components/FadeIn';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function PharmacyCreation() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { toast } = useToast();
 
-  // États du formulaire simplifié
+  // États du formulaire complet
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -31,140 +29,36 @@ export default function PharmacyCreation() {
     noms: '',
     prenoms: '',
     reference_agent: '',
-    telephone: ''
+    telephone: '',
+    password: '',
+    confirmPassword: ''
   });
   
   const [isLoading, setIsLoading] = useState(false);
-  const [googleDataLoaded, setGoogleDataLoaded] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Fonction pour extraire et formater les données Google
-  const extractGoogleData = (user: any) => {
-    if (!user) {
-      console.log('PHARMACY-CREATION: Aucun utilisateur fourni');
-      return null;
-    }
-    
-    console.log('PHARMACY-CREATION: Extraction des données Google:', user);
-    
-    const metadata = user.user_metadata || {};
-    
-    // Différentes sources pour les données
-    const email = user.email || metadata.email;
-    const firstName = metadata.given_name || metadata.first_name || '';
-    const lastName = metadata.family_name || metadata.last_name || '';
-    const phone = user.phone || metadata.phone_number || metadata.phone || '';
-    
-    const googleData = {
-      email: email || '',
-      prenoms: firstName || '',
-      noms: lastName || '',
-      telephone_appel: phone || '',
-      telephone: phone || ''
-    };
-    
-    console.log('PHARMACY-CREATION: Données Google extraites:', googleData);
-    return googleData;
-  };
-
-  // État pour tracker les champs préremplis par Google
-  const [googleFilledFields, setGoogleFilledFields] = useState<Set<string>>(new Set());
-
-  // Fonction pour préremplir le formulaire
-  const fillFormWithGoogleData = (user: any) => {
-    const googleData = extractGoogleData(user);
-    
-    if (!googleData) {
-      console.log('PHARMACY-CREATION: Aucune données Google à préremplir');
-      return;
-    }
-    
-    console.log('PHARMACY-CREATION: Début du préremplissage avec:', googleData);
-    
-    const filledFields = new Set<string>();
-    
-    setFormData(prev => {
-      const newData = { ...prev };
-      
-      if (googleData.email) {
-        newData.email = googleData.email;
-        filledFields.add('email');
-      }
-      
-      if (googleData.prenoms) {
-        newData.prenoms = googleData.prenoms;
-        filledFields.add('prenoms');
-      }
-      
-      if (googleData.noms) {
-        newData.noms = googleData.noms;
-        filledFields.add('noms');
-      }
-      
-      if (googleData.telephone_appel) {
-        newData.telephone_appel = googleData.telephone_appel;
-        filledFields.add('telephone_appel');
-      }
-      
-      if (googleData.telephone) {
-        newData.telephone = googleData.telephone;
-        filledFields.add('telephone');
-      }
-      
-      return newData;
-    });
-    
-    setGoogleFilledFields(filledFields);
-    setGoogleDataLoaded(true);
-    console.log('PHARMACY-CREATION: Préremplissage terminé');
-  };
-
-  // Préremplir depuis les paramètres URL ou Google
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const emailParam = params.get('email');
-    const prenomsParam = params.get('prenoms');
-    const nomsParam = params.get('noms');
-    const telephoneParam = params.get('telephone');
-    const googleVerified = params.get('google_verified') === 'true';
-
-    if (emailParam && googleVerified) {
-      console.log('PHARMACY-CREATION: Pré-remplissage depuis paramètres URL...');
-      setIsAuthenticated(true);
-      setFormData(prev => ({
-        ...prev,
-        email: emailParam || '',
-        prenoms: prenomsParam || '',
-        noms: nomsParam || '',
-        telephone: telephoneParam || '',
-        telephone_appel: telephoneParam || ''
-      }));
-      setGoogleDataLoaded(true);
-    } else if (user?.email) {
-      console.log('PHARMACY-CREATION: Utilisateur Google détecté, préremplissage...');
-      setIsAuthenticated(true);
-      fillFormWithGoogleData(user);
-    } else {
-      setIsAuthenticated(false);
-    }
-  }, [user]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Déterminer si un champ est prérempli par Google
-  const isFieldFromGoogle = (field: string) => {
-    return googleFilledFields.has(field);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user) {
+    // Validation des mots de passe
+    if (formData.password !== formData.confirmPassword) {
       toast({
-        title: "Authentification requise",
-        description: "Veuillez vous authentifier avec Google avant de continuer",
+        title: "Erreur",
+        description: "Les mots de passe ne correspondent pas",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast({
+        title: "Erreur",
+        description: "Le mot de passe doit contenir au moins 6 caractères",
         variant: "destructive"
       });
       return;
@@ -173,9 +67,34 @@ export default function PharmacyCreation() {
     setIsLoading(true);
 
     try {
-      console.log('PHARMACY-CREATION: Début de la création avec utilisateur Google:', user.email);
+      console.log('PHARMACY-CREATION: Début de la création de pharmacie:', formData.email);
 
-      // Utiliser la fonction RPC unifiée register_pharmacy_with_admin
+      // 1. Créer d'abord l'utilisateur dans Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            first_name: formData.prenoms,
+            last_name: formData.noms,
+            phone: formData.telephone
+          }
+        }
+      });
+
+      if (authError || !authData.user) {
+        console.error('PHARMACY-CREATION: Erreur création utilisateur:', authError);
+        toast({
+          title: "Erreur",
+          description: authError?.message || "Erreur lors de la création du compte utilisateur",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log('PHARMACY-CREATION: Utilisateur créé avec succès:', authData.user.id);
+
+      // 2. Créer la pharmacie et le personnel admin
       const { data, error } = await supabase.rpc('register_pharmacy_with_admin', {
         pharmacy_data: {
           name: formData.name,
@@ -198,13 +117,17 @@ export default function PharmacyCreation() {
           reference_agent: formData.reference_agent || `AG-${Date.now()}`,
           telephone: formData.telephone
         },
-        admin_email: user.email,
-        admin_password: '' // Pas besoin de mot de passe pour les utilisateurs Google
+        admin_email: formData.email,
+        admin_password: formData.password
       });
 
       const result = data as any;
       if (error || !result?.success) {
         console.error('PHARMACY-CREATION: Erreur lors de la création:', error);
+        
+        // En cas d'erreur, supprimer l'utilisateur créé
+        await supabase.auth.admin.deleteUser(authData.user.id);
+        
         toast({
           title: "Erreur",
           description: result?.error || error?.message || "Erreur lors de la création de la pharmacie",
@@ -262,16 +185,6 @@ export default function PharmacyCreation() {
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {/* Status d'authentification */}
-              {isAuthenticated && (
-                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                  <div className="flex items-center gap-2 text-green-700">
-                    <CheckCircle className="w-5 h-5" />
-                    <span className="font-medium">Authentifié avec Google</span>
-                  </div>
-                </div>
-              )}
-              
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Informations de la pharmacie */}
                 <div className="space-y-4">
@@ -284,35 +197,33 @@ export default function PharmacyCreation() {
                       </Label>
                       <div className="relative">
                         <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                         <Input
-                           id="name"
-                           type="text"
-                           placeholder="DJL - Computer Sciences"
-                           value={formData.name}
-                           onChange={(e) => handleInputChange('name', e.target.value)}
-                           className="pl-10 h-11"
-                           disabled={!isAuthenticated}
-                           required
-                         />
+                        <Input
+                          id="name"
+                          type="text"
+                          placeholder="DJL - Computer Sciences"
+                          value={formData.name}
+                          onChange={(e) => handleInputChange('name', e.target.value)}
+                          className="pl-10 h-11"
+                          required
+                        />
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="telephone_appel" className="text-sm font-medium">
-                        Téléphone * {isFieldFromGoogle('telephone_appel') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
+                        Téléphone *
                       </Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                         <Input
-                           id="telephone_appel"
-                           type="tel"
-                           placeholder="+242 XX XXX XX XX"
-                           value={formData.telephone_appel}
-                           onChange={(e) => handleInputChange('telephone_appel', e.target.value)}
-                           className={`pl-10 h-11 ${isFieldFromGoogle('telephone_appel') ? 'bg-green-50 border-green-200' : ''}`}
-                           disabled={!isAuthenticated}
-                           required
-                         />
+                        <Input
+                          id="telephone_appel"
+                          type="tel"
+                          placeholder="+242 XX XXX XX XX"
+                          value={formData.telephone_appel}
+                          onChange={(e) => handleInputChange('telephone_appel', e.target.value)}
+                          className="pl-10 h-11"
+                          required
+                        />
                       </div>
                     </div>
                   </div>
@@ -323,16 +234,15 @@ export default function PharmacyCreation() {
                     </Label>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                       <Input
-                         id="address"
-                         type="text"
-                         placeholder="59 rue Ibaliko CNRTV Djiri"
-                         value={formData.address}
-                         onChange={(e) => handleInputChange('address', e.target.value)}
-                         className="pl-10 h-11"
-                         disabled={!isAuthenticated}
-                         required
-                       />
+                      <Input
+                        id="address"
+                        type="text"
+                        placeholder="59 rue Ibaliko CNRTV Djiri"
+                        value={formData.address}
+                        onChange={(e) => handleInputChange('address', e.target.value)}
+                        className="pl-10 h-11"
+                        required
+                      />
                     </div>
                   </div>
 
@@ -341,67 +251,117 @@ export default function PharmacyCreation() {
                       <Label htmlFor="quartier" className="text-sm font-medium">
                         Quartier
                       </Label>
-                       <Input
-                         id="quartier"
-                         type="text"
-                         placeholder="Nkombo"
-                         value={formData.quartier}
-                         onChange={(e) => handleInputChange('quartier', e.target.value)}
-                         className="h-11"
-                         disabled={!isAuthenticated}
-                       />
+                      <Input
+                        id="quartier"
+                        type="text"
+                        placeholder="Nkombo"
+                        value={formData.quartier}
+                        onChange={(e) => handleInputChange('quartier', e.target.value)}
+                        className="h-11"
+                      />
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="city" className="text-sm font-medium">
                         Ville *
                       </Label>
-                       <Input
-                         id="city"
-                         type="text"
-                         placeholder="Brazzaville"
-                         value={formData.city}
-                         onChange={(e) => handleInputChange('city', e.target.value)}
-                         className="h-11"
-                         disabled={!isAuthenticated}
-                         required
-                       />
+                      <Input
+                        id="city"
+                        type="text"
+                        placeholder="Brazzaville"
+                        value={formData.city}
+                        onChange={(e) => handleInputChange('city', e.target.value)}
+                        className="h-11"
+                        required
+                      />
                     </div>
                   </div>
                 </div>
 
-                {/* Informations de connexion simplifiées */}
+                {/* Informations de connexion */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-foreground">Informations de connexion</h3>
                   
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-sm font-medium">
-                      Adresse email * {isFieldFromGoogle('email') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
+                      Adresse email *
                     </Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                       <Input
-                         id="email"
-                         type="email"
-                         placeholder="djl.computersciences@gmail.com"
-                         value={formData.email}
-                         onChange={(e) => handleInputChange('email', e.target.value)}
-                         className={`pl-10 h-11 ${isFieldFromGoogle('email') ? 'bg-green-50 border-green-200' : ''}`}
-                         disabled={!isAuthenticated}
-                         required
-                       />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="djl.computersciences@gmail.com"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        className="pl-10 h-11"
+                        required
+                      />
                     </div>
                   </div>
 
-                  {/* Section sécurité automatique */}
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex items-center gap-2 text-blue-700">
-                      <Shield className="w-5 h-5" />
-                      <span className="font-medium">Sécurité automatique</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="password" className="text-sm font-medium">
+                        Mot de passe *
+                      </Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={formData.password}
+                          onChange={(e) => handleInputChange('password', e.target.value)}
+                          className="pl-10 pr-10 h-11"
+                          required
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                    <p className="text-sm text-blue-600 mt-1">
-                      Votre authentification Google sécurise automatiquement votre compte.
-                    </p>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword" className="text-sm font-medium">
+                        Confirmer le mot de passe *
+                      </Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                        <Input
+                          id="confirmPassword"
+                          type={showConfirmPassword ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={formData.confirmPassword}
+                          onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                          className="pl-10 pr-10 h-11"
+                          required
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -412,54 +372,51 @@ export default function PharmacyCreation() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="prenoms" className="text-sm font-medium">
-                        Prénoms * {isFieldFromGoogle('prenoms') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
+                        Prénoms *
                       </Label>
-                       <Input
-                         id="prenoms"
-                         type="text"
-                         placeholder="Lee Joamer"
-                         value={formData.prenoms}
-                         onChange={(e) => handleInputChange('prenoms', e.target.value)}
-                         className={`h-11 ${isFieldFromGoogle('prenoms') ? 'bg-green-50 border-green-200' : ''}`}
-                         disabled={!isAuthenticated}
-                         required
-                       />
+                      <Input
+                        id="prenoms"
+                        type="text"
+                        placeholder="Lee Joamer"
+                        value={formData.prenoms}
+                        onChange={(e) => handleInputChange('prenoms', e.target.value)}
+                        className="h-11"
+                        required
+                      />
                     </div>
 
                     <div className="space-y-2">
                       <Label htmlFor="noms" className="text-sm font-medium">
-                        Noms * {isFieldFromGoogle('noms') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
+                        Noms *
                       </Label>
-                       <Input
-                         id="noms"
-                         type="text"
-                         placeholder="DIAMBOMBA"
-                         value={formData.noms}
-                         onChange={(e) => handleInputChange('noms', e.target.value)}
-                         className={`h-11 ${isFieldFromGoogle('noms') ? 'bg-green-50 border-green-200' : ''}`}
-                         disabled={!isAuthenticated}
-                         required
-                       />
+                      <Input
+                        id="noms"
+                        type="text"
+                        placeholder="DIAMBOMBA"
+                        value={formData.noms}
+                        onChange={(e) => handleInputChange('noms', e.target.value)}
+                        className="h-11"
+                        required
+                      />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="telephone" className="text-sm font-medium">
-                        Téléphone personnel * {isFieldFromGoogle('telephone') && <span className="text-xs text-green-600 font-medium">(depuis Google)</span>}
+                        Téléphone personnel *
                       </Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                         <Input
-                           id="telephone"
-                           type="tel"
-                           placeholder="+242 XX XXX XX XX"
-                           value={formData.telephone}
-                           onChange={(e) => handleInputChange('telephone', e.target.value)}
-                           className={`pl-10 h-11 ${isFieldFromGoogle('telephone') ? 'bg-green-50 border-green-200' : ''}`}
-                           disabled={!isAuthenticated}
-                           required
-                         />
+                        <Input
+                          id="telephone"
+                          type="tel"
+                          placeholder="+242 XX XXX XX XX"
+                          value={formData.telephone}
+                          onChange={(e) => handleInputChange('telephone', e.target.value)}
+                          className="pl-10 h-11"
+                          required
+                        />
                       </div>
                     </div>
 
@@ -467,15 +424,14 @@ export default function PharmacyCreation() {
                       <Label htmlFor="reference_agent" className="text-sm font-medium">
                         Référence agent
                       </Label>
-                       <Input
-                         id="reference_agent"
-                         type="text"
-                         placeholder="REF001"
-                         value={formData.reference_agent}
-                         onChange={(e) => handleInputChange('reference_agent', e.target.value)}
-                         className="h-11"
-                         disabled={!isAuthenticated}
-                       />
+                      <Input
+                        id="reference_agent"
+                        type="text"
+                        placeholder="REF001"
+                        value={formData.reference_agent}
+                        onChange={(e) => handleInputChange('reference_agent', e.target.value)}
+                        className="h-11"
+                      />
                     </div>
                   </div>
                 </div>
@@ -484,7 +440,7 @@ export default function PharmacyCreation() {
                   type="submit"
                   size="lg"
                   className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90"
-                  disabled={!isAuthenticated || isLoading}
+                  disabled={isLoading}
                 >
                   {isLoading ? (
                     <>

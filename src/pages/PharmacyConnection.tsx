@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Mail, Lock, Building2, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Mail, Lock, Building2, Eye, EyeOff } from 'lucide-react';
 import { FadeIn } from '@/components/FadeIn';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -15,20 +15,9 @@ export default function PharmacyConnection() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { connectPharmacy } = useAuth();
-
-  const prefilledEmail = searchParams.get('email');
-  const isGoogleVerified = searchParams.get('google_verified') === 'true';
-  const isEmailReadonly = !!prefilledEmail;
-
-  useEffect(() => {
-    if (prefilledEmail) {
-      setEmail(prefilledEmail);
-    }
-  }, [prefilledEmail]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,14 +74,6 @@ export default function PharmacyConnection() {
               <CardDescription className="text-muted-foreground mt-2">
                 Connectez-vous à votre compte pharmacie
               </CardDescription>
-              {isGoogleVerified && (
-                <Alert className="mt-4 border-green-200 bg-green-50">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-800">
-                    Authentification Google validée. Saisissez votre mot de passe pour continuer.
-                  </AlertDescription>
-                </Alert>
-              )}
             </div>
           </CardHeader>
 
@@ -104,17 +85,13 @@ export default function PharmacyConnection() {
                 </Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                  {isGoogleVerified && (
-                    <CheckCircle2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-600 w-4 h-4" />
-                  )}
                   <Input
                     id="email"
                     type="email"
                     placeholder="exemple@pharmacie.fr"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className={`pl-10 h-11 ${isGoogleVerified ? 'pr-10' : ''} ${isEmailReadonly ? 'bg-muted' : ''}`}
-                    disabled={isEmailReadonly}
+                    className="pl-10 h-11"
                     required
                   />
                 </div>

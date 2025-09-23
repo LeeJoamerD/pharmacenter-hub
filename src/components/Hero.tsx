@@ -1,8 +1,7 @@
-
 import { FadeIn } from '@/components/FadeIn';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ArrowRight, Building2, LogOut, TestTube } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ArrowRight, Building2, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePharmacyConnection } from '@/hooks/usePharmacyConnection';
 
 export function Hero() {
-  const { user, connectedPharmacy, pharmacy, disconnectPharmacy, createPharmacySession } = useAuth();
+  const { user, connectedPharmacy, pharmacy, disconnectPharmacy } = useAuth();
   // Debug hook pour suivre l'état de connexion
   usePharmacyConnection();
   const navigate = useNavigate();
@@ -52,127 +51,28 @@ export function Hero() {
     return () => subscription.unsubscribe();
   }, [pharmacy, connectedPharmacy]);
 
-  const handlePharmacyAuthentication = async () => {
-    console.log('HERO: Lancement de l\'authentification Google pour pharmacie...');
-    setLoading(true);
-    
+  const handlePharmacyAuthentication = () => {
+    console.log('HERO: Redirection vers création de pharmacie...');
+    navigate('/pharmacy-creation');
+  };
+
+  const handlePharmacyDisconnect = async () => {
     try {
-      // Marquer le début d'un flux OAuth pharmacie
-      sessionStorage.setItem('oauth_pharmacy_flow', 'true');
+      console.log('HERO: Déconnexion complète de la pharmacie...');
       
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'select_account'
-          }
-        }
-      });
-
-      if (error) {
-        console.error('HERO: Erreur authentification Google:', error);
-        sessionStorage.removeItem('oauth_pharmacy_flow');
-        alert('Erreur lors de l\'authentification: ' + error.message);
-      } else {
-        console.log('HERO: Authentification Google lancée');
-      }
+      // Déconnecter complètement - session pharmacie et utilisateur
+      await disconnectPharmacy();
+      await supabase.auth.signOut();
+      
+      // Forcer le rechargement de l'état
+      setCurrentUser(null);
+      
+      console.log('HERO: Déconnexion réussie, retour à l\'accueil');
+      navigate('/');
     } catch (error) {
-      console.error('HERO: Exception authentification Google:', error);
-      sessionStorage.removeItem('oauth_pharmacy_flow');
-      alert('Erreur inattendue lors de l\'authentification');
-    } finally {
-      setLoading(false);
+      console.error('HERO: Erreur lors de la déconnexion:', error);
     }
   };
-
-  // Vérifier l'email pharmacie après OAuth et rediriger
-  useEffect(() => {
-    const checkPharmacyEmailAndRedirect = async () => {
-      // Vérifier si c'est un retour d'OAuth pharmacie
-      const isOAuthPharmacyFlow = sessionStorage.getItem('oauth_pharmacy_flow') === 'true';
-      
-      if (isOAuthPharmacyFlow && currentUser?.email) {
-        console.log('HERO: Retour OAuth pharmacie détecté, vérification email...');
-        
-        // Nettoyer le flag immédiatement pour éviter les re-exécutions
-        sessionStorage.removeItem('oauth_pharmacy_flow');
-        
-        // IMPORTANT: Sauvegarder toutes les données AVANT la déconnexion
-        const userEmail = currentUser.email;
-        const metadata = currentUser.user_metadata || {};
-        const firstName = metadata.given_name || metadata.first_name || '';
-        const lastName = metadata.family_name || metadata.last_name || metadata.surname || '';
-        const phone = currentUser.phone || metadata.phone_number || metadata.phone || '';
-        
-        try {
-          console.log('HERO: Vérification existence email:', userEmail);
-          const { data, error } = await supabase.rpc('check_pharmacy_email_exists', {
-            email_to_check: userEmail
-          });
-
-          if (error) {
-            console.error('HERO: Erreur vérification email pharmacie:', error);
-            return;
-          }
-
-          const result = data as { exists: boolean; pharmacy_id?: string; google_verified?: boolean };
-          console.log('HERO: Résultat vérification:', result);
-          
-          // LOGIQUE CONDITIONNELLE : Rediriger selon l'existence de l'email
-          if (result.exists) {
-            // Email existe -> Redirection vers pharmacy-connection
-            console.log('HERO: Email existe, redirection vers pharmacy-connection...');
-            
-            const params = new URLSearchParams({
-              email: userEmail,
-              google_verified: 'true'
-            });
-            
-            const redirectUrl = `/pharmacy-connection?${params.toString()}`;
-            console.log('HERO: Navigation vers pharmacy-connection:', redirectUrl);
-            navigate(redirectUrl);
-          } else {
-            // Email n'existe pas -> Redirection vers pharmacy-creation
-            console.log('HERO: Email n\'existe pas, redirection vers pharmacy-creation...');
-            
-            const params = new URLSearchParams({
-              email: userEmail,
-              prenoms: firstName,
-              noms: lastName,
-              telephone: phone,
-              google_verified: 'true'
-            });
-            
-            const redirectUrl = `/pharmacy-creation?${params.toString()}`;
-            console.log('HERO: Navigation vers pharmacy-creation:', redirectUrl);
-            navigate(redirectUrl);
-          }
-          
-        } catch (error) {
-          console.error('HERO: Exception vérification email pharmacie:', error);
-        }
-      }
-    };
-
-    if (currentUser) {
-      checkPharmacyEmailAndRedirect();
-    }
-  }, [currentUser, navigate]);
-
-  const handlePharmacyDisconnect = () => {
-    // Si c'est une session pharmacie, utiliser disconnectPharmacy
-    if (connectedPharmacy) {
-      disconnectPharmacy();
-    }
-    // Si c'est une pharmacie via tenant, déconnecter l'utilisateur
-    else if (pharmacy) {
-      supabase.auth.signOut();
-    }
-    navigate('/');
-  };
-
 
   return (
     <section className="pt-32 pb-20 relative overflow-hidden">
@@ -239,12 +139,7 @@ export function Hero() {
                   <DropdownMenuContent align="start" className="bg-white dark:bg-gray-800 border shadow-lg">
                     <DropdownMenuItem onClick={handlePharmacyDisconnect}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      {connectedPharmacy ? 'Déconnecter session' : 'Déconnecter pharmacie'}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/test-interface')}>
-                      <TestTube className="mr-2 h-4 w-4" />
-                      Interface de test
+                      Se déconnecter
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

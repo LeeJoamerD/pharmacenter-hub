@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -390,7 +389,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error: new Error('Erreur lors de la vérification de l\'email') };
       }
 
-      const result = pharmacyCheck as { exists: boolean; pharmacy_id?: string; has_auth_account?: boolean; google_verified?: boolean };
+      const result = pharmacyCheck as { exists: boolean; pharmacy_id?: string; has_auth_account?: boolean };
       
       if (!result.exists) {
         return { error: new Error('Aucune pharmacie trouvée avec cet email') };
@@ -400,11 +399,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error: new Error('Cette pharmacie n\'a pas encore de compte d\'authentification configuré') };
       }
 
-      if (!result.google_verified) {
-        return { error: new Error('Cette pharmacie doit d\'abord valider son compte via Google OAuth') };
-      }
-
-      // Authentifier avec Supabase Auth (pas les mots de passe dans la table pharmacies)
+      // Authentifier avec Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,

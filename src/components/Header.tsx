@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LanguageSelector } from '@/components/LanguageSelector';
-import { Menu, X, User, LogOut, Building2, Plus, LogIn, LayoutDashboard, ChevronDown } from 'lucide-react';
+import { Menu, X, User, LogOut, Building2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,57 +11,38 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Fonction pour extraire les initiales
 const getUserInitials = (personnel: any, user: any) => {
-  console.log('getUserInitials - personnel:', personnel);
-  console.log('getUserInitials - user:', user);
-  
   if (personnel?.prenoms && personnel?.noms) {
     const firstNameInitial = personnel.prenoms.charAt(0).toUpperCase();
     const lastNameInitial = personnel.noms.charAt(0).toUpperCase();
-    console.log('Using personnel initials:', `${firstNameInitial}${lastNameInitial}`);
     return `${firstNameInitial}${lastNameInitial}`;
   }
   
   if (user?.user_metadata?.name) {
     const nameParts = user.user_metadata.name.split(' ');
     if (nameParts.length >= 2) {
-      const initials = `${nameParts[0].charAt(0).toUpperCase()}${nameParts[nameParts.length - 1].charAt(0).toUpperCase()}`;
-      console.log('Using user metadata initials:', initials);
-      return initials;
+      return `${nameParts[0].charAt(0).toUpperCase()}${nameParts[nameParts.length - 1].charAt(0).toUpperCase()}`;
     }
-    const initial = nameParts[0].charAt(0).toUpperCase();
-    console.log('Using single user metadata initial:', initial);
-    return initial;
+    return nameParts[0].charAt(0).toUpperCase();
   }
   
   if (user?.email) {
-    const initial = user.email.charAt(0).toUpperCase();
-    console.log('Using email initial:', initial);
-    return initial;
+    return user.email.charAt(0).toUpperCase();
   }
   
-  console.log('Using default initial: U');
   return 'U';
 };
 
 // Fonction pour obtenir le nom complet
 const getFullUserName = (personnel: any, user: any) => {
-  console.log('getFullUserName - personnel:', personnel);
-  console.log('getFullUserName - user:', user);
-  
   if (personnel?.prenoms && personnel?.noms) {
-    const fullName = `${personnel.prenoms} ${personnel.noms}`;
-    console.log('Using personnel full name:', fullName);
-    return fullName;
+    return `${personnel.prenoms} ${personnel.noms}`;
   }
   
   if (user?.user_metadata?.name) {
-    console.log('Using user metadata name:', user.user_metadata.name);
     return user.user_metadata.name;
   }
   
-  const fallback = user?.email || 'Utilisateur';
-  console.log('Using fallback name:', fallback);
-  return fallback;
+  return user?.email || 'Utilisateur';
 };
 
 // Composant Avatar avec initiales
@@ -97,31 +77,9 @@ export function Header() {
     navigate('/');
   };
 
-  const handleCreatePharmacy = async () => {
-    console.log('HEADER: Lancement de l\'authentification Google pour création pharmacie...');
-    
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/pharmacy-creation`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'select_account'
-          }
-        }
-      });
-
-      if (error) {
-        console.error('HEADER: Erreur authentification Google:', error);
-        alert('Erreur lors de l\'authentification: ' + error.message);
-      } else {
-        console.log('HEADER: Authentification Google lancée pour création pharmacie');
-      }
-    } catch (error) {
-      console.error('HEADER: Exception authentification Google:', error);
-      alert('Erreur inattendue lors de l\'authentification');
-    }
+  const handleCreatePharmacy = () => {
+    console.log('HEADER: Redirection vers création de pharmacie...');
+    navigate('/pharmacy-creation');
   };
 
   useEffect(() => {
@@ -175,29 +133,28 @@ export function Header() {
                     <UserAvatar initials={userInitials} />
                   </Button>
                 </DropdownMenuTrigger>
-<DropdownMenuContent className="w-56" align="end" forceMount>
-  <DropdownMenuLabel className="font-normal">
-    <div className="flex flex-col space-y-1">
-      <p className="text-sm font-medium leading-none">
-        {fullUserName}
-      </p>
-      <p className="text-xs leading-none text-muted-foreground">
-        {user?.email}
-      </p>
-    </div>
-  </DropdownMenuLabel>
-  <DropdownMenuSeparator />
-  {/* CORRECTION : Le chemin doit être '/tableau-de-bord' et non '/dashboard' */}
-  <DropdownMenuItem onClick={() => navigate('/tableau-de-bord')}>
-    <User className="mr-2 h-4 w-4" />
-    <span>Tableau de bord</span>
-  </DropdownMenuItem>
-  <DropdownMenuSeparator />
-  <DropdownMenuItem onClick={handleSignOut}>
-    <LogOut className="mr-2 h-4 w-4" />
-    <span>Se déconnecter</span>
-  </DropdownMenuItem>
-</DropdownMenuContent>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {fullUserName}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user?.email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/tableau-de-bord')}>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Tableau de bord</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Se déconnecter</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <Button

@@ -13,6 +13,7 @@ interface LoginAttemptResult {
 
 interface PasswordValidation {
   isValid: boolean;
+  is_valid?: boolean; // Propriété temporaire pour le mapping snake_case
   errors: string[];
   policy: any;
 }
@@ -22,49 +23,95 @@ export const useAdvancedAuth = () => {
   const [loading, setLoading] = useState(false);
 
   const validatePassword = async (password: string): Promise<PasswordValidation> => {
-    if (!pharmacy?.id) {
+    // Utiliser l'ID de pharmacie disponible (pharmacy ou connectedPharmacy)
+    const pharmacyId = pharmacy?.id || connectedPharmacy?.id;
+    
+    if (!pharmacyId) {
       return {
         isValid: false,
-        errors: ['Aucune pharmacie sélectionnée'],
+        errors: ['Aucune pharmacie connectée. Veuillez d\'abord connecter votre pharmacie pour créer un compte utilisateur.'],
         policy: null
       };
     }
 
     try {
+      console.log('🔍 Validation mot de passe - Pharmacy ID:', pharmacyId);
+      console.log('🔍 Mot de passe à valider:', password);
+      
       const { data, error } = await supabase.rpc('validate_password_strength', {
         password,
-        tenant_id: pharmacy.id
+        tenant_id: pharmacyId
       });
 
-      if (error) throw error;
+      console.log('📊 Réponse validation:', { data, error });
+
+      if (error) {
+        console.error('❌ Erreur RPC validation:', error);
+        throw error;
+      }
       
-      return data as unknown as PasswordValidation;
+      // S'assurer que les erreurs sont bien formatées
+      const validationData = data as unknown as PasswordValidation;
+      console.log('📋 Données validation formatées:', validationData);
+      
+      // Corriger le mapping snake_case → camelCase
+      if (validationData) {
+        // Si le serveur retourne is_valid au lieu de isValid, mapper correctement
+        if (validationData.is_valid !== undefined && validationData.isValid === undefined) {
+          validationData.isValid = validationData.is_valid;
+          console.log('🔄 Mapping is_valid → isValid:', validationData.is_valid);
+        }
+        
+        console.log('✅ Validation - isValid:', validationData.isValid);
+        console.log('📝 Erreurs:', validationData.errors);
+        console.log('📋 Politique:', validationData.policy);
+        
+        if (!validationData.isValid && validationData.errors.length === 0) {
+          // Si la validation échoue mais sans erreurs spécifiques, essayer de récupérer la politique
+          const policy = await getPasswordPolicy();
+          console.log('📋 Politique récupérée:', policy);
+          
+          if (policy) {
+            validationData.errors = [
+              `Le mot de passe doit respecter: min ${policy.min_length || 8} caractères`,
+              `Complexité: ${policy.require_uppercase ? 'majuscule, ' : ''}${policy.require_lowercase ? 'minuscule, ' : ''}${policy.require_numbers ? 'chiffre, ' : ''}${policy.require_special_chars ? 'caractère spécial' : ''}`
+            ].filter(Boolean);
+          } else {
+            validationData.errors = ['Le mot de passe ne respecte pas les exigences de sécurité'];
+          }
+        }
+      }
+      
+      return validationData;
     } catch (error) {
-      console.error('Error validating password:', error);
+      console.error('❌ Erreur validation mot de passe:', error);
       return {
         isValid: false,
-        errors: ['Erreur lors de la validation du mot de passe'],
+        errors: [`Erreur serveur: ${error.message || 'Validation échouée'}`],
         policy: null
       };
     }
   };
 
   const checkLoginAttempts = async (email: string): Promise<LoginAttemptResult> => {
-    if (!pharmacy?.id) {
+    // Utiliser l'ID de pharmacie disponible (pharmacy ou connectedPharmacy)
+    const pharmacyId = pharmacy?.id || connectedPharmacy?.id;
+    
+    if (!pharmacyId) {
       return {
         success: false,
         isLocked: false,
         failedAttempts: 0,
         maxAttempts: 5,
         lockoutRemainingMinutes: 0,
-        error: 'Aucune pharmacie sélectionnée'
+        error: 'Aucune pharmacie connectée. Veuillez d\'abord connecter votre pharmacie.'
       };
     }
 
     try {
       const { data, error } = await supabase.rpc('check_login_attempts', {
         email,
-        tenant_id: pharmacy.id
+        tenant_id: pharmacyId
       });
 
       if (error) throw error;
@@ -95,14 +142,16 @@ export const useAdvancedAuth = () => {
     success: boolean,
     failureReason?: string
   ) => {
-    if (!pharmacy?.id) return;
+    // Utiliser l'ID de pharmacie disponible (pharmacy ou connectedPharmacy)
+    const pharmacyId = pharmacy?.id || connectedPharmacy?.id;
+    if (!pharmacyId) return;
 
     try {
       // Récupérer l'IP et user agent (simulation pour le frontend)
       const userAgent = navigator.userAgent;
       
       await supabase.from('login_attempts').insert({
-        tenant_id: pharmacy.id,
+        tenant_id: pharmacyId,
         email,
         success,
         failure_reason: failureReason,
@@ -115,7 +164,9 @@ export const useAdvancedAuth = () => {
   };
 
   const createUserSession = async (sessionToken: string) => {
-    if (!personnel?.id || !pharmacy?.id) return;
+    // Utiliser l'ID de pharmacie disponible (pharmacy ou connectedPharmacy)
+    const pharmacyId = pharmacy?.id || connectedPharmacy?.id;
+    if (!personnel?.id || !pharmacyId) return;
 
     try {
       const userAgent = navigator.userAgent;
@@ -142,7 +193,7 @@ export const useAdvancedAuth = () => {
       }
 
       await supabase.from('user_sessions').insert({
-        tenant_id: pharmacy.id,
+        tenant_id: pharmacyId,
         personnel_id: personnel.id,
         session_token: sessionToken,
         ip_address: '127.0.0.1',
@@ -159,19 +210,26 @@ export const useAdvancedAuth = () => {
   };
 
   const getPasswordPolicy = async () => {
-    if (!pharmacy?.id) return null;
+    // Utiliser l'ID de pharmacie disponible (pharmacy ou connectedPharmacy)
+    const pharmacyId = pharmacy?.id || connectedPharmacy?.id;
+    if (!pharmacyId) return null;
 
     try {
       const { data, error } = await supabase
         .from('password_policies')
         .select('*')
-        .eq('tenant_id', pharmacy.id)
-        .single();
+        .eq('tenant_id', pharmacyId)
+        .maybeSingle(); // Utiliser maybeSingle pour éviter l'erreur 406 quand aucune politique n'existe
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erreur récupération politique:', error);
+        return null;
+      }
+      
+      console.log('✅ Politique récupérée avec succès:', data);
       return data;
     } catch (error) {
-      console.error('Error fetching password policy:', error);
+      console.error('❌ Erreur inattendue récupération politique:', error);
       return null;
     }
   };
@@ -180,8 +238,11 @@ export const useAdvancedAuth = () => {
     setLoading(true);
     
     try {
+      // Utiliser l'ID de pharmacie disponible (pharmacy ou connectedPharmacy)
+      const pharmacyId = pharmacy?.id || connectedPharmacy?.id;
+      
       // Empêcher la connexion utilisateur sans pharmacie connectée
-      if (!pharmacy?.id && !connectedPharmacy) {
+      if (!pharmacyId) {
         await logLoginAttempt(email, false, 'No pharmacy connected');
         setLoading(false);
         return { error: new Error('Aucune pharmacie connectée. Veuillez connecter votre pharmacie avant de vous connecter.') };
