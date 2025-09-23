@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
 import { useOrderLines } from '@/hooks/useOrderLines';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
 import { OrderValidationService } from '@/services/orderValidationService';
 
@@ -44,9 +45,12 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
   const [notes, setNotes] = useState('');
   const [canModify, setCanModify] = useState(true);
   const [validationError, setValidationError] = useState('');
+  const [editableTva, setEditableTva] = useState<number>(18);
+  const [editableCentimeAdditionnel, setEditableCentimeAdditionnel] = useState<number>(5);
   
   const { toast } = useToast();
   const { products } = useProducts();
+  const { settings } = useSystemSettings();
   const { orderLines, createOrderLine, updateOrderLine, deleteOrderLine, refetch } = useOrderLines(selectedOrderId);
 
   // Filter orders to only show "En cours" status
@@ -82,7 +86,7 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
     checkModifyPermission();
   }, [selectedOrderId]);
 
-  // Load order details when selected
+  // Load order details when selected and initialize system settings
   useEffect(() => {
     if (selectedOrderId) {
       const selectedOrder = draftOrders.find(order => order.id === selectedOrderId);
@@ -93,7 +97,13 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
         setNotes('');
       }
     }
-  }, [selectedOrderId, draftOrders]);
+    
+    // Initialize editable rates from system settings
+    if (settings) {
+      setEditableTva(settings.taux_tva || 18);
+      setEditableCentimeAdditionnel(settings.taux_centime_additionnel || 5);
+    }
+  }, [selectedOrderId, draftOrders, settings]);
 
   const addOrderLine = async (product: any) => {
     if (!selectedOrderId || !canModify) return;
@@ -138,12 +148,13 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
       const unitPrice = line.prix_achat_unitaire_attendu || 0;
       return sum + (line.quantite_commandee * unitPrice);
     }, 0);
-    const tva = sousTotal * 0.18; // 18% TVA
-    const totalGeneral = sousTotal + tva;
-    return { sousTotal, tva, totalGeneral };
+    const centimeAdditionnel = sousTotal * (editableCentimeAdditionnel / 100);
+    const tva = (sousTotal + centimeAdditionnel) * (editableTva / 100);
+    const totalGeneral = sousTotal + centimeAdditionnel + tva;
+    return { sousTotal, centimeAdditionnel, tva, totalGeneral };
   };
 
-  const { sousTotal, tva, totalGeneral } = calculateTotals();
+  const { sousTotal, centimeAdditionnel, tva, totalGeneral } = calculateTotals();
 
   const handleSaveOrder = async (statut: string) => {
     if (!selectedOrderId || !canModify) return;
@@ -421,14 +432,42 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                 {/* Totals */}
                 <div className="mt-6 border-t pt-4">
                   <div className="flex justify-end">
-                    <div className="w-64 space-y-2">
+                    <div className="w-80 space-y-3">
                       <div className="flex justify-between">
                         <span>Sous-total HT :</span>
                         <span className="font-medium">{sousTotal.toLocaleString()} F CFA</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>TVA (18%) :</span>
-                        <span className="font-medium">{tva.toLocaleString()} F CFA</span>
+                      <div className="flex justify-between items-center">
+                        <span>Centime Additionnel :</span>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={editableCentimeAdditionnel}
+                            onChange={(e) => setEditableCentimeAdditionnel(parseFloat(e.target.value) || 0)}
+                            className="w-16 h-8 text-right"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            disabled={!canModify}
+                          />
+                          <span>% = {centimeAdditionnel.toLocaleString()} F CFA</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>TVA :</span>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={editableTva}
+                            onChange={(e) => setEditableTva(parseFloat(e.target.value) || 0)}
+                            className="w-16 h-8 text-right"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            disabled={!canModify}
+                          />
+                          <span>% = {tva.toLocaleString()} F CFA</span>
+                        </div>
                       </div>
                       <div className="flex justify-between text-lg font-bold border-t pt-2">
                         <span>Total TTC :</span>

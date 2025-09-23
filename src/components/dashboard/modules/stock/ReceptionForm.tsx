@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { useReceptionLines } from '@/hooks/useReceptionLines';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
 import { ReceptionValidationService } from '@/services/receptionValidationService';
 import BarcodeScanner from './BarcodeScanner';
@@ -60,10 +61,13 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
   const [pendingValidation, setPendingValidation] = useState<{ isValidated: boolean; warnings: string[] } | null>(null);
   const [showCameraDialog, setShowCameraDialog] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [editableTva, setEditableTva] = useState<number>(18);
+  const [editableCentimeAdditionnel, setEditableCentimeAdditionnel] = useState<number>(5);
   const { toast } = useToast();
   
   const { orderLines } = useOrderLines(selectedOrder);
   const { createReceptionLine } = useReceptionLines();
+  const { settings } = useSystemSettings();
 
   // Use real orders with pending status
   const pendingOrders = propOrders.filter(order => 
@@ -88,9 +92,15 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
       dateExpiration: '',
       statut: 'conforme',
       commentaire: '',
-      prixAchatReel: 0, // Will be updated from order data if available
+      prixAchatReel: line.prix_achat_unitaire_attendu || 0,
     }));
     setReceptionLines(lines);
+    
+    // Initialize system settings rates
+    if (settings) {
+      setEditableTva(settings.taux_tva || 18);
+      setEditableCentimeAdditionnel(settings.taux_centime_additionnel || 5);
+    }
   };
 
   const updateReceptionLine = (id: string, field: keyof ReceptionLine, value: any) => {
@@ -111,6 +121,18 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
       }
       return line;
     }));
+  };
+
+  // Calculate financial totals
+  const calculateTotals = () => {
+    const sousTotal = receptionLines.reduce((sum, line) => {
+      const unitPrice = line.prixAchatReel || 0;
+      return sum + (line.quantiteAcceptee * unitPrice);
+    }, 0);
+    const centimeAdditionnel = sousTotal * (editableCentimeAdditionnel / 100);
+    const tva = (sousTotal + centimeAdditionnel) * (editableTva / 100);
+    const totalGeneral = sousTotal + centimeAdditionnel + tva;
+    return { sousTotal, centimeAdditionnel, tva, totalGeneral };
   };
 
   const getStatusColor = (statut: string) => {
@@ -573,6 +595,62 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({ orders: propOrders = [], 
           </CardContent>
         </Card>
       )}
+
+      {/* Calculs Financiers */}
+      {receptionLines.length > 0 && (() => {
+        const { sousTotal, centimeAdditionnel, tva, totalGeneral } = calculateTotals();
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Calculs Financiers</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-end">
+                <div className="w-80 space-y-3">
+                  <div className="flex justify-between">
+                    <span>Sous-total HT :</span>
+                    <span className="font-medium">{sousTotal.toLocaleString()} F CFA</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Centime Additionnel :</span>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={editableCentimeAdditionnel}
+                        onChange={(e) => setEditableCentimeAdditionnel(parseFloat(e.target.value) || 0)}
+                        className="w-16 h-8 text-right"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                      />
+                      <span>% = {centimeAdditionnel.toLocaleString()} F CFA</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>TVA :</span>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={editableTva}
+                        onChange={(e) => setEditableTva(parseFloat(e.target.value) || 0)}
+                        className="w-16 h-8 text-right"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                      />
+                      <span>% = {tva.toLocaleString()} F CFA</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold border-t pt-2">
+                    <span>Total TTC :</span>
+                    <span>{totalGeneral.toLocaleString()} F CFA</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Contrôle qualité */}
       {receptionLines.length > 0 && (
