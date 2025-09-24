@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 const OrderList = lazy(() => import('../OrderList'));
 const OrderForm = lazy(() => import('../OrderForm'));
 const ReceptionForm = lazy(() => import('../ReceptionForm'));
-const SupplierManager = lazy(() => import('../SupplierManager'));
+const SupplierManager = lazy(() => import('../SupplierManager').then(m => ({ default: m.default })));
 const OrderTracking = lazy(() => import('../OrderTracking'));
 const PerformanceOptimizedOrderList = lazy(() => import('./PerformanceOptimizedOrderList'));
 
@@ -93,13 +93,7 @@ const OptimizedSupplyTab = memo<OptimizedSupplyTabProps>(({
       label: 'Fournisseurs',
       icon: ShoppingCart,
       component: SupplierManager,
-      props: {
-        suppliers: suppliers.suppliers,
-        loading: suppliers.loading,
-        onCreateSupplier: suppliers.createSupplier,
-        onUpdateSupplier: suppliers.updateSupplier,
-        onDeleteSupplier: suppliers.deleteSupplier
-      }
+      props: {}
     },
     {
       value: 'suivi',

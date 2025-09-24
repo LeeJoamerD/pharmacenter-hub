@@ -127,13 +127,7 @@ const StockApprovisionnementTab = () => {
             </Button>
           </StockSettingsDialog>
         </div>
-        <SupplierManager 
-          suppliers={suppliers.suppliers}
-          loading={suppliers.loading}
-          onCreateSupplier={suppliers.createSupplier}
-          onUpdateSupplier={suppliers.updateSupplier}
-          onDeleteSupplier={suppliers.deleteSupplier}
-        />
+          <SupplierManager />
       </TabsContent>
       
       <TabsContent value="suivi">
