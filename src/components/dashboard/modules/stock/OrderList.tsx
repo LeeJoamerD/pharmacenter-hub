@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useOrderLines } from '@/hooks/useOrderLines';
+import { OrderPDFService } from '@/services/OrderPDFService';
 import { useToast } from '@/hooks/use-toast';
 
 interface Order {
@@ -65,21 +66,52 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const { orderLines } = useOrderLines();
   const { toast } = useToast();
   const ordersPerPage = 10;
 
-  // Display real orders data
-  const orders = propOrders.map(order => ({
-    ...order,
-    numero: `CMD-${new Date(order.date_commande || order.created_at).getFullYear()}-${String(order.id).slice(-3).padStart(3, '0')}`,
-    fournisseur: order.fournisseur?.nom || 'Fournisseur inconnu',
-    fournisseur_nom: order.fournisseur?.nom || 'Fournisseur inconnu',
-    dateCommande: order.date_commande || order.created_at,
-    dateLivraison: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    totalHT: 0, // Will be calculated from order lines
-    nbProduits: 0, // Will be calculated from order lines
-    responsable: order.agent ? `${order.agent.prenoms} ${order.agent.noms}` : 'Non assigné'
-  }));
+  // Calculate real totals for each order using useOrderLines data
+  const [ordersWithTotals, setOrdersWithTotals] = useState<any[]>([]);
+
+  useEffect(() => {
+    const processOrders = () => {
+      const ordersWithCalculatedTotals = propOrders.map((order) => {
+        // Filter order lines for this specific order
+        const orderSpecificLines = orderLines.filter(line => line.commande_id === order.id);
+        
+        // Calculate totals from order lines
+        const orderTotal = orderSpecificLines.reduce((sum, line) => {
+          const lineTotal = (line.quantite_commandee || 0) * (line.prix_achat_unitaire_attendu || 0);
+          return sum + lineTotal;
+        }, 0);
+        
+        const orderQuantity = orderSpecificLines.reduce((sum, line) => sum + (line.quantite_commandee || 0), 0);
+        const orderProductCount = orderSpecificLines.length;
+
+        return {
+          ...order,
+          numero: `CMD-${new Date(order.date_commande || order.created_at).getFullYear()}-${String(order.id).slice(-3).padStart(3, '0')}`,
+          fournisseur: order.fournisseur?.nom || 'Fournisseur inconnu',
+          fournisseur_nom: order.fournisseur?.nom || 'Fournisseur inconnu',
+          dateCommande: order.date_commande || order.created_at,
+          dateLivraison: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          totalHT: orderTotal,
+          nbProduits: orderProductCount,
+          totalQuantity: orderQuantity,
+          responsable: order.agent ? `${order.agent.prenoms} ${order.agent.noms}` : 'Non assigné'
+        };
+      });
+      
+      setOrdersWithTotals(ordersWithCalculatedTotals);
+    };
+
+    if (propOrders.length > 0) {
+      processOrders();
+    }
+  }, [propOrders, orderLines]);
+
+  // Use orders with calculated totals
+  const orders = ordersWithTotals;
 
   const fournisseurs = useMemo(() => 
     [...new Set(orders.map(order => order.fournisseur_nom || order.fournisseur))],
@@ -185,12 +217,46 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
     setIsDetailsOpen(true);
   };
 
-  const handleDownloadOrder = (order: any) => {
-    // Generate PDF or export functionality
-    toast({
-      title: "Téléchargement",
-      description: `Téléchargement de la commande ${order.numero}`,
-    });
+  const handleDownloadOrder = async (order: any) => {
+    try {
+      // Get order lines for this specific order and convert format
+      const orderSpecificLines = orderLines
+        .filter(line => line.commande_id === order.id)
+        .map(line => ({
+          id: line.id,
+          produit_id: line.produit_id,
+          quantite: line.quantite_commandee || 0,
+          prix_unitaire: line.prix_achat_unitaire_attendu || 0,
+          remise: 0, // TODO: Add if remise field exists
+          produit: line.produit ? {
+            libelle_produit: line.produit.libelle_produit,
+            code_cip: line.produit.code_cip
+          } : undefined,
+          commande_id: line.commande_id
+        }));
+      
+      const result = await OrderPDFService.generateOrderPDF(order, orderSpecificLines);
+      
+      if (result.success && result.downloadUrl) {
+        const link = document.createElement('a');
+        link.href = result.downloadUrl;
+        link.download = result.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({
+          title: "Succès",
+          description: `Commande ${order.numero} téléchargée`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer le PDF",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

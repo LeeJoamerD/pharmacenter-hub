@@ -143,21 +143,89 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
     );
   }
 
+  // Calculate statistics
+  const statistics = {
+    total: receptions.length,
+    valides: receptions.filter(r => r.statut === 'Validé').length,
+    enCours: receptions.filter(r => r.statut === 'En cours').length,
+    mensuelles: receptions.filter(r => {
+      const receptionDate = new Date(r.date_reception || r.created_at);
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      return receptionDate.getMonth() === currentMonth && receptionDate.getFullYear() === currentYear;
+    }).length
+  };
+
   return (
     <div className="space-y-6">
-      {/* Header and Filters */}
+      {/* Statistics Block - Same structure as OrderList */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-blue-600" />
+              <div>
+                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold">{statistics.total}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <div>
+                <p className="text-sm text-muted-foreground">Validées</p>
+                <p className="text-2xl font-bold">{statistics.valides}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-yellow-600" />
+              <div>
+                <p className="text-sm text-muted-foreground">En cours</p>
+                <p className="text-2xl font-bold">{statistics.enCours}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-purple-600" />
+              <div>
+                <p className="text-sm text-muted-foreground">Ce mois</p>
+                <p className="text-2xl font-bold">{statistics.mensuelles}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Display Block - Title, subtitle, search and filters, table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Historique des Réceptions
-          </CardTitle>
-          <CardDescription>
-            Consultez l'historique complet de vos réceptions fournisseurs
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Historique des Réceptions
+              </CardTitle>
+              <CardDescription>
+                Consultez l'historique complet de vos réceptions fournisseurs ({filteredReceptions.length} réceptions)
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -181,12 +249,8 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Reception History Table */}
-      <Card>
-        <CardContent className="p-0">
+          {/* Reception History Table */}
           <div className="rounded-md border">
             <Table>
               <TableHeader>
