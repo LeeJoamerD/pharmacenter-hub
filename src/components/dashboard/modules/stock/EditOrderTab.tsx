@@ -21,6 +21,7 @@ import { useProducts } from '@/hooks/useProducts';
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
+import { calculateFinancials } from '@/lib/utils';
 import { OrderValidationService } from '@/services/orderValidationService';
 import { OrderStatusValidationService } from '@/services/orderStatusValidationService';
 
@@ -54,8 +55,8 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
   const { settings } = useSystemSettings();
   const { orderLines, createOrderLine, updateOrderLine, deleteOrderLine, refetch } = useOrderLines(selectedOrderId);
 
-  // Filter orders to only show "En cours" status
-  const draftOrders = orders.filter(order => order.statut === 'En cours');
+  // Filter orders to show "Brouillon" and "En cours" status for modification
+  const draftOrders = orders.filter(order => ['Brouillon', 'En cours'].includes(order.statut));
 
   // Filter products for search
   const filteredProducts = products.filter(product =>
@@ -501,23 +502,7 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                         <span className="font-medium">{sousTotal.toLocaleString()} F CFA</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span>Centime Additionnel :</span>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            value={editableCentimeAdditionnel}
-                            onChange={(e) => setEditableCentimeAdditionnel(parseFloat(e.target.value) || 0)}
-                            className="w-16 h-8 text-right"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            disabled={!canModify}
-                          />
-                          <span>% = {centimeAdditionnel.toLocaleString()} F CFA</span>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>TVA :</span>
+                        <span>TVA ({editableTva}%):</span>
                         <div className="flex items-center gap-2">
                           <Input
                             type="number"
@@ -529,7 +514,23 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                             step="0.01"
                             disabled={!canModify}
                           />
-                          <span>% = {tva.toLocaleString()} F CFA</span>
+                          <span>= {tva.toLocaleString()} F CFA</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Centime Additionnel ({editableCentimeAdditionnel}%):</span>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            value={editableCentimeAdditionnel}
+                            onChange={(e) => setEditableCentimeAdditionnel(parseFloat(e.target.value) || 0)}
+                            className="w-16 h-8 text-right"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            disabled={!canModify}
+                          />
+                          <span>= {centimeAdditionnel.toLocaleString()} F CFA</span>
                         </div>
                       </div>
                       <div className="flex justify-between text-lg font-bold border-t pt-2">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,8 +25,10 @@ import { useOrderLines } from '@/hooks/useOrderLines';
 import { useReceptionLines } from '@/hooks/useReceptionLines';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
+import { calculateFinancials } from '@/lib/utils';
 import { ReceptionValidationService } from '@/services/receptionValidationService';
 import { OrderStatusValidationService } from '@/services/orderStatusValidationService';
+import { StockUpdateService } from '@/services/stockUpdateService';
 import BarcodeScanner from './BarcodeScanner';
 
 interface ReceptionLine {
@@ -71,9 +73,10 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [editableTva, setEditableTva] = useState<number>(18);
   const [editableCentimeAdditionnel, setEditableCentimeAdditionnel] = useState<number>(5);
+  const [currentOrderStatus, setCurrentOrderStatus] = useState<string>('En cours');
   const { toast } = useToast();
   
-  const { orderLines } = useOrderLines(selectedOrder);
+  const { orderLines, loading: orderLinesLoading } = useOrderLines(selectedOrder);
   const { createReceptionLine } = useReceptionLines();
   const { settings } = useSystemSettings();
 
@@ -87,8 +90,10 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     datePrevue: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   }));
 
-  // Load order details from real data
-  const loadOrderDetails = (orderId: string) => {
+  // Load order details from real data - only when data is ready
+  const loadOrderDetails = useCallback((orderId: string) => {
+    if (orderLinesLoading || !orderId) return;
+
     const lines: ReceptionLine[] = orderLines.map(line => ({
       id: line.id,
       produit: line.produit?.libelle_produit || 'Produit inconnu',
@@ -109,7 +114,22 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       setEditableTva(settings.taux_tva || 18);
       setEditableCentimeAdditionnel(settings.taux_centime_additionnel || 5);
     }
-  };
+  }, [orderLines, orderLinesLoading, settings]);
+
+  // Effect to load details when selectedOrder changes and data is ready
+  useEffect(() => {
+    if (selectedOrder) {
+      // Reset reception lines first
+      setReceptionLines([]);
+      // Load details once data is fetched
+      const timer = setTimeout(() => {
+        loadOrderDetails(selectedOrder);
+      }, 100); // Small delay to ensure hook has updated
+      return () => clearTimeout(timer);
+    } else {
+      setReceptionLines([]);
+    }
+  }, [selectedOrder, loadOrderDetails]);
 
   const updateReceptionLine = (id: string, field: keyof ReceptionLine, value: any) => {
     setReceptionLines(lines => lines.map(line => {
@@ -131,16 +151,14 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     }));
   };
 
-  // Calculate financial totals
+  // Calculate financial totals using utilitaire
   const calculateTotals = () => {
     const sousTotal = receptionLines.reduce((sum, line) => {
       const unitPrice = line.prixAchatReel || 0;
       return sum + (line.quantiteAcceptee * unitPrice);
     }, 0);
-    const centimeAdditionnel = sousTotal * (editableCentimeAdditionnel / 100);
-    const tva = (sousTotal + centimeAdditionnel) * (editableTva / 100);
-    const totalGeneral = sousTotal + centimeAdditionnel + tva;
-    return { sousTotal, centimeAdditionnel, tva, totalGeneral };
+    const { tva, centimeAdditionnel, totalTTC: totalGeneral } = calculateFinancials(sousTotal, editableTva, editableCentimeAdditionnel);
+    return { sousTotal, tva, centimeAdditionnel, totalGeneral };
   };
 
   const getStatusColor = (statut: string) => {
@@ -270,6 +288,16 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         return;
       }
 
+      // Check if order is already received
+      if (selectedOrderData.statut === 'Réceptionné') {
+        toast({
+          title: "Commande déjà réceptionnée",
+          description: "Cette commande a déjà été réceptionnée et ne peut pas être traitée à nouveau",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Validate reception data
       const receptionData = {
         commande_id: selectedOrder,
@@ -312,10 +340,10 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       // Create the reception
       await onCreateReception(receptionData);
 
-      // Update order status based on validation and current status
+      // Update order status to 'Réceptionné' when reception is validated
       if (isValidated && onUpdateOrderStatus) {
         const currentStatus = selectedOrderData.statut;
-        let targetStatus = 'Réceptionné';
+        const targetStatus = 'Réceptionné';
 
         // Check if status transition is allowed
         const statusValidation = OrderStatusValidationService.canTransitionTo(currentStatus, targetStatus);
@@ -326,20 +354,11 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
             description: `Commande ${targetStatus.toLowerCase()}`,
           });
         } else {
-          // Try intermediate status if direct transition not allowed
-          if (currentStatus === 'Confirmé' || currentStatus === 'Expédié') {
-            const intermediateStatus = OrderStatusValidationService.getNextLogicalStatus(currentStatus);
-            if (intermediateStatus) {
-              const intermediateValidation = OrderStatusValidationService.canTransitionTo(currentStatus, intermediateStatus);
-              if (intermediateValidation.canTransition) {
-                await onUpdateOrderStatus(selectedOrder, intermediateStatus);
-                toast({
-                  title: "Statut mis à jour",
-                  description: `Commande ${intermediateStatus.toLowerCase()}`,
-                });
-              }
-            }
-          }
+          toast({
+            title: "Transition non autorisée",
+            description: statusValidation.errors.join(', '),
+            variant: "destructive",
+          });
         }
       }
       
@@ -435,7 +454,6 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                 <Label htmlFor="commande">Commande à réceptionner *</Label>
                 <Select value={selectedOrder} onValueChange={(value) => {
                   setSelectedOrder(value);
-                  loadOrderDetails(value);
                 }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner une commande" />
@@ -653,22 +671,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                     <span className="font-medium">{sousTotal.toLocaleString()} F CFA</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span>Centime Additionnel :</span>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        value={editableCentimeAdditionnel}
-                        onChange={(e) => setEditableCentimeAdditionnel(parseFloat(e.target.value) || 0)}
-                        className="w-16 h-8 text-right"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                      />
-                      <span>% = {centimeAdditionnel.toLocaleString()} F CFA</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>TVA :</span>
+                    <span>TVA ({editableTva}%):</span>
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
@@ -679,7 +682,22 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                         max="100"
                         step="0.01"
                       />
-                      <span>% = {tva.toLocaleString()} F CFA</span>
+                      <span>= {tva.toLocaleString()} F CFA</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Centime Additionnel ({editableCentimeAdditionnel}%):</span>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={editableCentimeAdditionnel}
+                        onChange={(e) => setEditableCentimeAdditionnel(parseFloat(e.target.value) || 0)}
+                        className="w-16 h-8 text-right"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                      />
+                      <span>= {centimeAdditionnel.toLocaleString()} F CFA</span>
                     </div>
                   </div>
                   <div className="flex justify-between text-lg font-bold border-t pt-2">

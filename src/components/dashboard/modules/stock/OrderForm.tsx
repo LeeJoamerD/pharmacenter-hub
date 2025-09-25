@@ -21,6 +21,8 @@ import {
 import { useProducts } from '@/hooks/useProducts';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
+import { calculateFinancials } from '@/lib/utils';
+import { OrderStatusValidationService } from '@/services/orderStatusValidationService';
 
 interface OrderLine {
   id: string;
@@ -98,15 +100,9 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
     setOrderLines(lines => lines.filter(line => line.id !== id));
   };
 
-  const calculateTotals = () => {
-    const sousTotal = orderLines.reduce((sum, line) => sum + line.total, 0);
-    const centimeAdditionnel = sousTotal * (editableCentimeAdditionnel / 100);
-    const tva = (sousTotal + centimeAdditionnel) * (editableTva / 100);
-    const totalGeneral = sousTotal + centimeAdditionnel + tva;
-    return { sousTotal, centimeAdditionnel, tva, totalGeneral };
-  };
-
-  const { sousTotal, centimeAdditionnel, tva, totalGeneral } = calculateTotals();
+  const sousTotalHT = orderLines.reduce((sum, line) => sum + line.total, 0);
+  const { tva, centimeAdditionnel, totalTTC: totalGeneral } = calculateFinancials(sousTotalHT, editableTva, editableCentimeAdditionnel);
+  const sousTotal = sousTotalHT;
 
   const handleSaveOrder = async (statut: string) => {
     try {
@@ -126,6 +122,28 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
           variant: "destructive",
         });
         return;
+      }
+
+      // Validate status transition from 'Nouveau' (creation)
+      const validation = OrderStatusValidationService.canTransitionTo('Nouveau', statut);
+      if (!validation.canTransition) {
+        toast({
+          title: "Transition non autorisée",
+          description: validation.errors.join(', '),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Show warnings if any
+      if (validation.warnings.length > 0) {
+        validation.warnings.forEach(warning => {
+          toast({
+            title: "Attention",
+            description: warning,
+            variant: "default",
+          });
+        });
       }
 
       // Determine final status based on action
@@ -367,22 +385,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                     <span className="font-medium">{sousTotal.toLocaleString()} F CFA</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span>Centime Additionnel :</span>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        value={editableCentimeAdditionnel}
-                        onChange={(e) => setEditableCentimeAdditionnel(parseFloat(e.target.value) || 0)}
-                        className="w-16 h-8 text-right"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                      />
-                      <span>% = {centimeAdditionnel.toLocaleString()} F CFA</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>TVA :</span>
+                    <span>TVA ({editableTva}%):</span>
                     <div className="flex items-center gap-2">
                       <Input
                         type="number"
@@ -393,7 +396,22 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                         max="100"
                         step="0.01"
                       />
-                      <span>% = {tva.toLocaleString()} F CFA</span>
+                      <span>= {tva.toLocaleString()} F CFA</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Centime Additionnel ({editableCentimeAdditionnel}%):</span>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={editableCentimeAdditionnel}
+                        onChange={(e) => setEditableCentimeAdditionnel(parseFloat(e.target.value) || 0)}
+                        className="w-16 h-8 text-right"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                      />
+                      <span>= {centimeAdditionnel.toLocaleString()} F CFA</span>
                     </div>
                   </div>
                   <div className="flex justify-between text-lg font-bold border-t pt-2">

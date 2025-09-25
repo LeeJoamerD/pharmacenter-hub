@@ -14,6 +14,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { calculateFinancials } from '@/lib/utils';
 
 
 interface PricingCategory {
@@ -135,7 +136,7 @@ const PricingCategories = () => {
     category.libelle_categorie.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // --- LOGIQUE DE CALCUL POUR LE SIMULATEUR (AJOUTÉE) ---
+  // --- LOGIQUE DE CALCUL POUR LE SIMULATEUR (CORRIGÉE AVEC UTILITAIRE) ---
   useEffect(() => {
     if (simulationPurchasePrice && selectedSimulationCategoryId) {
       const category = categories.find(cat => cat.id === selectedSimulationCategoryId);
@@ -143,13 +144,11 @@ const PricingCategories = () => {
 
       if (category && !isNaN(purchasePrice)) {
         const ht = purchasePrice * category.coefficient_prix_vente;
-        const tva = ht * (category.taux_tva / 100);
-        const centime = ht * (category.taux_centime_additionnel / 100);
-        const ttc = ht + tva + centime;
+        const { tva, centimeAdditionnel, totalTTC: ttc } = calculateFinancials(ht, category.taux_tva, category.taux_centime_additionnel);
 
         setSimulatedSalePriceHT(ht);
         setSimulatedTVA(tva);
-        setSimulatedCentimeAdditionnel(centime);
+        setSimulatedCentimeAdditionnel(centimeAdditionnel);
         setSimulatedSalePriceTTC(ttc);
       }
     } else {

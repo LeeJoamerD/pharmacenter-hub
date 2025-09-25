@@ -20,6 +20,9 @@ import {
   Building
 } from 'lucide-react';
 import { useOrderTracking, type OrderTracking as OrderTrackingData } from '@/hooks/useOrderTracking';
+import { useTransporters } from '@/hooks/useTransporters';
+import ContactTransporterModal from './ContactTransporterModal';
+import OrderDetailsModal from './OrderDetailsModal';
 import type { SupplierOrder } from '@/hooks/useSupplierOrders';
 
 interface OrderTracking {
@@ -53,7 +56,13 @@ interface OrderTrackingProps {
 const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], transporters = [], loading }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('tous');
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedTransporter, setSelectedTransporter] = useState<any>(null);
+  
   const { trackings, getTrackingHistory, getLatestStatus, getStatusColor: getTrackingStatusColor } = useOrderTracking();
+  const { transporters: dbTransporters } = useTransporters();
 
   // Map database statuses to display statuses
   const mapDatabaseStatus = (dbStatus: string | null): string => {
@@ -63,6 +72,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
       case 'expédié': return 'expedie';
       case 'en transit': return 'en-transit';
       case 'livré': return 'livre';
+      case 'réceptionné': return 'receptionne';
       case 'annulé': return 'retard';
       default: return 'preparation';
     }
@@ -80,7 +90,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
     }
   };
 
-  // Transform database orders to display format
+  // Transform database orders to display format, excluding terminal states
   const trackingData = useMemo(() => {
     if (propOrders.length === 0) {
       return [{
@@ -104,7 +114,10 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
       }];
     }
 
-    return propOrders.map(order => {
+    // Filter out terminal states (Réceptionné, Annulé)
+    const activeOrders = propOrders.filter(order => !['Réceptionné', 'Annulé'].includes(order.statut));
+
+    return activeOrders.map(order => {
       const displayStatus = mapDatabaseStatus(order.statut);
       const orderTrackings = getTrackingHistory(order.id);
       
@@ -190,6 +203,29 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
       case 'en-attente': return <Clock className="h-5 w-5 text-gray-400" />;
       default: return <Clock className="h-5 w-5 text-gray-400" />;
     }
+  };
+
+  // Fonctions pour gérer l'ouverture des modals
+  const handleContactTransporter = (order: any) => {
+    // Trouver le transporteur correspondant dans la base de données
+    const transporter = dbTransporters.find(t => t.nom === order.transporteur);
+    setSelectedOrder(order);
+    setSelectedTransporter(transporter || {
+      nom: order.transporteur,
+      telephone_appel: null,
+      telephone_whatsapp: null,
+      email: null,
+      adresse: null,
+      delai_livraison_standard: null,
+      zone_couverture: [],
+      notes: null
+    });
+    setContactModalOpen(true);
+  };
+
+  const handleViewDetails = (order: any) => {
+    setSelectedOrder(order);
+    setDetailsModalOpen(true);
   };
 
   return (
@@ -359,11 +395,19 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
                   </div>
 
                   <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleContactTransporter(order)}
+                    >
                       <Phone className="mr-2 h-4 w-4" />
                       Contacter Transporteur
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleViewDetails(order)}
+                    >
                       <Eye className="mr-2 h-4 w-4" />
                       Voir Détails
                     </Button>
@@ -374,6 +418,20 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
           </div>
         </CardContent>
       </Card>
+
+      {/* Modals */}
+      <ContactTransporterModal
+        open={contactModalOpen}
+        onClose={() => setContactModalOpen(false)}
+        transporter={selectedTransporter}
+        orderNumber={selectedOrder?.numero || ''}
+      />
+
+      <OrderDetailsModal
+        open={detailsModalOpen}
+        onClose={() => setDetailsModalOpen(false)}
+        order={selectedOrder}
+      />
     </div>
   );
 };

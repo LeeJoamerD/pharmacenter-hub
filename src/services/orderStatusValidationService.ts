@@ -29,6 +29,11 @@ export class OrderStatusValidationService {
 
   // Define status transition rules
   private static readonly STATUS_TRANSITIONS: StatusTransition[] = [
+    // From Nouveau (creation)
+    { from: 'Nouveau', to: 'Brouillon', allowed: true, canModify: true, description: 'Création brouillon' },
+    { from: 'Nouveau', to: 'En cours', allowed: true, canModify: true, description: 'Création en cours' },
+    { from: 'Nouveau', to: 'Confirmé', allowed: true, canModify: true, description: 'Création confirmée' },
+    
     // From Brouillon
     { from: 'Brouillon', to: 'En cours', allowed: true, canModify: true, description: 'Mise en cours de la commande' },
     { from: 'Brouillon', to: 'Confirmé', allowed: true, canModify: true, description: 'Confirmation directe de la commande' },
@@ -109,6 +114,17 @@ export class OrderStatusValidationService {
       .filter(t => t.from === currentStatus && t.allowed)
       .map(t => t.to)
       .filter(status => status !== ''); // Remove empty targets (terminal states)
+  }
+
+  /**
+   * Get all possible statuses for dropdown in edit mode
+   */
+  static getAllPossibleStatuses(currentStatus: string): string[] {
+    if (currentStatus === 'Réceptionné' || currentStatus === 'Annulé') {
+      return [currentStatus]; // Only show current status, no change possible
+    }
+    // For all other statuses, allow transition to any status including current
+    return [...this.ORDER_STATUSES, currentStatus].filter(status => status !== 'Nouveau');
   }
 
   /**
@@ -240,5 +256,26 @@ export class OrderStatusValidationService {
     }
 
     return null; // Already at terminal state or invalid status
+  }
+
+  /**
+   * Check if a specific action is allowed for the current status
+   */
+  static isActionAllowed(currentStatus: string, action: 'editLines' | 'changeStatus' | 'delete'): boolean {
+    switch (currentStatus) {
+      case 'Brouillon':
+      case 'En cours':
+        return true; // Full access
+      case 'Confirmé':
+        return action === 'changeStatus'; // Only status change, no line edits or delete
+      case 'Expédié':
+      case 'Livré':
+        return action === 'changeStatus'; // Only status change to next step
+      case 'Réceptionné':
+      case 'Annulé':
+        return false; // No actions allowed
+      default:
+        return false;
+    }
   }
 }
