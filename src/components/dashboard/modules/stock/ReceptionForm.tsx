@@ -338,25 +338,45 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       }
 
       // Create the reception
-      await onCreateReception(receptionData);
+      const createdReception = await onCreateReception(receptionData);
+      
+      if (!createdReception) {
+        toast({
+          title: "Erreur",
+          description: "Erreur lors de la création de la réception",
+          variant: "destructive",
+        });
+        return;
+      }
 
       // Update order status to 'Réceptionné' when reception is validated
       if (isValidated && onUpdateOrderStatus) {
-        const currentStatus = selectedOrderData.statut;
-        const targetStatus = 'Réceptionné';
+        try {
+          const currentStatus = selectedOrderData.statut;
+          const targetStatus = 'Réceptionné';
 
-        // Check if status transition is allowed
-        const statusValidation = OrderStatusValidationService.canTransitionTo(currentStatus, targetStatus);
-        if (statusValidation.canTransition) {
-          await onUpdateOrderStatus(selectedOrder, targetStatus);
+          // Check if status transition is allowed
+          const statusValidation = OrderStatusValidationService.canTransitionTo(currentStatus, targetStatus);
+          if (statusValidation.canTransition) {
+            await onUpdateOrderStatus(selectedOrder, targetStatus);
+            console.log(`Status updated from ${currentStatus} to ${targetStatus} for order ${selectedOrder}`);
+            toast({
+              title: "Statut mis à jour",
+              description: `Commande marquée comme ${targetStatus.toLowerCase()}`,
+            });
+          } else {
+            console.error('Status transition not allowed:', statusValidation.errors);
+            toast({
+              title: "Transition non autorisée",
+              description: statusValidation.errors.join(', '),
+              variant: "destructive",
+            });
+          }
+        } catch (statusError) {
+          console.error('Error updating order status:', statusError);
           toast({
-            title: "Statut mis à jour",
-            description: `Commande ${targetStatus.toLowerCase()}`,
-          });
-        } else {
-          toast({
-            title: "Transition non autorisée",
-            description: statusValidation.errors.join(', '),
+            title: "Erreur de mise à jour du statut",
+            description: "La réception a été créée mais le statut de la commande n'a pas pu être mis à jour",
             variant: "destructive",
           });
         }
