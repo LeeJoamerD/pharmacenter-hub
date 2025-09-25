@@ -50,6 +50,7 @@ interface ReceptionFormProps {
   suppliers: any[];
   onCreateReception: (receptionData: any) => Promise<any>;
   onUpdateOrderStatus?: (orderId: string, status: string) => Promise<any>;
+  onRefreshOrders?: () => Promise<void>;
   loading: boolean;
 }
 
@@ -58,6 +59,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   suppliers: propSuppliers = [], 
   onCreateReception, 
   onUpdateOrderStatus,
+  onRefreshOrders,
   loading 
 }) => {
   const [selectedOrder, setSelectedOrder] = useState('');
@@ -337,8 +339,13 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         return;
       }
 
-      // Create the reception
-      const createdReception = await onCreateReception(receptionData);
+      // Create the reception with validation status
+      const receptionPayload = {
+        ...receptionData,
+        isValidated: isValidated
+      };
+      
+      const createdReception = await onCreateReception(receptionPayload);
       
       if (!createdReception) {
         toast({
@@ -355,17 +362,26 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
           const currentStatus = selectedOrderData.statut;
           const targetStatus = 'Réceptionné';
 
+          console.log(`Attempting to update order ${selectedOrder} from ${currentStatus} to ${targetStatus}`);
+
           // Check if status transition is allowed
           const statusValidation = OrderStatusValidationService.canTransitionTo(currentStatus, targetStatus);
           if (statusValidation.canTransition) {
             await onUpdateOrderStatus(selectedOrder, targetStatus);
-            console.log(`Status updated from ${currentStatus} to ${targetStatus} for order ${selectedOrder}`);
+            console.log(`✅ Status successfully updated from ${currentStatus} to ${targetStatus} for order ${selectedOrder}`);
+            
+            // Force refresh of orders data
+            if (onRefreshOrders) {
+              await onRefreshOrders();
+              console.log('✅ Orders data refreshed');
+            }
+            
             toast({
               title: "Statut mis à jour",
               description: `Commande marquée comme ${targetStatus.toLowerCase()}`,
             });
           } else {
-            console.error('Status transition not allowed:', statusValidation.errors);
+            console.error('❌ Status transition not allowed:', statusValidation.errors);
             toast({
               title: "Transition non autorisée",
               description: statusValidation.errors.join(', '),
@@ -373,7 +389,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
             });
           }
         } catch (statusError) {
-          console.error('Error updating order status:', statusError);
+          console.error('❌ Error updating order status:', statusError);
           toast({
             title: "Erreur de mise à jour du statut",
             description: "La réception a été créée mais le statut de la commande n'a pas pu être mis à jour",

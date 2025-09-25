@@ -77,6 +77,7 @@ export const useReceptions = () => {
     date_reception?: string;
     agent_id?: string;
     reference_facture?: string;
+    isValidated?: boolean;
     lignes: Array<{
       produit_id: string;
       quantite_commandee: number;
@@ -110,7 +111,8 @@ export const useReceptions = () => {
           fournisseur_id: receptionData.fournisseur_id,
           date_reception: receptionData.date_reception || new Date().toISOString(),
           agent_id: receptionData.agent_id,
-          reference_facture: receptionData.reference_facture
+          reference_facture: receptionData.reference_facture,
+          statut: receptionData.isValidated ? 'Validé' : 'En cours'
         })
         .select()
         .single();

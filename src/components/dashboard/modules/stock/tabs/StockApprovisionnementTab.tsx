@@ -109,6 +109,7 @@ const StockApprovisionnementTab = () => {
           suppliers={suppliers.suppliers}
           onCreateReception={receptions.createReception}
           onUpdateOrderStatus={orders.updateOrderStatus}
+          onRefreshOrders={orders.refetch}
           loading={receptions.loading}
         />
       </TabsContent>

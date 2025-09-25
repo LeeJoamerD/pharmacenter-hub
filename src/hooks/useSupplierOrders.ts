@@ -143,9 +143,13 @@ export const useSupplierOrders = () => {
 
       if (error) throw error;
 
+      // Mettre à jour le state local ET recharger les données
       setOrders(prev => prev.map(order => 
         order.id === id ? { ...order, statut } : order
       ));
+      
+      // Recharger les données pour s'assurer de la synchronisation
+      await fetchOrders();
       
       toast({
         title: "Succès",
