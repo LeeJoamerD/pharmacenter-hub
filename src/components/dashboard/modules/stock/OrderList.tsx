@@ -24,7 +24,10 @@ import {
   RefreshCw,
   FileText,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  CheckSquare,
+  Check,
+  XCircle
 } from 'lucide-react';
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { OrderPDFService } from '@/services/OrderPDFService';
@@ -149,18 +152,20 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
 
   const getStatusColor = (statut: string) => {
     switch (statut) {
-      case 'En cours': return 'bg-gray-100 text-gray-800';
-      case 'Confirmé': return 'bg-blue-100 text-blue-800';
+      case 'Brouillon': return 'bg-gray-100 text-gray-800';
+      case 'En cours': return 'bg-blue-100 text-blue-800';
+      case 'Confirmé': return 'bg-green-100 text-green-800';
       case 'Expédié': return 'bg-yellow-100 text-yellow-800';
       case 'En transit': return 'bg-orange-100 text-orange-800';
-      case 'Livré': return 'bg-green-100 text-green-800';
+      case 'Livré': return 'bg-purple-100 text-purple-800';
+      case 'Réceptionné': return 'bg-emerald-100 text-emerald-800';
       case 'Annulé': return 'bg-red-100 text-red-800';
       // Backward compatibility
       case 'brouillon': return 'bg-gray-100 text-gray-800';
       case 'envoyee': return 'bg-blue-100 text-blue-800';
       case 'confirmee': return 'bg-yellow-100 text-yellow-800';
       case 'partielle': return 'bg-orange-100 text-orange-800';
-      case 'livree': return 'bg-green-100 text-green-800';
+      case 'livree': return 'bg-purple-100 text-purple-800';
       case 'annulee': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -168,12 +173,14 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
 
   const getStatusIcon = (statut: string) => {
     switch (statut) {
-      case 'En cours': case 'brouillon': return <Edit className="h-4 w-4" />;
-      case 'Confirmé': case 'envoyee': return <ShoppingCart className="h-4 w-4" />;
-      case 'Expédié': case 'confirmee': return <CheckCircle className="h-4 w-4" />;
-      case 'En transit': case 'partielle': return <Package className="h-4 w-4" />;
-      case 'Livré': case 'livree': return <Truck className="h-4 w-4" />;
-      case 'Annulé': case 'annulee': return <Clock className="h-4 w-4" />;
+      case 'Brouillon': case 'brouillon': return <Edit className="h-4 w-4" />;
+      case 'En cours': return <Clock className="h-4 w-4" />;
+      case 'Confirmé': case 'envoyee': return <CheckCircle className="h-4 w-4" />;
+      case 'Expédié': case 'confirmee': return <Package className="h-4 w-4" />;
+      case 'En transit': case 'partielle': return <Truck className="h-4 w-4" />;
+      case 'Livré': case 'livree': return <CheckSquare className="h-4 w-4" />;
+      case 'Réceptionné': return <Check className="h-4 w-4" />;
+      case 'Annulé': case 'annulee': return <XCircle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
     }
   };
@@ -356,11 +363,13 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="tous">Tous les statuts</SelectItem>
+                <SelectItem value="Brouillon">Brouillon</SelectItem>
                 <SelectItem value="En cours">En cours</SelectItem>
                 <SelectItem value="Confirmé">Confirmé</SelectItem>
                 <SelectItem value="Expédié">Expédié</SelectItem>
                 <SelectItem value="En transit">En transit</SelectItem>
                 <SelectItem value="Livré">Livré</SelectItem>
+                <SelectItem value="Réceptionné">Réceptionné</SelectItem>
                 <SelectItem value="Annulé">Annulé</SelectItem>
               </SelectContent>
             </Select>
@@ -446,11 +455,13 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
                             </Badge>
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="Brouillon">Brouillon</SelectItem>
                             <SelectItem value="En cours">En cours</SelectItem>
                             <SelectItem value="Confirmé">Confirmé</SelectItem>
                             <SelectItem value="Expédié">Expédié</SelectItem>
                             <SelectItem value="En transit">En transit</SelectItem>
                             <SelectItem value="Livré">Livré</SelectItem>
+                            <SelectItem value="Réceptionné">Réceptionné</SelectItem>
                             <SelectItem value="Annulé">Annulé</SelectItem>
                           </SelectContent>
                         </Select>
