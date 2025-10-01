@@ -97,10 +97,15 @@ export const useReceptionLines = (receptionId?: string) => {
           tenant_id: personnel.tenant_id,
           reception_id: lineData.reception_id,
           produit_id: lineData.produit_id,
+          quantite_commandee: lineData.quantite_commandee,
           quantite_recue: lineData.quantite_recue,
-          prix_achat_unitaire_reel: lineData.prix_achat_unitaire || 0,
-          date_peremption: lineData.date_peremption
-        })
+          quantite_acceptee: lineData.quantite_acceptee,
+          prix_achat_unitaire: lineData.prix_achat_unitaire || 0,
+          numero_lot: lineData.numero_lot,
+          date_peremption: lineData.date_peremption,
+          statut: lineData.statut,
+          commentaire: lineData.commentaire
+        } as any)
         .select()
         .single();
 

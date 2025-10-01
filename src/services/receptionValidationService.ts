@@ -129,9 +129,7 @@ export class ReceptionValidationService {
         result.isValid = false;
       }
 
-      if (order.statut === 'Livré') {
-        result.warnings.push('Cette commande a déjà été marquée comme livrée');
-      }
+      // Avertissement supprimé : le statut "Livré" est normal pour une réception
 
       // Vérifier s'il y a déjà des réceptions partielles
       const { data: existingReceptions } = await supabase

@@ -22,13 +22,15 @@ import {
   Camera
 } from 'lucide-react';
 import { useOrderLines } from '@/hooks/useOrderLines';
-import { useReceptionLines } from '@/hooks/useReceptionLines';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProducts } from '@/hooks/useProducts';
 import { calculateFinancials } from '@/lib/utils';
 import { ReceptionValidationService } from '@/services/receptionValidationService';
 import { OrderStatusValidationService } from '@/services/orderStatusValidationService';
 import { StockUpdateService } from '@/services/stockUpdateService';
+import { supabase } from '@/integrations/supabase/client';
 import BarcodeScanner from './BarcodeScanner';
 
 interface ReceptionLine {
@@ -79,12 +81,13 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   const { toast } = useToast();
   
   const { orderLines, loading: orderLinesLoading } = useOrderLines(selectedOrder);
-  const { createReceptionLine } = useReceptionLines();
   const { settings } = useSystemSettings();
+  const { products } = useProducts();
+  const { user } = useAuth();
 
-  // Use real orders with appropriate statuses for reception
+  // Use real orders with appropriate statuses for reception - only "Livré" can be received
   const pendingOrders = propOrders.filter(order => 
-    ['Confirmé', 'Expédié', 'Livré'].includes(order.statut)
+    ['Livré'].includes(order.statut)
   ).map(order => ({
     ...order,
     numero: `CMD-${new Date(order.date_commande || order.created_at).getFullYear()}-${String(order.id).slice(-3).padStart(3, '0')}`,
@@ -147,6 +150,15 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
           updatedLine.statut = 'non-conforme';
         }
         
+        // Auto-generate lot number if not provided and quantity accepted > 0
+        if (field === 'quantiteAcceptee' && updatedLine.quantiteAcceptee > 0 && !updatedLine.numeroLot) {
+          const orderData = pendingOrders.find(o => o.id === selectedOrder);
+          const productRef = updatedLine.reference || 'UNK';
+          const timestamp = new Date().toISOString().slice(2, 10).replace(/-/g, ''); // YYMMDD format
+          const sequence = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+          updatedLine.numeroLot = `LOT-${productRef}-${timestamp}-${sequence}`;
+        }
+        
         return updatedLine;
       }
       return line;
@@ -181,6 +193,69 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     }
   };
 
+  const validateExpirationDate = (dateExpiration: string): boolean => {
+    if (!dateExpiration) return true; // Optional field
+    
+    const today = new Date();
+    const expDate = new Date(dateExpiration);
+    const minDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000); // Minimum 30 days from now
+    
+    return expDate >= minDate;
+  };
+
+  const checkLowStockAlerts = async (processedLines: ReceptionLine[]) => {
+    try {
+      const lowStockAlerts: string[] = [];
+      
+      for (const line of processedLines) {
+        if (line.quantiteAcceptee > 0) {
+          const produitId = orderLines.find(ol => ol.id === line.id)?.produit_id;
+          if (produitId) {
+            const product = products.find(p => p.id === produitId);
+            if (product && product.stock_limite && product.stock_limite > 0) {
+              // Calculate new stock level (this is an approximation - actual stock would come from the database)
+              const currentStock = product.stock_alerte || 0;
+              const newStockLevel = currentStock + line.quantiteAcceptee;
+              
+              if (newStockLevel <= product.stock_limite) {
+                lowStockAlerts.push(`${line.produit} (Stock: ${newStockLevel}, Seuil: ${product.stock_limite})`);
+              }
+            }
+          }
+        }
+      }
+      
+      if (lowStockAlerts.length > 0) {
+        toast({
+          title: "Alerte Stock Faible",
+          description: `Produits toujours en stock faible après réception: ${lowStockAlerts.join(', ')}`,
+          variant: "destructive",
+          duration: 10000, // Show for 10 seconds
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error checking low stock alerts:', error);
+    }
+  };
+
+  const logReceptionActivity = (receptionData: any, isValidated: boolean) => {
+    try {
+      const userName = user?.email || 'Utilisateur inconnu';
+      const totalProducts = receptionData.lignes.reduce((sum: number, line: any) => sum + line.quantite_acceptee, 0);
+      const totalValue = receptionData.lignes.reduce((sum: number, line: any) => sum + (line.quantite_acceptee * (line.prix_achat_reel || 0)), 0);
+      
+      console.log(`📦 Reception ${isValidated ? 'validated' : 'saved'} by ${userName}`);
+      console.log(`📊 Total products: ${totalProducts}, Total value: ${totalValue.toFixed(2)}`);
+      console.log(`📝 Reference: ${receptionData.reference_facture || 'N/A'}`);
+      
+      // Here you could add a call to an activity logging service if available
+      // For example: await ActivityService.log('reception_created', { receptionId: receptionData.id, userId: user?.id });
+      
+    } catch (error) {
+      console.error('❌ Error logging reception activity:', error);
+    }
+  };
+
   const handleBarcodeSubmit = () => {
     if (!scannedBarcode.trim()) {
       toast({
@@ -193,7 +268,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
 
     // Chercher le produit dans les lignes de commande
     const matchingOrderLine = orderLines.find(ol => 
-      ol.produit?.code_cip === scannedBarcode.trim()
+      ol.produit && ol.produit.code_cip && ol.produit.code_cip === scannedBarcode.trim()
     );
 
     if (!matchingOrderLine) {
@@ -214,7 +289,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       
       toast({
         title: "Produit traité",
-        description: `${matchingOrderLine.produit?.libelle_produit} - Quantité incrémentée`,
+        description: `${matchingOrderLine.produit?.libelle_produit || 'Produit'} - Quantité incrémentée`,
       });
     }
 
@@ -265,6 +340,132 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     setShowCameraDialog(false);
   };
 
+  const resetForm = () => {
+    setSelectedOrder('');
+    setReceptionLines([]);
+    setBonLivraison('');
+    setTransporteur('');
+    setObservations('');
+    setPendingValidation(null);
+  };
+
+  // Fonction helper pour la mise à jour du statut
+  const updateOrderStatusInDatabase = async (orderId: string, newStatus: string) => {
+    try {
+      // @ts-ignore - Ignorer les erreurs de typage complexe de Supabase
+      const { error } = await supabase
+        .from('commandes_fournisseurs')
+        .update({ 
+          statut: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+      
+      return { error };
+    } catch (err) {
+      console.error('Database update error:', err);
+      return { error: err };
+    }
+  };
+
+  const updateOrderStatus = async (selectedOrderData: any, isValidated: boolean, createdReception: any, orderId: string) => {
+    if (!isValidated || !createdReception) return;
+    
+    try {
+      console.log('🔄 Updating order status to Réceptionné...');
+      
+      const statusValidation = OrderStatusValidationService.canTransitionTo(
+        selectedOrderData.statut,
+        'Réceptionné'
+      );
+      
+      if (statusValidation.canTransition) {
+        try {
+          const { error: updateError } = await updateOrderStatusInDatabase(orderId, 'Réceptionné');
+          
+          if (updateError) {
+            console.error('❌ Error updating order status:', updateError);
+            toast({
+              title: "Avertissement",
+              description: "Réception créée mais le statut de la commande n'a pas pu être mis à jour",
+              variant: "destructive",
+            });
+          } else {
+            console.log('✅ Order status updated to Réceptionné successfully');
+            
+            if (onRefreshOrders) {
+              await onRefreshOrders();
+            }
+          }
+        } catch (supabaseError) {
+          console.error('❌ Supabase error during order status update:', supabaseError);
+          toast({
+            title: "Avertissement",
+            description: "Réception créée mais erreur lors de la mise à jour du statut de la commande",
+            variant: "destructive",
+          });
+        }
+      } else {
+        console.warn('⚠️ Order status transition from', selectedOrderData.statut, 'to Réceptionné is not allowed');
+        toast({
+          title: "Avertissement",
+          description: `Transition du statut ${selectedOrderData.statut} vers Réceptionné non autorisée`,
+          variant: "destructive",
+        });
+      }
+    } catch (statusError) {
+      console.error('❌ Error during order status update:', statusError);
+      toast({
+        title: "Avertissement",
+        description: "Réception créée mais erreur lors de la mise à jour du statut de la commande",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const processStockReception = async (createdReception: any, selectedOrderData: any) => {
+    try {
+      console.log('🔄 Processing reception for lot creation and stock movements...');
+      
+      const stockReceptionData = {
+        id: createdReception.id,
+        commande_id: createdReception.commande_id || selectedOrderData.id,
+        fournisseur_id: selectedOrderData.fournisseur_id,
+        date_reception: createdReception.date_reception || new Date().toISOString(),
+        lignes: receptionLines
+          .filter(line => line.quantiteAcceptee > 0)
+          .map(line => ({
+            produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
+            quantite_acceptee: line.quantiteAcceptee,
+            numero_lot: line.numeroLot,
+            date_expiration: line.dateExpiration || null,
+            prix_achat_reel: line.prixAchatReel || 0,
+            reference: line.reference,
+            libelle_produit: line.produit
+          }))
+      };
+
+      await StockUpdateService.processReception(stockReceptionData);
+      
+      console.log('✅ Lots and stock movements processed successfully');
+      
+      toast({
+        title: "Stock mis à jour",
+        description: "Réception et lots traités avec succès",
+      });
+      
+      await checkLowStockAlerts(receptionLines);
+      
+    } catch (stockError) {
+      console.error('❌ Error during stock processing:', stockError);
+      toast({
+        title: "Avertissement Stock",
+        description: "Réception créée mais erreur lors du traitement des lots et mouvements de stock",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSaveReception = async (isValidated: boolean) => {
     if (isProcessing) return;
     
@@ -307,6 +508,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         date_reception: new Date().toISOString(),
         reference_facture: bonLivraison,
         notes: observations,
+        isValidated: isValidated, // Ajout du paramètre isValidated
         lignes: receptionLines.map(line => ({
           produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
           quantite_commandee: line.quantiteCommandee,
@@ -332,6 +534,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         return;
       }
 
+
+
       // Handle warnings if present and not already confirmed
       if (validation.warnings.length > 0 && !pendingValidation) {
         setPendingValidation({ isValidated, warnings: validation.warnings });
@@ -356,60 +560,21 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         return;
       }
 
-      // Update order status to 'Réceptionné' when reception is validated
-      if (isValidated && onUpdateOrderStatus) {
-        try {
-          const currentStatus = selectedOrderData.statut;
-          const targetStatus = 'Réceptionné';
-
-          console.log(`Attempting to update order ${selectedOrder} from ${currentStatus} to ${targetStatus}`);
-
-          // Check if status transition is allowed
-          const statusValidation = OrderStatusValidationService.canTransitionTo(currentStatus, targetStatus);
-          if (statusValidation.canTransition) {
-            await onUpdateOrderStatus(selectedOrder, targetStatus);
-            console.log(`✅ Status successfully updated from ${currentStatus} to ${targetStatus} for order ${selectedOrder}`);
-            
-            // Force refresh of orders data
-            if (onRefreshOrders) {
-              await onRefreshOrders();
-              console.log('✅ Orders data refreshed');
-            }
-            
-            toast({
-              title: "Statut mis à jour",
-              description: `Commande marquée comme ${targetStatus.toLowerCase()}`,
-            });
-          } else {
-            console.error('❌ Status transition not allowed:', statusValidation.errors);
-            toast({
-              title: "Transition non autorisée",
-              description: statusValidation.errors.join(', '),
-              variant: "destructive",
-            });
-          }
-        } catch (statusError) {
-          console.error('❌ Error updating order status:', statusError);
-          toast({
-            title: "Erreur de mise à jour du statut",
-            description: "La réception a été créée mais le statut de la commande n'a pas pu être mis à jour",
-            variant: "destructive",
-          });
-        }
-      }
+      // Log reception activity
+      logReceptionActivity(receptionData, isValidated);
       
+      // Update order status and process stock
+      await updateOrderStatus(selectedOrderData, isValidated, createdReception, selectedOrder);
+      await processStockReception(createdReception, selectedOrderData);
+
       // Reset form
-      setSelectedOrder('');
-      setReceptionLines([]);
-      setBonLivraison('');
-      setTransporteur('');
-      setObservations('');
-      setPendingValidation(null);
+      resetForm();
       
       toast({
         title: "Succès",
         description: `Réception ${isValidated ? 'validée' : 'sauvegardée'} avec succès`,
       });
+      
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
       toast({
@@ -426,13 +591,22 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     if (!pendingValidation) return;
     
     setShowWarningDialog(false);
-    const { isValidated } = pendingValidation;
+    const isValidated = true;
     
     try {
       const selectedOrderData = pendingOrders.find(o => o.id === selectedOrder);
+      if (!selectedOrderData) {
+        toast({
+          title: "Erreur",
+          description: "Commande sélectionnée introuvable",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       const receptionData = {
         commande_id: selectedOrder,
-        fournisseur_id: selectedOrderData!.fournisseur_id,
+        fournisseur_id: selectedOrderData.fournisseur_id,
         date_reception: new Date().toISOString(),
         reference_facture: bonLivraison,
         notes: observations,
@@ -446,31 +620,49 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
           statut: line.statut,
           commentaire: line.commentaire,
           prix_achat_reel: line.prixAchatReel || 0
-        }))
+        })),
+        isValidated: true
       };
 
-      await onCreateReception(receptionData);
+      const createdReception = await onCreateReception(receptionData);
       
+      if (!createdReception) {
+        toast({
+          title: "Erreur",
+          description: "Erreur lors de la création de la réception",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Log reception activity
+      logReceptionActivity(receptionData, isValidated);
+      
+      // Update order status and process stock
+      await updateOrderStatus(selectedOrderData, isValidated, createdReception, selectedOrder);
+      await processStockReception(createdReception, selectedOrderData);
+
       // Reset form
-      setSelectedOrder('');
-      setReceptionLines([]);
-      setBonLivraison('');
-      setTransporteur('');
-      setObservations('');
-      setPendingValidation(null);
+      resetForm();
       
       toast({
         title: "Succès",
-        description: `Réception ${isValidated ? 'validée' : 'sauvegardée'} avec succès`,
+        description: "Réception validée avec succès",
       });
+      
     } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
       toast({
         title: "Erreur",
         description: "Erreur lors de l'enregistrement de la réception",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
+
+
 
   return (
     <div className="space-y-6">

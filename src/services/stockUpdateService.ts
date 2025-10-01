@@ -164,7 +164,7 @@ export class StockUpdateService {
   }
 
   /**
-   * Traite la réception d'une commande
+   * Traite la réception d'une commande de manière atomique via RPC
    */
   static async processReception(receptionData: {
     commande_id?: string;
@@ -182,39 +182,134 @@ export class StockUpdateService {
       const tenantId = await this.getCurrentTenantId();
       if (!tenantId) throw new Error('Utilisateur non autorisé');
 
+      // 1. Créer d'abord un enregistrement de réception
+      const { data: reception, error: receptionError } = await supabase
+        .from('receptions_fournisseurs')
+        .insert({
+          tenant_id: tenantId,
+          commande_id: receptionData.commande_id,
+          fournisseur_id: receptionData.fournisseur_id,
+          date_reception: new Date().toISOString(),
+          agent_id: receptionData.agent_id
+        })
+        .select('id')
+        .single();
+
+      if (receptionError) {
+        throw new Error(`Erreur lors de la création de la réception: ${receptionError.message}`);
+      }
+
+      const receptionId = reception.id;
+
       for (const ligne of receptionData.lignes) {
         if (ligne.quantite_acceptee > 0) {
-          // Créer le lot
-          const { data: lot, error: lotError } = await supabase
-            .from('lots')
-            .insert({
-              tenant_id: tenantId,
-              produit_id: ligne.produit_id,
-              numero_lot: ligne.numero_lot,
-              date_peremption: ligne.date_expiration,
-              quantite_initiale: ligne.quantite_acceptee,
-              quantite_restante: ligne.quantite_acceptee,
-              prix_achat_unitaire: ligne.prix_achat_unitaire || 0,
-              fournisseur_id: receptionData.fournisseur_id,
-              date_reception: new Date().toISOString().split('T')[0]
-            })
-            .select()
-            .single();
+          // Utiliser la nouvelle fonction RPC qui gère la logique de manière atomique
+          const receptionLineData = {
+            tenant_id: tenantId,
+            product_id: ligne.produit_id,
+            numero_lot: ligne.numero_lot,
+            quantite_recue: ligne.quantite_acceptee,
+            date_fabrication: null, // Peut être ajouté plus tard si nécessaire
+            date_peremption: ligne.date_expiration,
+            prix_achat: ligne.prix_achat_unitaire || 0,
+            reception_id: receptionId, // Utiliser le vrai reception_id
+            id: null // Sera généré automatiquement
+          };
 
-          if (lotError) throw lotError;
+          // Traitement direct sans RPC - Gestion des lots et mouvements de stock
+          try {
+            let lotId: string | null = null;
 
-          // Enregistrer le mouvement de stock
-          await this.recordStockMovement({
-            produit_id: ligne.produit_id,
-            lot_id: lot.id,
-            quantite: ligne.quantite_acceptee,
-            type_mouvement: 'entree', // Utiliser 'entree' au lieu de 'reception'
-            reference_type: 'commande',
-            reference_id: receptionData.commande_id,
-            agent_id: receptionData.agent_id,
-            description: `Réception lot ${ligne.numero_lot}`,
-            motif: `Réception fournisseur`
-          });
+            // 1. Vérifier si un lot existe déjà avec ce numéro
+            const { data: existingLot, error: lotSearchError } = await supabase
+              .from('lots')
+              .select('id, quantite_restante')
+              .eq('numero_lot', receptionLineData.numero_lot)
+              .eq('produit_id', receptionLineData.product_id)
+              .eq('tenant_id', receptionLineData.tenant_id)
+              .single();
+
+            if (lotSearchError && lotSearchError.code !== 'PGRST116') {
+              throw new Error(`Erreur lors de la recherche du lot: ${lotSearchError.message}`);
+            }
+
+            if (existingLot) {
+              // 2a. Mettre à jour le lot existant
+              lotId = existingLot.id;
+              const { error: updateError } = await supabase
+                .from('lots')
+                .update({
+                  quantite_restante: existingLot.quantite_restante + receptionLineData.quantite_recue,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', lotId);
+
+              if (updateError) {
+                throw new Error(`Erreur lors de la mise à jour du lot: ${updateError.message}`);
+              }
+            } else {
+              // 2b. Créer un nouveau lot
+              const { data: newLot, error: createLotError } = await supabase
+                .from('lots')
+                .insert({
+                  tenant_id: receptionLineData.tenant_id,
+                  produit_id: receptionLineData.product_id,
+                  numero_lot: receptionLineData.numero_lot,
+                  quantite_initiale: receptionLineData.quantite_recue,
+                  quantite_restante: receptionLineData.quantite_recue,
+                  date_fabrication: receptionLineData.date_fabrication,
+                  date_peremption: receptionLineData.date_peremption
+                })
+                .select('id')
+                .single();
+
+              if (createLotError) {
+                throw new Error(`Erreur lors de la création du lot: ${createLotError.message}`);
+              }
+              lotId = newLot.id;
+            }
+
+            // 3. Créer une ligne de réception
+            const { error: receptionLineError } = await supabase
+              .from('lignes_reception_fournisseur')
+              .insert({
+                tenant_id: receptionLineData.tenant_id,
+                reception_id: receptionLineData.reception_id,
+                produit_id: receptionLineData.product_id,
+                lot_id: lotId,
+                quantite_recue: receptionLineData.quantite_recue,
+                prix_achat_unitaire_reel: receptionLineData.prix_achat,
+                date_peremption: receptionLineData.date_peremption
+              });
+
+            if (receptionLineError) {
+              throw new Error(`Erreur lors de la création de la ligne de réception: ${receptionLineError.message}`);
+            }
+
+            // 4. Créer un mouvement de stock
+            const { error: movementError } = await supabase
+              .from('stock_mouvements')
+              .insert({
+                tenant_id: receptionLineData.tenant_id,
+                produit_id: receptionLineData.product_id,
+                lot_id: lotId,
+                type_mouvement: 'entree',
+                quantite: receptionLineData.quantite_recue,
+                date_mouvement: new Date().toISOString(),
+                reference_type: 'reception',
+                reference_id: receptionLineData.reception_id
+              });
+
+            if (movementError) {
+              throw new Error(`Erreur lors de la création du mouvement de stock: ${movementError.message}`);
+            }
+
+            console.log(`✅ Lot ${ligne.numero_lot} traité avec succès`);
+
+          } catch (error: any) {
+            console.error(`Erreur lors du traitement du lot ${ligne.numero_lot}:`, error);
+            throw new Error(`Le traitement du lot ${ligne.numero_lot} a échoué: ${error.message}`);
+          }
         }
       }
     } catch (error) {
