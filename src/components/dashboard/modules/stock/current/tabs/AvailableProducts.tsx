@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -8,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Package, Search, Filter, ShoppingCart, Eye } from 'lucide-react';
 import { useCurrentStock } from '@/hooks/useCurrentStock';
 import AvailableStockDashboard from '../dashboard/AvailableStockDashboard';
+import ProductDetailsModal from '../modals/ProductDetailsModal';
+import AddToCartModal from '../modals/AddToCartModal';
 
 const AvailableProducts = () => {
   const { 
@@ -18,7 +20,23 @@ const AvailableProducts = () => {
     isLoading 
   } = useCurrentStock();
 
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isCartModalOpen, setIsCartModalOpen] = useState(false);
+  const [cartProductName, setCartProductName] = useState('');
+
   const availableProducts = products.filter(p => p.stock_actuel > 0);
+
+  const handleViewDetails = (productId: string) => {
+    setSelectedProductId(productId);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleAddToCart = (productId: string, productName: string) => {
+    setSelectedProductId(productId);
+    setCartProductName(productName);
+    setIsCartModalOpen(true);
+  };
 
   const getStockStatusColor = (status: string) => {
     switch (status) {
@@ -40,7 +58,27 @@ const AvailableProducts = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <>
+      <ProductDetailsModal
+        productId={selectedProductId}
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedProductId(null);
+        }}
+      />
+      <AddToCartModal
+        productId={selectedProductId}
+        productName={cartProductName}
+        isOpen={isCartModalOpen}
+        onClose={() => {
+          setIsCartModalOpen(false);
+          setSelectedProductId(null);
+          setCartProductName('');
+        }}
+      />
+      
+      <div className="space-y-6">
       {/* Dashboard rapide */}
       <AvailableStockDashboard />
 
@@ -190,10 +228,18 @@ const AvailableProducts = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleViewDetails(product.id)}
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleAddToCart(product.id, product.libelle_produit)}
+                          >
                             <ShoppingCart className="h-4 w-4" />
                           </Button>
                         </div>
@@ -207,6 +253,7 @@ const AvailableProducts = () => {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 };
 

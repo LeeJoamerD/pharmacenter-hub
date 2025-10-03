@@ -102,10 +102,24 @@ export const useCurrentStockDirect = () => {
 
       if (rayonsError) throw rayonsError;
 
-      // Process products data - Note: Stock levels come from lots table, not produits
+      // Fetch lots data to calculate actual stock
+      const { data: lotsData, error: lotsError } = await supabase
+        .from('lots')
+        .select('produit_id, quantite_restante')
+        .eq('tenant_id', personnel.tenant_id)
+        .gt('quantite_restante', 0);
+
+      if (lotsError) throw lotsError;
+
+      // Aggregate stock by product
+      const stockByProduct = (lotsData || []).reduce((acc: Record<string, number>, lot: any) => {
+        acc[lot.produit_id] = (acc[lot.produit_id] || 0) + lot.quantite_restante;
+        return acc;
+      }, {});
+
+      // Process products data with real stock
       const processedProducts: CurrentStockItem[] = (productsData || []).map((product: any) => {
-        // For now, we'll use placeholder values since actual stock comes from lots
-        const currentStock = 0; // Will be calculated from lots
+        const currentStock = stockByProduct[product.id] || 0;
         const stockValue = currentStock * (product.prix_achat || 0);
         
         let stockStatus: CurrentStockItem['statut_stock'] = 'normal';

@@ -54,7 +54,7 @@ serve(async (req) => {
         query.eq('type', templateType);
       }
 
-      const { data: templates, error: templateError } = await query.first();
+      const { data: templates, error: templateError } = await query.single();
       
       if (templateError || !templates) {
         throw new Error('Template not found');
@@ -166,9 +166,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in generate-document-gemini function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Une erreur est survenue lors de la génération';
     return new Response(JSON.stringify({ 
       success: false,
-      error: error.message || 'Une erreur est survenue lors de la génération'
+      error: errorMessage
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
