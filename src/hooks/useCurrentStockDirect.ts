@@ -102,6 +102,23 @@ export const useCurrentStockDirect = () => {
 
       if (rayonsError) throw rayonsError;
 
+      // Fetch alert thresholds by category
+      const { data: alertThresholds, error: thresholdsError } = await supabase
+        .from('alert_thresholds_by_category')
+        .select('category, threshold')
+        .eq('tenant_id', personnel.tenant_id)
+        .eq('enabled', true);
+
+      if (thresholdsError) {
+        console.error('Erreur lors de la récupération des seuils:', thresholdsError);
+      }
+
+      // Create a map of thresholds by category (famille)
+      const thresholdsMap = new Map<string, number>();
+      (alertThresholds || []).forEach(threshold => {
+        thresholdsMap.set(threshold.category, threshold.threshold);
+      });
+
       // Fetch lots data to calculate actual stock
       const { data: lotsData, error: lotsError } = await supabase
         .from('lots')
@@ -161,30 +178,55 @@ export const useCurrentStockDirect = () => {
         const currentStock = stockByProduct[product.id] || 0;
         const stockValue = currentStock * (product.prix_achat || 0);
         
-        let stockStatus: CurrentStockItem['statut_stock'] = 'normal';
-        if (currentStock === 0) {
-          stockStatus = 'rupture';
-        } else if (currentStock <= (product.stock_limite || 0)) {
-          stockStatus = currentStock <= (product.stock_limite || 0) * 0.5 ? 'critique' : 'faible';
-        } else if (currentStock >= (product.stock_alerte || 100)) {
-          stockStatus = 'surstock';
-        }
-
         // Calcul de la rotation basé sur les vrais mouvements de stock
         const movements = movementsByProduct[product.id];
         let rotation: CurrentStockItem['rotation'] = 'normale';
         
         if (movements && currentStock > 0) {
-          // Calcul de la vélocité: sorties sur 30 jours / stock moyen
-          const stockMoyen = (currentStock + movements.entrees - movements.sorties + currentStock) / 2;
+          // Calcul du stock moyen sur la période de 30 jours
+          // Stock au début de la période = stock actuel + sorties - entrées
+          const stockDebut = currentStock + movements.sorties - movements.entrees;
+          const stockFin = currentStock;
+          const stockMoyen = (stockDebut + stockFin) / 2;
+          
+          // Calcul de la vélocité réelle: sorties / stock moyen
           const velocite = stockMoyen > 0 ? movements.sorties / stockMoyen : 0;
           
           // Classification basée sur la vélocité
-          if (velocite >= 1) rotation = 'rapide';      // Plus d'une rotation complète en 30 jours
-          else if (velocite < 0.33) rotation = 'lente'; // Moins d'1/3 de rotation en 30 jours
+          if (velocite >= 2) rotation = 'rapide';      // Plus de 2 rotations complètes en 30 jours
+          else if (velocite < 0.5) rotation = 'lente'; // Moins d'1/2 rotation en 30 jours
           else rotation = 'normale';
         } else if (movements && movements.sorties === 0) {
           rotation = 'lente'; // Aucune sortie en 30 jours
+        }
+
+        // Déterminer le statut du stock en utilisant alert_thresholds_by_category
+        let stockStatus: CurrentStockItem['statut_stock'] = 'normal';
+        const familleLibelle = product.famille_produit?.libelle_famille;
+        const categoryThreshold = familleLibelle ? thresholdsMap.get(familleLibelle) : undefined;
+
+        if (currentStock === 0) {
+          stockStatus = 'rupture';
+        } else if (categoryThreshold !== undefined) {
+          // Utiliser les seuils configurés pour cette catégorie
+          if (currentStock <= categoryThreshold * 0.5) {
+            stockStatus = 'critique';
+          } else if (currentStock <= categoryThreshold) {
+            stockStatus = 'faible';
+          } else if (currentStock >= (product.stock_alerte || 100)) {
+            stockStatus = 'surstock';
+          } else {
+            stockStatus = 'normal';
+          }
+        } else {
+          // Logique par défaut si aucun seuil n'est configuré
+          if (currentStock <= (product.stock_limite || 0)) {
+            stockStatus = currentStock <= (product.stock_limite || 0) * 0.5 ? 'critique' : 'faible';
+          } else if (currentStock >= (product.stock_alerte || 100)) {
+            stockStatus = 'surstock';
+          } else {
+            stockStatus = 'normal';
+          }
         }
         
         // Dates réelles d'entrée/sortie depuis les mouvements
