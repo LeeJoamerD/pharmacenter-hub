@@ -117,6 +117,45 @@ export const useCurrentStockDirect = () => {
         return acc;
       }, {});
 
+      // Fetch stock movements for rotation calculation and real entry/exit dates
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data: mouvementsData, error: mouvementsError } = await supabase
+        .from('stock_mouvements')
+        .select('produit_id, type_mouvement, quantite, date_mouvement')
+        .eq('tenant_id', personnel.tenant_id)
+        .gte('date_mouvement', thirtyDaysAgo.toISOString())
+        .order('date_mouvement', { ascending: false });
+
+      if (mouvementsError) throw mouvementsError;
+
+      // Calculate movements by product
+      const movementsByProduct = (mouvementsData || []).reduce((acc: Record<string, any>, mvt: any) => {
+        if (!acc[mvt.produit_id]) {
+          acc[mvt.produit_id] = {
+            sorties: 0,
+            entrees: 0,
+            derniere_sortie: null,
+            derniere_entree: null
+          };
+        }
+        
+        if (mvt.type_mouvement === 'sortie' || mvt.type_mouvement === 'vente') {
+          acc[mvt.produit_id].sorties += mvt.quantite;
+          if (!acc[mvt.produit_id].derniere_sortie) {
+            acc[mvt.produit_id].derniere_sortie = mvt.date_mouvement;
+          }
+        } else if (mvt.type_mouvement === 'entree') {
+          acc[mvt.produit_id].entrees += mvt.quantite;
+          if (!acc[mvt.produit_id].derniere_entree) {
+            acc[mvt.produit_id].derniere_entree = mvt.date_mouvement;
+          }
+        }
+        
+        return acc;
+      }, {});
+
       // Process products data with real stock
       const processedProducts: CurrentStockItem[] = (productsData || []).map((product: any) => {
         const currentStock = stockByProduct[product.id] || 0;
@@ -131,14 +170,26 @@ export const useCurrentStockDirect = () => {
           stockStatus = 'surstock';
         }
 
-        // Calcul de la rotation basé sur les mouvements récents (simplifié)
+        // Calcul de la rotation basé sur les vrais mouvements de stock
+        const movements = movementsByProduct[product.id];
         let rotation: CurrentStockItem['rotation'] = 'normale';
-        const daysSinceLastMovement = product.updated_at 
-          ? Math.floor((Date.now() - new Date(product.updated_at).getTime()) / (1000 * 60 * 60 * 24))
-          : 999;
         
-        if (daysSinceLastMovement < 7) rotation = 'rapide';
-        else if (daysSinceLastMovement > 30) rotation = 'lente';
+        if (movements && currentStock > 0) {
+          // Calcul de la vélocité: sorties sur 30 jours / stock moyen
+          const stockMoyen = (currentStock + movements.entrees - movements.sorties + currentStock) / 2;
+          const velocite = stockMoyen > 0 ? movements.sorties / stockMoyen : 0;
+          
+          // Classification basée sur la vélocité
+          if (velocite >= 1) rotation = 'rapide';      // Plus d'une rotation complète en 30 jours
+          else if (velocite < 0.33) rotation = 'lente'; // Moins d'1/3 de rotation en 30 jours
+          else rotation = 'normale';
+        } else if (movements && movements.sorties === 0) {
+          rotation = 'lente'; // Aucune sortie en 30 jours
+        }
+        
+        // Dates réelles d'entrée/sortie depuis les mouvements
+        const dateEntree = movements?.derniere_entree || product.created_at;
+        const dateSortie = movements?.derniere_sortie || product.updated_at;
 
         return {
           id: product.id,
@@ -155,8 +206,8 @@ export const useCurrentStockDirect = () => {
           stock_actuel: currentStock,
           stock_limite: product.stock_limite || 0,
           stock_alerte: product.stock_alerte || 100,
-          date_derniere_entree: product.created_at,
-          date_derniere_sortie: product.updated_at,
+          date_derniere_entree: dateEntree,
+          date_derniere_sortie: dateSortie,
           valeur_stock: stockValue,
           statut_stock: stockStatus,
           rotation
