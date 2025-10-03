@@ -30,11 +30,11 @@ const QuickStockSearch = () => {
 
   const getStockStatusColor = (status: string) => {
     switch (status) {
-      case 'normal': return 'bg-green-100 text-green-800';
-      case 'faible': return 'bg-yellow-100 text-yellow-800';
-      case 'critique': return 'bg-red-100 text-red-800';
-      case 'rupture': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'normal': return 'bg-success/10 text-success border-success/20';
+      case 'faible': return 'bg-warning/10 text-warning border-warning/20';
+      case 'critique': return 'bg-[hsl(38_92%_50%)]/10 text-[hsl(38_92%_50%)] border-[hsl(38_92%_50%)]/20';
+      case 'rupture': return 'bg-destructive/10 text-destructive border-destructive/20';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 

@@ -21,10 +21,10 @@ const AvailableStockDashboard = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Package className="h-4 w-4 text-green-600" />
+              <Package className="h-4 w-4 text-success" />
               <span className="text-sm font-medium">Produits Disponibles</span>
             </div>
-            <div className="text-2xl font-bold text-green-600">{metrics.availableProducts}</div>
+            <div className="text-2xl font-bold text-success">{metrics.availableProducts}</div>
             <p className="text-xs text-muted-foreground">
               {metrics.totalProducts > 0 
                 ? `${((metrics.availableProducts / metrics.totalProducts) * 100).toFixed(1)}% du catalogue`
@@ -37,10 +37,10 @@ const AvailableStockDashboard = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Zap className="h-4 w-4 text-blue-600" />
+              <Zap className="h-4 w-4 text-info" />
               <span className="text-sm font-medium">Rotation Rapide</span>
             </div>
-            <div className="text-2xl font-bold text-blue-600">{metrics.fastMovingProducts}</div>
+            <div className="text-2xl font-bold text-info">{metrics.fastMovingProducts}</div>
             <p className="text-xs text-muted-foreground">Produits performants</p>
           </CardContent>
         </Card>
@@ -48,10 +48,10 @@ const AvailableStockDashboard = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertTriangle className="h-4 w-4 text-destructive" />
               <span className="text-sm font-medium">Alertes Critiques</span>
             </div>
-            <div className="text-2xl font-bold text-red-600">{criticalAlerts}</div>
+            <div className="text-2xl font-bold text-destructive">{criticalAlerts}</div>
             <p className="text-xs text-muted-foreground">Action immédiate requise</p>
           </CardContent>
         </Card>
@@ -59,10 +59,10 @@ const AvailableStockDashboard = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-purple-600" />
+              <TrendingUp className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">Valorisation</span>
             </div>
-            <div className="text-xl font-bold text-purple-600">
+            <div className="text-xl font-bold text-primary">
               {new Intl.NumberFormat('fr-FR', { 
                 style: 'currency', 
                 currency: 'XAF',
@@ -80,19 +80,19 @@ const AvailableStockDashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <AlertTriangle className="h-5 w-5 text-destructive" />
               Alertes Importantes
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex gap-2">
               {criticalAlerts > 0 && (
-                <Badge className="bg-red-100 text-red-800 border-red-200">
+                <Badge className="bg-destructive/10 text-destructive border-destructive/20">
                   {criticalAlerts} alerte{criticalAlerts > 1 ? 's' : ''} critique{criticalAlerts > 1 ? 's' : ''}
                 </Badge>
               )}
               {warningAlerts > 0 && (
-                <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                <Badge className="bg-warning/10 text-warning border-warning/20">
                   {warningAlerts} avertissement{warningAlerts > 1 ? 's' : ''}
                 </Badge>
               )}

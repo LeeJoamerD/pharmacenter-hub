@@ -41,10 +41,10 @@ const FastMovingItems = () => {
 
   const getStockStatusColor = (status: string) => {
     switch (status) {
-      case 'normal': return 'bg-green-100 text-green-800';
-      case 'faible': return 'bg-yellow-100 text-yellow-800';
-      case 'critique': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'normal': return 'bg-success/10 text-success border-success/20';
+      case 'faible': return 'bg-warning/10 text-warning border-warning/20';
+      case 'critique': return 'bg-destructive/10 text-destructive border-destructive/20';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -61,10 +61,10 @@ const FastMovingItems = () => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Zap className="h-5 w-5 text-blue-600" />
+          <Zap className="h-5 w-5 text-info" />
           Produits à Rotation Rapide
           {fastMovingProducts.length > 0 && (
-            <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+            <Badge className="bg-info/10 text-info border-info/20">
               {fastMovingProducts.length}
             </Badge>
           )}
@@ -82,28 +82,28 @@ const FastMovingItems = () => {
             {fastMovingProducts.map((product, index) => (
               <div key={product.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-2 flex-1 min-w-0">
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex-shrink-0">
-                      #{index + 1}
-                    </Badge>
+                <div className="flex items-start gap-2 flex-1 min-w-0">
+                  <Badge variant="outline" className="bg-info/10 text-info border-info/20 flex-shrink-0">
+                    #{index + 1}
+                  </Badge>
                     
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate" title={product.libelle_produit}>
-                        {product.libelle_produit}
-                      </div>
-                      <div className="text-xs text-muted-foreground font-mono">
-                        {product.code_cip}
-                      </div>
-                      <div className="flex gap-1 mt-1">
-                        <Badge className={getStockStatusColor(product.statut_stock)} variant="outline">
-                          {product.statut_stock}
-                        </Badge>
-                        <Badge className="bg-green-100 text-green-800" variant="outline">
-                          <TrendingUp className="h-3 w-3 mr-1" />
-                          Rapide
-                        </Badge>
-                      </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate" title={product.libelle_produit}>
+                      {product.libelle_produit}
                     </div>
+                    <div className="text-xs text-muted-foreground font-mono">
+                      {product.code_cip}
+                    </div>
+                    <div className="flex gap-1 mt-1">
+                      <Badge className={getStockStatusColor(product.statut_stock)} variant="outline">
+                        {product.statut_stock}
+                      </Badge>
+                      <Badge className="bg-success/10 text-success border-success/20" variant="outline">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        Rapide
+                      </Badge>
+                    </div>
+                  </div>
                   </div>
                   
                   <div className="text-right flex-shrink-0">

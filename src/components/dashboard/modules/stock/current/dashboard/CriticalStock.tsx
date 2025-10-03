@@ -40,18 +40,18 @@ const CriticalStock = () => {
 
   const getSeverityColor = (status: string) => {
     switch (status) {
-      case 'rupture': return 'bg-red-100 text-red-800 border-red-200';
-      case 'critique': return 'bg-orange-100 text-orange-800 border-orange-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'rupture': return 'bg-destructive/10 text-destructive border-destructive/20';
+      case 'critique': return 'bg-[hsl(38_92%_50%)]/10 text-[hsl(38_92%_50%)] border-[hsl(38_92%_50%)]/20';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
   const getRotationColor = (rotation: string) => {
     switch (rotation) {
-      case 'rapide': return 'bg-red-100 text-red-800';
-      case 'normale': return 'bg-yellow-100 text-yellow-800';
-      case 'lente': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'rapide': return 'bg-destructive/10 text-destructive border-destructive/20';
+      case 'normale': return 'bg-warning/10 text-warning border-warning/20';
+      case 'lente': return 'bg-success/10 text-success border-success/20';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -59,10 +59,10 @@ const CriticalStock = () => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-red-600" />
+          <AlertTriangle className="h-5 w-5 text-destructive" />
           Stock Critique
           {criticalProducts.length > 0 && (
-            <Badge className="bg-red-100 text-red-800 border-red-200">
+            <Badge className="bg-destructive/10 text-destructive border-destructive/20">
               {criticalProducts.length}
             </Badge>
           )}
@@ -71,8 +71,8 @@ const CriticalStock = () => {
       <CardContent>
         {criticalProducts.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
-            <AlertTriangle className="h-12 w-12 mx-auto mb-2 text-green-500" />
-            <p className="font-medium text-green-600">Excellent !</p>
+            <AlertTriangle className="h-12 w-12 mx-auto mb-2 text-success" />
+            <p className="font-medium text-success">Excellent !</p>
             <p className="text-sm">Aucun stock critique détecté</p>
           </div>
         ) : (
