@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTenantQuery } from './useTenantQuery';
 import { useStockSettings } from './useStockSettings';
 import { useAlertThresholds } from './useAlertThresholds';
 import { StockValuationService } from '@/services/stockValuationService';
 import { StockUpdateService } from '@/services/stockUpdateService';
+import { useDebounce } from '@/utils/supplyChainOptimizations';
 
 export interface CurrentStockItem {
   id: string;
@@ -48,7 +49,14 @@ export const useCurrentStock = () => {
   const [selectedFamily, setSelectedFamily] = useState<string>('');
   const [selectedRayon, setSelectedRayon] = useState<string>('');
   const [stockFilter, setStockFilter] = useState<'all' | 'available' | 'low' | 'out' | 'critical'>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'stock' | 'value' | 'rotation'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
   const [stockData, setStockData] = useState<CurrentStockItem[]>([]);
+  
+  // Debounced search term (500ms)
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // Produits avec stock actuel
   const { data: products = [], isLoading, refetch } = useTenantQueryWithCache(
@@ -159,38 +167,73 @@ export const useCurrentStock = () => {
     processProducts();
   }, [products, stockSettings, thresholds]);
 
-  // Filtrage des produits
-  const filteredProducts = stockData.filter(product => {
-    // Filtre par terme de recherche
-    if (searchTerm && !product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !product.code_cip.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return false;
-    }
+  // Filtrage, tri et pagination des produits
+  const filteredAndSortedProducts = useMemo(() => {
+    let result = stockData.filter(product => {
+      // Filtre par terme de recherche (debounced)
+      if (debouncedSearchTerm && 
+          !product.libelle_produit.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) &&
+          !product.code_cip.toLowerCase().includes(debouncedSearchTerm.toLowerCase())) {
+        return false;
+      }
 
-    // Filtre par famille
-    if (selectedFamily && selectedFamily !== 'all' && product.famille_id !== selectedFamily) {
-      return false;
-    }
+      // Filtre par famille
+      if (selectedFamily && selectedFamily !== 'all' && product.famille_id !== selectedFamily) {
+        return false;
+      }
 
-    // Filtre par rayon
-    if (selectedRayon && selectedRayon !== 'all' && product.rayon_id !== selectedRayon) {
-      return false;
-    }
+      // Filtre par rayon
+      if (selectedRayon && selectedRayon !== 'all' && product.rayon_id !== selectedRayon) {
+        return false;
+      }
 
-    // Filtre par statut de stock
-    switch (stockFilter) {
-      case 'available':
-        return product.stock_actuel > 0;
-      case 'low':
-        return product.statut_stock === 'faible';
-      case 'out':
-        return product.statut_stock === 'rupture';
-      case 'critical':
-        return product.statut_stock === 'critique';
-      default:
-        return true;
-    }
-  });
+      // Filtre par statut de stock
+      switch (stockFilter) {
+        case 'available':
+          return product.stock_actuel > 0;
+        case 'low':
+          return product.statut_stock === 'faible';
+        case 'out':
+          return product.statut_stock === 'rupture';
+        case 'critical':
+          return product.statut_stock === 'critique';
+        default:
+          return true;
+      }
+    });
+
+    // Tri des produits
+    result.sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case 'name':
+          comparison = a.libelle_produit.localeCompare(b.libelle_produit);
+          break;
+        case 'stock':
+          comparison = a.stock_actuel - b.stock_actuel;
+          break;
+        case 'value':
+          comparison = a.valeur_stock - b.valeur_stock;
+          break;
+        case 'rotation':
+          const rotationOrder = { rapide: 3, normale: 2, lente: 1 };
+          comparison = rotationOrder[a.rotation] - rotationOrder[b.rotation];
+          break;
+      }
+      
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return result;
+  }, [stockData, debouncedSearchTerm, selectedFamily, selectedRayon, stockFilter, sortBy, sortOrder]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPage);
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredAndSortedProducts.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAndSortedProducts, currentPage]);
 
   // Génération des alertes
   const generateAlerts = (products: CurrentStockItem[]): StockAlert[] => {
@@ -248,20 +291,21 @@ export const useCurrentStock = () => {
 
   // Métriques calculées
   const metrics = {
-    totalProducts: filteredProducts.length,
-    availableProducts: filteredProducts.filter(p => p.stock_actuel > 0).length,
-    lowStockProducts: filteredProducts.filter(p => p.statut_stock === 'faible').length,
-    outOfStockProducts: filteredProducts.filter(p => p.statut_stock === 'rupture').length,
-    criticalStockProducts: filteredProducts.filter(p => p.statut_stock === 'critique').length,
-    totalStockValue: filteredProducts.reduce((sum, p) => sum + p.valeur_stock, 0),
-    fastMovingProducts: filteredProducts.filter(p => p.rotation === 'rapide').length,
-    slowMovingProducts: filteredProducts.filter(p => p.rotation === 'lente').length
+    totalProducts: filteredAndSortedProducts.length,
+    availableProducts: filteredAndSortedProducts.filter(p => p.stock_actuel > 0).length,
+    lowStockProducts: filteredAndSortedProducts.filter(p => p.statut_stock === 'faible').length,
+    outOfStockProducts: filteredAndSortedProducts.filter(p => p.statut_stock === 'rupture').length,
+    criticalStockProducts: filteredAndSortedProducts.filter(p => p.statut_stock === 'critique').length,
+    totalStockValue: filteredAndSortedProducts.reduce((sum, p) => sum + p.valeur_stock, 0),
+    fastMovingProducts: filteredAndSortedProducts.filter(p => p.rotation === 'rapide').length,
+    slowMovingProducts: filteredAndSortedProducts.filter(p => p.rotation === 'lente').length
   };
 
-  const alerts = generateAlerts(filteredProducts);
+  const alerts = generateAlerts(filteredAndSortedProducts);
 
   return {
-    products: filteredProducts,
+    products: paginatedProducts,
+    allProductsCount: filteredAndSortedProducts.length,
     families,
     rayons,
     metrics,
@@ -274,7 +318,25 @@ export const useCurrentStock = () => {
       selectedRayon,
       setSelectedRayon,
       stockFilter,
-      setStockFilter
+      setStockFilter: (value: 'all' | 'available' | 'low' | 'out' | 'critical') => {
+        setStockFilter(value);
+        setCurrentPage(1);
+      }
+    },
+    sorting: {
+      sortBy,
+      setSortBy: (value: 'name' | 'stock' | 'value' | 'rotation') => {
+        setSortBy(value);
+        setCurrentPage(1);
+      },
+      sortOrder,
+      setSortOrder
+    },
+    pagination: {
+      currentPage,
+      setCurrentPage,
+      totalPages,
+      itemsPerPage
     },
     isLoading,
     refetch

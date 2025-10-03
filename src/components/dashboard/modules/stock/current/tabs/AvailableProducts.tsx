@@ -5,7 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package, Search, Filter, ShoppingCart, Eye } from 'lucide-react';
+import { Package, Search, Filter, ShoppingCart, Eye, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrentStock } from '@/hooks/useCurrentStock';
 import AvailableStockDashboard from '../dashboard/AvailableStockDashboard';
 import ProductDetailsModal from '../modals/ProductDetailsModal';
@@ -15,9 +16,12 @@ import { OrderLowStockModal } from '../modals/OrderLowStockModal';
 const AvailableProducts = () => {
   const { 
     products, 
+    allProductsCount,
     families, 
     rayons, 
-    filters, 
+    filters,
+    sorting,
+    pagination,
     isLoading 
   } = useCurrentStock();
 
@@ -147,10 +151,50 @@ const AvailableProducts = () => {
               </SelectContent>
             </Select>
 
+            <Select value={filters.stockFilter} onValueChange={filters.setStockFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Statut du stock" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                <SelectItem value="available">Disponibles</SelectItem>
+                <SelectItem value="low">Stock faible</SelectItem>
+                <SelectItem value="critical">Critique</SelectItem>
+                <SelectItem value="out">Rupture</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center gap-2 mt-4">
+            <Select 
+              value={sorting.sortBy} 
+              onValueChange={(value) => sorting.setSortBy(value as 'name' | 'stock' | 'value' | 'rotation')}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Trier par" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Nom</SelectItem>
+                <SelectItem value="stock">Stock actuel</SelectItem>
+                <SelectItem value="value">Valorisation</SelectItem>
+                <SelectItem value="rotation">Rotation</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => sorting.setSortOrder(sorting.sortOrder === 'asc' ? 'desc' : 'asc')}
+            >
+              <ArrowUpDown className="h-4 w-4" />
+            </Button>
+            
             <Button onClick={() => {
               filters.setSearchTerm('');
               filters.setSelectedFamily('');
               filters.setSelectedRayon('');
+              filters.setStockFilter('all');
+              pagination.setCurrentPage(1);
             }} variant="outline">
               Réinitialiser
             </Button>
@@ -161,17 +205,36 @@ const AvailableProducts = () => {
       {/* Liste des produits disponibles */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Produits Disponibles ({availableProducts.length})
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Produits Disponibles ({allProductsCount})
+            </div>
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Page {pagination.currentPage} sur {pagination.totalPages}</span>
+              </div>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="h-16 bg-muted rounded"></div>
+                <div key={i} className="flex items-center space-x-4 p-4 border rounded-lg">
+                  <Skeleton className="h-12 w-12 rounded" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-[250px]" />
+                    <Skeleton className="h-4 w-[200px]" />
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-[100px]" />
+                    <Skeleton className="h-8 w-[80px]" />
+                  </div>
+                  <div className="flex gap-2">
+                    <Skeleton className="h-9 w-9" />
+                    <Skeleton className="h-9 w-9" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -276,6 +339,69 @@ const AvailableProducts = () => {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          
+          {/* Pagination */}
+          {!isLoading && pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Affichage de {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} à{' '}
+                {Math.min(pagination.currentPage * pagination.itemsPerPage, allProductsCount)} sur{' '}
+                {allProductsCount} produits
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => pagination.setCurrentPage(pagination.currentPage - 1)}
+                  disabled={pagination.currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Précédent
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {[...Array(pagination.totalPages)].map((_, i) => {
+                    const pageNum = i + 1;
+                    // Show first page, last page, current page, and pages around current
+                    if (
+                      pageNum === 1 ||
+                      pageNum === pagination.totalPages ||
+                      (pageNum >= pagination.currentPage - 1 && pageNum <= pagination.currentPage + 1)
+                    ) {
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={pageNum === pagination.currentPage ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => pagination.setCurrentPage(pageNum)}
+                          className="min-w-[40px]"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    } else if (
+                      pageNum === pagination.currentPage - 2 ||
+                      pageNum === pagination.currentPage + 2
+                    ) {
+                      return <span key={pageNum} className="px-2">...</span>;
+                    }
+                    return null;
+                  })}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => pagination.setCurrentPage(pagination.currentPage + 1)}
+                  disabled={pagination.currentPage === pagination.totalPages}
+                >
+                  Suivant
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
