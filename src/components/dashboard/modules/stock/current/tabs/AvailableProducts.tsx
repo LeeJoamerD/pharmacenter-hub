@@ -10,6 +10,7 @@ import { useCurrentStock } from '@/hooks/useCurrentStock';
 import AvailableStockDashboard from '../dashboard/AvailableStockDashboard';
 import ProductDetailsModal from '../modals/ProductDetailsModal';
 import AddToCartModal from '../modals/AddToCartModal';
+import { OrderLowStockModal } from '../modals/OrderLowStockModal';
 
 const AvailableProducts = () => {
   const { 
@@ -23,6 +24,7 @@ const AvailableProducts = () => {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [cartProductName, setCartProductName] = useState('');
 
   const availableProducts = products.filter(p => p.stock_actuel > 0);
@@ -36,6 +38,11 @@ const AvailableProducts = () => {
     setSelectedProductId(productId);
     setCartProductName(productName);
     setIsCartModalOpen(true);
+  };
+
+  const handleOrder = (productId: string) => {
+    setSelectedProductId(productId);
+    setIsOrderModalOpen(true);
   };
 
   const getStockStatusColor = (status: string) => {
@@ -77,6 +84,16 @@ const AvailableProducts = () => {
           setCartProductName('');
         }}
       />
+      {selectedProductId && (
+        <OrderLowStockModal
+          open={isOrderModalOpen}
+          onOpenChange={(open) => {
+            setIsOrderModalOpen(open);
+            if (!open) setSelectedProductId(null);
+          }}
+          product={availableProducts.find(p => p.id === selectedProductId)!}
+        />
+      )}
       
       <div className="space-y-6">
       {/* Dashboard rapide */}
@@ -242,6 +259,17 @@ const AvailableProducts = () => {
                           >
                             <ShoppingCart className="h-4 w-4" />
                           </Button>
+                          {/* Bouton Commander visible uniquement pour stock faible/critique */}
+                          {(product.statut_stock === 'faible' || product.statut_stock === 'critique') && (
+                            <Button 
+                              size="sm" 
+                              variant="default"
+                              onClick={() => handleOrder(product.id)}
+                              className="bg-primary"
+                            >
+                              Commander
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
