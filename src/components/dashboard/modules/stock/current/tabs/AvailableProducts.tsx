@@ -1,17 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Package, Search, Filter, ShoppingCart, Eye, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Package, Search, Filter, ShoppingCart, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileText, CheckSquare, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrentStock } from '@/hooks/useCurrentStock';
+import { useToast } from '@/hooks/use-toast';
+import { exportToExcel, exportToPDF } from '@/utils/exportUtils';
+import { NotificationBadge } from '../NotificationBadge';
 import AvailableStockDashboard from '../dashboard/AvailableStockDashboard';
 import ProductDetailsModal from '../modals/ProductDetailsModal';
 import AddToCartModal from '../modals/AddToCartModal';
 import { OrderLowStockModal } from '../modals/OrderLowStockModal';
+import { BulkActionsModal } from '../modals/BulkActionsModal';
 
 const AvailableProducts = () => {
   const { 
@@ -22,16 +27,85 @@ const AvailableProducts = () => {
     filters,
     sorting,
     pagination,
-    isLoading 
+    isLoading,
+    metrics 
   } = useCurrentStock();
 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [isBulkActionsModalOpen, setIsBulkActionsModalOpen] = useState(false);
   const [cartProductName, setCartProductName] = useState('');
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [showCriticalAlert, setShowCriticalAlert] = useState(false);
+  const { toast } = useToast();
 
   const availableProducts = products.filter(p => p.stock_actuel > 0);
+
+  // Vérifier les alertes critiques
+  useEffect(() => {
+    if (metrics.criticalStockProducts > 0 && !showCriticalAlert) {
+      setShowCriticalAlert(true);
+      toast({
+        title: "Alerte Stock Critique",
+        description: `${metrics.criticalStockProducts} produit(s) en stock critique nécessitent une action immédiate.`,
+        variant: "destructive",
+      });
+    }
+  }, [metrics.criticalStockProducts]);
+
+  const handleSelectAll = () => {
+    if (selectedProducts.length === availableProducts.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts(availableProducts.map(p => p.id));
+    }
+  };
+
+  const handleSelectProduct = (productId: string) => {
+    setSelectedProducts(prev => 
+      prev.includes(productId) 
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  const handleExportExcel = () => {
+    const selectedData = selectedProducts.length > 0
+      ? availableProducts.filter(p => selectedProducts.includes(p.id))
+      : availableProducts;
+    
+    exportToExcel(selectedData);
+    toast({
+      title: "Export réussi",
+      description: `${selectedData.length} produit(s) exporté(s) en Excel.`,
+    });
+  };
+
+  const handleExportPDF = () => {
+    const selectedData = selectedProducts.length > 0
+      ? availableProducts.filter(p => selectedProducts.includes(p.id))
+      : availableProducts;
+    
+    exportToPDF(selectedData);
+    toast({
+      title: "Export réussi",
+      description: `${selectedData.length} produit(s) exporté(s) en PDF.`,
+    });
+  };
+
+  const handleBulkActions = () => {
+    if (selectedProducts.length === 0) {
+      toast({
+        title: "Aucun produit sélectionné",
+        description: "Veuillez sélectionner au moins un produit pour effectuer des actions groupées.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsBulkActionsModalOpen(true);
+  };
 
   const handleViewDetails = (productId: string) => {
     setSelectedProductId(productId);
@@ -98,9 +172,29 @@ const AvailableProducts = () => {
           product={availableProducts.find(p => p.id === selectedProductId)!}
         />
       )}
+      <BulkActionsModal
+        open={isBulkActionsModalOpen}
+        onOpenChange={setIsBulkActionsModalOpen}
+        selectedProducts={availableProducts.filter(p => selectedProducts.includes(p.id))}
+        onActionComplete={() => {
+          setSelectedProducts([]);
+          toast({
+            title: "Actions groupées terminées",
+            description: "Les modifications ont été appliquées avec succès.",
+          });
+        }}
+      />
       
       <div className="space-y-6">
-      {/* Dashboard rapide */}
+      {/* Dashboard rapide avec badge de notifications */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Stock Disponible</h2>
+        <NotificationBadge 
+          count={metrics.criticalStockProducts + metrics.lowStockProducts}
+          onClick={() => filters.setStockFilter('critical')}
+        />
+      </div>
+      
       <AvailableStockDashboard />
 
       {/* Filtres */}
@@ -202,20 +296,71 @@ const AvailableProducts = () => {
         </CardContent>
       </Card>
 
-      {/* Liste des produits disponibles */}
+      {/* Alerte stock critique */}
+      {metrics.criticalStockProducts > 0 && (
+        <Card className="border-destructive">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-destructive" />
+              <div className="flex-1">
+                <h4 className="font-semibold text-destructive">Stock Critique Détecté</h4>
+                <p className="text-sm text-muted-foreground">
+                  {metrics.criticalStockProducts} produit(s) nécessitent une action immédiate
+                </p>
+              </div>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => filters.setStockFilter('critical')}
+              >
+                Voir les produits
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Actions d'export et sélection */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
               Produits Disponibles ({allProductsCount})
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {selectedProducts.length > 0 && (
+                <Badge variant="secondary" className="mr-2">
+                  {selectedProducts.length} sélectionné(s)
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkActions}
+                disabled={selectedProducts.length === 0}
+              >
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Actions groupées
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportExcel}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Excel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPDF}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                PDF
+              </Button>
             </div>
-            {pagination.totalPages > 1 && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Page {pagination.currentPage} sur {pagination.totalPages}</span>
-              </div>
-            )}
-          </CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -248,6 +393,12 @@ const AvailableProducts = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={selectedProducts.length === availableProducts.length && availableProducts.length > 0}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead>Produit</TableHead>
                     <TableHead>Code</TableHead>
                     <TableHead>Famille/Rayon</TableHead>
@@ -262,6 +413,12 @@ const AvailableProducts = () => {
                 <TableBody>
                   {availableProducts.map((product) => (
                     <TableRow key={product.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedProducts.includes(product.id)}
+                          onCheckedChange={() => handleSelectProduct(product.id)}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div>
                           <div className="font-medium">{product.libelle_produit}</div>

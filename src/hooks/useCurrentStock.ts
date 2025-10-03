@@ -5,6 +5,7 @@ import { useAlertThresholds } from './useAlertThresholds';
 import { StockValuationService } from '@/services/stockValuationService';
 import { StockUpdateService } from '@/services/stockUpdateService';
 import { useDebounce } from '@/utils/supplyChainOptimizations';
+import { measurePerformance } from '@/utils/tenantValidation';
 
 export interface CurrentStockItem {
   id: string;
@@ -94,74 +95,77 @@ export const useCurrentStock = () => {
         return;
       }
 
-      const processedProducts: CurrentStockItem[] = [];
+      // Mesure de performance avec isolation tenant
+      await measurePerformance('process_stock_data', async () => {
+        const processedProducts: CurrentStockItem[] = [];
 
-      for (const product of products) {
-        // Calculate actual current stock from lots
-        const currentStock = await StockUpdateService.calculateAvailableStock(product.id);
-        
-        // Get category-specific threshold if available
-        const categoryThreshold = thresholds?.find(t => 
-          t.category === product.famille_produit?.libelle_famille && t.enabled
-        );
-        const effectiveThreshold = categoryThreshold?.threshold || product.stock_limite || 10;
-        
-        // Calculate stock value using configured valuation method
-        let stockValue = currentStock * (product.prix_achat || 0);
-        if (stockSettings && currentStock > 0) {
-          try {
-            const valuation = await StockValuationService.calculateValuation(product.id, stockSettings);
-            stockValue = valuation.totalValue;
-          } catch (error) {
-            console.warn('Valuation calculation failed, using simple method:', error);
+        for (const product of products) {
+          // Calculate actual current stock from lots
+          const currentStock = await StockUpdateService.calculateAvailableStock(product.id);
+          
+          // Get category-specific threshold if available
+          const categoryThreshold = thresholds?.find(t => 
+            t.category === product.famille_produit?.libelle_famille && t.enabled
+          );
+          const effectiveThreshold = categoryThreshold?.threshold || product.stock_limite || 10;
+          
+          // Calculate stock value using configured valuation method
+          let stockValue = currentStock * (product.prix_achat || 0);
+          if (stockSettings && currentStock > 0) {
+            try {
+              const valuation = await StockValuationService.calculateValuation(product.id, stockSettings);
+              stockValue = valuation.totalValue;
+            } catch (error) {
+              console.warn('Valuation calculation failed, using simple method:', error);
+            }
           }
+
+          // Determine stock status using enhanced logic
+          let stockStatus: CurrentStockItem['statut_stock'] = 'normal';
+          if (currentStock === 0) {
+            stockStatus = 'rupture';
+          } else if (currentStock <= Math.floor(effectiveThreshold * 0.3)) {
+            stockStatus = 'critique';
+          } else if (currentStock <= effectiveThreshold) {
+            stockStatus = 'faible';
+          } else if (currentStock >= (product.stock_alerte || 100)) {
+            stockStatus = 'surstock';
+          }
+
+          // Enhanced rotation calculation
+          let rotation: CurrentStockItem['rotation'] = 'normale';
+          const daysSinceLastMovement = product.updated_at 
+            ? Math.floor((Date.now() - new Date(product.updated_at).getTime()) / (1000 * 60 * 60 * 24))
+            : 999;
+          
+          const slowMovingDays = stockSettings?.minimum_stock_days || 30;
+          if (daysSinceLastMovement < 7) rotation = 'rapide';
+          else if (daysSinceLastMovement > slowMovingDays) rotation = 'lente';
+
+          processedProducts.push({
+            id: product.id,
+            tenant_id: product.tenant_id,
+            libelle_produit: product.libelle_produit,
+            code_cip: product.code_cip || '',
+            famille_id: product.famille_id,
+            famille_libelle: product.famille_produit?.libelle_famille,
+            rayon_id: product.rayon_id,
+            rayon_libelle: product.rayons_produits?.libelle_rayon,
+            prix_achat: product.prix_achat || 0,
+            prix_vente_ttc: product.prix_vente_ttc || 0,
+            stock_actuel: currentStock,
+            stock_limite: effectiveThreshold,
+            stock_alerte: product.stock_alerte || 100,
+            date_derniere_entree: product.created_at,
+            date_derniere_sortie: product.updated_at,
+            valeur_stock: stockValue,
+            statut_stock: stockStatus,
+            rotation
+          });
         }
 
-        // Determine stock status using enhanced logic
-        let stockStatus: CurrentStockItem['statut_stock'] = 'normal';
-        if (currentStock === 0) {
-          stockStatus = 'rupture';
-        } else if (currentStock <= Math.floor(effectiveThreshold * 0.3)) {
-          stockStatus = 'critique';
-        } else if (currentStock <= effectiveThreshold) {
-          stockStatus = 'faible';
-        } else if (currentStock >= (product.stock_alerte || 100)) {
-          stockStatus = 'surstock';
-        }
-
-        // Enhanced rotation calculation
-        let rotation: CurrentStockItem['rotation'] = 'normale';
-        const daysSinceLastMovement = product.updated_at 
-          ? Math.floor((Date.now() - new Date(product.updated_at).getTime()) / (1000 * 60 * 60 * 24))
-          : 999;
-        
-        const slowMovingDays = stockSettings?.minimum_stock_days || 30;
-        if (daysSinceLastMovement < 7) rotation = 'rapide';
-        else if (daysSinceLastMovement > slowMovingDays) rotation = 'lente';
-
-        processedProducts.push({
-          id: product.id,
-          tenant_id: product.tenant_id,
-          libelle_produit: product.libelle_produit,
-          code_cip: product.code_cip || '',
-          famille_id: product.famille_id,
-          famille_libelle: product.famille_produit?.libelle_famille,
-          rayon_id: product.rayon_id,
-          rayon_libelle: product.rayons_produits?.libelle_rayon,
-          prix_achat: product.prix_achat || 0,
-          prix_vente_ttc: product.prix_vente_ttc || 0,
-          stock_actuel: currentStock,
-          stock_limite: effectiveThreshold,
-          stock_alerte: product.stock_alerte || 100,
-          date_derniere_entree: product.created_at,
-          date_derniere_sortie: product.updated_at,
-          valeur_stock: stockValue,
-          statut_stock: stockStatus,
-          rotation
-        });
-      }
-
-      setStockData(processedProducts);
+        setStockData(processedProducts);
+      });
     };
 
     processProducts();
