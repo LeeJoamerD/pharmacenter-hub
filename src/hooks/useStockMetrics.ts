@@ -103,7 +103,22 @@ export const useStockMetrics = () => {
       if (lowStockResult.status === 'fulfilled' && lowStockResult.value.data) {
         stockFaible = lowStockResult.value.data.filter((product: any) => {
           const totalStock = product.lots?.reduce((sum: number, lot: any) => sum + lot.quantite_restante, 0) || 0;
-          return totalStock <= (product.stock_limite || 0);
+          const effectiveThreshold = product.stock_limite || 10;
+          
+          // Calculer le statut comme dans useLowStockData
+          let stockStatus: 'critique' | 'faible' | 'attention' | null = null;
+          
+          if (totalStock === 0) {
+            stockStatus = 'critique';
+          } else if (totalStock <= Math.floor(effectiveThreshold * 0.3)) {
+            stockStatus = 'critique';
+          } else if (totalStock <= effectiveThreshold) {
+            stockStatus = 'faible';  // On veut compter seulement ceux-ci
+          } else if (totalStock <= Math.floor(effectiveThreshold * 1.5)) {
+            stockStatus = 'attention';
+          }
+          
+          return stockStatus === 'faible';  // Compte SEULEMENT 'faible'
         }).length;
       }
       

@@ -288,11 +288,59 @@ export class ExportService {
     filename: string, 
     options: ExportOptions
   ): Promise<ExportResult> {
-    // For now, we'll export as CSV with .xlsx extension
-    // In production, you'd use a library like 'xlsx' or 'exceljs'
-    console.log('Excel export would use xlsx library in production');
+    const XLSX = await import('xlsx');
     
-    return await this.exportToCSV(items, filename.replace('.xlsx', '.csv'));
+    // Préparer les données
+    const worksheetData = items.map(item => ({
+      'Code Produit': item.codeProduit,
+      'Nom Produit': item.nomProduit,
+      'DCI': item.dci,
+      'Quantité Actuelle': item.quantiteActuelle,
+      'Seuil Minimum': item.seuilMinimum,
+      'Seuil Optimal': item.seuilOptimal,
+      'Unité': item.unite,
+      'Catégorie': item.categorie,
+      'Fournisseur': item.fournisseurPrincipal,
+      'Prix Unitaire': item.prixUnitaire,
+      'Valeur Stock': item.valeurStock,
+      'Dernier Mouvement': item.dernierMouvement ? item.dernierMouvement.toLocaleDateString() : 'N/A',
+      'Statut': item.statut,
+      'Rotation': item.rotation,
+      'Jours sans Mouvement': item.jours_sans_mouvement
+    }));
+    
+    // Créer le workbook et worksheet
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    
+    // Ajuster les largeurs de colonnes
+    const columnWidths = [
+      { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 15 },
+      { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 20 },
+      { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 15 },
+      { wch: 10 }, { wch: 10 }, { wch: 18 }
+    ];
+    worksheet['!cols'] = columnWidths;
+    
+    // Ajouter le worksheet au workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Stock Faible');
+    
+    // Générer le fichier
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    
+    // Trigger download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename.replace('.csv', '.xlsx');
+    link.click();
+    
+    return {
+      success: true,
+      downloadUrl: url,
+      filename: filename.replace('.csv', '.xlsx')
+    };
   }
 
   /**
@@ -303,19 +351,61 @@ export class ExportService {
     filename: string, 
     options: ExportOptions
   ): Promise<ExportResult> {
-    // This would use jsPDF or similar in production
-    console.log('PDF export would use jsPDF library in production');
+    const jsPDF = (await import('jspdf')).default;
+    const autoTable = (await import('jspdf-autotable')).default;
     
-    // For now, create a simple HTML report and print
-    const htmlContent = this.generateHTMLReport(items, options);
+    const doc = new jsPDF();
     
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-
+    // Titre
+    doc.setFontSize(18);
+    doc.text('Rapport Stock Faible', 14, 22);
+    
+    // Date
+    doc.setFontSize(10);
+    doc.text(`Date d'export: ${new Date().toLocaleDateString('fr-FR')}`, 14, 30);
+    
+    // Métriques si demandées
+    if (options.includeMetrics) {
+      const criticalCount = items.filter(i => i.statut === 'critique').length;
+      const lowCount = items.filter(i => i.statut === 'faible').length;
+      const totalValue = items.reduce((sum, i) => sum + i.valeurStock, 0);
+      
+      doc.text(`Total produits: ${items.length}`, 14, 38);
+      doc.text(`Stock critique: ${criticalCount}`, 14, 44);
+      doc.text(`Stock faible: ${lowCount}`, 14, 50);
+      doc.text(`Valeur totale: ${totalValue.toLocaleString()} F CFA`, 14, 56);
+    }
+    
+    // Tableau
+    autoTable(doc, {
+      startY: options.includeMetrics ? 62 : 38,
+      head: [['Code', 'Produit', 'Qté Act.', 'Seuil Min', 'Statut', 'Valeur']],
+      body: items.map(item => [
+        item.codeProduit,
+        item.nomProduit,
+        item.quantiteActuelle,
+        item.seuilMinimum,
+        item.statut,
+        `${item.valeurStock.toLocaleString()} F`
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [41, 128, 185] }
+    });
+    
+    // Générer le PDF
+    const pdfBlob = doc.output('blob');
+    const url = URL.createObjectURL(pdfBlob);
+    
+    // Trigger download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename.replace('.html', '.pdf');
+    link.click();
+    
     return {
       success: true,
       downloadUrl: url,
-      filename: filename.replace('.pdf', '.html')
+      filename: filename.replace('.html', '.pdf')
     };
   }
 

@@ -128,10 +128,8 @@ export const LowStockProducts = () => {
       return;
     }
     
-    toast({
-      title: "Commande groupée",
-      description: `${selectedItems.length} produit(s) sélectionné(s) pour commande`,
-    });
+    // Ouvrir la modale de commande d'urgence avec les produits sélectionnés
+    setEmergencyOrderModalOpen(true);
   };
 
   // Create alerts for selected products
@@ -145,10 +143,8 @@ export const LowStockProducts = () => {
       return;
     }
     
-    toast({
-      title: "Alertes multiples",
-      description: `Création d'alertes pour ${selectedItems.length} produit(s)`,
-    });
+    // Ouvrir la modale de création d'alertes
+    setAlertModalOpen(true);
   };
 
   // Open order modal for single product
@@ -388,7 +384,7 @@ export const LowStockProducts = () => {
               <ShoppingCart className="mr-2 h-4 w-4" />
               Commande d'urgence
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => setConfigModalOpen(true)}>
               <Bell className="mr-2 h-4 w-4" />
               Configurer alertes
             </Button>

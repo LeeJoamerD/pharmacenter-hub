@@ -404,7 +404,7 @@ export const useCurrentStockDirect = () => {
   const metrics = {
     totalProducts: filteredAndSortedProducts.length,
     availableProducts: filteredAndSortedProducts.filter(p => p.stock_actuel > 0).length,
-    lowStockProducts: filteredAndSortedProducts.filter(p => p.statut_stock === 'faible' || p.statut_stock === 'critique').length,
+    lowStockProducts: filteredAndSortedProducts.filter(p => p.statut_stock === 'faible').length,
     outOfStockProducts: filteredAndSortedProducts.filter(p => p.statut_stock === 'rupture').length,
     criticalStockProducts: filteredAndSortedProducts.filter(p => p.statut_stock === 'critique').length,
     totalStockValue: filteredAndSortedProducts.reduce((sum, p) => sum + p.valeur_stock, 0),
