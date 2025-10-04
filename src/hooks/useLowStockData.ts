@@ -78,7 +78,7 @@ export const useLowStockData = () => {
 
   // Récupérer tous les lots en une seule requête pour optimiser les performances
   const { data: lots = [] } = useTenantQueryWithCache(
-    ['lots-for-low-stock'],
+    ['lots'],
     'lots',
     'produit_id, quantite_restante',
     { quantite_restante: { gt: 0 } }
