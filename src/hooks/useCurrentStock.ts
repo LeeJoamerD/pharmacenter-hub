@@ -88,16 +88,24 @@ export const useCurrentStock = () => {
 
   // Produits avec stock actuel
   const { data: products = [], isLoading, refetch } = useTenantQueryWithCache(
-    ['current-stock', searchTerm, selectedFamily, selectedRayon, stockFilter],
+    ['current-stock'],
     'produits',
     `
       id, tenant_id, libelle_produit, code_cip, famille_id, rayon_id,
       prix_achat, prix_vente_ttc, stock_limite, stock_alerte,
       created_at, updated_at, is_active,
-      famille_produit!inner(libelle_famille),
-      rayons_produits!inner(libelle_rayon)
+      famille_produit(id, libelle_famille),
+      rayons_produits(id, libelle_rayon)
     `,
     { is_active: true }
+  );
+
+  // Récupérer les lots pour calculer le stock réel
+  const { data: lots = [] } = useTenantQueryWithCache(
+    ['lots'],
+    'lots',
+    'produit_id, quantite_restante',
+    { quantite_restante: { gt: 0 } }
   );
 
   // Familles de produits pour les filtres
@@ -114,7 +122,7 @@ export const useCurrentStock = () => {
     'id, libelle_rayon'
   );
 
-  // Process products with enhanced stock calculation
+  // Process products with stock calculation from lots
   useEffect(() => {
     const processProducts = async () => {
       if (!products || products.length === 0) {
@@ -122,81 +130,89 @@ export const useCurrentStock = () => {
         return;
       }
 
-      // Mesure de performance avec isolation tenant
-      await measurePerformance('process_stock_data', async () => {
-        const processedProducts: CurrentStockItem[] = [];
+      console.log('🔍 Traitement de', products.length, 'produits avec', lots.length, 'lots');
 
-        for (const product of products) {
-          // Calculate actual current stock from lots
-          const currentStock = await StockUpdateService.calculateAvailableStock(product.id);
-          
-          // Get category-specific threshold if available
-          const categoryThreshold = thresholds?.find(t => 
-            t.category === product.famille_produit?.libelle_famille && t.enabled
-          );
-          const effectiveThreshold = categoryThreshold?.threshold || product.stock_limite || 10;
-          
-          // Calculate stock value using configured valuation method
-          let stockValue = currentStock * (product.prix_achat || 0);
-          if (stockSettings && currentStock > 0) {
-            try {
-              const valuation = await StockValuationService.calculateValuation(product.id, stockSettings);
-              stockValue = valuation.totalValue;
-            } catch (error) {
-              console.warn('Valuation calculation failed, using simple method:', error);
-            }
+      // Créer un mapping produit_id -> stock total depuis les lots
+      const stockByProduct = lots.reduce((acc: Record<string, number>, lot: any) => {
+        acc[lot.produit_id] = (acc[lot.produit_id] || 0) + lot.quantite_restante;
+        return acc;
+      }, {});
+
+      console.log('📦 Stock par produit:', stockByProduct);
+
+      const processedProducts: CurrentStockItem[] = [];
+
+      for (const product of products) {
+        // Récupérer le stock depuis le mapping (déjà filtré par tenant)
+        const currentStock = stockByProduct[product.id] || 0;
+        
+        // Get category-specific threshold if available
+        const categoryThreshold = thresholds?.find(t => 
+          t.category === product.famille_produit?.libelle_famille && t.enabled
+        );
+        const effectiveThreshold = categoryThreshold?.threshold || product.stock_limite || 10;
+        
+        // Calculate stock value using configured valuation method
+        let stockValue = currentStock * (product.prix_achat || 0);
+        if (stockSettings && currentStock > 0) {
+          try {
+            const valuation = await StockValuationService.calculateValuation(product.id, stockSettings);
+            stockValue = valuation.totalValue;
+          } catch (error) {
+            console.warn('Valuation calculation failed, using simple method:', error);
           }
-
-          // Determine stock status using enhanced logic
-          let stockStatus: CurrentStockItem['statut_stock'] = 'normal';
-          if (currentStock === 0) {
-            stockStatus = 'rupture';
-          } else if (currentStock <= Math.floor(effectiveThreshold * 0.3)) {
-            stockStatus = 'critique';
-          } else if (currentStock <= effectiveThreshold) {
-            stockStatus = 'faible';
-          } else if (currentStock >= (product.stock_alerte || 100)) {
-            stockStatus = 'surstock';
-          }
-
-          // Enhanced rotation calculation
-          let rotation: CurrentStockItem['rotation'] = 'normale';
-          const daysSinceLastMovement = product.updated_at 
-            ? Math.floor((Date.now() - new Date(product.updated_at).getTime()) / (1000 * 60 * 60 * 24))
-            : 999;
-          
-          const slowMovingDays = stockSettings?.minimum_stock_days || 30;
-          if (daysSinceLastMovement < 7) rotation = 'rapide';
-          else if (daysSinceLastMovement > slowMovingDays) rotation = 'lente';
-
-          processedProducts.push({
-            id: product.id,
-            tenant_id: product.tenant_id,
-            libelle_produit: product.libelle_produit,
-            code_cip: product.code_cip || '',
-            famille_id: product.famille_id,
-            famille_libelle: product.famille_produit?.libelle_famille,
-            rayon_id: product.rayon_id,
-            rayon_libelle: product.rayons_produits?.libelle_rayon,
-            prix_achat: product.prix_achat || 0,
-            prix_vente_ttc: product.prix_vente_ttc || 0,
-            stock_actuel: currentStock,
-            stock_limite: effectiveThreshold,
-            stock_alerte: product.stock_alerte || 100,
-            date_derniere_entree: product.created_at,
-            date_derniere_sortie: product.updated_at,
-            valeur_stock: stockValue,
-            statut_stock: stockStatus,
-            rotation
-          });
         }
 
-        setStockData(processedProducts);
-      });
+        // Determine stock status using enhanced logic
+        let stockStatus: CurrentStockItem['statut_stock'] = 'normal';
+        if (currentStock === 0) {
+          stockStatus = 'rupture';
+        } else if (currentStock <= Math.floor(effectiveThreshold * 0.3)) {
+          stockStatus = 'critique';
+        } else if (currentStock <= effectiveThreshold) {
+          stockStatus = 'faible';
+        } else if (currentStock >= (product.stock_alerte || 100)) {
+          stockStatus = 'surstock';
+        }
+
+        // Enhanced rotation calculation
+        let rotation: CurrentStockItem['rotation'] = 'normale';
+        const daysSinceLastMovement = product.updated_at 
+          ? Math.floor((Date.now() - new Date(product.updated_at).getTime()) / (1000 * 60 * 60 * 24))
+          : 999;
+        
+        const slowMovingDays = stockSettings?.minimum_stock_days || 30;
+        if (daysSinceLastMovement < 7) rotation = 'rapide';
+        else if (daysSinceLastMovement > slowMovingDays) rotation = 'lente';
+
+        processedProducts.push({
+          id: product.id,
+          tenant_id: product.tenant_id,
+          libelle_produit: product.libelle_produit,
+          code_cip: product.code_cip || '',
+          famille_id: product.famille_id,
+          famille_libelle: product.famille_produit?.libelle_famille,
+          rayon_id: product.rayon_id,
+          rayon_libelle: product.rayons_produits?.libelle_rayon,
+          prix_achat: product.prix_achat || 0,
+          prix_vente_ttc: product.prix_vente_ttc || 0,
+          stock_actuel: currentStock,
+          stock_limite: effectiveThreshold,
+          stock_alerte: product.stock_alerte || 100,
+          date_derniere_entree: product.created_at,
+          date_derniere_sortie: product.updated_at,
+          valeur_stock: stockValue,
+          statut_stock: stockStatus,
+          rotation
+        });
+      }
+
+      console.log('✅ Produits traités:', processedProducts.length, '| Disponibles:', processedProducts.filter(p => p.stock_actuel > 0).length);
+      setStockData(processedProducts);
     };
 
     processProducts();
-  }, [products, stockSettings, thresholds]);
+  }, [products, lots, stockSettings, thresholds]);
 
   // Filtrage, tri et pagination des produits
   const filteredAndSortedProducts = useMemo(() => {
