@@ -312,9 +312,9 @@ export const LowStockProducts = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Toutes les catégories</SelectItem>
-                {categories.map((cat: string) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
+                {categories.map((cat: any) => (
+                  <SelectItem key={cat.libelle_famille} value={cat.libelle_famille}>
+                    {cat.libelle_famille}
                   </SelectItem>
                 ))}
               </SelectContent>
