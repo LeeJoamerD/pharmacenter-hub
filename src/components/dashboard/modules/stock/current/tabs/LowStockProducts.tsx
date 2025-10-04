@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,13 @@ export const LowStockProducts = () => {
     isLoading,
     refetch,
   } = useLowStockData();
+
+  // Debug log
+  useEffect(() => {
+    console.log('🎯 [COMPONENT] Low Stock Items:', lowStockItems.length);
+    console.log('🎯 [COMPONENT] Metrics:', metrics);
+    console.log('🎯 [COMPONENT] Categories:', categories.length);
+  }, [lowStockItems, metrics, categories]);
 
   // Selection state
   const [selectedItems, setSelectedItems] = useState<string[]>([]);

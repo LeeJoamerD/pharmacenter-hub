@@ -92,17 +92,27 @@ export const useLowStockData = () => {
         return;
       }
 
+      console.log('🔍 [LOW STOCK] Traitement de', products.length, 'produits avec', lots.length, 'lots');
+
       // Créer un mapping produit_id -> stock total (optimisation performance)
       const stockByProduct = lots.reduce((acc: Record<string, number>, lot: any) => {
         acc[lot.produit_id] = (acc[lot.produit_id] || 0) + lot.quantite_restante;
         return acc;
       }, {});
 
+      console.log('📦 [LOW STOCK] Stock par produit:', stockByProduct);
+      console.log('📊 [LOW STOCK] Exemple de stock:', Object.keys(stockByProduct).slice(0, 5).map(id => ({
+        id,
+        stock: stockByProduct[id]
+      })));
+
       const processedItems: LowStockItem[] = [];
 
       for (const product of products) {
         // Utiliser le mapping au lieu d'appeler le service (1 requête au lieu de 310)
         const currentStock = stockByProduct[product.id] || 0;
+        
+        console.log(`🔍 [LOW STOCK] Produit ${product.libelle_produit}: stock=${currentStock}, id=${product.id}`);
         
         // Get category-specific threshold
         const categoryThreshold = thresholds?.find(t => 
@@ -172,6 +182,8 @@ export const useLowStockData = () => {
           jours_sans_mouvement: daysSinceUpdate
         });
       }
+
+      console.log('✅ [LOW STOCK] Produits traités:', processedItems.length, '| Critique:', processedItems.filter(p => p.statut === 'critique').length, '| Faible:', processedItems.filter(p => p.statut === 'faible').length);
 
       setLowStockItems(processedItems);
     };
