@@ -76,6 +76,14 @@ export const useLowStockData = () => {
     'libelle_famille'
   );
 
+  // Récupérer tous les lots en une seule requête pour optimiser les performances
+  const { data: lots = [] } = useTenantQueryWithCache(
+    ['lots-for-low-stock'],
+    'lots',
+    'produit_id, quantite_restante',
+    { quantite_restante: { gt: 0 } }
+  );
+
   // Process products to determine low stock status
   useEffect(() => {
     const processLowStockData = async () => {
@@ -84,11 +92,17 @@ export const useLowStockData = () => {
         return;
       }
 
+      // Créer un mapping produit_id -> stock total (optimisation performance)
+      const stockByProduct = lots.reduce((acc: Record<string, number>, lot: any) => {
+        acc[lot.produit_id] = (acc[lot.produit_id] || 0) + lot.quantite_restante;
+        return acc;
+      }, {});
+
       const processedItems: LowStockItem[] = [];
 
       for (const product of products) {
-        // Calculate current stock from lots
-        const currentStock = await StockUpdateService.calculateAvailableStock(product.id);
+        // Utiliser le mapping au lieu d'appeler le service (1 requête au lieu de 310)
+        const currentStock = stockByProduct[product.id] || 0;
         
         // Get category-specific threshold
         const categoryThreshold = thresholds?.find(t => 
@@ -163,7 +177,7 @@ export const useLowStockData = () => {
     };
 
     processLowStockData();
-  }, [products, thresholds, stockSettings]);
+  }, [products, lots, thresholds, stockSettings]);
 
   // Calculate metrics
   useEffect(() => {
