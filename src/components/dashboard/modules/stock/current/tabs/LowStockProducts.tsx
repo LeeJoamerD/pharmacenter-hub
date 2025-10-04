@@ -1,135 +1,192 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, ShoppingCart, Bell, Package, Search, Filter } from 'lucide-react';
-import { useLowStockData } from '@/hooks/useLowStockData';
-import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/hooks/use-toast';
+import { useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Search, Filter, AlertTriangle, Package, TrendingDown, Download, ShoppingCart, Bell, FileText, FileSpreadsheet, FileDown, X } from "lucide-react";
+import { useLowStockData } from "@/hooks/useLowStockData";
+import { useToast } from "@/hooks/use-toast";
+import { OrderProductModal } from "../modals/OrderProductModal";
+import { CreateAlertModal } from "../modals/CreateAlertModal";
+import { ExportService } from "@/services/ExportService";
+import type { LowStockItem } from "@/hooks/useLowStockData";
 
-const LowStockProducts = () => {
-  const { 
-    lowStockItems, 
-    metrics, 
+export const LowStockProducts = () => {
+  const { toast } = useToast();
+  const {
+    lowStockItems,
+    metrics,
     categories,
     filters,
-    isLoading 
+    isLoading,
+    refetch,
   } = useLowStockData();
-  const { toast } = useToast();
 
-  const handleUrgentOrder = () => {
-    toast({
-      title: "Commande d'urgence",
-      description: "Préparation d'une commande d'urgence pour tous les produits critiques",
-    });
-  };
+  // Selection state
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
 
-  const handleConfigureAlerts = () => {
-    toast({
-      title: "Configuration des alertes",
-      description: "Ouverture du panneau de configuration des alertes de stock",
-    });
-  };
+  // Modal states
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [alertModalOpen, setAlertModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<LowStockItem | null>(null);
 
-  const handleViewHistory = () => {
-    toast({
-      title: "Historique",
-      description: "Affichage de l'historique des mouvements de stock",
-    });
-  };
-
-  const handleOrder = (product: any) => {
-    toast({
-      title: "Commande produit",
-      description: `Commande pour ${product.libelle_produit} ajoutée`,
-    });
-  };
-
-  const handleAlert = (product: any) => {
-    toast({
-      title: "Alerte configurée",
-      description: `Alerte activée pour ${product.nomProduit}`,
-    });
-  };
-
-  const getSeverityColor = (status: string) => {
-    switch (status) {
-      case 'critique': return 'bg-red-100 text-red-800 border-red-200';
-      case 'faible': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  // Handle select all
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedItems([]);
+      setSelectAll(false);
+    } else {
+      setSelectedItems(lowStockItems.map(item => item.id));
+      setSelectAll(true);
     }
   };
 
-  const getStockPercentage = (current: number, minimum: number) => {
-    if (minimum === 0) return 100;
-    return Math.min((current / minimum) * 100, 100);
+  // Handle individual selection
+  const handleSelectItem = (itemId: string) => {
+    setSelectedItems(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
   };
 
-  const getProgressColor = (percentage: number) => {
-    if (percentage <= 25) return 'bg-red-500';
-    if (percentage <= 50) return 'bg-yellow-500';
-    return 'bg-green-500';
+  // Clear selection
+  const handleClearSelection = () => {
+    setSelectedItems([]);
+    setSelectAll(false);
+  };
+
+  // Export handlers
+  const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
+    try {
+      const itemsToExport = selectedItems.length > 0
+        ? lowStockItems.filter(item => selectedItems.includes(item.id))
+        : lowStockItems;
+
+      const result = await ExportService.exportLowStockData(itemsToExport, {
+        format,
+        includeMetrics: true,
+      });
+
+      if (result.success && result.downloadUrl) {
+        const link = document.createElement('a');
+        link.href = result.downloadUrl;
+        link.download = result.filename;
+        link.click();
+        
+        toast({
+          title: "Export réussi",
+          description: `${itemsToExport.length} produit(s) exporté(s) en ${format.toUpperCase()}`,
+        });
+      } else {
+        throw new Error(result.error || 'Erreur d\'export');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Erreur d'export",
+        description: error instanceof Error ? error.message : "Une erreur s'est produite",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Order selected products
+  const handleOrderSelected = () => {
+    if (selectedItems.length === 0) {
+      toast({
+        title: "Aucune sélection",
+        description: "Veuillez sélectionner au moins un produit",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    toast({
+      title: "Commande groupée",
+      description: `${selectedItems.length} produit(s) sélectionné(s) pour commande`,
+    });
+  };
+
+  // Create alerts for selected products
+  const handleAlertSelected = () => {
+    if (selectedItems.length === 0) {
+      toast({
+        title: "Aucune sélection",
+        description: "Veuillez sélectionner au moins un produit",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    toast({
+      title: "Alertes multiples",
+      description: `Création d'alertes pour ${selectedItems.length} produit(s)`,
+    });
+  };
+
+  // Open order modal for single product
+  const handleOrderProduct = (product: LowStockItem) => {
+    setSelectedProduct(product);
+    setOrderModalOpen(true);
+  };
+
+  // Open alert modal for single product
+  const handleAlertProduct = (product: LowStockItem) => {
+    setSelectedProduct(product);
+    setAlertModalOpen(true);
   };
 
   return (
     <div className="space-y-6">
-      {/* Résumé des alertes */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-              <span className="text-sm font-medium">Stock Critique</span>
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Stock Critique</p>
+              <h3 className="text-2xl font-bold text-destructive">{metrics.criticalItems}</h3>
             </div>
-            <div className="text-2xl font-bold text-red-600">
-              {metrics.criticalItems}
-            </div>
-            <p className="text-xs text-muted-foreground">Nécessite action immédiate</p>
-          </CardContent>
+            <AlertTriangle className="h-8 w-8 text-destructive" />
+          </div>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <span className="text-sm font-medium">Stock Faible</span>
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Stock Faible</p>
+              <h3 className="text-2xl font-bold text-orange-600">{metrics.lowItems}</h3>
             </div>
-            <div className="text-2xl font-bold text-yellow-600">
-              {metrics.lowItems}
-            </div>
-            <p className="text-xs text-muted-foreground">À surveiller</p>
-          </CardContent>
+            <TrendingDown className="h-8 w-8 text-orange-600" />
+          </div>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Package className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium">Total à Réapprovisionner</span>
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total Produits</p>
+              <h3 className="text-2xl font-bold">{metrics.totalItems}</h3>
             </div>
-            <div className="text-2xl font-bold text-blue-600">
-              {metrics.totalItems}
-            </div>
-            <p className="text-xs text-muted-foreground">Produits concernés</p>
-          </CardContent>
+            <Package className="h-8 w-8 text-primary" />
+          </div>
         </Card>
       </div>
 
-      {/* Filtres et recherche */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      {/* Filters */}
+      <Card className="p-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            Filtres et Recherche
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+            <h3 className="font-semibold">Filtres et Recherche</h3>
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Rechercher par nom, code ou DCI..."
                 value={filters.searchTerm}
@@ -147,9 +204,9 @@ const LowStockProducts = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Toutes les catégories</SelectItem>
-                {categories.map((cat: any) => (
-                  <SelectItem key={cat.libelle_famille} value={cat.libelle_famille}>
-                    {cat.libelle_famille}
+                {categories.map((cat: string) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -170,165 +227,220 @@ const LowStockProducts = () => {
               </SelectContent>
             </Select>
           </div>
-          
+
           {lowStockItems.length > 0 && (
-            <p className="text-sm text-muted-foreground mt-4">
+            <p className="text-sm text-muted-foreground">
               <strong>{lowStockItems.length}</strong> produit{lowStockItems.length > 1 ? 's' : ''} trouvé{lowStockItems.length > 1 ? 's' : ''}
             </p>
           )}
-        </CardContent>
+        </div>
       </Card>
 
-      {/* Actions rapides */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      {/* Quick Actions */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
-            Actions Rapides
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+            <h3 className="font-semibold">Actions Rapides</h3>
+          </div>
+
           <div className="flex flex-wrap gap-2">
-            <Button className="gap-2" onClick={handleUrgentOrder}>
-              <ShoppingCart className="h-4 w-4" />
-              Commande d'Urgence
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="mr-2 h-4 w-4" />
+                  Exporter
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport('csv')}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('excel')}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Export Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Export PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="outline" size="sm" onClick={handleOrderSelected}>
+              <ShoppingCart className="mr-2 h-4 w-4" />
+              Commande d'urgence
             </Button>
-            <Button variant="outline" className="gap-2" onClick={handleConfigureAlerts}>
-              <Bell className="h-4 w-4" />
-              Configurer Alertes
-            </Button>
-            <Button variant="outline" className="gap-2" onClick={handleViewHistory}>
-              <Package className="h-4 w-4" />
-              Voir Historique
+            <Button variant="outline" size="sm">
+              <Bell className="mr-2 h-4 w-4" />
+              Configurer alertes
             </Button>
           </div>
-        </CardContent>
+        </div>
       </Card>
 
-      {/* Liste des produits */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
-            Produits en Stock Faible ({lowStockItems.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="h-16 bg-muted rounded"></div>
-                </div>
-              ))}
+      {/* Bulk Actions Bar */}
+      {selectedItems.length > 0 && (
+        <Card className="p-4 bg-primary/5 border-primary/20">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className="text-sm">
+                {selectedItems.length} produit(s) sélectionné(s)
+              </Badge>
+              <Button variant="ghost" size="sm" onClick={handleClearSelection}>
+                <X className="h-4 w-4 mr-1" />
+                Désélectionner tout
+              </Button>
             </div>
-          ) : lowStockItems.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <AlertTriangle className="h-16 w-16 mx-auto mb-4 text-green-500" />
-              <p className="text-lg font-medium text-green-600">Excellent !</p>
-              <p>Aucun produit en stock faible détecté</p>
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="default" size="sm" onClick={handleOrderSelected}>
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Commander la sélection
+              </Button>
+              <Button variant="secondary" size="sm" onClick={handleAlertSelected}>
+                <Bell className="mr-2 h-4 w-4" />
+                Créer des alertes
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Download className="mr-2 h-4 w-4" />
+                    Exporter
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport('csv')}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('excel')}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                    <FileDown className="mr-2 h-4 w-4" />
+                    PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Produit</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Stock Actuel</TableHead>
-                    <TableHead>Stock Minimum</TableHead>
-                    <TableHead>Niveau Stock</TableHead>
-                    <TableHead>Priorité</TableHead>
-                    <TableHead>Dernière Sortie</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {lowStockItems
-                    .sort((a, b) => {
-                      // Trier par criticité puis par pourcentage de stock
-                      if (a.statut === 'critique' && b.statut !== 'critique') return -1;
-                      if (b.statut === 'critique' && a.statut !== 'critique') return 1;
-                      
-                      const aPercentage = getStockPercentage(a.quantiteActuelle, a.seuilMinimum);
-                      const bPercentage = getStockPercentage(b.quantiteActuelle, b.seuilMinimum);
-                      return aPercentage - bPercentage;
-                    })
-                    .map((item) => {
-                      const stockPercentage = getStockPercentage(item.quantiteActuelle, item.seuilMinimum);
-                      
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{item.nomProduit}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {item.categorie}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-mono text-sm">{item.codeProduit}</TableCell>
-                          <TableCell>
-                            <div className="font-semibold text-lg">{item.quantiteActuelle}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-muted-foreground">{item.seuilMinimum}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-2">
-                              <Progress 
-                                value={stockPercentage} 
-                                className="h-2"
-                              />
-                              <div className="text-xs text-muted-foreground">
-                                {stockPercentage.toFixed(0)}% du minimum
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={getSeverityColor(item.statut)}>
-                              {item.statut === 'critique' ? 'URGENT' : item.statut === 'faible' ? 'ATTENTION' : 'SURVEILLER'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">
-                              {item.dernierMouvement 
-                                ? new Date(item.dernierMouvement).toLocaleDateString()
-                                : 'N/A'
-                              }
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button 
-                                size="sm" 
-                                variant="default" 
-                                className="gap-1"
-                                onClick={() => handleOrder(item)}
-                              >
-                                <ShoppingCart className="h-3 w-3" />
-                                Commander
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                className="gap-1"
-                                onClick={() => handleAlert(item)}
-                              >
-                                <Bell className="h-3 w-3" />
-                                Alerter
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
+          </div>
+        </Card>
+      )}
+
+      {/* Products Table */}
+      <Card className="p-6">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-3 px-2 font-medium text-sm w-10">
+                  <Checkbox
+                    checked={selectAll}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </th>
+                <th className="text-left py-3 px-2 font-medium text-sm">Code</th>
+                <th className="text-left py-3 px-2 font-medium text-sm">Produit</th>
+                <th className="text-left py-3 px-2 font-medium text-sm">DCI</th>
+                <th className="text-right py-3 px-2 font-medium text-sm">Stock actuel</th>
+                <th className="text-right py-3 px-2 font-medium text-sm">Seuil min</th>
+                <th className="text-left py-3 px-2 font-medium text-sm">Unité</th>
+                <th className="text-left py-3 px-2 font-medium text-sm">Catégorie</th>
+                <th className="text-left py-3 px-2 font-medium text-sm">Fournisseur</th>
+                <th className="text-left py-3 px-2 font-medium text-sm">Statut</th>
+                <th className="text-right py-3 px-2 font-medium text-sm">Dernier mvt</th>
+                <th className="text-right py-3 px-2 font-medium text-sm">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={12} className="text-center py-8 text-muted-foreground">
+                    Chargement...
+                  </td>
+                </tr>
+              ) : lowStockItems.length === 0 ? (
+                <tr>
+                  <td colSpan={12} className="text-center py-8 text-muted-foreground">
+                    Aucun produit en stock faible
+                  </td>
+                </tr>
+              ) : (
+                lowStockItems.map((item) => (
+                  <tr key={item.id} className="border-b hover:bg-muted/50">
+                    <td className="py-3 px-2">
+                      <Checkbox
+                        checked={selectedItems.includes(item.id)}
+                        onCheckedChange={() => handleSelectItem(item.id)}
+                      />
+                    </td>
+                    <td className="py-3 px-2 text-sm">{item.codeProduit}</td>
+                    <td className="py-3 px-2 text-sm font-medium">{item.nomProduit}</td>
+                    <td className="py-3 px-2 text-sm text-muted-foreground">{item.dci}</td>
+                    <td className="py-3 px-2 text-sm text-right font-medium">{item.quantiteActuelle}</td>
+                    <td className="py-3 px-2 text-sm text-right">{item.seuilMinimum}</td>
+                    <td className="py-3 px-2 text-sm">{item.unite}</td>
+                    <td className="py-3 px-2 text-sm">{item.categorie}</td>
+                    <td className="py-3 px-2 text-sm">{item.fournisseurPrincipal}</td>
+                    <td className="py-3 px-2">
+                      <Badge 
+                        variant={
+                          item.statut === 'critique' ? 'destructive' :
+                          item.statut === 'faible' ? 'default' : 'secondary'
+                        }
+                        className="capitalize"
+                      >
+                        {item.statut}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-2 text-sm text-right text-muted-foreground">
+                      {item.dernierMouvement ? new Date(item.dernierMouvement).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td className="py-3 px-2 text-right">
+                      <div className="flex gap-1 justify-end">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOrderProduct(item)}
+                          title="Commander"
+                        >
+                          <ShoppingCart className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleAlertProduct(item)}
+                          title="Créer une alerte"
+                        >
+                          <Bell className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </Card>
+
+      {/* Modals */}
+      {selectedProduct && (
+        <>
+          <OrderProductModal
+            open={orderModalOpen}
+            onOpenChange={setOrderModalOpen}
+            product={selectedProduct}
+          />
+          <CreateAlertModal
+            open={alertModalOpen}
+            onOpenChange={setAlertModalOpen}
+            product={selectedProduct}
+            onSuccess={refetch}
+          />
+        </>
+      )}
     </div>
   );
 };
