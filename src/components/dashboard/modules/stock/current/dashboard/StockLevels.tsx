@@ -5,34 +5,34 @@ import { useCurrentStock } from '@/hooks/useCurrentStock';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 
 const StockLevels = () => {
-  const { products, metrics } = useCurrentStock();
+  const { allStockData, metrics } = useCurrentStock();
 
-  // Calcul des niveaux de stock
+  // Calcul des niveaux de stock sur TOUTES les données
   const stockLevels = [
     {
       label: 'Normal',
-      value: products.filter(p => p.statut_stock === 'normal').length,
+      value: allStockData.filter(p => p.statut_stock === 'normal').length,
       color: 'hsl(var(--success))',
       icon: TrendingUp,
       iconColor: 'text-success'
     },
     {
       label: 'Faible',
-      value: products.filter(p => p.statut_stock === 'faible').length,
+      value: allStockData.filter(p => p.statut_stock === 'faible').length,
       color: 'hsl(var(--warning))',
       icon: Minus,
       iconColor: 'text-warning'
     },
     {
       label: 'Critique',
-      value: products.filter(p => p.statut_stock === 'critique').length,
+      value: allStockData.filter(p => p.statut_stock === 'critique').length,
       color: 'hsl(38 92% 50%)',
       icon: TrendingDown,
       iconColor: 'text-[hsl(38_92%_50%)]'
     },
     {
       label: 'Rupture',
-      value: products.filter(p => p.statut_stock === 'rupture').length,
+      value: allStockData.filter(p => p.statut_stock === 'rupture').length,
       color: 'hsl(var(--destructive))',
       icon: TrendingDown,
       iconColor: 'text-destructive'

@@ -399,7 +399,7 @@ const AvailableProducts = () => {
       )}
 
       {/* Actions d'export et sélection */}
-      <Card>
+      <Card data-component="available-products-table">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">

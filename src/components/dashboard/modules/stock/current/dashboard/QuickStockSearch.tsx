@@ -6,7 +6,7 @@ import { Search, Package, Clock } from 'lucide-react';
 import { useCurrentStock } from '@/hooks/useCurrentStock';
 
 const QuickStockSearch = () => {
-  const { products } = useCurrentStock();
+  const { allStockData } = useCurrentStock();
   const [searchTerm, setSearchTerm] = useState('');
   const [quickResults, setQuickResults] = useState<any[]>([]);
 
@@ -18,7 +18,7 @@ const QuickStockSearch = () => {
       return;
     }
 
-    const results = products
+    const results = allStockData
       .filter(product => 
         product.libelle_produit.toLowerCase().includes(value.toLowerCase()) ||
         product.code_cip.toLowerCase().includes(value.toLowerCase())

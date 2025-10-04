@@ -351,7 +351,9 @@ export const useCurrentStock = () => {
   const alerts = generateAlerts(filteredAndSortedProducts);
 
   return {
-    products: paginatedProducts,
+    products: paginatedProducts, // Paginated products for the table
+    allStockData: stockData, // All products (unfiltered) for dashboard components
+    filteredProducts: filteredAndSortedProducts, // All filtered products for calculations
     allProductsCount: filteredAndSortedProducts.length,
     families,
     rayons,
