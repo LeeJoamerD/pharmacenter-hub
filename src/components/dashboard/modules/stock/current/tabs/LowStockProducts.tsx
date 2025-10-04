@@ -11,6 +11,9 @@ import { useLowStockData } from "@/hooks/useLowStockData";
 import { useToast } from "@/hooks/use-toast";
 import { OrderProductModal } from "../modals/OrderProductModal";
 import { CreateAlertModal } from "../modals/CreateAlertModal";
+import { StockConfigModal } from "../modals/StockConfigModal";
+import { ActionHistoryModal } from "../modals/ActionHistoryModal";
+import { EmergencyOrderModal } from "../modals/EmergencyOrderModal";
 import { ExportService } from "@/services/ExportService";
 import type { LowStockItem } from "@/hooks/useLowStockData";
 
@@ -32,6 +35,9 @@ export const LowStockProducts = () => {
   // Modal states
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [alertModalOpen, setAlertModalOpen] = useState(false);
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [emergencyOrderModalOpen, setEmergencyOrderModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<LowStockItem | null>(null);
 
   // Handle select all
