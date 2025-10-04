@@ -63,8 +63,8 @@ export const useLowStockData = () => {
       id, tenant_id, libelle_produit, code_cip,
       prix_achat, prix_vente_ttc, stock_limite, stock_alerte,
       famille_id, rayon_id, created_at, updated_at, is_active,
-      famille_produit!inner(libelle_famille),
-      rayons_produits!inner(libelle_rayon)
+        famille_produit(id, libelle_famille),
+        rayons_produits(id, libelle_rayon)
     `,
     { is_active: true }
   );
