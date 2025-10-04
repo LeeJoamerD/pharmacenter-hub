@@ -51,8 +51,6 @@ const AvailableProducts = () => {
   const [showCriticalAlert, setShowCriticalAlert] = useState(false);
   const { toast } = useToast();
 
-  const availableProducts = products.filter(p => p.stock_actuel > 0);
-
   // Vérifier les alertes critiques
   useEffect(() => {
     if (metrics.criticalStockProducts > 0 && !showCriticalAlert) {
@@ -66,10 +64,10 @@ const AvailableProducts = () => {
   }, [metrics.criticalStockProducts]);
 
   const handleSelectAll = () => {
-    if (selectedProducts.length === availableProducts.length) {
+    if (selectedProducts.length === products.length) {
       setSelectedProducts([]);
     } else {
-      setSelectedProducts(availableProducts.map(p => p.id));
+      setSelectedProducts(products.map(p => p.id));
     }
   };
 
@@ -83,8 +81,8 @@ const AvailableProducts = () => {
 
   const handleExportExcel = () => {
     const selectedData = selectedProducts.length > 0
-      ? availableProducts.filter(p => selectedProducts.includes(p.id))
-      : availableProducts;
+      ? products.filter(p => selectedProducts.includes(p.id))
+      : products;
     
     exportToExcel(selectedData);
     toast({
@@ -95,8 +93,8 @@ const AvailableProducts = () => {
 
   const handleExportPDF = () => {
     const selectedData = selectedProducts.length > 0
-      ? availableProducts.filter(p => selectedProducts.includes(p.id))
-      : availableProducts;
+      ? products.filter(p => selectedProducts.includes(p.id))
+      : products;
     
     exportToPDF(selectedData);
     toast({
@@ -220,7 +218,7 @@ const AvailableProducts = () => {
             setIsOrderModalOpen(open);
             if (!open) setSelectedProduct({ id: null, name: '', stockLimit: 0, stockAlert: 0 });
           }}
-          product={availableProducts.find(p => p.id === selectedProduct.id)!}
+          product={products.find(p => p.id === selectedProduct.id)!}
         />
       )}
       <QuickLotCreationModal
@@ -248,7 +246,7 @@ const AvailableProducts = () => {
       <BulkActionsModal
         open={isBulkActionsModalOpen}
         onOpenChange={setIsBulkActionsModalOpen}
-        selectedProducts={availableProducts.filter(p => selectedProducts.includes(p.id))}
+        selectedProducts={products.filter(p => selectedProducts.includes(p.id))}
         onActionComplete={() => {
           setSelectedProducts([]);
           toast({
@@ -461,7 +459,7 @@ const AvailableProducts = () => {
                 </div>
               ))}
             </div>
-          ) : availableProducts.length === 0 ? (
+          ) : products.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Package className="h-16 w-16 mx-auto mb-4" />
               <p>Aucun produit disponible trouvé avec les filtres sélectionnés</p>
@@ -473,7 +471,7 @@ const AvailableProducts = () => {
                   <TableRow>
                     <TableHead className="w-[50px]">
                       <Checkbox
-                        checked={selectedProducts.length === availableProducts.length && availableProducts.length > 0}
+                        checked={selectedProducts.length === products.length && products.length > 0}
                         onCheckedChange={handleSelectAll}
                       />
                     </TableHead>
@@ -489,7 +487,7 @@ const AvailableProducts = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {availableProducts.map((product) => (
+                  {products.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell>
                         <Checkbox
