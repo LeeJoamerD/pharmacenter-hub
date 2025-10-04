@@ -1,11 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTenantQuery } from './useTenantQuery';
 import { useStockSettings } from './useStockSettings';
 import { useAlertThresholds } from './useAlertThresholds';
 import { StockValuationService } from '@/services/stockValuationService';
 import { StockUpdateService } from '@/services/stockUpdateService';
 import { useDebounce } from '@/utils/supplyChainOptimizations';
-import { measurePerformance } from '@/utils/tenantValidation';
+import { measurePerformance, getCurrentTenantId } from '@/utils/tenantValidation';
+import { StockCacheManager } from '@/utils/stockCacheUtils';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface CurrentStockItem {
   id: string;
@@ -44,8 +47,32 @@ export interface StockAlert {
 
 export const useCurrentStock = () => {
   const { useTenantQueryWithCache } = useTenantQuery();
+  const queryClient = useQueryClient();
   const { settings: stockSettings } = useStockSettings();
   const { thresholds } = useAlertThresholds();
+  
+  // Setup realtime listeners for automatic cache invalidation
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    
+    const setupListeners = async () => {
+      const tenantId = await getCurrentTenantId();
+      if (tenantId) {
+        cleanup = StockCacheManager.setupRealtimeListeners(queryClient, tenantId, supabase);
+      }
+    };
+    
+    setupListeners();
+    
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [queryClient]);
+  
+  // Manual refresh function
+  const refreshData = () => {
+    StockCacheManager.invalidateAllStockQueries(queryClient);
+  };
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFamily, setSelectedFamily] = useState<string>('');
   const [selectedRayon, setSelectedRayon] = useState<string>('');
@@ -343,6 +370,7 @@ export const useCurrentStock = () => {
       itemsPerPage
     },
     isLoading,
-    refetch
+    refetch,
+    refreshData // Add manual refresh function
   };
 };

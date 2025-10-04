@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { CurrentStockItem } from '@/hooks/useCurrentStockDirect';
 import { Package, TrendingUp, TrendingDown } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BulkActionsModalProps {
   open: boolean;
@@ -33,26 +34,91 @@ export const BulkActionsModal = ({
 
   const handleBulkAdjustment = async () => {
     try {
-      // Simulation d'ajustement groupé
-      // Dans une vraie implémentation, cela appellerait une fonction edge ou un RPC
+      setIsSubmitting(true);
+      
+      // Import StockUpdateService
+      const { StockUpdateService } = await import('@/services/stockUpdateService');
+      const { getCurrentTenantId } = await import('@/utils/tenantValidation');
+      
+      const tenantId = await getCurrentTenantId();
+      if (!tenantId) throw new Error('Utilisateur non autorisé');
+
+      // Get current user as agent
+      const { data: userData } = await supabase.auth.getUser();
+      const { data: personnel } = await supabase
+        .from('personnel')
+        .select('id')
+        .eq('auth_user_id', userData.user?.id)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      // Process each product
+      for (const product of selectedProducts) {
+        // Get the first available lot for this product
+        const { data: lots } = await supabase
+          .from('lots')
+          .select('id, quantite_restante')
+          .eq('produit_id', product.id)
+          .eq('tenant_id', tenantId)
+          .gt('quantite_restante', 0)
+          .order('created_at', { ascending: true })
+          .limit(1);
+
+        if (!lots || lots.length === 0) {
+          console.warn(`No lot found for product ${product.id}, skipping...`);
+          continue;
+        }
+
+        const lot = lots[0];
+        
+        // Record stock movement
+        await StockUpdateService.recordStockMovement({
+          produit_id: product.id,
+          lot_id: lot.id,
+          quantite: adjustmentQuantity,
+          type_mouvement: 'ajustement',
+          motif: `Ajustement groupé: ${adjustmentType === 'increase' ? 'Augmentation' : 'Diminution'} de ${adjustmentQuantity} unités`,
+          agent_id: personnel?.id,
+          metadata: {
+            bulk_action: true,
+            adjustment_type: adjustmentType,
+            original_quantity: lot.quantite_restante
+          }
+        });
+
+        // Update lot quantity directly
+        const newQuantity = adjustmentType === 'increase' 
+          ? lot.quantite_restante + adjustmentQuantity
+          : Math.max(0, lot.quantite_restante - adjustmentQuantity);
+
+        await supabase
+          .from('lots')
+          .update({ quantite_restante: newQuantity })
+          .eq('id', lot.id);
+      }
       
       const action = adjustmentType === 'increase' ? 'augmenté' : 'diminué';
       
       toast({
         title: "Ajustement groupé effectué",
-        description: `Le stock de ${selectedProducts.length} produits a été ${action} de ${adjustmentQuantity} unités.`,
+        description: `Le stock de ${selectedProducts.length} produit(s) a été ${action} de ${adjustmentQuantity} unité(s).`,
       });
       
       onActionComplete();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Bulk adjustment error:', error);
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors de l'ajustement groupé.",
+        description: error.message || "Une erreur est survenue lors de l'ajustement groupé.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const totalValue = selectedProducts.reduce((sum, p) => sum + p.valeur_stock, 0);
   const criticalCount = selectedProducts.filter(p => p.statut_stock === 'critique').length;
@@ -133,9 +199,9 @@ export const BulkActionsModal = ({
               <Button 
                 onClick={handleBulkAdjustment}
                 className="w-full"
-                disabled={adjustmentQuantity === 0}
+                disabled={adjustmentQuantity === 0 || isSubmitting}
               >
-                Appliquer l'ajustement
+                {isSubmitting ? 'Traitement...' : 'Appliquer l\'ajustement'}
               </Button>
             </div>
           </TabsContent>

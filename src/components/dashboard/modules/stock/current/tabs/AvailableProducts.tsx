@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Package, Search, Filter, ShoppingCart, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileText, CheckSquare, AlertCircle } from 'lucide-react';
+import { Package, Search, Filter, ShoppingCart, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileText, CheckSquare, AlertCircle, RefreshCw, PackagePlus, Edit } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrentStock } from '@/hooks/useCurrentStock';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +17,8 @@ import ProductDetailsModal from '../modals/ProductDetailsModal';
 import AddToCartModal from '../modals/AddToCartModal';
 import { OrderLowStockModal } from '../modals/OrderLowStockModal';
 import { BulkActionsModal } from '../modals/BulkActionsModal';
+import QuickLotCreationModal from '../modals/QuickLotCreationModal';
+import EditProductThresholdsModal from '../modals/EditProductThresholdsModal';
 
 const AvailableProducts = () => {
   const { 
@@ -28,7 +30,8 @@ const AvailableProducts = () => {
     sorting,
     pagination,
     isLoading,
-    metrics 
+    metrics,
+    refreshData 
   } = useCurrentStock();
 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
@@ -36,7 +39,14 @@ const AvailableProducts = () => {
   const [isCartModalOpen, setIsCartModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isBulkActionsModalOpen, setIsBulkActionsModalOpen] = useState(false);
-  const [cartProductName, setCartProductName] = useState('');
+  const [isQuickLotModalOpen, setIsQuickLotModalOpen] = useState(false);
+  const [isEditThresholdsModalOpen, setIsEditThresholdsModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<{
+    id: string | null;
+    name: string;
+    stockLimit?: number;
+    stockAlert?: number;
+  }>({ id: null, name: '', stockLimit: 0, stockAlert: 0 });
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [showCriticalAlert, setShowCriticalAlert] = useState(false);
   const { toast } = useToast();
@@ -107,20 +117,62 @@ const AvailableProducts = () => {
     setIsBulkActionsModalOpen(true);
   };
 
-  const handleViewDetails = (productId: string) => {
-    setSelectedProductId(productId);
+  const handleViewDetails = (product: any) => {
+    setSelectedProduct({ 
+      id: product.id, 
+      name: product.libelle_produit,
+      stockLimit: product.stock_limite,
+      stockAlert: product.stock_alerte
+    });
     setIsDetailsModalOpen(true);
   };
 
-  const handleAddToCart = (productId: string, productName: string) => {
-    setSelectedProductId(productId);
-    setCartProductName(productName);
+  const handleAddToCart = (product: any) => {
+    setSelectedProduct({ 
+      id: product.id, 
+      name: product.libelle_produit,
+      stockLimit: product.stock_limite,
+      stockAlert: product.stock_alerte
+    });
     setIsCartModalOpen(true);
   };
 
-  const handleOrder = (productId: string) => {
-    setSelectedProductId(productId);
+  const handleOrder = (product: any) => {
+    setSelectedProduct({ 
+      id: product.id, 
+      name: product.libelle_produit,
+      stockLimit: product.stock_limite,
+      stockAlert: product.stock_alerte
+    });
     setIsOrderModalOpen(true);
+  };
+
+  const handleQuickLotCreation = (product: any) => {
+    setSelectedProduct({ 
+      id: product.id, 
+      name: product.libelle_produit,
+      stockLimit: product.stock_limite,
+      stockAlert: product.stock_alerte
+    });
+    setIsQuickLotModalOpen(true);
+  };
+
+  const handleEditThresholds = (product: any) => {
+    setSelectedProduct({ 
+      id: product.id, 
+      name: product.libelle_produit,
+      stockLimit: product.stock_limite,
+      stockAlert: product.stock_alerte
+    });
+    setIsEditThresholdsModalOpen(true);
+  };
+
+  const handleRefresh = () => {
+    refreshData();
+    toast({
+      title: "Données actualisées",
+      description: "Les données de stock ont été rechargées depuis la base de données."
+    });
   };
 
   const getStockStatusColor = (status: string) => {
@@ -145,33 +197,54 @@ const AvailableProducts = () => {
   return (
     <>
       <ProductDetailsModal
-        productId={selectedProductId}
+        productId={selectedProduct.id}
         isOpen={isDetailsModalOpen}
         onClose={() => {
           setIsDetailsModalOpen(false);
-          setSelectedProductId(null);
+          setSelectedProduct({ id: null, name: '', stockLimit: 0, stockAlert: 0 });
         }}
       />
       <AddToCartModal
-        productId={selectedProductId}
-        productName={cartProductName}
+        productId={selectedProduct.id}
+        productName={selectedProduct.name}
         isOpen={isCartModalOpen}
         onClose={() => {
           setIsCartModalOpen(false);
-          setSelectedProductId(null);
-          setCartProductName('');
+          setSelectedProduct({ id: null, name: '', stockLimit: 0, stockAlert: 0 });
         }}
       />
-      {selectedProductId && (
+      {selectedProduct.id && (
         <OrderLowStockModal
           open={isOrderModalOpen}
           onOpenChange={(open) => {
             setIsOrderModalOpen(open);
-            if (!open) setSelectedProductId(null);
+            if (!open) setSelectedProduct({ id: null, name: '', stockLimit: 0, stockAlert: 0 });
           }}
-          product={availableProducts.find(p => p.id === selectedProductId)!}
+          product={availableProducts.find(p => p.id === selectedProduct.id)!}
         />
       )}
+      <QuickLotCreationModal
+        productId={selectedProduct.id}
+        productName={selectedProduct.name}
+        isOpen={isQuickLotModalOpen}
+        onClose={() => {
+          setIsQuickLotModalOpen(false);
+          setSelectedProduct({ id: null, name: '', stockLimit: 0, stockAlert: 0 });
+        }}
+        onSuccess={handleRefresh}
+      />
+      <EditProductThresholdsModal
+        productId={selectedProduct.id}
+        productName={selectedProduct.name}
+        currentStockLimit={selectedProduct.stockLimit}
+        currentStockAlert={selectedProduct.stockAlert}
+        isOpen={isEditThresholdsModalOpen}
+        onClose={() => {
+          setIsEditThresholdsModalOpen(false);
+          setSelectedProduct({ id: null, name: '', stockLimit: 0, stockAlert: 0 });
+        }}
+        onSuccess={handleRefresh}
+      />
       <BulkActionsModal
         open={isBulkActionsModalOpen}
         onOpenChange={setIsBulkActionsModalOpen}
@@ -281,6 +354,11 @@ const AvailableProducts = () => {
               onClick={() => sorting.setSortOrder(sorting.sortOrder === 'asc' ? 'desc' : 'asc')}
             >
               <ArrowUpDown className="h-4 w-4" />
+            </Button>
+            
+            <Button onClick={handleRefresh} variant="outline" className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Actualiser
             </Button>
             
             <Button onClick={() => {
@@ -468,14 +546,14 @@ const AvailableProducts = () => {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => handleViewDetails(product.id)}
+                            onClick={() => handleViewDetails(product)}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => handleAddToCart(product.id, product.libelle_produit)}
+                            onClick={() => handleAddToCart(product)}
                           >
                             <ShoppingCart className="h-4 w-4" />
                           </Button>
@@ -484,7 +562,7 @@ const AvailableProducts = () => {
                             <Button 
                               size="sm" 
                               variant="default"
-                              onClick={() => handleOrder(product.id)}
+                              onClick={() => handleOrder(product)}
                               className="bg-primary"
                             >
                               Commander
