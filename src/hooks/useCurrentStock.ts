@@ -83,6 +83,11 @@ export const useCurrentStock = () => {
   const itemsPerPage = 50;
   const [stockData, setStockData] = useState<CurrentStockItem[]>([]);
   
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedFamily, selectedRayon, stockFilter, sortBy]);
+  
   // Debounced search term (500ms)
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -367,16 +372,14 @@ export const useCurrentStock = () => {
       selectedRayon,
       setSelectedRayon,
       stockFilter,
-      setStockFilter: (value: 'all' | 'available' | 'low' | 'out' | 'critical') => {
-        setStockFilter(value);
-        setCurrentPage(1);
+      setStockFilter: (value: string) => {
+        setStockFilter(value as 'all' | 'available' | 'low' | 'out' | 'critical');
       }
     },
     sorting: {
       sortBy,
-      setSortBy: (value: 'name' | 'stock' | 'value' | 'rotation') => {
-        setSortBy(value);
-        setCurrentPage(1);
+      setSortBy: (value: string) => {
+        setSortBy(value as 'name' | 'stock' | 'value' | 'rotation');
       },
       sortOrder,
       setSortOrder
