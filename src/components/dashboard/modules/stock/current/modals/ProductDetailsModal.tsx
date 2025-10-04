@@ -21,10 +21,10 @@ const ProductDetailsModal = ({ productId, isOpen, onClose }: ProductDetailsModal
     'produits',
     `
       id, libelle_produit, code_cip, prix_achat, prix_vente_ttc,
-      stock_limite, stock_alerte,
-      famille_produit!inner(libelle_famille),
-      rayons_produits!inner(libelle_rayon),
-      laboratoires!inner(libelle)
+      stock_limite, stock_alerte, famille_id, rayon_id, laboratoire_id,
+      famille_produit(libelle_famille),
+      rayons_produits(libelle_rayon),
+      laboratoires(libelle)
     `,
     { id: productId },
     { enabled: !!productId }
@@ -36,11 +36,11 @@ const ProductDetailsModal = ({ productId, isOpen, onClose }: ProductDetailsModal
     'lots',
     `
       id, numero_lot, date_peremption, date_fabrication,
-      quantite_initiale, quantite_restante, prix_achat_unitaire,
-      statut, emplacement, created_at
+      quantite_initiale, quantite_restante, prix_achat,
+      created_at
     `,
-    { produit_id: productId, quantite_restante: { op: 'gt', value: 0 } },
-    { enabled: !!productId }
+    { product_id: productId },
+    { enabled: !!productId, orderBy: { column: 'date_peremption', ascending: true } }
   );
 
   // Fetch recent movements
@@ -50,16 +50,16 @@ const ProductDetailsModal = ({ productId, isOpen, onClose }: ProductDetailsModal
     `
       id, type_mouvement, quantite, date_mouvement,
       reference_document, notes, created_at,
-      personnel!inner(noms, prenoms)
+      personnel(noms, prenoms)
     `,
-    { produit_id: productId },
+    { product_id: productId },
     { enabled: !!productId, limit: 30, orderBy: { column: 'created_at', ascending: false } }
   );
 
   const currentProduct = product?.[0];
-  const totalStock = lots.reduce((sum: number, lot: any) => sum + lot.quantite_restante, 0);
+  const totalStock = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
   const totalValue = lots.reduce((sum: number, lot: any) => 
-    sum + (lot.quantite_restante * (lot.prix_achat_unitaire || 0)), 0
+    sum + ((lot.quantite_restante || 0) * (lot.prix_achat || 0)), 0
   );
 
   if (!productId || !isOpen) return null;
@@ -196,7 +196,7 @@ const ProductDetailsModal = ({ productId, isOpen, onClose }: ProductDetailsModal
                         <div>
                           <span className="text-muted-foreground">Prix Unitaire:</span>
                           <p className="font-medium">
-                            {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XAF' }).format(lot.prix_achat_unitaire || 0)}
+                            {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XAF' }).format(lot.prix_achat || 0)}
                           </p>
                         </div>
                       </div>
