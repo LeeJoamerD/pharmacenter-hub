@@ -44,9 +44,19 @@ export class StockUpdateService {
    * Enregistre un mouvement de stock de manière atomique via RPC
    */
   static async recordStockMovement(movement: StockMovement, settings?: StockSettings): Promise<void> {
+    const tenantId = await this.getCurrentTenantId();
+    if (!tenantId) {
+      throw new Error('Utilisateur non autorisé');
+    }
+
     try {
-      const tenantId = await this.getCurrentTenantId();
-      if (!tenantId) throw new Error('Utilisateur non autorisé');
+      // Validation before processing
+      if (settings) {
+        const validationErrors = await this.validateMovement(movement, settings);
+        if (validationErrors.length > 0) {
+          throw new Error(`Validation échouée: ${validationErrors.join(', ')}`);
+        }
+      }
 
       // Auto-generate lot if required and not provided
       if (settings?.requireLotNumbers && !movement.lot_id && 
@@ -90,9 +100,14 @@ export class StockUpdateService {
         throw new Error(result.error || 'Erreur lors de l\'enregistrement du mouvement');
       }
 
-      console.log('Mouvement enregistré:', data);
+      console.log('✅ Mouvement enregistré avec succès:', {
+        type: movement.type_mouvement,
+        produit: movement.produit_id,
+        quantite: movement.quantite
+      });
+
     } catch (error) {
-      console.error('Erreur lors de l\'enregistrement du mouvement de stock:', error);
+      console.error('❌ Erreur lors de l\'enregistrement du mouvement:', error);
       throw error;
     }
   }

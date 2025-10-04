@@ -127,14 +127,19 @@ export class LowStockActionService {
       notes?: string;
     } = {}
   ): Promise<{success: boolean; commande_id?: string; error?: string}> {
-    try {
-      const tenantId = await this.getCurrentTenantId();
-      if (!tenantId) throw new Error('Utilisateur non authentifié');
+    const tenantId = await this.getCurrentTenantId();
+    if (!tenantId) {
+      await this.logAction(null, 'order_creation', 'failed', null, {
+        error: 'Utilisateur non authentifié'
+      });
+      return { success: false, error: 'Utilisateur non authentifié' };
+    }
 
+    try {
       // Filter items to process
       const itemsToOrder = selectedItems.length > 0 
         ? items.filter(item => selectedItems.includes(item.id))
-        : items.filter(item => item.statut === 'critique'); // Default: only critical items
+        : items.filter(item => item.statut === 'critique');
 
       if (itemsToOrder.length === 0) {
         throw new Error('Aucun produit sélectionné pour la commande');
@@ -143,17 +148,28 @@ export class LowStockActionService {
       // Get order recommendations
       const recommendations = this.calculateOrderRecommendations(itemsToOrder);
 
-      // Find a supplier (simplified - take first available)
+      // Find active supplier - use explicit any to avoid deep type inference
       let fournisseurId = options.fournisseur_id;
       if (!fournisseurId) {
-        // Use a simple hardcoded approach to avoid TypeScript deep inference issues
-        // This can be improved later with proper RPC functions
-        const fournisseurs = [{ id: 'default-supplier' }]; // Temporary fallback
+        try {
+          // @ts-ignore - Avoid deep type instantiation issues
+          const queryResult = await supabase
+            .from('fournisseurs')
+            .select('id')
+            .eq('tenant_id', tenantId)
+            .eq('is_active', true)
+            .limit(1);
 
-        if (!fournisseurs || fournisseurs.length === 0) {
+          const data: any = queryResult.data;
+          const error: any = queryResult.error;
+
+          if (error || !data || data.length === 0) {
+            throw new Error('Aucun fournisseur actif disponible');
+          }
+          fournisseurId = data[0].id;
+        } catch (e) {
           throw new Error('Aucun fournisseur actif disponible');
         }
-        fournisseurId = fournisseurs[0].id;
       }
 
       // Calculate totals
@@ -161,26 +177,24 @@ export class LowStockActionService {
         (sum, rec) => sum + (rec.quantite_recommandee * (rec.prix_estime || 0)),
         0
       );
-      const totalTTC = totalHT * 1.18; // 18% VAT
+      const totalTTC = totalHT * 1.18;
 
       // Create order
       const numeroCommande = `URG-${Date.now()}`;
-      const commandeData: any = {
-        tenant_id: tenantId,
-        numero_commande: numeroCommande,
-        fournisseur_id: fournisseurId,
-        statut: 'en_attente',
-        date_commande: new Date().toISOString().split('T')[0],
-        date_livraison_prevue: options.date_livraison_souhaitee || 
-          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        total_ht: totalHT,
-        total_ttc: totalTTC,
-        notes: `${options.notes || ''}\nCommande urgente générée automatiquement pour ${itemsToOrder.length} produit(s)`
-      };
-
-      const { data: commande, error: commandeError } = await supabase
+      const { data: commande, error: commandeError }: any = await supabase
         .from('commandes_fournisseurs')
-        .insert(commandeData)
+        .insert({
+          tenant_id: tenantId,
+          numero_commande: numeroCommande,
+          fournisseur_id: fournisseurId,
+          statut: 'en_attente',
+          date_commande: new Date().toISOString().split('T')[0],
+          date_livraison_prevue: options.date_livraison_souhaitee || 
+            new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          total_ht: totalHT,
+          total_ttc: totalTTC,
+          notes: `${options.notes || ''}\nCommande urgente pour ${itemsToOrder.length} produit(s)`
+        })
         .select()
         .single();
 
@@ -191,15 +205,31 @@ export class LowStockActionService {
         tenant_id: tenantId,
         commande_id: commande.id,
         produit_id: rec.produit_id,
-        quantite_commandee: rec.quantite_recommandee, // Using correct column name
-        prix_achat_unitaire_attendu: rec.prix_estime || 0 // Using correct column name
+        quantite_commandee: rec.quantite_recommandee,
+        prix_achat_unitaire_attendu: rec.prix_estime || 0
       }));
 
-      const { error: lignesError } = await supabase
+      const { error: lignesError }: any = await supabase
         .from('lignes_commande_fournisseur')
         .insert(lignesCommande);
 
       if (lignesError) throw lignesError;
+
+      // Log action for each product
+      for (const item of itemsToOrder) {
+        await this.logAction(
+          tenantId,
+          'order_creation',
+          'success',
+          item.id,
+          {
+            commande_id: commande.id,
+            numero_commande: numeroCommande,
+            quantite_commandee: recommendations.find(r => r.produit_id === item.id)?.quantite_recommandee,
+            urgence: item.statut
+          }
+        );
+      }
 
       return {
         success: true,
@@ -207,11 +237,16 @@ export class LowStockActionService {
       };
 
     } catch (error) {
-      console.error('Error executing order action:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Erreur inconnue'
-      };
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      
+      // Log failed action
+      for (const item of (selectedItems.length > 0 ? selectedItems : items.map(i => i.id))) {
+        await this.logAction(tenantId, 'order_creation', 'failed', item, {
+          error: errorMessage
+        });
+      }
+
+      return { success: false, error: errorMessage };
     }
   }
 
@@ -226,10 +261,15 @@ export class LowStockActionService {
       force_notifications?: ('email' | 'dashboard' | 'sms')[];
     } = {}
   ): Promise<{success: boolean; alerts_created: number; error?: string}> {
-    try {
-      const tenantId = await this.getCurrentTenantId();
-      if (!tenantId) throw new Error('Utilisateur non authentifié');
+    const tenantId = await this.getCurrentTenantId();
+    if (!tenantId) {
+      await this.logAction(null, 'alert_creation', 'failed', null, {
+        error: 'Utilisateur non authentifié'
+      });
+      return { success: false, alerts_created: 0, error: 'Utilisateur non authentifié' };
+    }
 
+    try {
       // Filter items to alert
       const itemsToAlert = selectedItems.length > 0 
         ? items.filter(item => selectedItems.includes(item.id))
@@ -241,7 +281,6 @@ export class LowStockActionService {
 
       // Generate alert recommendations
       const recommendations = this.generateAlertRecommendations(itemsToAlert);
-
       let alertsCreated = 0;
 
       // Create alerts
@@ -249,20 +288,32 @@ export class LowStockActionService {
         const item = items.find(i => i.id === rec.produit_id);
         if (!item) continue;
 
-        // Get first available lot for the product (required field)
-        const { data: lot } = await supabase
+        // Try to get a lot for this product
+        const { data: lots }: any = await supabase
           .from('lots')
           .select('id')
           .eq('produit_id', rec.produit_id)
           .eq('tenant_id', tenantId)
-          .limit(1)
-          .single();
+          .gt('quantite_restante', 0)
+          .limit(1);
 
-        const { error } = await supabase
+        let lotId = lots?.[0]?.id;
+
+        // If no lot exists, skip (alertes_peremption requires lot_id)
+        if (!lotId) {
+          console.warn(`No lot found for product ${rec.produit_id}, skipping alert`);
+          await this.logAction(tenantId, 'alert_creation', 'skipped', rec.produit_id, {
+            reason: 'Aucun lot disponible',
+            message: options.custom_message
+          });
+          continue;
+        }
+
+        const { error }: any = await supabase
           .from('alertes_peremption')
           .insert({
             tenant_id: tenantId,
-            lot_id: lot?.id || null, // lot_id is required by the table
+            lot_id: lotId,
             produit_id: rec.produit_id,
             type_alerte: rec.type_alerte,
             niveau_urgence: rec.niveau_urgence,
@@ -275,13 +326,20 @@ export class LowStockActionService {
               'Planifier une commande de réapprovisionnement'
             ],
             notes: options.custom_message || 
-              `Alerte générée automatiquement - ${item.nomProduit} (${item.quantiteActuelle} unités restantes)`
+              `Alerte - ${item.nomProduit} (${item.quantiteActuelle} unités)`
           });
 
         if (!error) {
           alertsCreated++;
+          await this.logAction(tenantId, 'alert_creation', 'success', rec.produit_id, {
+            type_alerte: rec.type_alerte,
+            niveau_urgence: rec.niveau_urgence,
+            notifications: rec.notifications
+          });
         } else {
-          console.error('Error creating alert for product:', rec.produit_id, error);
+          await this.logAction(tenantId, 'alert_creation', 'failed', rec.produit_id, {
+            error: error.message
+          });
         }
       }
 
@@ -291,12 +349,47 @@ export class LowStockActionService {
       };
 
     } catch (error) {
-      console.error('Error executing alert action:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      
+      for (const item of (selectedItems.length > 0 ? selectedItems : items.map(i => i.id))) {
+        await this.logAction(tenantId, 'alert_creation', 'failed', item, {
+          error: errorMessage
+        });
+      }
+
       return {
         success: false,
         alerts_created: 0,
-        error: error instanceof Error ? error.message : 'Erreur inconnue'
+        error: errorMessage
       };
+    }
+  }
+
+  /**
+   * Log action to low_stock_actions_log table
+   */
+  private static async logAction(
+    tenantId: string | null,
+    actionType: string,
+    status: string,
+    produitId: string | null,
+    metadata: Record<string, any>
+  ): Promise<void> {
+    if (!tenantId) return;
+
+    try {
+      await supabase
+        .from('low_stock_actions_log')
+        .insert({
+          tenant_id: tenantId,
+          produit_id: produitId,
+          action_type: actionType,
+          result_status: status,
+          executed_at: new Date().toISOString(),
+          result_data: metadata
+        });
+    } catch (error) {
+      console.error('Error logging action:', error);
     }
   }
 
