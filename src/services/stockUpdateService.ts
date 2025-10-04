@@ -366,9 +366,13 @@ export class StockUpdateService {
     quantiteNecessaire: number
   ): Promise<string | null> {
     try {
+      const tenantId = await this.getCurrentTenantId();
+      if (!tenantId) throw new Error('Utilisateur non autorisé');
+
       const { data: lots, error } = await supabase
         .from('lots')
         .select('id, quantite_restante')
+        .eq('tenant_id', tenantId)
         .eq('produit_id', produitId)
         .gt('quantite_restante', 0)
         .order('date_reception')
@@ -399,9 +403,16 @@ export class StockUpdateService {
    */
   static async calculateAvailableStock(produitId: string): Promise<number> {
     try {
+      const tenantId = await this.getCurrentTenantId();
+      if (!tenantId) {
+        console.error('Tenant ID non trouvé pour le calcul du stock');
+        return 0;
+      }
+
       const { data: lots, error } = await supabase
         .from('lots')
         .select('quantite_restante')
+        .eq('tenant_id', tenantId)
         .eq('produit_id', produitId)
         .gt('quantite_restante', 0);
 
