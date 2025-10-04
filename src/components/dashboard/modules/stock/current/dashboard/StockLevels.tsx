@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart3, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { BarChart3, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 import { useCurrentStock } from '@/hooks/useCurrentStock';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
-const StockLevels = () => {
-  const { allStockData, metrics } = useCurrentStock();
+const StockLevels = React.memo(() => {
+  const { allStockData, metrics, isLoading } = useCurrentStock();
 
-  // Calcul des niveaux de stock sur TOUTES les données
-  const stockLevels = [
+  // Optimisation avec useMemo pour le calcul des niveaux
+  const stockLevels = useMemo(() => [
     {
       label: 'Normal',
       value: allStockData.filter(p => p.statut_stock === 'normal').length,
@@ -37,16 +39,47 @@ const StockLevels = () => {
       icon: TrendingDown,
       iconColor: 'text-destructive'
     }
-  ];
+  ], [allStockData]);
 
-  const chartData = stockLevels.filter(level => level.value > 0);
+  const chartData = useMemo(() => 
+    stockLevels.filter(level => level.value > 0), 
+    [stockLevels]
+  );
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-40" />
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <Skeleton className="h-[200px] w-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card>
+    <Card className="transition-all duration-300 hover:shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5" />
           Niveaux de Stock
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Info className="h-4 w-4 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Répartition des produits par niveau de stock</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -64,12 +97,13 @@ const StockLevels = () => {
                   outerRadius={70}
                   fill="#8884d8"
                   dataKey="value"
+                  animationDuration={500}
                 >
                   {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <RechartsTooltip />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -82,7 +116,7 @@ const StockLevels = () => {
         {/* Légende détaillée */}
         <div className="space-y-2">
           {stockLevels.map((level) => (
-            <div key={level.label} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
+            <div key={level.label} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-all duration-200">
               <div className="flex items-center gap-2">
                 <level.icon className={`h-4 w-4 ${level.iconColor}`} />
                 <span className="text-sm font-medium">{level.label}</span>
@@ -106,6 +140,8 @@ const StockLevels = () => {
       </CardContent>
     </Card>
   );
-};
+});
+
+StockLevels.displayName = 'StockLevels';
 
 export default StockLevels;

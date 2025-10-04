@@ -1,70 +1,87 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Zap, TrendingUp, Eye, ShoppingCart } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Zap, TrendingUp, Eye, ShoppingCart, Info } from 'lucide-react';
 import { useCurrentStock } from '@/hooks/useCurrentStock';
 import ProductDetailsModal from '../modals/ProductDetailsModal';
 import { OrderLowStockModal } from '../modals/OrderLowStockModal';
 
-const FastMovingItems = () => {
-  const { allStockData, filters, sorting } = useCurrentStock();
+const FastMovingItems = React.memo(() => {
+  const { allStockData, filters, sorting, isLoading } = useCurrentStock();
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
 
-  const handleMonitor = (product: any) => {
+  const handleMonitor = useCallback((product: any) => {
     setSelectedProduct(product);
     setIsDetailsModalOpen(true);
-  };
+  }, []);
 
-  const handleReorder = (product: any) => {
+  const handleReorder = useCallback((product: any) => {
     setSelectedProduct(product);
     setIsOrderModalOpen(true);
-  };
+  }, []);
 
-  const handleViewAll = () => {
+  const handleViewAll = useCallback(() => {
     filters.setStockFilter('available');
     sorting.setSortBy('rotation');
     sorting.setSortOrder('desc');
-    // Scroll to the main table
     setTimeout(() => {
       const table = document.querySelector('[data-component="available-products-table"]');
       if (table) {
         table.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
-  };
+  }, [filters, sorting]);
 
-  const fastMovingProducts = allStockData
-    .filter(p => p.rotation === 'rapide' && p.stock_actuel > 0)
-    .sort((a, b) => {
-      // Trier par valorisation décroissante pour montrer les plus importants
-      return b.valeur_stock - a.valeur_stock;
-    })
-    .slice(0, 8); // Limiter à 8 pour l'affichage
+  const fastMovingProducts = useMemo(() => 
+    allStockData
+      .filter(p => p.rotation === 'rapide' && p.stock_actuel > 0)
+      .sort((a, b) => b.valeur_stock - a.valeur_stock)
+      .slice(0, 8),
+    [allStockData]
+  );
 
-  const totalFastMovingProducts = allStockData.filter(
-    p => p.rotation === 'rapide' && p.stock_actuel > 0
-  ).length;
+  const totalFastMovingProducts = useMemo(() => 
+    allStockData.filter(p => p.rotation === 'rapide' && p.stock_actuel > 0).length,
+    [allStockData]
+  );
 
-  const getStockStatusColor = (status: string) => {
+  const getStockStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'normal': return 'bg-success/10 text-success border-success/20';
       case 'faible': return 'bg-warning/10 text-warning border-warning/20';
       case 'critique': return 'bg-destructive/10 text-destructive border-destructive/20';
       default: return 'bg-muted text-muted-foreground';
     }
-  };
+  }, []);
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = useCallback((amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
       currency: 'XAF',
       notation: 'compact',
       minimumFractionDigits: 0
     }).format(amount);
-  };
+  }, []);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-40" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -89,7 +106,7 @@ const FastMovingItems = () => {
         </>
       )}
       
-      <Card>
+      <Card className="transition-all duration-300 hover:shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-info" />
@@ -99,6 +116,16 @@ const FastMovingItems = () => {
                 {totalFastMovingProducts}
               </Badge>
             )}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Produits à forte rotation nécessitant un suivi attentif</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -111,7 +138,7 @@ const FastMovingItems = () => {
           ) : (
             <div className="space-y-3">
               {fastMovingProducts.map((product, index) => (
-                <div key={product.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div key={product.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-all duration-200 animate-fade-in">
                   <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-2 flex-1 min-w-0">
                     <Badge variant="outline" className="bg-info/10 text-info border-info/20 flex-shrink-0">
@@ -189,6 +216,8 @@ const FastMovingItems = () => {
       </Card>
     </>
   );
-};
+});
+
+FastMovingItems.displayName = 'FastMovingItems';
 
 export default FastMovingItems;

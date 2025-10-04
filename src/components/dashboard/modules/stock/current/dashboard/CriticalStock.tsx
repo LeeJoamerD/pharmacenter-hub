@@ -1,73 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, ShoppingCart, Eye } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AlertTriangle, ShoppingCart, Eye, Info } from 'lucide-react';
 import { useCurrentStock } from '@/hooks/useCurrentStock';
 import ProductDetailsModal from '../modals/ProductDetailsModal';
 import { OrderLowStockModal } from '../modals/OrderLowStockModal';
 
-const CriticalStock = () => {
-  const { allStockData, filters } = useCurrentStock();
+const CriticalStock = React.memo(() => {
+  const { allStockData, filters, isLoading } = useCurrentStock();
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
 
-  const handleOrder = (product: any) => {
+  const handleOrder = useCallback((product: any) => {
     setSelectedProduct(product);
     setIsOrderModalOpen(true);
-  };
+  }, []);
 
-  const handleView = (product: any) => {
+  const handleDetails = useCallback((product: any) => {
     setSelectedProduct(product);
     setIsDetailsModalOpen(true);
-  };
+  }, []);
 
-  const handleViewAll = () => {
+  const handleViewAll = useCallback(() => {
     filters.setStockFilter('critical');
-    // Scroll to the main table
     setTimeout(() => {
       const table = document.querySelector('[data-component="available-products-table"]');
       if (table) {
         table.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
-  };
+  }, [filters]);
 
-  const criticalProducts = allStockData
-    .filter(p => p.statut_stock === 'critique' || p.statut_stock === 'rupture')
-    .sort((a, b) => {
-      // Prioriser les ruptures, puis par rotation
-      if (a.statut_stock === 'rupture' && b.statut_stock !== 'rupture') return -1;
-      if (b.statut_stock === 'rupture' && a.statut_stock !== 'rupture') return 1;
-      
-      // Puis par rotation
-      const rotationOrder = { rapide: 0, normale: 1, lente: 2 };
-      return rotationOrder[a.rotation as keyof typeof rotationOrder] - 
-             rotationOrder[b.rotation as keyof typeof rotationOrder];
-    })
-    .slice(0, 8); // Limiter à 8 pour l'affichage
+  const criticalProducts = useMemo(() => 
+    allStockData
+      .filter(p => p.statut_stock === 'critique' || p.statut_stock === 'rupture')
+      .sort((a, b) => {
+        if (a.statut_stock === 'rupture' && b.statut_stock !== 'rupture') return -1;
+        if (b.statut_stock === 'rupture' && a.statut_stock !== 'rupture') return 1;
+        
+        const rotationOrder = { rapide: 0, normale: 1, lente: 2 };
+        return rotationOrder[a.rotation as keyof typeof rotationOrder] - 
+               rotationOrder[b.rotation as keyof typeof rotationOrder];
+      })
+      .slice(0, 8),
+    [allStockData]
+  );
 
-  const totalCriticalProducts = allStockData.filter(
-    p => p.statut_stock === 'critique' || p.statut_stock === 'rupture'
-  ).length;
+  const totalCriticalProducts = useMemo(() => 
+    allStockData.filter(p => p.statut_stock === 'critique' || p.statut_stock === 'rupture').length,
+    [allStockData]
+  );
 
-  const getSeverityColor = (status: string) => {
+  const getSeverityColor = useCallback((status: string) => {
     switch (status) {
       case 'rupture': return 'bg-destructive/10 text-destructive border-destructive/20';
       case 'critique': return 'bg-[hsl(38_92%_50%)]/10 text-[hsl(38_92%_50%)] border-[hsl(38_92%_50%)]/20';
       default: return 'bg-muted text-muted-foreground';
     }
-  };
+  }, []);
 
-  const getRotationColor = (rotation: string) => {
+  const getRotationColor = useCallback((rotation: string) => {
     switch (rotation) {
       case 'rapide': return 'bg-destructive/10 text-destructive border-destructive/20';
       case 'normale': return 'bg-warning/10 text-warning border-warning/20';
       case 'lente': return 'bg-success/10 text-success border-success/20';
       default: return 'bg-muted text-muted-foreground';
     }
-  };
+  }, []);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-40" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -92,16 +110,26 @@ const CriticalStock = () => {
         </>
       )}
       
-      <Card>
+      <Card className="transition-all duration-300 hover:shadow-lg border-destructive/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
             Stock Critique
             {totalCriticalProducts > 0 && (
-              <Badge className="bg-destructive/10 text-destructive border-destructive/20">
+              <Badge variant="destructive">
                 {totalCriticalProducts}
               </Badge>
             )}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Produits nécessitant une action immédiate</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -114,7 +142,7 @@ const CriticalStock = () => {
           ) : (
             <div className="space-y-3">
               {criticalProducts.map((product) => (
-                <div key={product.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div key={product.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-all duration-200 animate-fade-in">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm truncate" title={product.libelle_produit}>
@@ -157,7 +185,7 @@ const CriticalStock = () => {
                       size="sm" 
                       variant="outline" 
                       className="h-7 w-7 p-0"
-                      onClick={() => handleView(product)}
+                      onClick={() => handleDetails(product)}
                     >
                       <Eye className="h-3 w-3" />
                     </Button>
@@ -178,6 +206,8 @@ const CriticalStock = () => {
       </Card>
     </>
   );
-};
+});
+
+CriticalStock.displayName = 'CriticalStock';
 
 export default CriticalStock;

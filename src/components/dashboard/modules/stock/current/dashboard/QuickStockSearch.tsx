@@ -1,34 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Package, Clock } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Search, Package, Clock, Info } from 'lucide-react';
 import { useCurrentStock } from '@/hooks/useCurrentStock';
 
-const QuickStockSearch = () => {
-  const { allStockData } = useCurrentStock();
+const QuickStockSearch = React.memo(() => {
+  const { allStockData, isLoading } = useCurrentStock();
   const [searchTerm, setSearchTerm] = useState('');
-  const [quickResults, setQuickResults] = useState<any[]>([]);
 
-  const handleQuickSearch = (value: string) => {
-    setSearchTerm(value);
+  // Optimisation avec useMemo pour la recherche
+  const quickResults = useMemo(() => {
+    if (!searchTerm.trim()) return [];
     
-    if (!value.trim()) {
-      setQuickResults([]);
-      return;
-    }
-
-    const results = allStockData
+    return allStockData
       .filter(product => 
-        product.libelle_produit.toLowerCase().includes(value.toLowerCase()) ||
-        product.code_cip.toLowerCase().includes(value.toLowerCase())
+        product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.code_cip.toLowerCase().includes(searchTerm.toLowerCase())
       )
-      .slice(0, 5); // Limiter à 5 résultats pour une recherche rapide
-    
-    setQuickResults(results);
-  };
+      .slice(0, 5);
+  }, [searchTerm, allStockData]);
 
-  const getStockStatusColor = (status: string) => {
+  // Optimisation avec useCallback
+  const handleQuickSearch = useCallback((value: string) => {
+    setSearchTerm(value);
+  }, []);
+
+  const getStockStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'normal': return 'bg-success/10 text-success border-success/20';
       case 'faible': return 'bg-warning/10 text-warning border-warning/20';
@@ -36,14 +36,41 @@ const QuickStockSearch = () => {
       case 'rupture': return 'bg-destructive/10 text-destructive border-destructive/20';
       default: return 'bg-muted text-muted-foreground';
     }
-  };
+  }, []);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-40" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card>
+    <Card className="transition-all duration-300 hover:shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Search className="h-5 w-5" />
           Recherche Rapide
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Info className="h-4 w-4 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Recherchez un produit par nom ou code CIP</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -60,7 +87,7 @@ const QuickStockSearch = () => {
         {quickResults.length > 0 && (
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {quickResults.map((product) => (
-              <div key={product.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+              <div key={product.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors animate-fade-in">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="font-medium text-sm">{product.libelle_produit}</div>
@@ -79,7 +106,7 @@ const QuickStockSearch = () => {
         )}
 
         {searchTerm && quickResults.length === 0 && (
-          <div className="text-center py-4 text-muted-foreground">
+          <div className="text-center py-4 text-muted-foreground animate-fade-in">
             <Package className="h-8 w-8 mx-auto mb-2" />
             <p className="text-sm">Aucun produit trouvé</p>
           </div>
@@ -94,6 +121,8 @@ const QuickStockSearch = () => {
       </CardContent>
     </Card>
   );
-};
+});
+
+QuickStockSearch.displayName = 'QuickStockSearch';
 
 export default QuickStockSearch;
