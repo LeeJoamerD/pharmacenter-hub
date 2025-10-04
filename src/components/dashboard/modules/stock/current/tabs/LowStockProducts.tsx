@@ -3,13 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertTriangle, ShoppingCart, Bell, Package } from 'lucide-react';
-import { useCurrentStock } from '@/hooks/useCurrentStock';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertTriangle, ShoppingCart, Bell, Package, Search, Filter } from 'lucide-react';
+import { useLowStockData } from '@/hooks/useLowStockData';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 
 const LowStockProducts = () => {
-  const { products, isLoading } = useCurrentStock();
+  const { 
+    lowStockItems, 
+    metrics, 
+    categories,
+    filters,
+    isLoading 
+  } = useLowStockData();
   const { toast } = useToast();
 
   const handleUrgentOrder = () => {
@@ -43,13 +51,9 @@ const LowStockProducts = () => {
   const handleAlert = (product: any) => {
     toast({
       title: "Alerte configurée",
-      description: `Alerte activée pour ${product.libelle_produit}`,
+      description: `Alerte activée pour ${product.nomProduit}`,
     });
   };
-
-  const lowStockProducts = products.filter(p => 
-    p.statut_stock === 'faible' || p.statut_stock === 'critique'
-  );
 
   const getSeverityColor = (status: string) => {
     switch (status) {
@@ -81,7 +85,7 @@ const LowStockProducts = () => {
               <span className="text-sm font-medium">Stock Critique</span>
             </div>
             <div className="text-2xl font-bold text-red-600">
-              {products.filter(p => p.statut_stock === 'critique').length}
+              {metrics.criticalItems}
             </div>
             <p className="text-xs text-muted-foreground">Nécessite action immédiate</p>
           </CardContent>
@@ -94,7 +98,7 @@ const LowStockProducts = () => {
               <span className="text-sm font-medium">Stock Faible</span>
             </div>
             <div className="text-2xl font-bold text-yellow-600">
-              {products.filter(p => p.statut_stock === 'faible').length}
+              {metrics.lowItems}
             </div>
             <p className="text-xs text-muted-foreground">À surveiller</p>
           </CardContent>
@@ -107,12 +111,73 @@ const LowStockProducts = () => {
               <span className="text-sm font-medium">Total à Réapprovisionner</span>
             </div>
             <div className="text-2xl font-bold text-blue-600">
-              {lowStockProducts.length}
+              {metrics.totalItems}
             </div>
             <p className="text-xs text-muted-foreground">Produits concernés</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Filtres et recherche */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filtres et Recherche
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher par nom, code ou DCI..."
+                value={filters.searchTerm}
+                onChange={(e) => filters.setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            <Select
+              value={filters.categoryFilter}
+              onValueChange={filters.setCategoryFilter}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Toutes les catégories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes les catégories</SelectItem>
+                {categories.map((cat: any) => (
+                  <SelectItem key={cat.libelle_famille} value={cat.libelle_famille}>
+                    {cat.libelle_famille}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={filters.statusFilter}
+              onValueChange={filters.setStatusFilter}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Tous les statuts" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                <SelectItem value="critique">Critique</SelectItem>
+                <SelectItem value="faible">Faible</SelectItem>
+                <SelectItem value="attention">Attention</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {lowStockItems.length > 0 && (
+            <p className="text-sm text-muted-foreground mt-4">
+              <strong>{lowStockItems.length}</strong> produit{lowStockItems.length > 1 ? 's' : ''} trouvé{lowStockItems.length > 1 ? 's' : ''}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Actions rapides */}
       <Card>
@@ -145,7 +210,7 @@ const LowStockProducts = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
-            Produits en Stock Faible ({lowStockProducts.length})
+            Produits en Stock Faible ({lowStockItems.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -157,7 +222,7 @@ const LowStockProducts = () => {
                 </div>
               ))}
             </div>
-          ) : lowStockProducts.length === 0 ? (
+          ) : lowStockItems.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <AlertTriangle className="h-16 w-16 mx-auto mb-4 text-green-500" />
               <p className="text-lg font-medium text-green-600">Excellent !</p>
@@ -179,35 +244,35 @@ const LowStockProducts = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {lowStockProducts
+                  {lowStockItems
                     .sort((a, b) => {
                       // Trier par criticité puis par pourcentage de stock
-                      if (a.statut_stock === 'critique' && b.statut_stock !== 'critique') return -1;
-                      if (b.statut_stock === 'critique' && a.statut_stock !== 'critique') return 1;
+                      if (a.statut === 'critique' && b.statut !== 'critique') return -1;
+                      if (b.statut === 'critique' && a.statut !== 'critique') return 1;
                       
-                      const aPercentage = getStockPercentage(a.stock_actuel, a.stock_limite);
-                      const bPercentage = getStockPercentage(b.stock_actuel, b.stock_limite);
+                      const aPercentage = getStockPercentage(a.quantiteActuelle, a.seuilMinimum);
+                      const bPercentage = getStockPercentage(b.quantiteActuelle, b.seuilMinimum);
                       return aPercentage - bPercentage;
                     })
-                    .map((product) => {
-                      const stockPercentage = getStockPercentage(product.stock_actuel, product.stock_limite);
+                    .map((item) => {
+                      const stockPercentage = getStockPercentage(item.quantiteActuelle, item.seuilMinimum);
                       
                       return (
-                        <TableRow key={product.id}>
+                        <TableRow key={item.id}>
                           <TableCell>
                             <div>
-                              <div className="font-medium">{product.libelle_produit}</div>
+                              <div className="font-medium">{item.nomProduit}</div>
                               <div className="text-sm text-muted-foreground">
-                                {product.famille_libelle} • {product.rayon_libelle}
+                                {item.categorie}
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="font-mono text-sm">{product.code_cip}</TableCell>
+                          <TableCell className="font-mono text-sm">{item.codeProduit}</TableCell>
                           <TableCell>
-                            <div className="font-semibold text-lg">{product.stock_actuel}</div>
+                            <div className="font-semibold text-lg">{item.quantiteActuelle}</div>
                           </TableCell>
                           <TableCell>
-                            <div className="text-muted-foreground">{product.stock_limite}</div>
+                            <div className="text-muted-foreground">{item.seuilMinimum}</div>
                           </TableCell>
                           <TableCell>
                             <div className="space-y-2">
@@ -221,14 +286,14 @@ const LowStockProducts = () => {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge className={getSeverityColor(product.statut_stock)}>
-                              {product.statut_stock === 'critique' ? 'URGENT' : 'ATTENTION'}
+                            <Badge className={getSeverityColor(item.statut)}>
+                              {item.statut === 'critique' ? 'URGENT' : item.statut === 'faible' ? 'ATTENTION' : 'SURVEILLER'}
                             </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="text-sm">
-                              {product.date_derniere_sortie 
-                                ? new Date(product.date_derniere_sortie).toLocaleDateString()
+                              {item.dernierMouvement 
+                                ? new Date(item.dernierMouvement).toLocaleDateString()
                                 : 'N/A'
                               }
                             </div>
@@ -239,7 +304,7 @@ const LowStockProducts = () => {
                                 size="sm" 
                                 variant="default" 
                                 className="gap-1"
-                                onClick={() => handleOrder(product)}
+                                onClick={() => handleOrder(item)}
                               >
                                 <ShoppingCart className="h-3 w-3" />
                                 Commander
@@ -248,7 +313,7 @@ const LowStockProducts = () => {
                                 size="sm" 
                                 variant="outline" 
                                 className="gap-1"
-                                onClick={() => handleAlert(product)}
+                                onClick={() => handleAlert(item)}
                               >
                                 <Bell className="h-3 w-3" />
                                 Alerter

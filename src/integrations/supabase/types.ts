@@ -3427,6 +3427,60 @@ export type Database = {
           },
         ]
       }
+      low_stock_actions_log: {
+        Row: {
+          action_details: Json | null
+          action_type: string
+          created_at: string
+          error_message: string | null
+          executed_at: string
+          executed_by: string | null
+          id: string
+          produit_id: string
+          result_status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          action_details?: Json | null
+          action_type: string
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string
+          executed_by?: string | null
+          id?: string
+          produit_id: string
+          result_status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          action_details?: Json | null
+          action_type?: string
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string
+          executed_by?: string | null
+          id?: string
+          produit_id?: string
+          result_status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "low_stock_actions_log_executed_by_fkey"
+            columns: ["executed_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "low_stock_actions_log_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       margin_rules: {
         Row: {
           active: boolean | null
@@ -6112,6 +6166,54 @@ export type Database = {
           },
         ]
       }
+      stock_alert_recipients: {
+        Row: {
+          alert_id: string
+          created_at: string
+          id: string
+          notification_type: string
+          personnel_id: string
+          read_at: string | null
+          sent_at: string | null
+          tenant_id: string
+        }
+        Insert: {
+          alert_id: string
+          created_at?: string
+          id?: string
+          notification_type: string
+          personnel_id: string
+          read_at?: string | null
+          sent_at?: string | null
+          tenant_id: string
+        }
+        Update: {
+          alert_id?: string
+          created_at?: string
+          id?: string
+          notification_type?: string
+          personnel_id?: string
+          read_at?: string | null
+          sent_at?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_alert_recipients_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "alertes_peremption"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_alert_recipients_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_mouvements: {
         Row: {
           agent_id: string | null
@@ -7128,6 +7230,10 @@ export type Database = {
           tenant_id: string
         }[]
       }
+      handle_reception_line: {
+        Args: { p_agent_id: string; p_reception_line: Json }
+        Returns: Json
+      }
       init_inventaire_items: {
         Args: { p_session_id: string }
         Returns: Json
@@ -7272,6 +7378,33 @@ export type Database = {
       rpc_stock_record_movement: {
         Args:
           | {
+              p_agent_id: string
+              p_lot_id: number
+              p_motif: string
+              p_quantite_mouvement: number
+              p_reference_id: number
+              p_reference_type: string
+              p_type_mouvement: string
+            }
+          | {
+              p_agent_id: string
+              p_lot_id: string
+              p_produit_id: string
+              p_quantite: number
+              p_tenant_id: string
+              p_type_mouvement: string
+            }
+          | {
+              p_agent_id: string
+              p_motif: string
+              p_produit_id: number
+              p_quantite: number
+              p_reference_id: number
+              p_reference_type: string
+              p_tenant_id: string
+              p_type_mouvement: string
+            }
+          | {
               p_agent_id?: string
               p_emplacement_destination?: string
               p_emplacement_source?: string
@@ -7288,6 +7421,16 @@ export type Database = {
               p_type_mouvement: string
             }
           | {
+              p_agent_id?: string
+              p_lot_id: string
+              p_movement_type: string
+              p_notes?: string
+              p_product_id: string
+              p_quantity: number
+              p_reference?: string
+              p_tenant_id: string
+            }
+          | {
               p_emplacement_destination?: string
               p_emplacement_source?: string
               p_lot_id?: string
@@ -7300,6 +7443,28 @@ export type Database = {
               p_reference_id?: string
               p_reference_type?: string
               p_type_mouvement: string
+            }
+          | {
+              p_lot_id: string
+              p_motif: string
+              p_produit_id: string
+              p_quantite: number
+              p_reference_id: string
+              p_reference_type: string
+              p_tenant_id: string
+              p_type_mouvement: string
+              p_user_id: string
+            }
+          | {
+              p_lot_id: string
+              p_movement_type: Database["public"]["Enums"]["movement_type"]
+              p_order_id?: string
+              p_pharmacy_id: string
+              p_product_id: string
+              p_quantity: number
+              p_reason: string
+              p_reception_id?: string
+              p_user_id: string
             }
         Returns: Json
       }
@@ -7344,6 +7509,13 @@ export type Database = {
       }
     }
     Enums: {
+      movement_type:
+        | "in"
+        | "out"
+        | "ajustement"
+        | "transfert"
+        | "destruction"
+        | "retour"
       situation_familiale_enum:
         | "Célibataire"
         | "Marié(e)"
@@ -7486,6 +7658,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      movement_type: [
+        "in",
+        "out",
+        "ajustement",
+        "transfert",
+        "destruction",
+        "retour",
+      ],
       situation_familiale_enum: [
         "Célibataire",
         "Marié(e)",
