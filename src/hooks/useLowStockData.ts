@@ -112,14 +112,14 @@ export const useLowStockData = () => {
         // Utiliser le mapping au lieu d'appeler le service (1 requête au lieu de 310)
         const currentStock = stockByProduct[product.id] || 0;
         
-        console.log(`🔍 [LOW STOCK] Produit ${product.libelle_produit}: stock=${currentStock}, id=${product.id}`);
-        
         // Get category-specific threshold
         const categoryThreshold = thresholds?.find(t => 
           t.category === product.famille_produit?.libelle_famille && t.enabled
         );
         const effectiveThreshold = categoryThreshold?.threshold || product.stock_limite || 10;
         const optimalThreshold = product.stock_alerte || effectiveThreshold * 3;
+        
+        console.log(`🔍 [LOW STOCK] Produit ${product.libelle_produit}: stock=${currentStock}, seuilMin=${effectiveThreshold}, seuilOptimal=${optimalThreshold}, id=${product.id}`);
 
         // Determine if this is a low stock item
         let stockStatus: 'critique' | 'faible' | 'attention' | null = null;
