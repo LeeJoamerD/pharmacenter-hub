@@ -32,7 +32,10 @@ export class ExportService {
     options: ExportOptions
   ): Promise<ExportResult> {
     try {
-      const filename = `stock_faible_${new Date().toISOString().split('T')[0]}.${options.format}`;
+      // Générer le nom de fichier avec la bonne extension
+      const extensions = { csv: 'csv', excel: 'xlsx', pdf: 'pdf' };
+      const ext = extensions[options.format];
+      const filename = `stock_faible_${new Date().toISOString().split('T')[0]}.${ext}`;
 
       switch (options.format) {
         case 'csv':
@@ -267,12 +270,6 @@ export class ExportService {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
 
-    // Trigger download
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.click();
-
     return {
       success: true,
       downloadUrl: url,
@@ -330,16 +327,10 @@ export class ExportService {
     const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
     
-    // Trigger download
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename.replace('.csv', '.xlsx');
-    link.click();
-    
     return {
       success: true,
       downloadUrl: url,
-      filename: filename.replace('.csv', '.xlsx')
+      filename
     };
   }
 
@@ -396,16 +387,10 @@ export class ExportService {
     const pdfBlob = doc.output('blob');
     const url = URL.createObjectURL(pdfBlob);
     
-    // Trigger download
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename.replace('.html', '.pdf');
-    link.click();
-    
     return {
       success: true,
       downloadUrl: url,
-      filename: filename.replace('.html', '.pdf')
+      filename
     };
   }
 

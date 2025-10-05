@@ -643,6 +643,19 @@ export const LowStockProducts = () => {
           />
         </>
       )}
+
+      {/* Emergency Order Modal */}
+      <EmergencyOrderModal
+        open={emergencyOrderModalOpen}
+        onOpenChange={setEmergencyOrderModalOpen}
+        criticalItems={lowStockItems.filter(item => selectedItems.includes(item.id))}
+      />
+
+      {/* Stock Configuration Modal */}
+      <StockConfigModal
+        open={configModalOpen}
+        onOpenChange={setConfigModalOpen}
+      />
     </div>
   );
 };
