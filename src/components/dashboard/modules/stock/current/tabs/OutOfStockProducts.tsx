@@ -13,7 +13,7 @@ import { OrderOutOfStockProductModal } from '../modals/OrderOutOfStockProductMod
 import { SubstituteIndividualModal } from '../modals/SubstituteIndividualModal';
 
 const OutOfStockProducts = () => {
-  const { products, isLoading } = useCurrentStock();
+  const { allStockData, isLoading } = useCurrentStock();
   const { toast } = useToast();
   
   // États pour les modals
@@ -46,7 +46,7 @@ const OutOfStockProducts = () => {
     setSubstituteIndividualOpen(true);
   };
 
-  const outOfStockProducts = products.filter(p => p.statut_stock === 'rupture');
+  const outOfStockProducts = allStockData.filter(p => p.statut_stock === 'rupture');
 
   const getDaysSinceLastStock = (lastExitDate: string | undefined) => {
     if (!lastExitDate) return null;

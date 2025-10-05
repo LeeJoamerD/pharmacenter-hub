@@ -105,12 +105,18 @@ export const useCurrentStock = () => {
     { is_active: true }
   );
 
-  // Récupérer les lots pour calculer le stock réel
+  // Récupérer les lots pour calculer le stock réel (tous les lots, même ceux à 0)
   const { data: lots = [] } = useTenantQueryWithCache(
     ['lots'],
     'lots',
-    'produit_id, quantite_restante',
-    { quantite_restante: { gt: 0 } }
+    'produit_id, quantite_restante'
+  );
+
+  // Récupérer les mouvements de stock pour les dates réelles
+  const { data: stockMovements = [] } = useTenantQueryWithCache(
+    ['stock-movements-dates'],
+    'stock_mouvements',
+    'produit_id, date_mouvement, type_mouvement'
   );
 
   // Familles de produits pour les filtres
@@ -143,7 +149,27 @@ export const useCurrentStock = () => {
         return acc;
       }, {});
 
+      // Créer des mappings pour les vraies dates de mouvements
+      const lastEntryByProduct: Record<string, string> = {};
+      const lastExitByProduct: Record<string, string> = {};
+      
+      stockMovements.forEach((movement: any) => {
+        if (movement.type_mouvement === 'entree') {
+          if (!lastEntryByProduct[movement.produit_id] || 
+              movement.date_mouvement > lastEntryByProduct[movement.produit_id]) {
+            lastEntryByProduct[movement.produit_id] = movement.date_mouvement;
+          }
+        } else if (movement.type_mouvement === 'sortie') {
+          if (!lastExitByProduct[movement.produit_id] || 
+              movement.date_mouvement > lastExitByProduct[movement.produit_id]) {
+            lastExitByProduct[movement.produit_id] = movement.date_mouvement;
+          }
+        }
+      });
+
       console.log('📦 Stock par produit:', stockByProduct);
+      console.log('📅 Dates dernières entrées:', Object.keys(lastEntryByProduct).length);
+      console.log('📅 Dates dernières sorties:', Object.keys(lastExitByProduct).length);
 
       const processedProducts: CurrentStockItem[] = [];
 
@@ -180,10 +206,11 @@ export const useCurrentStock = () => {
           stockStatus = 'surstock';
         }
 
-        // Enhanced rotation calculation
+        // Enhanced rotation calculation avec les vraies dates
         let rotation: CurrentStockItem['rotation'] = 'normale';
-        const daysSinceLastMovement = product.updated_at 
-          ? Math.floor((Date.now() - new Date(product.updated_at).getTime()) / (1000 * 60 * 60 * 24))
+        const lastExitDate = lastExitByProduct[product.id];
+        const daysSinceLastMovement = lastExitDate
+          ? Math.floor((Date.now() - new Date(lastExitDate).getTime()) / (1000 * 60 * 60 * 24))
           : 999;
         
         const slowMovingDays = stockSettings?.minimum_stock_days || 30;
@@ -204,8 +231,8 @@ export const useCurrentStock = () => {
           stock_actuel: currentStock,
           stock_limite: effectiveThreshold,
           stock_alerte: product.stock_alerte || 100,
-          date_derniere_entree: product.created_at,
-          date_derniere_sortie: product.updated_at,
+          date_derniere_entree: lastEntryByProduct[product.id],
+          date_derniere_sortie: lastExitByProduct[product.id],
           valeur_stock: stockValue,
           statut_stock: stockStatus,
           rotation
@@ -217,7 +244,7 @@ export const useCurrentStock = () => {
     };
 
     processProducts();
-  }, [products, lots, stockSettings, thresholds]);
+  }, [products, lots, stockMovements, stockSettings, thresholds]);
 
   // Filtrage, tri et pagination des produits
   const filteredAndSortedProducts = useMemo(() => {

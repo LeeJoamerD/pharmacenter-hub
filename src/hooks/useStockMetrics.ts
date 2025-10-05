@@ -4,6 +4,8 @@ import { useToast } from '@/hooks/use-toast';
 
 export interface StockMetrics {
   totalProduits: number;
+  ruptures: number;
+  stockCritique: number;
   stockFaible: number;
   expirationProche: number;
   commandesEnCours: number;
@@ -14,6 +16,8 @@ export interface StockMetrics {
 export const useStockMetrics = () => {
   const [metrics, setMetrics] = useState<StockMetrics>({
     totalProduits: 0,
+    ruptures: 0,
+    stockCritique: 0,
     stockFaible: 0,
     expirationProche: 0,
     commandesEnCours: 0,
@@ -102,27 +106,24 @@ export const useStockMetrics = () => {
       // Traitement des résultats
       const totalProduits = productsResult.status === 'fulfilled' ? (productsResult.value.data?.length || 0) : 0;
       
+      let ruptures = 0;
+      let stockCritique = 0;
       let stockFaible = 0;
+      
       if (lowStockResult.status === 'fulfilled' && lowStockResult.value.data) {
-        stockFaible = lowStockResult.value.data.filter((product: any) => {
+        lowStockResult.value.data.forEach((product: any) => {
           const totalStock = product.lots?.reduce((sum: number, lot: any) => sum + lot.quantite_restante, 0) || 0;
           const effectiveThreshold = product.stock_limite || 10;
           
-          // Calculer le statut comme dans useLowStockData
-          let stockStatus: 'critique' | 'faible' | 'attention' | null = null;
-          
+          // Classification selon le modèle métier
           if (totalStock === 0) {
-            stockStatus = 'critique';
+            ruptures++;  // Vraie rupture: stock = 0
           } else if (totalStock <= Math.floor(effectiveThreshold * 0.3)) {
-            stockStatus = 'critique';
+            stockCritique++;  // Stock critique: 0 < stock <= 30% du seuil
           } else if (totalStock <= effectiveThreshold) {
-            stockStatus = 'faible';  // On veut compter seulement ceux-ci
-          } else if (totalStock <= Math.floor(effectiveThreshold * 1.5)) {
-            stockStatus = 'attention';
+            stockFaible++;  // Stock faible: 30% < stock <= 100% du seuil
           }
-          
-          return stockStatus === 'faible';  // Compte SEULEMENT 'faible'
-        }).length;
+        });
       }
       
       const expirationProche = expiringResult.status === 'fulfilled' ? (expiringResult.value.data?.length || 0) : 0;
@@ -139,6 +140,8 @@ export const useStockMetrics = () => {
 
       setMetrics({
         totalProduits,
+        ruptures,
+        stockCritique,
         stockFaible,
         expirationProche,
         commandesEnCours,
