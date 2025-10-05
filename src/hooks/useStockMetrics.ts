@@ -61,10 +61,13 @@ export const useStockMetrics = () => {
         supabase
           .from('produits')
           .select(`
-            id, stock_limite,
-            lots(quantite_restante)
+            id, stock_limite, stock_alerte, libelle_produit,
+            famille_id, rayon_id,
+            lots(quantite_restante),
+            famille_produit(libelle_famille)
           `)
-          .eq('tenant_id', tenantId),
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true),
         
         // Produits expirant dans les 30 prochains jours
         supabase

@@ -57,7 +57,7 @@ export const useLowStockData = () => {
 
   // Récupérer tous les produits avec leurs relations
   const { data: products = [], isLoading, refetch } = useTenantQueryWithCache(
-    ['products-for-low-stock'],
+    ['products-for-low-stock-real-data'],
     'produits',
     `
       id, tenant_id, libelle_produit, code_cip,
