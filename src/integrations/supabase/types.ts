@@ -460,6 +460,68 @@ export type Database = {
         }
         Relationships: []
       }
+      alertes_fournisseurs: {
+        Row: {
+          canal_envoi: string
+          created_at: string | null
+          created_by: string | null
+          date_envoi: string | null
+          date_reponse: string | null
+          fournisseur_id: string
+          id: string
+          message: string
+          metadata: Json | null
+          produits_ids: string[]
+          reponse_fournisseur: string | null
+          statut: string
+          tenant_id: string
+          type_alerte: string
+          updated_at: string | null
+        }
+        Insert: {
+          canal_envoi?: string
+          created_at?: string | null
+          created_by?: string | null
+          date_envoi?: string | null
+          date_reponse?: string | null
+          fournisseur_id: string
+          id?: string
+          message: string
+          metadata?: Json | null
+          produits_ids: string[]
+          reponse_fournisseur?: string | null
+          statut?: string
+          tenant_id: string
+          type_alerte: string
+          updated_at?: string | null
+        }
+        Update: {
+          canal_envoi?: string
+          created_at?: string | null
+          created_by?: string | null
+          date_envoi?: string | null
+          date_reponse?: string | null
+          fournisseur_id?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+          produits_ids?: string[]
+          reponse_fournisseur?: string | null
+          statut?: string
+          tenant_id?: string
+          type_alerte?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alertes_fournisseurs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alertes_peremption: {
         Row: {
           actions_recommandees: string[] | null
@@ -5261,6 +5323,59 @@ export type Database = {
             columns: ["reference_agent_modification_id"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      produits_substituts: {
+        Row: {
+          created_at: string | null
+          date_derniere_utilisation: string | null
+          efficacite_validee: boolean | null
+          id: string
+          is_active: boolean | null
+          nombre_utilisations: number | null
+          priorite: number | null
+          produit_principal_id: string
+          produit_substitut_id: string
+          raison_substitution: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date_derniere_utilisation?: string | null
+          efficacite_validee?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          nombre_utilisations?: number | null
+          priorite?: number | null
+          produit_principal_id: string
+          produit_substitut_id: string
+          raison_substitution?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date_derniere_utilisation?: string | null
+          efficacite_validee?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          nombre_utilisations?: number | null
+          priorite?: number | null
+          produit_principal_id?: string
+          produit_substitut_id?: string
+          raison_substitution?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produits_substituts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
         ]

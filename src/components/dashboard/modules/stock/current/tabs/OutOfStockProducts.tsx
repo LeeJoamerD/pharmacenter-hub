@@ -1,49 +1,49 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { XCircle, AlertCircle, ShoppingCart, Clock, TrendingDown } from 'lucide-react';
-import { useCurrentStock } from '@/hooks/useCurrentStock';
+import { useCurrentStock, CurrentStockItem } from '@/hooks/useCurrentStock';
 import { useToast } from '@/hooks/use-toast';
+import { OutOfStockEmergencyOrderModal } from '../modals/OutOfStockEmergencyOrderModal';
+import { SupplierAlertModal } from '../modals/SupplierAlertModal';
+import { SubstituteProductSearchModal } from '../modals/SubstituteProductSearchModal';
+import { OrderOutOfStockProductModal } from '../modals/OrderOutOfStockProductModal';
+import { SubstituteIndividualModal } from '../modals/SubstituteIndividualModal';
 
 const OutOfStockProducts = () => {
   const { products, isLoading } = useCurrentStock();
   const { toast } = useToast();
+  
+  // États pour les modals
+  const [emergencyOrderOpen, setEmergencyOrderOpen] = useState(false);
+  const [supplierAlertOpen, setSupplierAlertOpen] = useState(false);
+  const [substituteSearchOpen, setSubstituteSearchOpen] = useState(false);
+  const [orderProductOpen, setOrderProductOpen] = useState(false);
+  const [substituteIndividualOpen, setSubstituteIndividualOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<CurrentStockItem | null>(null);
 
   const handleUrgentMultipleOrder = () => {
-    toast({
-      title: "Commande urgente multiple",
-      description: "Préparation d'une commande urgente pour tous les produits en rupture",
-    });
+    setEmergencyOrderOpen(true);
   };
 
   const handleAlertSuppliers = () => {
-    toast({
-      title: "Alerte fournisseurs",
-      description: "Notification envoyée aux fournisseurs pour les ruptures critiques",
-    });
+    setSupplierAlertOpen(true);
   };
 
   const handleSubstitutes = () => {
-    toast({
-      title: "Produits de substitution",
-      description: "Recherche de produits de substitution disponibles",
-    });
+    setSubstituteSearchOpen(true);
   };
 
-  const handleOrder = (product: any) => {
-    toast({
-      title: "Commande produit",
-      description: `Commande urgente pour ${product.libelle_produit} initiée`,
-    });
+  const handleOrder = (product: CurrentStockItem) => {
+    setSelectedProduct(product);
+    setOrderProductOpen(true);
   };
 
-  const handleSubstitute = (product: any) => {
-    toast({
-      title: "Recherche substitut",
-      description: `Recherche d'un produit de substitution pour ${product.libelle_produit}`,
-    });
+  const handleSubstitute = (product: CurrentStockItem) => {
+    setSelectedProduct(product);
+    setSubstituteIndividualOpen(true);
   };
 
   const outOfStockProducts = products.filter(p => p.statut_stock === 'rupture');
@@ -298,6 +298,37 @@ const OutOfStockProducts = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Modals */}
+      <OutOfStockEmergencyOrderModal
+        open={emergencyOrderOpen}
+        onOpenChange={setEmergencyOrderOpen}
+        criticalItems={outOfStockProducts}
+      />
+      
+      <SupplierAlertModal
+        open={supplierAlertOpen}
+        onOpenChange={setSupplierAlertOpen}
+        products={outOfStockProducts}
+      />
+      
+      <SubstituteProductSearchModal
+        open={substituteSearchOpen}
+        onOpenChange={setSubstituteSearchOpen}
+        products={outOfStockProducts}
+      />
+      
+      <OrderOutOfStockProductModal
+        open={orderProductOpen}
+        onOpenChange={setOrderProductOpen}
+        product={selectedProduct}
+      />
+      
+      <SubstituteIndividualModal
+        open={substituteIndividualOpen}
+        onOpenChange={setSubstituteIndividualOpen}
+        product={selectedProduct}
+      />
     </div>
   );
 };
