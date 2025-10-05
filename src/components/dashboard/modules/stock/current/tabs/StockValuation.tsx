@@ -7,16 +7,16 @@ import { useCurrentStock } from '@/hooks/useCurrentStock';
 import { Progress } from '@/components/ui/progress';
 
 const StockValuation = () => {
-  const { products, families, rayons, isLoading } = useCurrentStock();
+  const { allStockData, families, rayons, isLoading } = useCurrentStock();
 
   // Calculs de valorisation
-  const totalStockValue = products.reduce((sum, p) => sum + p.valeur_stock, 0);
-  const availableStockValue = products.filter(p => p.stock_actuel > 0).reduce((sum, p) => sum + p.valeur_stock, 0);
-  const lowStockValue = products.filter(p => p.statut_stock === 'faible' || p.statut_stock === 'critique').reduce((sum, p) => sum + p.valeur_stock, 0);
+  const totalStockValue = allStockData.reduce((sum, p) => sum + p.valeur_stock, 0);
+  const availableStockValue = allStockData.filter(p => p.stock_actuel > 0).reduce((sum, p) => sum + p.valeur_stock, 0);
+  const lowStockValue = allStockData.filter(p => p.statut_stock === 'faible' || p.statut_stock === 'critique').reduce((sum, p) => sum + p.valeur_stock, 0);
 
   // Valorisation par famille
   const valuationByFamily = families.map((family: any) => {
-    const familyProducts = products.filter(p => p.famille_id === family.id);
+    const familyProducts = allStockData.filter(p => p.famille_id === family.id);
     const value = familyProducts.reduce((sum, p) => sum + p.valeur_stock, 0);
     const quantity = familyProducts.reduce((sum, p) => sum + p.stock_actuel, 0);
     const percentage = totalStockValue > 0 ? (value / totalStockValue) * 100 : 0;
@@ -33,7 +33,7 @@ const StockValuation = () => {
 
   // Valorisation par rayon
   const valuationByRayon = rayons.map((rayon: any) => {
-    const rayonProducts = products.filter(p => p.rayon_id === rayon.id);
+    const rayonProducts = allStockData.filter(p => p.rayon_id === rayon.id);
     const value = rayonProducts.reduce((sum, p) => sum + p.valeur_stock, 0);
     const quantity = rayonProducts.reduce((sum, p) => sum + p.stock_actuel, 0);
     const percentage = totalStockValue > 0 ? (value / totalStockValue) * 100 : 0;
@@ -49,7 +49,7 @@ const StockValuation = () => {
   }).filter(r => r.value > 0).sort((a, b) => b.value - a.value);
 
   // Top 20 produits par valorisation
-  const topValueProducts = products
+  const topValueProducts = allStockData
     .filter(p => p.valeur_stock > 0)
     .sort((a, b) => b.valeur_stock - a.valeur_stock)
     .slice(0, 20);
@@ -125,7 +125,7 @@ const StockValuation = () => {
               <span className="text-sm font-medium">Valeur Moyenne</span>
             </div>
             <div className="text-2xl font-bold text-purple-600">
-              {formatCurrency(products.length > 0 ? totalStockValue / products.length : 0)}
+              {formatCurrency(allStockData.length > 0 ? totalStockValue / allStockData.length : 0)}
             </div>
             <p className="text-xs text-muted-foreground">Par produit</p>
           </CardContent>
