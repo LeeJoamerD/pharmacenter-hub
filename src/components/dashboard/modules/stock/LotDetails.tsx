@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLots } from "@/hooks/useLots";
 import { useLotMovements } from "@/hooks/useLotMovements";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,8 @@ import { fr } from "date-fns/locale";
 export const LotDetails = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLotId, setSelectedLotId] = useState<string>("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { useLotsQuery, useLotQuery, calculateDaysToExpiration, determineUrgencyLevel } = useLots();
   const { useLotMovementsForLot, getMovementTypeLabel, getMovementTypeColor, getMovementIcon } = useLotMovements();
@@ -26,10 +28,47 @@ export const LotDetails = () => {
   const { data: selectedLot } = useLotQuery(selectedLotId);
   const { data: movements } = useLotMovementsForLot(selectedLotId);
 
-  const filteredLots = lots?.filter(lot =>
-    lot.numero_lot.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lot.produit?.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  // Fermer le dropdown quand on clique à l'extérieur
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Filtrage amélioré avec recherche sur plusieurs champs
+  const filteredLots = lots?.filter(lot => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      lot.numero_lot.toLowerCase().includes(searchLower) ||
+      lot.produit?.libelle_produit.toLowerCase().includes(searchLower) ||
+      lot.produit?.code_cip?.toLowerCase().includes(searchLower) ||
+      lot.fournisseur?.nom?.toLowerCase().includes(searchLower)
+    );
+  }) || [];
+
+  // Fonction pour sélectionner un lot depuis le champ de recherche
+  const handleLotSelection = (lotId: string) => {
+    setSelectedLotId(lotId);
+    const selectedLotData = lots?.find(lot => lot.id === lotId);
+    if (selectedLotData) {
+      setSearchTerm(`${selectedLotData.numero_lot} - ${selectedLotData.produit?.libelle_produit}`);
+    }
+    setShowDropdown(false);
+  };
+
+  // Fonction pour effacer la sélection
+  const clearSelection = () => {
+    setSelectedLotId("");
+    setSearchTerm("");
+    setShowDropdown(false);
+  };
 
   const calculateUsagePercentage = (initial: number, remaining: number) => {
     return ((initial - remaining) / initial) * 100;
@@ -47,27 +86,65 @@ export const LotDetails = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-4">
-            <div className="relative flex-1">
+            <div className="relative flex-1" ref={dropdownRef}>
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher un lot..."
+                placeholder="Rechercher par numéro de lot, produit, code CIP ou fournisseur..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setShowDropdown(e.target.value.length > 0);
+                }}
+                onFocus={() => setShowDropdown(searchTerm.length > 0)}
+                className="pl-10 pr-10"
               />
+              {selectedLotId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSelection}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100"
+                >
+                  ×
+                </Button>
+              )}
+              
+              {/* Dropdown de suggestions */}
+              {showDropdown && filteredLots.length > 0 && (
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {filteredLots.slice(0, 10).map((lot) => (
+                    <div
+                      key={lot.id}
+                      onClick={() => handleLotSelection(lot.id)}
+                      className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{lot.numero_lot}</p>
+                          <p className="text-sm text-gray-600">{lot.produit?.libelle_produit}</p>
+                          {lot.produit?.code_cip && (
+                            <p className="text-xs text-gray-500">CIP: {lot.produit.code_cip}</p>
+                          )}
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="text-sm font-medium">{lot.quantite_restante}/{lot.quantite_initiale}</p>
+                          {lot.date_peremption && (
+                            <p className="text-xs text-gray-500">
+                              Exp: {format(new Date(lot.date_peremption), 'dd/MM/yyyy', { locale: fr })}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {filteredLots.length > 10 && (
+                    <div className="px-4 py-2 text-sm text-gray-500 bg-gray-50">
+                      +{filteredLots.length - 10} autres résultats...
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <Select value={selectedLotId} onValueChange={setSelectedLotId}>
-              <SelectTrigger className="w-[300px]">
-                <SelectValue placeholder="Sélectionner un lot" />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredLots.map((lot) => (
-                  <SelectItem key={lot.id} value={lot.id}>
-                    {lot.numero_lot} - {lot.produit?.libelle_produit}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </CardContent>
       </Card>

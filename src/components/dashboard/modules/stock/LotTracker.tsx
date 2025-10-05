@@ -9,19 +9,61 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Filter, Eye, Calendar, Package, MapPin, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { LotDetailsDialog } from "./LotDetailsDialog";
 
 export const LotTracker = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
   const { useLotsQuery, calculateDaysToExpiration, determineUrgencyLevel } = useLots();
   
-  const { data: lots, isLoading, error } = useLotsQuery({
-    ...(statusFilter !== "all" && { statut_lot: statusFilter }),
-  });
+  // Récupération de tous les lots sans filtrage côté serveur
+  const { data: lots, isLoading, error } = useLotsQuery({});
 
-  const filteredLots = lots?.filter(lot =>
+  // Filtrage côté client basé sur les données réelles
+  const getFilteredLotsByStatus = (allLots: any[], filter: string) => {
+    if (filter === "all") {
+      return allLots;
+    }
+    
+    const filtered = allLots.filter(lot => {
+      const daysToExpiration = lot.date_peremption ? calculateDaysToExpiration(lot.date_peremption) : null;
+      const stockPercentage = (lot.quantite_restante / lot.quantite_initiale) * 100;
+      
+      // Logique basée sur les données réelles observées
+      if (filter === "actif") {
+        // Un lot est actif s'il n'est ni expiré ni épuisé
+        const isNotExpired = !daysToExpiration || daysToExpiration > 0;
+        const isNotEmpty = stockPercentage > 0;
+        return isNotExpired && isNotEmpty;
+      }
+      
+      if (filter === "expire") {
+        // Un lot est expiré si la date de péremption est dépassée
+        return daysToExpiration !== null && daysToExpiration <= 0;
+      }
+      
+      if (filter === "epuise") {
+        // Un lot est épuisé si le stock restant est 0
+        return stockPercentage <= 0;
+      }
+      
+      if (filter === "expiration_proche") {
+        // Un lot a une expiration proche s'il expire dans 60 jours ou moins (même critère que la carte statistique)
+        return daysToExpiration !== null && daysToExpiration > 0 && daysToExpiration <= 60;
+      }
+      
+      return false;
+    });
+    
+    return filtered;
+  };
+
+  const statusFilteredLots = lots ? getFilteredLotsByStatus(lots, statusFilter) : [];
+
+  const filteredLots = statusFilteredLots?.filter(lot =>
     lot.numero_lot.toLowerCase().includes(searchTerm.toLowerCase()) ||
     lot.produit?.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
@@ -84,6 +126,7 @@ export const LotTracker = () => {
             <SelectItem value="actif">Actif</SelectItem>
             <SelectItem value="expire">Expiré</SelectItem>
             <SelectItem value="epuise">Épuisé</SelectItem>
+            <SelectItem value="expiration_proche">Expiration Proche</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -222,7 +265,10 @@ export const LotTracker = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setSelectedLot(lot.id)}
+                          onClick={() => {
+                            setSelectedLot(lot.id);
+                            setIsDetailsDialogOpen(true);
+                          }}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -235,6 +281,16 @@ export const LotTracker = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal de détails du lot */}
+      <LotDetailsDialog
+        lotId={selectedLot}
+        isOpen={isDetailsDialogOpen}
+        onClose={() => {
+          setIsDetailsDialogOpen(false);
+          setSelectedLot(null);
+        }}
+      />
     </div>
   );
 };

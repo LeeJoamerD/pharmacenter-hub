@@ -19,7 +19,7 @@ export interface Lot {
   quantite_restante: number;
   prix_achat_unitaire?: number;
   prix_vente_suggere?: number;
-  statut_lot?: string;
+  statut?: string;
   emplacement?: string;
   temperature_stockage?: number;
   conditions_stockage?: string;
@@ -55,7 +55,7 @@ export interface CreateLotInput {
   quantite_initiale: number;
   prix_achat_unitaire?: number;
   prix_vente_suggere?: number;
-  statut_lot?: string;
+  statut?: string;
   emplacement?: string;
   temperature_stockage?: number;
   conditions_stockage?: string;
@@ -76,7 +76,7 @@ export const useLots = () => {
   const useLotsQuery = (filters?: {
     produit_id?: string;
     fournisseur_id?: string;
-    statut_lot?: string;
+    statut?: string;
     expiration_proche?: boolean;
     stock_faible?: boolean;
   }) => {
@@ -90,7 +90,7 @@ export const useLots = () => {
       `,
       {
         ...filters,
-        ...(filters?.statut_lot && { statut_lot: filters.statut_lot }),
+        ...(filters?.statut && { statut: filters.statut }),
       },
       {
         enabled: !!tenantId,
