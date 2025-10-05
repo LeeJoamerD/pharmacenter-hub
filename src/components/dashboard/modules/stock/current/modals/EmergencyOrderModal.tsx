@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -104,7 +104,7 @@ export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: Emerg
         commande_id: commande.id,
         produit_id: item.id,
         quantite_commandee: Math.max(item.seuilMinimum * 2 - item.quantiteActuelle, 0),
-        prix_unitaire: item.prixUnitaire
+        prix_achat_unitaire_attendu: item.prixUnitaire
       }));
 
       const { error: lignesError } = await supabase
@@ -159,6 +159,9 @@ export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: Emerg
             <AlertTriangle className="h-5 w-5 text-destructive" />
             Commande Urgente Globale
           </DialogTitle>
+          <DialogDescription>
+            Créer une commande d'urgence pour les produits en stock critique
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
