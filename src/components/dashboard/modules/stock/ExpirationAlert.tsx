@@ -31,8 +31,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import { useExpirationAlerts } from '@/hooks/useExpirationAlerts';
 import { useLots } from '@/hooks/useLots';
+import { useTenant } from '@/contexts/TenantContext';
 
 export const ExpirationAlert = () => {
+  const { currentUser } = useTenant();
   // États pour la gestion des alertes
   const [urgencyFilter, setUrgencyFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -156,12 +158,21 @@ export const ExpirationAlert = () => {
   }, [alerts, urgencyFilter, selectedProductId, searchTerm]);
 
   const handleMarkAsTreated = async (alert: any) => {
+    if (!currentUser?.id) {
+      toast({
+        title: "Erreur",
+        description: "Utilisateur non identifié.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       await updateAlertStatus({
         id: alert.id,
         statut: 'traitee',
         notes: actionNotes || 'Alerte marquée comme traitée',
-        traite_par_id: 'current-user-id' // À remplacer par l'ID utilisateur réel
+        traite_par_id: currentUser.id
       });
       setActionNotes('');
       toast({
@@ -179,12 +190,21 @@ export const ExpirationAlert = () => {
   };
 
   const handleIgnoreAlert = async (alert: any) => {
+    if (!currentUser?.id) {
+      toast({
+        title: "Erreur",
+        description: "Utilisateur non identifié.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       await updateAlertStatus({
         id: alert.id,
         statut: 'ignoree',
         notes: actionNotes || 'Alerte ignorée',
-        traite_par_id: 'current-user-id' // À remplacer par l'ID utilisateur réel
+        traite_par_id: currentUser.id
       });
       setActionNotes('');
       toast({

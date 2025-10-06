@@ -586,6 +586,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "alertes_peremption_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "alertes_peremption_traite_par_id_fkey"
             columns: ["traite_par_id"]
             isOneToOne: false

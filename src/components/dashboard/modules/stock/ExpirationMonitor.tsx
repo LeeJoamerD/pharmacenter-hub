@@ -10,11 +10,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Clock, AlertTriangle, Package, Calendar, Search, Download, Tag, CheckCircle, X, RefreshCw, Eye, MessageSquare } from 'lucide-react';
 import { useExpirationAlerts } from '@/hooks/useExpirationAlerts';
+import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const ExpirationMonitor = () => {
+  const { currentUser } = useTenant();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPeriod, setFilterPeriod] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -91,12 +93,17 @@ const ExpirationMonitor = () => {
   };
 
   const handleMarkAsTreated = async (alert: any) => {
+    if (!currentUser?.id) {
+      toast.error('Utilisateur non identifié');
+      return;
+    }
+
     try {
       await updateAlertStatus({
         id: alert.id,
         statut: 'traitee',
         notes: actionNotes || 'Alerte marquée comme traitée',
-        traite_par_id: 'current-user-id' // À remplacer par l'ID utilisateur réel
+        traite_par_id: currentUser.id
       });
       setSelectedAlert(null);
       setActionNotes('');
@@ -107,12 +114,17 @@ const ExpirationMonitor = () => {
   };
 
   const handleMarkAsIgnored = async (alert: any) => {
+    if (!currentUser?.id) {
+      toast.error('Utilisateur non identifié');
+      return;
+    }
+
     try {
       await updateAlertStatus({
         id: alert.id,
         statut: 'ignoree',
         notes: actionNotes || 'Alerte ignorée',
-        traite_par_id: 'current-user-id' // À remplacer par l'ID utilisateur réel
+        traite_par_id: currentUser.id
       });
       setSelectedAlert(null);
       setActionNotes('');
