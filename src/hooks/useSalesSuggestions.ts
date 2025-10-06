@@ -57,7 +57,7 @@ export const useSalesSuggestions = () => {
       if (!tenantId) throw new Error('Tenant ID manquant');
 
       const { data, error } = await supabase
-        .from('suggestions_vente')
+        .from('suggestions_vente' as any)
         .select(`
           *,
           lots!inner(
@@ -76,7 +76,7 @@ export const useSalesSuggestions = () => {
 
       if (error) throw error;
 
-      return data?.map(suggestion => ({
+      return data?.map((suggestion: any) => ({
         ...suggestion,
         numero_lot: suggestion.lots?.numero_lot || '',
         libelle_produit: suggestion.lots?.produits?.libelle_produit || '',
@@ -96,10 +96,9 @@ export const useSalesSuggestions = () => {
     mutationFn: async () => {
       if (!tenantId) throw new Error('Tenant ID manquant');
 
-      // Appeler la fonction de génération de suggestions
-      const { data, error } = await supabase.rpc('generate_sales_suggestions', {
-        p_tenant_id: tenantId
-      });
+      // Appeler la fonction de génération de suggestions (sécurisée)
+      // La fonction récupère automatiquement le tenant_id de l'utilisateur connecté
+      const { data, error } = await supabase.rpc('generate_sales_suggestions' as any);
 
       if (error) throw error;
       return data;
@@ -115,7 +114,7 @@ export const useSalesSuggestions = () => {
       if (!tenantId) throw new Error('Tenant ID manquant');
 
       const { data, error } = await supabase
-        .from('suggestions_vente')
+        .from('suggestions_vente' as any)
         .insert({
           ...suggestionData,
           tenant_id: tenantId,
@@ -138,7 +137,7 @@ export const useSalesSuggestions = () => {
       if (!tenantId) throw new Error('Tenant ID manquant');
 
       const { data, error } = await supabase
-        .from('suggestions_vente')
+        .from('suggestions_vente' as any)
         .update({
           ...updateData,
           updated_at: new Date().toISOString()
@@ -162,7 +161,7 @@ export const useSalesSuggestions = () => {
       if (!tenantId) throw new Error('Tenant ID manquant');
 
       const { error } = await supabase
-        .from('suggestions_vente')
+        .from('suggestions_vente' as any)
         .delete()
         .eq('id', id)
         .eq('tenant_id', tenantId);

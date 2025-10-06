@@ -6460,6 +6460,66 @@ export type Database = {
         }
         Relationships: []
       }
+      suggestions_vente: {
+        Row: {
+          created_at: string | null
+          id: string
+          lot_id: string
+          metadata: Json | null
+          motif_suggestion: string
+          priorite: string
+          prix_vente_suggere: number
+          produit_id: string
+          remise_suggere: number | null
+          statut: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          lot_id: string
+          metadata?: Json | null
+          motif_suggestion: string
+          priorite?: string
+          prix_vente_suggere: number
+          produit_id: string
+          remise_suggere?: number | null
+          statut?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          lot_id?: string
+          metadata?: Json | null
+          motif_suggestion?: string
+          priorite?: string
+          prix_vente_suggere?: number
+          produit_id?: string
+          remise_suggere?: number | null
+          statut?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suggestions_vente_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suggestions_vente_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suivi_commandes: {
         Row: {
           agent_id: string | null
@@ -7321,6 +7381,10 @@ export type Database = {
       find_personnel_for_current_user: {
         Args: { tenant_id: string }
         Returns: Json
+      }
+      generate_sales_suggestions: {
+        Args: Record<PropertyKey, never> | { p_tenant_id: string }
+        Returns: number
       }
       generer_alertes_expiration_automatiques: {
         Args: Record<PropertyKey, never>
