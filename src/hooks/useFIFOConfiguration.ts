@@ -9,13 +9,20 @@ export interface FIFOConfiguration {
   tenant_id: string;
   produit_id?: string;
   famille_id?: string;
-  activer_fifo: boolean;
-  tolerance_jours: number;
-  ignorer_lots_expires: boolean;
-  priorite_prix: boolean;
-  seuil_alerte_rotation: number;
-  created_at: string;
-  updated_at: string;
+  actif: boolean;
+  priorite?: number;
+  delai_alerte_jours?: number;
+  action_automatique?: boolean;
+  type_regle?: string;
+  tolerance_delai_jours?: number;
+  created_at?: string;
+  updated_at?: string;
+  // Extended fields for UI (not in database yet)
+  activer_fifo?: boolean;
+  tolerance_jours?: number;
+  ignorer_lots_expires?: boolean;
+  priorite_prix?: boolean;
+  seuil_alerte_rotation?: number;
 }
 
 export interface FIFOConfigurationWithDetails extends FIFOConfiguration {
@@ -32,7 +39,14 @@ export interface FIFOConfigurationWithDetails extends FIFOConfiguration {
 export interface CreateFIFOConfigInput {
   produit_id?: string;
   famille_id?: string;
-  activer_fifo: boolean;
+  actif?: boolean;
+  priorite?: number;
+  delai_alerte_jours?: number;
+  action_automatique?: boolean;
+  type_regle?: string;
+  tolerance_delai_jours?: number;
+  // Extended fields for UI
+  activer_fifo?: boolean;
   tolerance_jours?: number;
   ignorer_lots_expires?: boolean;
   priorite_prix?: boolean;
@@ -147,7 +161,9 @@ export const useFIFOConfiguration = () => {
   const createFIFOConfigMutation = useTenantMutation('configurations_fifo', 'insert', {
     onSuccess: () => {
       toast.success('Configuration FIFO créée avec succès');
-      queryClient.invalidateQueries({ queryKey: ['fifo-configurations'] });
+      // Invalider toutes les requêtes liées aux configurations FIFO
+      queryClient.invalidateQueries({ queryKey: [tenantId, 'fifo-configurations'] });
+      queryClient.invalidateQueries({ queryKey: [tenantId, 'fifo-configuration'] });
     },
     onError: (error: any) => {
       toast.error(`Erreur lors de la création: ${error.message}`);
@@ -158,7 +174,9 @@ export const useFIFOConfiguration = () => {
   const updateFIFOConfigMutation = useTenantMutation('configurations_fifo', 'update', {
     onSuccess: () => {
       toast.success('Configuration FIFO mise à jour avec succès');
-      queryClient.invalidateQueries({ queryKey: ['fifo-configurations'] });
+      // Invalider toutes les requêtes liées aux configurations FIFO
+      queryClient.invalidateQueries({ queryKey: [tenantId, 'fifo-configurations'] });
+      queryClient.invalidateQueries({ queryKey: [tenantId, 'fifo-configuration'] });
     },
     onError: (error: any) => {
       toast.error(`Erreur lors de la mise à jour: ${error.message}`);
@@ -169,12 +187,64 @@ export const useFIFOConfiguration = () => {
   const deleteFIFOConfigMutation = useTenantMutation('configurations_fifo', 'delete', {
     onSuccess: () => {
       toast.success('Configuration FIFO supprimée avec succès');
-      queryClient.invalidateQueries({ queryKey: ['fifo-configurations'] });
+      // Invalider toutes les requêtes liées aux configurations FIFO
+      queryClient.invalidateQueries({ queryKey: [tenantId, 'fifo-configurations'] });
+      queryClient.invalidateQueries({ queryKey: [tenantId, 'fifo-configuration'] });
     },
     onError: (error: any) => {
       toast.error(`Erreur lors de la suppression: ${error.message}`);
     },
   });
+
+  // Helper function to transform UI data to database format
+  const transformToDbFormat = (input: CreateFIFOConfigInput | UpdateFIFOConfigInput) => {
+    // Determine type_regle based on which ID is provided - this takes priority over input.type_regle
+    let type_regle = 'global'; // Default
+    if (input.produit_id) {
+      type_regle = 'produit';
+    } else if (input.famille_id) {
+      type_regle = 'famille';
+    }
+    // Only use input.type_regle if no specific ID is provided
+    else if (input.type_regle) {
+      type_regle = input.type_regle;
+    }
+
+    // Create clean object without UI-only fields
+    const dbData: any = {
+      actif: input.activer_fifo ?? input.actif ?? true,
+      tolerance_delai_jours: input.tolerance_jours ?? input.tolerance_delai_jours ?? 7,
+      delai_alerte_jours: input.seuil_alerte_rotation ?? input.delai_alerte_jours ?? 30,
+      priorite: input.priorite ?? 1,
+      action_automatique: input.action_automatique ?? false,
+      type_regle: type_regle, // Use the determined type_regle, not input.type_regle
+    };
+
+    // Add optional fields only if they exist
+    if (input.produit_id) dbData.produit_id = input.produit_id;
+    if (input.famille_id) dbData.famille_id = input.famille_id;
+    if ('id' in input && input.id) dbData.id = input.id;
+
+    console.log('🔧 Transform to DB format:', {
+      input,
+      dbData,
+      determinedType: type_regle
+    });
+
+    return dbData;
+  };
+
+  // Helper function to transform database data to UI format
+  const transformFromDbFormat = (config: any) => {
+    return {
+      ...config,
+      activer_fifo: config.actif,
+      tolerance_jours: config.tolerance_delai_jours,
+      seuil_alerte_rotation: config.delai_alerte_jours,
+      ignorer_lots_expires: true, // Default value
+      priorite_prix: false, // Default value
+    };
+  };
 
   // Fonctions utilitaires pour FIFO
   const getNextLotToSell = async (productId: string): Promise<string | null> => {
@@ -243,9 +313,15 @@ export const useFIFOConfiguration = () => {
     useFIFOConfigForProduct,
     useFIFOConfigurationsByFamily,
     
-    // Mutations
-    createFIFOConfig: createFIFOConfigMutation.mutate,
-    updateFIFOConfig: updateFIFOConfigMutation.mutate,
+    // Mutations with data transformation
+    createFIFOConfig: (data: CreateFIFOConfigInput) => {
+      const dbData = transformToDbFormat(data);
+      createFIFOConfigMutation.mutate(dbData);
+    },
+    updateFIFOConfig: (data: UpdateFIFOConfigInput) => {
+      const dbData = transformToDbFormat(data);
+      updateFIFOConfigMutation.mutate(dbData);
+    },
     deleteFIFOConfig: deleteFIFOConfigMutation.mutate,
     
     // Loading states
@@ -256,5 +332,9 @@ export const useFIFOConfiguration = () => {
     // FIFO Utilities
     getNextLotToSell,
     validateFIFOCompliance,
+    
+    // Data transformation helpers
+    transformToDbFormat,
+    transformFromDbFormat,
   };
 };
