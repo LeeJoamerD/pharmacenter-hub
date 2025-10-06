@@ -115,7 +115,10 @@ export const useExpirationAlerts = () => {
         lot:lots(id, numero_lot, date_peremption),
         produit:produits(id, libelle_produit, code_cip)
       `,
-      { statut: 'active' },
+      { 
+        statut: 'active',
+        niveau_urgence: 'critique'
+      },
       {
         enabled: !!tenantId,
         orderBy: { column: 'jours_restants', ascending: true },
@@ -131,7 +134,7 @@ export const useExpirationAlerts = () => {
       `
         *,
         produit:produits(id, libelle_produit),
-        famille:familles_produit(id, libelle_famille)
+        famille:famille_produit(id, libelle_famille)
       `,
       {},
       {
@@ -146,19 +149,46 @@ export const useExpirationAlerts = () => {
     return useQuery({
       queryKey: ['expiration-alerts', 'stats'],
       queryFn: async () => {
-        // Utiliser seulement les colonnes qui existent
+        // Récupérer les alertes avec les informations des lots pour obtenir les quantités réelles
         const { data: alerts, error } = await supabase
           .from('alertes_peremption')
-          .select('niveau_urgence')
-          .eq('tenant_id', tenantId!);
+          .select(`
+            niveau_urgence,
+            quantite_concernee,
+            lot:lots(quantite_restante)
+          `)
+          .eq('tenant_id', tenantId!)
+          .eq('statut', 'active');
         
         if (error) throw error;
+        
+        // Calculer les statistiques avec les quantités réelles
+        const totalQuantity = alerts?.reduce((sum, alert) => {
+          return sum + (alert.lot?.quantite_restante || alert.quantite_concernee || 0);
+        }, 0) || 0;
+
+        const criticalQuantity = alerts?.filter(a => a.niveau_urgence === 'critique')
+          .reduce((sum, alert) => {
+            return sum + (alert.lot?.quantite_restante || alert.quantite_concernee || 0);
+          }, 0) || 0;
+
+        const highQuantity = alerts?.filter(a => a.niveau_urgence === 'eleve')
+          .reduce((sum, alert) => {
+            return sum + (alert.lot?.quantite_restante || alert.quantite_concernee || 0);
+          }, 0) || 0;
+
+        const activeQuantity = totalQuantity; // Toutes les alertes actives
         
         const stats = {
           total: alerts?.length || 0,
           critical: alerts?.filter(a => a.niveau_urgence === 'critique').length || 0,
           high: alerts?.filter(a => a.niveau_urgence === 'eleve').length || 0,
-          active: alerts?.length || 0, // Pour l'instant, considérer toutes comme actives
+          active: alerts?.length || 0,
+          // Nouvelles propriétés pour les quantités réelles
+          totalQuantity,
+          criticalQuantity,
+          highQuantity,
+          activeQuantity,
         };
         
         return stats;
