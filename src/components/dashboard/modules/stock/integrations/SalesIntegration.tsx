@@ -129,6 +129,11 @@ export const SalesIntegration = () => {
     }
   };
 
+  // Filtrer les suggestions par lot sélectionné
+  const filteredSuggestions = selectedLotId 
+    ? suggestions.filter(suggestion => suggestion.lot_id === selectedLotId)
+    : suggestions;
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'haute': return 'bg-red-100 text-red-800';
@@ -266,12 +271,17 @@ export const SalesIntegration = () => {
               <div className="text-destructive mb-2">Erreur de chargement</div>
               <p className="text-muted-foreground">Impossible de charger les suggestions</p>
             </div>
-          ) : suggestions.length === 0 ? (
+          ) : filteredSuggestions.length === 0 ? (
             <div className="text-center p-8">
               <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-medium mb-2">Aucune suggestion de vente pour le moment</h3>
+              <h3 className="text-lg font-medium mb-2">
+                {selectedLotId ? 'Aucune suggestion pour ce lot' : 'Aucune suggestion de vente pour le moment'}
+              </h3>
               <p className="text-muted-foreground mb-4">
-                Cliquez sur "Actualiser les suggestions" pour générer de nouvelles recommandations.
+                {selectedLotId 
+                  ? 'Ce lot n\'a pas de suggestions de vente actives.'
+                  : 'Cliquez sur "Actualiser les suggestions" pour générer de nouvelles recommandations.'
+                }
               </p>
             </div>
           ) : (
@@ -291,7 +301,7 @@ export const SalesIntegration = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {suggestions.map((suggestion) => (
+                  {filteredSuggestions.map((suggestion) => (
                     <TableRow key={suggestion.id}>
                       <TableCell className="font-medium">
                         {suggestion.numero_lot}
