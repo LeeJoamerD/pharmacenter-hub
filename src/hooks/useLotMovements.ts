@@ -101,11 +101,16 @@ export const useLotMovements = () => {
       queryKey: ['lot-movements', 'stats', lotId, period],
       queryFn: async () => {
         // Calculer les stats manuellement pour l'instant
-        const { data: movements, error } = await supabase
+        let query = supabase
           .from('mouvements_lots')
           .select('type_mouvement, quantite_mouvement')
-          .eq('tenant_id', tenantId!)
-          .eq('lot_id', lotId || '');
+          .eq('tenant_id', tenantId!);
+        
+        if (lotId) {
+          query = query.eq('lot_id', lotId);
+        }
+        
+        const { data: movements, error } = await query;
         
         if (error) throw error;
         

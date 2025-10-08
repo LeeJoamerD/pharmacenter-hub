@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLots } from "@/hooks/useLots";
 import { useLotMovements } from "@/hooks/useLotMovements";
+import { useTenant } from "@/contexts/TenantContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ interface ReconciliationSession {
 }
 
 export const InventoryIntegration = () => {
+  const { tenantId } = useTenant();
   const [reconciliationMode, setReconciliationMode] = useState(false);
   const [currentSession, setCurrentSession] = useState<ReconciliationSession | null>(null);
   const [discrepancies, setDiscrepancies] = useState<InventoryDiscrepancy[]>([]);
@@ -163,7 +165,7 @@ export const InventoryIntegration = () => {
       const { data: sessionData, error: sessionError } = await supabase
         .from('inventaire_sessions')
         .insert({
-          id: currentSession.id,
+          tenant_id: tenantId!,
           nom: `Session ${currentSession.id}`,
           description: `Réconciliation de ${currentSession.lotsCount} lots`,
           statut: 'terminee',
@@ -174,8 +176,8 @@ export const InventoryIntegration = () => {
           produits_comptes: currentSession.lotsCount,
           ecarts: discrepancies.length,
           progression: 100,
-          responsable: 'Utilisateur actuel', // À remplacer par l'utilisateur connecté
-          agent_id: '00000000-0000-0000-0000-000000000000' // À remplacer par l'ID de l'agent connecté
+          responsable: 'Utilisateur actuel',
+          agent_id: '00000000-0000-0000-0000-000000000000'
         })
         .select()
         .single();
