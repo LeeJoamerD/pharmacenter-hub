@@ -10,10 +10,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Clipboard, Package, TrendingUp, TrendingDown, RefreshCw,
-  FileX, AlertCircle, CheckCircle, Clock, BarChart3
+  FileX, AlertCircle, CheckCircle, Clock, BarChart3, History,
+  Calendar, User, FileText
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
+import { StockUpdateService } from "@/services/stockUpdateService";
+import { toast } from "sonner";
 
 interface InventoryDiscrepancy {
   lotId: string;
@@ -23,6 +27,7 @@ interface InventoryDiscrepancy {
   physicalQuantity: number;
   difference: number;
   status: 'surplus' | 'deficit' | 'missing';
+  productId: string;
 }
 
 interface ReconciliationSession {
@@ -38,6 +43,41 @@ export const InventoryIntegration = () => {
   const [currentSession, setCurrentSession] = useState<ReconciliationSession | null>(null);
   const [discrepancies, setDiscrepancies] = useState<InventoryDiscrepancy[]>([]);
   const [physicalCounts, setPhysicalCounts] = useState<Record<string, number>>({});
+  const [completedSessions, setCompletedSessions] = useState<ReconciliationSession[]>([]);
+
+  useEffect(() => {
+    // Charger les sessions terminées depuis la base de données au démarrage
+    const loadCompletedSessions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('inventaire_sessions')
+          .select('*')
+          .eq('statut', 'terminee')
+          .eq('type', 'reconciliation')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Erreur lors du chargement des sessions:', error);
+          return;
+        }
+
+        // Convertir les sessions de la base vers le format local
+        const sessions = data.map(session => ({
+          id: session.id,
+          date: session.date_debut || session.created_at,
+          status: 'completed' as const,
+          lotsCount: session.produits_total || 0,
+          discrepanciesCount: session.ecarts || 0
+        }));
+
+        setCompletedSessions(sessions);
+      } catch (error) {
+        console.error('Erreur lors du chargement des sessions:', error);
+      }
+    };
+
+    loadCompletedSessions();
+  }, []);
 
   const { useLotsQuery, useLowStockLots } = useLots();
   // const { createLotMovementMutation } = useLotMovements();
@@ -95,7 +135,8 @@ export const InventoryIntegration = () => {
             theoreticalQuantity: lot.quantite_restante,
             physicalQuantity: physicalCount,
             difference,
-            status
+            status,
+            productId: lot.produit_id // Ajouter l'ID du produit pour les ajustements
           });
         }
       }
@@ -112,23 +153,94 @@ export const InventoryIntegration = () => {
   };
 
   const completeReconciliation = async () => {
+    if (!currentSession || discrepancies.length === 0) {
+      toast.error('Aucun écart à traiter');
+      return;
+    }
+
     try {
-      // Créer les mouvements d'ajustement pour chaque écart
+      // 1. Persister la session en base de données
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('inventaire_sessions')
+        .insert({
+          id: currentSession.id,
+          nom: `Session ${currentSession.id}`,
+          description: `Réconciliation de ${currentSession.lotsCount} lots`,
+          statut: 'terminee',
+          type: 'reconciliation',
+          date_debut: currentSession.date,
+          date_fin: new Date().toISOString(),
+          produits_total: currentSession.lotsCount,
+          produits_comptes: currentSession.lotsCount,
+          ecarts: discrepancies.length,
+          progression: 100,
+          responsable: 'Utilisateur actuel', // À remplacer par l'utilisateur connecté
+          agent_id: '00000000-0000-0000-0000-000000000000' // À remplacer par l'ID de l'agent connecté
+        })
+        .select()
+        .single();
+
+      if (sessionError) {
+        console.error('Erreur lors de la sauvegarde de la session:', sessionError);
+        throw sessionError;
+      }
+
+      // 2. Créer les mouvements d'ajustement pour chaque écart
       for (const discrepancy of discrepancies) {
         console.log('Ajustement pour lot:', discrepancy.lotId);
-        // TODO: Implémenter l'ajustement automatique
-      }
-
-      if (currentSession) {
-        setCurrentSession({
-          ...currentSession,
-          status: 'completed'
+        
+        // Créer un mouvement d'ajustement pour corriger l'écart
+        await StockUpdateService.recordStockMovement({
+          produit_id: discrepancy.productId,
+          lot_id: discrepancy.lotId,
+          quantite: discrepancy.difference,
+          type_mouvement: 'ajustement',
+          motif: `Réconciliation inventaire - Session ${currentSession?.id}`,
+          description: `Ajustement suite à réconciliation: Stock théorique ${discrepancy.theoreticalQuantity}, Stock physique ${discrepancy.physicalQuantity}`,
+          metadata: {
+            reconciliation_session_id: currentSession?.id,
+            theoretical_quantity: discrepancy.theoreticalQuantity,
+            physical_quantity: discrepancy.physicalQuantity,
+            reconciliation_type: 'inventory_adjustment'
+          }
         });
+
+        // Mettre à jour directement la quantité du lot
+        const { error: updateError } = await supabase
+          .from('lots')
+          .update({ 
+            quantite_restante: discrepancy.physicalQuantity,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', discrepancy.lotId);
+
+        if (updateError) {
+          console.error('Erreur lors de la mise à jour du lot:', updateError);
+          throw new Error(`Erreur lors de la mise à jour du lot ${discrepancy.lotNumber}`);
+        }
       }
 
+      // 3. Marquer la session comme terminée
+      const completedSession = {
+        ...currentSession,
+        status: 'completed' as const,
+        discrepanciesCount: discrepancies.length
+      };
+
+      // 4. Ajouter à la liste des sessions terminées
+      setCompletedSessions(prev => [...prev, completedSession]);
+
+      // 5. Réinitialiser l'état
+      setCurrentSession(null);
       setReconciliationMode(false);
+      setDiscrepancies([]);
+      setPhysicalCounts({});
+
+      toast.success(`Réconciliation finalisée avec succès. ${discrepancies.length} écart(s) traité(s).`);
+      
     } catch (error) {
       console.error('Erreur lors de la finalisation:', error);
+      toast.error('Erreur lors de la finalisation de la réconciliation');
     }
   };
 
@@ -177,6 +289,10 @@ export const InventoryIntegration = () => {
             <Clipboard className="h-4 w-4" />
             Réconciliation
           </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Historique
+          </TabsTrigger>
           <TabsTrigger value="alerts" className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4" />
             Alertes Stock
@@ -215,7 +331,7 @@ export const InventoryIntegration = () => {
                   <CheckCircle className="h-8 w-8 text-green-600" />
                   <div className="ml-4">
                     <p className="text-sm font-medium text-muted-foreground">Sessions Complétées</p>
-                    <p className="text-2xl font-bold">0</p>
+                    <p className="text-2xl font-bold">{completedSessions.length}</p>
                   </div>
                 </div>
               </CardContent>
@@ -366,6 +482,82 @@ export const InventoryIntegration = () => {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="h-5 w-5" />
+                Historique des Réconciliations
+              </CardTitle>
+              <CardDescription>
+                Consultez l'historique des sessions de réconciliation terminées
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {completedSessions.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Session</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Lots Vérifiés</TableHead>
+                        <TableHead>Écarts Détectés</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {completedSessions.map((session) => (
+                        <TableRow key={session.id}>
+                          <TableCell className="font-medium">{session.id}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              {format(new Date(session.date), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Package className="h-4 w-4 text-blue-600" />
+                              {session.lotsCount}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={session.discrepanciesCount > 0 ? 'destructive' : 'secondary'}>
+                              {session.discrepanciesCount} écart(s)
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className="bg-green-100 text-green-800">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Terminée
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button size="sm" variant="outline">
+                              <FileText className="h-4 w-4 mr-2" />
+                              Détails
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <History className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Aucun Historique</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Aucune session de réconciliation n'a encore été terminée
+                  </p>
                 </div>
               )}
             </CardContent>

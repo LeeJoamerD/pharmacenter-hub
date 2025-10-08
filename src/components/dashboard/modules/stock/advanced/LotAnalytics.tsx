@@ -154,7 +154,7 @@ export const LotAnalytics = () => {
         case 'high_risk':
           return item.expirationRisk.riskLevel === 'high';
         case 'slow_moving':
-          return item.rotationAnalysis.classification === 'Lent';
+          return item.rotationAnalysis.classification === 'slow' || item.rotationAnalysis.classification === 'very_slow';
         case 'high_value':
           return item.stockValue.value > 10000;
         default:
@@ -174,10 +174,21 @@ export const LotAnalytics = () => {
 
   const getRotationColor = (classification: string) => {
     switch (classification) {
-      case 'Rapide': return 'text-green-600';
-      case 'Moyen': return 'text-orange-600';
-      case 'Lent': return 'text-red-600';
+      case 'fast': return 'text-green-600';
+      case 'medium': return 'text-orange-600';
+      case 'slow': return 'text-red-600';
+      case 'very_slow': return 'text-red-700';
       default: return 'text-gray-600';
+    }
+  };
+
+  const getRotationLabel = (classification: string) => {
+    switch (classification) {
+      case 'fast': return 'Rapide';
+      case 'medium': return 'Moyen';
+      case 'slow': return 'Lent';
+      case 'very_slow': return 'Très Lent';
+      default: return classification;
     }
   };
 
@@ -343,7 +354,7 @@ export const LotAnalytics = () => {
                     <TableCell>
                       <div className="space-y-1">
                         <div className={`font-medium ${getRotationColor(item.rotationAnalysis.classification)}`}>
-                          {item.rotationAnalysis.classification}
+                          {getRotationLabel(item.rotationAnalysis.classification)}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           {item.rotationAnalysis.rotationRate.toFixed(2)}x/an

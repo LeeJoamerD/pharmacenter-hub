@@ -119,19 +119,32 @@ export const useLots = () => {
 
   // Récupérer les lots avec stock faible
   const useLowStockLots = () => {
-    return useTenantQueryWithCache(
-      ['lots', 'low-stock'],
-      'lots',
-      `
-        *,
-        produit:produits!inner(id, libelle_produit)
-      `,
-      {},
-      {
-        enabled: !!tenantId,
-        orderBy: { column: 'quantite_restante', ascending: true },
-      }
-    );
+    return useQuery({
+      queryKey: ['lots', 'low-stock'],
+      queryFn: async () => {
+        // Récupérer tous les lots avec leurs produits et seuils
+        const { data: lotsData, error } = await supabase
+          .from('lots')
+          .select(`
+            *,
+            produit:produits!inner(id, libelle_produit, stock_limite, stock_alerte)
+          `)
+          .eq('tenant_id', tenantId!)
+          .gt('quantite_restante', 0)
+          .order('quantite_restante', { ascending: true });
+        
+        if (error) throw error;
+        
+        // Filtrer les lots qui sont réellement en stock bas
+        const lowStockLots = lotsData?.filter(lot => {
+          const stockLimit = lot.produit?.stock_limite || 10; // Seuil par défaut
+          return lot.quantite_restante <= stockLimit;
+        }) || [];
+        
+        return lowStockLots;
+      },
+      enabled: !!tenantId,
+    });
   };
 
   // Récupérer les lots proches de l'expiration
