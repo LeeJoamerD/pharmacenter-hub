@@ -419,7 +419,7 @@ export const InventoryIntegration = () => {
         .eq('tenant_id', tenantId)
         .eq('type_mouvement', 'ajustement')
         .eq('reference_type', 'reconciliation')
-        .eq('reference_id', sessionId)
+        .eq('reference_document', sessionId)
         .order('date_mouvement', { ascending: false });
 
 
