@@ -10,10 +10,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { 
   Clipboard, Package, TrendingUp, TrendingDown, RefreshCw,
   FileX, AlertCircle, CheckCircle, Clock, BarChart3, History,
-  Calendar, User, FileText
+  Calendar, User, FileText, Eye, X
 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -40,6 +42,49 @@ interface ReconciliationSession {
   discrepanciesCount: number;
 }
 
+interface ReconciliationMetadata {
+  theoretical_quantity?: number;
+  physical_quantity?: number;
+  reconciliation_session_id?: string;
+  reconciliation_type?: string;
+  total_lots?: number;
+  discrepancies_count?: number;
+  completion_timestamp?: string;
+  session_type?: string;
+}
+
+// Interface pour les données de mouvement retournées par Supabase
+interface MovementData {
+  id: string;
+  tenant_id: string;
+  produit_id: string;
+  lot_id: string;
+  type_mouvement: string;
+  quantite_mouvement: number;
+  date_mouvement: string;
+  agent_id: string;
+  reference_id: string | null;
+  reference_type: string | null;
+  metadata: any;
+  created_at: string;
+  lot: {
+    numero_lot: string;
+    produit: {
+      libelle_produit: string;
+    } | null;
+  } | null;
+}
+
+interface SessionDetails {
+  session: ReconciliationSession;
+  discrepancies: InventoryDiscrepancy[];
+  personnel?: {
+    noms: string;
+    prenoms: string;
+  };
+  auditLogs?: any[];
+}
+
 export const InventoryIntegration = () => {
   const { tenantId } = useTenant();
   const { currentPersonnel } = usePersonnel();
@@ -49,39 +94,71 @@ export const InventoryIntegration = () => {
   const [physicalCounts, setPhysicalCounts] = useState<Record<string, number>>({});
   const [completedSessions, setCompletedSessions] = useState<ReconciliationSession[]>([]);
 
+  const [loading, setLoading] = useState(true);
+  const [selectedSessionDetails, setSelectedSessionDetails] = useState<SessionDetails | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+
+  // Fonctions utilitaires pour l'affichage des écarts
+  const getDiscrepancyColor = (status: string) => {
+    switch (status) {
+      case 'surplus': return 'bg-green-100 text-green-800';
+      case 'deficit': return 'bg-red-100 text-red-800';
+      case 'missing': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getDiscrepancyIcon = (status: string) => {
+    switch (status) {
+      case 'surplus': return <TrendingUp className="h-3 w-3" />;
+      case 'deficit': return <TrendingDown className="h-3 w-3" />;
+      case 'missing': return <FileX className="h-3 w-3" />;
+      default: return <AlertCircle className="h-3 w-3" />;
+    }
+  };
+
+  // Fonction pour charger les sessions terminées depuis la base de données
+  const loadCompletedSessions = async () => {
+    if (!tenantId) return;
+    
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('inventaire_sessions')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('statut', 'terminee')
+        .eq('type', 'complet')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erreur lors du chargement des sessions:', error);
+        return;
+      }
+
+      // Convertir les sessions de la base vers le format local
+      const sessions = data.map(session => ({
+        id: session.id,
+        date: session.date_debut || session.created_at,
+        status: 'completed' as const,
+        lotsCount: session.produits_total || 0,
+        discrepanciesCount: session.ecarts || 0
+      }));
+
+      setCompletedSessions(sessions);
+    } catch (error) {
+      console.error('Erreur lors du chargement des sessions:', error);
+      toast.error('Erreur lors du chargement de l\'historique');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     // Charger les sessions terminées depuis la base de données au démarrage
-    const loadCompletedSessions = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('inventaire_sessions')
-          .select('*')
-          .eq('statut', 'terminee')
-          .eq('type', 'reconciliation')
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('Erreur lors du chargement des sessions:', error);
-          return;
-        }
-
-        // Convertir les sessions de la base vers le format local
-        const sessions = data.map(session => ({
-          id: session.id,
-          date: session.date_debut || session.created_at,
-          status: 'completed' as const,
-          lotsCount: session.produits_total || 0,
-          discrepanciesCount: session.ecarts || 0
-        }));
-
-        setCompletedSessions(sessions);
-      } catch (error) {
-        console.error('Erreur lors du chargement des sessions:', error);
-      }
-    };
-
     loadCompletedSessions();
-  }, []);
+  }, [tenantId]);
 
   const { useLotsQuery, useLowStockLots } = useLots();
   // const { createLotMovementMutation } = useLotMovements();
@@ -90,7 +167,8 @@ export const InventoryIntegration = () => {
   const { data: lowStockLots } = useLowStockLots();
 
   const startReconciliation = () => {
-    const sessionId = `INV-${Date.now()}`;
+    // Utiliser crypto.randomUUID() pour éviter les doublons
+    const sessionId = `INV-${crypto.randomUUID().slice(0, 8)}-${Date.now()}`;
     const newSession: ReconciliationSession = {
       id: sessionId,
       date: new Date().toISOString(),
@@ -225,6 +303,8 @@ export const InventoryIntegration = () => {
           lot_id: discrepancy.lotId,
           quantite: discrepancy.difference,
           type_mouvement: 'ajustement',
+          reference_type: 'reconciliation',
+          reference_id: currentSession?.id,
           motif: `Réconciliation inventaire - Session ${currentSession?.id}`,
           description: `Ajustement suite à réconciliation: Stock théorique ${discrepancy.theoreticalQuantity}, Stock physique ${discrepancy.physicalQuantity}`,
           metadata: {
@@ -257,8 +337,8 @@ export const InventoryIntegration = () => {
         discrepanciesCount: discrepancies.length
       };
 
-      // 4. Ajouter à la liste des sessions terminées
-      setCompletedSessions(prev => [...prev, completedSession]);
+      // 4. Recharger les sessions depuis la base de données
+      await loadCompletedSessions();
 
       // 5. Réinitialiser l'état
       setCurrentSession(null);
@@ -274,21 +354,156 @@ export const InventoryIntegration = () => {
     }
   };
 
-  const getDiscrepancyColor = (status: string) => {
-    switch (status) {
-      case 'surplus': return 'bg-green-100 text-green-800';
-      case 'deficit': return 'bg-red-100 text-red-800';
-      case 'missing': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  // Fonction pour récupérer les détails d'une session terminée
+  const fetchSessionDetails = async (sessionId: string) => {
+    try {
+      setLoadingDetails(true);
 
-  const getDiscrepancyIcon = (status: string) => {
-    switch (status) {
-      case 'surplus': return <TrendingUp className="h-4 w-4" />;
-      case 'deficit': return <TrendingDown className="h-4 w-4" />;
-      case 'missing': return <FileX className="h-4 w-4" />;
-      default: return <AlertCircle className="h-4 w-4" />;
+      // 1. Récupérer les informations de la session
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('inventaire_sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .single();
+
+      if (sessionError) {
+        console.error('Erreur lors de la récupération de la session:', sessionError);
+        toast.error('Erreur lors de la récupération des détails de la session');
+        return;
+      }
+
+      // 2. Récupérer les logs d'audit pour cette session
+      const { data: auditLogs, error: auditError } = await supabase
+        .from('audit_logs')
+        .select(`
+          *,
+          personnel:personnel_id (
+            noms,
+            prenoms
+          )
+        `)
+        .eq('tenant_id', tenantId)
+        .eq('record_id', sessionId)
+        .eq('action', 'RECONCILIATION_COMPLETED')
+        .order('created_at', { ascending: false });
+
+      if (auditError) {
+        console.error('Erreur lors de la récupération des logs:', auditError);
+      }
+
+      // 3. Récupérer les mouvements d'ajustement liés à cette session depuis mouvements_lots
+      // Essayons d'abord avec les critères exacts
+      let { data: movements, error: movementsError } = await supabase
+        .from('mouvements_lots')
+        .select(`
+          id,
+          tenant_id,
+          produit_id,
+          lot_id,
+          type_mouvement,
+          quantite_mouvement,
+          date_mouvement,
+          agent_id,
+          reference_id,
+          reference_type,
+          metadata,
+          created_at,
+          lot:lot_id (
+            numero_lot,
+            produit:produit_id (
+              libelle_produit
+            )
+          )
+        `)
+        .eq('tenant_id', tenantId)
+        .eq('type_mouvement', 'ajustement')
+        .eq('reference_type', 'reconciliation')
+        .eq('reference_id', sessionId)
+        .order('date_mouvement', { ascending: false });
+
+      // Si aucun mouvement trouvé avec reference_type, essayons sans ce filtre
+      if (!movements || movements.length === 0) {
+        console.log('Aucun mouvement trouvé avec reference_type=reconciliation, essai sans ce filtre...');
+        
+        const { data: alternativeMovements, error: altError } = await supabase
+          .from('mouvements_lots')
+          .select(`
+            id,
+            tenant_id,
+            produit_id,
+            lot_id,
+            type_mouvement,
+            quantite_mouvement,
+            date_mouvement,
+            agent_id,
+            reference_id,
+            reference_type,
+            metadata,
+            created_at,
+            lot:lot_id (
+              numero_lot,
+              produit:produit_id (
+                libelle_produit
+              )
+            )
+          `)
+          .eq('tenant_id', tenantId)
+          .eq('type_mouvement', 'ajustement')
+          .contains('metadata', { reconciliation_session_id: sessionId })
+          .order('date_mouvement', { ascending: false });
+
+        if (!altError) {
+          movements = alternativeMovements;
+        }
+      }
+
+      if (movementsError) {
+        console.error('Erreur lors de la récupération des mouvements:', movementsError);
+      }
+
+      console.log('Mouvements récupérés:', movements);
+      console.log('Session ID recherché:', sessionId);
+      console.log('Nombre de mouvements trouvés:', movements?.length || 0);
+
+      // 4. Construire les écarts à partir des mouvements
+      const sessionDiscrepancies: InventoryDiscrepancy[] = movements?.map((movement: MovementData) => {
+        // Typer correctement les métadonnées
+        const metadata = movement.metadata as ReconciliationMetadata;
+        
+        return {
+          lotId: movement.lot_id,
+          lotNumber: movement.lot?.numero_lot || 'N/A',
+          productName: movement.lot?.produit?.libelle_produit || 'Produit inconnu',
+          theoreticalQuantity: metadata?.theoretical_quantity || 0,
+          physicalQuantity: metadata?.physical_quantity || 0,
+          difference: movement.quantite_mouvement,
+          status: movement.quantite_mouvement > 0 ? 'surplus' as const : 'deficit' as const,
+          productId: movement.produit_id
+        };
+      }) || [];
+
+      // 5. Construire l'objet SessionDetails
+      const sessionDetails: SessionDetails = {
+        session: {
+          id: sessionData.id,
+          date: sessionData.created_at,
+          status: 'completed',
+          lotsCount: sessionData.produits_total || 0,
+          discrepanciesCount: sessionData.ecarts || 0
+        },
+        discrepancies: sessionDiscrepancies,
+        personnel: auditLogs?.[0]?.personnel || undefined,
+        auditLogs: auditLogs || []
+      };
+
+      setSelectedSessionDetails(sessionDetails);
+      setIsDetailsDialogOpen(true);
+
+    } catch (error) {
+      console.error('Erreur lors de la récupération des détails:', error);
+      toast.error('Erreur lors de la récupération des détails de la session');
+    } finally {
+      setLoadingDetails(false);
     }
   };
 
@@ -530,56 +745,82 @@ export const InventoryIntegration = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {completedSessions.length > 0 ? (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Session</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Lots Vérifiés</TableHead>
-                        <TableHead>Écarts Détectés</TableHead>
-                        <TableHead>Statut</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {completedSessions.map((session) => (
-                        <TableRow key={session.id}>
-                          <TableCell className="font-medium">{session.id}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              {format(new Date(session.date), 'dd/MM/yyyy HH:mm', { locale: fr })}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Package className="h-4 w-4 text-blue-600" />
-                              {session.lotsCount}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={session.discrepanciesCount > 0 ? 'destructive' : 'secondary'}>
-                              {session.discrepanciesCount} écart(s)
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className="bg-green-100 text-green-800">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Terminée
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Button size="sm" variant="outline">
-                              <FileText className="h-4 w-4 mr-2" />
-                              Détails
-                            </Button>
-                          </TableCell>
+              {loading ? (
+                <div className="text-center py-8">
+                  <RefreshCw className="h-8 w-8 mx-auto text-muted-foreground mb-4 animate-spin" />
+                  <p className="text-muted-foreground">Chargement de l'historique...</p>
+                </div>
+              ) : completedSessions.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      {completedSessions.length} session(s) de réconciliation terminée(s)
+                    </p>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={loadCompletedSessions}
+                      disabled={loading}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Actualiser
+                    </Button>
+                  </div>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Session</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Lots Vérifiés</TableHead>
+                          <TableHead>Écarts Détectés</TableHead>
+                          <TableHead>Statut</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {completedSessions.map((session) => (
+                          <TableRow key={session.id}>
+                            <TableCell className="font-medium">{session.id}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-muted-foreground" />
+                                {format(new Date(session.date), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Package className="h-4 w-4 text-blue-600" />
+                                {session.lotsCount}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={session.discrepanciesCount > 0 ? 'destructive' : 'secondary'}>
+                                {session.discrepanciesCount} écart(s)
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className="bg-green-100 text-green-800">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Terminée
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => fetchSessionDetails(session.id)}
+                                disabled={loadingDetails}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Détails
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-8">
@@ -588,6 +829,14 @@ export const InventoryIntegration = () => {
                   <p className="text-muted-foreground mb-4">
                     Aucune session de réconciliation n'a encore été terminée
                   </p>
+                  <Button 
+                    variant="outline" 
+                    onClick={loadCompletedSessions}
+                    disabled={loading}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Actualiser
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -648,6 +897,147 @@ export const InventoryIntegration = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialog pour afficher les détails d'une session */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Détails de la Session de Réconciliation
+            </DialogTitle>
+            <DialogDescription>
+              {selectedSessionDetails && (
+                <>Informations complètes pour la session {selectedSessionDetails.session.id}</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingDetails ? (
+            <div className="text-center py-8">
+              <RefreshCw className="h-8 w-8 mx-auto text-muted-foreground mb-4 animate-spin" />
+              <p className="text-muted-foreground">Chargement des détails...</p>
+            </div>
+          ) : selectedSessionDetails ? (
+            <div className="space-y-6">
+              {/* Informations générales de la session */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Informations Générales</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Session ID</Label>
+                      <p className="font-mono text-sm">{selectedSessionDetails.session.id}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Date</Label>
+                      <p className="text-sm">
+                        {format(new Date(selectedSessionDetails.session.date), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Lots Vérifiés</Label>
+                      <p className="text-sm font-semibold">{selectedSessionDetails.session.lotsCount}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Écarts Détectés</Label>
+                      <p className="text-sm font-semibold text-red-600">
+                        {selectedSessionDetails.session.discrepanciesCount}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {selectedSessionDetails.personnel && (
+                    <div className="mt-4 pt-4 border-t">
+                      <Label className="text-sm font-medium text-muted-foreground">Réalisé par</Label>
+                      <p className="text-sm">
+                        {selectedSessionDetails.personnel.prenoms} {selectedSessionDetails.personnel.noms}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Détails des écarts */}
+              {selectedSessionDetails.discrepancies.length > 0 ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Écarts Détectés</CardTitle>
+                    <CardDescription>
+                      Liste des ajustements effectués lors de cette réconciliation
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Lot</TableHead>
+                            <TableHead>Produit</TableHead>
+                            <TableHead>Qté Théorique</TableHead>
+                            <TableHead>Qté Physique</TableHead>
+                            <TableHead>Écart</TableHead>
+                            <TableHead>Type</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {selectedSessionDetails.discrepancies.map((discrepancy, index) => (
+                            <TableRow key={index}>
+                              <TableCell className="font-mono text-sm">
+                                {discrepancy.lotNumber}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {discrepancy.productName}
+                              </TableCell>
+                              <TableCell>{discrepancy.theoreticalQuantity}</TableCell>
+                              <TableCell>{discrepancy.physicalQuantity}</TableCell>
+                              <TableCell className={discrepancy.difference > 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
+                                {discrepancy.difference > 0 ? '+' : ''}{discrepancy.difference}
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={getDiscrepancyColor(discrepancy.status)}>
+                                  {getDiscrepancyIcon(discrepancy.status)}
+                                  <span className="ml-1">
+                                    {discrepancy.status === 'surplus' ? 'Surplus' : 'Déficit'}
+                                  </span>
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="text-center py-8">
+                    <CheckCircle className="h-12 w-12 mx-auto text-green-600 mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Aucun Écart Détecté</h3>
+                    <p className="text-muted-foreground">
+                      Cette session de réconciliation n'a révélé aucun écart entre les stocks théoriques et physiques.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Aucun détail disponible</p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>
+              <X className="h-4 w-4 mr-2" />
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
