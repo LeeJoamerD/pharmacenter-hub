@@ -7617,20 +7617,6 @@ export type Database = {
               p_tenant_id: string
             }
           | {
-              p_emplacement_destination?: string
-              p_emplacement_source?: string
-              p_lot_id?: string
-              p_metadata?: Json
-              p_motif?: string
-              p_prix_unitaire?: number
-              p_produit_id: string
-              p_quantite_mouvement: number
-              p_reference_document?: string
-              p_reference_id?: string
-              p_reference_type?: string
-              p_type_mouvement: string
-            }
-          | {
               p_lot_id: string
               p_motif: string
               p_produit_id: string
@@ -7652,7 +7638,7 @@ export type Database = {
               p_reception_id?: string
               p_user_id: string
             }
-        Returns: Json
+        Returns: string
       }
       rpc_stock_update_movement: {
         Args:
