@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLots } from "@/hooks/useLots";
 import { useLotMovements } from "@/hooks/useLotMovements";
 import { useTenant } from "@/contexts/TenantContext";
+import { usePersonnel } from "@/hooks/usePersonnel";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,7 @@ interface ReconciliationSession {
 
 export const InventoryIntegration = () => {
   const { tenantId } = useTenant();
+  const { currentPersonnel } = usePersonnel();
   const [reconciliationMode, setReconciliationMode] = useState(false);
   const [currentSession, setCurrentSession] = useState<ReconciliationSession | null>(null);
   const [discrepancies, setDiscrepancies] = useState<InventoryDiscrepancy[]>([]);
@@ -162,6 +164,12 @@ export const InventoryIntegration = () => {
 
     try {
       // 1. Persister la session en base de données
+      // Vérifier que le personnel est chargé
+      if (!currentPersonnel?.id) {
+        toast.error('Erreur: Utilisateur non identifié');
+        return;
+      }
+
       const { data: sessionData, error: sessionError } = await supabase
         .from('inventaire_sessions')
         .insert({
@@ -169,15 +177,15 @@ export const InventoryIntegration = () => {
           nom: `Session ${currentSession.id}`,
           description: `Réconciliation de ${currentSession.lotsCount} lots`,
           statut: 'terminee',
-          type: 'reconciliation',
-          date_debut: currentSession.date,
+          type: 'complet',
+          date_debut: new Date(currentSession.date).toISOString(),
           date_fin: new Date().toISOString(),
           produits_total: currentSession.lotsCount,
           produits_comptes: currentSession.lotsCount,
           ecarts: discrepancies.length,
           progression: 100,
-          responsable: 'Utilisateur actuel',
-          agent_id: '00000000-0000-0000-0000-000000000000'
+          responsable: `${currentPersonnel.prenoms} ${currentPersonnel.noms}`,
+          agent_id: currentPersonnel.id
         })
         .select()
         .single();
