@@ -408,7 +408,7 @@ export const InventoryIntegration = () => {
           reference_type,
           metadata,
           created_at,
-          lot:lot_id (
+          lot:lots!lot_id (
             numero_lot,
             produit:produit_id (
               libelle_produit
@@ -440,7 +440,7 @@ export const InventoryIntegration = () => {
             reference_type,
             metadata,
             created_at,
-            lot:lot_id (
+            lot:lots!lot_id (
               numero_lot,
               produit:produit_id (
                 libelle_produit
@@ -481,6 +481,17 @@ export const InventoryIntegration = () => {
           productId: movement.produit_id
         };
       }) || [];
+
+      // Logs de débogage pour vérifier les données
+      console.log('📊 Session Discrepancies construites:', sessionDiscrepancies);
+      console.log('📊 Nombre d\'écarts:', sessionDiscrepancies.length);
+      console.log('📊 Détails écarts:', sessionDiscrepancies.map(d => ({
+        lot: d.lotNumber,
+        produit: d.productName,
+        theorique: d.theoreticalQuantity,
+        physique: d.physicalQuantity,
+        ecart: d.difference
+      })));
 
       // 5. Construire l'objet SessionDetails
       const sessionDetails: SessionDetails = {
