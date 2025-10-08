@@ -127,14 +127,14 @@ export const useInventoryReconciliation = (sessionId?: string) => {
             .from('produits')
             .select('libelle_produit, prix_vente_ttc')
             .eq('id', ligne.produit_id)
-            .single();
+            .maybeSingle();
 
           // Récupérer les détails du lot
           const { data: lot } = await supabase
             .from('lots')
             .select('numero_lot, quantite_restante, emplacement')
             .eq('id', ligne.lot_id)
-            .single();
+            .maybeSingle();
 
           const quantiteTheorique = lot?.quantite_restante || 0;
           const quantiteComptee = ligne.quantite_comptee || 0;
@@ -154,7 +154,7 @@ export const useInventoryReconciliation = (sessionId?: string) => {
             valeurEcart: ecart * valeurUnitaire,
             dateComptage: new Date(ligne.date_comptage || ligne.created_at),
             operateur: currentPersonnel ? `${currentPersonnel.prenoms} ${currentPersonnel.noms}` : 'N/A',
-            commentaires: ligne.notes
+            commentaires: ligne.notes || undefined
           };
         })
       );
