@@ -304,11 +304,12 @@ export const InventoryIntegration = () => {
           quantite: discrepancy.difference,
           type_mouvement: 'ajustement',
           reference_type: 'reconciliation',
-          reference_id: currentSession?.id,
+          reference_id: sessionData.id,
           motif: `Réconciliation inventaire - Session ${currentSession?.id}`,
           description: `Ajustement suite à réconciliation: Stock théorique ${discrepancy.theoreticalQuantity}, Stock physique ${discrepancy.physicalQuantity}`,
           metadata: {
-            reconciliation_session_id: currentSession?.id,
+            reconciliation_session_id: sessionData.id,
+            session_number: currentSession?.id,
             theoretical_quantity: discrepancy.theoreticalQuantity,
             physical_quantity: discrepancy.physicalQuantity,
             reconciliation_type: 'inventory_adjustment'
@@ -421,49 +422,22 @@ export const InventoryIntegration = () => {
         .eq('reference_id', sessionId)
         .order('date_mouvement', { ascending: false });
 
-      // Si aucun mouvement trouvé avec reference_type, essayons sans ce filtre
-      if (!movements || movements.length === 0) {
-        console.log('Aucun mouvement trouvé avec reference_type=reconciliation, essai sans ce filtre...');
-        
-        const { data: alternativeMovements, error: altError } = await supabase
-          .from('mouvements_lots')
-          .select(`
-            id,
-            tenant_id,
-            produit_id,
-            lot_id,
-            type_mouvement,
-            quantite_mouvement,
-            date_mouvement,
-            agent_id,
-            reference_id,
-            reference_type,
-            metadata,
-            created_at,
-            lot:lots!lot_id (
-              numero_lot,
-              produit:produit_id (
-                libelle_produit
-              )
-            )
-          `)
-          .eq('tenant_id', tenantId)
-          .eq('type_mouvement', 'ajustement')
-          .contains('metadata', { reconciliation_session_id: sessionId })
-          .order('date_mouvement', { ascending: false });
-
-        if (!altError) {
-          movements = alternativeMovements;
-        }
-      }
 
       if (movementsError) {
         console.error('Erreur lors de la récupération des mouvements:', movementsError);
       }
 
-      console.log('Mouvements récupérés:', movements);
-      console.log('Session ID recherché:', sessionId);
-      console.log('Nombre de mouvements trouvés:', movements?.length || 0);
+      console.log('🔍 Mouvements de réconciliation:', {
+        sessionId,
+        mouvementsCount: movements?.length || 0,
+        premiers3: movements?.slice(0, 3).map(m => ({
+          lot: m.lot?.numero_lot,
+          produit: m.lot?.produit?.libelle_produit,
+          quantite: m.quantite_mouvement,
+          reference_id: m.reference_id,
+          metadata: m.metadata
+        }))
+      });
 
       // 4. Construire les écarts à partir des mouvements
       const sessionDiscrepancies: InventoryDiscrepancy[] = movements?.map((movement: MovementData) => {
