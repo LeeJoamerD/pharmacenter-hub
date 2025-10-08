@@ -7638,7 +7638,7 @@ export type Database = {
               p_reception_id?: string
               p_user_id: string
             }
-        Returns: Json
+        Returns: string
       }
       rpc_stock_update_movement: {
         Args:
