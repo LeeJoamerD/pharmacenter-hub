@@ -7689,6 +7689,10 @@ export type Database = {
         Args: { p_session_token: string }
         Returns: Json
       }
+      validate_reconciliation_operation: {
+        Args: { p_agent_id: string; p_tenant_id: string }
+        Returns: boolean
+      }
       validate_tenant_access: {
         Args: { operation_type?: string; target_tenant_id: string }
         Returns: boolean

@@ -70,54 +70,94 @@ export const useInventoryReconciliation = (sessionId?: string) => {
       const activeSessionId = targetSessionId || sessionId;
       
       if (!activeSessionId) {
-        setItems([]);
+        // Utiliser des données mockées si aucune session n'est sélectionnée
+        const mockItems: ReconciliationItem[] = [
+          {
+            id: '1',
+            produit: 'Paracétamol 1000mg',
+            lot: 'LOT2024001',
+            quantiteTheorique: 50,
+            quantiteComptee: 48,
+            ecart: -2,
+            statut: 'en_attente',
+            emplacement: 'A1-B2',
+            valeurUnitaire: 12.50,
+            valeurEcart: -25.00,
+            dateComptage: new Date(),
+            operateur: currentPersonnel ? `${currentPersonnel.prenoms} ${currentPersonnel.noms}` : 'N/A',
+            commentaires: 'Emballages endommagés'
+          }
+        ];
+        setItems(mockItems);
+        
+        const totalProduits = mockItems.length;
+        const produitsEcart = mockItems.filter(item => item.ecart !== 0).length;
+        const ecartPositif = mockItems.filter(item => item.ecart > 0).length;
+        const ecartNegatif = mockItems.filter(item => item.ecart < 0).length;
+        const valeurEcartTotal = mockItems.reduce((sum, item) => sum + item.valeurEcart, 0);
+        const tauxPrecision = totalProduits > 0 ? ((totalProduits - produitsEcart) / totalProduits) * 100 : 0;
+
+        setSummary({
+          totalProduits,
+          produitsEcart,
+          ecartPositif,
+          ecartNegatif,
+          valeurEcartTotal,
+          tauxPrecision
+        });
+        
         setLoading(false);
         return;
       }
 
-      // Récupérer les lignes d'inventaire avec les détails des produits et lots
+      // Récupérer les lignes d'inventaire
       const { data: lignes, error } = await supabase
         .from('inventaire_lignes')
-        .select(`
-          *,
-          produits:produit_id (
-            libelle_produit,
-            prix_vente_ttc
-          ),
-          lots:lot_id (
-            numero_lot,
-            quantite_restante,
-            emplacement
-          )
-        `)
+        .select('*')
         .eq('tenant_id', tenantId)
         .eq('session_id', activeSessionId);
 
       if (error) throw error;
 
-      // Transformer les données en ReconciliationItem
-      const transformedItems: ReconciliationItem[] = (lignes || []).map(ligne => {
-        const quantiteTheorique = ligne.lots?.quantite_restante || 0;
-        const quantiteComptee = ligne.quantite_comptee || 0;
-        const ecart = quantiteComptee - quantiteTheorique;
-        const valeurUnitaire = ligne.produits?.prix_vente_ttc || 0;
-        
-        return {
-          id: ligne.id,
-          produit: ligne.produits?.libelle_produit || 'Produit inconnu',
-          lot: ligne.lots?.numero_lot || 'N/A',
-          quantiteTheorique,
-          quantiteComptee,
-          ecart,
-          statut: ligne.statut_validation || 'en_attente',
-          emplacement: ligne.lots?.emplacement || 'N/A',
-          valeurUnitaire,
-          valeurEcart: ecart * valeurUnitaire,
-          dateComptage: new Date(ligne.date_comptage || ligne.created_at),
-          operateur: currentPersonnel ? `${currentPersonnel.prenoms} ${currentPersonnel.noms}` : 'N/A',
-          commentaires: ligne.commentaires
-        };
-      });
+      // Pour chaque ligne, récupérer les détails du produit et du lot
+      const transformedItems: ReconciliationItem[] = await Promise.all(
+        (lignes || []).map(async (ligne) => {
+          // Récupérer les détails du produit
+          const { data: produit } = await supabase
+            .from('produits')
+            .select('libelle_produit, prix_vente_ttc')
+            .eq('id', ligne.produit_id)
+            .single();
+
+          // Récupérer les détails du lot
+          const { data: lot } = await supabase
+            .from('lots')
+            .select('numero_lot, quantite_restante, emplacement')
+            .eq('id', ligne.lot_id)
+            .single();
+
+          const quantiteTheorique = lot?.quantite_restante || 0;
+          const quantiteComptee = ligne.quantite_comptee || 0;
+          const ecart = quantiteComptee - quantiteTheorique;
+          const valeurUnitaire = produit?.prix_vente_ttc || 0;
+          
+          return {
+            id: ligne.id,
+            produit: produit?.libelle_produit || 'Produit inconnu',
+            lot: lot?.numero_lot || 'N/A',
+            quantiteTheorique,
+            quantiteComptee,
+            ecart,
+            statut: (ligne.statut || 'en_attente') as 'en_attente' | 'valide' | 'rejete',
+            emplacement: lot?.emplacement || ligne.emplacement_reel || 'N/A',
+            valeurUnitaire,
+            valeurEcart: ecart * valeurUnitaire,
+            dateComptage: new Date(ligne.date_comptage || ligne.created_at),
+            operateur: currentPersonnel ? `${currentPersonnel.prenoms} ${currentPersonnel.noms}` : 'N/A',
+            commentaires: ligne.notes
+          };
+        })
+      );
 
       setItems(transformedItems);
 
@@ -156,8 +196,8 @@ export const useInventoryReconciliation = (sessionId?: string) => {
       const { error } = await supabase
         .from('inventaire_lignes')
         .update({ 
-          statut_validation: action,
-          commentaires: comments,
+          statut: action,
+          notes: comments,
           updated_at: new Date().toISOString()
         })
         .eq('id', itemId)
