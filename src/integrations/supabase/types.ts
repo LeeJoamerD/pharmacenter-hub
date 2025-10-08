@@ -3411,6 +3411,195 @@ export type Database = {
           },
         ]
       }
+      lot_optimization_metrics: {
+        Row: {
+          created_at: string | null
+          expirations_avoided: number | null
+          expirations_avoided_value: number | null
+          fifo_corrections: number | null
+          id: string
+          metadata: Json | null
+          metric_date: string | null
+          stock_reorders_suggested: number | null
+          suggestions_applied: number | null
+          suggestions_ignored: number | null
+          tenant_id: string
+          total_savings: number | null
+          total_suggestions_generated: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          expirations_avoided?: number | null
+          expirations_avoided_value?: number | null
+          fifo_corrections?: number | null
+          id?: string
+          metadata?: Json | null
+          metric_date?: string | null
+          stock_reorders_suggested?: number | null
+          suggestions_applied?: number | null
+          suggestions_ignored?: number | null
+          tenant_id: string
+          total_savings?: number | null
+          total_suggestions_generated?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          expirations_avoided?: number | null
+          expirations_avoided_value?: number | null
+          fifo_corrections?: number | null
+          id?: string
+          metadata?: Json | null
+          metric_date?: string | null
+          stock_reorders_suggested?: number | null
+          suggestions_applied?: number | null
+          suggestions_ignored?: number | null
+          tenant_id?: string
+          total_savings?: number | null
+          total_suggestions_generated?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lot_optimization_metrics_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lot_optimization_rules: {
+        Row: {
+          actions: Json | null
+          conditions: Json | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          priority: number | null
+          rule_id: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          actions?: Json | null
+          conditions?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          priority?: number | null
+          rule_id: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          actions?: Json | null
+          conditions?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          priority?: number | null
+          rule_id?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lot_optimization_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lot_optimization_suggestions: {
+        Row: {
+          applied_at: string | null
+          applied_by: string | null
+          created_at: string | null
+          current_value: number | null
+          description: string | null
+          expected_benefit: string | null
+          id: string
+          lot_id: string | null
+          priority: string
+          product_id: string | null
+          status: string | null
+          suggested_value: number | null
+          suggestion_type: string
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string | null
+          current_value?: number | null
+          description?: string | null
+          expected_benefit?: string | null
+          id?: string
+          lot_id?: string | null
+          priority: string
+          product_id?: string | null
+          status?: string | null
+          suggested_value?: number | null
+          suggestion_type: string
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string | null
+          current_value?: number | null
+          description?: string | null
+          expected_benefit?: string | null
+          id?: string
+          lot_id?: string | null
+          priority?: string
+          product_id?: string | null
+          status?: string | null
+          suggested_value?: number | null
+          suggestion_type?: string
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lot_optimization_suggestions_applied_by_fkey"
+            columns: ["applied_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lot_optimization_suggestions_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lot_optimization_suggestions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lot_optimization_suggestions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lots: {
         Row: {
           created_at: string

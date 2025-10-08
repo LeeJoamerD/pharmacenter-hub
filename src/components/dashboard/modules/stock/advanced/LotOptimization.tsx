@@ -1,101 +1,47 @@
 import { useState, useEffect } from "react";
 import { useLots } from "@/hooks/useLots";
 import { useFIFOConfiguration } from "@/hooks/useFIFOConfiguration";
+import { useLotOptimizationRules } from "@/hooks/useLotOptimizationRules";
+import { useTenant } from "@/contexts/TenantContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { LotOptimizationService, OptimizationSuggestion } from "@/services/lotOptimizationService";
+import { LotOptimizationPerformance } from "./LotOptimizationPerformance";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import { 
   Target, Zap, Settings, RefreshCw, TrendingUp, 
   CheckCircle, AlertCircle, Lightbulb, BarChart3
 } from "lucide-react";
-
-interface OptimizationRule {
-  id: string;
-  name: string;
-  description: string;
-  isActive: boolean;
-  priority: number;
-  conditions: any;
-  actions: any;
-}
-
-interface OptimizationSuggestion {
-  id: string;
-  type: 'transfer' | 'promotion' | 'reorder' | 'adjustment';
-  priority: 'high' | 'medium' | 'low';
-  title: string;
-  description: string;
-  lotId: string;
-  lotNumber: string;
-  productName: string;
-  currentValue: number;
-  suggestedValue: number;
-  expectedBenefit: string;
-}
+import { toast } from "sonner";
 
 export const LotOptimization = () => {
-  const [optimizationRules, setOptimizationRules] = useState<OptimizationRule[]>([]);
   const [suggestions, setSuggestions] = useState<OptimizationSuggestion[]>([]);
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [selectedRules, setSelectedRules] = useState<string[]>([]);
 
+  const { tenantId } = useTenant();
+  const { user } = useAuth();
   const { useLotsQuery, useLowStockLots, useExpiringLots } = useLots();
-  const { validateFIFOCompliance, getNextLotToSell } = useFIFOConfiguration();
+  const { getNextLotToSell } = useFIFOConfiguration();
+  const { useRulesQuery, toggleRule, initializeDefaultRules, isUpdating } = useLotOptimizationRules();
 
   const { data: allLots } = useLotsQuery();
   const { data: lowStockLots } = useLowStockLots();
   const { data: expiringLots } = useExpiringLots(30);
+  const { data: rules, isLoading: rulesLoading } = useRulesQuery();
 
-  // Règles d'optimisation par défaut
+  // Initialiser les règles par défaut si aucune n'existe
   useEffect(() => {
-    const defaultRules: OptimizationRule[] = [
-      {
-        id: 'expiration_optimization',
-        name: 'Optimisation des Expirations',
-        description: 'Suggère des actions pour les lots proches de l\'expiration',
-        isActive: true,
-        priority: 1,
-        conditions: { daysToExpiration: { lte: 30 } },
-        actions: { type: 'promotion', discount: 10 }
-      },
-      {
-        id: 'fifo_compliance',
-        name: 'Conformité FIFO',
-        description: 'Vérifie et corrige la conformité aux règles FIFO',
-        isActive: true,
-        priority: 2,
-        conditions: { fifoViolation: true },
-        actions: { type: 'reorder', priority: 'high' }
-      },
-      {
-        id: 'stock_balancing',
-        name: 'Équilibrage des Stocks',
-        description: 'Redistribue les stocks selon les niveaux optimaux',
-        isActive: true,
-        priority: 3,
-        conditions: { stockLevel: { lte: 10 } },
-        actions: { type: 'transfer', threshold: 20 }
-      },
-      {
-        id: 'value_optimization',
-        name: 'Optimisation de la Valeur',
-        description: 'Maximise la valeur du stock par rotation intelligente',
-        isActive: false,
-        priority: 4,
-        conditions: { rotationRate: { lte: 6 } },
-        actions: { type: 'promotion', incentive: 'volume' }
-      }
-    ];
+    if (!rulesLoading && (!rules || rules.length === 0)) {
+      initializeDefaultRules();
+    }
+  }, [rulesLoading, rules, initializeDefaultRules]);
 
-    setOptimizationRules(defaultRules);
-    setSelectedRules(defaultRules.filter(r => r.isActive).map(r => r.id));
-  }, []);
+  const selectedRules = rules?.filter(r => r.is_active).map(r => r.rule_id) || [];
 
   const runOptimization = async () => {
     setIsOptimizing(true);
@@ -133,8 +79,9 @@ export const LotOptimization = () => {
               title: 'Promotion d\'urgence',
               description: `Appliquer une remise de ${discount}% pour écouler le stock avant expiration`,
               lotId: lot.id,
+              productId: lot.produit_id,
               lotNumber: lot.numero_lot,
-                  productName: 'Produit inconnu',
+              productName: lot.produit?.libelle_produit || 'Produit inconnu',
               currentValue: 0,
               suggestedValue: discount,
               expectedBenefit: `Éviter une perte de ${(lot.quantite_restante * (lot.prix_achat_unitaire || 1000)).toLocaleString()} F`
@@ -163,11 +110,12 @@ export const LotOptimization = () => {
               if (suggestedLot) {
                 newSuggestions.push({
                   id: `fifo_${productId}`,
-                  type: 'reorder',
+                  type: 'adjustment',
                   priority: 'medium',
                   title: 'Correction FIFO',
                   description: `Prioriser la vente du lot ${suggestedLot.numero_lot} selon les règles FIFO`,
                   lotId: suggestedLot.id,
+                  productId: suggestedLot.produit_id,
                   lotNumber: suggestedLot.numero_lot,
                   productName: suggestedLot.produit?.libelle_produit || 'Produit inconnu',
                   currentValue: 0,
@@ -193,6 +141,7 @@ export const LotOptimization = () => {
               title: 'Réapprovisionnement urgent',
               description: `Stock critique à ${stockPercentage.toFixed(1)}% - Commande recommandée`,
               lotId: lot.id,
+              productId: lot.produit_id,
               lotNumber: lot.numero_lot,
               productName: lot.produit?.libelle_produit || 'Produit inconnu',
               currentValue: lot.quantite_restante,
@@ -209,17 +158,52 @@ export const LotOptimization = () => {
     }
   };
 
-  const toggleRule = (ruleId: string) => {
-    setSelectedRules(prev => 
-      prev.includes(ruleId) 
-        ? prev.filter(id => id !== ruleId)
-        : [...prev, ruleId]
-    );
+  const handleToggleRule = (ruleId: string, isActive: boolean) => {
+    toggleRule({ ruleId, isActive: !isActive });
   };
 
-  const applySuggestion = (suggestionId: string) => {
-    setSuggestions(prev => prev.filter(s => s.id !== suggestionId));
-    // Ici on implémenterait l'application réelle de la suggestion
+  const applySuggestion = async (suggestion: OptimizationSuggestion) => {
+    if (!tenantId || !user?.id) return;
+
+    try {
+      switch (suggestion.type) {
+        case 'promotion':
+          await LotOptimizationService.applyPromotionSuggestion(tenantId, user.id, suggestion);
+          break;
+        case 'reorder':
+          await LotOptimizationService.applyReorderSuggestion(tenantId, user.id, suggestion);
+          break;
+        case 'adjustment':
+          await LotOptimizationService.applyFIFOCorrection(tenantId, user.id, suggestion);
+          break;
+      }
+      
+      setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
+    } catch (error) {
+      console.error('Erreur lors de l\'application de la suggestion:', error);
+    }
+  };
+
+  const ignoreSuggestion = async (suggestion: OptimizationSuggestion) => {
+    if (!tenantId || !user?.id) return;
+
+    try {
+      await LotOptimizationService.ignoreSuggestion(tenantId, user.id, suggestion);
+      setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
+    } catch (error) {
+      console.error('Erreur lors de l\'ignorage de la suggestion:', error);
+    }
+  };
+
+  const applyAllSuggestions = async () => {
+    if (!tenantId || !user?.id || suggestions.length === 0) return;
+
+    try {
+      await LotOptimizationService.applyAllSuggestions(tenantId, user.id, suggestions);
+      setSuggestions([]);
+    } catch (error) {
+      console.error('Erreur lors de l\'application des suggestions:', error);
+    }
   };
 
   const getPriorityColor = (priority: string) => {
@@ -293,7 +277,11 @@ export const LotOptimization = () => {
                     <Zap className={`h-4 w-4 mr-2 ${isOptimizing ? 'animate-pulse' : ''}`} />
                     {isOptimizing ? 'Optimisation en cours...' : 'Optimiser Maintenant'}
                   </Button>
-                  <Button variant="outline" disabled={suggestions.length === 0}>
+                  <Button 
+                    variant="outline" 
+                    disabled={suggestions.length === 0}
+                    onClick={applyAllSuggestions}
+                  >
                     Appliquer Toutes
                   </Button>
                 </div>
@@ -420,14 +408,14 @@ export const LotOptimization = () => {
                               <div className="flex gap-2">
                                 <Button 
                                   size="sm" 
-                                  onClick={() => applySuggestion(suggestion.id)}
+                                  onClick={() => applySuggestion(suggestion)}
                                 >
                                   Appliquer
                                 </Button>
                                 <Button 
                                   size="sm" 
                                   variant="outline"
-                                  onClick={() => applySuggestion(suggestion.id)}
+                                  onClick={() => ignoreSuggestion(suggestion)}
                                 >
                                   Ignorer
                                 </Button>
@@ -451,51 +439,50 @@ export const LotOptimization = () => {
         <TabsContent value="rules">
           <Card>
             <CardHeader>
-              <CardTitle>Configuration des Règles d'Optimisation</CardTitle>
+              <CardTitle>Règles d'Optimisation</CardTitle>
               <CardDescription>
-                Activez ou désactivez les règles selon vos besoins
+                Activez ou désactivez les règles d'optimisation automatique
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {optimizationRules.map((rule) => (
-                  <div key={rule.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedRules.includes(rule.id)}
-                        onChange={() => toggleRule(rule.id)}
-                        className="rounded"
-                      />
-                      <div>
-                        <h4 className="font-medium">{rule.name}</h4>
+              {rulesLoading ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Chargement des règles...
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {rules?.map((rule) => (
+                    <div 
+                      key={rule.id}
+                      className="flex items-start justify-between p-4 border rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium">{rule.name}</h4>
+                          <Badge variant={rule.is_active ? "default" : "outline"}>
+                            {rule.is_active ? 'Activée' : 'Désactivée'}
+                          </Badge>
+                        </div>
                         <p className="text-sm text-muted-foreground">{rule.description}</p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                          <span>Priorité: {rule.priority}</span>
+                        </div>
                       </div>
+                      <Switch
+                        checked={rule.is_active}
+                        onCheckedChange={() => handleToggleRule(rule.rule_id, rule.is_active)}
+                        disabled={isUpdating}
+                      />
                     </div>
-                    <Badge variant={rule.isActive ? 'secondary' : 'outline'}>
-                      Priorité {rule.priority}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="analytics">
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance de l'Optimisation</CardTitle>
-              <CardDescription>
-                Suivi des améliorations apportées par l'optimisation
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                Les métriques de performance seront affichées ici après l'application des suggestions
-              </div>
-            </CardContent>
-          </Card>
+          <LotOptimizationPerformance />
         </TabsContent>
       </Tabs>
     </div>
