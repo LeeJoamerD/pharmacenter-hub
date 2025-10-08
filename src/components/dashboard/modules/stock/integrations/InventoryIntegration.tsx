@@ -195,6 +195,26 @@ export const InventoryIntegration = () => {
         throw sessionError;
       }
 
+      // Audit log pour la création de la session
+      await supabase
+        .from('audit_logs')
+        .insert({
+          tenant_id: tenantId,
+          user_id: currentPersonnel.auth_user_id,
+          personnel_id: currentPersonnel.id,
+          action: 'RECONCILIATION_COMPLETED',
+          table_name: 'inventaire_sessions',
+          record_id: sessionData.id,
+          new_values: {
+            session_id: sessionData.id,
+            discrepancies_count: discrepancies.length,
+            total_lots: currentSession.lotsCount,
+            completion_timestamp: new Date().toISOString(),
+            session_type: 'complet'
+          },
+          status: 'success'
+        });
+
       // 2. Créer les mouvements d'ajustement pour chaque écart
       for (const discrepancy of discrepancies) {
         console.log('Ajustement pour lot:', discrepancy.lotId);

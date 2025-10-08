@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
+import { usePersonnel } from '@/hooks/usePersonnel';
 import { toast } from 'sonner';
 
 export interface ReconciliationItem {
@@ -27,7 +29,9 @@ export interface ReconciliationSummary {
   tauxPrecision: number;
 }
 
-export const useInventoryReconciliation = () => {
+export const useInventoryReconciliation = (sessionId?: string) => {
+  const { tenantId } = useTenant();
+  const { currentPersonnel } = usePersonnel();
   const [items, setItems] = useState<ReconciliationItem[]>([]);
   const [summary, setSummary] = useState<ReconciliationSummary>({
     totalProduits: 0,
@@ -41,10 +45,13 @@ export const useInventoryReconciliation = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchSessions = async () => {
+    if (!tenantId) return;
+    
     try {
       const { data, error } = await supabase
         .from('inventaire_sessions')
         .select('*')
+        .eq('tenant_id', tenantId)
         .in('statut', ['en_cours', 'terminee'])
         .order('created_at', { ascending: false });
 
@@ -55,52 +62,74 @@ export const useInventoryReconciliation = () => {
     }
   };
 
-  const fetchReconciliationData = async (sessionId?: string) => {
+  const fetchReconciliationData = async (targetSessionId?: string) => {
+    if (!tenantId) return;
+    
     try {
       setLoading(true);
+      const activeSessionId = targetSessionId || sessionId;
       
-      // Pour l'instant, on utilise des données mockées
-      const mockItems: ReconciliationItem[] = [
-        {
-          id: '1',
-          produit: 'Paracétamol 1000mg',
-          lot: 'LOT2024001',
-          quantiteTheorique: 50,
-          quantiteComptee: 48,
-          ecart: -2,
-          statut: 'en_attente',
-          emplacement: 'A1-B2',
-          valeurUnitaire: 12.50,
-          valeurEcart: -25.00,
-          dateComptage: new Date(),
-          operateur: 'Marie Dubois',
-          commentaires: 'Emballages endommagés'
-        },
-        {
-          id: '2',
-          produit: 'Amoxicilline 500mg',
-          lot: 'LOT2024002',
-          quantiteTheorique: 30,
-          quantiteComptee: 32,
-          ecart: 2,
-          statut: 'valide',
-          emplacement: 'B3-C1',
-          valeurUnitaire: 8.75,
-          valeurEcart: 17.50,
-          dateComptage: new Date(),
-          operateur: 'Jean Martin'
-        }
-      ];
+      if (!activeSessionId) {
+        setItems([]);
+        setLoading(false);
+        return;
+      }
 
-      setItems(mockItems);
+      // Récupérer les lignes d'inventaire avec les détails des produits et lots
+      const { data: lignes, error } = await supabase
+        .from('inventaire_lignes')
+        .select(`
+          *,
+          produits:produit_id (
+            libelle_produit,
+            prix_vente_ttc
+          ),
+          lots:lot_id (
+            numero_lot,
+            quantite_restante,
+            emplacement
+          )
+        `)
+        .eq('tenant_id', tenantId)
+        .eq('session_id', activeSessionId);
+
+      if (error) throw error;
+
+      // Transformer les données en ReconciliationItem
+      const transformedItems: ReconciliationItem[] = (lignes || []).map(ligne => {
+        const quantiteTheorique = ligne.lots?.quantite_restante || 0;
+        const quantiteComptee = ligne.quantite_comptee || 0;
+        const ecart = quantiteComptee - quantiteTheorique;
+        const valeurUnitaire = ligne.produits?.prix_vente_ttc || 0;
+        
+        return {
+          id: ligne.id,
+          produit: ligne.produits?.libelle_produit || 'Produit inconnu',
+          lot: ligne.lots?.numero_lot || 'N/A',
+          quantiteTheorique,
+          quantiteComptee,
+          ecart,
+          statut: ligne.statut_validation || 'en_attente',
+          emplacement: ligne.lots?.emplacement || 'N/A',
+          valeurUnitaire,
+          valeurEcart: ecart * valeurUnitaire,
+          dateComptage: new Date(ligne.date_comptage || ligne.created_at),
+          operateur: currentPersonnel ? `${currentPersonnel.prenoms} ${currentPersonnel.noms}` : 'N/A',
+          commentaires: ligne.commentaires
+        };
+      });
+
+      setItems(transformedItems);
 
       // Calculer le résumé
-      const totalProduits = mockItems.length;
-      const produitsEcart = mockItems.filter(item => item.ecart !== 0).length;
-      const ecartPositif = mockItems.filter(item => item.ecart > 0).length;
-      const ecartNegatif = mockItems.filter(item => item.ecart < 0).length;
-      const valeurEcartTotal = mockItems.reduce((sum, item) => sum + item.valeurEcart, 0);
-      const tauxPrecision = ((totalProduits - produitsEcart) / totalProduits) * 100;
+      const totalProduits = transformedItems.length;
+      const produitsEcart = transformedItems.filter(item => item.ecart !== 0).length;
+      const ecartPositif = transformedItems.filter(item => item.ecart > 0).length;
+      const ecartNegatif = transformedItems.filter(item => item.ecart < 0).length;
+      const valeurEcartTotal = transformedItems.reduce((sum, item) => sum + item.valeurEcart, 0);
+      const tauxPrecision = totalProduits > 0 
+        ? ((totalProduits - produitsEcart) / totalProduits) * 100 
+        : 0;
 
       setSummary({
         totalProduits,
@@ -120,8 +149,23 @@ export const useInventoryReconciliation = () => {
   };
 
   const validateItem = async (itemId: string, action: 'valide' | 'rejete', comments?: string) => {
+    if (!tenantId) return;
+    
     try {
-      // Mettre à jour localement
+      // Mise à jour en base de données
+      const { error } = await supabase
+        .from('inventaire_lignes')
+        .update({ 
+          statut_validation: action,
+          commentaires: comments,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', itemId)
+        .eq('tenant_id', tenantId);
+
+      if (error) throw error;
+
+      // Mettre à jour l'état local
       setItems(prev => prev.map(item => 
         item.id === itemId 
           ? { ...item, statut: action, commentaires: comments }
@@ -137,9 +181,11 @@ export const useInventoryReconciliation = () => {
   };
 
   useEffect(() => {
-    fetchSessions();
-    fetchReconciliationData();
-  }, []);
+    if (tenantId) {
+      fetchSessions();
+      fetchReconciliationData();
+    }
+  }, [sessionId, tenantId]);
 
   return {
     items,
