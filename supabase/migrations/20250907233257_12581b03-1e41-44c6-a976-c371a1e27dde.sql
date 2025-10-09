@@ -178,8 +178,7 @@ BEGIN
     quantite_apres = new_quantite_apres,
     motif = COALESCE(p_motif, motif),
     reference_document = COALESCE(p_reference_document, reference_document),
-    metadata = COALESCE(p_metadata, metadata),
-    updated_at = now()
+    metadata = COALESCE(p_metadata, metadata)
   WHERE id = p_movement_id AND tenant_id = current_tenant_id;
 
   -- Mettre à jour la quantité du lot si nécessaire

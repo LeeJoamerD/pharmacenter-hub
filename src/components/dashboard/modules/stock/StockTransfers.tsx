@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLotMovements } from '@/hooks/useLotMovements';
 import { useProducts } from '@/hooks/useProducts';
 import { useLots } from '@/hooks/useLots';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 interface StockTransferMetadata {
@@ -61,13 +62,15 @@ interface StockTransferMovement {
   };
 }
 
-const StockTransfers = () => {
+function StockTransfers() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState<StockTransferMovement | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatut, setSelectedStatut] = useState<string>('tous');
+  const [localTransferts, setLocalTransferts] = useState<StockTransferMovement[]>([]);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Hooks pour les données
   const { useLotMovementsQuery } = useLotMovements();
@@ -103,7 +106,7 @@ const StockTransfers = () => {
   };
 
   // Convertir les mouvements en transferts avec détails
-  const transferts: StockTransferMovement[] = useMemo(() => {
+  const memoizedTransferts: StockTransferMovement[] = useMemo(() => {
     if (!movementsData) return [];
     return movementsData
       .filter((movement: any) => movement.metadata?.origine)
@@ -113,13 +116,19 @@ const StockTransfers = () => {
         produit_id: movement.produit_id,
         lot_id: movement.lot_id,
         quantite_mouvement: movement.quantite_mouvement,
-        metadata: movement.metadata as StockTransferMetadata,
+        metadata: movement.metadata || {},
         emplacement_source: movement.emplacement_source,
         emplacement_destination: movement.emplacement_destination,
         lot: movement.lot,
+        lot_destination: movement.lot_destination,
         produit: movement.produit
       }));
   }, [movementsData]);
+  
+  // Utiliser useEffect pour mettre à jour l'état local des transferts quand les données mémorisées changent
+  useEffect(() => {
+    setLocalTransferts(memoizedTransferts);
+  }, [memoizedTransferts]);
 
   // Filtrer les lots par produit sélectionné
   const availableLots = useMemo(() => {
@@ -233,6 +242,7 @@ const StockTransfers = () => {
       });
       
       refetchMovements();
+      queryClient.invalidateQueries({ queryKey: ['lots'] });
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -244,7 +254,7 @@ const StockTransfers = () => {
 
   const handleUpdateStatus = async (movementId: string, newStatus: 'en_cours' | 'en_transit' | 'recu' | 'annule') => {
     try {
-      const movement = transferts.find(t => t.id === movementId);
+      const movement = localTransferts.find(t => t.id === movementId);
       if (!movement) return;
 
       const updatedMetadata = {
@@ -259,13 +269,46 @@ const StockTransfers = () => {
 
       if (error) throw error;
 
+      // Invalider le cache pour forcer un rechargement des données
+      queryClient.invalidateQueries({queryKey: ['lot-movements']});
+      
+      // Rafraîchir les données immédiatement
+      await refetchMovements();
+
+      // Mise à jour locale du transfert sélectionné pour actualiser l'interface immédiatement
+      if (selectedTransfer && selectedTransfer.id === movementId) {
+        setSelectedTransfer({
+          ...selectedTransfer,
+          metadata: {
+            ...selectedTransfer.metadata,
+            statut: newStatus
+          }
+        });
+      }
+
+      // Mettre à jour l'état local des transferts pour une mise à jour immédiate de l'UI
+      setLocalTransferts(prevTransferts => 
+        prevTransferts.map(transfert => 
+          transfert.id === movementId 
+            ? {
+                ...transfert,
+                metadata: {
+                  ...transfert.metadata,
+                  statut: newStatus
+                }
+              } 
+            : transfert
+        )
+      );
+
       toast({
         title: "Statut mis à jour",
         description: `Transfert mis à jour vers "${newStatus}"`,
       });
 
+      // Rafraîchir les données en arrière-plan
       refetchMovements();
-      setIsDetailSheetOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['lots'] });
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -275,7 +318,7 @@ const StockTransfers = () => {
     }
   };
 
-  const filteredTransferts = transferts.filter(transfert => {
+  const filteredTransferts = localTransferts.filter(transfert => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = 
       transfert.produit?.libelle_produit?.toLowerCase().includes(searchLower) ||
@@ -297,7 +340,7 @@ const StockTransfers = () => {
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total Transferts</p>
-              <p className="text-2xl font-bold">{transferts.length}</p>
+              <p className="text-2xl font-bold">{localTransferts.length}</p>
             </div>
             <ArrowRightLeft className="h-8 w-8 text-muted-foreground" />
           </CardContent>
@@ -308,7 +351,7 @@ const StockTransfers = () => {
             <div>
               <p className="text-sm font-medium text-muted-foreground">En Transit</p>
               <p className="text-2xl font-bold text-blue-600">
-                {transferts.filter(t => t.metadata.statut === 'en_transit').length}
+                {localTransferts.filter(t => t.metadata.statut === 'en_transit').length}
               </p>
             </div>
             <Truck className="h-8 w-8 text-blue-600" />
@@ -320,7 +363,7 @@ const StockTransfers = () => {
             <div>
               <p className="text-sm font-medium text-muted-foreground">En Cours</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {transferts.filter(t => t.metadata.statut === 'en_cours').length}
+                {localTransferts.filter(t => t.metadata.statut === 'en_cours').length}
               </p>
             </div>
             <Clock className="h-8 w-8 text-yellow-600" />
@@ -332,7 +375,7 @@ const StockTransfers = () => {
             <div>
               <p className="text-sm font-medium text-muted-foreground">Terminés</p>
               <p className="text-2xl font-bold text-green-600">
-                {transferts.filter(t => t.metadata.statut === 'recu').length}
+                {localTransferts.filter(t => t.metadata.statut === 'recu').length}
               </p>
             </div>
             <CheckCircle className="h-8 w-8 text-green-600" />

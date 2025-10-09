@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
+import StockMovementDetails from './StockMovementDetails';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import ExportButton from '@/components/ui/export-button';
 import { 
   Search, 
   Filter, 
@@ -28,12 +29,17 @@ import {
   ArrowUpDown,
   FileX,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useLotMovements } from '@/hooks/useLotMovements';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const StockMovementJournal = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,6 +52,137 @@ const StockMovementJournal = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editData, setEditData] = useState<any>({});
+  
+  // Récupérer les hooks au niveau du composant
+  const lotMovementsHook = useLotMovements();
+  const { data: movementsData } = lotMovementsHook.useLotMovementsQuery();
+  
+  // Fonction pour gérer l'exportation des données
+  const handleExport = (format: 'csv' | 'xlsx' | 'pdf') => {
+    const dataToExport = movementsData || [];
+    
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `journal-mouvements-${timestamp}`;
+    
+    try {
+      switch (format) {
+        case 'csv':
+          exportToCSV(dataToExport, filename);
+          break;
+        case 'xlsx':
+          exportToExcel(dataToExport, filename);
+          break;
+        case 'pdf':
+          exportToPDF(dataToExport, filename);
+          break;
+      }
+      
+      toast(`Les données ont été exportées au format ${format.toUpperCase()}.`);
+    } catch (error) {
+      console.error("Erreur lors de l'export:", error);
+      toast.error("Une erreur est survenue lors de l'exportation des données.");
+    }
+  };
+  
+  // Fonction pour exporter au format CSV
+  const exportToCSV = (data: any[], filename: string) => {
+    const headers = [
+      'ID', 'Date', 'Type', 'Produit', 'Lot', 'Quantité', 
+      'Origine', 'Destination', 'Utilisateur', 'Statut'
+    ];
+    
+    const rows = data.map(item => [
+      item.id,
+      new Date(item.date).toLocaleDateString('fr-FR'),
+      item.type,
+      item.produit,
+      item.lot,
+      item.quantite,
+      item.origine || 'N/A',
+      item.destination || 'N/A',
+      item.utilisateur,
+      item.statut
+    ]);
+    
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${filename}.csv`;
+    link.click();
+  };
+  
+  // Fonction pour exporter au format Excel
+  const exportToExcel = (data: any[], filename: string) => {
+    const worksheetData = data.map(item => ({
+      'ID': item.id,
+      'Date': new Date(item.date).toLocaleDateString('fr-FR'),
+      'Type': item.type,
+      'Produit': item.produit,
+      'Lot': item.lot,
+      'Quantité': item.quantite,
+      'Origine': item.origine || 'N/A',
+      'Destination': item.destination || 'N/A',
+      'Utilisateur': item.utilisateur,
+      'Statut': item.statut
+    }));
+    
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    
+    // Ajuster les largeurs de colonnes
+    const columnWidths = [
+      { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 30 },
+      { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 20 },
+      { wch: 20 }, { wch: 15 }
+    ];
+    worksheet['!cols'] = columnWidths;
+    
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Mouvements');
+    XLSX.writeFile(workbook, `${filename}.xlsx`);
+  };
+  
+  // Fonction pour exporter au format PDF
+  const exportToPDF = (data: any[], filename: string) => {
+    const doc = new jsPDF('landscape');
+    
+    // Titre
+    doc.setFontSize(16);
+    doc.text('Journal des Mouvements de Stock', 14, 15);
+    
+    // Date d'export
+    doc.setFontSize(10);
+    doc.text(`Date d'export: ${new Date().toLocaleDateString('fr-FR')}`, 14, 22);
+    
+    // Tableau
+    const tableData = data.map(item => [
+      item.id,
+      new Date(item.date).toLocaleDateString('fr-FR'),
+      item.type,
+      item.produit,
+      item.lot,
+      item.quantite,
+      item.origine || 'N/A',
+      item.destination || 'N/A',
+      item.statut
+    ]);
+    
+    autoTable(doc, {
+      startY: 28,
+      head: [['ID', 'Date', 'Type', 'Produit', 'Lot', 'Qté', 'Origine', 'Destination', 'Statut']],
+      body: tableData,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [66, 139, 202], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 245, 245] }
+    });
+    
+    doc.save(`${filename}.pdf`);
+  };
 
   // Hook pour les mouvements de lots
   const { 
@@ -60,34 +197,58 @@ const StockMovementJournal = () => {
   } = useLotMovements();
 
   // Filtres pour la query
-  const filters = {
-    ...(selectedType !== 'tous' && { type_mouvement: selectedType }),
-    ...(dateFrom && { date_debut: format(dateFrom, 'yyyy-MM-dd') }),
-    ...(dateTo && { date_fin: format(dateTo, 'yyyy-MM-dd') })
-  };
-
-  // Query pour récupérer les mouvements
-  const { data: movements = [], isLoading, error } = useLotMovementsQuery(filters);
-
-  // Filtrage côté client pour la recherche
-  const filteredMovements = useMemo(() => {
-    if (!movements) return [];
+  const filters = useMemo(() => {
+    const filterObj: any = {};
     
-    let filtered = movements;
-    
-    // Recherche plein-texte côté client
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      filtered = filtered.filter((movement: any) => 
-        movement.produit?.libelle_produit?.toLowerCase().includes(search) ||
-        movement.lot?.numero_lot?.toLowerCase().includes(search) ||
-        movement.motif?.toLowerCase().includes(search) ||
-        movement.reference_document?.toLowerCase().includes(search) ||
-        JSON.stringify(movement.metadata || {}).toLowerCase().includes(search)
-      );
+    if (selectedType !== 'tous') {
+      filterObj.type_mouvement = selectedType;
     }
     
-    return filtered;
+    if (dateFrom) {
+      filterObj.date_debut = format(dateFrom, 'yyyy-MM-dd');
+    }
+    
+    if (dateTo) {
+      filterObj.date_fin = format(dateTo, 'yyyy-MM-dd');
+    }
+    
+    return filterObj;
+  }, [selectedType, dateFrom, dateTo]);
+
+  // Query pour récupérer les mouvements avec gestion d'erreurs améliorée
+  const { data: movements = [], isLoading, error, refetch } = useLotMovementsQuery(filters);
+
+  // Filtrage côté client pour la recherche avec gestion d'erreurs
+  const filteredMovements = useMemo(() => {
+    try {
+      if (!movements || !Array.isArray(movements)) return [];
+      
+      let filtered = movements;
+      
+      // Recherche plein-texte côté client
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        filtered = filtered.filter((movement: any) => {
+          try {
+            return (
+              movement.produit?.libelle_produit?.toLowerCase().includes(search) ||
+              movement.lot?.numero_lot?.toLowerCase().includes(search) ||
+              movement.motif?.toLowerCase().includes(search) ||
+              movement.reference_document?.toLowerCase().includes(search) ||
+              JSON.stringify(movement.metadata || {}).toLowerCase().includes(search)
+            );
+          } catch (err) {
+            console.warn('Erreur lors du filtrage d\'un mouvement:', err);
+            return false;
+          }
+        });
+      }
+      
+      return filtered;
+    } catch (err) {
+      console.error('Erreur lors du filtrage des mouvements:', err);
+      return [];
+    }
   }, [movements, searchTerm]);
 
   // Pagination côté client
@@ -100,21 +261,17 @@ const StockMovementJournal = () => {
   const stats = useMemo(() => {
     if (!movements) return { total: 0, entrees: 0, sorties: 0, ajustements: 0, transferts: 0, retours: 0, destructions: 0 };
     
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const todayMovements = movements.filter((m: any) => 
-      format(new Date(m.date_mouvement), 'yyyy-MM-dd') === today
-    );
-    
+    // Utiliser tous les mouvements filtrés pour les statistiques, pas seulement ceux d'aujourd'hui
     return {
-      total: movements.length,
-      entrees: todayMovements.filter((m: any) => m.type_mouvement === 'entree').length,
-      sorties: todayMovements.filter((m: any) => m.type_mouvement === 'sortie').length,
-      ajustements: todayMovements.filter((m: any) => m.type_mouvement === 'ajustement').length,
-      transferts: todayMovements.filter((m: any) => m.type_mouvement === 'transfert').length,
-      retours: todayMovements.filter((m: any) => m.type_mouvement === 'retour').length,
-      destructions: todayMovements.filter((m: any) => m.type_mouvement === 'destruction').length
+      total: filteredMovements.length,
+      entrees: filteredMovements.filter((m: any) => m.type_mouvement === 'entree').length,
+      sorties: filteredMovements.filter((m: any) => m.type_mouvement === 'sortie').length,
+      ajustements: filteredMovements.filter((m: any) => m.type_mouvement === 'ajustement').length,
+      transferts: filteredMovements.filter((m: any) => m.type_mouvement === 'transfert').length,
+      retours: filteredMovements.filter((m: any) => m.type_mouvement === 'retour').length,
+      destructions: filteredMovements.filter((m: any) => m.type_mouvement === 'destruction').length
     };
-  }, [movements]);
+  }, [filteredMovements]);
 
   // Handlers pour les actions
   const handleViewDetails = (movement: any) => {
@@ -127,7 +284,7 @@ const StockMovementJournal = () => {
     setEditData({
       quantite_mouvement: movement.quantite_mouvement,
       motif: movement.motif || '',
-      reference_document: movement.reference_document || ''
+      reference_document: movement.reference_document || movement.id || ''
     });
     setIsEditOpen(true);
   };
@@ -248,8 +405,20 @@ const StockMovementJournal = () => {
     return (
       <Card>
         <CardContent className="py-8">
-          <div className="text-center text-destructive">
-            Erreur lors du chargement des mouvements: {error.message}
+          <div className="text-center space-y-4">
+            <div className="text-destructive">
+              <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+              <p className="font-medium">Erreur lors du chargement des mouvements</p>
+              <p className="text-sm text-muted-foreground mt-1">{error.message}</p>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => refetch()}
+              className="mt-4"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Réessayer
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -392,10 +561,7 @@ const StockMovementJournal = () => {
                 </PopoverContent>
               </Popover>
 
-              <Button variant="outline" onClick={handleExportCSV}>
-                <Download className="mr-2 h-4 w-4" />
-                Exporter
-              </Button>
+              <ExportButton onExport={handleExport} />
             </div>
           </div>
 
@@ -507,25 +673,25 @@ const StockMovementJournal = () => {
                   Affichage de {page * pageSize + 1} à {Math.min((page + 1) * pageSize, filteredMovements.length)} sur {filteredMovements.length} mouvements
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(p => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Précédent
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(p => p + 1)}
-                    disabled={(page + 1) * pageSize >= filteredMovements.length}
-                  >
-                    Suivant
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Précédent
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={(page + 1) * pageSize >= filteredMovements.length}
+                >
+                  Suivant
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
               </div>
             </>
           )}
@@ -538,85 +704,12 @@ const StockMovementJournal = () => {
         </CardContent>
       </Card>
 
-      {/* Modal détails du mouvement */}
-      <Drawer open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>Détails du Mouvement</DrawerTitle>
-            <DrawerDescription>
-              Informations complètes sur ce mouvement de stock
-            </DrawerDescription>
-          </DrawerHeader>
-          
-          {selectedMovement && (
-            <div className="px-4 pb-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm font-medium">Date/Heure</Label>
-                  <p className="text-sm font-mono">
-                    {format(new Date(selectedMovement.date_mouvement), 'dd/MM/yyyy à HH:mm', { locale: fr })}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Type de mouvement</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    {getTypeIcon(selectedMovement.type_mouvement)}
-                    {getTypeBadge(selectedMovement.type_mouvement)}
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Produit</Label>
-                  <p className="text-sm">{selectedMovement.produit?.libelle_produit || 'N/A'}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Lot</Label>
-                  <Badge variant="outline">{selectedMovement.lot?.numero_lot || 'N/A'}</Badge>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Quantité avant</Label>
-                  <p className="text-sm">{selectedMovement.quantite_avant || 0}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Quantité mouvement</Label>
-                  <p className={`text-sm ${selectedMovement.quantite_mouvement > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {selectedMovement.quantite_mouvement > 0 ? '+' : ''}{selectedMovement.quantite_mouvement || 0}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Quantité après</Label>
-                  <p className="text-sm">{selectedMovement.quantite_apres || 0}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium">Référence</Label>
-                  <p className="text-sm">{selectedMovement.reference_document || 'N/A'}</p>
-                </div>
-              </div>
-              
-              {selectedMovement.motif && (
-                <div>
-                  <Label className="text-sm font-medium">Motif</Label>
-                  <p className="text-sm">{selectedMovement.motif}</p>
-                </div>
-              )}
-              
-              {selectedMovement.metadata && Object.keys(selectedMovement.metadata).length > 0 && (
-                <div>
-                  <Label className="text-sm font-medium">Métadonnées</Label>
-                  <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-auto">
-                    {JSON.stringify(selectedMovement.metadata, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
-          
-          <DrawerFooter>
-            <DrawerClose asChild>
-              <Button variant="outline">Fermer</Button>
-            </DrawerClose>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+      {/* Composant de détails avec animation */}
+      <StockMovementDetails 
+        movement={selectedMovement} 
+        isOpen={isDetailsOpen} 
+        onClose={() => setIsDetailsOpen(false)} 
+      />
 
       {/* Modal d'édition */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -659,12 +752,13 @@ const StockMovementJournal = () => {
               <Label htmlFor="reference">Référence</Label>
               <Input
                 id="reference"
-                value={editData.reference_document || ''}
+                value={editData.reference_document || selectedMovement?.reference_document || selectedMovement?.id || ''}
                 onChange={(e) => setEditData(prev => ({
                   ...prev,
                   reference_document: e.target.value
                 }))}
                 placeholder="Référence du mouvement..."
+                className="font-mono text-sm"
               />
             </div>
           </div>

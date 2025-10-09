@@ -68,7 +68,9 @@ export const useLotMovements = () => {
       'mouvements_lots',
       `
         *,
-        lot:lots(id, numero_lot, produit_id)
+        lot:lots!lot_id(id, numero_lot, produit_id, quantite_restante),
+        lot_destination:lots!lot_destination_id(id, numero_lot, produit_id, quantite_restante),
+        produit:produits!produit_id(id, libelle_produit, code_cip)
       `,
       {
         ...(filters?.lot_id && { lot_id: filters.lot_id }),
@@ -138,7 +140,9 @@ export const useLotMovements = () => {
       'mouvements_lots',
       `
         *,
-        lot:lots(id, numero_lot, produit_id)
+        lot:lots!lot_id(id, numero_lot, produit_id, quantite_restante),
+        lot_destination:lots!lot_destination_id(id, numero_lot, produit_id, quantite_restante),
+        produit:produits!produit_id(id, libelle_produit, code_cip)
       `,
       {},
       {
@@ -199,11 +203,10 @@ export const useLotMovements = () => {
     }) => {
       const { data, error } = await supabase.rpc('rpc_stock_update_movement', {
         p_movement_id: movementId,
-        p_new_quantite_mouvement: updates.quantite_mouvement,
-        p_new_motif: updates.notes,
-        p_new_reference_document: updates.reference_document,
-        p_new_metadata: null,
-        p_new_quantite_reelle: null
+        p_quantite_mouvement: updates.quantite_mouvement,
+        p_motif: updates.notes,
+        p_reference_document: updates.reference_document,
+        p_metadata: null
       });
 
       if (error) throw new Error(error.message);

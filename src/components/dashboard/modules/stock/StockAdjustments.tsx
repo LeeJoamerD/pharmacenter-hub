@@ -29,6 +29,7 @@ import { useLotMovements } from '@/hooks/useLotMovements';
 import { useProducts } from '@/hooks/useProducts';
 import { useLots } from '@/hooks/useLots';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface StockAdjustmentMetadata {
   raison: string;
@@ -65,6 +66,7 @@ const StockAdjustments = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatut, setSelectedStatut] = useState<string>('tous');
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Hooks pour les données
   const { useLotMovementsQuery } = useLotMovements();
@@ -109,9 +111,9 @@ const StockAdjustments = () => {
   // Filtrer les lots par produit sélectionné
   const availableLots = useMemo(() => {
     if (!lotsData || !formData.produit_id) return [];
+    // Afficher TOUS les lots du produit pour permettre les ajustements sur lots épuisés
     return lotsData.filter((lot: any) => 
-      lot.produit_id === formData.produit_id && 
-      lot.quantite_restante > 0
+      lot.produit_id === formData.produit_id
     );
   }, [lotsData, formData.produit_id]);
 
@@ -218,7 +220,10 @@ const StockAdjustments = () => {
         commentaire: ''
       });
       
-      refetchMovements();
+      // Forcer le refetch et l'invalidation des queries pour mise à jour immédiate
+      await refetchMovements();
+      await queryClient.invalidateQueries({ queryKey: ['lot-movements'] });
+      await queryClient.invalidateQueries({ queryKey: ['lots'] });
     } catch (error: any) {
       toast({
         title: "Erreur",
@@ -238,22 +243,31 @@ const StockAdjustments = () => {
         statut: newStatus
       };
 
-      const { error } = await supabase.rpc('rpc_stock_update_movement', {
+      const { data, error } = await supabase.rpc('rpc_stock_update_movement', {
         p_movement_id: movementId,
-        p_new_quantite_mouvement: movement.quantite_mouvement,
-        p_new_reference_document: null,
-        p_new_motif: movement.metadata.raison,
-        p_new_metadata: updatedMetadata
+        p_quantite_mouvement: movement.quantite_mouvement,
+        p_motif: movement.metadata.raison,
+        p_reference_document: null,
+        p_metadata: updatedMetadata
       });
 
       if (error) throw error;
+
+      // Vérifier le résultat de la RPC
+      if (data && typeof data === 'object' && 'success' in data && !data.success) {
+        const errorMessage = (data as any).error || 'Erreur lors de la mise à jour du statut';
+        throw new Error(errorMessage);
+      }
 
       toast({
         title: "Statut mis à jour",
         description: `Ajustement ${newStatus === 'valide' ? 'validé' : 'rejeté'} avec succès`,
       });
 
-      refetchMovements();
+      // Forcer le refetch et l'invalidation des queries pour mise à jour immédiate
+      await refetchMovements();
+      await queryClient.invalidateQueries({ queryKey: ['lot-movements'] });
+      await queryClient.invalidateQueries({ queryKey: ['lots'] });
       setIsDetailSheetOpen(false);
     } catch (error: any) {
       toast({
@@ -268,18 +282,27 @@ const StockAdjustments = () => {
     if (!confirm("Êtes-vous sûr de vouloir supprimer cet ajustement ?")) return;
 
     try {
-      const { error } = await supabase.rpc('rpc_stock_delete_movement', {
+      const { data, error } = await supabase.rpc('rpc_stock_delete_movement', {
         p_movement_id: movementId
       });
 
       if (error) throw error;
+
+      // Vérifier le résultat de la RPC
+      if (data && typeof data === 'object' && 'success' in data && !data.success) {
+        const errorMessage = (data as any).error || 'Erreur lors de la suppression';
+        throw new Error(errorMessage);
+      }
 
       toast({
         title: "Ajustement supprimé",
         description: "L'ajustement a été supprimé avec succès",
       });
 
-      refetchMovements();
+      // Forcer le refetch et l'invalidation des queries pour mise à jour immédiate
+      await refetchMovements();
+      await queryClient.invalidateQueries({ queryKey: ['lot-movements'] });
+      await queryClient.invalidateQueries({ queryKey: ['lots'] });
       setIsDetailSheetOpen(false);
     } catch (error: any) {
       toast({
