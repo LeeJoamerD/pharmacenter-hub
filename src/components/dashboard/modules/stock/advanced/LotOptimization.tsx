@@ -3,7 +3,6 @@ import { useLots } from "@/hooks/useLots";
 import { useFIFOConfiguration } from "@/hooks/useFIFOConfiguration";
 import { useLotOptimizationRules } from "@/hooks/useLotOptimizationRules";
 import { useTenant } from "@/contexts/TenantContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { LotOptimizationService, OptimizationSuggestion } from "@/services/lotOptimizationService";
 import { LotOptimizationPerformance } from "./LotOptimizationPerformance";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,8 +22,7 @@ export const LotOptimization = () => {
   const [suggestions, setSuggestions] = useState<OptimizationSuggestion[]>([]);
   const [isOptimizing, setIsOptimizing] = useState(false);
 
-  const { tenantId } = useTenant();
-  const { user } = useAuth();
+  const { tenantId, currentUser } = useTenant();
   const { useLotsQuery, useLowStockLots, useExpiringLots } = useLots();
   const { getNextLotToSell } = useFIFOConfiguration();
   const { useRulesQuery, toggleRule, initializeDefaultRules, isUpdating } = useLotOptimizationRules();
@@ -163,18 +161,18 @@ export const LotOptimization = () => {
   };
 
   const applySuggestion = async (suggestion: OptimizationSuggestion) => {
-    if (!tenantId || !user?.id) return;
+    if (!tenantId || !currentUser?.id) return;
 
     try {
       switch (suggestion.type) {
         case 'promotion':
-          await LotOptimizationService.applyPromotionSuggestion(tenantId, user.id, suggestion);
+          await LotOptimizationService.applyPromotionSuggestion(tenantId, currentUser.id, suggestion);
           break;
         case 'reorder':
-          await LotOptimizationService.applyReorderSuggestion(tenantId, user.id, suggestion);
+          await LotOptimizationService.applyReorderSuggestion(tenantId, currentUser.id, suggestion);
           break;
         case 'adjustment':
-          await LotOptimizationService.applyFIFOCorrection(tenantId, user.id, suggestion);
+          await LotOptimizationService.applyFIFOCorrection(tenantId, currentUser.id, suggestion);
           break;
       }
       
@@ -185,10 +183,10 @@ export const LotOptimization = () => {
   };
 
   const ignoreSuggestion = async (suggestion: OptimizationSuggestion) => {
-    if (!tenantId || !user?.id) return;
+    if (!tenantId || !currentUser?.id) return;
 
     try {
-      await LotOptimizationService.ignoreSuggestion(tenantId, user.id, suggestion);
+      await LotOptimizationService.ignoreSuggestion(tenantId, currentUser.id, suggestion);
       setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
     } catch (error) {
       console.error('Erreur lors de l\'ignorage de la suggestion:', error);
@@ -196,10 +194,10 @@ export const LotOptimization = () => {
   };
 
   const applyAllSuggestions = async () => {
-    if (!tenantId || !user?.id || suggestions.length === 0) return;
+    if (!tenantId || !currentUser?.id || suggestions.length === 0) return;
 
     try {
-      await LotOptimizationService.applyAllSuggestions(tenantId, user.id, suggestions);
+      await LotOptimizationService.applyAllSuggestions(tenantId, currentUser.id, suggestions);
       setSuggestions([]);
     } catch (error) {
       console.error('Erreur lors de l\'application des suggestions:', error);
