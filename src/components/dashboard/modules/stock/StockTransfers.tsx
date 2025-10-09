@@ -262,18 +262,33 @@ function StockTransfers() {
         statut: newStatus
       };
 
-      const { error } = await supabase.rpc('rpc_stock_update_movement', {
+      const { data, error } = await supabase.rpc('rpc_stock_update_movement', {
         p_movement_id: movementId,
-        p_new_metadata: updatedMetadata
+        p_metadata: updatedMetadata
       });
 
       if (error) throw error;
 
-      // Invalider le cache pour forcer un rechargement des données
-      queryClient.invalidateQueries({queryKey: ['lot-movements']});
+      // Vérifier le résultat de la fonction RPC
+      const rpcResult = data as { success: boolean; error?: string };
+      if (!rpcResult?.success) {
+        throw new Error(rpcResult?.error || 'Échec de la mise à jour du statut');
+      }
+
+      // Invalider le cache AVANT le refetch pour forcer une vraie lecture DB
+      await queryClient.invalidateQueries({queryKey: ['lot-movements']});
       
-      // Rafraîchir les données immédiatement
-      await refetchMovements();
+      // Rafraîchir les données depuis la base de données
+      const refetchResult = await refetchMovements();
+
+      // Vérifier que le nouveau statut est bien présent dans les données
+      if (refetchResult.data) {
+        const updatedMovement = refetchResult.data.find((m: any) => m.id === movementId);
+        if (updatedMovement?.metadata?.statut !== newStatus) {
+          console.error('Le statut n\'a pas été persisté correctement');
+          throw new Error('Échec de la persistance du statut');
+        }
+      }
 
       // Mise à jour locale du transfert sélectionné pour actualiser l'interface immédiatement
       if (selectedTransfer && selectedTransfer.id === movementId) {
