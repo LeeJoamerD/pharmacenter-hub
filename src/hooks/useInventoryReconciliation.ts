@@ -15,9 +15,14 @@ export interface ReconciliationItem {
   emplacement: string;
   valeurUnitaire: number;
   valeurEcart: number;
+  unite: string;
   dateComptage: Date;
   operateur: string;
   commentaires?: string;
+  motifEcart?: string;
+  actionCorrective?: string;
+  validePar?: string;
+  dateValidation?: Date;
 }
 
 export interface ReconciliationSummary {
@@ -115,6 +120,7 @@ export const useInventoryReconciliation = (sessionId?: string) => {
             emplacement: 'A1-B2',
             valeurUnitaire: 12.50,
             valeurEcart: -25.00,
+            unite: 'boîte',
             dateComptage: new Date(),
             operateur: currentPersonnel ? `${currentPersonnel.prenoms} ${currentPersonnel.noms}` : 'N/A',
             commentaires: 'Emballages endommagés'
@@ -156,7 +162,6 @@ export const useInventoryReconciliation = (sessionId?: string) => {
 
       if (error) throw error;
 
-      // Transformer les données
       const transformedItems: ReconciliationItem[] = (items || []).map((item) => {
         const ecart = item.quantite_comptee - item.quantite_theorique;
         const valeurUnitaire = item.produit?.prix_vente_ttc || 0;
@@ -172,6 +177,7 @@ export const useInventoryReconciliation = (sessionId?: string) => {
           emplacement: item.emplacement_reel || item.lot?.emplacement || 'N/A',
           valeurUnitaire,
           valeurEcart: ecart * valeurUnitaire,
+          unite: item.unite || 'unité',
           dateComptage: new Date(item.date_comptage || item.created_at),
           operateur: currentPersonnel ? `${currentPersonnel.prenoms} ${currentPersonnel.noms}` : 'N/A',
           commentaires: item.notes || undefined
@@ -344,9 +350,12 @@ export const useInventoryReconciliation = (sessionId?: string) => {
         quantiteTheorique: item.quantite_theorique || 0,
         quantiteComptee: item.quantite_comptee || 0,
         ecart: 0,
-        ecartValeur: 0,
+        valeurEcart: 0,
         unite: item.unite || 'unité',
         statut: 'valide' as const,
+        valeurUnitaire: 0,
+        dateComptage: new Date(),
+        operateur: currentPersonnel ? `${currentPersonnel.prenoms} ${currentPersonnel.noms}` : 'N/A',
         motifEcart: undefined,
         actionCorrective: undefined
       }));

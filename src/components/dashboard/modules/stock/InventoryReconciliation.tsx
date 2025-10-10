@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useInventoryReconciliation } from '@/hooks/useInventoryReconciliation';
+import { useInventoryReconciliation, ReconciliationItem } from '@/hooks/useInventoryReconciliation';
 import { 
   Search,
   AlertTriangle,
@@ -26,23 +26,6 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-
-interface ReconciliationItem {
-  id: string;
-  produit: string;
-  lot: string;
-  emplacement: string;
-  quantiteTheorique: number;
-  quantiteComptee: number;
-  ecart: number;
-  ecartValeur: number;
-  unite: string;
-  statut: 'en_attente' | 'valide' | 'rejete' | 'corrige';
-  motifEcart?: string;
-  actionCorrective?: string;
-  validePar?: string;
-  dateValidation?: Date;
-}
 
 interface ReconciliationSummary {
   totalProduits: number;

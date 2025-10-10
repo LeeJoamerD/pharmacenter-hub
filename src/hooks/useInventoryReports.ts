@@ -40,6 +40,12 @@ export const useInventoryReports = () => {
   const [reports, setReports] = useState<InventoryReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [metrics, setMetrics] = useState({
+    totalRapports: 0,
+    rapportsRecents: 0,
+    tailleTotal: 0,
+    sessionsAnalysees: 0
+  });
 
   // Récupérer les rapports depuis inventaire_rapports
   const fetchReports = async () => {
@@ -85,6 +91,26 @@ export const useInventoryReports = () => {
           date_fin: report.session.date_fin
         } : undefined
       }));
+
+      // Calculer les métriques
+      const now = new Date();
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const rapportsRecents = transformedReports.filter(
+        r => new Date(r.date_generation) >= oneWeekAgo
+      ).length;
+
+      const tailleTotal = transformedReports.reduce(
+        (sum, r) => sum + (r.taille_fichier || 0), 0
+      ) / (1024 * 1024); // Convertir en MB
+
+      const sessionsUniques = new Set(transformedReports.map(r => r.session_id));
+
+      setMetrics({
+        totalRapports: transformedReports.length,
+        rapportsRecents,
+        tailleTotal: Math.round(tailleTotal * 100) / 100,
+        sessionsAnalysees: sessionsUniques.size
+      });
 
       setReports(transformedReports);
       return transformedReports;
@@ -271,6 +297,7 @@ export const useInventoryReports = () => {
 
   return {
     reports,
+    metrics,
     isLoading,
     isGenerating,
     fetchReports,
