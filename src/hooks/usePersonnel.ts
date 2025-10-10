@@ -25,7 +25,7 @@ export const usePersonnel = () => {
         .from('personnel')
         .select('*')
         .eq('auth_user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data as Personnel;

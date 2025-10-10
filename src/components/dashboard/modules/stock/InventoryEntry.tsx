@@ -92,7 +92,12 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
   // Create a map for efficient barcode lookups
   const itemsByBarcode = useMemo(() => {
     const map = new Map<string, InventoryItem>();
-    items.forEach(item => map.set(item.codeBarre, item));
+    if (!Array.isArray(items)) return map;
+    items.forEach(item => {
+      if (item?.codeBarre) {
+        map.set(item.codeBarre, item);
+      }
+    });
     return map;
   }, [items]);
 

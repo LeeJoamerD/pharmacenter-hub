@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { usePersonnel } from '@/hooks/usePersonnel';
@@ -35,8 +35,17 @@ export interface ReconciliationSummary {
 }
 
 export const useInventoryReconciliation = (sessionId?: string) => {
+  console.log('[useInventoryReconciliation] Hook initialized with sessionId:', sessionId);
+  
   const { tenantId } = useTenant();
   const { currentPersonnel } = usePersonnel();
+  
+  console.log('[useInventoryReconciliation] Context loaded:', { 
+    tenantId, 
+    hasPersonnel: !!currentPersonnel,
+    personnelId: currentPersonnel?.id
+  });
+  
   const [reconciliationItems, setReconciliationItems] = useState<ReconciliationItem[]>([]);
   const [summary, setSummary] = useState<ReconciliationSummary>({
     totalProduits: 0,
@@ -50,8 +59,10 @@ export const useInventoryReconciliation = (sessionId?: string) => {
   const [selectedSession, setSelectedSession] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     if (!tenantId) return;
+    
+    console.log('[useInventoryReconciliation] fetchSessions called', { tenantId });
     
     try {
       const { data, error } = await supabase
@@ -66,7 +77,7 @@ export const useInventoryReconciliation = (sessionId?: string) => {
     } catch (error) {
       console.error('Erreur lors du chargement des sessions:', error);
     }
-  };
+  }, [tenantId]);
 
   const fetchReconciliationItems = async (targetSessionId?: string) => {
     if (!tenantId) return [];
@@ -99,8 +110,15 @@ export const useInventoryReconciliation = (sessionId?: string) => {
     }
   };
 
-  const fetchReconciliationData = async (targetSessionId?: string) => {
+  const fetchReconciliationData = useCallback(async (targetSessionId?: string) => {
     if (!tenantId) return;
+    
+    console.log('[useInventoryReconciliation] fetchReconciliationData called', { 
+      targetSessionId, 
+      sessionId, 
+      tenantId,
+      hasPersonnel: !!currentPersonnel 
+    });
     
     try {
       setIsLoading(true);
@@ -211,7 +229,7 @@ export const useInventoryReconciliation = (sessionId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [tenantId, sessionId, currentPersonnel]);
 
   // Valider un écart
   const validateEcart = async (itemId: string, motif?: string, actionCorrective?: string) => {
@@ -317,11 +335,12 @@ export const useInventoryReconciliation = (sessionId?: string) => {
   };
 
   useEffect(() => {
+    console.log('[useInventoryReconciliation] useEffect triggered', { tenantId, sessionId });
     if (tenantId) {
       fetchSessions();
       fetchReconciliationData();
     }
-  }, [sessionId, tenantId]);
+  }, [tenantId, sessionId, fetchSessions, fetchReconciliationData]);
 
   // Récupérer les produits conformes (sans écarts)
   const fetchConformItems = async (sessionId: string) => {

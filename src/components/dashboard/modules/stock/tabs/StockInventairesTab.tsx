@@ -7,10 +7,15 @@ import InventoryReconciliation from '../InventoryReconciliation';
 import InventoryReports from '../InventoryReports';
 
 const StockInventairesTab = () => {
+  console.log('[StockInventairesTab] Rendering component');
+  
   const [activeTab, setActiveTab] = useState('sessions');
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
 
+  console.log('[StockInventairesTab] State:', { activeTab, selectedSessionId });
+
   const handleViewSession = (sessionId: string) => {
+    console.log('[StockInventairesTab] handleViewSession called', { sessionId });
     setSelectedSessionId(sessionId);
     setActiveTab('saisie');
   };

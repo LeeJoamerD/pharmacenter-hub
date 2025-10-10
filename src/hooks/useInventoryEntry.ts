@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -22,7 +22,7 @@ export const useInventoryEntry = () => {
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('inventaire_sessions')
@@ -35,9 +35,9 @@ export const useInventoryEntry = () => {
       console.error('Erreur lors du chargement des sessions:', error);
       toast.error('Erreur lors du chargement des sessions');
     }
-  };
+  }, []);
 
-  const fetchInventoryItems = async (sessionId?: string) => {
+  const fetchInventoryItems = useCallback(async (sessionId?: string) => {
     try {
       setLoading(true);
       
@@ -90,7 +90,7 @@ export const useInventoryEntry = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const recordEntry = async (entryData: {
     sessionId: string;
@@ -298,7 +298,7 @@ export const useInventoryEntry = () => {
   useEffect(() => {
     fetchSessions();
     fetchInventoryItems();
-  }, []);
+  }, [fetchSessions, fetchInventoryItems]);
 
   return {
     items,
