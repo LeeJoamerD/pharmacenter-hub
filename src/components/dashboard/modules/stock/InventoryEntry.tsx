@@ -40,6 +40,7 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
     initializeSessionItems, 
     refetch 
   } = useInventoryEntry();
+  
   const [selectedSession, setSelectedSession] = useState<string>(selectedSessionId || '');
   const [scanMode, setScanMode] = useState<'scanner' | 'manuel'>('scanner');
   const [scannedCode, setScannedCode] = useState('');
@@ -52,6 +53,32 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
   const [isResetting, setIsResetting] = useState(false);
   const [showCameraDialog, setShowCameraDialog] = useState(false);
   const [resetItemId, setResetItemId] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<'tous' | 'non_compte' | 'compte' | 'ecart'>('tous');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(50);
+  const [recentEntries, setRecentEntries] = useState<Array<{
+    id: string;
+    produit: string;
+    lot: string;
+    quantite: number;
+    timestamp: Date;
+  }>>([]);
+  const [formErrors, setFormErrors] = useState<{
+    quantity?: string;
+    location?: string;
+  }>({});
+
+  // États pour la saisie rapide
+  const [quickEntryMode, setQuickEntryMode] = useState(false);
+  const [quickEntryItems, setQuickEntryItems] = useState<Array<{
+    id: string;
+    produit: string;
+    lot: string;
+    quantite: string;
+    emplacement: string;
+  }>>([]);
+  const [quickScanInput, setQuickScanInput] = useState('');
 
   // Create a map for efficient barcode lookups
   const itemsByBarcode = useMemo(() => {
@@ -60,545 +87,855 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
     return map;
   }, [items]);
 
+  // Filter and search items
+  const filteredItems = useMemo(() => {
+    let filtered = items;
+
+    // Apply status filter
+    if (filterStatus !== 'tous') {
+      filtered = filtered.filter(item => item.statut === filterStatus);
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(item => 
+        item.codeBarre.toLowerCase().includes(searchLower) ||
+        item.produit.toLowerCase().includes(searchLower) ||
+        item.lot.toLowerCase().includes(searchLower) ||
+        item.emplacementTheorique.toLowerCase().includes(searchLower) ||
+        item.emplacementReel.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return filtered;
+  }, [items, filterStatus, searchTerm]);
+
+  // Paginated items
+  const paginatedItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredItems.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredItems, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+
+  // Reset page when filters change
   useEffect(() => {
-    if (selectedSessionId) {
+    setCurrentPage(1);
+  }, [filterStatus, searchTerm]);
+
+  useEffect(() => {
+    if (selectedSessionId && selectedSessionId !== selectedSession) {
       setSelectedSession(selectedSessionId);
     }
-  }, [selectedSessionId]);
+  }, [selectedSessionId, selectedSession]);
 
   useEffect(() => {
-    if (selectedSession) {
-      refetch(selectedSession);
-      // Reset form when session changes
-      setSelectedItem(null);
-      setCurrentQuantity('');
-      setCurrentLocation('');
-      setScannedCode('');
-      setManualCode('');
+    if (selectedSession && items.length === 0 && !loading) {
+      initializeSessionItems(selectedSession);
     }
-  }, [selectedSession, refetch]);
+  }, [selectedSession, items.length, loading, initializeSessionItems]);
 
-  const handleScannerInput = (value: string) => {
-    setScannedCode(value);
-    if (value.length >= 13) { // Code-barres standard
-      processScannedItem(value);
-      setScannedCode('');
-    }
-  };
-
-  const handleManualEntry = () => {
-    if (manualCode) {
-      processScannedItem(manualCode);
-      setManualCode('');
-    }
-  };
-
-  const processScannedItem = (code: string) => {
+  const handleScan = (code: string) => {
     const item = itemsByBarcode.get(code);
     if (item) {
-      if (item.statut === 'non_compte') {
-        setSelectedItem(item);
-        setCurrentLocation(item.emplacementTheorique);
-        setCurrentQuantity(''); // Let user enter quantity
-      } else {
-        // Item already counted, show current values for editing
-        setSelectedItem(item);
-        setCurrentQuantity(item.quantiteComptee.toString());
-        setCurrentLocation(item.emplacementReel);
-      }
+      setSelectedItem(item);
+      setCurrentQuantity(item.quantiteComptee?.toString() || '');
+      setCurrentLocation(item.emplacementReel || item.emplacementTheorique || '');
+      setScannedCode(code);
+      setManualCode('');
     } else {
-      // Item not found in session
       toast.error('Produit non trouvé dans cette session d\'inventaire');
     }
   };
 
-  const handleSelectItem = (item: InventoryItem) => {
-    setSelectedItem(item);
-    setCurrentLocation(item.emplacementReel);
-    if (item.statut !== 'non_compte') {
-      setCurrentQuantity(item.quantiteComptee.toString());
-    } else {
-      setCurrentQuantity('');
-    }
-  };
-
-  const saveCount = async () => {
-    if (!selectedItem || !currentQuantity || !selectedSession) {
+  const handleManualEntry = () => {
+    if (!manualCode.trim()) {
+      toast.error('Veuillez saisir un code-barres');
       return;
     }
+    handleScan(manualCode.trim());
+  };
+
+  const validateForm = () => {
+    const errors: { quantity?: string; location?: string } = {};
+    
+    if (!currentQuantity || isNaN(Number(currentQuantity)) || Number(currentQuantity) < 0) {
+      errors.quantity = 'Quantité invalide';
+    }
+    
+    if (!currentLocation.trim()) {
+      errors.location = 'Emplacement requis';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSaveCount = async () => {
+    if (!selectedItem || !validateForm()) return;
 
     setIsSaving(true);
     try {
-      const quantity = parseInt(currentQuantity);
-      const location = currentLocation || selectedItem.emplacementTheorique;
+      await hookSaveCount(selectedItem.id, Number(currentQuantity), currentLocation, selectedSession);
       
-      await hookSaveCount(selectedItem.id, quantity, location, selectedSession);
-      
-      // Reset form after successful save
+      // Add to recent entries
+      setRecentEntries(prev => [{
+        id: selectedItem.id,
+        produit: selectedItem.produit,
+        lot: selectedItem.lot,
+        quantite: Number(currentQuantity),
+        timestamp: new Date()
+      }, ...prev.slice(0, 4)]);
+
+      // Reset form
       setSelectedItem(null);
       setCurrentQuantity('');
       setCurrentLocation('');
       setScannedCode('');
       setManualCode('');
+      setFormErrors({});
+      
+      toast.success('Comptage enregistré avec succès');
     } catch (error) {
-      // Error handled in hook
+      toast.error('Erreur lors de l\'enregistrement');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const resetForm = () => {
-    setSelectedItem(null);
-    setCurrentQuantity('');
-    setCurrentLocation('');
-    setScannedCode('');
-    setManualCode('');
-  };
-
   const handleResetCount = async (itemId: string) => {
-    if (!selectedSession) return;
-    
     setIsResetting(true);
     try {
       await hookResetCount(itemId, selectedSession);
+      toast.success('Comptage réinitialisé');
       setResetItemId(null);
     } catch (error) {
-      // Error handled in hook
+      toast.error('Erreur lors de la réinitialisation');
     } finally {
       setIsResetting(false);
     }
   };
 
-  const getStatusIcon = (statut: string) => {
-    switch (statut) {
-      case 'compte':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'ecart':
-        return <AlertTriangle className="h-4 w-4 text-orange-600" />;
-      case 'non_compte':
-        return <Package className="h-4 w-4 text-gray-400" />;
-      default:
-        return <Package className="h-4 w-4" />;
+  const handleQuickScan = (code: string) => {
+    const item = itemsByBarcode.get(code);
+    if (item) {
+      const existingIndex = quickEntryItems.findIndex(qi => qi.id === item.id);
+      if (existingIndex >= 0) {
+        toast.warning('Produit déjà ajouté à la saisie rapide');
+        return;
+      }
+      
+      setQuickEntryItems(prev => [...prev, {
+        id: item.id,
+        produit: item.produit,
+        lot: item.lot,
+        quantite: '',
+        emplacement: item.emplacementReel || item.emplacementTheorique || ''
+      }]);
+      setQuickScanInput('');
+    } else {
+      toast.error('Produit non trouvé');
     }
   };
 
-  const getStatusBadge = (statut: string) => {
-    const colors = {
-      compte: 'bg-green-100 text-green-800 border-green-200',
-      ecart: 'bg-orange-100 text-orange-800 border-orange-200',
-      non_compte: 'bg-gray-100 text-gray-800 border-gray-200'
-    };
-
-    const labels = {
-      compte: 'Compté',
-      ecart: 'Écart',
-      non_compte: 'Non compté'
-    };
-
-    return (
-      <Badge className={colors[statut as keyof typeof colors] || 'bg-gray-100 text-gray-800'}>
-        {labels[statut as keyof typeof labels] || statut}
-      </Badge>
-    );
+  const updateQuickEntryItem = (index: number, field: 'quantite' | 'emplacement', value: string) => {
+    setQuickEntryItems(prev => prev.map((item, i) => 
+      i === index ? { ...item, [field]: value } : item
+    ));
   };
 
-  const countedItems = items.filter(item => item.statut !== 'non_compte').length;
-  const totalItems = items.length;
-  const itemsWithEcart = items.filter(item => item.statut === 'ecart').length;
+  const removeQuickEntryItem = (index: number) => {
+    setQuickEntryItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleQuickSave = async () => {
+    const validItems = quickEntryItems.filter(item => 
+      item.quantite && !isNaN(Number(item.quantite)) && Number(item.quantite) >= 0 && item.emplacement.trim()
+    );
+
+    if (validItems.length === 0) {
+      toast.error('Aucun élément valide à enregistrer');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      for (const item of validItems) {
+        await hookSaveCount(item.id, Number(item.quantite), item.emplacement, selectedSession);
+      }
+      
+      setQuickEntryItems([]);
+      toast.success(`${validItems.length} comptages enregistrés`);
+    } catch (error) {
+      toast.error('Erreur lors de l\'enregistrement');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const stats = useMemo(() => {
+    const total = items.length;
+    const counted = items.filter(item => item.statut === 'compte').length;
+    const discrepancies = items.filter(item => item.statut === 'ecart').length;
+    
+    return {
+      total,
+      counted,
+      remaining: total - counted,
+      discrepancies,
+      progress: total > 0 ? Math.round((counted / total) * 100) : 0
+    };
+  }, [items]);
 
   return (
     <div className="space-y-6">
       {/* Sélection de session et mode */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Session Active</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Select value={selectedSession} onValueChange={setSelectedSession}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner une session" />
-              </SelectTrigger>
-              <SelectContent>
-                {sessions.map((session) => (
-                  <SelectItem key={session.id} value={session.id}>
-                    {session.nom}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Mode de Saisie</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-2">
-              <Button 
-                variant={scanMode === 'scanner' ? 'default' : 'outline'}
-                onClick={() => setScanMode('scanner')}
-                className="flex-1"
-              >
-                <Scan className="mr-2 h-4 w-4" />
-                Scanner
-              </Button>
-              <Button 
-                variant={scanMode === 'manuel' ? 'default' : 'outline'}
-                onClick={() => setScanMode('manuel')}
-                className="flex-1"
-              >
-                <Keyboard className="mr-2 h-4 w-4" />
-                Manuel
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Progression */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{countedItems}/{totalItems}</div>
-              <div className="text-sm text-muted-foreground">Produits comptés</div>
+        <CardHeader>
+          <CardTitle>Configuration de Saisie</CardTitle>
+          <CardDescription>Sélectionnez la session et le mode de saisie</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="session">Session d'inventaire</Label>
+              <Select value={selectedSession} onValueChange={setSelectedSession}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une session" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sessions.map((session) => (
+                    <SelectItem key={session.id} value={session.id}>
+                      {session.nom} - {new Date(session.dateDebut).toLocaleDateString()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{itemsWithEcart}</div>
-              <div className="text-sm text-muted-foreground">Écarts détectés</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {Math.round((countedItems / totalItems) * 100)}%
+            <div className="space-y-2">
+              <Label>Mode de saisie</Label>
+              <div className="flex gap-2">
+                <Button
+                  variant={scanMode === 'scanner' ? 'default' : 'outline'}
+                  onClick={() => setScanMode('scanner')}
+                  className="flex-1"
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  Scanner
+                </Button>
+                <Button
+                  variant={scanMode === 'manuel' ? 'default' : 'outline'}
+                  onClick={() => setScanMode('manuel')}
+                  className="flex-1"
+                >
+                  <Keyboard className="mr-2 h-4 w-4" />
+                  Manuel
+                </Button>
               </div>
-              <div className="text-sm text-muted-foreground">Progression</div>
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(countedItems / totalItems) * 100}%` }}
-              />
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* Statistiques */}
+      {selectedSession && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold">{stats.total}</div>
+              <p className="text-xs text-muted-foreground">Total</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-green-600">{stats.counted}</div>
+              <p className="text-xs text-muted-foreground">Comptés</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-orange-600">{stats.remaining}</div>
+              <p className="text-xs text-muted-foreground">Restants</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-red-600">{stats.discrepancies}</div>
+              <p className="text-xs text-muted-foreground">Écarts</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold">{stats.progress}%</div>
+              <p className="text-xs text-muted-foreground">Progression</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Filtres et recherche */}
+      {selectedSession && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Filtres et Recherche</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="filter">Filtrer par statut</Label>
+                <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tous">Tous ({items.length})</SelectItem>
+                    <SelectItem value="non_compte">Non comptés ({items.filter(i => i.statut === 'non_compte').length})</SelectItem>
+                    <SelectItem value="compte">Comptés ({items.filter(i => i.statut === 'compte').length})</SelectItem>
+                    <SelectItem value="ecart">Écarts ({items.filter(i => i.statut === 'ecart').length})</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="search">Rechercher</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="search"
+                    placeholder="Code-barres, produit, lot, emplacement..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Zone de saisie */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Saisie des Comptages</CardTitle>
-          <CardDescription>Scannez ou saisissez les codes-barres pour enregistrer les quantités</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {scanMode === 'scanner' ? (
+      {selectedSession && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Saisie des Comptages</CardTitle>
+                <CardDescription>Scannez ou saisissez les codes-barres pour compter les produits</CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant={quickEntryMode ? 'default' : 'outline'}
+                  onClick={() => setQuickEntryMode(!quickEntryMode)}
+                  size="sm"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Saisie rapide
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {!quickEntryMode ? (
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="scanner-input">Code-barres Scanner</Label>
-                  <div className="flex gap-2 mt-1">
-                    <div className="relative flex-1">
-                      <Scan className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                {/* Mode normal */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    {scanMode === 'scanner' ? (
+                      <div className="space-y-2">
+                        <Label>Scanner le code-barres</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Code-barres scanné apparaîtra ici"
+                            value={scannedCode}
+                            onChange={(e) => setScannedCode(e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter' && scannedCode) {
+                                handleScan(scannedCode);
+                              }
+                            }}
+                          />
+                          <Dialog open={showCameraDialog} onOpenChange={setShowCameraDialog}>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="icon">
+                                <Camera className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Scanner avec la caméra</DialogTitle>
+                                <DialogDescription>
+                                  Positionnez le code-barres devant la caméra
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="flex items-center justify-center h-64 bg-muted rounded-lg">
+                                <p className="text-muted-foreground">Caméra non disponible</p>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label htmlFor="manual-code">Saisie manuelle du code-barres</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="manual-code"
+                            placeholder="Saisissez le code-barres"
+                            value={manualCode}
+                            onChange={(e) => setManualCode(e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleManualEntry();
+                              }
+                            }}
+                          />
+                          <Button onClick={handleManualEntry} variant="outline">
+                            <Search className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedItem && (
+                      <Alert>
+                        <Package className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>{selectedItem.produit}</strong><br />
+                          Lot: {selectedItem.lot}<br />
+                          Code: {selectedItem.codeBarre}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="quantity">Quantité comptée</Label>
                       <Input
-                        id="scanner-input"
-                        value={scannedCode}
-                        onChange={(e) => handleScannerInput(e.target.value)}
-                        placeholder="Scannez un code-barres..."
-                        className="pl-9"
-                        autoFocus
+                        id="quantity"
+                        type="number"
+                        placeholder="0"
+                        value={currentQuantity}
+                        onChange={(e) => setCurrentQuantity(e.target.value)}
+                        className={formErrors.quantity ? 'border-red-500' : ''}
                       />
+                      {formErrors.quantity && (
+                        <p className="text-sm text-red-500">{formErrors.quantity}</p>
+                      )}
                     </div>
-                     <Dialog open={showCameraDialog} onOpenChange={setShowCameraDialog}>
-                       <DialogTrigger asChild>
-                         <Button variant="outline">
-                           <Camera className="h-4 w-4" />
-                         </Button>
-                       </DialogTrigger>
-                       <DialogContent>
-                         <DialogHeader>
-                           <DialogTitle>Scanner avec Caméra</DialogTitle>
-                           <DialogDescription>
-                             Fonctionnalité de scan via caméra disponible prochainement. 
-                             En attendant, utilisez le champ de saisie pour entrer le code-barres manuellement.
-                           </DialogDescription>
-                         </DialogHeader>
-                         <div className="mt-4">
-                           <Label htmlFor="camera-manual-input">Code-barres</Label>
-                           <div className="flex gap-2 mt-1">
-                             <Input
-                               id="camera-manual-input"
-                               placeholder="Entrez le code-barres..."
-                               onKeyDown={(e) => {
-                                 if (e.key === 'Enter' && e.currentTarget.value) {
-                                   processScannedItem(e.currentTarget.value);
-                                   setShowCameraDialog(false);
-                                   e.currentTarget.value = '';
-                                 }
-                               }}
-                             />
-                             <Button 
-                               onClick={() => {
-                                 const input = document.getElementById('camera-manual-input') as HTMLInputElement;
-                                 if (input?.value) {
-                                   processScannedItem(input.value);
-                                   setShowCameraDialog(false);
-                                   input.value = '';
-                                 }
-                               }}
-                             >
-                               <Search className="h-4 w-4" />
-                             </Button>
-                           </div>
-                         </div>
-                       </DialogContent>
-                     </Dialog>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="location">Emplacement</Label>
+                      <Input
+                        id="location"
+                        placeholder="Ex: A1-B2"
+                        value={currentLocation}
+                        onChange={(e) => setCurrentLocation(e.target.value)}
+                        className={formErrors.location ? 'border-red-500' : ''}
+                      />
+                      {formErrors.location && (
+                        <p className="text-sm text-red-500">{formErrors.location}</p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleSaveCount}
+                        disabled={!selectedItem || isSaving}
+                        className="flex-1"
+                      >
+                        {isSaving ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="mr-2 h-4 w-4" />
+                        )}
+                        Enregistrer
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedItem(null);
+                          setCurrentQuantity('');
+                          setCurrentLocation('');
+                          setScannedCode('');
+                          setManualCode('');
+                          setFormErrors({});
+                        }}
+                      >
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Annuler
+                      </Button>
+                    </div>
                   </div>
                 </div>
+
+                {/* Saisies récentes */}
+                {recentEntries.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="text-sm font-medium mb-3">Saisies récentes</h4>
+                    <div className="space-y-2">
+                      {recentEntries.map((entry, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">{entry.produit}</div>
+                            <div className="text-xs text-muted-foreground">
+                              Lot: {entry.lot} • Quantité: {entry.quantite}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {entry.timestamp.toLocaleTimeString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="manual-input">Code-barres Manuel</Label>
-                  <div className="flex gap-2 mt-1">
+                {/* Mode saisie rapide */}
+                <div className="space-y-2">
+                  <Label>Scanner plusieurs produits</Label>
+                  <div className="flex gap-2">
                     <Input
-                      id="manual-input"
-                      value={manualCode}
-                      onChange={(e) => setManualCode(e.target.value)}
-                      placeholder="Saisissez le code-barres..."
+                      placeholder="Scannez les codes-barres successivement"
+                      value={quickScanInput}
+                      onChange={(e) => setQuickScanInput(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && quickScanInput.trim()) {
+                          handleQuickScan(quickScanInput.trim());
+                        }
+                      }}
                     />
-                    <Button onClick={handleManualEntry}>
-                      <Search className="h-4 w-4" />
+                    <Button
+                      onClick={() => quickScanInput.trim() && handleQuickScan(quickScanInput.trim())}
+                      variant="outline"
+                    >
+                      <Plus className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
+
+                {quickEntryItems.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Produit</TableHead>
+                            <TableHead>Lot</TableHead>
+                            <TableHead>Quantité</TableHead>
+                            <TableHead>Emplacement</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {quickEntryItems.map((item, index) => (
+                            <TableRow key={index}>
+                              <TableCell className="font-medium">{item.produit}</TableCell>
+                              <TableCell>{item.lot}</TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  placeholder="0"
+                                  value={item.quantite}
+                                  onChange={(e) => updateQuickEntryItem(index, 'quantite', e.target.value)}
+                                  className="w-20"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  placeholder="Emplacement"
+                                  value={item.emplacement}
+                                  onChange={(e) => updateQuickEntryItem(index, 'emplacement', e.target.value)}
+                                  className="w-32"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removeQuickEntryItem(index)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleQuickSave}
+                        disabled={isSaving || quickEntryItems.length === 0}
+                        className="flex-1"
+                      >
+                        {isSaving ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="mr-2 h-4 w-4" />
+                        )}
+                        Enregistrer tout ({quickEntryItems.length})
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setQuickEntryItems([])}
+                      >
+                        Vider la liste
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-
-            {selectedItem && (
-              <Alert>
-                <Package className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Article sélectionné:</strong> {selectedItem.produit} - Lot: {selectedItem.lot}
-                  <br />
-                  <strong>Quantité théorique:</strong> {selectedItem.quantiteTheorique} {selectedItem.unite}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="quantity">Quantité Comptée</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  min="0"
-                  value={currentQuantity}
-                  onChange={(e) => setCurrentQuantity(e.target.value)}
-                  placeholder="Quantité réelle..."
-                  disabled={!selectedItem}
-                />
-              </div>
-              <div>
-                <Label htmlFor="location">Emplacement</Label>
-                <Input
-                  id="location"
-                  value={currentLocation}
-                  onChange={(e) => setCurrentLocation(e.target.value)}
-                  placeholder="Emplacement réel..."
-                  disabled={!selectedItem}
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <Button 
-                onClick={saveCount} 
-                disabled={!selectedItem || !currentQuantity || isSaving || !selectedSession}
-              >
-                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {!isSaving && <Save className="mr-2 h-4 w-4" />}
-                {isSaving ? 'Enregistrement...' : 'Enregistrer'}
-              </Button>
-              <Button variant="outline" onClick={resetForm} disabled={isSaving}>
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Réinitialiser
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Liste des éléments */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Éléments à Compter</CardTitle>
-              <CardDescription>Liste des produits de la session d'inventaire en cours</CardDescription>
+      {selectedSession && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Éléments à Compter</CardTitle>
+                <CardDescription>Liste des produits de la session d'inventaire en cours</CardDescription>
+              </div>
+              {selectedSession && items.length === 0 && !loading && (
+                <Button
+                  onClick={() => initializeSessionItems(selectedSession)}
+                  variant="outline"
+                >
+                  <Package className="mr-2 h-4 w-4" />
+                  Initialiser les éléments
+                </Button>
+              )}
             </div>
-            {selectedSession && items.length === 0 && !loading && (
-              <Button 
-                onClick={() => initializeSessionItems(selectedSession)}
-                variant="outline"
-                size="sm"
-                disabled={loading}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Initialiser les éléments
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Loading state */}
-          {loading && (
-            <div className="text-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-              <p className="text-muted-foreground">Chargement des éléments...</p>
-            </div>
-          )}
-
-          {/* Empty state - no session selected */}
-          {!selectedSession && !loading && (
-            <div className="text-center py-8">
-              <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">Veuillez sélectionner une session d'inventaire</p>
-            </div>
-          )}
-
-          {/* Empty state - session selected but no items */}
-          {selectedSession && !loading && items.length === 0 && (
-            <div className="text-center py-8">
-              <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground mb-4">Aucun élément trouvé pour cette session</p>
-              <p className="text-sm text-muted-foreground">
-                Utilisez le bouton "Initialiser les éléments" pour créer les articles depuis le stock actuel
-              </p>
-            </div>
-          )}
-
-          {/* Items table */}
-          {!loading && items.length > 0 && (
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Produit</TableHead>
-                    <TableHead>Lot</TableHead>
-                    <TableHead>Emplacement</TableHead>
-                    <TableHead>Qté Théorique</TableHead>
-                    <TableHead>Qté Comptée</TableHead>
-                    <TableHead>Écart</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((item) => {
-                    const ecart = item.quantiteComptee !== undefined 
-                      ? item.quantiteComptee - item.quantiteTheorique 
-                      : 0;
-                    
-                    return (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(item.statut)}
-                            {getStatusBadge(item.statut)}
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium">{item.produit}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{item.lot}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="text-sm">{item.emplacementReel}</div>
-                            {item.emplacementReel !== item.emplacementTheorique && (
-                              <div className="text-xs text-muted-foreground">
-                                Théorique: {item.emplacementTheorique}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>{item.quantiteTheorique} {item.unite}</TableCell>
-                        <TableCell>
-                          {item.quantiteComptee !== undefined ? (
-                            <span>{item.quantiteComptee} {item.unite}</span>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {ecart !== 0 && (
-                            <span className={ecart > 0 ? 'text-green-600' : 'text-red-600'}>
-                              {ecart > 0 ? '+' : ''}{ecart}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleSelectItem(item)}
-                              disabled={isSaving || isResetting}
-                              title={item.statut === 'non_compte' ? 'Compter cet article' : 'Modifier le comptage'}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                            {item.statut !== 'non_compte' && (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    disabled={isSaving || isResetting}
-                                    title="Réinitialiser le comptage"
-                                  >
-                                    {isResetting && resetItemId === item.id ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <Trash2 className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Réinitialiser le comptage</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Êtes-vous sûr de vouloir réinitialiser le comptage pour "{item.produit}" ?
-                                      Cette action effacera la quantité comptée et remettra le statut à "non compté".
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => {
-                                        setResetItemId(item.id);
-                                        handleResetCount(item.id);
-                                      }}
-                                    >
-                                      Réinitialiser
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            )}
-                          </div>
-                        </TableCell>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="ml-2">Chargement...</span>
+              </div>
+            ) : filteredItems.length > 0 ? (
+              <div className="space-y-4">
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produit</TableHead>
+                        <TableHead>Code-barres</TableHead>
+                        <TableHead>Lot</TableHead>
+                        <TableHead>Emplacement</TableHead>
+                        <TableHead>Quantité</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.produit}</TableCell>
+                          <TableCell>{item.codeBarre}</TableCell>
+                          <TableCell>{item.lot}</TableCell>
+                          <TableCell>{item.emplacementReel || item.emplacementTheorique}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {item.quantiteComptee !== null ? (
+                                <>
+                                  <span className="font-medium">{item.quantiteComptee}</span>
+                                  {item.quantiteTheorique !== null && item.quantiteComptee !== item.quantiteTheorique && (
+                                    <Badge variant="destructive" className="text-xs">
+                                      Écart: {item.quantiteComptee - item.quantiteTheorique}
+                                    </Badge>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                item.statut === 'compte' ? 'default' :
+                                item.statut === 'ecart' ? 'destructive' : 'secondary'
+                              }
+                            >
+                              {item.statut === 'compte' && <CheckCircle className="mr-1 h-3 w-3" />}
+                              {item.statut === 'ecart' && <AlertTriangle className="mr-1 h-3 w-3" />}
+                              {item.statut === 'compte' ? 'Compté' :
+                               item.statut === 'ecart' ? 'Écart' : 'Non compté'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedItem(item);
+                                  setCurrentQuantity(item.quantiteComptee?.toString() || '');
+                                  setCurrentLocation(item.emplacementReel || item.emplacementTheorique || '');
+                                  setScannedCode(item.codeBarre);
+                                }}
+                              >
+                                <Scan className="h-4 w-4" />
+                              </Button>
+                              {item.quantiteComptee !== null && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setResetItemId(item.id)}
+                                    >
+                                      <RotateCcw className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Réinitialiser le comptage</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Êtes-vous sûr de vouloir réinitialiser le comptage de ce produit ?
+                                        Cette action ne peut pas être annulée.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel onClick={() => setResetItemId(null)}>
+                                        Annuler
+                                      </AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleResetCount(item.id)}
+                                        disabled={isResetting}
+                                      >
+                                        {isResetting ? (
+                                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : null}
+                                        Réinitialiser
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination améliorée */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="text-sm text-muted-foreground">
+                        Page {currentPage} sur {totalPages} ({filteredItems.length} éléments)
+                      </div>
+                      <Select 
+                        value={itemsPerPage.toString()} 
+                        onValueChange={(value) => {
+                          setItemsPerPage(Number(value));
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="25">25 par page</SelectItem>
+                          <SelectItem value="50">50 par page</SelectItem>
+                          <SelectItem value="100">100 par page</SelectItem>
+                          <SelectItem value="200">200 par page</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (currentPage > 1) setCurrentPage(currentPage - 1);
+                            }}
+                            className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                          />
+                        </PaginationItem>
+                        
+                        {[...Array(totalPages)].map((_, i) => {
+                          const pageNum = i + 1;
+                          // Show first page, last page, current page, and pages around current
+                          if (
+                            pageNum === 1 ||
+                            pageNum === totalPages ||
+                            (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                          ) {
+                            return (
+                              <PaginationItem key={pageNum}>
+                                <PaginationLink
+                                  href="#"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setCurrentPage(pageNum);
+                                  }}
+                                  isActive={pageNum === currentPage}
+                                >
+                                  {pageNum}
+                                </PaginationLink>
+                              </PaginationItem>
+                            );
+                          } else if (
+                            pageNum === currentPage - 2 ||
+                            pageNum === currentPage + 2
+                          ) {
+                            return (
+                              <PaginationItem key={pageNum}>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            );
+                          }
+                          return null;
+                        })}
+                        
+                        <PaginationItem>
+                          <PaginationNext 
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                            }}
+                            className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-4">Aucun résultat trouvé pour les filtres appliqués</p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setFilterStatus('tous');
+                    setSearchTerm('');
+                  }}
+                >
+                  Réinitialiser filtres
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

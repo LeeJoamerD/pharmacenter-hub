@@ -19,30 +19,17 @@ import {
   CheckCircle,
   AlertTriangle,
   BarChart3,
-  PieChart
+  PieChart,
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useInventoryReports, type InventoryReport } from '@/hooks/useInventoryReports';
+import { useInventorySessions } from '@/hooks/useInventorySessions';
+import { toast } from 'sonner';
 
-interface InventoryReport {
-  id: string;
-  nom: string;
-  type: 'synthese' | 'ecarts' | 'valorisation' | 'conformite' | 'performance';
-  session: string;
-  dateGeneration: Date;
-  generePar: string;
-  statut: 'genere' | 'en_cours' | 'erreur';
-  tailleFichier: string;
-  format: 'PDF' | 'Excel' | 'CSV';
-  description: string;
-}
 
-interface ReportMetrics {
-  totalRapports: number;
-  rapportsRecents: number;
-  tailleTotal: number;
-  sessionsAnalysees: number;
-}
 
 const InventoryReports = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,80 +37,72 @@ const InventoryReports = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('tous');
   const [dateFrom, setDateFrom] = useState<Date>();
   const [dateTo, setDateTo] = useState<Date>();
+  const [selectedSession, setSelectedSession] = useState<string>('');
+  const [reportType, setReportType] = useState<string>('synthese');
 
-  // Données mockées pour les rapports
-  const reports: InventoryReport[] = [
-    {
-      id: '1',
-      nom: 'Rapport Synthèse Q1 2024',
-      type: 'synthese',
-      session: 'Inventaire Général Q1 2024',
-      dateGeneration: new Date('2024-01-17T16:30:00'),
-      generePar: 'Marie Dubois',
-      statut: 'genere',
-      tailleFichier: '2.4 MB',
-      format: 'PDF',
-      description: 'Rapport complet avec synthèse générale, écarts et recommandations'
-    },
-    {
-      id: '2',
-      nom: 'Analyse Écarts Antibiotiques',
-      type: 'ecarts',
-      session: 'Inventaire Cyclique Antibiotiques',
-      dateGeneration: new Date('2024-01-25T14:15:00'),
-      generePar: 'Jean Martin',
-      statut: 'genere',
-      tailleFichier: '850 KB',
-      format: 'Excel',
-      description: 'Détail des écarts détectés sur les antibiotiques avec causes identifiées'
-    },
-    {
-      id: '3',
-      nom: 'Valorisation Stock Mensuel',
-      type: 'valorisation',
-      session: 'Inventaire Général Q1 2024',
-      dateGeneration: new Date('2024-01-20T10:00:00'),
-      generePar: 'Sophie Moreau',
-      statut: 'genere',
-      tailleFichier: '1.2 MB',
-      format: 'PDF',
-      description: 'Rapport de valorisation avec évolution des stocks par catégorie'
-    },
-    {
-      id: '4',
-      nom: 'Conformité Réglementaire',
-      type: 'conformite',
-      session: 'Inventaire Général Q1 2024',
-      dateGeneration: new Date('2024-01-18T09:30:00'),
-      generePar: 'Pierre Durand',
-      statut: 'genere',
-      tailleFichier: '680 KB',
-      format: 'PDF',
-      description: 'Rapport de conformité aux exigences réglementaires pharmaceutiques'
-    },
-    {
-      id: '5',
-      nom: 'Performance Équipe',
-      type: 'performance',
-      session: 'Inventaire Général Q1 2024',
-      dateGeneration: new Date('2024-01-19T11:45:00'),
-      generePar: 'Marie Dubois',
-      statut: 'en_cours',
-      tailleFichier: '-',
-      format: 'Excel',
-      description: 'Analyse des performances de l\'équipe durant l\'inventaire'
+  // Utilisation des hooks pour les données réelles
+  const { 
+    reports, 
+    metrics, 
+    isLoading, 
+    isGenerating, 
+    fetchReports, 
+    generateReport, 
+    deleteReport, 
+    exportToPDF, 
+    exportToExcel 
+  } = useInventoryReports();
+  
+  const { sessions } = useInventorySessions();
+
+  // Charger les rapports au montage du composant
+  React.useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
+
+  // Fonction pour générer un nouveau rapport
+  const handleGenerateReport = async () => {
+    if (!selectedSession) {
+      toast.error('Veuillez sélectionner une session d\'inventaire');
+      return;
     }
-  ];
 
-  const metrics: ReportMetrics = {
-    totalRapports: reports.length,
-    rapportsRecents: reports.filter(r => {
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return r.dateGeneration >= weekAgo;
-    }).length,
-    tailleTotal: 5.13, // MB
-    sessionsAnalysees: 3
+    try {
+      await generateReport({
+        sessionId: selectedSession,
+        type: reportType as any,
+        nom: `Rapport ${reportType} - ${new Date().toLocaleDateString('fr-FR')}`
+      });
+      toast.success('Rapport généré avec succès');
+      fetchReports(); // Recharger la liste
+    } catch (error) {
+      toast.error('Erreur lors de la génération du rapport');
+    }
+  };
+
+  // Fonction pour supprimer un rapport
+  const handleDeleteReport = async (reportId: string) => {
+    try {
+      await deleteReport(reportId);
+      toast.success('Rapport supprimé avec succès');
+      fetchReports(); // Recharger la liste
+    } catch (error) {
+      toast.error('Erreur lors de la suppression du rapport');
+    }
+  };
+
+  // Fonction pour exporter un rapport
+  const handleExportReport = async (report: InventoryReport, format: 'pdf' | 'excel') => {
+    try {
+      if (format === 'pdf') {
+        await exportToPDF(report);
+      } else {
+        await exportToExcel(report);
+      }
+      toast.success(`Rapport exporté en ${format.toUpperCase()}`);
+    } catch (error) {
+      toast.error('Erreur lors de l\'exportation du rapport');
+    }
   };
 
   const getTypeIcon = (type: string) => {
@@ -202,19 +181,14 @@ const InventoryReports = () => {
 
   const filteredReports = reports.filter(report => {
     const matchesSearch = report.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         report.session.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         report.generePar.toLowerCase().includes(searchTerm.toLowerCase());
+                         report.session?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         report.genere_par?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesType = selectedType === 'tous' || report.type === selectedType;
     const matchesStatus = selectedStatus === 'tous' || report.statut === selectedStatus;
     
     return matchesSearch && matchesType && matchesStatus;
   });
-
-  const generateReport = (type: string) => {
-    console.log(`Génération d'un rapport de type: ${type}`);
-    // Logique de génération de rapport
-  };
 
   return (
     <div className="space-y-6">
@@ -224,7 +198,7 @@ const InventoryReports = () => {
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total Rapports</p>
-              <p className="text-2xl font-bold">{metrics.totalRapports}</p>
+              <p className="text-2xl font-bold">{metrics?.totalRapports || 0}</p>
             </div>
             <FileText className="h-8 w-8 text-muted-foreground" />
           </CardContent>
@@ -234,7 +208,7 @@ const InventoryReports = () => {
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Rapports Récents</p>
-              <p className="text-2xl font-bold text-blue-600">{metrics.rapportsRecents}</p>
+              <p className="text-2xl font-bold text-blue-600">{metrics?.rapportsRecents || 0}</p>
               <p className="text-xs text-muted-foreground">Cette semaine</p>
             </div>
             <TrendingUp className="h-8 w-8 text-blue-600" />
@@ -245,7 +219,7 @@ const InventoryReports = () => {
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Taille Totale</p>
-              <p className="text-2xl font-bold text-green-600">{metrics.tailleTotal} MB</p>
+              <p className="text-2xl font-bold text-green-600">{metrics?.tailleTotal || 0} MB</p>
               <p className="text-xs text-muted-foreground">Espace utilisé</p>
             </div>
             <BarChart3 className="h-8 w-8 text-green-600" />
@@ -256,7 +230,7 @@ const InventoryReports = () => {
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Sessions Analysées</p>
-              <p className="text-2xl font-bold text-purple-600">{metrics.sessionsAnalysees}</p>
+              <p className="text-2xl font-bold text-purple-600">{metrics?.sessionsAnalysees || 0}</p>
               <p className="text-xs text-muted-foreground">Inventaires traités</p>
             </div>
             <PieChart className="h-8 w-8 text-purple-600" />
@@ -271,11 +245,58 @@ const InventoryReports = () => {
           <CardDescription>Créez des rapports personnalisés selon vos besoins</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 flex gap-4">
+            <Select value={selectedSession} onValueChange={setSelectedSession}>
+              <SelectTrigger className="w-[300px]">
+                <SelectValue placeholder="Sélectionner une session d'inventaire" />
+              </SelectTrigger>
+              <SelectContent>
+                {sessions.map((session) => (
+                  <SelectItem key={session.id} value={session.id}>
+                    {session.nom} - {format(new Date(session.date_debut), 'dd/MM/yyyy', { locale: fr })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={reportType} onValueChange={setReportType}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Type de rapport" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="synthese">Synthèse</SelectItem>
+                <SelectItem value="ecarts">Écarts</SelectItem>
+                <SelectItem value="valorisation">Valorisation</SelectItem>
+                <SelectItem value="conformite">Conformité</SelectItem>
+                <SelectItem value="performance">Performance</SelectItem>
+                <SelectItem value="personnalise">Personnalisé</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Button 
+              onClick={handleGenerateReport}
+              disabled={isGenerating || !selectedSession}
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Génération...
+                </>
+              ) : (
+                'Générer le rapport'
+              )}
+            </Button>
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Button 
-              onClick={() => generateReport('synthese')}
+              onClick={() => {
+                setReportType('synthese');
+                if (selectedSession) handleGenerateReport();
+              }}
               className="h-auto p-4 flex flex-col items-start gap-2"
               variant="outline"
+              disabled={!selectedSession}
             >
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-blue-600" />
@@ -287,9 +308,13 @@ const InventoryReports = () => {
             </Button>
 
             <Button 
-              onClick={() => generateReport('ecarts')}
+              onClick={() => {
+                setReportType('ecarts');
+                if (selectedSession) handleGenerateReport();
+              }}
               className="h-auto p-4 flex flex-col items-start gap-2"
               variant="outline"
+              disabled={!selectedSession}
             >
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-orange-600" />
@@ -301,9 +326,13 @@ const InventoryReports = () => {
             </Button>
 
             <Button 
-              onClick={() => generateReport('valorisation')}
+              onClick={() => {
+                setReportType('valorisation');
+                if (selectedSession) handleGenerateReport();
+              }}
               className="h-auto p-4 flex flex-col items-start gap-2"
               variant="outline"
+              disabled={!selectedSession}
             >
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-green-600" />
@@ -315,9 +344,13 @@ const InventoryReports = () => {
             </Button>
 
             <Button 
-              onClick={() => generateReport('conformite')}
+              onClick={() => {
+                setReportType('conformite');
+                if (selectedSession) handleGenerateReport();
+              }}
               className="h-auto p-4 flex flex-col items-start gap-2"
               variant="outline"
+              disabled={!selectedSession}
             >
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-purple-600" />
@@ -329,9 +362,13 @@ const InventoryReports = () => {
             </Button>
 
             <Button 
-              onClick={() => generateReport('performance')}
+              onClick={() => {
+                setReportType('performance');
+                if (selectedSession) handleGenerateReport();
+              }}
               className="h-auto p-4 flex flex-col items-start gap-2"
               variant="outline"
+              disabled={!selectedSession}
             >
               <div className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-indigo-600" />
@@ -343,9 +380,13 @@ const InventoryReports = () => {
             </Button>
 
             <Button 
-              onClick={() => generateReport('custom')}
+              onClick={() => {
+                setReportType('personnalise');
+                if (selectedSession) handleGenerateReport();
+              }}
               className="h-auto p-4 flex flex-col items-start gap-2"
               variant="outline"
+              disabled={!selectedSession}
             >
               <div className="flex items-center gap-2">
                 <Filter className="h-5 w-5 text-gray-600" />
@@ -438,62 +479,98 @@ const InventoryReports = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredReports.map((report) => (
-                  <TableRow key={report.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{report.nom}</div>
-                        <div className="text-sm text-muted-foreground truncate max-w-[300px]">
-                          {report.description}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getTypeIcon(report.type)}
-                        {getTypeBadge(report.type)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-[150px] truncate">{report.session}</TableCell>
-                    <TableCell>{report.generePar}</TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {format(report.dateGeneration, 'dd/MM/yyyy HH:mm', { locale: fr })}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(report.statut)}
-                        {getStatusBadge(report.statut)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{report.format}</Badge>
-                        <span className="text-sm text-muted-foreground">{report.tailleFichier}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {report.statut === 'genere' && (
-                          <Button variant="ghost" size="sm">
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                      Chargement des rapports...
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : filteredReports.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      Aucun rapport trouvé pour les critères sélectionnés
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredReports.map((report) => (
+                    <TableRow key={report.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{report.nom}</div>
+                          <div className="text-sm text-muted-foreground truncate max-w-[300px]">
+                            {report.description || 'Aucune description'}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getTypeIcon(report.type)}
+                          {getTypeBadge(report.type)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[150px] truncate">
+                        {report.session || 'Session inconnue'}
+                      </TableCell>
+                      <TableCell>{report.genere_par || 'Utilisateur inconnu'}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {format(new Date(report.date_generation), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(report.statut)}
+                          {getStatusBadge(report.statut)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{report.format || 'PDF'}</Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {report.taille_fichier || '-'}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" title="Voir le rapport">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {report.statut === 'genere' && (
+                            <>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                title="Télécharger PDF"
+                                onClick={() => handleExportReport(report, 'pdf')}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                title="Exporter Excel"
+                                onClick={() => handleExportReport(report, 'excel')}
+                              >
+                                <FileText className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            title="Supprimer le rapport"
+                            onClick={() => handleDeleteReport(report.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
-
-          {filteredReports.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              Aucun rapport trouvé pour les critères sélectionnés
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

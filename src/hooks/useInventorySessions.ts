@@ -99,6 +99,7 @@ export const useInventorySessions = () => {
           description: sessionData.description,
           type: sessionData.type,
           responsable: sessionData.responsable,
+          participants: sessionData.participants,
           secteurs: sessionData.secteurs,
           agent_id: personnelData.id,
           statut: 'planifiee',
@@ -173,6 +174,7 @@ export const useInventorySessions = () => {
           description: sessionData.description,
           type: sessionData.type,
           responsable: sessionData.responsable,
+          participants: sessionData.participants,
           secteurs: sessionData.secteurs,
           updated_at: new Date().toISOString()
         })
@@ -189,6 +191,29 @@ export const useInventorySessions = () => {
     }
   };
 
+  const deleteSession = async (sessionId: string) => {
+    try {
+      if (!tenantId) {
+        toast.error('Aucun tenant trouvé');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('inventaire_sessions')
+        .delete()
+        .eq('id', sessionId)
+        .eq('tenant_id', tenantId);
+
+      if (error) throw error;
+
+      toast.success('Session supprimée avec succès');
+      await fetchSessions();
+    } catch (error) {
+      console.error('Erreur suppression session:', error);
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
   useEffect(() => {
     fetchSessions();
   }, [tenantId]);
@@ -200,6 +225,7 @@ export const useInventorySessions = () => {
     startSession,
     stopSession,
     updateSession,
+    deleteSession,
     refetch: fetchSessions
   };
 };

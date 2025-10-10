@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useInventoryReconciliation } from '@/hooks/useInventoryReconciliation';
 import { 
   Search,
   AlertTriangle,
@@ -20,7 +21,10 @@ import {
   Eye,
   Edit,
   Check,
-  X
+  X,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 interface ReconciliationItem {
@@ -51,78 +55,44 @@ interface ReconciliationSummary {
 
 const InventoryReconciliation = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('tous');
-  const [selectedSession, setSelectedSession] = useState<string>('session1');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedItem, setSelectedItem] = useState<ReconciliationItem | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
+  const [actionType, setActionType] = useState<'valide' | 'rejete'>('valide');
+  const [motifEcart, setMotifEcart] = useState('');
+  const [actionCorrective, setActionCorrective] = useState('');
+  const [conformItems, setConformItems] = useState<ReconciliationItem[]>([]);
+  const [activeTab, setActiveTab] = useState('ecarts');
+  
+  // États de pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [currentConformPage, setCurrentConformPage] = useState(1);
+  const [conformItemsPerPage, setConformItemsPerPage] = useState(10);
 
-  // Données mockées pour la réconciliation
-  const reconciliationItems: ReconciliationItem[] = [
-    {
-      id: '1',
-      produit: 'Paracétamol 500mg',
-      lot: 'LOT001',
-      emplacement: 'A1-B2',
-      quantiteTheorique: 50,
-      quantiteComptee: 48,
-      ecart: -2,
-      ecartValeur: -24.50,
-      unite: 'boîtes',
-      statut: 'en_attente',
-      motifEcart: 'Casse non déclarée'
-    },
-    {
-      id: '2',
-      produit: 'Ibuprofène 200mg',
-      lot: 'LOT002',
-      emplacement: 'B2-C1',
-      quantiteTheorique: 30,
-      quantiteComptee: 32,
-      ecart: 2,
-      ecartValeur: 18.60,
-      unite: 'boîtes',
-      statut: 'valide',
-      validePar: 'Marie Dubois',
-      dateValidation: new Date(),
-      actionCorrective: 'Mise à jour stock suite réception non saisie'
-    },
-    {
-      id: '3',
-      produit: 'Aspirine 100mg',
-      lot: 'LOT003',
-      emplacement: 'C1-D3',
-      quantiteTheorique: 25,
-      quantiteComptee: 20,
-      ecart: -5,
-      ecartValeur: -37.50,
-      unite: 'boîtes',
-      statut: 'corrige',
-      motifEcart: 'Erreur de rangement',
-      actionCorrective: 'Produits retrouvés - emplacement corrigé'
-    },
-    {
-      id: '4',
-      produit: 'Doliprane 1000mg',
-      lot: 'LOT004',
-      emplacement: 'D3-E1',
-      quantiteTheorique: 40,
-      quantiteComptee: 45,
-      ecart: 5,
-      ecartValeur: 62.50,
-      unite: 'boîtes',
-      statut: 'rejete',
-      motifEcart: 'Erreur de comptage suspecte'
+  // Utilisation du hook de réconciliation
+  const {
+    reconciliationItems,
+    summary,
+    sessions,
+    selectedSession,
+    isLoading,
+    setSelectedSession,
+    fetchReconciliationItems,
+    fetchConformItems,
+    validateEcart,
+    rejectEcart
+  } = useInventoryReconciliation();
+
+  // Charger les données au montage du composant
+  useEffect(() => {
+    if (selectedSession) {
+      fetchReconciliationItems(selectedSession);
+      // Charger aussi les produits conformes
+      fetchConformItems(selectedSession).then(setConformItems);
     }
-  ];
-
-  const summary: ReconciliationSummary = {
-    totalProduits: reconciliationItems.length,
-    produitsEcart: reconciliationItems.filter(item => item.ecart !== 0).length,
-    ecartPositif: reconciliationItems.filter(item => item.ecart > 0).length,
-    ecartNegatif: reconciliationItems.filter(item => item.ecart < 0).length,
-    valeurEcartTotal: reconciliationItems.reduce((acc, item) => acc + item.ecartValeur, 0),
-    tauxPrecision: ((reconciliationItems.length - reconciliationItems.filter(item => item.ecart !== 0).length) / reconciliationItems.length) * 100
-  };
+  }, [selectedSession, fetchReconciliationItems, fetchConformItems]);
 
   const getStatusIcon = (statut: string) => {
     switch (statut) {
@@ -165,14 +135,100 @@ const InventoryReconciliation = () => {
     const matchesSearch = item.produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.lot.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = selectedStatus === 'tous' || item.statut === selectedStatus;
+    const matchesStatus = statusFilter === 'all' || item.statut === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
 
-  const handleValidateItem = (itemId: string, action: 'valide' | 'rejete') => {
-    // Logique de validation
-    console.log(`${action} pour l'élément ${itemId}`);
+  // Filtrer les produits conformes selon la recherche
+  const filteredConformItems = conformItems.filter(item => {
+    return item.produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           item.lot.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  // Pagination pour les écarts
+  const ecartItems = useMemo(() => {
+    return filteredItems.filter(item => item.ecart !== 0);
+  }, [filteredItems]);
+
+  const paginatedEcartItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return ecartItems.slice(startIndex, startIndex + itemsPerPage);
+  }, [ecartItems, currentPage, itemsPerPage]);
+
+  const totalEcartPages = Math.ceil(ecartItems.length / itemsPerPage);
+
+  // Pagination pour les produits conformes
+  const paginatedConformItems = useMemo(() => {
+    const startIndex = (currentConformPage - 1) * conformItemsPerPage;
+    return filteredConformItems.slice(startIndex, startIndex + conformItemsPerPage);
+  }, [filteredConformItems, currentConformPage, conformItemsPerPage]);
+
+  const totalConformPages = Math.ceil(filteredConformItems.length / conformItemsPerPage);
+
+  // Réinitialiser les pages lors des changements de filtres
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
+  useEffect(() => {
+    setCurrentConformPage(1);
+  }, [searchTerm]);
+
+  const handleValidateItem = async (itemId: string, action: 'valide' | 'rejete') => {
+    // Ouvrir le dialog d'action avec motifs
+    const item = reconciliationItems.find(i => i.id === itemId);
+    if (item) {
+      setSelectedItem(item);
+      setActionType(action);
+      setIsActionDialogOpen(true);
+    }
+  };
+
+  const handleConfirmAction = async () => {
+    if (!selectedItem) return;
+    
+    try {
+      if (actionType === 'valide') {
+        await validateEcart(selectedItem.id, motifEcart, actionCorrective);
+      } else {
+        await rejectEcart(selectedItem.id, motifEcart, actionCorrective);
+      }
+      
+      // Recharger les données après l'action
+      if (selectedSession) {
+        await fetchReconciliationItems(selectedSession);
+        // Recharger aussi les produits conformes
+        const conformData = await fetchConformItems(selectedSession);
+        setConformItems(conformData);
+      }
+      
+      // Fermer le dialog et réinitialiser
+      setIsActionDialogOpen(false);
+      setMotifEcart('');
+      setActionCorrective('');
+      setSelectedItem(null);
+    } catch (error) {
+      console.error(`Erreur lors de l'action ${actionType}:`, error);
+    }
+  };
+
+  const handleValidateWithDetails = async (itemId: string, motif: string, action: string) => {
+    try {
+      await validateEcart(itemId);
+      
+      // Recharger les données
+      if (selectedSession) {
+        await fetchReconciliationItems(selectedSession);
+      }
+      
+      // Fermer le dialog
+      setIsDetailsDialogOpen(false);
+      setMotifEcart('');
+      setActionCorrective('');
+    } catch (error) {
+      console.error('Erreur lors de la validation:', error);
+    }
   };
 
   const openDetailsDialog = (item: ReconciliationItem) => {
@@ -182,47 +238,88 @@ const InventoryReconciliation = () => {
 
   return (
     <div className="space-y-6">
-      {/* Résumé de la réconciliation */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Produits avec Écart</p>
-              <p className="text-2xl font-bold text-orange-600">{summary.produitsEcart}</p>
-              <p className="text-xs text-muted-foreground">sur {summary.totalProduits} produits</p>
-            </div>
-            <AlertTriangle className="h-8 w-8 text-orange-600" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Taux de Précision</p>
-              <p className="text-2xl font-bold text-green-600">{summary.tauxPrecision.toFixed(1)}%</p>
-              <p className="text-xs text-muted-foreground">Produits conformes</p>
-            </div>
-            <CheckCircle className="h-8 w-8 text-green-600" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Valeur Écart Total</p>
-              <p className={`text-2xl font-bold ${summary.valeurEcartTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {summary.valeurEcartTotal.toFixed(2)} F CFA
-              </p>
-              <p className="text-xs text-muted-foreground">Impact financier</p>
-            </div>
-            {summary.valeurEcartTotal >= 0 ? (
-              <TrendingUp className="h-8 w-8 text-green-600" />
-            ) : (
-              <TrendingDown className="h-8 w-8 text-red-600" />
+      {/* Sélecteur de session */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Sélection de Session d'Inventaire</CardTitle>
+          <CardDescription>Choisissez une session pour voir les écarts de réconciliation</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4 items-center">
+            <Select value={selectedSession} onValueChange={setSelectedSession}>
+              <SelectTrigger className="w-[300px]">
+                <SelectValue placeholder="Sélectionner une session..." />
+              </SelectTrigger>
+              <SelectContent>
+                {sessions.map((session) => (
+                  <SelectItem key={session.id} value={session.id}>
+                    Session {session.id} - {new Date(session.date_creation).toLocaleDateString()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {isLoading && (
+              <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Affichage conditionnel du contenu */}
+      {!selectedSession ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Aucune session sélectionnée</h3>
+            <p className="text-muted-foreground">
+              Veuillez sélectionner une session d'inventaire pour voir les écarts de réconciliation.
+            </p>
           </CardContent>
         </Card>
-      </div>
+      ) : (
+        <>
+          {/* Résumé de la réconciliation */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="flex items-center justify-between p-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Produits avec Écart</p>
+                  <p className="text-2xl font-bold text-orange-600">{summary.produitsEcart}</p>
+                  <p className="text-xs text-muted-foreground">sur {summary.totalProduits} produits</p>
+                </div>
+                <AlertTriangle className="h-8 w-8 text-orange-600" />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="flex items-center justify-between p-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Taux de Précision</p>
+                  <p className="text-2xl font-bold text-blue-600">{summary.tauxPrecision.toFixed(1)}%</p>
+                  <p className="text-xs text-muted-foreground">Conformité inventaire</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-blue-600" />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="flex items-center justify-between p-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Valeur Écart Total</p>
+                  <p className={`text-2xl font-bold ${summary.valeurEcartTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {summary.valeurEcartTotal >= 0 ? '+' : ''}{summary.valeurEcartTotal.toFixed(2)} F CFA
+                  </p>
+                  <p className="text-xs text-muted-foreground">Impact financier</p>
+                </div>
+                {summary.valeurEcartTotal >= 0 ? (
+                  <TrendingUp className="h-8 w-8 text-green-600" />
+                ) : (
+                  <TrendingDown className="h-8 w-8 text-red-600" />
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
       {/* Onglets de réconciliation */}
       <Tabs defaultValue="ecarts" className="space-y-6">
@@ -267,12 +364,12 @@ const InventoryReconciliation = () => {
                   </div>
                 </div>
 
-                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Statut" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="tous">Tous les statuts</SelectItem>
+                    <SelectItem value="all">Tous les statuts</SelectItem>
                     <SelectItem value="en_attente">En attente</SelectItem>
                     <SelectItem value="valide">Validé</SelectItem>
                     <SelectItem value="rejete">Rejeté</SelectItem>
@@ -296,7 +393,7 @@ const InventoryReconciliation = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredItems.filter(item => item.ecart !== 0).map((item) => (
+                    {paginatedEcartItems.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.produit}</TableCell>
                         <TableCell>
@@ -354,6 +451,68 @@ const InventoryReconciliation = () => {
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Pagination pour les écarts */}
+              {totalEcartPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Affichage de {((currentPage - 1) * itemsPerPage) + 1} à {Math.min(currentPage * itemsPerPage, ecartItems.length)} sur {ecartItems.length} écarts
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(Number(value))}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5</SelectItem>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      
+                      {Array.from({ length: Math.min(5, totalEcartPages) }, (_, i) => {
+                        const pageNum = Math.max(1, Math.min(totalEcartPages - 4, currentPage - 2)) + i;
+                        if (pageNum > totalEcartPages) return null;
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className="w-8"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(Math.min(totalEcartPages, currentPage + 1))}
+                        disabled={currentPage === totalEcartPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -362,9 +521,23 @@ const InventoryReconciliation = () => {
           <Card>
             <CardHeader>
               <CardTitle>Produits Conformes</CardTitle>
-              <CardDescription>Produits sans écart détecté</CardDescription>
+              <CardDescription>Produits sans écart détecté ({filteredConformItems.length} produits)</CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Rechercher produits conformes..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="border rounded-lg">
                 <Table>
                   <TableHeader>
@@ -377,27 +550,100 @@ const InventoryReconciliation = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {reconciliationItems.filter(item => item.ecart === 0).map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.produit}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{item.lot}</Badge>
-                        </TableCell>
-                        <TableCell>{item.emplacement}</TableCell>
-                        <TableCell>{item.quantiteComptee} {item.unite}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            <Badge className="bg-green-100 text-green-800 border-green-200">
-                              Conforme
-                            </Badge>
-                          </div>
+                    {paginatedConformItems.length > 0 ? (
+                      paginatedConformItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.produit}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{item.lot}</Badge>
+                          </TableCell>
+                          <TableCell>{item.emplacement}</TableCell>
+                          <TableCell>{item.quantiteComptee} {item.unite}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                              <Badge className="bg-green-100 text-green-800 border-green-200">
+                                Conforme
+                              </Badge>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          {conformItems.length === 0 
+                            ? "Aucun produit conforme trouvé pour cette session"
+                            : "Aucun produit conforme ne correspond à votre recherche"
+                          }
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Pagination pour les produits conformes */}
+              {totalConformPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Affichage de {((currentConformPage - 1) * conformItemsPerPage) + 1} à {Math.min(currentConformPage * conformItemsPerPage, filteredConformItems.length)} sur {filteredConformItems.length} produits conformes
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Select value={conformItemsPerPage.toString()} onValueChange={(value) => setConformItemsPerPage(Number(value))}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5</SelectItem>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentConformPage(Math.max(1, currentConformPage - 1))}
+                        disabled={currentConformPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      
+                      {Array.from({ length: Math.min(5, totalConformPages) }, (_, i) => {
+                        const pageNum = Math.max(1, Math.min(totalConformPages - 4, currentConformPage - 2)) + i;
+                        if (pageNum > totalConformPages) return null;
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentConformPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentConformPage(pageNum)}
+                            className="w-8"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentConformPage(Math.min(totalConformPages, currentConformPage + 1))}
+                        disabled={currentConformPage === totalConformPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -464,6 +710,8 @@ const InventoryReconciliation = () => {
           </div>
         </TabsContent>
       </Tabs>
+        </>
+      )}
 
       {/* Dialog détails */}
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
@@ -511,6 +759,71 @@ const InventoryReconciliation = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDetailsDialogOpen(false)}>
               Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog d'action avec motifs */}
+      <Dialog open={isActionDialogOpen} onOpenChange={setIsActionDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {actionType === 'valide' ? 'Valider l\'écart' : 'Rejeter l\'écart'}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedItem && (
+                <>
+                  Produit: {selectedItem.produit} - Lot: {selectedItem.lot}
+                  <br />
+                  Écart: {selectedItem.ecart > 0 ? '+' : ''}{selectedItem.ecart} {selectedItem.unite}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="motif">Motif de l'écart *</Label>
+              <Select value={motifEcart} onValueChange={setMotifEcart}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un motif" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="erreur_saisie">Erreur de saisie</SelectItem>
+                  <SelectItem value="produit_perime">Produit périmé</SelectItem>
+                  <SelectItem value="produit_endommage">Produit endommagé</SelectItem>
+                  <SelectItem value="vol_perte">Vol/Perte</SelectItem>
+                  <SelectItem value="erreur_reception">Erreur de réception</SelectItem>
+                  <SelectItem value="erreur_comptage">Erreur de comptage</SelectItem>
+                  <SelectItem value="mouvement_non_enregistre">Mouvement non enregistré</SelectItem>
+                  <SelectItem value="autre">Autre</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="action">Action corrective</Label>
+              <Textarea
+                id="action"
+                placeholder="Décrire l'action corrective à entreprendre..."
+                value={actionCorrective}
+                onChange={(e) => setActionCorrective(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsActionDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button 
+              onClick={handleConfirmAction}
+              disabled={!motifEcart}
+              variant={actionType === 'valide' ? 'default' : 'destructive'}
+            >
+              {actionType === 'valide' ? 'Valider' : 'Rejeter'}
             </Button>
           </DialogFooter>
         </DialogContent>

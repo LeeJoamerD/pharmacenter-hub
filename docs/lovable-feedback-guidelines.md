@@ -330,6 +330,21 @@ Le code TypeScript appelait la Version 1, mais la présence de la Version 2 cré
 
 ---
 
+## 🔑 **ACCÈS SUPABASE CLOUD**
+
+**IMPORTANT :** L'assistant a accès aux clés Supabase Cloud via le fichier `.env` et peut :
+- Générer les types TypeScript directement depuis Supabase Cloud
+- Exécuter des requêtes et tester les fonctions RPC
+- Vérifier la structure des tables et schémas
+- Créer ou modifier des fonctions SQL
+
+**Commande pour générer les types :**
+```bash
+npx supabase gen types typescript --project-id PROJECT_ID > src/lib/database.types.ts
+```
+
+---
+
 ## 📚 **RESSOURCES UTILES**
 
 - **Contraintes DB :** Consulter `database.types.ts` pour les types

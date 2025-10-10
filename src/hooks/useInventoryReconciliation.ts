@@ -32,7 +32,7 @@ export interface ReconciliationSummary {
 export const useInventoryReconciliation = (sessionId?: string) => {
   const { tenantId } = useTenant();
   const { currentPersonnel } = usePersonnel();
-  const [items, setItems] = useState<ReconciliationItem[]>([]);
+  const [reconciliationItems, setReconciliationItems] = useState<ReconciliationItem[]>([]);
   const [summary, setSummary] = useState<ReconciliationSummary>({
     totalProduits: 0,
     produitsEcart: 0,
@@ -42,7 +42,8 @@ export const useInventoryReconciliation = (sessionId?: string) => {
     tauxPrecision: 0
   });
   const [sessions, setSessions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedSession, setSelectedSession] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchSessions = async () => {
     if (!tenantId) return;
@@ -62,11 +63,42 @@ export const useInventoryReconciliation = (sessionId?: string) => {
     }
   };
 
+  const fetchReconciliationItems = async (targetSessionId?: string) => {
+    if (!tenantId) return [];
+    
+    const activeSessionId = targetSessionId || sessionId;
+    if (!activeSessionId) return [];
+
+    try {
+      // Récupérer les items avec écarts depuis inventaire_items
+      const { data, error } = await supabase
+        .from('inventaire_items')
+        .select(`
+          *,
+          produit:produits(*),
+          lot:lots(*)
+        `)
+        .eq('session_id', activeSessionId)
+        .in('statut', ['ecart', 'compte']);
+
+      if (error) throw error;
+
+      return (data || []).map(item => ({
+        ...item,
+        ecart: item.quantite_comptee - item.quantite_theorique,
+        ecartValeur: (item.quantite_comptee - item.quantite_theorique) * (item.produit?.prix_vente_ttc || 0)
+      }));
+    } catch (error) {
+      console.error('Erreur lors du chargement des items de réconciliation:', error);
+      throw error;
+    }
+  };
+
   const fetchReconciliationData = async (targetSessionId?: string) => {
     if (!tenantId) return;
     
     try {
-      setLoading(true);
+      setIsLoading(true);
       const activeSessionId = targetSessionId || sessionId;
       
       if (!activeSessionId) {
@@ -88,7 +120,7 @@ export const useInventoryReconciliation = (sessionId?: string) => {
             commentaires: 'Emballages endommagés'
           }
         ];
-        setItems(mockItems);
+        setReconciliationItems(mockItems);
         
         const totalProduits = mockItems.length;
         const produitsEcart = mockItems.filter(item => item.ecart !== 0).length;
@@ -106,60 +138,47 @@ export const useInventoryReconciliation = (sessionId?: string) => {
           tauxPrecision
         });
         
-        setLoading(false);
+        setIsLoading(false);
         return;
       }
 
-      // Récupérer les lignes d'inventaire
-      const { data: lignes, error } = await supabase
-        .from('inventaire_lignes')
-        .select('*')
+      // Récupérer les items d'inventaire avec écarts
+      const { data: items, error } = await supabase
+        .from('inventaire_items')
+        .select(`
+          *,
+          produit:produits(*),
+          lot:lots(*)
+        `)
         .eq('tenant_id', tenantId)
-        .eq('session_id', activeSessionId);
+        .eq('session_id', activeSessionId)
+        .in('statut', ['ecart', 'compte', 'valide', 'rejete']);
 
       if (error) throw error;
 
-      // Pour chaque ligne, récupérer les détails du produit et du lot
-      const transformedItems: ReconciliationItem[] = await Promise.all(
-        (lignes || []).map(async (ligne) => {
-          // Récupérer les détails du produit
-          const { data: produit } = await supabase
-            .from('produits')
-            .select('libelle_produit, prix_vente_ttc')
-            .eq('id', ligne.produit_id)
-            .maybeSingle();
+      // Transformer les données
+      const transformedItems: ReconciliationItem[] = (items || []).map((item) => {
+        const ecart = item.quantite_comptee - item.quantite_theorique;
+        const valeurUnitaire = item.produit?.prix_vente_ttc || 0;
+        
+        return {
+          id: item.id,
+          produit: item.produit?.libelle_produit || 'Produit inconnu',
+          lot: item.lot?.numero_lot || 'N/A',
+          quantiteTheorique: item.quantite_theorique,
+          quantiteComptee: item.quantite_comptee,
+          ecart,
+          statut: (item.statut || 'en_attente') as 'en_attente' | 'valide' | 'rejete',
+          emplacement: item.emplacement_reel || item.lot?.emplacement || 'N/A',
+          valeurUnitaire,
+          valeurEcart: ecart * valeurUnitaire,
+          dateComptage: new Date(item.date_comptage || item.created_at),
+          operateur: currentPersonnel ? `${currentPersonnel.prenoms} ${currentPersonnel.noms}` : 'N/A',
+          commentaires: item.notes || undefined
+        };
+      });
 
-          // Récupérer les détails du lot
-          const { data: lot } = await supabase
-            .from('lots')
-            .select('numero_lot, quantite_restante, emplacement')
-            .eq('id', ligne.lot_id)
-            .maybeSingle();
-
-          const quantiteTheorique = lot?.quantite_restante || 0;
-          const quantiteComptee = ligne.quantite_comptee || 0;
-          const ecart = quantiteComptee - quantiteTheorique;
-          const valeurUnitaire = produit?.prix_vente_ttc || 0;
-          
-          return {
-            id: ligne.id,
-            produit: produit?.libelle_produit || 'Produit inconnu',
-            lot: lot?.numero_lot || 'N/A',
-            quantiteTheorique,
-            quantiteComptee,
-            ecart,
-            statut: (ligne.statut || 'en_attente') as 'en_attente' | 'valide' | 'rejete',
-            emplacement: lot?.emplacement || ligne.emplacement_reel || 'N/A',
-            valeurUnitaire,
-            valeurEcart: ecart * valeurUnitaire,
-            dateComptage: new Date(ligne.date_comptage || ligne.created_at),
-            operateur: currentPersonnel ? `${currentPersonnel.prenoms} ${currentPersonnel.noms}` : 'N/A',
-            commentaires: ligne.notes || undefined
-          };
-        })
-      );
-
-      setItems(transformedItems);
+      setReconciliationItems(transformedItems);
 
       // Calculer le résumé
       const totalProduits = transformedItems.length;
@@ -184,7 +203,73 @@ export const useInventoryReconciliation = (sessionId?: string) => {
       console.error('Erreur lors du chargement des données:', error);
       toast.error('Erreur lors du chargement des données de réconciliation');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
+    }
+  };
+
+  // Valider un écart
+  const validateEcart = async (itemId: string, motif?: string, actionCorrective?: string) => {
+    if (!tenantId) return;
+    
+    try {
+      const updateData: any = { statut: 'valide' };
+      if (motif) updateData.motif_ecart = motif;
+      if (actionCorrective) updateData.action_corrective = actionCorrective;
+      
+      const { error } = await supabase
+        .from('inventaire_items')
+        .update(updateData)
+        .eq('id', itemId)
+        .eq('tenant_id', tenantId);
+
+      if (error) throw error;
+
+      // Mettre à jour l'état local
+      setReconciliationItems(prev => prev.map(item => 
+        item.id === itemId 
+          ? { ...item, statut: 'valide', motifEcart: motif, actionCorrective }
+          : item
+      ));
+
+      toast.success('Écart validé avec succès');
+    } catch (error) {
+      console.error('Erreur lors de la validation:', error);
+      toast.error('Erreur lors de la validation de l\'écart');
+      throw error;
+    }
+  };
+
+  // Rejeter un écart
+  const rejectEcart = async (itemId: string, motif?: string, actionCorrective?: string) => {
+    if (!tenantId) return;
+    
+    try {
+      // Remettre statut à 'non_compte' pour recompter
+      const updateData: any = {
+        statut: 'non_compte',
+        quantite_comptee: null,
+        date_comptage: null,
+        notes: null
+      };
+      if (motif) updateData.motif_ecart = motif;
+      if (actionCorrective) updateData.action_corrective = actionCorrective;
+      
+      const { error } = await supabase
+        .from('inventaire_items')
+        .update(updateData)
+        .eq('id', itemId)
+        .eq('tenant_id', tenantId);
+
+      if (error) throw error;
+
+      // Retirer l'item de la liste locale (car il n'est plus dans les statuts 'ecart' ou 'compte')
+      setReconciliationItems(prev => prev.filter(item => item.id !== itemId));
+
+      toast.success('Écart rejeté - Article remis en attente de comptage');
+    } catch (error) {
+      console.error('Erreur lors du rejet:', error);
+      toast.error('Erreur lors du rejet de l\'écart');
+      throw error;
     }
   };
 
@@ -194,7 +279,7 @@ export const useInventoryReconciliation = (sessionId?: string) => {
     try {
       // Mise à jour en base de données
       const { error } = await supabase
-        .from('inventaire_lignes')
+        .from('inventaire_items')
         .update({ 
           statut: action,
           notes: comments,
@@ -206,11 +291,16 @@ export const useInventoryReconciliation = (sessionId?: string) => {
       if (error) throw error;
 
       // Mettre à jour l'état local
-      setItems(prev => prev.map(item => 
-        item.id === itemId 
-          ? { ...item, statut: action, commentaires: comments }
-          : item
-      ));
+      if (action === 'rejete') {
+        // Si rejeté, remettre en attente de comptage
+        setReconciliationItems(prev => prev.filter(item => item.id !== itemId));
+      } else {
+        setReconciliationItems(prev => prev.map(item => 
+          item.id === itemId 
+            ? { ...item, statut: action, commentaires: comments }
+            : item
+        ));
+      }
 
       toast.success(`Article ${action === 'valide' ? 'validé' : 'rejeté'} avec succès`);
     } catch (error) {
@@ -227,12 +317,55 @@ export const useInventoryReconciliation = (sessionId?: string) => {
     }
   }, [sessionId, tenantId]);
 
+  // Récupérer les produits conformes (sans écarts)
+  const fetchConformItems = async (sessionId: string) => {
+    if (!tenantId) return [];
+    
+    try {
+      const { data, error } = await supabase
+        .from('inventaire_items')
+        .select('*')
+        .eq('session_id', sessionId)
+        .eq('tenant_id', tenantId)
+        .eq('statut', 'compte');
+
+      if (error) throw error;
+
+      // Filtrer côté client les produits où quantite_comptee = quantite_theorique
+      const conformItems = data?.filter(item => 
+        item.quantite_comptee === item.quantite_theorique
+      ) || [];
+
+      return conformItems.map(item => ({
+        id: item.id,
+        produit: item.produit_nom || 'Produit inconnu',
+        lot: item.lot_numero || 'Sans lot',
+        emplacement: item.emplacement_reel || item.emplacement_theorique || 'Non défini',
+        quantiteTheorique: item.quantite_theorique || 0,
+        quantiteComptee: item.quantite_comptee || 0,
+        ecart: 0,
+        ecartValeur: 0,
+        unite: item.unite || 'unité',
+        statut: 'valide' as const,
+        motifEcart: undefined,
+        actionCorrective: undefined
+      }));
+    } catch (error) {
+      console.error('Erreur lors de la récupération des produits conformes:', error);
+      return [];
+    }
+  };
+
   return {
-    items,
+    reconciliationItems,
     summary,
     sessions,
-    loading,
-    validateItem,
-    refetch: fetchReconciliationData
+    selectedSession,
+    isLoading,
+    setSelectedSession,
+    fetchReconciliationItems,
+    fetchConformItems,
+    validateEcart,
+    rejectEcart
   };
 };
