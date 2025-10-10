@@ -181,8 +181,7 @@ const InventoryReports = () => {
 
   const filteredReports = reports.filter(report => {
     const matchesSearch = report.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         report.session?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         report.genere_par?.toLowerCase().includes(searchTerm.toLowerCase());
+                         (typeof report.session === 'object' && report.session?.nom?.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesType = selectedType === 'tous' || report.type === selectedType;
     const matchesStatus = selectedStatus === 'tous' || report.statut === selectedStatus;
@@ -253,7 +252,7 @@ const InventoryReports = () => {
               <SelectContent>
                 {sessions.map((session) => (
                   <SelectItem key={session.id} value={session.id}>
-                    {session.nom} - {format(new Date(session.date_debut), 'dd/MM/yyyy', { locale: fr })}
+                    {session.nom} - {format(new Date(session.dateDebut), 'dd/MM/yyyy', { locale: fr })}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -499,7 +498,7 @@ const InventoryReports = () => {
                         <div>
                           <div className="font-medium">{report.nom}</div>
                           <div className="text-sm text-muted-foreground truncate max-w-[300px]">
-                            {report.description || 'Aucune description'}
+                            Session: {report.session?.nom || 'Session inconnue'}
                           </div>
                         </div>
                       </TableCell>
@@ -510,9 +509,9 @@ const InventoryReports = () => {
                         </div>
                       </TableCell>
                       <TableCell className="max-w-[150px] truncate">
-                        {report.session || 'Session inconnue'}
+                        {report.session?.nom || 'Session inconnue'}
                       </TableCell>
-                      <TableCell>{report.genere_par || 'Utilisateur inconnu'}</TableCell>
+                      <TableCell>N/A</TableCell>
                       <TableCell className="font-mono text-sm">
                         {format(new Date(report.date_generation), 'dd/MM/yyyy HH:mm', { locale: fr })}
                       </TableCell>

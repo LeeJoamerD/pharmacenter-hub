@@ -3907,6 +3907,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_mouvements_lots_produit_id"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "mouvements_lots_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
@@ -7439,6 +7446,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_mouvements_lots_produit_id"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "mouvements_lots_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
@@ -7569,6 +7583,10 @@ export type Database = {
       }
       find_personnel_for_current_user: {
         Args: { tenant_id: string }
+        Returns: Json
+      }
+      generate_inventaire_report: {
+        Args: { p_session_id: string; p_tenant_id: string; p_type: string }
         Returns: Json
       }
       generate_sales_suggestions: {

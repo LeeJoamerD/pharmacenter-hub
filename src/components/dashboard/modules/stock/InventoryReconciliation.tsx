@@ -390,8 +390,8 @@ const InventoryReconciliation = () => {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <span className={item.ecartValeur > 0 ? 'text-green-600' : 'text-red-600'}>
-                            {item.ecartValeur > 0 ? '+' : ''}{item.ecartValeur.toFixed(2)} F CFA
+                          <span className={item.valeurEcart > 0 ? 'text-green-600' : 'text-red-600'}>
+                            {item.valeurEcart > 0 ? '+' : ''}{item.valeurEcart.toFixed(2)} F CFA
                           </span>
                         </TableCell>
                         <TableCell>
