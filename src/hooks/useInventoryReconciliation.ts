@@ -79,7 +79,7 @@ export const useInventoryReconciliation = (sessionId?: string) => {
     }
   }, [tenantId]);
 
-  const fetchReconciliationItems = async (targetSessionId?: string) => {
+  const fetchReconciliationItems = useCallback(async (targetSessionId?: string) => {
     if (!tenantId) return [];
     
     const activeSessionId = targetSessionId || sessionId;
@@ -108,7 +108,7 @@ export const useInventoryReconciliation = (sessionId?: string) => {
       console.error('Erreur lors du chargement des items de réconciliation:', error);
       throw error;
     }
-  };
+  }, [tenantId, sessionId]);
 
   const fetchReconciliationData = useCallback(async (targetSessionId?: string) => {
     if (!tenantId) return;
@@ -232,7 +232,7 @@ export const useInventoryReconciliation = (sessionId?: string) => {
   }, [tenantId, sessionId, currentPersonnel]);
 
   // Valider un écart
-  const validateEcart = async (itemId: string, motif?: string, actionCorrective?: string) => {
+  const validateEcart = useCallback(async (itemId: string, motif?: string, actionCorrective?: string) => {
     if (!tenantId) return;
     
     try {
@@ -261,10 +261,10 @@ export const useInventoryReconciliation = (sessionId?: string) => {
       toast.error('Erreur lors de la validation de l\'écart');
       throw error;
     }
-  };
+  }, [tenantId]);
 
   // Rejeter un écart
-  const rejectEcart = async (itemId: string, motif?: string, actionCorrective?: string) => {
+  const rejectEcart = useCallback(async (itemId: string, motif?: string, actionCorrective?: string) => {
     if (!tenantId) return;
     
     try {
@@ -295,7 +295,7 @@ export const useInventoryReconciliation = (sessionId?: string) => {
       toast.error('Erreur lors du rejet de l\'écart');
       throw error;
     }
-  };
+  }, [tenantId]);
 
   const validateItem = async (itemId: string, action: 'valide' | 'rejete', comments?: string) => {
     if (!tenantId) return;
@@ -343,7 +343,7 @@ export const useInventoryReconciliation = (sessionId?: string) => {
   }, [tenantId, sessionId, fetchSessions, fetchReconciliationData]);
 
   // Récupérer les produits conformes (sans écarts)
-  const fetchConformItems = async (sessionId: string) => {
+  const fetchConformItems = useCallback(async (sessionId: string) => {
     if (!tenantId) return [];
     
     try {
@@ -382,7 +382,7 @@ export const useInventoryReconciliation = (sessionId?: string) => {
       console.error('Erreur lors de la récupération des produits conformes:', error);
       return [];
     }
-  };
+  }, [tenantId, currentPersonnel]);
 
   return {
     reconciliationItems,
