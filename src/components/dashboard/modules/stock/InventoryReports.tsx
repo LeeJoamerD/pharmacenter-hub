@@ -179,15 +179,19 @@ const InventoryReports = () => {
     );
   };
 
-  const filteredReports = reports.filter(report => {
-    const matchesSearch = report.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (typeof report.session === 'object' && report.session?.nom?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredReports = React.useMemo(() => {
+    if (!Array.isArray(reports)) return [];
     
-    const matchesType = selectedType === 'tous' || report.type === selectedType;
-    const matchesStatus = selectedStatus === 'tous' || report.statut === selectedStatus;
-    
-    return matchesSearch && matchesType && matchesStatus;
-  });
+    return reports.filter(report => {
+      const matchesSearch = report.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (typeof report.session === 'object' && report.session?.nom?.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      const matchesType = selectedType === 'tous' || report.type === selectedType;
+      const matchesStatus = selectedStatus === 'tous' || report.statut === selectedStatus;
+      
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [reports, searchTerm, selectedType, selectedStatus]);
 
   return (
     <div className="space-y-6">
@@ -250,7 +254,7 @@ const InventoryReports = () => {
                 <SelectValue placeholder="Sélectionner une session d'inventaire" />
               </SelectTrigger>
               <SelectContent>
-                {sessions.map((session) => (
+                {Array.isArray(sessions) && sessions.map((session) => (
                   <SelectItem key={session.id} value={session.id}>
                     {session.nom} - {format(new Date(session.dateDebut), 'dd/MM/yyyy', { locale: fr })}
                   </SelectItem>
@@ -576,4 +580,4 @@ const InventoryReports = () => {
   );
 };
 
-export default InventoryReports;
+export default React.memo(InventoryReports);

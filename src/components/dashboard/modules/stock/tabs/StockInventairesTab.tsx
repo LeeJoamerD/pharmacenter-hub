@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clipboard, Package, ChartBar, TrendingUp } from 'lucide-react';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import InventorySessions from '../InventorySessions';
 import InventoryEntry from '../InventoryEntry';
 import InventoryReconciliation from '../InventoryReconciliation';
@@ -50,19 +51,27 @@ const StockInventairesTab = () => {
       </TabsList>
       
       <TabsContent value="sessions">
-        <InventorySessions onViewSession={handleViewSession} />
+        <ErrorBoundary>
+          <InventorySessions onViewSession={handleViewSession} />
+        </ErrorBoundary>
       </TabsContent>
       
       <TabsContent value="saisie">
-        <InventoryEntry selectedSessionId={selectedSessionId} />
+        <ErrorBoundary>
+          <InventoryEntry selectedSessionId={selectedSessionId} />
+        </ErrorBoundary>
       </TabsContent>
       
       <TabsContent value="reconciliation">
-        <InventoryReconciliation />
+        <ErrorBoundary>
+          <InventoryReconciliation />
+        </ErrorBoundary>
       </TabsContent>
       
       <TabsContent value="rapports">
-        <InventoryReports />
+        <ErrorBoundary>
+          <InventoryReports />
+        </ErrorBoundary>
       </TabsContent>
     </Tabs>
   );

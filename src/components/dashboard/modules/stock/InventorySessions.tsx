@@ -67,13 +67,19 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
   const { toast } = useToast();
 
   const { data: personnelList } = usePersonnelQuery();
+  
+  // Stabilize personnelList reference to prevent unnecessary recalculations
+  const stablePersonnelList = React.useMemo(() => {
+    return personnelList || [];
+  }, [JSON.stringify(personnelList)]);
+  
   const personnelOptions = useMemo(() => {
-    if (!personnelList || !Array.isArray(personnelList)) return [];
-    return personnelList.map(p => ({ 
+    if (!stablePersonnelList || !Array.isArray(stablePersonnelList)) return [];
+    return stablePersonnelList.map(p => ({ 
       label: p.nom_complet || 'Sans nom', 
       value: p.id 
     }));
-  }, [personnelList]);
+  }, [stablePersonnelList]);
 
   const handleStartSession = async (sessionId: string) => {
     await startSession(sessionId);
@@ -713,4 +719,4 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
   );
 };
 
-export default InventorySessions;
+export default React.memo(InventorySessions);

@@ -815,4 +815,4 @@ const InventoryReconciliation = () => {
   );
 };
 
-export default InventoryReconciliation;
+export default React.memo(InventoryReconciliation);

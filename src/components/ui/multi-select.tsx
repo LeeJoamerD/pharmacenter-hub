@@ -39,6 +39,13 @@ export function MultiSelect({
     onSelectedChange(selected.filter((i) => i !== item))
   }
 
+  // Memoize selected options to prevent re-renders
+  const selectedOptions = React.useMemo(() => {
+    return selected
+      .map((item) => options.find((o) => o.value === item))
+      .filter(Boolean) as Option[]
+  }, [selected, options])
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -53,29 +60,26 @@ export function MultiSelect({
         >
           {selected.length > 0 ? (
             <div className="flex flex-wrap items-center gap-1">
-              {selected.map((item) => {
-                const option = options.find((o) => o.value === item)
-                return (
-                  <Badge
-                    key={item}
-                    className="flex items-center gap-1"
-                    variant="secondary"
+              {selectedOptions.map((option, index) => (
+                <Badge
+                  key={option?.value || index}
+                  className="flex items-center gap-1"
+                  variant="secondary"
+                >
+                  {option?.label || selected[index]}
+                  <Button
+                    className="h-auto p-0"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleUnselect(selected[index])
+                    }}
+                    disabled={option?.fixed}
                   >
-                    {option?.label || item}
-                    <Button
-                      className="h-auto p-0"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleUnselect(item)
-                      }}
-                      disabled={option?.fixed}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </Badge>
-                )
-              })}
+                    <X className="h-3 w-3" />
+                  </Button>
+                </Badge>
+              ))}
             </div>
           ) : (
             <span>{placeholder}</span>
