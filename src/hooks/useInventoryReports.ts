@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { usePersonnel } from '@/hooks/usePersonnel';
@@ -48,7 +48,7 @@ export const useInventoryReports = () => {
   });
 
   // Récupérer les rapports depuis inventaire_rapports
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     if (!tenantId) return [];
     
     try {
@@ -121,10 +121,10 @@ export const useInventoryReports = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [tenantId]);
 
   // Générer un nouveau rapport
-  const generateReport = async (reportData: ReportGenerationData) => {
+  const generateReport = useCallback(async (reportData: ReportGenerationData) => {
     if (!tenantId || !currentPersonnel) {
       toast.error('Informations utilisateur manquantes');
       return null;
@@ -172,10 +172,10 @@ export const useInventoryReports = () => {
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [tenantId, currentPersonnel, fetchReports]);
 
   // Supprimer un rapport
-  const deleteReport = async (reportId: string) => {
+  const deleteReport = useCallback(async (reportId: string) => {
     if (!tenantId) return false;
 
     try {
@@ -198,10 +198,10 @@ export const useInventoryReports = () => {
       toast.error('Erreur lors de la suppression du rapport');
       return false;
     }
-  };
+  }, [tenantId]);
 
   // Exporter un rapport en PDF
-  const exportToPDF = async (report: InventoryReport) => {
+  const exportToPDF = useCallback(async (report: InventoryReport) => {
     try {
       // Import dynamique de jsPDF pour éviter les problèmes SSR
       const { default: jsPDF } = await import('jspdf');
@@ -246,10 +246,10 @@ export const useInventoryReports = () => {
       console.error('Erreur lors de l\'export PDF:', error);
       toast.error('Erreur lors de l\'export PDF');
     }
-  };
+  }, []);
 
   // Exporter un rapport en Excel
-  const exportToExcel = async (report: InventoryReport) => {
+  const exportToExcel = useCallback(async (report: InventoryReport) => {
     try {
       // Import dynamique de xlsx pour éviter les problèmes SSR
       const XLSX = await import('xlsx');
@@ -286,14 +286,14 @@ export const useInventoryReports = () => {
       console.error('Erreur lors de l\'export Excel:', error);
       toast.error('Erreur lors de l\'export Excel');
     }
-  };
+  }, []);
 
   // Charger les rapports au montage du composant
   useEffect(() => {
     if (tenantId) {
       fetchReports();
     }
-  }, [tenantId]);
+  }, [tenantId, fetchReports]);
 
   return {
     reports,
