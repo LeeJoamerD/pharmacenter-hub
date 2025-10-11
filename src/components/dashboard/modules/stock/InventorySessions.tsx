@@ -1,15 +1,33 @@
-import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { 
+import React, { useState, useMemo } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
   Plus,
   Search,
   Calendar,
@@ -21,16 +39,16 @@ import {
   Eye,
   Edit,
   Users,
-  Trash2
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { useInventorySessions, InventorySession } from '@/hooks/useInventorySessions';
-import { useNavigate } from 'react-router-dom';
-import { MultiSelect } from '@/components/ui/multi-select';
-import { usePersonnelQuery } from '@/hooks/useTenantQuery';
-import { useToast } from '@/hooks/use-toast';
-import { 
+  Trash2,
+} from "lucide-react";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { useInventorySessions, InventorySession } from "@/hooks/useInventorySessions";
+import { useNavigate } from "react-router-dom";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { usePersonnelQuery } from "@/hooks/useTenantQuery";
+import { useToast } from "@/hooks/use-toast";
+import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
@@ -38,42 +56,44 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from '@/components/ui/pagination';
+} from "@/components/ui/pagination";
 
 interface InventorySessionsProps {
   onViewSession?: (sessionId: string) => void;
 }
 
 const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string>('tous');
-  const [selectedType, setSelectedType] = useState<string>('tous');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<string>("tous");
+  const [selectedType, setSelectedType] = useState<string>("tous");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<InventorySession | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [newSession, setNewSession] = useState({
-    nom: '',
-    description: '',
-    type: 'complet',
-    responsable: '',
-    secteurs: [''],
-    participants: [] // Ajout du champ participants
+    nom: "",
+    description: "",
+    type: "complet",
+    responsable: "",
+    secteurs: [""],
+    participants: [], // Ajout du champ participants
   });
 
-  const { sessions, loading, createSession, startSession, stopSession, updateSession, deleteSession } = useInventorySessions();
+  const { sessions, loading, createSession, startSession, stopSession, updateSession, deleteSession } =
+    useInventorySessions();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const { data: personnelList } = usePersonnelQuery();
-  
+
   const personnelOptions = useMemo(() => {
-    const list = personnelList || [];
-    if (!Array.isArray(list)) return [];
-    return list.map(p => ({ 
-      label: p.nom_complet || 'Sans nom', 
-      value: p.id 
+    if (!personnelList || !Array.isArray(personnelList)) {
+      return [];
+    }
+    return personnelList.map((p) => ({
+      label: p.nom_complet || "Sans nom",
+      value: p.id,
     }));
   }, [personnelList]);
 
@@ -92,7 +112,7 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
   };
 
   const handleEditSession = (sessionId: string) => {
-    const session = sessions.find(s => s.id === sessionId);
+    const session = sessions.find((s) => s.id === sessionId);
     if (session) {
       setEditingSession(session);
       setIsEditDialogOpen(true);
@@ -111,7 +131,7 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
         type: editingSession.type,
         responsable: editingSession.responsable,
         secteurs: editingSession.secteurs,
-        participants: editingSession.participants // Ajout des participants
+        participants: editingSession.participants, // Ajout des participants
       });
       setIsEditDialogOpen(false);
       setEditingSession(null);
@@ -125,28 +145,28 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
         description: newSession.description,
         type: newSession.type,
         responsable: newSession.responsable,
-        secteurs: newSession.secteurs.filter(s => s.trim() !== ''),
-        participants: newSession.participants // Ajout des participants
+        secteurs: newSession.secteurs.filter((s) => s.trim() !== ""),
+        participants: newSession.participants, // Ajout des participants
       });
       toast({
         title: "Succès",
-        description: "Session créée avec succès"
+        description: "Session créée avec succès",
       });
       setIsCreateDialogOpen(false);
       setNewSession({
-        nom: '',
-        description: '',
-        type: 'complet',
-        responsable: '',
-        secteurs: [''],
-        participants: [] // Réinitialisation des participants
+        nom: "",
+        description: "",
+        type: "complet",
+        responsable: "",
+        secteurs: [""],
+        participants: [], // Réinitialisation des participants
       });
     } catch (error) {
-      console.error('Erreur création session:', error);
+      console.error("Erreur création session:", error);
       toast({
         title: "Erreur",
         description: "Erreur lors de la création",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -156,13 +176,13 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
   }
   const getStatusIcon = (statut: string) => {
     switch (statut) {
-      case 'planifiee':
+      case "planifiee":
         return <Clock className="h-4 w-4 text-yellow-600" />;
-      case 'en_cours':
+      case "en_cours":
         return <Play className="h-4 w-4 text-blue-600" />;
-      case 'terminee':
+      case "terminee":
         return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'suspendue':
+      case "suspendue":
         return <XCircle className="h-4 w-4 text-red-600" />;
       default:
         return <Clock className="h-4 w-4" />;
@@ -171,28 +191,28 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
 
   const getStatusBadge = (statut: string) => {
     const colors = {
-      planifiee: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      en_cours: 'bg-blue-100 text-blue-800 border-blue-200',
-      terminee: 'bg-green-100 text-green-800 border-green-200',
-      suspendue: 'bg-red-100 text-red-800 border-red-200'
+      planifiee: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      en_cours: "bg-blue-100 text-blue-800 border-blue-200",
+      terminee: "bg-green-100 text-green-800 border-green-200",
+      suspendue: "bg-red-100 text-red-800 border-red-200",
     };
 
     return (
-      <Badge className={colors[statut as keyof typeof colors] || 'bg-gray-100 text-gray-800'}>
-        {statut.charAt(0).toUpperCase() + statut.slice(1).replace('_', ' ')}
+      <Badge className={colors[statut as keyof typeof colors] || "bg-gray-100 text-gray-800"}>
+        {statut.charAt(0).toUpperCase() + statut.slice(1).replace("_", " ")}
       </Badge>
     );
   };
 
   const getTypeBadge = (type: string) => {
     const colors = {
-      complet: 'bg-purple-100 text-purple-800 border-purple-200',
-      partiel: 'bg-blue-100 text-blue-800 border-blue-200',
-      cyclique: 'bg-green-100 text-green-800 border-green-200'
+      complet: "bg-purple-100 text-purple-800 border-purple-200",
+      partiel: "bg-blue-100 text-blue-800 border-blue-200",
+      cyclique: "bg-green-100 text-green-800 border-green-200",
     };
 
     return (
-      <Badge variant="outline" className={colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800'}>
+      <Badge variant="outline" className={colors[type as keyof typeof colors] || "bg-gray-100 text-gray-800"}>
         {type.charAt(0).toUpperCase() + type.slice(1)}
       </Badge>
     );
@@ -200,13 +220,14 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
 
   // Filtrage des sessions
   const filteredSessions = useMemo(() => {
-    return sessions.filter(session => {
-      const matchesSearch = session.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           session.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           session.responsable.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = selectedStatus === 'tous' || session.statut === selectedStatus;
-      const matchesType = selectedType === 'tous' || session.type === selectedType;
-      
+    return sessions.filter((session) => {
+      const matchesSearch =
+        session.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        session.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        session.responsable.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = selectedStatus === "tous" || session.statut === selectedStatus;
+      const matchesType = selectedType === "tous" || session.type === selectedType;
+
       return matchesSearch && matchesStatus && matchesType;
     });
   }, [sessions, searchTerm, selectedStatus, selectedType]);
@@ -225,51 +246,49 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
 
   return (
     <div className="space-y-6">
-          {/* Métriques des sessions */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardContent className="flex items-center justify-between p-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Sessions Actives</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {sessions.filter(s => s.statut === 'en_cours').length}
-                  </p>
-                </div>
-                <Play className="h-8 w-8 text-blue-600" />
-              </CardContent>
-            </Card>
+      {/* Métriques des sessions */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="flex items-center justify-between p-4">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Sessions Actives</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {sessions.filter((s) => s.statut === "en_cours").length}
+              </p>
+            </div>
+            <Play className="h-8 w-8 text-blue-600" />
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardContent className="flex items-center justify-between p-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Sessions Planifiées</p>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {sessions.filter(s => s.statut === 'planifiee').length}
-                  </p>
-                </div>
-                <Clock className="h-8 w-8 text-yellow-600" />
-              </CardContent>
-            </Card>
+        <Card>
+          <CardContent className="flex items-center justify-between p-4">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Sessions Planifiées</p>
+              <p className="text-2xl font-bold text-yellow-600">
+                {sessions.filter((s) => s.statut === "planifiee").length}
+              </p>
+            </div>
+            <Clock className="h-8 w-8 text-yellow-600" />
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardContent className="flex items-center justify-between p-4">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Sessions Terminées</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {sessions.filter(s => s.statut === 'terminee').length}
-                  </p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-green-600" />
-              </CardContent>
-            </Card>
+        <Card>
+          <CardContent className="flex items-center justify-between p-4">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Sessions Terminées</p>
+              <p className="text-2xl font-bold text-green-600">
+                {sessions.filter((s) => s.statut === "terminee").length}
+              </p>
+            </div>
+            <CheckCircle className="h-8 w-8 text-green-600" />
+          </CardContent>
+        </Card>
 
         <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total Écarts</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {sessions.reduce((acc, s) => acc + s.ecarts, 0)}
-              </p>
+              <p className="text-2xl font-bold text-orange-600">{sessions.reduce((acc, s) => acc + s.ecarts, 0)}</p>
             </div>
             <XCircle className="h-8 w-8 text-orange-600" />
           </CardContent>
@@ -294,28 +313,29 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
               <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
                   <DialogTitle>Créer une Session d'Inventaire</DialogTitle>
-                  <DialogDescription>
-                    Configurez une nouvelle session d'inventaire
-                  </DialogDescription>
+                  <DialogDescription>Configurez une nouvelle session d'inventaire</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="nom" className="text-right">
                       Nom
                     </Label>
-                    <Input 
-                      id="nom" 
-                      className="col-span-3" 
+                    <Input
+                      id="nom"
+                      className="col-span-3"
                       placeholder="Nom de la session"
                       value={newSession.nom}
-                      onChange={(e) => setNewSession(prev => ({ ...prev, nom: e.target.value }))}
+                      onChange={(e) => setNewSession((prev) => ({ ...prev, nom: e.target.value }))}
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="type" className="text-right">
                       Type
                     </Label>
-                    <Select value={newSession.type} onValueChange={(value) => setNewSession(prev => ({ ...prev, type: value }))}>
+                    <Select
+                      value={newSession.type}
+                      onValueChange={(value) => setNewSession((prev) => ({ ...prev, type: value }))}
+                    >
                       <SelectTrigger className="col-span-3">
                         <SelectValue placeholder="Type d'inventaire" />
                       </SelectTrigger>
@@ -330,12 +350,12 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                     <Label htmlFor="description" className="text-right">
                       Description
                     </Label>
-                    <Textarea 
-                      id="description" 
-                      className="col-span-3" 
+                    <Textarea
+                      id="description"
+                      className="col-span-3"
                       placeholder="Description de la session"
                       value={newSession.description}
-                      onChange={(e) => setNewSession(prev => ({ ...prev, description: e.target.value }))}
+                      onChange={(e) => setNewSession((prev) => ({ ...prev, description: e.target.value }))}
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
@@ -346,7 +366,7 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                       <MultiSelect
                         options={personnelOptions}
                         selected={newSession.participants}
-                        onSelectedChange={(selected) => setNewSession(prev => ({ ...prev, participants: selected }))}
+                        onSelectedChange={(selected) => setNewSession((prev) => ({ ...prev, participants: selected }))}
                         placeholder="Sélectionner les participants"
                       />
                     </div>
@@ -359,15 +379,13 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-            
+
             {/* Dialog de modification */}
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
               <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
                   <DialogTitle>Modifier la Session d'Inventaire</DialogTitle>
-                  <DialogDescription>
-                    Modifiez les informations de la session d'inventaire
-                  </DialogDescription>
+                  <DialogDescription>Modifiez les informations de la session d'inventaire</DialogDescription>
                 </DialogHeader>
                 {editingSession && (
                   <div className="grid gap-4 py-4">
@@ -375,20 +393,22 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                       <Label htmlFor="edit-nom" className="text-right">
                         Nom
                       </Label>
-                      <Input 
-                        id="edit-nom" 
-                        className="col-span-3" 
+                      <Input
+                        id="edit-nom"
+                        className="col-span-3"
                         value={editingSession.nom}
-                        onChange={(e) => setEditingSession(prev => prev ? { ...prev, nom: e.target.value } : null)}
+                        onChange={(e) => setEditingSession((prev) => (prev ? { ...prev, nom: e.target.value } : null))}
                       />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="edit-type" className="text-right">
                         Type
                       </Label>
-                      <Select 
-                        value={editingSession.type} 
-                        onValueChange={(value) => setEditingSession(prev => prev ? { ...prev, type: value as any } : null)}
+                      <Select
+                        value={editingSession.type}
+                        onValueChange={(value) =>
+                          setEditingSession((prev) => (prev ? { ...prev, type: value as any } : null))
+                        }
                       >
                         <SelectTrigger className="col-span-3">
                           <SelectValue />
@@ -404,22 +424,26 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                       <Label htmlFor="edit-responsable" className="text-right">
                         Responsable
                       </Label>
-                      <Input 
-                        id="edit-responsable" 
-                        className="col-span-3" 
+                      <Input
+                        id="edit-responsable"
+                        className="col-span-3"
                         value={editingSession.responsable}
-                        onChange={(e) => setEditingSession(prev => prev ? { ...prev, responsable: e.target.value } : null)}
+                        onChange={(e) =>
+                          setEditingSession((prev) => (prev ? { ...prev, responsable: e.target.value } : null))
+                        }
                       />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="edit-description" className="text-right">
                         Description
                       </Label>
-                      <Textarea 
-                        id="edit-description" 
-                        className="col-span-3" 
+                      <Textarea
+                        id="edit-description"
+                        className="col-span-3"
                         value={editingSession.description}
-                        onChange={(e) => setEditingSession(prev => prev ? { ...prev, description: e.target.value } : null)}
+                        onChange={(e) =>
+                          setEditingSession((prev) => (prev ? { ...prev, description: e.target.value } : null))
+                        }
                       />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
@@ -430,7 +454,9 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                         <MultiSelect
                           options={personnelOptions}
                           selected={editingSession.participants}
-                          onSelectedChange={(selected) => setEditingSession(prev => prev ? { ...prev, participants: selected } : null)}
+                          onSelectedChange={(selected) =>
+                            setEditingSession((prev) => (prev ? { ...prev, participants: selected } : null))
+                          }
                           placeholder="Sélectionner les participants"
                         />
                       </div>
@@ -527,7 +553,7 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
+                          <div
                             className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                             style={{ width: `${session.progression}%` }}
                           />
@@ -537,15 +563,15 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <div>Créée: {format(session.dateCreation, 'dd/MM/yyyy', { locale: fr })}</div>
+                        <div>Créée: {format(session.dateCreation, "dd/MM/yyyy", { locale: fr })}</div>
                         {session.dateDebut && (
-                          <div>Début: {format(session.dateDebut, 'dd/MM/yyyy', { locale: fr })}</div>
+                          <div>Début: {format(session.dateDebut, "dd/MM/yyyy", { locale: fr })}</div>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        {session.statut === 'planifiee' && (
+                        {session.statut === "planifiee" && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -556,7 +582,7 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                             Démarrer
                           </Button>
                         )}
-                        {session.statut === 'en_cours' && (
+                        {session.statut === "en_cours" && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -619,14 +645,16 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
             <div className="flex items-center justify-between mt-4">
               <div className="flex items-center gap-4">
                 <div className="text-sm text-muted-foreground">
-                  Affichage de {((currentPage - 1) * itemsPerPage) + 1} à{' '}
-                  {Math.min(currentPage * itemsPerPage, filteredSessions.length)} sur{' '}
-                  {filteredSessions.length} sessions
+                  Affichage de {(currentPage - 1) * itemsPerPage + 1} à{" "}
+                  {Math.min(currentPage * itemsPerPage, filteredSessions.length)} sur {filteredSessions.length} sessions
                 </div>
-                <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-                  setItemsPerPage(Number(value));
-                  setCurrentPage(1);
-                }}>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1);
+                  }}
+                >
                   <SelectTrigger className="w-[180px]">
                     <SelectValue />
                   </SelectTrigger>
@@ -643,16 +671,16 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                 <Pagination>
                   <PaginationContent>
                     <PaginationItem>
-                      <PaginationPrevious 
+                      <PaginationPrevious
                         href="#"
                         onClick={(e) => {
                           e.preventDefault();
                           if (currentPage > 1) setCurrentPage(currentPage - 1);
                         }}
-                        className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
                       />
                     </PaginationItem>
-                    
+
                     {[...Array(totalPages)].map((_, i) => {
                       const pageNum = i + 1;
                       // Show first page, last page, current page, and pages around current
@@ -675,10 +703,7 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                             </PaginationLink>
                           </PaginationItem>
                         );
-                      } else if (
-                        pageNum === currentPage - 2 ||
-                        pageNum === currentPage + 2
-                      ) {
+                      } else if (pageNum === currentPage - 2 || pageNum === currentPage + 2) {
                         return (
                           <PaginationItem key={pageNum}>
                             <PaginationEllipsis />
@@ -687,15 +712,15 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                       }
                       return null;
                     })}
-                    
+
                     <PaginationItem>
-                      <PaginationNext 
+                      <PaginationNext
                         href="#"
                         onClick={(e) => {
                           e.preventDefault();
                           if (currentPage < totalPages) setCurrentPage(currentPage + 1);
                         }}
-                        className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
                       />
                     </PaginationItem>
                   </PaginationContent>
