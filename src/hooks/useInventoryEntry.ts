@@ -297,8 +297,7 @@ export const useInventoryEntry = () => {
 
   useEffect(() => {
     fetchSessions();
-    fetchInventoryItems();
-  }, [fetchSessions, fetchInventoryItems]);
+  }, [fetchSessions]);
 
   return {
     items,

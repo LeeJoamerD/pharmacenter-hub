@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useTenant } from '@/contexts/TenantContext';
@@ -26,7 +26,7 @@ export const useInventorySessions = () => {
   const [loading, setLoading] = useState(true);
   const { tenantId } = useTenant();
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -69,9 +69,9 @@ export const useInventorySessions = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tenantId]);
 
-  const createSession = async (sessionData: any) => {
+  const createSession = useCallback(async (sessionData: any) => {
     try {
       if (!tenantId) {
         toast.error('Aucun tenant trouvé');
@@ -121,9 +121,9 @@ export const useInventorySessions = () => {
       console.error('Erreur création session:', error);
       toast.error('Erreur lors de la création de la session');
     }
-  };
+  }, [tenantId, fetchSessions]);
 
-  const startSession = async (sessionId: string) => {
+  const startSession = useCallback(async (sessionId: string) => {
     try {
       const { error } = await supabase
         .from('inventaire_sessions')
@@ -142,9 +142,9 @@ export const useInventorySessions = () => {
       console.error('Erreur démarrage session:', error);
       toast.error('Erreur lors du démarrage');
     }
-  };
+  }, [tenantId, fetchSessions]);
 
-  const stopSession = async (sessionId: string) => {
+  const stopSession = useCallback(async (sessionId: string) => {
     try {
       const { error } = await supabase
         .from('inventaire_sessions')
@@ -163,9 +163,9 @@ export const useInventorySessions = () => {
       console.error('Erreur arrêt session:', error);
       toast.error('Erreur lors de l\'arrêt');
     }
-  };
+  }, [tenantId, fetchSessions]);
 
-  const updateSession = async (sessionId: string, sessionData: Partial<InventorySession>) => {
+  const updateSession = useCallback(async (sessionId: string, sessionData: Partial<InventorySession>) => {
     try {
       const { error } = await supabase
         .from('inventaire_sessions')
@@ -189,9 +189,9 @@ export const useInventorySessions = () => {
       console.error('Erreur modification session:', error);
       toast.error('Erreur lors de la modification');
     }
-  };
+  }, [tenantId, fetchSessions]);
 
-  const deleteSession = async (sessionId: string) => {
+  const deleteSession = useCallback(async (sessionId: string) => {
     try {
       if (!tenantId) {
         toast.error('Aucun tenant trouvé');
@@ -212,11 +212,11 @@ export const useInventorySessions = () => {
       console.error('Erreur suppression session:', error);
       toast.error('Erreur lors de la suppression');
     }
-  };
+  }, [tenantId, fetchSessions]);
 
   useEffect(() => {
     fetchSessions();
-  }, [tenantId]);
+  }, [fetchSessions]);
 
   return {
     sessions,
