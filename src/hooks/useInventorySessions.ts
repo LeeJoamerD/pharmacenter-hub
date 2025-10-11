@@ -174,6 +174,52 @@ export const useInventorySessions = () => {
     [tenantId, fetchSessions],
   );
 
+  const suspendSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        const { error } = await supabase
+          .from("inventaire_sessions")
+          .update({
+            statut: "suspendue",
+          })
+          .eq("id", sessionId)
+          .eq("tenant_id", tenantId);
+
+        if (error) throw error;
+
+        toast.success("Session suspendue avec succès");
+        await fetchSessions();
+      } catch (error) {
+        console.error("Erreur suspension session:", error);
+        toast.error("Erreur lors de la suspension");
+      }
+    },
+    [tenantId, fetchSessions],
+  );
+
+  const resumeSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        const { error } = await supabase
+          .from("inventaire_sessions")
+          .update({
+            statut: "en_cours",
+          })
+          .eq("id", sessionId)
+          .eq("tenant_id", tenantId);
+
+        if (error) throw error;
+
+        toast.success("Session reprise avec succès");
+        await fetchSessions();
+      } catch (error) {
+        console.error("Erreur reprise session:", error);
+        toast.error("Erreur lors de la reprise");
+      }
+    },
+    [tenantId, fetchSessions],
+  );
+
   const updateSession = useCallback(
     async (sessionId: string, sessionData: Partial<InventorySession>) => {
       try {
@@ -240,6 +286,8 @@ export const useInventorySessions = () => {
     createSession,
     startSession,
     stopSession,
+    suspendSession,
+    resumeSession,
     updateSession,
     deleteSession,
     refetch: fetchSessions,

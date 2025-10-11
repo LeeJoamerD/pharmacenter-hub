@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Calendar, CheckCircle, Clock, XCircle, Play, Square, Eye, Edit, Users, Trash2 } from "lucide-react";
+import { Plus, Search, Calendar, CheckCircle, Clock, XCircle, Play, Square, Eye, Edit, Users, Trash2, Pause } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useInventorySessions, InventorySession } from "@/hooks/useInventorySessions";
@@ -52,7 +52,7 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
     secteurs: [""],
   });
 
-  const { sessions, loading, createSession, startSession, stopSession, updateSession, deleteSession } = useInventorySessions();
+  const { sessions, loading, createSession, startSession, stopSession, suspendSession, resumeSession, updateSession, deleteSession } = useInventorySessions();
 
   const handleViewSession = (sessionId: string) => {
     if (onViewSession) {
@@ -68,8 +68,20 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
     }
   };
 
+  const handleStartSession = async (sessionId: string) => {
+    await startSession(sessionId);
+  };
+
   const handleStopSession = async (sessionId: string) => {
     await stopSession(sessionId);
+  };
+
+  const handleSuspendSession = async (sessionId: string) => {
+    await suspendSession(sessionId);
+  };
+
+  const handleResumeSession = async (sessionId: string) => {
+    await resumeSession(sessionId);
   };
 
   const handleUpdateSession = async () => {
@@ -210,10 +222,12 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
         <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Total Écarts</p>
-              <p className="text-2xl font-bold text-orange-600">{sessions.reduce((acc, s) => acc + s.ecarts, 0)}</p>
+              <p className="text-sm font-medium text-muted-foreground">Sessions Suspendues</p>
+              <p className="text-2xl font-bold text-orange-600">
+                {sessions.filter((s) => s.statut === "suspendue").length}
+              </p>
             </div>
-            <XCircle className="h-8 w-8 text-orange-600" />
+            <Pause className="h-8 w-8 text-orange-600" />
           </CardContent>
         </Card>
       </div>
@@ -541,29 +555,45 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditSession(session.id)}
-                          title="Modifier la session"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+
                         {session.statut === "planifiee" && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => startSession(session.id)}
+                            onClick={() => handleStartSession(session.id)}
                             title="Démarrer la session"
                           >
-                            <Play className="h-4 w-4" />
+                            <Play className="h-4 w-4 text-green-600" />
                           </Button>
                         )}
+
                         {session.statut === "en_cours" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleSuspendSession(session.id)}
+                            title="Suspendre la session"
+                          >
+                            <Pause className="h-4 w-4 text-orange-600" />
+                          </Button>
+                        )}
+
+                        {session.statut === "suspendue" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleResumeSession(session.id)}
+                            title="Reprendre la session"
+                          >
+                            <Play className="h-4 w-4 text-blue-600" />
+                          </Button>
+                        )}
+
+                        {(session.statut === "en_cours" || session.statut === "suspendue") && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="sm" title="Arrêter la session">
-                                <Square className="h-4 w-4" />
+                                <Square className="h-4 w-4 text-red-600" />
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
@@ -583,6 +613,18 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                             </AlertDialogContent>
                           </AlertDialog>
                         )}
+
+                        {(session.statut === "planifiee" || session.statut === "suspendue") && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditSession(session.id)}
+                            title="Modifier la session"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+
                         {(session.statut === "planifiee" || session.statut === "terminee") && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
