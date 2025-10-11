@@ -580,4 +580,4 @@ const InventoryReports = () => {
   );
 };
 
-export default React.memo(InventoryReports);
+export default InventoryReports;

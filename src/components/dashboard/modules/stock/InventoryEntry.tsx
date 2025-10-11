@@ -954,4 +954,4 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
   );
 };
 
-export default React.memo(InventoryEntry);
+export default InventoryEntry;

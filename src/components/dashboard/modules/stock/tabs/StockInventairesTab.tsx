@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clipboard, Package, ChartBar, TrendingUp } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import InventorySessions from '../InventorySessions';
@@ -50,29 +50,29 @@ const StockInventairesTab = () => {
         </TabsTrigger>
       </TabsList>
       
-      <TabsContent value="sessions">
+      {activeTab === 'sessions' && (
         <ErrorBoundary>
           <InventorySessions onViewSession={handleViewSession} />
         </ErrorBoundary>
-      </TabsContent>
+      )}
       
-      <TabsContent value="saisie">
+      {activeTab === 'saisie' && (
         <ErrorBoundary>
           <InventoryEntry selectedSessionId={selectedSessionId} />
         </ErrorBoundary>
-      </TabsContent>
+      )}
       
-      <TabsContent value="reconciliation">
+      {activeTab === 'reconciliation' && (
         <ErrorBoundary>
           <InventoryReconciliation />
         </ErrorBoundary>
-      </TabsContent>
+      )}
       
-      <TabsContent value="rapports">
+      {activeTab === 'rapports' && (
         <ErrorBoundary>
           <InventoryReports />
         </ErrorBoundary>
-      </TabsContent>
+      )}
     </Tabs>
   );
 };
