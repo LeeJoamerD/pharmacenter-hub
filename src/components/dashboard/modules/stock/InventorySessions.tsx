@@ -68,18 +68,14 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
 
   const { data: personnelList } = usePersonnelQuery();
   
-  // Stabilize personnelList reference to prevent unnecessary recalculations
-  const stablePersonnelList = React.useMemo(() => {
-    return personnelList || [];
-  }, [JSON.stringify(personnelList)]);
-  
   const personnelOptions = useMemo(() => {
-    if (!stablePersonnelList || !Array.isArray(stablePersonnelList)) return [];
-    return stablePersonnelList.map(p => ({ 
+    const list = personnelList || [];
+    if (!Array.isArray(list)) return [];
+    return list.map(p => ({ 
       label: p.nom_complet || 'Sans nom', 
       value: p.id 
     }));
-  }, [stablePersonnelList]);
+  }, [personnelList]);
 
   const handleStartSession = async (sessionId: string) => {
     await startSession(sessionId);
