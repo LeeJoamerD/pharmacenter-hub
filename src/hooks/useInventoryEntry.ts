@@ -92,7 +92,7 @@ export const useInventoryEntry = () => {
     }
   }, []);
 
-  const recordEntry = async (entryData: {
+  const recordEntry = useCallback(async (entryData: {
     sessionId: string;
     produitId: string;
     quantite: number;
@@ -108,9 +108,40 @@ export const useInventoryEntry = () => {
       toast.error('Erreur lors de l\'enregistrement de la saisie');
       throw error;
     }
-  };
+  }, [fetchInventoryItems]);
 
-  const saveCount = async (itemId: string, count: number, location: string, sessionId: string) => {
+  const updateSessionAggregates = useCallback(async (sessionId: string, tenantId: string) => {
+    try {
+      // Recalculate aggregates from current items
+      const { data: sessionItems } = await supabase
+        .from('inventaire_items')
+        .select('statut')
+        .eq('session_id', sessionId)
+        .eq('tenant_id', tenantId);
+
+      if (sessionItems) {
+        const total = sessionItems.length;
+        const counted = sessionItems.filter(item => item.statut !== 'non_compte').length;
+        const ecarts = sessionItems.filter(item => item.statut === 'ecart').length;
+        const progression = total > 0 ? Math.round((counted / total) * 100) : 0;
+
+        await supabase
+          .from('inventaire_sessions')
+          .update({
+            produits_total: total,
+            produits_comptes: counted,
+            ecarts: ecarts,
+            progression: progression
+          })
+          .eq('id', sessionId)
+          .eq('tenant_id', tenantId);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour des agrégats:', error);
+    }
+  }, []);
+
+  const saveCount = useCallback(async (itemId: string, count: number, location: string, sessionId: string) => {
     try {
       // Get current user personnel
       const { data: userData } = await supabase.auth.getUser();
@@ -180,9 +211,9 @@ export const useInventoryEntry = () => {
       toast.error('Erreur lors de la sauvegarde du comptage');
       throw error;
     }
-  };
+  }, [items, updateSessionAggregates]);
 
-  const resetCount = async (itemId: string, sessionId: string) => {
+  const resetCount = useCallback(async (itemId: string, sessionId: string) => {
     try {
       // Get current user personnel
       const { data: userData } = await supabase.auth.getUser();
@@ -235,40 +266,9 @@ export const useInventoryEntry = () => {
       toast.error('Erreur lors de la réinitialisation du comptage');
       throw error;
     }
-  };
+  }, [updateSessionAggregates]);
 
-  const updateSessionAggregates = async (sessionId: string, tenantId: string) => {
-    try {
-      // Recalculate aggregates from current items
-      const { data: sessionItems } = await supabase
-        .from('inventaire_items')
-        .select('statut')
-        .eq('session_id', sessionId)
-        .eq('tenant_id', tenantId);
-
-      if (sessionItems) {
-        const total = sessionItems.length;
-        const counted = sessionItems.filter(item => item.statut !== 'non_compte').length;
-        const ecarts = sessionItems.filter(item => item.statut === 'ecart').length;
-        const progression = total > 0 ? Math.round((counted / total) * 100) : 0;
-
-        await supabase
-          .from('inventaire_sessions')
-          .update({
-            produits_total: total,
-            produits_comptes: counted,
-            ecarts: ecarts,
-            progression: progression
-          })
-          .eq('id', sessionId)
-          .eq('tenant_id', tenantId);
-      }
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour des agrégats:', error);
-    }
-  };
-
-  const initializeSessionItems = async (sessionId: string) => {
+  const initializeSessionItems = useCallback(async (sessionId: string) => {
     try {
       setLoading(true);
       
@@ -293,7 +293,7 @@ export const useInventoryEntry = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchInventoryItems]);
 
   useEffect(() => {
     fetchSessions();
