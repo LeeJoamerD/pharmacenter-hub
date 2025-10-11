@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,36 +27,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Plus,
-  Search,
-  Calendar,
-  CheckCircle,
-  Clock,
-  XCircle,
-  Play,
-  Square,
-  Eye,
-  Edit,
-  Users,
-  Trash2,
-} from "lucide-react";
+import { Plus, Search, Calendar, CheckCircle, Clock, XCircle, Play, Square, Eye, Edit, Users } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useInventorySessions, InventorySession } from "@/hooks/useInventorySessions";
-import { useNavigate } from "react-router-dom";
-import { MultiSelect } from "@/components/ui/multi-select";
-import { usePersonnelQuery } from "@/hooks/useTenantQuery";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 
 interface InventorySessionsProps {
   onViewSession?: (sessionId: string) => void;
@@ -69,32 +43,15 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<InventorySession | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [newSession, setNewSession] = useState({
     nom: "",
     description: "",
     type: "complet",
     responsable: "",
     secteurs: [""],
-    participants: [], // Ajout du champ participants
   });
 
-  const { sessions, loading, createSession, startSession, stopSession, updateSession, deleteSession } =
-    useInventorySessions();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-
-  const { data: personnelList } = usePersonnelQuery();
-  const personnelOptions = personnelList?.map((p) => ({ label: p.nom_complet, value: p.id })) || [];
-
-  const handleStartSession = async (sessionId: string) => {
-    await startSession(sessionId);
-  };
-
-  const handleDeleteSession = async (sessionId: string) => {
-    await deleteSession(sessionId);
-  };
+  const { sessions, loading, createSession, startSession, stopSession, updateSession } = useInventorySessions();
 
   const handleViewSession = (sessionId: string) => {
     if (onViewSession) {
@@ -122,7 +79,6 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
         type: editingSession.type,
         responsable: editingSession.responsable,
         secteurs: editingSession.secteurs,
-        participants: editingSession.participants, // Ajout des participants
       });
       setIsEditDialogOpen(false);
       setEditingSession(null);
@@ -137,28 +93,11 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
         type: newSession.type,
         responsable: newSession.responsable,
         secteurs: newSession.secteurs.filter((s) => s.trim() !== ""),
-        participants: newSession.participants, // Ajout des participants
-      });
-      toast({
-        title: "Succès",
-        description: "Session créée avec succès",
       });
       setIsCreateDialogOpen(false);
-      setNewSession({
-        nom: "",
-        description: "",
-        type: "complet",
-        responsable: "",
-        secteurs: [""],
-        participants: [], // Réinitialisation des participants
-      });
+      setNewSession({ nom: "", description: "", type: "complet", responsable: "", secteurs: [""] });
     } catch (error) {
       console.error("Erreur création session:", error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la création",
-        variant: "destructive",
-      });
     }
   };
 
@@ -209,31 +148,17 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
     );
   };
 
-  // Filtrage des sessions
-  const filteredSessions = useMemo(() => {
-    return sessions.filter((session) => {
-      const matchesSearch =
-        session.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        session.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        session.responsable.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = selectedStatus === "tous" || session.statut === selectedStatus;
-      const matchesType = selectedType === "tous" || session.type === selectedType;
+  const filteredSessions = sessions.filter((session) => {
+    const matchesSearch =
+      session.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      session.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      session.responsable.toLowerCase().includes(searchTerm.toLowerCase());
 
-      return matchesSearch && matchesStatus && matchesType;
-    });
-  }, [sessions, searchTerm, selectedStatus, selectedType]);
+    const matchesStatus = selectedStatus === "tous" || session.statut === selectedStatus;
+    const matchesType = selectedType === "tous" || session.type === selectedType;
 
-  // Pagination
-  const totalPages = Math.ceil(filteredSessions.length / itemsPerPage);
-  const paginatedSessions = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredSessions.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredSessions, currentPage, itemsPerPage]);
-
-  // Reset page when filters change
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, selectedStatus, selectedType]);
+    return matchesSearch && matchesStatus && matchesType;
+  });
 
   return (
     <div className="space-y-6">
@@ -349,19 +274,6 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                       onChange={(e) => setNewSession((prev) => ({ ...prev, description: e.target.value }))}
                     />
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="participants" className="text-right">
-                      Participants
-                    </Label>
-                    <div className="col-span-3">
-                      <MultiSelect
-                        options={personnelOptions}
-                        selected={newSession.participants}
-                        onSelectedChange={(selected) => setNewSession((prev) => ({ ...prev, participants: selected }))}
-                        placeholder="Sélectionner les participants"
-                      />
-                    </div>
-                  </div>
                 </div>
                 <DialogFooter>
                   <Button type="submit" onClick={handleCreateSession}>
@@ -437,21 +349,6 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                         }
                       />
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="edit-participants" className="text-right">
-                        Participants
-                      </Label>
-                      <div className="col-span-3">
-                        <MultiSelect
-                          options={personnelOptions}
-                          selected={editingSession.participants}
-                          onSelectedChange={(selected) =>
-                            setEditingSession((prev) => (prev ? { ...prev, participants: selected } : null))
-                          }
-                          placeholder="Sélectionner les participants"
-                        />
-                      </div>
-                    </div>
                   </div>
                 )}
                 <DialogFooter>
@@ -518,7 +415,7 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedSessions.map((session) => (
+                {filteredSessions.map((session) => (
                   <TableRow key={session.id}>
                     <TableCell>
                       <div>
@@ -561,68 +458,57 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        {session.statut === "planifiee" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 px-3 text-xs"
-                            onClick={() => handleStartSession(session.id)}
-                          >
-                            <Play className="h-3 w-3 mr-1" />
-                            Démarrer
-                          </Button>
-                        )}
-                        {session.statut === "en_cours" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 px-3 text-xs"
-                            onClick={() => handleStopSession(session.id)}
-                          >
-                            <Square className="h-3 w-3 mr-1" />
-                            Arrêter
-                          </Button>
-                        )}
+                      <div className="flex gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0 rounded-full bg-gray-100 hover:bg-gray-200"
                           onClick={() => handleViewSession(session.id)}
-                          title="Voir"
+                          title="Voir les détails"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0 rounded-full bg-gray-100 hover:bg-gray-200"
                           onClick={() => handleEditSession(session.id)}
-                          title="Éditer"
+                          title="Modifier la session"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Êtes-vous sûr de vouloir supprimer cette session ? Cette action est irréversible.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Annuler</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteSession(session.id)}>
-                                Confirmer
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        {session.statut === "planifiee" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startSession(session.id)}
+                            title="Démarrer la session"
+                          >
+                            <Play className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {session.statut === "en_cours" && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm" title="Arrêter la session">
+                                <Square className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Arrêter la session</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Êtes-vous sûr de vouloir arrêter cette session d'inventaire ? Cette action terminera
+                                  définitivement la session.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleStopSession(session.id)}>
+                                  Arrêter la session
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -630,95 +516,6 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
               </TableBody>
             </Table>
           </div>
-
-          {/* Pagination et informations */}
-          {filteredSessions.length > 0 && (
-            <div className="flex items-center justify-between mt-4">
-              <div className="flex items-center gap-4">
-                <div className="text-sm text-muted-foreground">
-                  Affichage de {(currentPage - 1) * itemsPerPage + 1} à{" "}
-                  {Math.min(currentPage * itemsPerPage, filteredSessions.length)} sur {filteredSessions.length} sessions
-                </div>
-                <Select
-                  value={itemsPerPage.toString()}
-                  onValueChange={(value) => {
-                    setItemsPerPage(Number(value));
-                    setCurrentPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5 par page</SelectItem>
-                    <SelectItem value="10">10 par page</SelectItem>
-                    <SelectItem value="20">20 par page</SelectItem>
-                    <SelectItem value="50">50 par page</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {totalPages > 1 && (
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (currentPage > 1) setCurrentPage(currentPage - 1);
-                        }}
-                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                      />
-                    </PaginationItem>
-
-                    {[...Array(totalPages)].map((_, i) => {
-                      const pageNum = i + 1;
-                      // Show first page, last page, current page, and pages around current
-                      if (
-                        pageNum === 1 ||
-                        pageNum === totalPages ||
-                        (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
-                      ) {
-                        return (
-                          <PaginationItem key={pageNum}>
-                            <PaginationLink
-                              href="#"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                setCurrentPage(pageNum);
-                              }}
-                              isActive={pageNum === currentPage}
-                            >
-                              {pageNum}
-                            </PaginationLink>
-                          </PaginationItem>
-                        );
-                      } else if (pageNum === currentPage - 2 || pageNum === currentPage + 2) {
-                        return (
-                          <PaginationItem key={pageNum}>
-                            <PaginationEllipsis />
-                          </PaginationItem>
-                        );
-                      }
-                      return null;
-                    })}
-
-                    <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-                        }}
-                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              )}
-            </div>
-          )}
 
           {filteredSessions.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
