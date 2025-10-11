@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Calendar, CheckCircle, Clock, XCircle, Play, Square, Eye, Edit, Users } from "lucide-react";
+import { Plus, Search, Calendar, CheckCircle, Clock, XCircle, Play, Square, Eye, Edit, Users, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useInventorySessions, InventorySession } from "@/hooks/useInventorySessions";
@@ -48,10 +48,11 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
     description: "",
     type: "complet",
     responsable: "",
+    participants: [""],
     secteurs: [""],
   });
 
-  const { sessions, loading, createSession, startSession, stopSession, updateSession } = useInventorySessions();
+  const { sessions, loading, createSession, startSession, stopSession, updateSession, deleteSession } = useInventorySessions();
 
   const handleViewSession = (sessionId: string) => {
     if (onViewSession) {
@@ -78,11 +79,16 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
         description: editingSession.description,
         type: editingSession.type,
         responsable: editingSession.responsable,
+        participants: editingSession.participants,
         secteurs: editingSession.secteurs,
       });
       setIsEditDialogOpen(false);
       setEditingSession(null);
     }
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    await deleteSession(sessionId);
   };
 
   const handleCreateSession = async () => {
@@ -92,10 +98,11 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
         description: newSession.description,
         type: newSession.type,
         responsable: newSession.responsable,
+        participants: newSession.participants.filter((p) => p.trim() !== ""),
         secteurs: newSession.secteurs.filter((s) => s.trim() !== ""),
       });
       setIsCreateDialogOpen(false);
-      setNewSession({ nom: "", description: "", type: "complet", responsable: "", secteurs: [""] });
+      setNewSession({ nom: "", description: "", type: "complet", responsable: "", participants: [""], secteurs: [""] });
     } catch (error) {
       console.error("Erreur création session:", error);
     }
@@ -263,6 +270,42 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                     </Select>
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="responsable" className="text-right">
+                      Responsable
+                    </Label>
+                    <Input
+                      id="responsable"
+                      className="col-span-3"
+                      placeholder="Nom du responsable"
+                      value={newSession.responsable}
+                      onChange={(e) => setNewSession((prev) => ({ ...prev, responsable: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="participants" className="text-right">
+                      Participants
+                    </Label>
+                    <Textarea
+                      id="participants"
+                      className="col-span-3"
+                      placeholder="Participants (un par ligne)"
+                      value={newSession.participants.join("\n")}
+                      onChange={(e) => setNewSession((prev) => ({ ...prev, participants: e.target.value.split("\n") }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="secteurs" className="text-right">
+                      Secteurs
+                    </Label>
+                    <Textarea
+                      id="secteurs"
+                      className="col-span-3"
+                      placeholder="Secteurs à inventorier (un par ligne)"
+                      value={newSession.secteurs.join("\n")}
+                      onChange={(e) => setNewSession((prev) => ({ ...prev, secteurs: e.target.value.split("\n") }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="description" className="text-right">
                       Description
                     </Label>
@@ -333,6 +376,34 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                         value={editingSession.responsable}
                         onChange={(e) =>
                           setEditingSession((prev) => (prev ? { ...prev, responsable: e.target.value } : null))
+                        }
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="edit-participants" className="text-right">
+                        Participants
+                      </Label>
+                      <Textarea
+                        id="edit-participants"
+                        className="col-span-3"
+                        placeholder="Participants (un par ligne)"
+                        value={editingSession.participants.join("\n")}
+                        onChange={(e) =>
+                          setEditingSession((prev) => (prev ? { ...prev, participants: e.target.value.split("\n") } : null))
+                        }
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="edit-secteurs" className="text-right">
+                        Secteurs
+                      </Label>
+                      <Textarea
+                        id="edit-secteurs"
+                        className="col-span-3"
+                        placeholder="Secteurs (un par ligne)"
+                        value={editingSession.secteurs.join("\n")}
+                        onChange={(e) =>
+                          setEditingSession((prev) => (prev ? { ...prev, secteurs: e.target.value.split("\n") } : null))
                         }
                       />
                     </div>
@@ -455,6 +526,9 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                         {session.dateDebut && (
                           <div>Début: {format(session.dateDebut, "dd/MM/yyyy", { locale: fr })}</div>
                         )}
+                        {session.dateFin && (
+                          <div>Fin: {format(session.dateFin, "dd/MM/yyyy", { locale: fr })}</div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -504,6 +578,30 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                                 <AlertDialogCancel>Annuler</AlertDialogCancel>
                                 <AlertDialogAction onClick={() => handleStopSession(session.id)}>
                                   Arrêter la session
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                        {(session.statut === "planifiee" || session.statut === "terminee") && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm" title="Supprimer la session">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Supprimer la session</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Êtes-vous sûr de vouloir supprimer cette session d'inventaire ? Cette action est
+                                  irréversible.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteSession(session.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Supprimer
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>

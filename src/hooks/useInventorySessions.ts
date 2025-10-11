@@ -26,8 +26,8 @@ export const useInventorySessions = () => {
   const [loading, setLoading] = useState(true);
   const { tenantId } = useTenant();
 
-  // ✅ CORRECTION : Enlever useCallback de fetchSessions pour éviter la dépendance circulaire
-  const fetchSessions = async () => {
+  // ✅ CORRECTION : Wrapper fetchSessions dans useCallback pour stabilité
+  const fetchSessions = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -71,7 +71,7 @@ export const useInventorySessions = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tenantId]);
 
   const createSession = useCallback(
     async (sessionData: any) => {
@@ -123,8 +123,8 @@ export const useInventorySessions = () => {
         toast.error("Erreur lors de la création de la session");
       }
     },
-    [tenantId],
-  ); // ✅ Enlever fetchSessions des dépendances
+    [tenantId, fetchSessions],
+  );
 
   const startSession = useCallback(
     async (sessionId: string) => {
@@ -147,8 +147,8 @@ export const useInventorySessions = () => {
         toast.error("Erreur lors du démarrage");
       }
     },
-    [tenantId],
-  ); // ✅ Enlever fetchSessions des dépendances
+    [tenantId, fetchSessions],
+  );
 
   const stopSession = useCallback(
     async (sessionId: string) => {
@@ -171,8 +171,8 @@ export const useInventorySessions = () => {
         toast.error("Erreur lors de l'arrêt");
       }
     },
-    [tenantId],
-  ); // ✅ Enlever fetchSessions des dépendances
+    [tenantId, fetchSessions],
+  );
 
   const updateSession = useCallback(
     async (sessionId: string, sessionData: Partial<InventorySession>) => {
@@ -200,8 +200,8 @@ export const useInventorySessions = () => {
         toast.error("Erreur lors de la modification");
       }
     },
-    [tenantId],
-  ); // ✅ Enlever fetchSessions des dépendances
+    [tenantId, fetchSessions],
+  );
 
   const deleteSession = useCallback(
     async (sessionId: string) => {
@@ -226,13 +226,13 @@ export const useInventorySessions = () => {
         toast.error("Erreur lors de la suppression");
       }
     },
-    [tenantId],
-  ); // ✅ Enlever fetchSessions des dépendances
+    [tenantId, fetchSessions],
+  );
 
-  // ✅ CORRECTION PRINCIPALE : Dépendre directement de tenantId
+  // ✅ CORRECTION : Dépendre de fetchSessions stable
   useEffect(() => {
     fetchSessions();
-  }, [tenantId]); // ✅ Dépendre de tenantId au lieu de fetchSessions
+  }, [fetchSessions]);
 
   return {
     sessions,
