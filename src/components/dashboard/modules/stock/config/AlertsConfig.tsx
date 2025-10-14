@@ -28,7 +28,7 @@ const AlertsConfig = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedThreshold, setSelectedThreshold] = useState<any>(null);
   const [newThreshold, setNewThreshold] = useState({
-    category_id: '',
+    category: '',
     threshold: 10,
     enabled: true
   });
@@ -86,7 +86,7 @@ const AlertsConfig = () => {
 
   // Fonctions pour la gestion des seuils par catégorie
   const handleCreateThreshold = async () => {
-    if (!newThreshold.category_id) {
+    if (!newThreshold.category) {
       toast({
         title: "Erreur",
         description: "Veuillez sélectionner une famille de produits.",
@@ -96,7 +96,7 @@ const AlertsConfig = () => {
     }
 
     // Vérifier les doublons
-    const existingThreshold = thresholds?.find(t => t.category_id === newThreshold.category_id);
+    const existingThreshold = thresholds?.find(t => t.category === newThreshold.category);
     if (existingThreshold) {
       toast({
         title: "Erreur",
@@ -107,9 +107,14 @@ const AlertsConfig = () => {
     }
 
     try {
-      await createThreshold(newThreshold);
+      await createThreshold({
+        tenant_id: tenantId!,
+        category: newThreshold.category,
+        threshold: newThreshold.threshold,
+        enabled: newThreshold.enabled
+      });
       setIsCreateDialogOpen(false);
-      setNewThreshold({ category_id: '', threshold: 10, enabled: true });
+      setNewThreshold({ category: '', threshold: 10, enabled: true });
       toast({
         title: "Succès",
         description: "Seuil créé avec succès.",
@@ -180,9 +185,8 @@ const AlertsConfig = () => {
     }
   };
 
-  const getFamilleLibelle = (categoryId: string) => {
-    const famille = familles.find(f => f.id === categoryId);
-    return famille?.libelle_famille || 'Famille inconnue';
+  const getFamilleLibelle = (category: string) => {
+    return category || 'Famille inconnue';
   };
 
   const handleSave = async () => {
@@ -463,17 +467,17 @@ const AlertsConfig = () => {
                     <div className="space-y-2">
                       <Label htmlFor="famille-select">Famille de produits</Label>
                       <Select 
-                        value={newThreshold.category_id} 
-                        onValueChange={(value) => setNewThreshold(prev => ({ ...prev, category_id: value }))}
+                        value={newThreshold.category} 
+                        onValueChange={(value) => setNewThreshold(prev => ({ ...prev, category: value }))}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner une famille" />
                         </SelectTrigger>
                         <SelectContent>
                           {familles
-                            .filter(famille => !thresholds?.some(t => t.category_id === famille.id))
+                            .filter(famille => !thresholds?.some(t => t.category === famille.libelle_famille))
                             .map((famille) => (
-                              <SelectItem key={famille.id} value={famille.id}>
+                              <SelectItem key={famille.id} value={famille.libelle_famille}>
                                 {famille.libelle_famille}
                               </SelectItem>
                             ))}
@@ -518,7 +522,7 @@ const AlertsConfig = () => {
                   <div key={threshold.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-3">
                       <div>
-                        <p className="font-medium">{getFamilleLibelle(threshold.category_id)}</p>
+                        <p className="font-medium">{getFamilleLibelle(threshold.category)}</p>
                         <p className="text-sm text-muted-foreground">
                           Seuil: {threshold.threshold} unités
                         </p>
@@ -566,7 +570,7 @@ const AlertsConfig = () => {
           <DialogHeader>
             <DialogTitle>Modifier le seuil</DialogTitle>
             <DialogDescription>
-              Modifiez les paramètres du seuil pour {selectedThreshold && getFamilleLibelle(selectedThreshold.category_id)}
+              Modifiez les paramètres du seuil pour {selectedThreshold && getFamilleLibelle(selectedThreshold.category)}
             </DialogDescription>
           </DialogHeader>
           {selectedThreshold && (
@@ -609,7 +613,7 @@ const AlertsConfig = () => {
           <DialogHeader>
             <DialogTitle>Supprimer le seuil</DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir supprimer le seuil pour {selectedThreshold && getFamilleLibelle(selectedThreshold.category_id)} ?
+              Êtes-vous sûr de vouloir supprimer le seuil pour {selectedThreshold && getFamilleLibelle(selectedThreshold.category)} ?
               Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
