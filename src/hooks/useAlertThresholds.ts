@@ -86,12 +86,40 @@ export const useAlertThresholds = () => {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('alert_thresholds_by_category')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['alert-thresholds'] });
+      toast({
+        title: "Seuil supprimé",
+        description: "Le seuil d'alerte a été supprimé avec succès.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le seuil d'alerte.",
+        variant: "destructive",
+      });
+      console.error('Error deleting alert threshold:', error);
+    },
+  });
+
   return {
     thresholds: query.data,
     loading: query.isLoading,
     error: query.error,
     updateThreshold: updateMutation.mutateAsync,
     createThreshold: createMutation.mutateAsync,
-    isUpdating: updateMutation.isPending || createMutation.isPending,
+    deleteThreshold: deleteMutation.mutateAsync,
+    isUpdating: updateMutation.isPending || createMutation.isPending || deleteMutation.isPending,
   };
 };

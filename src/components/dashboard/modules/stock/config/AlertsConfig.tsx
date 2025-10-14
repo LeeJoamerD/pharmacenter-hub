@@ -7,17 +7,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Clock, TrendingDown, Calendar } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertTriangle, Clock, TrendingDown, Calendar, Plus, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAlertSettings } from '@/hooks/useAlertSettings';
 import { useAlertThresholds } from '@/hooks/useAlertThresholds';
+import { useFamillesProduits } from '@/hooks/useFamillesProduits';
 import { useTenant } from '@/contexts/TenantContext';
 
 const AlertsConfig = () => {
   const { toast } = useToast();
   const { tenantId } = useTenant();
   const { settings, loading: settingsLoading, saveSettings, isUpdating: settingsUpdating } = useAlertSettings();
-  const { thresholds, loading: thresholdsLoading, updateThreshold, isUpdating: thresholdsUpdating } = useAlertThresholds();
+  const { thresholds, loading: thresholdsLoading, updateThreshold, createThreshold, deleteThreshold, isUpdating: thresholdsUpdating } = useAlertThresholds();
+  const { familles, loading: famillesLoading } = useFamillesProduits();
+  
+  // État pour la gestion des dialogues de seuils par catégorie
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedThreshold, setSelectedThreshold] = useState<any>(null);
+  const [newThreshold, setNewThreshold] = useState({
+    category_id: '',
+    threshold: 10,
+    enabled: true
+  });
   
   const [alertConfig, setAlertConfig] = useState({
     lowStockEnabled: true,
@@ -70,6 +84,107 @@ const AlertsConfig = () => {
     }
   };
 
+  // Fonctions pour la gestion des seuils par catégorie
+  const handleCreateThreshold = async () => {
+    if (!newThreshold.category_id) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner une famille de produits.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Vérifier les doublons
+    const existingThreshold = thresholds?.find(t => t.category_id === newThreshold.category_id);
+    if (existingThreshold) {
+      toast({
+        title: "Erreur",
+        description: "Un seuil existe déjà pour cette famille de produits.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createThreshold(newThreshold);
+      setIsCreateDialogOpen(false);
+      setNewThreshold({ category_id: '', threshold: 10, enabled: true });
+      toast({
+        title: "Succès",
+        description: "Seuil créé avec succès.",
+      });
+    } catch (error) {
+      console.error('Error creating threshold:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la création du seuil.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditThreshold = (threshold: any) => {
+    setSelectedThreshold(threshold);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateThreshold = async () => {
+    if (!selectedThreshold) return;
+
+    try {
+      await updateThreshold({
+        id: selectedThreshold.id,
+        threshold: selectedThreshold.threshold,
+        enabled: selectedThreshold.enabled
+      });
+      setIsEditDialogOpen(false);
+      setSelectedThreshold(null);
+      toast({
+        title: "Succès",
+        description: "Seuil mis à jour avec succès.",
+      });
+    } catch (error) {
+      console.error('Error updating threshold:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la mise à jour du seuil.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteThreshold = (threshold: any) => {
+    setSelectedThreshold(threshold);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteThreshold = async () => {
+    if (!selectedThreshold) return;
+
+    try {
+      await deleteThreshold(selectedThreshold.id);
+      setIsDeleteDialogOpen(false);
+      setSelectedThreshold(null);
+      toast({
+        title: "Succès",
+        description: "Seuil supprimé avec succès.",
+      });
+    } catch (error) {
+      console.error('Error deleting threshold:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la suppression du seuil.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getFamilleLibelle = (categoryId: string) => {
+    const famille = familles.find(f => f.id === categoryId);
+    return famille?.libelle_famille || 'Famille inconnue';
+  };
+
   const handleSave = async () => {
     if (!tenantId) {
       toast({
@@ -103,7 +218,7 @@ const AlertsConfig = () => {
     }
   };
 
-  if (settingsLoading || thresholdsLoading) {
+  if (settingsLoading || thresholdsLoading || famillesLoading) {
     return (
       <div className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
@@ -326,38 +441,188 @@ const AlertsConfig = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {thresholds?.map((threshold, index) => (
-              <div key={threshold.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div>
-                    <p className="font-medium">{threshold.category}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Seuil: {threshold.threshold} unités
-                    </p>
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-muted-foreground">
+                {thresholds?.length || 0} seuil(s) configuré(s)
+              </p>
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Ajouter un seuil
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Créer un nouveau seuil</DialogTitle>
+                    <DialogDescription>
+                      Configurez un seuil d'alerte pour une famille de produits
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="famille-select">Famille de produits</Label>
+                      <Select 
+                        value={newThreshold.category_id} 
+                        onValueChange={(value) => setNewThreshold(prev => ({ ...prev, category_id: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner une famille" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {familles
+                            .filter(famille => !thresholds?.some(t => t.category_id === famille.id))
+                            .map((famille) => (
+                              <SelectItem key={famille.id} value={famille.id}>
+                                {famille.libelle_famille}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="threshold-input">Seuil (unités)</Label>
+                      <Input
+                        id="threshold-input"
+                        type="number"
+                        min="0"
+                        max="1000"
+                        value={newThreshold.threshold}
+                        onChange={(e) => setNewThreshold(prev => ({ ...prev, threshold: Number(e.target.value) }))}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="enabled-switch">Activer le seuil</Label>
+                      <Switch
+                        id="enabled-switch"
+                        checked={newThreshold.enabled}
+                        onCheckedChange={(checked) => setNewThreshold(prev => ({ ...prev, enabled: checked }))}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="1000"
-                    value={threshold.threshold}
-                    onChange={(e) => handleThresholdChange(threshold.id, 'threshold', Number(e.target.value))}
-                    className="w-20"
-                  />
-                  <Switch
-                    checked={threshold.enabled}
-                    onCheckedChange={(checked) => handleThresholdChange(threshold.id, 'enabled', checked)}
-                  />
-                  <Badge variant={threshold.enabled ? "default" : "secondary"}>
-                    {threshold.enabled ? 'Actif' : 'Inactif'}
-                  </Badge>
-                </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                      Annuler
+                    </Button>
+                    <Button onClick={handleCreateThreshold} disabled={thresholdsUpdating}>
+                      {thresholdsUpdating ? 'Création...' : 'Créer'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {thresholds && thresholds.length > 0 ? (
+              <div className="space-y-3">
+                {thresholds.map((threshold) => (
+                  <div key={threshold.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <p className="font-medium">{getFamilleLibelle(threshold.category_id)}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Seuil: {threshold.threshold} unités
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={threshold.enabled ? "default" : "secondary"}>
+                        {threshold.enabled ? 'Actif' : 'Inactif'}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditThreshold(threshold)}
+                        className="flex items-center gap-1"
+                      >
+                        <Edit className="h-3 w-3" />
+                        Modifier
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteThreshold(threshold)}
+                        className="flex items-center gap-1 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Supprimer
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Aucun seuil configuré</p>
+                <p className="text-sm">Cliquez sur "Ajouter un seuil" pour commencer</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialog de modification */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier le seuil</DialogTitle>
+            <DialogDescription>
+              Modifiez les paramètres du seuil pour {selectedThreshold && getFamilleLibelle(selectedThreshold.category_id)}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedThreshold && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-threshold-input">Seuil (unités)</Label>
+                <Input
+                  id="edit-threshold-input"
+                  type="number"
+                  min="0"
+                  max="1000"
+                  value={selectedThreshold.threshold}
+                  onChange={(e) => setSelectedThreshold(prev => ({ ...prev, threshold: Number(e.target.value) }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="edit-enabled-switch">Activer le seuil</Label>
+                <Switch
+                  id="edit-enabled-switch"
+                  checked={selectedThreshold.enabled}
+                  onCheckedChange={(checked) => setSelectedThreshold(prev => ({ ...prev, enabled: checked }))}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleUpdateThreshold} disabled={thresholdsUpdating}>
+              {thresholdsUpdating ? 'Mise à jour...' : 'Mettre à jour'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de suppression */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Supprimer le seuil</DialogTitle>
+            <DialogDescription>
+              Êtes-vous sûr de vouloir supprimer le seuil pour {selectedThreshold && getFamilleLibelle(selectedThreshold.category_id)} ?
+              Cette action est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteThreshold} disabled={thresholdsUpdating}>
+              {thresholdsUpdating ? 'Suppression...' : 'Supprimer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={settingsUpdating}>

@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { MultiSelect, type Option as MultiSelectOption } from "@/components/ui/multi-select";
+import { usePersonnelQuery } from "@/hooks/useTenantQuery";
 import { Plus, Search, Calendar, CheckCircle, Clock, XCircle, Play, Square, Eye, Edit, Users, Trash2, Pause } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -48,11 +50,18 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
     description: "",
     type: "complet",
     responsable: "",
-    participants: [""],
+    participants: [],
     secteurs: [""],
   });
 
   const { sessions, loading, createSession, startSession, stopSession, suspendSession, resumeSession, updateSession, deleteSession } = useInventorySessions();
+
+  // Options de participants depuis la liste du personnel
+  const { data: personnelList } = usePersonnelQuery();
+  const participantOptions: MultiSelectOption[] = (personnelList || []).map((p: any) => ({
+    value: `${p.prenoms} ${p.noms}`,
+    label: `${p.prenoms} ${p.noms}`,
+  }));
 
   const handleViewSession = (sessionId: string) => {
     if (onViewSession) {
@@ -114,7 +123,7 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
         secteurs: newSession.secteurs.filter((s) => s.trim() !== ""),
       });
       setIsCreateDialogOpen(false);
-      setNewSession({ nom: "", description: "", type: "complet", responsable: "", participants: [""], secteurs: [""] });
+      setNewSession({ nom: "", description: "", type: "complet", responsable: "", participants: [], secteurs: [""] });
     } catch (error) {
       console.error("Erreur création session:", error);
     }
@@ -299,13 +308,14 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                     <Label htmlFor="participants" className="text-right">
                       Participants
                     </Label>
-                    <Textarea
-                      id="participants"
-                      className="col-span-3"
-                      placeholder="Participants (un par ligne)"
-                      value={newSession.participants.join("\n")}
-                      onChange={(e) => setNewSession((prev) => ({ ...prev, participants: e.target.value.split("\n") }))}
-                    />
+                    <div className="col-span-3">
+                      <MultiSelect
+                        options={participantOptions}
+                        selected={newSession.participants}
+                        onSelectedChange={(selected) => setNewSession((prev) => ({ ...prev, participants: selected }))}
+                        placeholder="Sélectionner les participants"
+                      />
+                    </div>
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="secteurs" className="text-right">
@@ -397,15 +407,16 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                       <Label htmlFor="edit-participants" className="text-right">
                         Participants
                       </Label>
-                      <Textarea
-                        id="edit-participants"
-                        className="col-span-3"
-                        placeholder="Participants (un par ligne)"
-                        value={editingSession.participants.join("\n")}
-                        onChange={(e) =>
-                          setEditingSession((prev) => (prev ? { ...prev, participants: e.target.value.split("\n") } : null))
-                        }
-                      />
+                      <div className="col-span-3">
+                        <MultiSelect
+                          options={participantOptions}
+                          selected={editingSession.participants}
+                          onSelectedChange={(selected) =>
+                            setEditingSession((prev) => (prev ? { ...prev, participants: selected } : null))
+                          }
+                          placeholder="Sélectionner les participants"
+                        />
+                      </div>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="edit-secteurs" className="text-right">
