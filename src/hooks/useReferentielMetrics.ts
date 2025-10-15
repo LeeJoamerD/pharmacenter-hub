@@ -1,15 +1,28 @@
 import { useTenantQuery } from './useTenantQuery';
+import { useTenant } from '@/contexts/TenantContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useReferentielMetrics = () => {
-  const { useTenantQueryWithCache } = useTenantQuery();
+  const { tenantId } = useTenant();
 
-  // Fetch counts for each table
-  const { data: products = [] } = useTenantQueryWithCache(
-    ['products-count'],
-    'produits',
-    'id',
-    { is_active: true }
-  );
+  // Fetch count for products using count query
+  const { data: productsCount } = useQuery({
+    queryKey: ['products-count', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return 0;
+      const { count, error } = await supabase
+        .from('produits')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!tenantId,
+  });
+
+  const { useTenantQueryWithCache } = useTenantQuery();
 
   const { data: families = [] } = useTenantQueryWithCache(
     ['families-count'],
@@ -48,7 +61,7 @@ export const useReferentielMetrics = () => {
   );
 
   return {
-    produits: products?.length || 0,
+    produits: productsCount || 0,
     familles: families?.length || 0,
     formes: formes?.length || 0,
     rayons: rayons?.length || 0,
