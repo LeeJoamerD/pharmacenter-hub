@@ -3,6 +3,8 @@ import { useForm } from 'react-hook-form';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useLaboratories } from '@/hooks/useLaboratories';
 import { useProducts } from '@/hooks/useProducts';
+import { useProductsPaginated } from '@/hooks/useProductsPaginated';
+import { useDebouncedValue } from '@/hooks/use-debounce';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -97,12 +99,15 @@ interface TherapeuticClass {
 
 const ProductCatalogNew = () => {
   // États locaux
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [familleFilter, setFamilleFilter] = useState("all");
   const [rayonFilter, setRayonFilter] = useState("all");
   const [formeFilter, setFormeFilter] = useState("all");
   const [dciFilter, setDciFilter] = useState("all");
   const [classeFilter, setClasseFilter] = useState("all");
+  
+  // Debounce de la recherche pour éviter trop de requêtes
+  const searchTerm = useDebouncedValue(searchInput, 500);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
@@ -118,17 +123,29 @@ const ProductCatalogNew = () => {
   const { personnel } = useAuth();
   const { createProductDetail } = useProducts();
 
-  // Récupération des données
-  const { data: products = [], isLoading } = useTenantQueryWithCache(
-    ['products-catalog'],
-    'produits', 
-    `id, libelle_produit, code_cip, famille_id, rayon_id, forme_id, laboratoires_id, 
-     dci_id, classe_therapeutique_id, categorie_tarification_id, prix_achat, prix_vente_ht, 
-     prix_vente_ttc, tva, taux_tva, centime_additionnel, taux_centime_additionnel,
-     stock_limite, stock_alerte, is_active, created_at,
-     id_produit_source, quantite_unites_details_source, niveau_detail`,
-    { is_active: true }
+  // Récupération des données avec pagination
+  const {
+    data: paginatedData,
+    isLoading,
+    currentPage,
+    goToPage,
+    nextPage,
+    prevPage
+  } = useProductsPaginated(
+    50, // Page size
+    searchTerm,
+    {
+      famille_id: familleFilter !== 'all' ? familleFilter : undefined,
+      rayon_id: rayonFilter !== 'all' ? rayonFilter : undefined,
+      forme_id: formeFilter !== 'all' ? formeFilter : undefined,
+      dci_id: dciFilter !== 'all' ? dciFilter : undefined,
+      classe_therapeutique_id: classeFilter !== 'all' ? classeFilter : undefined,
+    }
   );
+
+  const products = paginatedData?.data || [];
+  const totalCount = paginatedData?.count || 0;
+  const totalPages = paginatedData?.totalPages || 1;
 
   const { data: families = [] } = useTenantQueryWithCache(
     ['families'],
@@ -166,21 +183,6 @@ const ProductCatalogNew = () => {
     'id, libelle_classe, systeme_anatomique'
   );
 
-  // Filtrage des produits
-  const filteredProducts = (() => {
-    return products.filter((product) => {
-      const matchesSearch = product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (product.code_cip?.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesFamille = !familleFilter || familleFilter === "all" || product.famille_id === familleFilter;
-      const matchesRayon = !rayonFilter || rayonFilter === "all" || product.rayon_id === rayonFilter;
-      const matchesForme = formeFilter === "all" || product.forme_id === formeFilter;
-      const matchesDci = dciFilter === "all" || product.dci_id === dciFilter;
-      const matchesClasse = classeFilter === "all" || product.classe_therapeutique_id === classeFilter;
-      
-      return matchesSearch && matchesFamille && matchesRayon && matchesForme && matchesDci && matchesClasse;
-    });
-  })();
-
   // Mutations
   const createMutation = useTenantMutation('produits', 'insert', {
     invalidateQueries: ['products-catalog'],
@@ -204,7 +206,7 @@ const ProductCatalogNew = () => {
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<Product>();
 
   const clearFilters = () => {
-    setSearchTerm("");
+    setSearchInput("");
     setFamilleFilter("all");
     setRayonFilter("all");
     setFormeFilter("all");
@@ -425,8 +427,8 @@ const ProductCatalogNew = () => {
             <Search className="h-4 w-4" />
             <Input
               placeholder="Rechercher un produit..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="w-64"
             />
           </div>
@@ -509,23 +511,30 @@ const ProductCatalogNew = () => {
 
         {/* Tableau des produits */}
         {isLoading ? (
-          <div className="text-center py-8">Chargement...</div>
+          <div className="text-center py-8">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+            <p className="mt-2 text-muted-foreground">Chargement des produits...</p>
+          </div>
         ) : (
-          <Table>
-             <TableHeader>
-                 <TableRow>
-                   <TableHead>Produit</TableHead>
-                   <TableHead>Code CIP</TableHead>
-                   <TableHead>Niveau</TableHead>
-                   <TableHead>Famille / Rayon / Forme</TableHead>
-                   <TableHead>Prix achat</TableHead>
-                   <TableHead>Prix vente TTC</TableHead>
-                   <TableHead>Stock</TableHead>
-                   <TableHead>Actions</TableHead>
-                 </TableRow>
-             </TableHeader>
-             <TableBody>
-                {filteredProducts.map((product) => (
+          <>
+            <div className="mb-4 text-sm text-muted-foreground">
+              Affichage de {products.length} produit(s) sur {totalCount} au total (Page {currentPage} sur {totalPages})
+            </div>
+            <Table>
+              <TableHeader>
+                  <TableRow>
+                    <TableHead>Produit</TableHead>
+                    <TableHead>Code CIP</TableHead>
+                    <TableHead>Niveau</TableHead>
+                    <TableHead>Famille / Rayon / Forme</TableHead>
+                    <TableHead>Prix achat</TableHead>
+                    <TableHead>Prix vente TTC</TableHead>
+                    <TableHead>Stock</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+              </TableHeader>
+              <TableBody>
+                 {products.map((product) => (
                   <TableRow key={product.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
@@ -612,6 +621,81 @@ const ProductCatalogNew = () => {
               ))}
             </TableBody>
           </Table>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Page {currentPage} sur {totalPages} ({totalCount} produits au total)
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={prevPage}
+                  disabled={currentPage === 1}
+                >
+                  Précédent
+                </Button>
+                
+                {/* Numéros de page */}
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    
+                    if (totalPages <= 5) {
+                      // Afficher toutes les pages
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      // Au début
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      // À la fin
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      // Au milieu
+                      pageNum = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => goToPage(pageNum)}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                  
+                  {totalPages > 5 && currentPage < totalPages - 2 && (
+                    <>
+                      <span className="px-2 flex items-center">...</span>
+                      <Button
+                        variant={currentPage === totalPages ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => goToPage(totalPages)}
+                      >
+                        {totalPages}
+                      </Button>
+                    </>
+                  )}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={nextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Suivant
+                </Button>
+              </div>
+            </div>
+          )}
+          </>
         )}
 
         {/* Dialog d'ajout/modification */}
