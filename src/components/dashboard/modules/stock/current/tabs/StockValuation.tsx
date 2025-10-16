@@ -1,58 +1,48 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DollarSign, Package, TrendingUp, TrendingDown, BarChart3, PieChart } from 'lucide-react';
-import { useCurrentStock } from '@/hooks/useCurrentStock';
+import { useStockValuationPaginated } from '@/hooks/useStockValuationPaginated';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const StockValuation = () => {
-  const { allStockData, families, rayons, isLoading } = useCurrentStock();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [rotationFilter, setRotationFilter] = useState('all');
+  const [sortField, setSortField] = useState<'valeur_stock' | 'stock_actuel' | 'libelle_produit'>('valeur_stock');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
-  // Calculs de valorisation
-  const totalStockValue = allStockData.reduce((sum, p) => sum + p.valeur_stock, 0);
-  const availableStockValue = allStockData.filter(p => p.stock_actuel > 0).reduce((sum, p) => sum + p.valeur_stock, 0);
-  const lowStockValue = allStockData.filter(p => p.statut_stock === 'faible' || p.statut_stock === 'critique').reduce((sum, p) => sum + p.valeur_stock, 0);
+  const {
+    valuationItems,
+    allItemsCount,
+    totalPages,
+    metrics,
+    valuationByFamily,
+    valuationByRayon,
+    topValueProducts,
+    isLoading,
+    error
+  } = useStockValuationPaginated({
+    searchTerm,
+    statusFilter,
+    rotationFilter,
+    sortField,
+    sortDirection,
+    currentPage,
+    itemsPerPage
+  });
 
-  // Valorisation par famille
-  const valuationByFamily = families.map((family: any) => {
-    const familyProducts = allStockData.filter(p => p.famille_id === family.id);
-    const value = familyProducts.reduce((sum, p) => sum + p.valeur_stock, 0);
-    const quantity = familyProducts.reduce((sum, p) => sum + p.stock_actuel, 0);
-    const percentage = totalStockValue > 0 ? (value / totalStockValue) * 100 : 0;
-    
-    return {
-      id: family.id,
-      name: family.libelle_famille,
-      value,
-      quantity,
-      percentage,
-      productCount: familyProducts.length
-    };
-  }).filter(f => f.value > 0).sort((a, b) => b.value - a.value);
-
-  // Valorisation par rayon
-  const valuationByRayon = rayons.map((rayon: any) => {
-    const rayonProducts = allStockData.filter(p => p.rayon_id === rayon.id);
-    const value = rayonProducts.reduce((sum, p) => sum + p.valeur_stock, 0);
-    const quantity = rayonProducts.reduce((sum, p) => sum + p.stock_actuel, 0);
-    const percentage = totalStockValue > 0 ? (value / totalStockValue) * 100 : 0;
-    
-    return {
-      id: rayon.id,
-      name: rayon.libelle_rayon,
-      value,
-      quantity,
-      percentage,
-      productCount: rayonProducts.length
-    };
-  }).filter(r => r.value > 0).sort((a, b) => b.value - a.value);
-
-  // Top 20 produits par valorisation
-  const topValueProducts = allStockData
-    .filter(p => p.valeur_stock > 0)
-    .sort((a, b) => b.valeur_stock - a.valeur_stock)
-    .slice(0, 20);
+  // Calculs de valorisation - utilisation des métriques du hook
+  const totalStockValue = metrics.totalStockValue;
+  const availableStockValue = metrics.availableStockValue;
+  const lowStockValue = metrics.lowStockValue;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -73,8 +63,80 @@ const StockValuation = () => {
     return { label: 'Très faible', color: 'bg-gray-100 text-gray-800' };
   };
 
+  if (error) {
+    return (
+      <div className="p-4 text-center text-red-600">
+        Erreur lors du chargement des données: {error}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Filtres et recherche */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Filtres de Valorisation</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Input
+                placeholder="Rechercher un produit..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Statut du stock" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="disponible">Disponible</SelectItem>
+                  <SelectItem value="faible">Stock faible</SelectItem>
+                  <SelectItem value="critique">Stock critique</SelectItem>
+                  <SelectItem value="rupture">Rupture</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Select value={rotationFilter} onValueChange={setRotationFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Rotation" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Toutes les rotations</SelectItem>
+                  <SelectItem value="rapide">Rotation rapide</SelectItem>
+                  <SelectItem value="normale">Rotation normale</SelectItem>
+                  <SelectItem value="lente">Rotation lente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Select value={`${sortField}-${sortDirection}`} onValueChange={(value) => {
+                const [field, direction] = value.split('-');
+                setSortField(field as 'valeur_stock' | 'stock_actuel' | 'libelle_produit');
+                setSortDirection(direction as 'asc' | 'desc');
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Trier par" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="valeur_stock-desc">Valorisation (décroissant)</SelectItem>
+                  <SelectItem value="valeur_stock-asc">Valorisation (croissant)</SelectItem>
+                  <SelectItem value="stock_actuel-desc">Stock (décroissant)</SelectItem>
+                  <SelectItem value="stock_actuel-asc">Stock (croissant)</SelectItem>
+                  <SelectItem value="libelle_produit-asc">Nom (A-Z)</SelectItem>
+                  <SelectItem value="libelle_produit-desc">Nom (Z-A)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Métriques globales de valorisation */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -125,7 +187,7 @@ const StockValuation = () => {
               <span className="text-sm font-medium">Valeur Moyenne</span>
             </div>
             <div className="text-2xl font-bold text-purple-600">
-              {formatCurrency(allStockData.length > 0 ? totalStockValue / allStockData.length : 0)}
+              {formatCurrency(allItemsCount > 0 ? totalStockValue / allItemsCount : 0)}
             </div>
             <p className="text-xs text-muted-foreground">Par produit</p>
           </CardContent>
@@ -145,26 +207,30 @@ const StockValuation = () => {
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="animate-pulse">
-                  <div className="h-12 bg-muted rounded"></div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2"></div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="space-y-4">
-              {valuationByFamily.slice(0, 10).map((family, index) => (
-                <div key={family.id} className="flex items-center gap-4 p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">{family.name}</span>
-                      <span className="text-sm font-mono">{formatCurrency(family.value)}</span>
-                    </div>
-                    <Progress value={family.percentage} className="h-2" />
-                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                      <span>{family.productCount} produits • {family.quantity} unités</span>
-                      <span>{family.percentage.toFixed(1)}%</span>
+              {valuationByFamily.slice(0, 10).map((family) => (
+                <div key={family.id} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{family.name}</span>
+                    <div className="text-right">
+                      <div className="text-sm font-semibold">{formatCurrency(family.value)}</div>
+                      <div className="text-xs text-muted-foreground">{family.percentage.toFixed(1)}%</div>
                     </div>
                   </div>
-                  <Badge variant="outline">#{index + 1}</Badge>
+                  <Progress value={family.percentage} className="h-2" />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{family.productCount} produits</span>
+                    <span>{family.quantity} unités</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -181,28 +247,42 @@ const StockValuation = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {valuationByRayon.slice(0, 8).map((rayon, index) => (
-              <div key={rayon.id} className="flex items-center gap-4 p-3 border rounded-lg">
-                <div className="flex-1">
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="animate-pulse">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{rayon.name}</span>
-                    <span className="text-sm font-mono">{formatCurrency(rayon.value)}</span>
+                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2"></div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {valuationByRayon.slice(0, 8).map((rayon) => (
+                <div key={rayon.id} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{rayon.name}</span>
+                    <div className="text-right">
+                      <div className="text-sm font-semibold">{formatCurrency(rayon.value)}</div>
+                      <div className="text-xs text-muted-foreground">{rayon.percentage.toFixed(1)}%</div>
+                    </div>
                   </div>
                   <Progress value={rayon.percentage} className="h-2" />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>{rayon.productCount} produits • {rayon.quantity} unités</span>
-                    <span>{rayon.percentage.toFixed(1)}%</span>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{rayon.productCount} produits</span>
+                    <span>{rayon.quantity} unités</span>
                   </div>
                 </div>
-                <Badge variant="outline">#{index + 1}</Badge>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Top produits par valorisation */}
+      {/* Top produits par valorisation avec pagination */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -273,6 +353,36 @@ const StockValuation = () => {
                 })}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Pagination pour le tableau principal */}
+          <div className="flex items-center justify-between mt-4">
+            <div className="text-sm text-muted-foreground">
+              Affichage de {((currentPage - 1) * itemsPerPage) + 1} à {Math.min(currentPage * itemsPerPage, allItemsCount)} sur {allItemsCount} produits
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Précédent
+              </Button>
+              <span className="text-sm">
+                Page {currentPage} sur {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Suivant
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

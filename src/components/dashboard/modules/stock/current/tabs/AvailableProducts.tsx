@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Package, Search, Filter, ShoppingCart, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileText, CheckSquare, AlertCircle, RefreshCw, PackagePlus, Edit } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCurrentStock } from '@/hooks/useCurrentStock';
+import { useCurrentStockPaginated } from '@/hooks/useCurrentStockPaginated';
+import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useToast } from '@/hooks/use-toast';
 import { exportToExcel, exportToPDF } from '@/utils/exportUtils';
 import { NotificationBadge } from '../NotificationBadge';
@@ -21,18 +22,33 @@ import QuickLotCreationModal from '../modals/QuickLotCreationModal';
 import EditProductThresholdsModal from '../modals/EditProductThresholdsModal';
 
 const AvailableProducts = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFamily, setSelectedFamily] = useState('');
+  const [selectedRayon, setSelectedRayon] = useState('');
+  const [sortBy, setSortBy] = useState('libelle_produit');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
+  
   const { 
     products, 
     allProductsCount,
     families, 
     rayons, 
-    filters,
-    sorting,
-    pagination,
     isLoading,
     metrics,
+    totalPages,
     refreshData 
-  } = useCurrentStock();
+  } = useCurrentStockPaginated({
+    search: debouncedSearchTerm,
+    famille: selectedFamily,
+    rayon: selectedRayon,
+    sortBy,
+    sortOrder,
+    page: currentPage,
+    limit: 50
+  });
 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -262,7 +278,12 @@ const AvailableProducts = () => {
         <h2 className="text-2xl font-bold">Stock Disponible</h2>
         <NotificationBadge 
           count={metrics.criticalStockProducts + metrics.lowStockProducts}
-          onClick={() => filters.setStockFilter('critical')}
+          onClick={() => {
+            setSelectedFamily('');
+            setSelectedRayon('');
+            setSearchTerm('');
+            setCurrentPage(1);
+          }}
         />
       </div>
       
@@ -282,18 +303,18 @@ const AvailableProducts = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Rechercher un produit..."
-                value={filters.searchTerm}
-                onChange={(e) => filters.setSearchTerm(e.target.value)}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
 
-            <Select value={filters.selectedFamily} onValueChange={filters.setSelectedFamily}>
+            <Select value={selectedFamily} onValueChange={setSelectedFamily}>
               <SelectTrigger>
                 <SelectValue placeholder="Toutes les familles" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Toutes les familles</SelectItem>
+                <SelectItem value="">Toutes les familles</SelectItem>
                 {families.map((family: any) => (
                   <SelectItem key={family.id} value={family.id}>
                     {family.libelle_famille}
@@ -302,12 +323,12 @@ const AvailableProducts = () => {
               </SelectContent>
             </Select>
 
-            <Select value={filters.selectedRayon} onValueChange={filters.setSelectedRayon}>
+            <Select value={selectedRayon} onValueChange={setSelectedRayon}>
               <SelectTrigger>
                 <SelectValue placeholder="Tous les rayons" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous les rayons</SelectItem>
+                <SelectItem value="">Tous les rayons</SelectItem>
                 {rayons.map((rayon: any) => (
                   <SelectItem key={rayon.id} value={rayon.id}>
                     {rayon.libelle_rayon}
@@ -316,55 +337,43 @@ const AvailableProducts = () => {
               </SelectContent>
             </Select>
 
-            <Select value={filters.stockFilter} onValueChange={filters.setStockFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Statut du stock" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="available">Disponibles</SelectItem>
-                <SelectItem value="low">Stock faible</SelectItem>
-                <SelectItem value="critical">Critique</SelectItem>
-                <SelectItem value="out">Rupture</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Select 
+                value={sortBy} 
+                onValueChange={(value) => setSortBy(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Trier par" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="libelle_produit">Nom</SelectItem>
+                  <SelectItem value="stock_actuel">Stock actuel</SelectItem>
+                  <SelectItem value="valorisation">Valorisation</SelectItem>
+                  <SelectItem value="rotation">Rotation</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              >
+                <ArrowUpDown className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           
           <div className="flex items-center gap-2 mt-4">
-            <Select 
-              value={sorting.sortBy} 
-              onValueChange={(value) => sorting.setSortBy(value as 'name' | 'stock' | 'value' | 'rotation')}
-            >
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Trier par" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="name">Nom</SelectItem>
-                <SelectItem value="stock">Stock actuel</SelectItem>
-                <SelectItem value="value">Valorisation</SelectItem>
-                <SelectItem value="rotation">Rotation</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={() => sorting.setSortOrder(sorting.sortOrder === 'asc' ? 'desc' : 'asc')}
-            >
-              <ArrowUpDown className="h-4 w-4" />
-            </Button>
-            
             <Button onClick={handleRefresh} variant="outline" className="gap-2">
               <RefreshCw className="h-4 w-4" />
               Actualiser
             </Button>
             
             <Button onClick={() => {
-              filters.setSearchTerm('');
-              filters.setSelectedFamily('');
-              filters.setSelectedRayon('');
-              filters.setStockFilter('all');
-              pagination.setCurrentPage(1);
+              setSearchTerm('');
+              setSelectedFamily('');
+              setSelectedRayon('');
+              setCurrentPage(1);
             }} variant="outline">
               Réinitialiser
             </Button>
@@ -576,11 +585,11 @@ const AvailableProducts = () => {
           )}
           
           {/* Pagination */}
-          {!isLoading && pagination.totalPages > 1 && (
+          {!isLoading && totalPages > 1 && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t">
               <div className="text-sm text-muted-foreground">
-                Affichage de {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} à{' '}
-                {Math.min(pagination.currentPage * pagination.itemsPerPage, allProductsCount)} sur{' '}
+                Affichage de {((currentPage - 1) * 50) + 1} à{' '}
+                {Math.min(currentPage * 50, allProductsCount)} sur{' '}
                 {allProductsCount} produits
               </div>
               
@@ -588,36 +597,36 @@ const AvailableProducts = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => pagination.setCurrentPage(pagination.currentPage - 1)}
-                  disabled={pagination.currentPage === 1}
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Précédent
                 </Button>
                 
                 <div className="flex items-center gap-1">
-                  {[...Array(pagination.totalPages)].map((_, i) => {
+                  {[...Array(totalPages)].map((_, i) => {
                     const pageNum = i + 1;
                     // Show first page, last page, current page, and pages around current
                     if (
                       pageNum === 1 ||
-                      pageNum === pagination.totalPages ||
-                      (pageNum >= pagination.currentPage - 1 && pageNum <= pagination.currentPage + 1)
+                      pageNum === totalPages ||
+                      (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
                     ) {
                       return (
                         <Button
                           key={pageNum}
-                          variant={pageNum === pagination.currentPage ? "default" : "outline"}
+                          variant={pageNum === currentPage ? "default" : "outline"}
                           size="sm"
-                          onClick={() => pagination.setCurrentPage(pageNum)}
+                          onClick={() => setCurrentPage(pageNum)}
                           className="min-w-[40px]"
                         >
                           {pageNum}
                         </Button>
                       );
                     } else if (
-                      pageNum === pagination.currentPage - 2 ||
-                      pageNum === pagination.currentPage + 2
+                      pageNum === currentPage - 2 ||
+                      pageNum === currentPage + 2
                     ) {
                       return <span key={pageNum} className="px-2">...</span>;
                     }
@@ -628,8 +637,8 @@ const AvailableProducts = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => pagination.setCurrentPage(pagination.currentPage + 1)}
-                  disabled={pagination.currentPage === pagination.totalPages}
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
                 >
                   Suivant
                   <ChevronRight className="h-4 w-4" />

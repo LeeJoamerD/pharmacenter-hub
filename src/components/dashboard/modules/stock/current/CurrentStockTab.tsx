@@ -7,12 +7,12 @@ import LowStockProducts from './tabs/LowStockProducts';
 import OutOfStockProducts from './tabs/OutOfStockProducts';
 import StockValuation from './tabs/StockValuation';
 import QuickStockCheck from './tabs/QuickStockCheck';
-import { useCurrentStockDirect } from '@/hooks/useCurrentStockDirect';
+import { useCurrentStockPaginated } from '@/hooks/useCurrentStockPaginated';
 
 const CurrentStockTab = () => {
-  const { metrics, loading, error } = useCurrentStockDirect();
+  const { metrics, isLoading, error } = useCurrentStockPaginated();
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -36,7 +36,7 @@ const CurrentStockTab = () => {
           <CardContent className="p-6">
             <div className="text-center">
               <div className="text-destructive mb-2">Erreur de chargement du stock actuel</div>
-              <div className="text-sm text-muted-foreground mb-4">{error}</div>
+              <div className="text-sm text-muted-foreground mb-4">{error?.message || 'Une erreur est survenue'}</div>
               <button 
                 onClick={() => window.location.reload()} 
                 className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
@@ -105,7 +105,7 @@ const CurrentStockTab = () => {
                 style: 'currency', 
                 currency: 'XAF',
                 minimumFractionDigits: 0 
-              }).format(metrics.totalStockValue)}
+              }).format(metrics.totalValue)}
             </div>
           </CardContent>
         </Card>

@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Search, Filter, AlertTriangle, Package, TrendingDown, Download, ShoppingCart, Bell, FileText, FileSpreadsheet, FileDown, X, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
-import { useLowStockData } from "@/hooks/useLowStockData";
+import { useLowStockDataPaginated } from "@/hooks/useLowStockDataPaginated";
+import { useDebouncedValue } from "@/hooks/use-debounce";
 import { useToast } from "@/hooks/use-toast";
 import { OrderProductModal } from "../modals/OrderProductModal";
 import { CreateAlertModal } from "../modals/CreateAlertModal";
@@ -17,36 +18,45 @@ import { EmergencyOrderModal } from "../modals/EmergencyOrderModal";
 import { ExportService } from "@/services/ExportService";
 import { LowStockTableSkeleton } from "./LowStockTableSkeleton";
 import { FadeIn } from "@/components/FadeIn";
-import type { LowStockItem } from "@/hooks/useLowStockData";
+import type { LowStockItem } from "@/hooks/useLowStockDataPaginated";
 
 type SortField = 'nomProduit' | 'quantiteActuelle' | 'seuilMinimum' | 'valeurStock' | 'dernierMouvement' | 'statut';
 type SortDirection = 'asc' | 'desc';
 
 export const LowStockProducts = () => {
   const { toast } = useToast();
+  
+  // Local state for filters and pagination
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [sortField, setSortField] = useState<SortField>('statut');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
+  
   const {
     lowStockItems,
+    allItemsCount,
     metrics,
     categories,
-    filters,
+    totalPages,
     isLoading,
     refetch,
-  } = useLowStockData();
-
-  // Debug log
-  useEffect(() => {
-    console.log('🎯 [COMPONENT] Low Stock Items:', lowStockItems.length);
-    console.log('🎯 [COMPONENT] Metrics:', metrics);
-    console.log('🎯 [COMPONENT] Categories:', categories.length);
-  }, [lowStockItems, metrics, categories]);
+  } = useLowStockDataPaginated({
+    search: debouncedSearchTerm,
+    category: categoryFilter,
+    status: statusFilter,
+    sortBy: sortField,
+    sortOrder: sortDirection,
+    page: currentPage,
+    limit: 50
+  });
 
   // Selection state
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
-
-  // Sorting state
-  const [sortField, setSortField] = useState<SortField>('statut');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   // Modal states
   const [orderModalOpen, setOrderModalOpen] = useState(false);
@@ -169,29 +179,6 @@ export const LowStockProducts = () => {
     }
   };
 
-  // Sort items
-  const sortedItems = [...lowStockItems].sort((a, b) => {
-    let aValue: any = a[sortField];
-    let bValue: any = b[sortField];
-
-    // Handle status sorting with priority
-    if (sortField === 'statut') {
-      const statusPriority = { critique: 3, faible: 2, attention: 1 };
-      aValue = statusPriority[a.statut];
-      bValue = statusPriority[b.statut];
-    }
-
-    // Handle date sorting
-    if (sortField === 'dernierMouvement') {
-      aValue = a.dernierMouvement ? new Date(a.dernierMouvement).getTime() : 0;
-      bValue = b.dernierMouvement ? new Date(b.dernierMouvement).getTime() : 0;
-    }
-
-    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-    return 0;
-  });
-
   // Get status badge with improved styling
   const getStatusBadge = (statut: string) => {
     const configs = {
@@ -300,15 +287,15 @@ export const LowStockProducts = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Rechercher par nom, code ou DCI..."
-                value={filters.searchTerm}
-                onChange={(e) => filters.setSearchTerm(e.target.value)}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
             
             <Select
-              value={filters.categoryFilter}
-              onValueChange={filters.setCategoryFilter}
+              value={categoryFilter || 'all'}
+              onValueChange={(value) => setCategoryFilter(value === 'all' ? '' : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Toutes les catégories" />
@@ -324,8 +311,8 @@ export const LowStockProducts = () => {
             </Select>
 
             <Select
-              value={filters.statusFilter}
-              onValueChange={filters.setStatusFilter}
+              value={statusFilter || 'all'}
+              onValueChange={(value) => setStatusFilter(value === 'all' ? '' : value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Tous les statuts" />
@@ -341,7 +328,8 @@ export const LowStockProducts = () => {
 
             {lowStockItems.length > 0 && (
               <p className="text-sm text-muted-foreground">
-                <strong>{lowStockItems.length}</strong> produit{lowStockItems.length > 1 ? 's' : ''} trouvé{lowStockItems.length > 1 ? 's' : ''}
+                <strong>{allItemsCount}</strong> produit{allItemsCount > 1 ? 's' : ''} au total, 
+                <strong> {lowStockItems.length}</strong> affiché{lowStockItems.length > 1 ? 's' : ''}
               </p>
             )}
           </div>
@@ -510,7 +498,7 @@ export const LowStockProducts = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedItems.length === 0 ? (
+                  {lowStockItems.length === 0 ? (
                     <tr>
                       <td colSpan={12} className="text-center py-12 text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
@@ -520,7 +508,7 @@ export const LowStockProducts = () => {
                       </td>
                     </tr>
                   ) : (
-                    sortedItems.map((item, index) => (
+                    lowStockItems.map((item, index) => (
                       <tr 
                         key={item.id} 
                         className="border-b hover:bg-muted/50 transition-colors group"
@@ -617,11 +605,38 @@ export const LowStockProducts = () => {
           </div>
 
           {/* Mobile summary info */}
-          {sortedItems.length > 0 && (
+          {lowStockItems.length > 0 && (
             <div className="mt-4 pt-4 border-t lg:hidden">
               <p className="text-xs text-muted-foreground text-center">
                 Faites défiler horizontalement pour voir plus de détails
               </p>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Page {currentPage} sur {totalPages}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Précédent
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Suivant
+                </Button>
+              </div>
             </div>
           )}
         </Card>

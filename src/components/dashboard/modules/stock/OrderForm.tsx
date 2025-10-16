@@ -19,6 +19,8 @@ import {
   ShoppingCart
 } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
+import { useProductsForOrders } from '@/hooks/useProductsForOrders';
+import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
 import { calculateFinancials } from '@/lib/utils';
@@ -26,6 +28,7 @@ import { OrderStatusValidationService } from '@/services/orderStatusValidationSe
 
 interface OrderLine {
   id: string;
+  produit_id: string; // ID du produit pour la sauvegarde
   produit: string;
   reference: string;
   quantite: number;
@@ -54,6 +57,19 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   const { products } = useProducts();
   const { settings } = useSystemSettings();
 
+  // Recherche débouncée pour optimiser les performances
+  const debouncedSearchTerm = useDebouncedValue(searchProduct, 300);
+  
+  // Hook pour la recherche paginée de produits
+  const {
+    products: searchResults,
+    isLoading: isSearching,
+    hasMore,
+    loadMore,
+    resetSearch,
+    totalCount
+  } = useProductsForOrders(debouncedSearchTerm, 50);
+
   // Initialize system settings rates
   useEffect(() => {
     if (settings) {
@@ -62,14 +78,17 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
     }
   }, [settings]);
 
-  const filteredProducts = products.filter(product =>
-    product.libelle_produit.toLowerCase().includes(searchProduct.toLowerCase()) ||
-    (product.code_cip && product.code_cip.toLowerCase().includes(searchProduct.toLowerCase()))
-  );
+  // Réinitialiser la recherche quand le terme de recherche change
+  useEffect(() => {
+    if (debouncedSearchTerm !== searchProduct) {
+      resetSearch();
+    }
+  }, [debouncedSearchTerm, resetSearch, searchProduct]);
 
   const addOrderLine = (product: any) => {
     const newLine: OrderLine = {
       id: Date.now().toString(),
+      produit_id: product.id, // Stocker l'ID du produit
       produit: product.libelle_produit,
       reference: product.code_cip || 'N/A',
       quantite: 1,
@@ -162,7 +181,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
         date_commande: (document.getElementById('dateCommande') as HTMLInputElement)?.value || new Date().toISOString().split('T')[0],
         notes: notes,
         lignes: orderLines.map(line => ({
-          produit_id: products.find(p => p.libelle_produit === line.produit)?.id,
+          produit_id: line.produit_id, // Utiliser l'ID stocké directement
           quantite_commandee: line.quantite,
           prix_achat_unitaire_attendu: line.prixUnitaire
         }))
@@ -284,23 +303,60 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
             </div>
           </div>
 
-          {searchProduct && filteredProducts.length > 0 && (
+          {searchProduct && (
             <div className="border rounded-lg p-4 mb-4 bg-muted/50">
-              <h4 className="font-medium mb-3">Produits trouvés :</h4>
-              <div className="space-y-2">
-                 {filteredProducts.map(product => (
-                   <div key={product.id} className="flex items-center justify-between p-2 bg-background rounded border">
-                     <div>
-                       <span className="font-medium">{product.libelle_produit}</span>
-                       <span className="text-muted-foreground ml-2">({product.code_cip || 'N/A'})</span>
-                       <Badge variant="outline" className="ml-2">{(product.prix_achat || 0).toLocaleString()} F CFA</Badge>
-                     </div>
-                     <Button size="sm" onClick={() => addOrderLine(product)}>
-                       <Plus className="h-4 w-4" />
-                     </Button>
-                   </div>
-                 ))}
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium">
+                  Produits trouvés {totalCount > 0 && `(${totalCount} au total)`}
+                </h4>
+                {isSearching && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    Recherche...
+                  </div>
+                )}
               </div>
+              
+              {searchResults.length > 0 ? (
+                <div className="space-y-2">
+                  {searchResults.map(product => (
+                    <div key={product.id} className="flex items-center justify-between p-2 bg-background rounded border">
+                      <div>
+                        <span className="font-medium">{product.libelle_produit}</span>
+                        <span className="text-muted-foreground ml-2">({product.code_cip || 'N/A'})</span>
+                        <Badge variant="outline" className="ml-2">{(product.prix_achat || 0).toLocaleString()} F CFA</Badge>
+                      </div>
+                      <Button size="sm" onClick={() => addOrderLine(product)}>
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  {hasMore && (
+                    <div className="flex justify-center pt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={loadMore}
+                        disabled={isSearching}
+                        size="sm"
+                      >
+                        {isSearching ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                            Chargement...
+                          </>
+                        ) : (
+                          <>Voir plus de produits</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : !isSearching && debouncedSearchTerm && (
+                <div className="text-center py-4 text-muted-foreground">
+                  Aucun produit trouvé pour "{debouncedSearchTerm}"
+                </div>
+              )}
             </div>
           )}
         </CardContent>

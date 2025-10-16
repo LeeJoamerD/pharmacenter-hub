@@ -3,42 +3,38 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Package, CheckCircle, XCircle, AlertTriangle, BarChart3 } from 'lucide-react';
-import { useCurrentStock } from '@/hooks/useCurrentStock';
+import { Search, Package, CheckCircle, XCircle, AlertTriangle, BarChart3, Loader2 } from 'lucide-react';
+import { useQuickStockSearch } from '@/hooks/useQuickStockSearch';
 
 const QuickStockCheck = () => {
-  const { products, isLoading } = useCurrentStock();
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const { 
+    products: searchResults, 
+    totalCount,
+    hasMore,
+    isLoading: isSearching, 
+    loadMore,
+    resetSearch 
+  } = useQuickStockSearch(searchQuery, 10);
 
   const handleSearch = (query = searchQuery) => {
     const searchTerm = query.trim();
     if (!searchTerm) {
-      setSearchResults([]);
+      resetSearch();
       return;
     }
-
-    setIsSearching(true);
-    
-    // Recherche immédiate dans les produits
-    const results = products.filter(product => 
-      product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.code_cip.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (product.famille_libelle && product.famille_libelle.toLowerCase().includes(searchTerm.toLowerCase()))
-    ).slice(0, 10);
-    
-    // Simulation d'un délai pour une meilleure UX
-    setTimeout(() => {
-      setSearchResults(results);
-      setIsSearching(false);
-    }, 200);
+    // La recherche est maintenant gérée automatiquement par le hook
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSearch();
     }
+  };
+
+  const handleQuickSearch = (term: string) => {
+    setSearchQuery(term);
+    // Le hook se charge automatiquement de la recherche avec debounce
   };
 
   const getStockIcon = (status: string) => {
@@ -103,18 +99,25 @@ const QuickStockCheck = () => {
                 <Input
                   placeholder="Rechercher un produit (nom, code, famille)..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleQuickSearch(e.target.value)}
                   onKeyPress={handleKeyPress}
                   className="pl-10 text-lg"
-                  disabled={isLoading}
+                  disabled={isSearching}
                 />
               </div>
               <Button 
                 onClick={() => handleSearch()}
-                disabled={isLoading || isSearching || !searchQuery.trim()}
+                disabled={isSearching || !searchQuery.trim()}
                 size="lg"
               >
-                {isSearching ? 'Recherche...' : 'Vérifier'}
+                {isSearching ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Recherche...
+                  </>
+                ) : (
+                  'Vérifier'
+                )}
               </Button>
             </div>
           </div>
@@ -134,10 +137,7 @@ const QuickStockCheck = () => {
             <Button 
               variant="outline" 
               className="h-auto p-3 flex flex-col gap-1"
-              onClick={() => {
-                setSearchQuery('paracétamol');
-                handleSearch('paracétamol');
-              }}
+              onClick={() => handleQuickSearch('paracétamol')}
             >
               <Package className="h-4 w-4" />
               <span className="text-xs">Paracétamol</span>
@@ -145,10 +145,7 @@ const QuickStockCheck = () => {
             <Button 
               variant="outline" 
               className="h-auto p-3 flex flex-col gap-1"
-              onClick={() => {
-                setSearchQuery('amoxicilline');
-                handleSearch('amoxicilline');
-              }}
+              onClick={() => handleQuickSearch('amoxicilline')}
             >
               <Package className="h-4 w-4" />
               <span className="text-xs">Amoxicilline</span>
@@ -156,10 +153,7 @@ const QuickStockCheck = () => {
             <Button 
               variant="outline" 
               className="h-auto p-3 flex flex-col gap-1"
-              onClick={() => {
-                setSearchQuery('vitamine');
-                handleSearch('vitamine');
-              }}
+              onClick={() => handleQuickSearch('vitamine')}
             >
               <Package className="h-4 w-4" />
               <span className="text-xs">Vitamines</span>
@@ -167,10 +161,7 @@ const QuickStockCheck = () => {
             <Button 
               variant="outline" 
               className="h-auto p-3 flex flex-col gap-1"
-              onClick={() => {
-                setSearchQuery('sirop');
-                handleSearch('sirop');
-              }}
+              onClick={() => handleQuickSearch('sirop')}
             >
               <Package className="h-4 w-4" />
               <span className="text-xs">Sirops</span>
@@ -186,9 +177,9 @@ const QuickStockCheck = () => {
             <CardTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5" />
               Résultats de Vérification
-              {searchResults.length > 0 && (
+              {totalCount > 0 && (
                 <Badge variant="outline">
-                  {searchResults.length} trouvé{searchResults.length > 1 ? 's' : ''}
+                  {searchResults.length} affiché{searchResults.length > 1 ? 's' : ''} sur {totalCount} trouvé{totalCount > 1 ? 's' : ''}
                 </Badge>
               )}
             </CardTitle>
@@ -257,7 +248,7 @@ const QuickStockCheck = () => {
                       <Button size="sm" disabled={product.stock_actuel === 0}>
                         Vendre
                       </Button>
-                      {product.statut_stock === 'faible' || product.statut_stock === 'critique' && (
+                      {(product.statut_stock === 'faible' || product.statut_stock === 'critique') && (
                         <Button size="sm" variant="outline">
                           Commander
                         </Button>
@@ -268,6 +259,27 @@ const QuickStockCheck = () => {
                     </div>
                   </div>
                 ))}
+
+                {/* Bouton "Voir plus" pour la pagination */}
+                {hasMore && (
+                  <div className="text-center pt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={loadMore}
+                      disabled={isSearching}
+                      className="w-full"
+                    >
+                      {isSearching ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Chargement...
+                        </>
+                      ) : (
+                        `Voir plus de produits (${totalCount - searchResults.length} restants)`
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

@@ -2,19 +2,52 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { XCircle, AlertCircle, ShoppingCart, Clock, TrendingDown } from 'lucide-react';
-import { useCurrentStock, CurrentStockItem } from '@/hooks/useCurrentStock';
+import { XCircle, AlertCircle, ShoppingCart, Clock, TrendingDown, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { useOutOfStockDataPaginated } from '@/hooks/useOutOfStockDataPaginated';
+import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useToast } from '@/hooks/use-toast';
 import { OutOfStockEmergencyOrderModal } from '../modals/OutOfStockEmergencyOrderModal';
 import { SupplierAlertModal } from '../modals/SupplierAlertModal';
 import { SubstituteProductSearchModal } from '../modals/SubstituteProductSearchModal';
 import { OrderOutOfStockProductModal } from '../modals/OrderOutOfStockProductModal';
 import { SubstituteIndividualModal } from '../modals/SubstituteIndividualModal';
+import type { OutOfStockItem } from '@/hooks/useOutOfStockDataPaginated';
+
+type SortField = 'libelle_produit' | 'date_derniere_sortie' | 'rotation' | 'potential_loss' | 'days_out_of_stock';
+type SortDirection = 'asc' | 'desc';
 
 const OutOfStockProducts = () => {
-  const { allStockData, isLoading } = useCurrentStock();
   const { toast } = useToast();
+  
+  // Local state for filters and pagination
+  const [searchTerm, setSearchTerm] = useState('');
+  const [rotationFilter, setRotationFilter] = useState('');
+  const [urgencyFilter, setUrgencyFilter] = useState('');
+  const [sortField, setSortField] = useState<SortField>('date_derniere_sortie');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
+  
+  const {
+    outOfStockItems,
+    allItemsCount,
+    metrics,
+    totalPages,
+    isLoading,
+    refetch,
+  } = useOutOfStockDataPaginated({
+    search: debouncedSearchTerm,
+    rotation: rotationFilter,
+    urgency: urgencyFilter,
+    sortBy: sortField,
+    sortOrder: sortDirection,
+    page: currentPage,
+    limit: 50
+  });
   
   // États pour les modals
   const [emergencyOrderOpen, setEmergencyOrderOpen] = useState(false);
@@ -22,7 +55,7 @@ const OutOfStockProducts = () => {
   const [substituteSearchOpen, setSubstituteSearchOpen] = useState(false);
   const [orderProductOpen, setOrderProductOpen] = useState(false);
   const [substituteIndividualOpen, setSubstituteIndividualOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<CurrentStockItem | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<OutOfStockItem | null>(null);
 
   const handleUrgentMultipleOrder = () => {
     setEmergencyOrderOpen(true);
@@ -36,17 +69,25 @@ const OutOfStockProducts = () => {
     setSubstituteSearchOpen(true);
   };
 
-  const handleOrder = (product: CurrentStockItem) => {
+  const handleOrder = (product: OutOfStockItem) => {
     setSelectedProduct(product);
     setOrderProductOpen(true);
   };
 
-  const handleSubstitute = (product: CurrentStockItem) => {
+  const handleSubstitute = (product: OutOfStockItem) => {
     setSelectedProduct(product);
     setSubstituteIndividualOpen(true);
   };
 
-  const outOfStockProducts = allStockData.filter(p => p.statut_stock === 'rupture');
+  // Sorting function
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   const getDaysSinceLastStock = (lastExitDate: string | undefined) => {
     if (!lastExitDate) return null;
@@ -69,6 +110,16 @@ const OutOfStockProducts = () => {
     return { level: 'low', color: 'bg-blue-100 text-blue-800', label: 'Faible' };
   };
 
+  // Sort icon helper
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    }
+    return sortDirection === 'asc' ? 
+      <ArrowUp className="h-3 w-3 ml-1" /> : 
+      <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
   return (
     <div className="space-y-6">
       {/* Statistiques des ruptures */}
@@ -80,7 +131,7 @@ const OutOfStockProducts = () => {
               <span className="text-sm font-medium">Total Ruptures</span>
             </div>
             <div className="text-2xl font-bold text-red-600">
-              {outOfStockProducts.length}
+              {metrics.totalItems}
             </div>
             <p className="text-xs text-muted-foreground">Produits indisponibles</p>
           </CardContent>
@@ -93,9 +144,7 @@ const OutOfStockProducts = () => {
               <span className="text-sm font-medium">Ruptures Critiques</span>
             </div>
             <div className="text-2xl font-bold text-red-700">
-              {outOfStockProducts.filter(p => 
-                getUrgencyLevel(p.date_derniere_sortie, p.rotation).level === 'critical'
-              ).length}
+              {metrics.criticalItems}
             </div>
             <p className="text-xs text-muted-foreground">Forte rotation</p>
           </CardContent>
@@ -108,7 +157,7 @@ const OutOfStockProducts = () => {
               <span className="text-sm font-medium">Rotation Rapide</span>
             </div>
             <div className="text-2xl font-bold text-orange-600">
-              {outOfStockProducts.filter(p => p.rotation === 'rapide').length}
+              {metrics.rapidRotationItems}
             </div>
             <p className="text-xs text-muted-foreground">Priorité haute</p>
           </CardContent>
@@ -121,15 +170,72 @@ const OutOfStockProducts = () => {
               <span className="text-sm font-medium">Ruptures Récentes</span>
             </div>
             <div className="text-2xl font-bold text-blue-600">
-              {outOfStockProducts.filter(p => {
-                const days = getDaysSinceLastStock(p.date_derniere_sortie);
-                return days && days <= 7;
-              }).length}
+              {metrics.recentOutOfStockItems}
             </div>
             <p className="text-xs text-muted-foreground">Dernière semaine</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Filtres */}
+      <Card className="p-4">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Filter className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold">Filtres</h3>
+          </div>
+          
+          <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-none sm:w-64">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher un produit..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            <Select
+              value={rotationFilter || 'all'}
+              onValueChange={(value) => setRotationFilter(value === 'all' ? '' : value)}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Rotation" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes</SelectItem>
+                <SelectItem value="rapide">Rapide</SelectItem>
+                <SelectItem value="normale">Normale</SelectItem>
+                <SelectItem value="lente">Lente</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={urgencyFilter || 'all'}
+              onValueChange={(value) => setUrgencyFilter(value === 'all' ? '' : value)}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Urgence" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes</SelectItem>
+                <SelectItem value="critical">Critique</SelectItem>
+                <SelectItem value="high">Élevée</SelectItem>
+                <SelectItem value="medium">Moyenne</SelectItem>
+                <SelectItem value="low">Faible</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {outOfStockItems.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              <strong>{allItemsCount}</strong> produit{allItemsCount > 1 ? 's' : ''} au total, 
+              <strong> {outOfStockItems.length}</strong> affiché{outOfStockItems.length > 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
+      </Card>
 
       {/* Actions d'urgence */}
       <Card>
@@ -162,7 +268,7 @@ const OutOfStockProducts = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <XCircle className="h-5 w-5" />
-            Produits en Rupture de Stock ({outOfStockProducts.length})
+            Produits en Rupture de Stock ({allItemsCount})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -174,7 +280,7 @@ const OutOfStockProducts = () => {
                 </div>
               ))}
             </div>
-          ) : outOfStockProducts.length === 0 ? (
+          ) : allItemsCount === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <XCircle className="h-16 w-16 mx-auto mb-4 text-green-500" />
               <p className="text-lg font-medium text-green-600">Parfait !</p>
@@ -182,33 +288,64 @@ const OutOfStockProducts = () => {
               <p className="text-sm mt-2">Tous vos produits sont disponibles</p>
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Produit</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Famille/Rayon</TableHead>
-                    <TableHead>Rotation</TableHead>
-                    <TableHead>Dernière Sortie</TableHead>
-                    <TableHead>Durée Rupture</TableHead>
-                    <TableHead>Urgence</TableHead>
-                    <TableHead>Impact Ventes</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {outOfStockProducts
-                    .sort((a, b) => {
-                      // Trier par urgence puis par rotation
-                      const aUrgency = getUrgencyLevel(a.date_derniere_sortie, a.rotation);
-                      const bUrgency = getUrgencyLevel(b.date_derniere_sortie, b.rotation);
-                      
-                      const urgencyOrder = { critical: 0, high: 1, medium: 2, low: 3, unknown: 4 };
-                      return urgencyOrder[aUrgency.level as keyof typeof urgencyOrder] - 
-                             urgencyOrder[bUrgency.level as keyof typeof urgencyOrder];
-                    })
-                    .map((product) => {
+            <div className="space-y-4">
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSort('libelle_produit')}
+                      >
+                        <div className="flex items-center">
+                          Produit
+                          <SortIcon field="libelle_produit" />
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSort('code_cip')}
+                      >
+                        <div className="flex items-center">
+                          Code
+                          <SortIcon field="code_cip" />
+                        </div>
+                      </TableHead>
+                      <TableHead>Famille/Rayon</TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSort('rotation')}
+                      >
+                        <div className="flex items-center">
+                          Rotation
+                          <SortIcon field="rotation" />
+                        </div>
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSort('date_derniere_sortie')}
+                      >
+                        <div className="flex items-center">
+                          Dernière Sortie
+                          <SortIcon field="date_derniere_sortie" />
+                        </div>
+                      </TableHead>
+                      <TableHead>Durée Rupture</TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSort('urgency')}
+                      >
+                        <div className="flex items-center">
+                          Urgence
+                          <SortIcon field="urgency" />
+                        </div>
+                      </TableHead>
+                      <TableHead>Impact Ventes</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {outOfStockItems.map((product) => {
                       const urgency = getUrgencyLevel(product.date_derniere_sortie, product.rotation);
                       const daysSinceStock = getDaysSinceLastStock(product.date_derniere_sortie);
                       
@@ -292,8 +429,83 @@ const OutOfStockProducts = () => {
                         </TableRow>
                       );
                     })}
-                </TableBody>
-              </Table>
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      Affichage de {((currentPage - 1) * itemsPerPage) + 1} à {Math.min(currentPage * itemsPerPage, allItemsCount)} sur {allItemsCount} produits
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -303,19 +515,21 @@ const OutOfStockProducts = () => {
       <OutOfStockEmergencyOrderModal
         open={emergencyOrderOpen}
         onOpenChange={setEmergencyOrderOpen}
-        criticalItems={outOfStockProducts}
+        criticalItems={outOfStockItems.filter(item => 
+          getUrgencyLevel(item.date_derniere_sortie, item.rotation).level === 'critical'
+        )}
       />
       
       <SupplierAlertModal
         open={supplierAlertOpen}
         onOpenChange={setSupplierAlertOpen}
-        products={outOfStockProducts}
+        products={outOfStockItems}
       />
       
       <SubstituteProductSearchModal
         open={substituteSearchOpen}
         onOpenChange={setSubstituteSearchOpen}
-        products={outOfStockProducts}
+        products={outOfStockItems}
       />
       
       <OrderOutOfStockProductModal
