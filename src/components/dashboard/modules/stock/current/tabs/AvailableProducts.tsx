@@ -40,15 +40,20 @@ const AvailableProducts = () => {
     metrics,
     totalPages,
     refreshData 
-  } = useCurrentStockPaginated({
-    search: debouncedSearchTerm,
-    famille: selectedFamily,
-    rayon: selectedRayon,
-    sortBy,
-    sortOrder,
-    page: currentPage,
-    limit: 50
-  });
+  } = useCurrentStockPaginated(
+    debouncedSearchTerm,
+    50,
+    {
+      famille_id: selectedFamily,
+      rayon_id: selectedRayon,
+    },
+    {
+      field: sortBy === 'libelle_produit' ? 'name' : 
+             sortBy === 'stock_actuel' ? 'stock' : 
+             sortBy === 'valorisation' ? 'value' : 'rotation',
+      order: sortOrder
+    }
+  );
 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -396,7 +401,12 @@ const AvailableProducts = () => {
               <Button 
                 variant="destructive" 
                 size="sm"
-                onClick={() => filters.setStockFilter('critical')}
+                onClick={() => {
+                  setSelectedFamily('');
+                  setSelectedRayon('');
+                  setSearchTerm('');
+                  setCurrentPage(1);
+                }}
               >
                 Voir les produits
               </Button>
@@ -507,9 +517,9 @@ const AvailableProducts = () => {
                       <TableCell>
                         <div>
                           <div className="font-medium">{product.libelle_produit}</div>
-                          {product.date_derniere_sortie && (
+                          {product.derniere_sortie && (
                             <div className="text-sm text-muted-foreground">
-                              Dernière sortie: {new Date(product.date_derniere_sortie).toLocaleDateString()}
+                              Dernière sortie: {new Date(product.derniere_sortie).toLocaleDateString()}
                             </div>
                           )}
                         </div>

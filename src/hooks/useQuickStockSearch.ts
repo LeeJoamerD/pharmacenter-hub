@@ -44,13 +44,12 @@ export const useQuickStockSearch = (searchTerm: string = '', pageSize: number = 
           id,
           libelle_produit,
           code_cip,
-          stock_actuel,
           stock_limite,
           prix_vente_ttc,
-          statut_stock,
-          rotation,
-          familles!inner(libelle),
-          rayons!inner(libelle)
+          famille_id,
+          rayon_id,
+          famille_produit!inner(libelle_famille),
+          rayons_produits!inner(libelle_rayon)
         `, { count: 'exact' })
         .eq('tenant_id', tenantId)
         .eq('is_active', true);
@@ -59,8 +58,7 @@ export const useQuickStockSearch = (searchTerm: string = '', pageSize: number = 
       const searchLower = debouncedSearchTerm.toLowerCase();
       queryBuilder = queryBuilder.or(`
         libelle_produit.ilike.%${searchLower}%,
-        code_cip.ilike.%${searchLower}%,
-        familles.libelle.ilike.%${searchLower}%
+        code_cip.ilike.%${searchLower}%
       `);
 
       // Pagination
@@ -87,6 +85,18 @@ export const useQuickStockSearch = (searchTerm: string = '', pageSize: number = 
           // Calculer le stock actuel
           const stock_actuel = (lots || []).reduce((sum, lot) => sum + (lot.quantite_restante || 0), 0);
 
+          // Déterminer le statut du stock
+          let statut_stock = 'normal';
+          if (stock_actuel === 0) {
+            statut_stock = 'rupture';
+          } else if (item.stock_limite && stock_actuel <= item.stock_limite * 0.2) {
+            statut_stock = 'faible';
+          }
+
+          // Déterminer la rotation
+          const rotation = stock_actuel > (item.stock_limite || 0) ? 'lente' : 
+                          stock_actuel > (item.stock_limite || 0) * 0.5 ? 'normale' : 'rapide';
+
           return {
             id: item.id,
             libelle_produit: item.libelle_produit,
@@ -94,10 +104,10 @@ export const useQuickStockSearch = (searchTerm: string = '', pageSize: number = 
             stock_actuel,
             stock_limite: item.stock_limite || 0,
             prix_vente_ttc: item.prix_vente_ttc || 0,
-            statut_stock: 'normal', // Valeur par défaut car statut_stock n'existe pas dans la table produits
-            famille_libelle: item.familles?.libelle,
-            rayon_libelle: item.rayons?.libelle,
-            rotation: 'normale' // Valeur par défaut car rotation n'existe pas dans la table produits
+            statut_stock,
+            famille_libelle: item.famille_produit?.libelle_famille,
+            rayon_libelle: item.rayons_produits?.libelle_rayon,
+            rotation
           };
         })
       );

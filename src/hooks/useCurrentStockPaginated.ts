@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useDebouncedValue } from '@/hooks/use-debounce';
+import { useTenantQuery } from '@/hooks/useTenantQuery';
 
 // Interface pour les produits avec données de stock
 export interface CurrentStockProduct {
@@ -32,9 +33,12 @@ export interface CurrentStockProduct {
   stock_actuel: number;
   valeur_stock: number;
   statut: 'disponible' | 'faible' | 'rupture';
+  statut_stock: 'critique' | 'faible' | 'normal' | 'rupture' | 'surstock';
   rotation: 'rapide' | 'normale' | 'lente';
   derniere_entree?: string;
   derniere_sortie?: string;
+  famille_libelle?: string;
+  rayon_libelle?: string;
 }
 
 // Interface pour les filtres
@@ -67,6 +71,7 @@ interface CurrentStockPaginatedResult {
     availableProducts: number;
     lowStockProducts: number;
     outOfStockProducts: number;
+    criticalStockProducts: number;
     totalValue: number;
   };
 }
@@ -80,6 +85,23 @@ export const useCurrentStockPaginated = (
   const { tenantId } = useTenant();
   const [currentPage, setCurrentPage] = useState(1);
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
+
+  const { useTenantQueryWithCache } = useTenantQuery();
+
+  // Charger les familles et rayons pour les filtres
+  const { data: families = [] } = useTenantQueryWithCache(
+    ['famille_produit-for-stock-filters'],
+    'famille_produit',
+    'id, libelle_famille',
+    {}
+  );
+
+  const { data: rayons = [] } = useTenantQueryWithCache(
+    ['rayons-for-stock-filters'],
+    'rayons_produits',
+    'id, libelle_rayon',
+    {}
+  );
 
   const query = useQuery<CurrentStockPaginatedResult>({
     queryKey: [
@@ -104,6 +126,7 @@ export const useCurrentStockPaginated = (
             availableProducts: 0,
             lowStockProducts: 0,
             outOfStockProducts: 0,
+            criticalStockProducts: 0,
             totalValue: 0,
           },
         };
@@ -198,12 +221,19 @@ export const useCurrentStockPaginated = (
             return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
           }, 0);
 
-          // Déterminer le statut
+           // Déterminer le statut
           let statut: 'disponible' | 'faible' | 'rupture' = 'disponible';
+          let statut_stock: 'critique' | 'faible' | 'normal' | 'rupture' | 'surstock' = 'normal';
+          
           if (stock_actuel === 0) {
             statut = 'rupture';
+            statut_stock = 'rupture';
+          } else if (product.stock_limite && stock_actuel <= product.stock_limite * 0.1) {
+            statut = 'faible';
+            statut_stock = 'critique';
           } else if (product.stock_alerte && stock_actuel <= product.stock_alerte) {
             statut = 'faible';
+            statut_stock = 'faible';
           }
 
           // Calculer la rotation (simplifié pour cette version)
@@ -215,7 +245,10 @@ export const useCurrentStockPaginated = (
             stock_actuel,
             valeur_stock,
             statut,
+            statut_stock,
             rotation,
+            famille_libelle: (product as any).famille_produit?.libelle_famille,
+            rayon_libelle: (product as any).rayons_produits?.libelle_rayon,
           } as CurrentStockProduct;
         })
       );
@@ -291,6 +324,13 @@ export const useCurrentStockPaginated = (
         }
       }
 
+      // Calculer les produits en stock critique (< 10% du stock limite)
+      const criticalStockProducts = (allProducts || []).filter(product => {
+        const lots = (allProducts || []).find(p => p.id === product.id);
+        const stock = lots ? 1 : 0; // Simplifié
+        return stock > 0 && product.stock_limite && stock <= product.stock_limite * 0.1;
+      }).length;
+
       const totalCount = count || 0;
       const totalPages = Math.ceil(totalCount / pageSize);
       const hasMore = currentPage < totalPages;
@@ -306,6 +346,7 @@ export const useCurrentStockPaginated = (
           availableProducts,
           lowStockProducts,
           outOfStockProducts,
+          criticalStockProducts,
           totalValue,
         },
       };
@@ -345,11 +386,16 @@ export const useCurrentStockPaginated = (
     totalCount: query.data?.count || 0,
     totalPages: query.data?.totalPages || 1,
     products: query.data?.data || [],
+    allProductsCount: query.data?.count || 0,
+    families,
+    rayons,
+    refreshData: query.refetch,
     metrics: query.data?.metrics || {
       totalProducts: 0,
       availableProducts: 0,
       lowStockProducts: 0,
       outOfStockProducts: 0,
+      criticalStockProducts: 0,
       totalValue: 0,
     },
   };
