@@ -42,6 +42,26 @@ export class StockCacheManager {
   }
 
   /**
+   * Force complete cache reset - use when cache issues occur
+   */
+  static async forceResetAllCache(queryClient: QueryClient) {
+    // Clear all React Query cache
+    queryClient.clear();
+    
+    // Clear localStorage
+    try {
+      localStorage.removeItem('react-query-cache');
+    } catch (e) {
+      console.error('Error clearing localStorage:', e);
+    }
+    
+    // Force invalidation of all stock queries
+    this.invalidateAllStockQueries(queryClient);
+    
+    return true;
+  }
+
+  /**
    * Setup realtime listeners for stock updates
    */
   static setupRealtimeListeners(

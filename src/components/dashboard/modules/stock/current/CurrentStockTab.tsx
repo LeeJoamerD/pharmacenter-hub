@@ -1,16 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, Package, AlertTriangle, XCircle, DollarSign, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Eye, Package, AlertTriangle, XCircle, DollarSign, Search, RefreshCw } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import AvailableProducts from './tabs/AvailableProducts';
 import LowStockProducts from './tabs/LowStockProducts';
 import OutOfStockProducts from './tabs/OutOfStockProducts';
 import StockValuation from './tabs/StockValuation';
 import QuickStockCheck from './tabs/QuickStockCheck';
 import { useCurrentStockPaginated } from '@/hooks/useCurrentStockPaginated';
+import { StockCacheManager } from '@/utils/stockCacheUtils';
 
 const CurrentStockTab = () => {
   const { metrics, isLoading, error } = useCurrentStockPaginated();
+  const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleForceRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await StockCacheManager.forceResetAllCache(queryClient);
+      toast.success('Cache vidé avec succès', {
+        description: 'Les données ont été rechargées'
+      });
+    } catch (error) {
+      toast.error('Erreur lors du rafraîchissement', {
+        description: 'Veuillez réessayer'
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -114,10 +136,22 @@ const CurrentStockTab = () => {
       {/* Interface à onglets */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Eye className="h-5 w-5" />
-            Stock Actuel - Consultation Temps Réel
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Stock Actuel - Consultation Temps Réel
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleForceRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Rafraîchissement...' : 'Rafraîchir'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="available" className="space-y-4">

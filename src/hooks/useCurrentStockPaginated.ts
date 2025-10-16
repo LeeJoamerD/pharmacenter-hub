@@ -105,7 +105,7 @@ export const useCurrentStockPaginated = (
 
   const query = useQuery<CurrentStockPaginatedResult>({
     queryKey: [
-      'current-stock-paginated',
+      'current-stock-paginated-v2',
       tenantId,
       currentPage,
       pageSize,
@@ -317,7 +317,9 @@ export const useCurrentStockPaginated = (
       };
     },
     enabled: !!tenantId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 30 * 1000, // 30 secondes
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     placeholderData: (previousData) => previousData,
   });
 
