@@ -9,6 +9,7 @@ export class StockCacheManager {
    */
   static invalidateAllStockQueries(queryClient: QueryClient) {
     queryClient.invalidateQueries({ queryKey: ['current-stock'] });
+    queryClient.invalidateQueries({ queryKey: ['current-stock-paginated'] });
     queryClient.invalidateQueries({ queryKey: ['low-stock'] });
     queryClient.invalidateQueries({ queryKey: ['out-of-stock'] });
     queryClient.invalidateQueries({ queryKey: ['lots'] });

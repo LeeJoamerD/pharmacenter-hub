@@ -132,7 +132,7 @@ export const useCurrentStockPaginated = (
         };
       }
 
-      // Construire la requête de base avec jointures pour les calculs de stock
+      // Construire la requête avec jointure agrégée pour les lots
       let queryBuilder = supabase
         .from('produits')
         .select(`
@@ -140,7 +140,8 @@ export const useCurrentStockPaginated = (
           laboratoires_id, dci_id, classe_therapeutique_id, categorie_tarification_id,
           prix_achat, prix_vente_ht, prix_vente_ttc, tva, taux_tva,
           centime_additionnel, taux_centime_additionnel, stock_limite, stock_alerte,
-          is_active, created_at, tenant_id
+          is_active, created_at, tenant_id,
+          lots(quantite_restante, prix_achat_unitaire)
         `, { count: 'exact' })
         .eq('tenant_id', tenantId)
         .eq('is_active', true);
@@ -202,24 +203,22 @@ export const useCurrentStockPaginated = (
 
       if (error) throw error;
 
-      // Calculer les données de stock pour chaque produit
-      const productsWithStock = await Promise.all(
-        (products || []).map(async (product) => {
-          // Récupérer les lots actifs pour ce produit
-          const { data: lots } = await supabase
-            .from('lots')
-            .select('quantite_restante, prix_achat_unitaire, date_peremption')
-            .eq('tenant_id', tenantId)
-            .eq('produit_id', product.id)
-            .gt('quantite_restante', 0);
+      // Calculer les données de stock pour chaque produit (lots déjà chargés)
+      const productsWithStock = (products || []).map((product) => {
+        const lots = (product as any).lots || [];
+        
+        // Filtrer les lots avec stock positif
+        const activeLots = lots.filter((lot: any) => (lot.quantite_restante || 0) > 0);
 
-          // Calculer le stock actuel
-          const stock_actuel = (lots || []).reduce((sum, lot) => sum + (lot.quantite_restante || 0), 0);
+        // Calculer le stock actuel
+        const stock_actuel = activeLots.reduce((sum: number, lot: any) => 
+          sum + (lot.quantite_restante || 0), 0
+        );
 
-          // Calculer la valeur du stock
-          const valeur_stock = (lots || []).reduce((sum, lot) => {
-            return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
-          }, 0);
+        // Calculer la valeur du stock
+        const valeur_stock = activeLots.reduce((sum: number, lot: any) => {
+          return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
+        }, 0);
 
            // Déterminer le statut
           let statut: 'disponible' | 'faible' | 'rupture' = 'disponible';
@@ -240,18 +239,17 @@ export const useCurrentStockPaginated = (
           const rotation: 'rapide' | 'normale' | 'lente' = stock_actuel > (product.stock_limite || 100) ? 'lente' : 
                                                            stock_actuel > (product.stock_alerte || 10) ? 'normale' : 'rapide';
 
-          return {
-            ...product,
-            stock_actuel,
-            valeur_stock,
-            statut,
-            statut_stock,
-            rotation,
-            famille_libelle: (product as any).famille_produit?.libelle_famille,
-            rayon_libelle: (product as any).rayons_produits?.libelle_rayon,
-          } as CurrentStockProduct;
-        })
-      );
+        return {
+          ...product,
+          stock_actuel,
+          valeur_stock,
+          statut,
+          statut_stock,
+          rotation,
+          famille_libelle: (product as any).famille_produit?.libelle_famille,
+          rayon_libelle: (product as any).rayons_produits?.libelle_rayon,
+        } as CurrentStockProduct;
+      });
 
       // Appliquer les filtres de statut et rotation après calcul
       let filteredProducts = productsWithStock;
@@ -284,52 +282,26 @@ export const useCurrentStockPaginated = (
         });
       }
 
-      // Calculer les métriques globales (sur tous les produits, pas seulement la page)
-      const { data: allProducts } = await supabase
-        .from('produits')
-        .select('id, stock_limite, stock_alerte, prix_achat')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true);
+      // Calculer les métriques globales avec la fonction RPC optimisée
+      const { data: metricsData } = await supabase
+        .rpc('calculate_stock_metrics', { p_tenant_id: tenantId });
 
-      let totalProducts = 0;
-      let availableProducts = 0;
-      let lowStockProducts = 0;
-      let outOfStockProducts = 0;
-      let totalValue = 0;
-
-      if (allProducts) {
-        for (const product of allProducts) {
-          const { data: lots } = await supabase
-            .from('lots')
-            .select('quantite_restante, prix_achat_unitaire')
-            .eq('tenant_id', tenantId)
-            .eq('produit_id', product.id)
-            .gt('quantite_restante', 0);
-
-          const stock = (lots || []).reduce((sum, lot) => sum + (lot.quantite_restante || 0), 0);
-          const value = (lots || []).reduce((sum, lot) => {
-            return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
-          }, 0);
-
-          totalProducts++;
-          totalValue += value;
-
-          if (stock === 0) {
-            outOfStockProducts++;
-          } else if (product.stock_alerte && stock <= product.stock_alerte) {
-            lowStockProducts++;
-          } else {
-            availableProducts++;
-          }
-        }
-      }
-
-      // Calculer les produits en stock critique (< 10% du stock limite)
-      const criticalStockProducts = (allProducts || []).filter(product => {
-        const lots = (allProducts || []).find(p => p.id === product.id);
-        const stock = lots ? 1 : 0; // Simplifié
-        return stock > 0 && product.stock_limite && stock <= product.stock_limite * 0.1;
-      }).length;
+      const metricsJson = metricsData as any;
+      const metrics = metricsJson ? {
+        totalProducts: metricsJson.totalProducts || 0,
+        availableProducts: metricsJson.availableProducts || 0,
+        lowStockProducts: metricsJson.lowStockProducts || 0,
+        outOfStockProducts: metricsJson.outOfStockProducts || 0,
+        criticalStockProducts: metricsJson.criticalStockProducts || 0,
+        totalValue: parseFloat(metricsJson.totalValue) || 0,
+      } : {
+        totalProducts: 0,
+        availableProducts: 0,
+        lowStockProducts: 0,
+        outOfStockProducts: 0,
+        criticalStockProducts: 0,
+        totalValue: 0,
+      };
 
       const totalCount = count || 0;
       const totalPages = Math.ceil(totalCount / pageSize);
@@ -341,14 +313,7 @@ export const useCurrentStockPaginated = (
         totalPages,
         currentPage,
         hasMore,
-        metrics: {
-          totalProducts,
-          availableProducts,
-          lowStockProducts,
-          outOfStockProducts,
-          criticalStockProducts,
-          totalValue,
-        },
+        metrics,
       };
     },
     enabled: !!tenantId,

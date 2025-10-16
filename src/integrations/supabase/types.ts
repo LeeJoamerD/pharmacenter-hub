@@ -7508,6 +7508,10 @@ export type Database = {
         Args: { ip_address: string; personnel_id: string; user_agent: string }
         Returns: number
       }
+      calculate_stock_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       calculer_jours_restants_expiration: {
         Args: { date_peremption: string }
         Returns: number
