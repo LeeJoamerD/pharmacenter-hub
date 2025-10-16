@@ -10,6 +10,7 @@ import { Package, Search, Filter, ShoppingCart, Eye, ArrowUpDown, ChevronLeft, C
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrentStockPaginated } from '@/hooks/useCurrentStockPaginated';
 import { useDebouncedValue } from '@/hooks/use-debounce';
+import { useStockDashboardData } from '@/hooks/useStockDashboardData';
 import { useToast } from '@/hooks/use-toast';
 import { exportToExcel, exportToPDF } from '@/utils/exportUtils';
 import { NotificationBadge } from '../NotificationBadge';
@@ -56,6 +57,13 @@ const AvailableProducts = () => {
       order: sortOrder
     }
   );
+
+  const { 
+    criticalProducts, 
+    fastMovingProducts, 
+    statusDistribution,
+    isLoading: isDashboardLoading 
+  } = useStockDashboardData();
 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -297,7 +305,9 @@ const AvailableProducts = () => {
       <AvailableStockDashboard 
         metrics={metrics}
         totalProducts={allProductsCount}
-        products={products}
+        criticalProducts={criticalProducts}
+        fastMovingProducts={fastMovingProducts}
+        statusDistribution={statusDistribution}
       />
 
       {/* Filtres */}

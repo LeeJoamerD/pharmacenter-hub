@@ -5,53 +5,57 @@ import { BarChart3, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
 interface StockLevelsProps {
-  products: any[];
-  metrics: {
-    totalProducts: number;
+  statusDistribution: {
+    normal: number;
+    faible: number;
+    critique: number;
+    rupture: number;
+    surstock: number;
   };
+  metrics: any;
   totalProducts: number;
 }
 
-const StockLevels = React.memo(({ products, metrics, totalProducts }: StockLevelsProps) => {
+const StockLevels = React.memo(({ statusDistribution, metrics, totalProducts }: StockLevelsProps) => {
 
   // Optimisation avec useMemo pour le calcul des niveaux
   const stockLevels = useMemo(() => [
     {
       label: 'Normal',
-      value: products.filter(p => p.statut_stock === 'normal').length,
+      value: statusDistribution.normal,
       color: 'hsl(var(--success))',
       icon: TrendingUp,
       iconColor: 'text-success'
     },
     {
       label: 'Faible',
-      value: products.filter(p => p.statut_stock === 'faible').length,
+      value: statusDistribution.faible,
       color: 'hsl(var(--warning))',
       icon: Minus,
       iconColor: 'text-warning'
     },
     {
       label: 'Critique',
-      value: products.filter(p => p.statut_stock === 'critique').length,
+      value: statusDistribution.critique,
       color: 'hsl(38 92% 50%)',
       icon: TrendingDown,
       iconColor: 'text-[hsl(38_92%_50%)]'
     },
     {
       label: 'Rupture',
-      value: products.filter(p => p.statut_stock === 'rupture').length,
+      value: statusDistribution.rupture,
       color: 'hsl(var(--destructive))',
       icon: TrendingDown,
       iconColor: 'text-destructive'
     },
     {
       label: 'Surstock',
-      value: products.filter(p => p.statut_stock === 'surstock').length,
+      value: statusDistribution.surstock,
       color: 'hsl(var(--info))',
       icon: TrendingUp,
       iconColor: 'text-info'
     }
-  ], [products]);
+  ], [statusDistribution]);
 
   const chartData = useMemo(() => 
     stockLevels.filter(level => level.value > 0), 

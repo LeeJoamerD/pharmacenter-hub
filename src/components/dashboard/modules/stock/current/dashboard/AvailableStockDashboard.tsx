@@ -14,19 +14,27 @@ interface AvailableStockDashboardProps {
     lowStockProducts: number;
     criticalStockProducts: number;
     outOfStockProducts: number;
-    overstockProducts?: number;
-    normalStockProducts?: number;
-    fastMovingProducts?: number;
+    overstockProducts: number;
+    normalStockProducts: number;
+    fastMovingProducts: number;
     totalValue: number;
   };
   totalProducts: number;
-  products: any[];
+  criticalProducts: any[];
+  fastMovingProducts: any[];
+  statusDistribution: {
+    normal: number;
+    faible: number;
+    critique: number;
+    rupture: number;
+    surstock: number;
+  };
 }
 
-const AvailableStockDashboard = ({ metrics, totalProducts, products }: AvailableStockDashboardProps) => {
+const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, fastMovingProducts, statusDistribution }: AvailableStockDashboardProps) => {
   const criticalAlerts = metrics.criticalStockProducts;
   const warningAlerts = metrics.lowStockProducts;
-  const fastMovingProducts = metrics.fastMovingProducts || 0;
+  const fastMovingCount = metrics.fastMovingProducts || 0;
 
   return (
     <div className="space-y-6">
@@ -54,7 +62,7 @@ const AvailableStockDashboard = ({ metrics, totalProducts, products }: Available
               <Zap className="h-4 w-4 text-info" />
               <span className="text-sm font-medium">Rotation Rapide</span>
             </div>
-            <div className="text-2xl font-bold text-info">{fastMovingProducts}</div>
+            <div className="text-2xl font-bold text-info">{fastMovingCount}</div>
             <p className="text-xs text-muted-foreground">Produits performants</p>
           </CardContent>
         </Card>
@@ -117,13 +125,13 @@ const AvailableStockDashboard = ({ metrics, totalProducts, products }: Available
 
       {/* Composants spécialisés */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <QuickStockSearch products={products} />
-        <StockLevels products={products} metrics={metrics} totalProducts={totalProducts} />
+        <QuickStockSearch products={criticalProducts.concat(fastMovingProducts)} />
+        <StockLevels statusDistribution={statusDistribution} totalProducts={totalProducts} metrics={metrics} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CriticalStock products={products} />
-        <FastMovingItems products={products} />
+        <CriticalStock products={criticalProducts} />
+        <FastMovingItems products={fastMovingProducts} />
       </div>
     </div>
   );
