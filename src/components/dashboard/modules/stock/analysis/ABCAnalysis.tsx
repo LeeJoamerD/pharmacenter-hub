@@ -332,14 +332,14 @@ const ABCAnalysis = () => {
                   <div className="space-y-2">
                     <Label htmlFor="famille">Famille de produits</Label>
                     <Select 
-                      value={filters.famille_id || ''} 
-                      onValueChange={(value) => updateFilters({ famille_id: value || undefined })}
+                      value={filters.famille_id || 'tous'} 
+                      onValueChange={(value) => updateFilters({ famille_id: value === 'tous' ? undefined : value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Toutes les familles" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Toutes les familles</SelectItem>
+                        <SelectItem value="tous">Toutes les familles</SelectItem>
                         {availableFamilies.map(famille => (
                           <SelectItem key={famille.id} value={famille.id}>
                             {famille.libelle}
@@ -352,14 +352,14 @@ const ABCAnalysis = () => {
                   <div className="space-y-2">
                     <Label htmlFor="categorie">Catégorie de tarification</Label>
                     <Select 
-                      value={filters.categorie_tarification_id || ''} 
-                      onValueChange={(value) => updateFilters({ categorie_tarification_id: value || undefined })}
+                      value={filters.categorie_tarification_id || 'tous'} 
+                      onValueChange={(value) => updateFilters({ categorie_tarification_id: value === 'tous' ? undefined : value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Toutes les catégories" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Toutes les catégories</SelectItem>
+                        <SelectItem value="tous">Toutes les catégories</SelectItem>
                         {availableCategories.map(categorie => (
                           <SelectItem key={categorie.id} value={categorie.id}>
                             {categorie.libelle}

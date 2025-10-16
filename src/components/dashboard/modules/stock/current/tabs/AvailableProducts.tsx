@@ -314,12 +314,12 @@ const AvailableProducts = () => {
               />
             </div>
 
-            <Select value={selectedFamily} onValueChange={setSelectedFamily}>
+            <Select value={selectedFamily || "tous"} onValueChange={(value) => setSelectedFamily(value === "tous" ? "" : value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Toutes les familles" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Toutes les familles</SelectItem>
+                <SelectItem value="tous">Toutes les familles</SelectItem>
                 {families.map((family: any) => (
                   <SelectItem key={family.id} value={family.id}>
                     {family.libelle_famille}
@@ -328,12 +328,12 @@ const AvailableProducts = () => {
               </SelectContent>
             </Select>
 
-            <Select value={selectedRayon} onValueChange={setSelectedRayon}>
+            <Select value={selectedRayon || "tous"} onValueChange={(value) => setSelectedRayon(value === "tous" ? "" : value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Tous les rayons" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tous les rayons</SelectItem>
+                <SelectItem value="tous">Tous les rayons</SelectItem>
                 {rayons.map((rayon: any) => (
                   <SelectItem key={rayon.id} value={rayon.id}>
                     {rayon.libelle_rayon}
