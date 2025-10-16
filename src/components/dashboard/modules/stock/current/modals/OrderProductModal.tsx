@@ -7,8 +7,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useSupplierOrders } from '@/hooks/useSupplierOrders';
+import { useAlertSettings } from '@/hooks/useAlertSettings';
 import { Loader2, ShoppingCart, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getStockThreshold } from '@/lib/utils';
 import type { LowStockItem } from '@/hooks/useLowStockData';
 
 interface OrderProductModalProps {
@@ -20,12 +22,15 @@ interface OrderProductModalProps {
 export const OrderProductModal = ({ open, onOpenChange, product }: OrderProductModalProps) => {
   const { suppliers, loading: loadingSuppliers } = useSuppliers();
   const { createOrder } = useSupplierOrders();
+  const { settings } = useAlertSettings();
   const { toast } = useToast();
   
+  // Calcul de la quantité suggérée avec logique en cascade
+  const maximumStock = getStockThreshold('maximum', product.seuilOptimal, settings?.maximum_stock_threshold);
+  const suggestedQuantity = Math.max(maximumStock - product.quantiteActuelle, 10);
+  
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
-  const [quantity, setQuantity] = useState<number>(
-    Math.max(product.seuilOptimal - product.quantiteActuelle, 10)
-  );
+  const [quantity, setQuantity] = useState<number>(suggestedQuantity);
   const [deliveryDate, setDeliveryDate] = useState<string>(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
@@ -85,8 +90,7 @@ export const OrderProductModal = ({ open, onOpenChange, product }: OrderProductM
     }
   };
 
-  const suggestedQuantity = Math.max(product.seuilOptimal - product.quantiteActuelle, 10);
-  const optimalQuantity = product.seuilOptimal * 2;
+  const optimalQuantity = maximumStock;
   const totalEstimated = quantity * (product.prixUnitaire || 0);
 
   return (

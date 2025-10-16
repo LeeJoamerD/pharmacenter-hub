@@ -7,8 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { useAlertSettings } from "@/hooks/useAlertSettings";
 import { Loader2, AlertTriangle, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getStockThreshold } from "@/lib/utils";
 import { LowStockItem } from "@/hooks/useLowStockData";
 
 interface EmergencyOrderModalProps {
@@ -24,6 +26,7 @@ interface Supplier {
 
 export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: EmergencyOrderModalProps) {
   const { toast } = useToast();
+  const { settings } = useAlertSettings();
   const [loading, setLoading] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<string>("");
@@ -99,13 +102,17 @@ export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: Emerg
       if (commandeError) throw commandeError;
 
       // Créer les lignes de commande pour chaque produit critique
-      const lignesCommande = criticalItems.map(item => ({
-        tenant_id: personnel.tenant_id,
-        commande_id: commande.id,
-        produit_id: item.id,
-        quantite_commandee: Math.max(item.seuilMinimum * 2 - item.quantiteActuelle, 0),
-        prix_achat_unitaire_attendu: item.prixUnitaire
-      }));
+      const lignesCommande = criticalItems.map(item => {
+        // Logique en cascade pour le seuil maximum
+        const maximumStock = getStockThreshold('maximum', item.seuilMinimum * 2, settings?.maximum_stock_threshold);
+        return {
+          tenant_id: personnel.tenant_id,
+          commande_id: commande.id,
+          produit_id: item.id,
+          quantite_commandee: Math.max(maximumStock - item.quantiteActuelle, 0),
+          prix_achat_unitaire_attendu: item.prixUnitaire
+        };
+      });
 
       const { error: lignesError } = await supabase
         .from("lignes_commande_fournisseur")

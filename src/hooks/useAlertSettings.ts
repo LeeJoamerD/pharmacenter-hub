@@ -8,6 +8,7 @@ export interface AlertSettings {
   low_stock_enabled: boolean;
   low_stock_threshold: number;
   critical_stock_threshold: number;
+  maximum_stock_threshold: number;
   expiration_alert_days: number;
   near_expiration_days: number;
   overdue_inventory_days: number;
@@ -27,6 +28,7 @@ const DEFAULT_SETTINGS: Omit<AlertSettings, 'id' | 'tenant_id' | 'created_at' | 
   low_stock_enabled: true,
   low_stock_threshold: 10,
   critical_stock_threshold: 5,
+  maximum_stock_threshold: 100,
   expiration_alert_days: 30,
   near_expiration_days: 7,
   overdue_inventory_days: 365,

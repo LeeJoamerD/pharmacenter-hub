@@ -7,8 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { useAlertSettings } from "@/hooks/useAlertSettings";
 import { Loader2, AlertTriangle, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getStockThreshold } from "@/lib/utils";
 import { CurrentStockItem } from "@/hooks/useCurrentStock";
 
 interface OutOfStockEmergencyOrderModalProps {
@@ -24,6 +26,7 @@ interface Supplier {
 
 export function OutOfStockEmergencyOrderModal({ open, onOpenChange, criticalItems }: OutOfStockEmergencyOrderModalProps) {
   const { toast } = useToast();
+  const { settings } = useAlertSettings();
   const [loading, setLoading] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<string>("");
@@ -99,13 +102,17 @@ export function OutOfStockEmergencyOrderModal({ open, onOpenChange, criticalItem
       if (commandeError) throw commandeError;
 
       // Créer les lignes de commande pour chaque produit en rupture
-      const lignesCommande = criticalItems.map(item => ({
-        tenant_id: personnel.tenant_id,
-        commande_id: commande.id,
-        produit_id: item.id,
-        quantite_commandee: Math.max(item.stock_limite * 2, 10), // Commander le double du seuil minimum
-        prix_achat_unitaire_attendu: item.prix_achat
-      }));
+      const lignesCommande = criticalItems.map(item => {
+        // Logique en cascade pour le seuil maximum
+        const maximumStock = getStockThreshold('maximum', item.stock_limite, settings?.maximum_stock_threshold);
+        return {
+          tenant_id: personnel.tenant_id,
+          commande_id: commande.id,
+          produit_id: item.id,
+          quantite_commandee: Math.max(maximumStock, 10), // Commander jusqu'au stock maximum
+          prix_achat_unitaire_attendu: item.prix_achat
+        };
+      });
 
       const { error: lignesError } = await supabase
         .from("lignes_commande_fournisseur")

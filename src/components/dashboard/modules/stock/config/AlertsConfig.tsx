@@ -37,6 +37,7 @@ const AlertsConfig = () => {
     lowStockEnabled: true,
     lowStockThreshold: 10,
     criticalStockThreshold: 5,
+    maximumStockThreshold: 100,
     expirationAlertDays: 30,
     nearExpirationDays: 7,
     overdueInventoryDays: 365,
@@ -57,6 +58,7 @@ const AlertsConfig = () => {
         lowStockEnabled: settings.low_stock_enabled || true,
         lowStockThreshold: settings.low_stock_threshold || 10,
         criticalStockThreshold: settings.critical_stock_threshold || 5,
+        maximumStockThreshold: settings.maximum_stock_threshold || 100,
         expirationAlertDays: settings.expiration_alert_days || 30,
         nearExpirationDays: settings.near_expiration_days || 7,
         overdueInventoryDays: settings.overdue_inventory_days || 365,
@@ -205,6 +207,7 @@ const AlertsConfig = () => {
         low_stock_enabled: alertConfig.lowStockEnabled,
         low_stock_threshold: alertConfig.lowStockThreshold,
         critical_stock_threshold: alertConfig.criticalStockThreshold,
+        maximum_stock_threshold: alertConfig.maximumStockThreshold,
         expiration_alert_days: alertConfig.expirationAlertDays,
         near_expiration_days: alertConfig.nearExpirationDays,
         overdue_inventory_days: alertConfig.overdueInventoryDays,
@@ -279,6 +282,21 @@ const AlertsConfig = () => {
                 value={alertConfig.criticalStockThreshold}
                 onChange={(e) => handleConfigChange('criticalStockThreshold', Number(e.target.value))}
               />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="maximumStockThreshold">Seuil stock maximum (unités)</Label>
+              <Input
+                id="maximumStockThreshold"
+                type="number"
+                min="10"
+                max="10000"
+                value={alertConfig.maximumStockThreshold}
+                onChange={(e) => handleConfigChange('maximumStockThreshold', Number(e.target.value))}
+              />
+              <p className="text-xs text-muted-foreground">
+                Stock optimal à maintenir pour les commandes automatiques
+              </p>
             </div>
             
             <div className="space-y-2">

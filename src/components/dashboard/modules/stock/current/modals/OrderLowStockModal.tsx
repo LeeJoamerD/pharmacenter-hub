@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useSupplierOrders } from '@/hooks/useSupplierOrders';
+import { useAlertSettings } from '@/hooks/useAlertSettings';
 import { Loader2, ShoppingCart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getStockThreshold } from '@/lib/utils';
 import type { CurrentStockItem } from '@/hooks/useCurrentStockDirect';
 
 interface OrderLowStockModalProps {
@@ -19,12 +21,15 @@ interface OrderLowStockModalProps {
 export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStockModalProps) => {
   const { suppliers, loading: loadingSuppliers } = useSuppliers();
   const { createOrder } = useSupplierOrders();
+  const { settings } = useAlertSettings();
   const { toast } = useToast();
   
+  // Calcul de la quantité suggérée avec logique en cascade
+  const maximumStock = getStockThreshold('maximum', product.stock_limite, settings?.maximum_stock_threshold);
+  const suggestedQuantity = Math.max(maximumStock - product.stock_actuel, 0);
+  
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
-  const [quantity, setQuantity] = useState<number>(
-    Math.max(product.stock_alerte - product.stock_actuel, 10)
-  );
+  const [quantity, setQuantity] = useState<number>(suggestedQuantity || 10);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,7 +79,6 @@ export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStoc
     }
   };
 
-  const suggestedQuantity = Math.max(product.stock_alerte - product.stock_actuel, 10);
   const totalEstimated = quantity * (product.prix_achat || 0);
 
   return (

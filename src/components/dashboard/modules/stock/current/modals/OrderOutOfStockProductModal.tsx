@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useAlertSettings } from "@/hooks/useAlertSettings";
 import { Loader2, ShoppingCart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getStockThreshold } from "@/lib/utils";
 import { OutOfStockItem } from '@/hooks/useOutOfStockDataPaginated';
 
 interface OrderOutOfStockProductModalProps {
@@ -23,6 +25,7 @@ interface Supplier {
 
 export function OrderOutOfStockProductModal({ open, onOpenChange, product }: OrderOutOfStockProductModalProps) {
   const { toast } = useToast();
+  const { settings } = useAlertSettings();
   const [loading, setLoading] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState<string>("");
@@ -32,10 +35,12 @@ export function OrderOutOfStockProductModal({ open, onOpenChange, product }: Ord
   useEffect(() => {
     if (open && product) {
       fetchSuppliers();
-      // Suggérer une quantité par défaut (double du seuil limite)
-      setQuantity(Math.max(product.stock_limite * 2, 10));
+      // Calculer la quantité suggérée avec logique en cascade
+      const maximumStock = getStockThreshold('maximum', product.stock_limite, settings?.maximum_stock_threshold);
+      // Pour les produits en rupture, on suggère le stock maximum
+      setQuantity(Math.max(maximumStock, 10));
     }
-  }, [open, product]);
+  }, [open, product, settings]);
 
   const fetchSuppliers = async () => {
     try {
