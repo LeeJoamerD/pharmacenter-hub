@@ -27,7 +27,7 @@ const AvailableProducts = () => {
   const [selectedRayon, setSelectedRayon] = useState('');
   const [sortBy, setSortBy] = useState('libelle_produit');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(100);
   
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
   
@@ -39,10 +39,12 @@ const AvailableProducts = () => {
     isLoading,
     metrics,
     totalPages,
+    currentPage,
+    goToPage,
     refreshData 
   } = useCurrentStockPaginated(
     debouncedSearchTerm,
-    50,
+    pageSize,
     {
       famille_id: selectedFamily,
       rayon_id: selectedRayon,
@@ -287,7 +289,7 @@ const AvailableProducts = () => {
             setSelectedFamily('');
             setSelectedRayon('');
             setSearchTerm('');
-            setCurrentPage(1);
+            goToPage(1);
           }}
         />
       </div>
@@ -369,6 +371,21 @@ const AvailableProducts = () => {
               >
                 <ArrowUpDown className="h-4 w-4" />
               </Button>
+
+              <Select 
+                value={String(pageSize)} 
+                onValueChange={(value) => setPageSize(Number(value))}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="50">50 / page</SelectItem>
+                  <SelectItem value="100">100 / page</SelectItem>
+                  <SelectItem value="200">200 / page</SelectItem>
+                  <SelectItem value="500">500 / page</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           
@@ -382,7 +399,7 @@ const AvailableProducts = () => {
               setSearchTerm('');
               setSelectedFamily('');
               setSelectedRayon('');
-              setCurrentPage(1);
+              goToPage(1);
             }} variant="outline">
               Réinitialiser
             </Button>
@@ -402,18 +419,18 @@ const AvailableProducts = () => {
                   {metrics.criticalStockProducts} produit(s) nécessitent une action immédiate
                 </p>
               </div>
-              <Button 
-                variant="destructive" 
-                size="sm"
-                onClick={() => {
-                  setSelectedFamily('');
-                  setSelectedRayon('');
-                  setSearchTerm('');
-                  setCurrentPage(1);
-                }}
-              >
-                Voir les produits
-              </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => {
+                    setSelectedFamily('');
+                    setSelectedRayon('');
+                    setSearchTerm('');
+                    goToPage(1);
+                  }}
+                >
+                  Voir les produits
+                </Button>
             </div>
           </CardContent>
         </Card>
@@ -602,8 +619,8 @@ const AvailableProducts = () => {
           {!isLoading && totalPages > 1 && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t">
               <div className="text-sm text-muted-foreground">
-                Affichage de {((currentPage - 1) * 50) + 1} à{' '}
-                {Math.min(currentPage * 50, allProductsCount)} sur{' '}
+                Affichage de {((currentPage - 1) * pageSize) + 1} à{' '}
+                {Math.min(currentPage * pageSize, allProductsCount)} sur{' '}
                 {allProductsCount} produits
               </div>
               
@@ -611,7 +628,7 @@ const AvailableProducts = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(currentPage - 1)}
+                  onClick={() => goToPage(currentPage - 1)}
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -632,7 +649,7 @@ const AvailableProducts = () => {
                           key={pageNum}
                           variant={pageNum === currentPage ? "default" : "outline"}
                           size="sm"
-                          onClick={() => setCurrentPage(pageNum)}
+                          onClick={() => goToPage(pageNum)}
                           className="min-w-[40px]"
                         >
                           {pageNum}
@@ -651,7 +668,7 @@ const AvailableProducts = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage(currentPage + 1)}
+                  onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
                 >
                   Suivant

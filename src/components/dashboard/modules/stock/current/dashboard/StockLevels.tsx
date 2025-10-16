@@ -43,6 +43,13 @@ const StockLevels = React.memo(({ products, metrics, totalProducts }: StockLevel
       color: 'hsl(var(--destructive))',
       icon: TrendingDown,
       iconColor: 'text-destructive'
+    },
+    {
+      label: 'Surstock',
+      value: products.filter(p => p.statut_stock === 'surstock').length,
+      color: 'hsl(var(--info))',
+      icon: TrendingUp,
+      iconColor: 'text-info'
     }
   ], [products]);
 

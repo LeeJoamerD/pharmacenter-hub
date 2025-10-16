@@ -14,6 +14,9 @@ interface AvailableStockDashboardProps {
     lowStockProducts: number;
     criticalStockProducts: number;
     outOfStockProducts: number;
+    overstockProducts?: number;
+    normalStockProducts?: number;
+    fastMovingProducts?: number;
     totalValue: number;
   };
   totalProducts: number;
@@ -23,7 +26,7 @@ interface AvailableStockDashboardProps {
 const AvailableStockDashboard = ({ metrics, totalProducts, products }: AvailableStockDashboardProps) => {
   const criticalAlerts = metrics.criticalStockProducts;
   const warningAlerts = metrics.lowStockProducts;
-  const fastMovingProducts = products.filter(p => p.rotation === 'rapide').length;
+  const fastMovingProducts = metrics.fastMovingProducts || 0;
 
   return (
     <div className="space-y-6">

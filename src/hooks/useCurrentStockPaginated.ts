@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { useAlertSettings } from '@/hooks/useAlertSettings';
+import { getStockThreshold } from '@/lib/utils';
 
 // Interface pour les produits avec données de stock
 export interface CurrentStockProduct {
@@ -72,6 +74,9 @@ interface CurrentStockPaginatedResult {
     lowStockProducts: number;
     outOfStockProducts: number;
     criticalStockProducts: number;
+    overstockProducts: number;
+    normalStockProducts: number;
+    fastMovingProducts: number;
     totalValue: number;
   };
 }
@@ -85,6 +90,7 @@ export const useCurrentStockPaginated = (
   const { tenantId } = useTenant();
   const [currentPage, setCurrentPage] = useState(1);
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
+  const { settings } = useAlertSettings();
 
   const { useTenantQueryWithCache } = useTenantQuery();
 
@@ -127,6 +133,9 @@ export const useCurrentStockPaginated = (
             lowStockProducts: 0,
             outOfStockProducts: 0,
             criticalStockProducts: 0,
+            overstockProducts: 0,
+            normalStockProducts: 0,
+            fastMovingProducts: 0,
             totalValue: 0,
           },
         };
@@ -220,24 +229,36 @@ export const useCurrentStockPaginated = (
           return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
         }, 0);
 
-           // Déterminer le statut
-          let statut: 'disponible' | 'faible' | 'rupture' = 'disponible';
-          let statut_stock: 'critique' | 'faible' | 'normal' | 'rupture' | 'surstock' = 'normal';
-          
-          if (stock_actuel === 0) {
-            statut = 'rupture';
-            statut_stock = 'rupture';
-          } else if (product.stock_limite && stock_actuel <= product.stock_limite * 0.1) {
-            statut = 'faible';
-            statut_stock = 'critique';
-          } else if (product.stock_alerte && stock_actuel <= product.stock_alerte) {
-            statut = 'faible';
-            statut_stock = 'faible';
-          }
+        // Appliquer la logique de cascade pour les seuils
+        const seuil_critique = getStockThreshold('critical', null, settings?.critical_stock_threshold);
+        const seuil_faible = getStockThreshold('low', product.stock_alerte, settings?.low_stock_threshold);
+        const seuil_maximum = getStockThreshold('maximum', product.stock_limite, settings?.maximum_stock_threshold);
 
-          // Calculer la rotation (simplifié pour cette version)
-          const rotation: 'rapide' | 'normale' | 'lente' = stock_actuel > (product.stock_limite || 100) ? 'lente' : 
-                                                           stock_actuel > (product.stock_alerte || 10) ? 'normale' : 'rapide';
+        // Déterminer le statut avec la logique de cascade
+        let statut: 'disponible' | 'faible' | 'rupture' = 'disponible';
+        let statut_stock: 'critique' | 'faible' | 'normal' | 'rupture' | 'surstock' = 'normal';
+
+        if (stock_actuel === 0) {
+          statut = 'rupture';
+          statut_stock = 'rupture';
+        } else if (stock_actuel <= seuil_critique) {
+          statut = 'faible';
+          statut_stock = 'critique';
+        } else if (stock_actuel <= seuil_faible) {
+          statut = 'faible';
+          statut_stock = 'faible';
+        } else if (stock_actuel > seuil_maximum) {
+          statut = 'disponible';
+          statut_stock = 'surstock';
+        } else {
+          statut = 'disponible';
+          statut_stock = 'normal';
+        }
+
+        // Calculer la rotation (simplifié pour cette version)
+        const rotation: 'rapide' | 'normale' | 'lente' = 
+          stock_actuel <= seuil_faible ? 'rapide' : 
+          stock_actuel > seuil_maximum ? 'lente' : 'normale';
 
         return {
           ...product,
@@ -293,6 +314,9 @@ export const useCurrentStockPaginated = (
         lowStockProducts: metricsJson.lowStockProducts || 0,
         outOfStockProducts: metricsJson.outOfStockProducts || 0,
         criticalStockProducts: metricsJson.criticalStockProducts || 0,
+        overstockProducts: metricsJson.overstockProducts || 0,
+        normalStockProducts: metricsJson.normalStockProducts || 0,
+        fastMovingProducts: metricsJson.fastMovingProducts || 0,
         totalValue: parseFloat(metricsJson.totalValue) || 0,
       } : {
         totalProducts: 0,
@@ -300,6 +324,9 @@ export const useCurrentStockPaginated = (
         lowStockProducts: 0,
         outOfStockProducts: 0,
         criticalStockProducts: 0,
+        overstockProducts: 0,
+        normalStockProducts: 0,
+        fastMovingProducts: 0,
         totalValue: 0,
       };
 
@@ -363,6 +390,9 @@ export const useCurrentStockPaginated = (
       lowStockProducts: 0,
       outOfStockProducts: 0,
       criticalStockProducts: 0,
+      overstockProducts: 0,
+      normalStockProducts: 0,
+      fastMovingProducts: 0,
       totalValue: 0,
     },
   };
