@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { XCircle, AlertCircle, ShoppingCart, Clock, TrendingDown, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { XCircle, AlertCircle, ShoppingCart, Clock, TrendingDown, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
 import { useOutOfStockDataPaginated } from '@/hooks/useOutOfStockDataPaginated';
 import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,8 @@ import type { OutOfStockItem } from '@/hooks/useOutOfStockDataPaginated';
 
 type SortField = 'libelle_produit' | 'date_derniere_sortie' | 'rotation' | 'potential_loss' | 'days_out_of_stock';
 type SortDirection = 'asc' | 'desc';
+
+const ITEMS_PER_PAGE = 50;
 
 const OutOfStockProducts = () => {
   const { toast } = useToast();
@@ -302,15 +304,7 @@ const OutOfStockProducts = () => {
                           <SortIcon field="libelle_produit" />
                         </div>
                       </TableHead>
-                      <TableHead 
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => handleSort('code_cip')}
-                      >
-                        <div className="flex items-center">
-                          Code
-                          <SortIcon field="code_cip" />
-                        </div>
-                      </TableHead>
+                      <TableHead>Code</TableHead>
                       <TableHead>Famille/Rayon</TableHead>
                       <TableHead 
                         className="cursor-pointer hover:bg-muted/50"
@@ -331,15 +325,7 @@ const OutOfStockProducts = () => {
                         </div>
                       </TableHead>
                       <TableHead>Durée Rupture</TableHead>
-                      <TableHead 
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => handleSort('urgency')}
-                      >
-                        <div className="flex items-center">
-                          Urgence
-                          <SortIcon field="urgency" />
-                        </div>
-                      </TableHead>
+                      <TableHead>Urgence</TableHead>
                       <TableHead>Impact Ventes</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -438,7 +424,7 @@ const OutOfStockProducts = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <p className="text-sm text-muted-foreground">
-                      Affichage de {((currentPage - 1) * itemsPerPage) + 1} à {Math.min(currentPage * itemsPerPage, allItemsCount)} sur {allItemsCount} produits
+                      Affichage de {((currentPage - 1) * ITEMS_PER_PAGE) + 1} à {Math.min(currentPage * ITEMS_PER_PAGE, allItemsCount)} sur {allItemsCount} produits
                     </p>
                   </div>
                   

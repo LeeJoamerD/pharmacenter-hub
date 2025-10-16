@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 import { useDebouncedValue } from '@/hooks/use-debounce';
 
 export interface StockValuationItem {
@@ -87,8 +87,7 @@ export const useStockValuationPaginated = ({
   currentPage,
   itemsPerPage
 }: UseStockValuationPaginatedParams): UseStockValuationPaginatedReturn => {
-  const { user } = useAuth();
-  const tenantId = user?.tenant_id;
+  const { tenantId } = useTenant();
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
 
   const { data, isLoading, error } = useQuery({
@@ -120,19 +119,19 @@ export const useStockValuationPaginated = ({
           prix_vente_ttc,
           stock_limite,
           stock_alerte,
-          date_creation,
+          created_at,
           famille_produit:famille_id(libelle_famille),
-          rayon_produit:rayon_id(libelle_rayon),
+          rayons_produits:rayon_id(libelle_rayon),
           lots(
             id,
-            quantite_actuelle,
+            quantite_restante,
             prix_achat_unitaire,
-            date_entree,
-            date_sortie
+            date_reception,
+            date_peremption
           )
         `)
         .eq('tenant_id', tenantId)
-        .eq('actif', true);
+        .eq('is_active', true);
 
       // Appliquer la recherche si nécessaire
       if (debouncedSearchTerm) {
@@ -161,7 +160,7 @@ export const useStockValuationPaginated = ({
         .eq('tenant_id', tenantId);
 
       const { data: rayons } = await supabase
-        .from('rayon_produit')
+        .from('rayons_produits')
         .select('id, libelle_rayon')
         .eq('tenant_id', tenantId);
 
@@ -169,11 +168,11 @@ export const useStockValuationPaginated = ({
         const lots = product.lots || [];
         
         // Calculer le stock actuel
-        const stock_actuel = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_actuelle || 0), 0);
+        const stock_actuel = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
         
         // Calculer la valeur du stock
         const valeur_stock = lots.reduce((sum: number, lot: any) => {
-          return sum + ((lot.quantite_actuelle || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
+          return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
         }, 0);
 
         // Déterminer le statut
@@ -197,12 +196,12 @@ export const useStockValuationPaginated = ({
 
         // Dates de dernière entrée/sortie
         const date_derniere_entree = lots
-          .filter((lot: any) => lot.date_entree)
-          .sort((a: any, b: any) => new Date(b.date_entree).getTime() - new Date(a.date_entree).getTime())[0]?.date_entree;
+          .filter((lot: any) => lot.date_reception)
+          .sort((a: any, b: any) => new Date(b.date_reception).getTime() - new Date(a.date_reception).getTime())[0]?.date_reception;
 
         const date_derniere_sortie = lots
-          .filter((lot: any) => lot.date_sortie)
-          .sort((a: any, b: any) => new Date(b.date_sortie).getTime() - new Date(a.date_sortie).getTime())[0]?.date_sortie;
+          .filter((lot: any) => lot.date_peremption)
+          .sort((a: any, b: any) => new Date(b.date_peremption).getTime() - new Date(a.date_peremption).getTime())[0]?.date_peremption;
 
         const item: StockValuationItem = {
           id: product.id,
@@ -212,7 +211,7 @@ export const useStockValuationPaginated = ({
           famille_id: product.famille_id,
           famille_libelle: product.famille_produit?.libelle_famille,
           rayon_id: product.rayon_id,
-          rayon_libelle: product.rayon_produit?.libelle_rayon,
+          rayon_libelle: product.rayons_produits?.libelle_rayon,
           prix_achat: product.prix_achat || 0,
           prix_vente_ttc: product.prix_vente_ttc || 0,
           stock_actuel,

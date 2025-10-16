@@ -8,12 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Search, Package, Check, TrendingUp } from "lucide-react";
 import { useProductSubstitutes, SubstituteSuggestion } from "@/hooks/useProductSubstitutes";
-import { CurrentStockItem } from "@/hooks/useCurrentStock";
+import { OutOfStockItem } from '@/hooks/useOutOfStockDataPaginated';
 
 interface SubstituteIndividualModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  product: CurrentStockItem | null;
+  product: OutOfStockItem | null;
 }
 
 export function SubstituteIndividualModal({ open, onOpenChange, product }: SubstituteIndividualModalProps) {
@@ -43,7 +43,7 @@ export function SubstituteIndividualModal({ open, onOpenChange, product }: Subst
       // Rechercher des suggestions
       const newSuggestions = await searchSubstituteSuggestions(
         product.id,
-        product.famille_id,
+        undefined, // famille_id not available in OutOfStockItem
         undefined
       );
       setSuggestions(newSuggestions);
@@ -149,7 +149,7 @@ export function SubstituteIndividualModal({ open, onOpenChange, product }: Subst
               <div>
                 <h3 className="font-semibold">{product.libelle_produit}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Code: {product.code_cip} • Famille: {product.famille_libelle || 'N/A'}
+                  Code: {product.code_cip} • Famille: {product.famille || 'N/A'}
                 </p>
               </div>
               <Badge variant="destructive">Rupture</Badge>

@@ -8,12 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ShoppingCart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { CurrentStockItem } from "@/hooks/useCurrentStock";
+import { OutOfStockItem } from '@/hooks/useOutOfStockDataPaginated';
 
 interface OrderOutOfStockProductModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  product: CurrentStockItem | null;
+  product: OutOfStockItem | null;
 }
 
 interface Supplier {
