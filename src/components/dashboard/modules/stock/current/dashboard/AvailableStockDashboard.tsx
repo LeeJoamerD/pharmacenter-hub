@@ -2,17 +2,28 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Package, AlertTriangle, Zap } from 'lucide-react';
-import { useCurrentStock } from '@/hooks/useCurrentStock';
 import QuickStockSearch from './QuickStockSearch';
 import StockLevels from './StockLevels';
 import CriticalStock from './CriticalStock';
 import FastMovingItems from './FastMovingItems';
 
-const AvailableStockDashboard = () => {
-  const { metrics, alerts } = useCurrentStock();
+interface AvailableStockDashboardProps {
+  metrics: {
+    totalProducts: number;
+    availableProducts: number;
+    lowStockProducts: number;
+    criticalStockProducts: number;
+    outOfStockProducts: number;
+    totalValue: number;
+  };
+  totalProducts: number;
+  products: any[];
+}
 
-  const criticalAlerts = alerts.filter(a => a.niveau_alerte === 'critical').length;
-  const warningAlerts = alerts.filter(a => a.niveau_alerte === 'warning').length;
+const AvailableStockDashboard = ({ metrics, totalProducts, products }: AvailableStockDashboardProps) => {
+  const criticalAlerts = metrics.criticalStockProducts;
+  const warningAlerts = metrics.lowStockProducts;
+  const fastMovingProducts = products.filter(p => p.rotation === 'rapide').length;
 
   return (
     <div className="space-y-6">
@@ -40,7 +51,7 @@ const AvailableStockDashboard = () => {
               <Zap className="h-4 w-4 text-info" />
               <span className="text-sm font-medium">Rotation Rapide</span>
             </div>
-            <div className="text-2xl font-bold text-info">{metrics.fastMovingProducts}</div>
+            <div className="text-2xl font-bold text-info">{fastMovingProducts}</div>
             <p className="text-xs text-muted-foreground">Produits performants</p>
           </CardContent>
         </Card>
@@ -68,7 +79,7 @@ const AvailableStockDashboard = () => {
                 currency: 'XAF',
                 notation: 'compact',
                 minimumFractionDigits: 0 
-              }).format(metrics.totalStockValue)}
+              }).format(metrics.totalValue)}
             </div>
             <p className="text-xs text-muted-foreground">Stock total</p>
           </CardContent>
@@ -103,13 +114,13 @@ const AvailableStockDashboard = () => {
 
       {/* Composants spécialisés */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <QuickStockSearch />
-        <StockLevels />
+        <QuickStockSearch products={products} />
+        <StockLevels products={products} metrics={metrics} totalProducts={totalProducts} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CriticalStock />
-        <FastMovingItems />
+        <CriticalStock products={products} />
+        <FastMovingItems products={products} />
       </div>
     </div>
   );

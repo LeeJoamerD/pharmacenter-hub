@@ -292,7 +292,11 @@ const AvailableProducts = () => {
         />
       </div>
       
-      <AvailableStockDashboard />
+      <AvailableStockDashboard 
+        metrics={metrics}
+        totalProducts={allProductsCount}
+        products={products}
+      />
 
       {/* Filtres */}
       <Card>

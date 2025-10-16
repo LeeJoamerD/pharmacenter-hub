@@ -1,68 +1,55 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { BarChart3, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
-import { useCurrentStock } from '@/hooks/useCurrentStock';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 
-const StockLevels = React.memo(() => {
-  const { allStockData, metrics, isLoading } = useCurrentStock();
+interface StockLevelsProps {
+  products: any[];
+  metrics: {
+    totalProducts: number;
+  };
+  totalProducts: number;
+}
+
+const StockLevels = React.memo(({ products, metrics, totalProducts }: StockLevelsProps) => {
 
   // Optimisation avec useMemo pour le calcul des niveaux
   const stockLevels = useMemo(() => [
     {
       label: 'Normal',
-      value: allStockData.filter(p => p.statut_stock === 'normal').length,
+      value: products.filter(p => p.statut_stock === 'normal').length,
       color: 'hsl(var(--success))',
       icon: TrendingUp,
       iconColor: 'text-success'
     },
     {
       label: 'Faible',
-      value: allStockData.filter(p => p.statut_stock === 'faible').length,
+      value: products.filter(p => p.statut_stock === 'faible').length,
       color: 'hsl(var(--warning))',
       icon: Minus,
       iconColor: 'text-warning'
     },
     {
       label: 'Critique',
-      value: allStockData.filter(p => p.statut_stock === 'critique').length,
+      value: products.filter(p => p.statut_stock === 'critique').length,
       color: 'hsl(38 92% 50%)',
       icon: TrendingDown,
       iconColor: 'text-[hsl(38_92%_50%)]'
     },
     {
       label: 'Rupture',
-      value: allStockData.filter(p => p.statut_stock === 'rupture').length,
+      value: products.filter(p => p.statut_stock === 'rupture').length,
       color: 'hsl(var(--destructive))',
       icon: TrendingDown,
       iconColor: 'text-destructive'
     }
-  ], [allStockData]);
+  ], [products]);
 
   const chartData = useMemo(() => 
     stockLevels.filter(level => level.value > 0), 
     [stockLevels]
   );
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-40" />
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <Skeleton className="h-[200px] w-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card className="transition-all duration-300 hover:shadow-lg">
@@ -124,7 +111,7 @@ const StockLevels = React.memo(() => {
               <div className="text-right">
                 <span className="font-semibold">{level.value}</span>
                 <span className="text-xs text-muted-foreground ml-1">
-                  ({metrics.totalProducts > 0 ? ((level.value / metrics.totalProducts) * 100).toFixed(1) : '0'}%)
+                  ({totalProducts > 0 ? ((level.value / totalProducts) * 100).toFixed(1) : '0'}%)
                 </span>
               </div>
             </div>
@@ -134,7 +121,7 @@ const StockLevels = React.memo(() => {
         <div className="pt-4 border-t">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Total produits</span>
-            <span className="font-semibold">{metrics.totalProducts}</span>
+            <span className="font-semibold">{totalProducts}</span>
           </div>
         </div>
       </CardContent>

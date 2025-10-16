@@ -2,26 +2,27 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Search, Package, Clock, Info } from 'lucide-react';
-import { useCurrentStock } from '@/hooks/useCurrentStock';
 
-const QuickStockSearch = React.memo(() => {
-  const { allStockData, isLoading } = useCurrentStock();
+interface QuickStockSearchProps {
+  products: any[];
+}
+
+const QuickStockSearch = React.memo(({ products }: QuickStockSearchProps) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Optimisation avec useMemo pour la recherche
   const quickResults = useMemo(() => {
     if (!searchTerm.trim()) return [];
     
-    return allStockData
+    return products
       .filter(product => 
-        product.libelle_produit.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.code_cip.toLowerCase().includes(searchTerm.toLowerCase())
+        product.libelle_produit?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.code_cip?.toLowerCase().includes(searchTerm.toLowerCase())
       )
       .slice(0, 5);
-  }, [searchTerm, allStockData]);
+  }, [searchTerm, products]);
 
   // Optimisation avec useCallback
   const handleQuickSearch = useCallback((value: string) => {
@@ -37,23 +38,6 @@ const QuickStockSearch = React.memo(() => {
       default: return 'bg-muted text-muted-foreground';
     }
   }, []);
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-40" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card className="transition-all duration-300 hover:shadow-lg">

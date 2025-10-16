@@ -2,15 +2,16 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AlertTriangle, ShoppingCart, Eye, Info } from 'lucide-react';
-import { useCurrentStock } from '@/hooks/useCurrentStock';
 import ProductDetailsModal from '../modals/ProductDetailsModal';
 import { OrderLowStockModal } from '../modals/OrderLowStockModal';
 
-const CriticalStock = React.memo(() => {
-  const { allStockData, filters, isLoading } = useCurrentStock();
+interface CriticalStockProps {
+  products: any[];
+}
+
+const CriticalStock = React.memo(({ products }: CriticalStockProps) => {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
@@ -26,17 +27,16 @@ const CriticalStock = React.memo(() => {
   }, []);
 
   const handleViewAll = useCallback(() => {
-    filters.setStockFilter('critical');
     setTimeout(() => {
       const table = document.querySelector('[data-component="available-products-table"]');
       if (table) {
         table.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
-  }, [filters]);
+  }, []);
 
   const criticalProducts = useMemo(() => 
-    allStockData
+    products
       .filter(p => p.statut_stock === 'critique' || p.statut_stock === 'rupture')
       .sort((a, b) => {
         if (a.statut_stock === 'rupture' && b.statut_stock !== 'rupture') return -1;
@@ -47,12 +47,12 @@ const CriticalStock = React.memo(() => {
                rotationOrder[b.rotation as keyof typeof rotationOrder];
       })
       .slice(0, 8),
-    [allStockData]
+    [products]
   );
 
   const totalCriticalProducts = useMemo(() => 
-    allStockData.filter(p => p.statut_stock === 'critique' || p.statut_stock === 'rupture').length,
-    [allStockData]
+    products.filter(p => p.statut_stock === 'critique' || p.statut_stock === 'rupture').length,
+    [products]
   );
 
   const getSeverityColor = useCallback((status: string) => {
@@ -71,21 +71,6 @@ const CriticalStock = React.memo(() => {
       default: return 'bg-muted text-muted-foreground';
     }
   }, []);
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-40" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <>

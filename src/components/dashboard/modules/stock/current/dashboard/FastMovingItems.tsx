@@ -2,15 +2,16 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Zap, TrendingUp, Eye, ShoppingCart, Info } from 'lucide-react';
-import { useCurrentStock } from '@/hooks/useCurrentStock';
 import ProductDetailsModal from '../modals/ProductDetailsModal';
 import { OrderLowStockModal } from '../modals/OrderLowStockModal';
 
-const FastMovingItems = React.memo(() => {
-  const { allStockData, filters, sorting, isLoading } = useCurrentStock();
+interface FastMovingItemsProps {
+  products: any[];
+}
+
+const FastMovingItems = React.memo(({ products }: FastMovingItemsProps) => {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
@@ -26,28 +27,25 @@ const FastMovingItems = React.memo(() => {
   }, []);
 
   const handleViewAll = useCallback(() => {
-    filters.setStockFilter('available');
-    sorting.setSortBy('rotation');
-    sorting.setSortOrder('desc');
     setTimeout(() => {
       const table = document.querySelector('[data-component="available-products-table"]');
       if (table) {
         table.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
-  }, [filters, sorting]);
+  }, []);
 
   const fastMovingProducts = useMemo(() => 
-    allStockData
+    products
       .filter(p => p.rotation === 'rapide' && p.stock_actuel > 0)
       .sort((a, b) => b.valeur_stock - a.valeur_stock)
       .slice(0, 8),
-    [allStockData]
+    [products]
   );
 
   const totalFastMovingProducts = useMemo(() => 
-    allStockData.filter(p => p.rotation === 'rapide' && p.stock_actuel > 0).length,
-    [allStockData]
+    products.filter(p => p.rotation === 'rapide' && p.stock_actuel > 0).length,
+    [products]
   );
 
   const getStockStatusColor = useCallback((status: string) => {
@@ -67,21 +65,6 @@ const FastMovingItems = React.memo(() => {
       minimumFractionDigits: 0
     }).format(amount);
   }, []);
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-40" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <>
