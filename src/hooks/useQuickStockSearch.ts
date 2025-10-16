@@ -71,46 +71,48 @@ export const useQuickStockSearch = (searchTerm: string = '', pageSize: number = 
 
       if (error) throw error;
 
-      // Calculer le stock actuel pour chaque produit à partir des lots
-      const productsWithStock = await Promise.all(
-        (data || []).map(async (item) => {
-          // Récupérer les lots actifs pour ce produit
-          const { data: lots } = await supabase
-            .from('lots')
-            .select('quantite_restante')
-            .eq('tenant_id', tenantId)
-            .eq('produit_id', item.id)
-            .gt('quantite_restante', 0);
+      // Charger les lots en une seule requête
+      const productIds = (data || []).map(p => p.id);
+      const { data: lotsData } = await supabase
+        .from('lots')
+        .select('produit_id, quantite_restante')
+        .eq('tenant_id', tenantId)
+        .in('produit_id', productIds)
+        .gt('quantite_restante', 0);
 
-          // Calculer le stock actuel
-          const stock_actuel = (lots || []).reduce((sum, lot) => sum + (lot.quantite_restante || 0), 0);
+      // Grouper les lots par produit
+      const lotsByProduct = (lotsData || []).reduce((acc: Record<string, number>, lot) => {
+        acc[lot.produit_id] = (acc[lot.produit_id] || 0) + (lot.quantite_restante || 0);
+        return acc;
+      }, {});
 
-          // Déterminer le statut du stock
-          let statut_stock = 'normal';
-          if (stock_actuel === 0) {
-            statut_stock = 'rupture';
-          } else if (item.stock_limite && stock_actuel <= item.stock_limite * 0.2) {
-            statut_stock = 'faible';
-          }
+      // Calculer le stock pour chaque produit
+      const productsWithStock = (data || []).map((item) => {
+        const stock_actuel = lotsByProduct[item.id] || 0;
+        
+        let statut_stock = 'normal';
+        if (stock_actuel === 0) {
+          statut_stock = 'rupture';
+        } else if (item.stock_limite && stock_actuel <= item.stock_limite * 0.2) {
+          statut_stock = 'faible';
+        }
 
-          // Déterminer la rotation
-          const rotation = stock_actuel > (item.stock_limite || 0) ? 'lente' : 
-                          stock_actuel > (item.stock_limite || 0) * 0.5 ? 'normale' : 'rapide';
+        const rotation = stock_actuel > (item.stock_limite || 0) ? 'lente' : 
+                        stock_actuel > (item.stock_limite || 0) * 0.5 ? 'normale' : 'rapide';
 
-          return {
-            id: item.id,
-            libelle_produit: item.libelle_produit,
-            code_cip: item.code_cip,
-            stock_actuel,
-            stock_limite: item.stock_limite || 0,
-            prix_vente_ttc: item.prix_vente_ttc || 0,
-            statut_stock,
-            famille_libelle: item.famille_produit?.libelle_famille,
-            rayon_libelle: item.rayons_produits?.libelle_rayon,
-            rotation
-          };
-        })
-      );
+        return {
+          id: item.id,
+          libelle_produit: item.libelle_produit,
+          code_cip: item.code_cip,
+          stock_actuel,
+          stock_limite: item.stock_limite || 0,
+          prix_vente_ttc: item.prix_vente_ttc || 0,
+          statut_stock,
+          famille_libelle: item.famille_produit?.libelle_famille,
+          rayon_libelle: item.rayons_produits?.libelle_rayon,
+          rotation
+        };
+      });
 
       return {
         products: productsWithStock,

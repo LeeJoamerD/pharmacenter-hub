@@ -149,7 +149,7 @@ export function SubstituteIndividualModal({ open, onOpenChange, product }: Subst
               <div>
                 <h3 className="font-semibold">{product.libelle_produit}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Code: {product.code_cip} • Famille: {product.famille || 'N/A'}
+                  Code: {product.code_cip} • Famille: {product.famille_libelle || 'N/A'}
                 </p>
               </div>
               <Badge variant="destructive">Rupture</Badge>

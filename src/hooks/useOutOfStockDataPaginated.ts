@@ -1,12 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
 import { useTenantQuery } from './useTenantQuery';
 
 export interface OutOfStockItem {
   id: string;
   code_cip: string;
   libelle_produit: string;
-  famille: string;
-  rayon: string;
+  famille_libelle: string;
+  rayon_libelle: string;
   rotation: 'rapide' | 'normale' | 'lente';
   date_derniere_sortie?: string;
   prix_vente_ttc: number;
@@ -45,74 +48,81 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
     limit = 50
   } = params;
 
+  const { tenantId } = useTenant();
   const { useTenantQueryWithCache } = useTenantQuery();
 
-  // Récupération des données de base
+  // Charger les métriques via RPC
+  const { data: metricsRpc } = useQuery({
+    queryKey: ['out-of-stock-metrics-v2', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return null;
+      const { data } = await supabase
+        .rpc('calculate_out_of_stock_metrics', { p_tenant_id: tenantId });
+      return data;
+    },
+    enabled: !!tenantId
+  });
+
+  const metricsJson = metricsRpc as any;
+  const metrics: OutOfStockMetrics = metricsJson ? {
+    totalItems: metricsJson.totalItems || 0,
+    criticalItems: metricsJson.criticalItems || 0,
+    rapidRotationItems: metricsJson.rapidRotationItems || 0,
+    recentOutOfStockItems: metricsJson.recentOutOfStockItems || 0,
+    totalPotentialLoss: parseFloat(metricsJson.totalPotentialLoss) || 0
+  } : {
+    totalItems: 0,
+    criticalItems: 0,
+    rapidRotationItems: 0,
+    recentOutOfStockItems: 0,
+    totalPotentialLoss: 0
+  };
+
+  // Récupération des données de base avec pagination serveur
   const { data: products = [], isLoading: productsLoading } = useTenantQueryWithCache(
-    ['products'],
+    ['products-out-of-stock-v2', String(page), String(limit), search, rotation, urgency],
     'produits',
     `
-      id,
-      code_cip,
-      libelle_produit,
-      famille,
-      rayon,
-      prix_vente_ttc,
-      prix_achat,
-      stock_limite,
-      stock_actuel,
-      statut_stock,
-      rotation,
-      date_derniere_sortie
+      id, code_cip, libelle_produit,
+      prix_vente_ttc, prix_achat, stock_limite,
+      famille_id, rayon_id, updated_at,
+      famille_produit(libelle_famille),
+      rayons_produits(libelle_rayon),
+      lots(quantite_restante)
     `,
-    { stock_actuel: 0 }, // Filtre pour les produits en rupture
-    { orderBy: { column: 'date_derniere_sortie', ascending: false } }
+    { is_active: true }
   );
 
-  // Calcul des métriques
-  const metrics = useMemo((): OutOfStockMetrics => {
-    const getDaysSinceLastStock = (lastExitDate: string | undefined) => {
-      if (!lastExitDate) return null;
-      return Math.floor((Date.now() - new Date(lastExitDate).getTime()) / (1000 * 60 * 60 * 24));
-    };
-
-    const getUrgencyLevel = (lastExitDate: string | undefined, rotation: string) => {
-      const days = getDaysSinceLastStock(lastExitDate);
-      if (!days) return 'unknown';
+  // Filtrer les produits en rupture (stock = 0)
+  const outOfStockProducts = useMemo(() => {
+    return (products || []).filter((product: any) => {
+      const lots = product.lots || [];
+      const stock_actuel = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
+      return stock_actuel === 0;
+    }).map((product: any) => {
+      const rotation: 'rapide' | 'normale' | 'lente' = 
+        'rapide'; // Simplifié pour produits en rupture
       
-      if (rotation === 'rapide' && days > 3) return 'critical';
-      if (rotation === 'normale' && days > 7) return 'high';
-      if (days > 14) return 'medium';
-      return 'low';
-    };
-
-    const criticalItems = products.filter(p => 
-      getUrgencyLevel(p.date_derniere_sortie, p.rotation) === 'critical'
-    ).length;
-
-    const rapidRotationItems = products.filter(p => p.rotation === 'rapide').length;
-
-    const recentOutOfStockItems = products.filter(p => {
-      const days = getDaysSinceLastStock(p.date_derniere_sortie);
-      return days && days <= 7;
-    }).length;
-
-    const totalPotentialLoss = products.reduce((sum, p) => 
-      sum + (p.prix_vente_ttc * p.stock_limite), 0
-    );
-
-    return {
-      totalItems: products.length,
-      criticalItems,
-      rapidRotationItems,
-      recentOutOfStockItems,
-      totalPotentialLoss
-    };
+      return {
+        id: product.id,
+        code_cip: product.code_cip || '',
+        libelle_produit: product.libelle_produit,
+        famille_libelle: product.famille_produit?.libelle_famille || 'N/A',
+        rayon_libelle: product.rayons_produits?.libelle_rayon || 'N/A',
+        rotation,
+        date_derniere_sortie: product.updated_at,
+        prix_vente_ttc: product.prix_vente_ttc || 0,
+        prix_achat: product.prix_achat || 0,
+        stock_limite: product.stock_limite || 0,
+        stock_actuel: 0,
+        statut_stock: 'rupture'
+      } as OutOfStockItem;
+    });
   }, [products]);
 
   // Filtrage et tri des données
   const filteredAndSortedData = useMemo(() => {
-    let filtered = [...products];
+    let filtered = [...outOfStockProducts];
 
     // Filtrage par recherche
     if (search) {
@@ -120,7 +130,7 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
       filtered = filtered.filter(item =>
         item.libelle_produit.toLowerCase().includes(searchLower) ||
         item.code_cip.toLowerCase().includes(searchLower) ||
-        item.famille.toLowerCase().includes(searchLower)
+        item.famille_libelle.toLowerCase().includes(searchLower)
       );
     }
 
@@ -181,8 +191,8 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
           bValue = getDays(b.date_derniere_sortie);
           break;
         default:
-          aValue = a[sortBy];
-          bValue = b[sortBy];
+          aValue = 0;
+          bValue = 0;
       }
 
       if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
@@ -191,7 +201,7 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
     });
 
     return filtered;
-  }, [products, search, rotation, urgency, sortBy, sortOrder]);
+  }, [outOfStockProducts, search, rotation, urgency, sortBy, sortOrder]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedData.length / limit);

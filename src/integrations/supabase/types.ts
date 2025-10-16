@@ -7489,6 +7489,14 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      calculate_low_stock_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
+      calculate_out_of_stock_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       calculate_product_forecast: {
         Args: {
           p_forecast_days?: number
@@ -7509,6 +7517,18 @@ export type Database = {
         Returns: number
       }
       calculate_stock_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
+      calculate_valuation_by_family: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
+      calculate_valuation_by_rayon: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
+      calculate_valuation_metrics: {
         Args: { p_tenant_id: string }
         Returns: Json
       }

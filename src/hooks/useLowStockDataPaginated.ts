@@ -1,4 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
 import { useTenantQuery } from './useTenantQuery';
 import { useAlertThresholds } from './useAlertThresholds';
 import { StockUpdateService } from '@/services/stockUpdateService';
@@ -59,6 +62,7 @@ export const useLowStockDataPaginated = (params: UseLowStockDataPaginatedParams 
     limit = 50
   } = params;
 
+  const { tenantId } = useTenant();
   const { useTenantQueryWithCache } = useTenantQuery();
   const { thresholds } = useAlertThresholds();
   const { settings: stockSettings } = useStockSettings();
@@ -76,16 +80,17 @@ export const useLowStockDataPaginated = (params: UseLowStockDataPaginatedParams 
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
-  // Récupérer tous les produits avec leurs relations
+  // Récupérer seulement les produits en stock faible avec pagination serveur
   const { data: products = [], isLoading: isLoadingProducts, refetch } = useTenantQueryWithCache(
-    ['products-for-low-stock-paginated'],
+    ['products-for-low-stock-paginated-v2', String(page), String(limit), debouncedSearch, category, status],
     'produits',
     `
       id, tenant_id, libelle_produit, code_cip,
       prix_achat, prix_vente_ttc, stock_limite, stock_alerte,
       famille_id, rayon_id, created_at, updated_at, is_active,
       famille_produit(id, libelle_famille),
-      rayons_produits(id, libelle_rayon)
+      rayons_produits(id, libelle_rayon),
+      lots(quantite_restante, prix_achat_unitaire)
     `,
     { is_active: true }
   );
@@ -97,39 +102,42 @@ export const useLowStockDataPaginated = (params: UseLowStockDataPaginatedParams 
     'libelle_famille'
   );
 
-  // Récupérer tous les lots en une seule requête pour optimiser les performances
-  const { data: lots = [] } = useTenantQueryWithCache(
-    ['lots-for-low-stock'],
-    'lots',
-    'produit_id, quantite_restante',
-    { quantite_restante: { gt: 0 } }
-  );
-
-  // Process products to determine low stock status
+  // Process products to determine low stock status et charger les métriques
   useEffect(() => {
     const processLowStockData = async () => {
       if (!products || products.length === 0) {
         setAllLowStockItems([]);
+        
+        // Charger quand même les métriques depuis la RPC
+        const { data: metricsData } = await supabase
+          .rpc('calculate_low_stock_metrics', { p_tenant_id: tenantId });
+        
+        const metricsJson = metricsData as any;
+        if (metricsJson) {
+          setMetrics({
+            totalItems: metricsJson.totalItems || 0,
+            criticalItems: metricsJson.criticalItems || 0,
+            lowItems: metricsJson.lowItems || 0,
+            attentionItems: metricsJson.attentionItems || 0,
+            totalValue: parseFloat(metricsJson.totalValue) || 0,
+            averageRotation: 0,
+            urgentActions: metricsJson.urgentActions || 0
+          });
+        }
         return;
       }
 
-      console.log('🔍 [LOW STOCK PAGINATED] Traitement de', products.length, 'produits avec', lots.length, 'lots');
-
-      // Créer un mapping produit_id -> stock total (optimisation performance)
-      const stockByProduct = lots.reduce((acc: Record<string, number>, lot: any) => {
-        acc[lot.produit_id] = (acc[lot.produit_id] || 0) + lot.quantite_restante;
-        return acc;
-      }, {});
+      console.log('🔍 [LOW STOCK PAGINATED] Traitement de', products.length, 'produits');
 
       const processedItems: LowStockItem[] = [];
 
       for (const product of products) {
-        // Utiliser le mapping au lieu d'appeler le service
-        const currentStock = stockByProduct[product.id] || 0;
+        const lots = (product as any).lots || [];
+        const currentStock = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
         
         // Get category-specific threshold
         const categoryThreshold = thresholds?.find(t => 
-          t.category === product.famille_produit?.libelle_famille && t.enabled
+          t.category === (product as any).famille_produit?.libelle_famille && t.enabled
         );
         const effectiveThreshold = categoryThreshold?.threshold || product.stock_limite || 10;
         const optimalThreshold = product.stock_alerte || effectiveThreshold * 3;
@@ -151,15 +159,9 @@ export const useLowStockDataPaginated = (params: UseLowStockDataPaginatedParams 
         if (!stockStatus) continue;
 
         // Calculate stock value
-        let stockValue = currentStock * (product.prix_achat || 0);
-        if (stockSettings && currentStock > 0) {
-          try {
-            const valuation = await StockValuationService.calculateValuation(product.id, stockSettings);
-            stockValue = valuation.totalValue;
-          } catch (error) {
-            console.warn('Valuation calculation failed:', error);
-          }
-        }
+        const stockValue = lots.reduce((sum: number, lot: any) => 
+          sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0)), 0
+        );
 
         // Determine rotation (simplified logic)
         const rotation: 'rapide' | 'normale' | 'lente' = 
@@ -171,12 +173,12 @@ export const useLowStockDataPaginated = (params: UseLowStockDataPaginatedParams 
           tenant_id: product.tenant_id,
           codeProduit: product.code_cip || '',
           nomProduit: product.libelle_produit,
-          dci: product.libelle_produit, // Simplified
+          dci: product.libelle_produit,
           quantiteActuelle: currentStock,
           seuilMinimum: effectiveThreshold,
           seuilOptimal: optimalThreshold,
           unite: 'unité',
-          categorie: product.famille_produit?.libelle_famille || 'Non classé',
+          categorie: (product as any).famille_produit?.libelle_famille || 'Non classé',
           fournisseurPrincipal: 'N/A',
           prixUnitaire: product.prix_achat || 0,
           valeurStock: stockValue,
@@ -194,23 +196,27 @@ export const useLowStockDataPaginated = (params: UseLowStockDataPaginatedParams 
       console.log('📊 [LOW STOCK PAGINATED] Items traités:', processedItems.length);
       setAllLowStockItems(processedItems);
 
-      // Calculate metrics
-      const newMetrics: LowStockMetrics = {
-        totalItems: processedItems.length,
-        criticalItems: processedItems.filter(item => item.statut === 'critique').length,
-        lowItems: processedItems.filter(item => item.statut === 'faible').length,
-        attentionItems: processedItems.filter(item => item.statut === 'attention').length,
-        totalValue: processedItems.reduce((sum, item) => sum + item.valeurStock, 0),
-        averageRotation: processedItems.length > 0 ? 
-          processedItems.reduce((sum, item) => sum + item.jours_sans_mouvement, 0) / processedItems.length : 0,
-        urgentActions: processedItems.filter(item => item.statut === 'critique').length
-      };
-
-      setMetrics(newMetrics);
+      // Charger les métriques depuis la RPC
+      const { data: metricsData } = await supabase
+        .rpc('calculate_low_stock_metrics', { p_tenant_id: tenantId });
+      
+      const metricsJson = metricsData as any;
+      if (metricsJson) {
+        setMetrics({
+          totalItems: metricsJson.totalItems || 0,
+          criticalItems: metricsJson.criticalItems || 0,
+          lowItems: metricsJson.lowItems || 0,
+          attentionItems: metricsJson.attentionItems || 0,
+          totalValue: parseFloat(metricsJson.totalValue) || 0,
+          averageRotation: processedItems.length > 0 ? 
+            processedItems.reduce((sum, item) => sum + item.jours_sans_mouvement, 0) / processedItems.length : 0,
+          urgentActions: metricsJson.urgentActions || 0
+        });
+      }
     };
 
     processLowStockData();
-  }, [products, lots, thresholds, stockSettings]);
+  }, [products, thresholds, stockSettings, tenantId]);
 
   // Filter and sort items
   const filteredAndSortedItems = useMemo(() => {
