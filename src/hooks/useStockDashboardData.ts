@@ -16,6 +16,50 @@ export const useStockDashboardData = () => {
   const { tenantId } = useTenant();
   const { settings } = useAlertSettings();
 
+  // Requête pour les produits en rupture (top 10)
+  const ruptureProductsQuery = useQuery({
+    queryKey: ['stock-rupture-products', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+
+      const { data: products, error } = await supabase
+        .from('produits')
+        .select(`
+          id, libelle_produit, code_cip, prix_achat,
+          stock_alerte, stock_limite,
+          lots(quantite_restante, prix_achat_unitaire)
+        `)
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      const productsWithStock = (products || []).map((product) => {
+        const lots = (product as any).lots || [];
+        const stock_actuel = lots.reduce((sum: number, lot: any) => 
+          sum + (lot.quantite_restante || 0), 0
+        );
+
+        const valeur_stock = lots.reduce((sum: number, lot: any) => {
+          return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
+        }, 0);
+
+        return {
+          ...product,
+          stock_actuel,
+          valeur_stock,
+          statut_stock: stock_actuel === 0 ? 'rupture' : 'normal',
+        };
+      });
+
+      return productsWithStock
+        .filter(p => p.statut_stock === 'rupture')
+        .slice(0, 10);
+    },
+    enabled: !!tenantId,
+    staleTime: 30000,
+  });
+
   // Requête pour les produits critiques (top 10)
   const criticalProductsQuery = useQuery({
     queryKey: ['stock-critical-products', tenantId],
@@ -57,7 +101,9 @@ export const useStockDashboardData = () => {
         }
 
         const rotation: 'rapide' | 'normale' | 'lente' = 
-          stock_actuel <= seuil_faible ? 'rapide' : 'normale';
+          stock_actuel > 0 && stock_actuel <= seuil_faible ? 'rapide' : 
+          stock_actuel === 0 ? 'normale' : 
+          'normale';
 
         return {
           ...product,
@@ -69,10 +115,8 @@ export const useStockDashboardData = () => {
       });
 
       return productsWithStock
-        .filter(p => p.statut_stock === 'critique' || p.statut_stock === 'rupture')
+        .filter(p => p.statut_stock === 'critique')
         .sort((a, b) => {
-          if (a.statut_stock === 'rupture' && b.statut_stock !== 'rupture') return -1;
-          if (a.statut_stock !== 'rupture' && b.statut_stock === 'rupture') return 1;
           if (a.rotation === 'rapide' && b.rotation !== 'rapide') return -1;
           if (a.rotation !== 'rapide' && b.rotation === 'rapide') return 1;
           return a.stock_actuel - b.stock_actuel;
@@ -149,7 +193,7 @@ export const useStockDashboardData = () => {
     staleTime: 30000,
   });
 
-  // Requête pour la distribution des statuts (tous les produits)
+  // Requête pour la distribution des statuts (tous les produits avec pagination)
   const statusDistributionQuery = useQuery({
     queryKey: ['stock-status-distribution', tenantId, settings?.low_stock_threshold, settings?.critical_stock_threshold, settings?.maximum_stock_threshold],
     queryFn: async (): Promise<StatusDistribution> => {
@@ -157,16 +201,36 @@ export const useStockDashboardData = () => {
         return { normal: 0, faible: 0, critique: 0, rupture: 0, surstock: 0 };
       }
 
-      const { data: products, error } = await supabase
-        .from('produits')
-        .select(`
-          id, stock_alerte, stock_limite,
-          lots(quantite_restante)
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true);
+      // Charger tous les produits avec pagination
+      let allProducts: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data: products, error } = await supabase
+          .from('produits')
+          .select(`
+            id, stock_alerte, stock_limite,
+            lots(quantite_restante)
+          `)
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+
+        if (products && products.length > 0) {
+          allProducts = [...allProducts, ...products];
+          hasMore = products.length === pageSize;
+          page++;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      const products = allProducts;
+
 
       const distribution: StatusDistribution = {
         normal: 0,
@@ -208,6 +272,7 @@ export const useStockDashboardData = () => {
 
   return {
     criticalProducts: criticalProductsQuery.data || [],
+    ruptureProducts: ruptureProductsQuery.data || [],
     fastMovingProducts: fastMovingProductsQuery.data || [],
     statusDistribution: statusDistributionQuery.data || {
       normal: 0,
@@ -216,6 +281,6 @@ export const useStockDashboardData = () => {
       rupture: 0,
       surstock: 0,
     },
-    isLoading: criticalProductsQuery.isLoading || fastMovingProductsQuery.isLoading || statusDistributionQuery.isLoading,
+    isLoading: criticalProductsQuery.isLoading || ruptureProductsQuery.isLoading || fastMovingProductsQuery.isLoading || statusDistributionQuery.isLoading,
   };
 };

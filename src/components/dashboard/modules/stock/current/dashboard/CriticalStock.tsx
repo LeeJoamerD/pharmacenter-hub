@@ -37,11 +37,8 @@ const CriticalStock = React.memo(({ products }: CriticalStockProps) => {
 
   const criticalProducts = useMemo(() => 
     products
-      .filter(p => p.statut_stock === 'critique' || p.statut_stock === 'rupture')
+      .filter(p => p.statut_stock === 'critique')
       .sort((a, b) => {
-        if (a.statut_stock === 'rupture' && b.statut_stock !== 'rupture') return -1;
-        if (b.statut_stock === 'rupture' && a.statut_stock !== 'rupture') return 1;
-        
         const rotationOrder = { rapide: 0, normale: 1, lente: 2 };
         return rotationOrder[a.rotation as keyof typeof rotationOrder] - 
                rotationOrder[b.rotation as keyof typeof rotationOrder];
@@ -51,7 +48,7 @@ const CriticalStock = React.memo(({ products }: CriticalStockProps) => {
   );
 
   const totalCriticalProducts = useMemo(() => 
-    products.filter(p => p.statut_stock === 'critique' || p.statut_stock === 'rupture').length,
+    products.filter(p => p.statut_stock === 'critique').length,
     [products]
   );
 
@@ -111,7 +108,7 @@ const CriticalStock = React.memo(({ products }: CriticalStockProps) => {
                   <Info className="h-4 w-4 text-muted-foreground" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Produits nécessitant une action immédiate</p>
+                  <p>Produits nécessitant un réapprovisionnement urgent (stock très faible mais &gt; 0)</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

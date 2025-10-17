@@ -59,7 +59,8 @@ const AvailableProducts = () => {
   );
 
   const { 
-    criticalProducts, 
+    criticalProducts,
+    ruptureProducts,
     fastMovingProducts, 
     statusDistribution,
     isLoading: isDashboardLoading 
@@ -302,13 +303,14 @@ const AvailableProducts = () => {
         />
       </div>
       
-      <AvailableStockDashboard 
-        metrics={metrics}
-        totalProducts={allProductsCount}
-        criticalProducts={criticalProducts}
-        fastMovingProducts={fastMovingProducts}
-        statusDistribution={statusDistribution}
-      />
+        <AvailableStockDashboard 
+          metrics={metrics}
+          totalProducts={allProductsCount}
+          criticalProducts={criticalProducts}
+          ruptureProducts={ruptureProducts}
+          fastMovingProducts={fastMovingProducts}
+          statusDistribution={statusDistribution}
+        />
 
       {/* Filtres */}
       <Card>

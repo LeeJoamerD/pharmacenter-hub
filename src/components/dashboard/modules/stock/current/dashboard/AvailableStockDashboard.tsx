@@ -5,6 +5,7 @@ import { TrendingUp, Package, AlertTriangle, Zap } from 'lucide-react';
 import QuickStockSearch from './QuickStockSearch';
 import StockLevels from './StockLevels';
 import CriticalStock from './CriticalStock';
+import { StockRupture } from './StockRupture';
 import FastMovingItems from './FastMovingItems';
 
 interface AvailableStockDashboardProps {
@@ -21,6 +22,7 @@ interface AvailableStockDashboardProps {
   };
   totalProducts: number;
   criticalProducts: any[];
+  ruptureProducts: any[];
   fastMovingProducts: any[];
   statusDistribution: {
     normal: number;
@@ -31,7 +33,7 @@ interface AvailableStockDashboardProps {
   };
 }
 
-const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, fastMovingProducts, statusDistribution }: AvailableStockDashboardProps) => {
+const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, ruptureProducts, fastMovingProducts, statusDistribution }: AvailableStockDashboardProps) => {
   const criticalAlerts = metrics.criticalStockProducts;
   const warningAlerts = metrics.lowStockProducts;
   const fastMovingCount = metrics.fastMovingProducts || 0;
@@ -129,8 +131,9 @@ const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, fas
         <StockLevels statusDistribution={statusDistribution} totalProducts={totalProducts} metrics={metrics} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <CriticalStock products={criticalProducts} />
+        <StockRupture products={ruptureProducts} />
         <FastMovingItems products={fastMovingProducts} />
       </div>
     </div>
