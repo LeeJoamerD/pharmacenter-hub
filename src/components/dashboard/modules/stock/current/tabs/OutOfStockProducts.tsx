@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { XCircle, AlertCircle, ShoppingCart, Clock, TrendingDown, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
+import { XCircle, AlertCircle, ShoppingCart, Clock, TrendingDown, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, RefreshCw, RotateCcw } from 'lucide-react';
 import { useOutOfStockDataPaginated } from '@/hooks/useOutOfStockDataPaginated';
 import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useToast } from '@/hooks/use-toast';
@@ -19,8 +19,6 @@ import type { OutOfStockItem } from '@/hooks/useOutOfStockDataPaginated';
 type SortField = 'libelle_produit' | 'date_derniere_sortie' | 'rotation' | 'potential_loss' | 'days_out_of_stock';
 type SortDirection = 'asc' | 'desc';
 
-const ITEMS_PER_PAGE = 50;
-
 const OutOfStockProducts = () => {
   const { toast } = useToast();
   
@@ -31,6 +29,7 @@ const OutOfStockProducts = () => {
   const [sortField, setSortField] = useState<SortField>('date_derniere_sortie');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
   
@@ -48,8 +47,22 @@ const OutOfStockProducts = () => {
     sortBy: sortField,
     sortOrder: sortDirection,
     page: currentPage,
-    limit: 50
+    limit: pageSize
   });
+
+  // Fonction pour réinitialiser les filtres
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setRotationFilter('');
+    setUrgencyFilter('');
+    setSortField('date_derniere_sortie');
+    setSortDirection('desc');
+    setCurrentPage(1);
+    toast({
+      title: "Filtres réinitialisés",
+      description: "Tous les filtres ont été effacés"
+    });
+  };
   
   // États pour les modals
   const [emergencyOrderOpen, setEmergencyOrderOpen] = useState(false);
@@ -239,6 +252,53 @@ const OutOfStockProducts = () => {
         </div>
       </Card>
 
+      {/* Contrôles de pagination et actualisation */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Afficher</span>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(value) => {
+                setPageSize(Number(value));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+                <SelectItem value="200">200</SelectItem>
+                <SelectItem value="500">500</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">résultats</span>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Actualiser
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetFilters}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Réinitialiser
+            </Button>
+          </div>
+        </div>
+      </Card>
+
       {/* Actions d'urgence */}
       <Card>
         <CardHeader>
@@ -424,7 +484,7 @@ const OutOfStockProducts = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <p className="text-sm text-muted-foreground">
-                      Affichage de {((currentPage - 1) * ITEMS_PER_PAGE) + 1} à {Math.min(currentPage * ITEMS_PER_PAGE, allItemsCount)} sur {allItemsCount} produits
+                      Affichage de {((currentPage - 1) * pageSize) + 1} à {Math.min(currentPage * pageSize, allItemsCount)} sur {allItemsCount} produits
                     </p>
                   </div>
                   

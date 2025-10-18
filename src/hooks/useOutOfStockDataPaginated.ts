@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
-import { useTenantQuery } from './useTenantQuery';
 
 export interface OutOfStockItem {
   id: string;
+  tenant_id: string;
   code_cip: string;
   libelle_produit: string;
   famille_libelle: string;
@@ -15,8 +15,10 @@ export interface OutOfStockItem {
   prix_vente_ttc: number;
   prix_achat: number;
   stock_limite: number;
+  stock_alerte: number;
   stock_actuel: number;
-  statut_stock: string;
+  statut_stock: 'normal' | 'faible' | 'critique' | 'rupture' | 'surstock';
+  valeur_stock: number;
 }
 
 export interface OutOfStockMetrics {
@@ -37,6 +39,32 @@ interface UseOutOfStockDataPaginatedParams {
   limit?: number;
 }
 
+// Fonction pour calculer la rotation d'un produit
+const calculateProductRotation = async (productId: string, tenantId: string): Promise<'rapide' | 'normale' | 'lente'> => {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const { data: movements, error } = await supabase
+      .from('mouvements_lots')
+      .select('quantite_mouvement')
+      .eq('tenant_id', tenantId)
+      .eq('produit_id', productId)
+      .eq('type_mouvement', 'sortie')
+      .gte('date_mouvement', thirtyDaysAgo.toISOString());
+
+    if (error || !movements) return 'normale';
+
+    const totalSales = movements.reduce((sum, m) => sum + (m.quantite_mouvement || 0), 0);
+    
+    if (totalSales >= 100) return 'rapide';
+    if (totalSales >= 30) return 'normale';
+    return 'lente';
+  } catch {
+    return 'normale';
+  }
+};
+
 export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedParams = {}) => {
   const {
     search = '',
@@ -49,80 +77,118 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
   } = params;
 
   const { tenantId } = useTenant();
-  const { useTenantQueryWithCache } = useTenantQuery();
+  const queryClient = useQueryClient();
 
-  // Charger les métriques via RPC
-  const { data: metricsRpc } = useQuery({
-    queryKey: ['out-of-stock-metrics-v2', tenantId],
+  // Charger TOUS les produits en rupture avec pagination serveur
+  const { data: allOutOfStockProducts = [], isLoading, refetch: refetchQuery } = useQuery({
+    queryKey: ['all-out-of-stock-products', tenantId],
     queryFn: async () => {
-      if (!tenantId) return null;
-      const { data } = await supabase
-        .rpc('calculate_out_of_stock_metrics', { p_tenant_id: tenantId });
-      return data;
+      if (!tenantId) return [];
+
+      let allProducts: any[] = [];
+      let currentPage = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      // Charger tous les produits par batch de 1000
+      while (hasMore) {
+        const { data: products, error } = await supabase
+          .from('produits')
+          .select(`
+            id, code_cip, libelle_produit,
+            prix_vente_ttc, prix_achat, stock_limite, stock_alerte,
+            famille_id, rayon_id, updated_at,
+            famille_produit(libelle_famille),
+            rayons_produits(libelle_rayon),
+            lots(quantite_restante)
+          `)
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .range(currentPage * pageSize, (currentPage + 1) * pageSize - 1);
+
+        if (error) throw error;
+
+        if (products && products.length > 0) {
+          allProducts = [...allProducts, ...products];
+          hasMore = products.length === pageSize;
+          currentPage++;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      // Filtrer uniquement les produits en rupture (stock = 0) et calculer rotation
+      const outOfStockProducts = await Promise.all(
+        allProducts
+          .filter((product: any) => {
+            const lots = product.lots || [];
+            const stock_actuel = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
+            return stock_actuel === 0;
+          })
+          .map(async (product: any) => {
+            const rotation = await calculateProductRotation(product.id, tenantId);
+            
+            return {
+              id: product.id,
+              tenant_id: tenantId,
+              code_cip: product.code_cip || '',
+              libelle_produit: product.libelle_produit,
+              famille_libelle: product.famille_produit?.libelle_famille || 'N/A',
+              rayon_libelle: product.rayons_produits?.libelle_rayon || 'N/A',
+              rotation,
+              date_derniere_sortie: product.updated_at,
+              prix_vente_ttc: product.prix_vente_ttc || 0,
+              prix_achat: product.prix_achat || 0,
+              stock_limite: product.stock_limite || 0,
+              stock_alerte: product.stock_alerte || 0,
+              stock_actuel: 0,
+              statut_stock: 'rupture',
+              valeur_stock: 0
+            } as OutOfStockItem;
+          })
+      );
+
+      return outOfStockProducts;
     },
-    enabled: !!tenantId
+    enabled: !!tenantId,
+    staleTime: 30000, // Cache de 30 secondes
   });
 
-  const metricsJson = metricsRpc as any;
-  const metrics: OutOfStockMetrics = metricsJson ? {
-    totalItems: metricsJson.totalItems || 0,
-    criticalItems: metricsJson.criticalItems || 0,
-    rapidRotationItems: metricsJson.rapidRotationItems || 0,
-    recentOutOfStockItems: metricsJson.recentOutOfStockItems || 0,
-    totalPotentialLoss: parseFloat(metricsJson.totalPotentialLoss) || 0
-  } : {
-    totalItems: 0,
-    criticalItems: 0,
-    rapidRotationItems: 0,
-    recentOutOfStockItems: 0,
-    totalPotentialLoss: 0
-  };
+  // Calculer les métriques localement
+  const metrics: OutOfStockMetrics = useMemo(() => {
+    const totalItems = allOutOfStockProducts.length;
+    
+    const rapidRotationItems = allOutOfStockProducts.filter(
+      p => p.rotation === 'rapide'
+    ).length;
 
-  // Récupération des données de base avec pagination serveur
-  const { data: products = [], isLoading: productsLoading } = useTenantQueryWithCache(
-    ['products-out-of-stock-v2', String(page), String(limit), search, rotation, urgency],
-    'produits',
-    `
-      id, code_cip, libelle_produit,
-      prix_vente_ttc, prix_achat, stock_limite,
-      famille_id, rayon_id, updated_at,
-      famille_produit(libelle_famille),
-      rayons_produits(libelle_rayon),
-      lots(quantite_restante)
-    `,
-    { is_active: true }
-  );
+    // Ruptures critiques = rotation rapide
+    const criticalItems = rapidRotationItems;
 
-  // Filtrer les produits en rupture (stock = 0)
-  const outOfStockProducts = useMemo(() => {
-    return (products || []).filter((product: any) => {
-      const lots = product.lots || [];
-      const stock_actuel = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
-      return stock_actuel === 0;
-    }).map((product: any) => {
-      const rotation: 'rapide' | 'normale' | 'lente' = 
-        'rapide'; // Simplifié pour produits en rupture
-      
-      return {
-        id: product.id,
-        code_cip: product.code_cip || '',
-        libelle_produit: product.libelle_produit,
-        famille_libelle: product.famille_produit?.libelle_famille || 'N/A',
-        rayon_libelle: product.rayons_produits?.libelle_rayon || 'N/A',
-        rotation,
-        date_derniere_sortie: product.updated_at,
-        prix_vente_ttc: product.prix_vente_ttc || 0,
-        prix_achat: product.prix_achat || 0,
-        stock_limite: product.stock_limite || 0,
-        stock_actuel: 0,
-        statut_stock: 'rupture'
-      } as OutOfStockItem;
-    });
-  }, [products]);
+    // Ruptures récentes (dernière semaine)
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const recentOutOfStockItems = allOutOfStockProducts.filter(
+      p => p.date_derniere_sortie && new Date(p.date_derniere_sortie) >= oneWeekAgo
+    ).length;
+
+    // Perte potentielle totale
+    const totalPotentialLoss = allOutOfStockProducts.reduce(
+      (sum, p) => sum + (p.prix_vente_ttc * p.stock_limite), 0
+    );
+
+    return {
+      totalItems,
+      criticalItems,
+      rapidRotationItems,
+      recentOutOfStockItems,
+      totalPotentialLoss
+    };
+  }, [allOutOfStockProducts]);
 
   // Filtrage et tri des données
   const filteredAndSortedData = useMemo(() => {
-    let filtered = [...outOfStockProducts];
+    let filtered = [...allOutOfStockProducts];
 
     // Filtrage par recherche
     if (search) {
@@ -201,7 +267,7 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
     });
 
     return filtered;
-  }, [outOfStockProducts, search, rotation, urgency, sortBy, sortOrder]);
+  }, [allOutOfStockProducts, search, rotation, urgency, sortBy, sortOrder]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedData.length / limit);
@@ -209,9 +275,10 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
   const endIndex = startIndex + limit;
   const paginatedData = filteredAndSortedData.slice(startIndex, endIndex);
 
-  // Fonction de rafraîchissement
+  // Fonction de rafraîchissement améliorée
   const refetch = () => {
-    // Le cache sera invalidé automatiquement
+    queryClient.invalidateQueries({ queryKey: ['all-out-of-stock-products', tenantId] });
+    refetchQuery();
   };
 
   return {
@@ -220,7 +287,7 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
     metrics,
     totalPages,
     currentPage: page,
-    isLoading: productsLoading,
+    isLoading,
     refetch,
   };
 };
