@@ -2,22 +2,24 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DollarSign, Package, TrendingUp, TrendingDown, BarChart3, PieChart } from 'lucide-react';
+import { DollarSign, Package, TrendingUp, TrendingDown, BarChart3, PieChart, RefreshCw, RotateCcw } from 'lucide-react';
 import { useStockValuationPaginated } from '@/hooks/useStockValuationPaginated';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const StockValuation = () => {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [rotationFilter, setRotationFilter] = useState('all');
   const [sortField, setSortField] = useState<'valeur_stock' | 'stock_actuel' | 'libelle_produit'>('valeur_stock');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const {
     valuationItems,
@@ -28,7 +30,8 @@ const StockValuation = () => {
     valuationByRayon,
     topValueProducts,
     isLoading,
-    error
+    error,
+    refetch
   } = useStockValuationPaginated({
     searchTerm,
     statusFilter,
@@ -132,6 +135,69 @@ const StockValuation = () => {
                   <SelectItem value="libelle_produit-desc">Nom (Z-A)</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* Contrôles de pagination et actualisation */}
+          <div className="flex items-center justify-between mt-4 pt-4 border-t">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Afficher</span>
+              <Select
+                value={String(itemsPerPage)}
+                onValueChange={(value) => {
+                  setItemsPerPage(Number(value));
+                  setCurrentPage(1);
+                }}
+              >
+                <SelectTrigger className="w-24">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                  <SelectItem value="200">200</SelectItem>
+                  <SelectItem value="500">500</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-muted-foreground">résultats par page</span>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  refetch();
+                  toast({
+                    title: "Données actualisées",
+                    description: "Les données de valorisation ont été rechargées."
+                  });
+                }}
+                disabled={isLoading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                Actualiser
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm('');
+                  setStatusFilter('all');
+                  setRotationFilter('all');
+                  setSortField('valeur_stock');
+                  setSortDirection('desc');
+                  setCurrentPage(1);
+                  toast({
+                    title: "Filtres réinitialisés",
+                    description: "Tous les filtres ont été réinitialisés."
+                  });
+                }}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Réinitialiser
+              </Button>
             </div>
           </div>
         </CardContent>

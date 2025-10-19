@@ -19,7 +19,7 @@ export interface StockValuationItem {
   stock_limite: number;
   stock_alerte: number;
   valeur_stock: number;
-  statut_stock: 'disponible' | 'faible' | 'rupture';
+  statut_stock: 'disponible' | 'faible' | 'critique' | 'rupture';
   rotation: 'rapide' | 'normale' | 'lente';
   date_derniere_entree?: string;
   date_derniere_sortie?: string;
@@ -76,6 +76,7 @@ interface UseStockValuationPaginatedReturn {
   topValueProducts: StockValuationItem[];
   isLoading: boolean;
   error: string | null;
+  refetch: () => void;
 }
 
 export const useStockValuationPaginated = ({
@@ -90,7 +91,49 @@ export const useStockValuationPaginated = ({
   const { tenantId } = useTenant();
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
 
-  const { data, isLoading, error } = useQuery({
+  // Fonction pour calculer la rotation par batch (évite les requêtes individuelles)
+  const calculateProductRotationsBatch = async (productIds: string[]): Promise<Map<string, 'rapide' | 'normale' | 'lente'>> => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const rotationMap = new Map<string, 'rapide' | 'normale' | 'lente'>();
+    
+    // Charger les mouvements par batch de 100 produits pour éviter les URLs trop longues
+    const batchSize = 100;
+    for (let i = 0; i < productIds.length; i += batchSize) {
+      const batch = productIds.slice(i, i + batchSize);
+      
+      const { data: movements } = await supabase
+        .from('mouvements_lots')
+        .select('produit_id, quantite_mouvement')
+        .eq('tenant_id', tenantId)
+        .in('produit_id', batch)
+        .eq('type_mouvement', 'sortie')
+        .gte('date_mouvement', thirtyDaysAgo.toISOString());
+      
+      // Calculer la rotation pour chaque produit
+      const salesByProduct = new Map<string, number>();
+      (movements || []).forEach(m => {
+        const current = salesByProduct.get(m.produit_id) || 0;
+        salesByProduct.set(m.produit_id, current + Math.abs(m.quantite_mouvement));
+      });
+      
+      batch.forEach(productId => {
+        const totalSales = salesByProduct.get(productId) || 0;
+        if (totalSales >= 100) {
+          rotationMap.set(productId, 'rapide');
+        } else if (totalSales >= 30) {
+          rotationMap.set(productId, 'normale');
+        } else {
+          rotationMap.set(productId, 'lente');
+        }
+      });
+    }
+    
+    return rotationMap;
+  };
+
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [
       'stock-valuation-paginated-v2',
       tenantId,
@@ -140,44 +183,64 @@ export const useStockValuationPaginated = ({
         .rpc('calculate_valuation_by_rayon', { p_tenant_id: tenantId });
       const valuationByRayon: ValuationByCategory[] = (Array.isArray(rayonData) ? rayonData : []) as unknown as ValuationByCategory[];
 
-      // 4. Récupérer les produits avec pagination serveur
-      let query = supabase
-        .from('produits')
-        .select(`
-          id, tenant_id, code_cip, libelle_produit,
-          famille_id, rayon_id, prix_achat, prix_vente_ttc,
-          stock_limite, stock_alerte,
-          famille_produit:famille_id(libelle_famille),
-          rayons_produits:rayon_id(libelle_rayon),
-          lots(quantite_restante, prix_achat_unitaire)
-        `, { count: 'exact' })
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true);
-
-      // Recherche
-      if (debouncedSearchTerm) {
-        query = query.or(`libelle_produit.ilike.%${debouncedSearchTerm}%,code_cip.ilike.%${debouncedSearchTerm}%`);
+      // 4. Charger TOUS les produits avec pagination serveur par batch de 1000
+      let allProducts: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const { data: products, error } = await supabase
+          .from('produits')
+          .select(`
+            id, tenant_id, code_cip, libelle_produit,
+            famille_id, rayon_id, prix_achat, prix_vente_ttc,
+            stock_limite, stock_alerte,
+            famille_produit:famille_id(libelle_famille),
+            rayons_produits:rayon_id(libelle_rayon),
+            lots(quantite_restante, prix_achat_unitaire)
+          `)
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+        
+        if (error) throw error;
+        
+        if (products && products.length > 0) {
+          allProducts = [...allProducts, ...products];
+          hasMore = products.length === pageSize;
+          page++;
+        } else {
+          hasMore = false;
+        }
       }
 
-      const { data: allProducts, error: productsError, count } = await query;
+      // 5. Appliquer la recherche côté client
+      if (debouncedSearchTerm) {
+        allProducts = allProducts.filter(product => 
+          product.libelle_produit.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          product.code_cip.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+        );
+      }
 
-      if (productsError) throw productsError;
+      // 6. Calculer la rotation pour tous les produits (dynamique depuis les mouvements)
+      const productIds = allProducts.map(p => p.id);
+      const rotationMap = await calculateProductRotationsBatch(productIds);
 
-      // Traiter les produits
-      const processedItems: StockValuationItem[] = (allProducts || []).map((product: any) => {
+      // 7. Traiter les produits avec rotation dynamique
+      const processedItems: StockValuationItem[] = allProducts.map((product: any) => {
         const lots = product.lots || [];
         const stock_actuel = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
         const valeur_stock = lots.reduce((sum: number, lot: any) => 
           sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0)), 0
         );
 
-        const statut: 'disponible' | 'faible' | 'rupture' = 
+        const statut: 'disponible' | 'faible' | 'critique' | 'rupture' = 
           stock_actuel === 0 ? 'rupture' :
+          stock_actuel <= (product.stock_alerte || 0) * 0.5 ? 'critique' :
           stock_actuel <= (product.stock_alerte || 0) ? 'faible' : 'disponible';
 
-        const rotation: 'rapide' | 'normale' | 'lente' = 
-          stock_actuel < (product.stock_limite || 0) * 0.5 ? 'rapide' :
-          stock_actuel < (product.stock_limite || 0) ? 'normale' : 'lente';
+        const rotation = rotationMap.get(product.id) || 'normale';
 
         return {
           id: product.id,
@@ -199,14 +262,14 @@ export const useStockValuationPaginated = ({
         };
       });
 
-      // Filtrer
+      // 8. Filtrer par statut et rotation
       let filteredItems = processedItems.filter(item => {
         if (statusFilter && statusFilter !== 'all' && item.statut_stock !== statusFilter) return false;
         if (rotationFilter && rotationFilter !== 'all' && item.rotation !== rotationFilter) return false;
         return true;
       });
 
-      // Trier
+      // 9. Trier
       filteredItems.sort((a, b) => {
         let comparison = 0;
         switch (sortField) {
@@ -216,7 +279,7 @@ export const useStockValuationPaginated = ({
           case 'prix_achat': comparison = a.prix_achat - b.prix_achat; break;
           case 'valeur_stock': comparison = a.valeur_stock - b.valeur_stock; break;
           case 'statut_stock':
-            const statusOrder = { 'rupture': 0, 'faible': 1, 'disponible': 2 };
+            const statusOrder = { 'rupture': 0, 'critique': 1, 'faible': 2, 'disponible': 3 };
             comparison = statusOrder[a.statut_stock] - statusOrder[b.statut_stock];
             break;
           case 'rotation':
@@ -227,13 +290,13 @@ export const useStockValuationPaginated = ({
         return sortDirection === 'asc' ? comparison : -comparison;
       });
 
-      // Top 20 produits
+      // 10. Top 20 produits par valorisation
       const topValueProducts = filteredItems
         .slice()
         .sort((a, b) => b.valeur_stock - a.valeur_stock)
         .slice(0, 20);
 
-      // Pagination
+      // 11. Pagination client-side
       const allItemsCount = filteredItems.length;
       const totalPages = Math.ceil(allItemsCount / itemsPerPage);
       const startIndex = (currentPage - 1) * itemsPerPage;
@@ -274,6 +337,7 @@ export const useStockValuationPaginated = ({
     valuationByRayon: data?.valuationByRayon || [],
     topValueProducts: data?.topValueProducts || [],
     isLoading,
-    error: error?.message || null
+    error: error?.message || null,
+    refetch
   };
 };
