@@ -39,29 +39,51 @@ interface UseOutOfStockDataPaginatedParams {
   limit?: number;
 }
 
-// Fonction pour calculer la rotation d'un produit
-const calculateProductRotation = async (productId: string, tenantId: string): Promise<'rapide' | 'normale' | 'lente'> => {
+// Fonction pour calculer la rotation en batch pour tous les produits
+const calculateProductRotationsBatch = async (productIds: string[], tenantId: string): Promise<Record<string, 'rapide' | 'normale' | 'lente'>> => {
   try {
+    if (productIds.length === 0) return {};
+
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const { data: movements, error } = await supabase
-      .from('mouvements_lots')
-      .select('quantite_mouvement')
-      .eq('tenant_id', tenantId)
-      .eq('produit_id', productId)
-      .eq('type_mouvement', 'sortie')
-      .gte('date_mouvement', thirtyDaysAgo.toISOString());
+    let allMovements: any[] = [];
+    const batchSize = 1000;
 
-    if (error || !movements) return 'normale';
+    // Récupérer les mouvements par batch pour éviter les limites d'URL
+    for (let i = 0; i < productIds.length; i += batchSize) {
+      const batch = productIds.slice(i, i + batchSize);
+      const { data: movements } = await supabase
+        .from('mouvements_lots')
+        .select('produit_id, quantite_mouvement')
+        .eq('tenant_id', tenantId)
+        .in('produit_id', batch)
+        .eq('type_mouvement', 'sortie')
+        .gte('date_mouvement', thirtyDaysAgo.toISOString());
+      
+      if (movements) {
+        allMovements = [...allMovements, ...movements];
+      }
+    }
 
-    const totalSales = movements.reduce((sum, m) => sum + (m.quantite_mouvement || 0), 0);
-    
-    if (totalSales >= 100) return 'rapide';
-    if (totalSales >= 30) return 'normale';
-    return 'lente';
+    // Calculer la rotation pour chaque produit
+    const rotationByProduct: Record<string, 'rapide' | 'normale' | 'lente'> = {};
+    const salesByProduct = allMovements.reduce((acc, m) => {
+      if (!acc[m.produit_id]) acc[m.produit_id] = 0;
+      acc[m.produit_id] += m.quantite_mouvement || 0;
+      return acc;
+    }, {} as Record<string, number>);
+
+    productIds.forEach(id => {
+      const totalSales = salesByProduct[id] || 0;
+      if (totalSales >= 100) rotationByProduct[id] = 'rapide';
+      else if (totalSales >= 30) rotationByProduct[id] = 'normale';
+      else rotationByProduct[id] = 'lente';
+    });
+
+    return rotationByProduct;
   } catch {
-    return 'normale';
+    return productIds.reduce((acc, id) => ({ ...acc, [id]: 'normale' as const }), {});
   }
 };
 
@@ -117,36 +139,37 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
         }
       }
 
-      // Filtrer uniquement les produits en rupture (stock = 0) et calculer rotation
-      const outOfStockProducts = await Promise.all(
-        allProducts
-          .filter((product: any) => {
-            const lots = product.lots || [];
-            const stock_actuel = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
-            return stock_actuel === 0;
-          })
-          .map(async (product: any) => {
-            const rotation = await calculateProductRotation(product.id, tenantId);
-            
-            return {
-              id: product.id,
-              tenant_id: tenantId,
-              code_cip: product.code_cip || '',
-              libelle_produit: product.libelle_produit,
-              famille_libelle: product.famille_produit?.libelle_famille || 'N/A',
-              rayon_libelle: product.rayons_produits?.libelle_rayon || 'N/A',
-              rotation,
-              date_derniere_sortie: product.updated_at,
-              prix_vente_ttc: product.prix_vente_ttc || 0,
-              prix_achat: product.prix_achat || 0,
-              stock_limite: product.stock_limite || 0,
-              stock_alerte: product.stock_alerte || 0,
-              stock_actuel: 0,
-              statut_stock: 'rupture',
-              valeur_stock: 0
-            } as OutOfStockItem;
-          })
-      );
+      // Filtrer uniquement les produits en rupture (stock = 0)
+      const outOfStockProductsData = allProducts.filter((product: any) => {
+        const lots = product.lots || [];
+        const stock_actuel = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
+        return stock_actuel === 0;
+      });
+
+      // Calculer la rotation en batch (1 seule série de requêtes au lieu de N requêtes)
+      const productIds = outOfStockProductsData.map((p: any) => p.id);
+      const rotationByProduct = await calculateProductRotationsBatch(productIds, tenantId);
+
+      // Mapper les produits avec leur rotation
+      const outOfStockProducts = outOfStockProductsData.map((product: any) => {
+        return {
+          id: product.id,
+          tenant_id: tenantId,
+          code_cip: product.code_cip || '',
+          libelle_produit: product.libelle_produit,
+          famille_libelle: product.famille_produit?.libelle_famille || 'N/A',
+          rayon_libelle: product.rayons_produits?.libelle_rayon || 'N/A',
+          rotation: rotationByProduct[product.id] || 'normale',
+          date_derniere_sortie: product.updated_at,
+          prix_vente_ttc: product.prix_vente_ttc || 0,
+          prix_achat: product.prix_achat || 0,
+          stock_limite: product.stock_limite || 0,
+          stock_alerte: product.stock_alerte || 0,
+          stock_actuel: 0,
+          statut_stock: 'rupture' as const,
+          valeur_stock: 0
+        } as OutOfStockItem;
+      });
 
       return outOfStockProducts;
     },
