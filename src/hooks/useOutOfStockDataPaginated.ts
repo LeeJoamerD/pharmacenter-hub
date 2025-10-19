@@ -48,7 +48,7 @@ const calculateProductRotationsBatch = async (productIds: string[], tenantId: st
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     let allMovements: any[] = [];
-    const batchSize = 1000;
+    const batchSize = 100; // Réduit pour éviter les URLs trop longues (erreur 400)
 
     // Récupérer les mouvements par batch pour éviter les limites d'URL
     for (let i = 0; i < productIds.length; i += batchSize) {
