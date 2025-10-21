@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { usePersonnel } from '@/hooks/usePersonnel';
 import { toast } from 'sonner';
-import type { Database } from '@/lib/database.types';
+import type { Database } from '@/integrations/supabase/types';
 
 export interface InventoryReport {
   id: string;

@@ -124,7 +124,7 @@ const CashManagement = () => {
           <CardContent>
             <div className="text-2xl font-bold">{todaySessions.length}</div>
             <p className="text-xs text-muted-foreground">
-              {todaySessions.filter(s => s.statut === 'fermee').length} fermées
+              {todaySessions.filter(s => s.statut === 'Fermée').length} fermées
             </p>
           </CardContent>
         </Card>
@@ -163,7 +163,7 @@ const CashManagement = () => {
             <div className="grid gap-4 md:grid-cols-3">
               <div>
                 <p className="text-sm text-muted-foreground">Ouverture</p>
-                <p className="font-semibold">{formatPrice(currentSession.montant_ouverture)}</p>
+                <p className="font-semibold">{formatPrice(currentSession.fond_caisse_ouverture)}</p>
                 <p className="text-xs text-muted-foreground">
                   {new Date(currentSession.date_ouverture).toLocaleString('fr-FR')}
                 </p>
@@ -244,11 +244,11 @@ const CashManagement = () => {
                       </div>
                       <div className="text-right">
                         <p className={`font-semibold ${
-                          movement.type_mouvement === 'entree' || movement.type_mouvement === 'vente' 
+                          movement.type_mouvement === 'Encaissement' || movement.type_mouvement === 'Fond_initial' 
                             ? 'text-green-600' 
                             : 'text-red-600'
                         }`}>
-                          {movement.type_mouvement === 'entree' || movement.type_mouvement === 'vente' ? '+' : '-'}
+                          {movement.type_mouvement === 'Encaissement' || movement.type_mouvement === 'Fond_initial' ? '+' : '-'}
                           {formatPrice(movement.montant)}
                         </p>
                         <Badge variant="outline" className="text-xs">

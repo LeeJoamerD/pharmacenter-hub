@@ -114,7 +114,7 @@ const CashSessionList = ({ sessions, onSelectSession, onViewReport }: CashSessio
                     <FileText className="h-4 w-4 mr-1" />
                     Rapport
                   </Button>
-                  {session.statut === 'ouverte' && (
+                  {session.statut === 'Ouverte' && (
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -132,20 +132,20 @@ const CashSessionList = ({ sessions, onSelectSession, onViewReport }: CashSessio
                     <Clock className="h-3 w-3" />
                     Ouverture
                   </p>
-                  <p className="font-semibold">{formatPrice(session.montant_ouverture)}</p>
+                  <p className="font-semibold">{formatPrice(session.fond_caisse_ouverture)}</p>
                   <p className="text-xs text-muted-foreground">
                     {format(new Date(session.date_ouverture), 'dd/MM/yyyy HH:mm', { locale: fr })}
                   </p>
                 </div>
 
-                {session.statut === 'fermee' && (
+                {session.statut === 'Fermée' && (
                   <>
                     <div>
                       <p className="text-sm text-muted-foreground flex items-center gap-1">
                         <DollarSign className="h-3 w-3" />
                         Fermeture
                       </p>
-                      <p className="font-semibold">{formatPrice(session.montant_fermeture || 0)}</p>
+                      <p className="font-semibold">{formatPrice(session.montant_reel_fermeture || 0)}</p>
                       <p className="text-xs text-muted-foreground">
                         {session.date_fermeture && format(new Date(session.date_fermeture), 'dd/MM/yyyy HH:mm', { locale: fr })}
                       </p>
@@ -157,7 +157,7 @@ const CashSessionList = ({ sessions, onSelectSession, onViewReport }: CashSessio
                         {session.ecart !== undefined ? formatPrice(session.ecart) : '-'}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Théorique: {formatPrice(session.montant_theorique || 0)}
+                        Théorique: {formatPrice(session.montant_theorique_fermeture || 0)}
                       </p>
                     </div>
 
@@ -166,7 +166,7 @@ const CashSessionList = ({ sessions, onSelectSession, onViewReport }: CashSessio
                         <User className="h-3 w-3" />
                         Agent
                       </p>
-                      <p className="font-semibold">{session.agent_id}</p>
+                      <p className="font-semibold">{session.caissier_id}</p>
                       <p className="text-xs text-muted-foreground">
                         Durée: {session.date_fermeture ? Math.round((new Date(session.date_fermeture).getTime() - new Date(session.date_ouverture).getTime()) / (1000 * 60 * 60)) : 0}h
                       </p>
@@ -174,11 +174,11 @@ const CashSessionList = ({ sessions, onSelectSession, onViewReport }: CashSessio
                   </>
                 )}
 
-                {session.statut === 'ouverte' && (
+                {session.statut === 'Ouverte' && (
                   <div className="md:col-span-2 lg:col-span-3">
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       <User className="h-3 w-3" />
-                      Agent: {session.agent_id} - En cours
+                      Agent: {session.caissier_id} - En cours
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Ouverte depuis {Math.round((new Date().getTime() - new Date(session.date_ouverture).getTime()) / (1000 * 60 * 60))}h
@@ -187,12 +187,7 @@ const CashSessionList = ({ sessions, onSelectSession, onViewReport }: CashSessio
                 )}
               </div>
 
-              {session.notes && (
-                <div className="mt-3 pt-3 border-t">
-                  <p className="text-sm text-muted-foreground">Notes:</p>
-                  <p className="text-sm">{session.notes}</p>
-                </div>
-              )}
+              {/* Notes section removed - not in CashSession type */}
             </div>
           ))}
         </div>
