@@ -190,6 +190,36 @@ export const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
     permissions: [PERMISSIONS.PHARMACY_CONFIG],
     description: 'Configuration pharmacie',
     category: 'config'
+  },
+
+  // Tests et développement
+  '/dashboard/tests': {
+    path: '/dashboard/tests',
+    requireAuth: true,
+    permissions: [PERMISSIONS.ADMIN_SYSTEM],
+    description: 'Suite de tests système',
+    category: 'testing'
+  },
+  '/dashboard/tests/security': {
+    path: '/dashboard/tests/security',
+    requireAuth: true,
+    permissions: [PERMISSIONS.ADMIN_SYSTEM],
+    description: 'Tests de sécurité',
+    category: 'testing'
+  },
+  '/dashboard/tests/performance': {
+    path: '/dashboard/tests/performance',
+    requireAuth: true,
+    permissions: [PERMISSIONS.ADMIN_SYSTEM],
+    description: 'Tests de performance',
+    category: 'testing'
+  },
+  '/dashboard/tests/data-manager': {
+    path: '/dashboard/tests/data-manager',
+    requireAuth: true,
+    permissions: [PERMISSIONS.ADMIN_SYSTEM],
+    description: 'Gestionnaire de données de test',
+    category: 'testing'
   }
 };
 

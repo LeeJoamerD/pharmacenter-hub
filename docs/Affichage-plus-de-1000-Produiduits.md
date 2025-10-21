@@ -414,3 +414,147 @@ Je vais corriger le Dashboard Référentiel pour afficher le nombre réel de pro
 Show all
 1 edit made
 Le Dashboard Référentiel affiche maintenant le nombre réel de produits (6322) en utilisant une requête de count optimisée au lieu de charger tous les produits.
+
+---
+
+## 🚨 ANALYSE DES ERREURS - MODULE STOCK ACTUEL
+
+### ❌ PROBLÈME CRITIQUE IDENTIFIÉ PAR LOVABLE.DEV
+
+**Fichier concerné :** `src/hooks/useCurrentStockPaginated.ts`
+
+**Problème :** N+1 Query Problem massif causant des timeouts
+
+**Détails du problème :**
+- **Lignes 206-254 :** Pour chaque produit de la page (50 produits) → 50 requêtes séparées pour récupérer les lots
+- **Lignes 255-290 :** Pour calculer les métriques globales :
+  - Récupère TOUS les produits actifs (6322 produits)
+  - Fait une requête pour CHAQUE produit pour récupérer ses lots
+  - **6322 requêtes supplémentaires !**
+
+**Total : ~6372 requêtes par chargement de page !** 😱
+
+### 📊 IMPACT PERFORMANCE
+
+| Avant | Après Optimisation |
+|-------|-------------------|
+| ~6372 requêtes | 3 requêtes |
+| Timeout/Freeze | Chargement < 2 secondes |
+| N+1 Problem massif | Architecture optimisée |
+
+### 🎯 SOLUTIONS RECOMMANDÉES
+
+#### SOLUTION 1 : Fonction RPC Supabase (PRIORITÉ HAUTE)
+
+**Créer :** `supabase/migrations/YYYYMMDDHHMMSS_create_calculate_stock_metrics_function.sql`
+
+```sql
+CREATE OR REPLACE FUNCTION calculate_stock_metrics(p_tenant_id UUID)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_result JSON;
+BEGIN
+  WITH stock_data AS (
+    SELECT 
+      p.id,
+      p.stock_limite,
+      p.stock_alerte,
+      p.prix_achat,
+      COALESCE(SUM(l.quantite_restante), 0) as stock_actuel,
+      COALESCE(SUM(l.quantite_restante * COALESCE(l.prix_achat_unitaire, p.prix_achat, 0)), 0) as valeur_stock
+    FROM produits p
+    LEFT JOIN lots l ON l.produit_id = p.id AND l.tenant_id = p_tenant_id AND l.quantite_restante > 0
+    WHERE p.tenant_id = p_tenant_id AND p.is_active = true
+    GROUP BY p.id, p.stock_limite, p.stock_alerte, p.prix_achat
+  )
+  SELECT json_build_object(
+    'totalProducts', COUNT(*)::int,
+    'availableProducts', COUNT(*) FILTER (WHERE stock_actuel > 0 AND (stock_alerte IS NULL OR stock_actuel > stock_alerte))::int,
+    'lowStockProducts', COUNT(*) FILTER (WHERE stock_actuel > 0 AND stock_alerte IS NOT NULL AND stock_actuel <= stock_alerte)::int,
+    'outOfStockProducts', COUNT(*) FILTER (WHERE stock_actuel = 0)::int,
+    'criticalStockProducts', COUNT(*) FILTER (WHERE stock_actuel > 0 AND stock_limite IS NOT NULL AND stock_actuel <= stock_limite * 0.1)::int,
+    'totalValue', COALESCE(SUM(valeur_stock), 0)::numeric
+  ) INTO v_result
+  FROM stock_data;
+  
+  RETURN v_result;
+END;
+$$;
+```
+
+**Avantage :** 1 seule requête au lieu de 6322 !
+
+#### SOLUTION 2 : Requête avec jointure agrégée
+
+**Modifier :** `src/hooks/useCurrentStockPaginated.ts` (lignes 136-254)
+
+```typescript
+// Construire la requête avec jointure agrégée
+let queryBuilder = supabase
+  .from('produits')
+  .select(`
+    id, libelle_produit, code_cip, famille_id, rayon_id, forme_id,
+    laboratoires_id, dci_id, classe_therapeutique_id, categorie_tarification_id,
+    prix_achat, prix_vente_ht, prix_vente_ttc, tva, taux_tva,
+    centime_additionnel, taux_centime_additionnel, stock_limite, stock_alerte,
+    is_active, created_at, tenant_id,
+    lots!inner(quantite_restante, prix_achat_unitaire)
+  `, { count: 'exact' })
+  .eq('tenant_id', tenantId)
+  .eq('is_active', true);
+
+// Calculer les stocks côté client (mais avec les données déjà chargées)
+const productsWithStock = (products || []).map((product) => {
+  const lots = (product as any).lots || [];
+  
+  const stock_actuel = lots.reduce((sum: number, lot: any) => 
+    sum + (lot.quantite_restante || 0), 0
+  );
+  
+  const valeur_stock = lots.reduce((sum: number, lot: any) => 
+    sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0)), 0
+  );
+  
+  // ... reste du calcul
+});
+```
+
+**Avantage :** Réduit de 50 requêtes à 1 seule requête pour la page.
+
+#### SOLUTION 3 : Utiliser la fonction RPC pour les métriques
+
+**Remplacer lignes 287-332 :**
+
+```typescript
+// Calculer les métriques globales avec la fonction RPC
+const { data: metricsData } = await supabase
+  .rpc('calculate_stock_metrics', { p_tenant_id: tenantId });
+
+const metrics = metricsData || {
+  totalProducts: 0,
+  availableProducts: 0,
+  lowStockProducts: 0,
+  outOfStockProducts: 0,
+  criticalStockProducts: 0,
+  totalValue: 0,
+};
+```
+
+**Avantage :** Réduit de 6322 requêtes à 1 seule requête !
+
+### 🔧 FICHIERS À MODIFIER
+
+1. **Migration Supabase :** `supabase/migrations/YYYYMMDDHHMMSS_create_calculate_stock_metrics_function.sql`
+2. **Hook :** `src/hooks/useCurrentStockPaginated.ts` (lignes 136-332)
+3. **Tests :** Vérifier le chargement de CurrentStockTab
+
+### ⚠️ POINTS CRITIQUES À RETENIR
+
+1. **N+1 Query Problem :** Le pattern actuel fait exploser le nombre de requêtes
+2. **Timeout inévitable :** 6372 requêtes ne peuvent pas aboutir dans un navigateur
+3. **Architecture défaillante :** Calculs côté client au lieu de côté serveur
+4. **Solution scalable :** Les fonctions RPC Supabase sont la solution pérenne
+5. **Performance critique :** Passer de 6372 requêtes à 3 requêtes maximum

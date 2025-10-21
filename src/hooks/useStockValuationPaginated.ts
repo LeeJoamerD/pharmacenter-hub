@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useDebouncedValue } from '@/hooks/use-debounce';
+import { getStockThreshold } from '@/lib/utils';
+import { useAlertSettings } from '@/hooks/useAlertSettings';
 
 export interface StockValuationItem {
   id: string;
@@ -90,6 +92,7 @@ export const useStockValuationPaginated = ({
 }: UseStockValuationPaginatedParams): UseStockValuationPaginatedReturn => {
   const { tenantId } = useTenant();
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
+  const { settings: alertSettings } = useAlertSettings();
 
   // Fonction pour calculer la rotation par batch (évite les requêtes individuelles)
   const calculateProductRotationsBatch = async (productIds: string[]): Promise<Map<string, 'rapide' | 'normale' | 'lente'>> => {
@@ -103,31 +106,39 @@ export const useStockValuationPaginated = ({
     for (let i = 0; i < productIds.length; i += batchSize) {
       const batch = productIds.slice(i, i + batchSize);
       
-      const { data: movements } = await supabase
-        .from('mouvements_lots')
-        .select('produit_id, quantite_mouvement')
-        .eq('tenant_id', tenantId)
-        .in('produit_id', batch)
-        .eq('type_mouvement', 'sortie')
-        .gte('date_mouvement', thirtyDaysAgo.toISOString());
-      
-      // Calculer la rotation pour chaque produit
-      const salesByProduct = new Map<string, number>();
-      (movements || []).forEach(m => {
-        const current = salesByProduct.get(m.produit_id) || 0;
-        salesByProduct.set(m.produit_id, current + Math.abs(m.quantite_mouvement));
-      });
-      
-      batch.forEach(productId => {
-        const totalSales = salesByProduct.get(productId) || 0;
-        if (totalSales >= 100) {
-          rotationMap.set(productId, 'rapide');
-        } else if (totalSales >= 30) {
+      try {
+        const { data: movements } = await supabase
+          .from('mouvements_lots')
+          .select('produit_id, quantite_mouvement')
+          .eq('tenant_id', tenantId)
+          .in('produit_id', batch)
+          .eq('type_mouvement', 'sortie')
+          .gte('date_mouvement', thirtyDaysAgo.toISOString());
+        
+        // Calculer la rotation pour chaque produit
+        const salesByProduct = new Map<string, number>();
+        (movements || []).forEach(m => {
+          const current = salesByProduct.get(m.produit_id) || 0;
+          salesByProduct.set(m.produit_id, current + Math.abs(m.quantite_mouvement));
+        });
+        
+        batch.forEach(productId => {
+          const totalSales = salesByProduct.get(productId) || 0;
+          if (totalSales >= 100) {
+            rotationMap.set(productId, 'rapide');
+          } else if (totalSales >= 30) {
+            rotationMap.set(productId, 'normale');
+          } else {
+            rotationMap.set(productId, 'lente');
+          }
+        });
+      } catch (error) {
+        console.warn('Erreur lors du calcul de rotation pour le batch:', error);
+        // En cas d'erreur, assigner une rotation par défaut
+        batch.forEach(productId => {
           rotationMap.set(productId, 'normale');
-        } else {
-          rotationMap.set(productId, 'lente');
-        }
-      });
+        });
+      }
     }
     
     return rotationMap;
@@ -135,7 +146,7 @@ export const useStockValuationPaginated = ({
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: [
-      'stock-valuation-paginated-v2',
+      'stock-valuation-paginated-v3',
       tenantId,
       debouncedSearchTerm,
       statusFilter,
@@ -148,21 +159,16 @@ export const useStockValuationPaginated = ({
     queryFn: async () => {
       if (!tenantId) throw new Error('Tenant ID manquant');
 
-      // 1. Récupérer les métriques globales via RPC
-      const { data: metricsData } = await supabase
-        .rpc('calculate_valuation_metrics', { p_tenant_id: tenantId });
+      // 1. Récupérer les métriques globales via RPC avec gestion d'erreur
+      let globalMetrics = {
+        totalProducts: 0,
+        totalValue: 0,
+        availableProducts: 0,
+        lowStockProducts: 0,
+      };
 
-      const metricsJson = metricsData as any;
-      const metrics: StockValuationMetrics = metricsJson ? {
-        totalStockValue: parseFloat(metricsJson.totalStockValue?.toString() || '0'),
-        availableStockValue: parseFloat(metricsJson.availableStockValue?.toString() || '0'),
-        lowStockValue: parseFloat(metricsJson.lowStockValue?.toString() || '0'),
-        averageValuePerProduct: parseFloat(metricsJson.averageValuePerProduct?.toString() || '0'),
-        totalProducts: parseInt(metricsJson.totalProducts?.toString() || '0'),
-        availableProducts: parseInt(metricsJson.availableProducts?.toString() || '0'),
-        lowStockProducts: parseInt(metricsJson.lowStockProducts?.toString() || '0'),
-        outOfStockProducts: parseInt(metricsJson.outOfStockProducts?.toString() || '0')
-      } : {
+      // Initialiser les métriques complètes
+      let metrics: StockValuationMetrics = {
         totalStockValue: 0,
         availableStockValue: 0,
         lowStockValue: 0,
@@ -170,47 +176,77 @@ export const useStockValuationPaginated = ({
         totalProducts: 0,
         availableProducts: 0,
         lowStockProducts: 0,
-        outOfStockProducts: 0
+        outOfStockProducts: 0,
       };
 
-      // 2. Récupérer la valorisation par famille
-      const { data: familyData } = await supabase
-        .rpc('calculate_valuation_by_family', { p_tenant_id: tenantId });
-      const valuationByFamily: ValuationByCategory[] = (Array.isArray(familyData) ? familyData : []) as unknown as ValuationByCategory[];
+      try {
+        const { data: metricsData, error: metricsError } = await supabase
+          .rpc('calculate_stock_metrics', { p_tenant_id: tenantId });
 
-      // 3. Récupérer la valorisation par rayon
-      const { data: rayonData } = await supabase
-        .rpc('calculate_valuation_by_rayon', { p_tenant_id: tenantId });
-      const valuationByRayon: ValuationByCategory[] = (Array.isArray(rayonData) ? rayonData : []) as unknown as ValuationByCategory[];
+        if (metricsError) {
+          console.warn('Erreur RPC calculate_stock_metrics:', metricsError);
+        } else if (metricsData && typeof metricsData === 'object' && metricsData !== null) {
+          const data = metricsData as any;
+          globalMetrics = {
+            totalProducts: data.totalProducts || 0,
+            totalValue: parseFloat(data.totalValue?.toString() || '0') || 0,
+            availableProducts: data.availableProducts || 0,
+            lowStockProducts: data.lowStockProducts || 0,
+          };
+          
+          // Mettre à jour les métriques complètes
+          metrics = {
+            totalStockValue: parseFloat(data.totalValue?.toString() || '0') || 0,
+            availableStockValue: parseFloat(data.availableStockValue?.toString() || '0') || 0,
+            lowStockValue: parseFloat(data.lowStockValue?.toString() || '0') || 0,
+            averageValuePerProduct: parseFloat(data.averageValuePerProduct?.toString() || '0') || 0,
+            totalProducts: data.totalProducts || 0,
+            availableProducts: data.availableProducts || 0,
+            lowStockProducts: data.lowStockProducts || 0,
+            outOfStockProducts: data.outOfStockProducts || 0,
+          };
+        }
+      } catch (error) {
+        console.warn('Erreur lors du calcul des métriques:', error);
+      }
 
-      // 4. Charger TOUS les produits avec pagination serveur par batch de 1000
+      // 2. Calculer la valorisation par famille côté client (après traitement des produits)
+      let valuationByFamily: ValuationByCategory[] = [];
+      let valuationByRayon: ValuationByCategory[] = [];
+
+      // 4. Charger les produits avec pagination optimisée (500 par batch au lieu de 1000)
       let allProducts: any[] = [];
       let page = 0;
-      const pageSize = 1000;
+      const pageSize = 500; // Réduit pour améliorer les performances
       let hasMore = true;
       
-      while (hasMore) {
-        const { data: products, error } = await supabase
-          .from('produits')
-          .select(`
-            id, tenant_id, code_cip, libelle_produit,
-            famille_id, rayon_id, prix_achat, prix_vente_ttc,
-            stock_limite, stock_alerte,
-            famille_produit:famille_id(libelle_famille),
-            rayons_produits:rayon_id(libelle_rayon),
-            lots(quantite_restante, prix_achat_unitaire)
-          `)
-          .eq('tenant_id', tenantId)
-          .eq('is_active', true)
-          .range(page * pageSize, (page + 1) * pageSize - 1);
-        
-        if (error) throw error;
-        
-        if (products && products.length > 0) {
-          allProducts = [...allProducts, ...products];
-          hasMore = products.length === pageSize;
-          page++;
-        } else {
+      while (hasMore && allProducts.length < 5000) { // Limite à 5000 produits max
+        try {
+          const { data: products, error } = await supabase
+            .from('produits')
+            .select(`
+              id, tenant_id, code_cip, libelle_produit,
+              famille_id, rayon_id, prix_achat, prix_vente_ttc,
+              stock_limite, stock_alerte,
+              famille_produit:famille_id(libelle_famille),
+              rayons_produits:rayon_id(libelle_rayon),
+              lots(quantite_restante, prix_achat_unitaire)
+            `)
+            .eq('tenant_id', tenantId)
+            .eq('is_active', true)
+            .range(page * pageSize, (page + 1) * pageSize - 1);
+          
+          if (error) throw error;
+          
+          if (products && products.length > 0) {
+            allProducts = [...allProducts, ...products];
+            hasMore = products.length === pageSize;
+            page++;
+          } else {
+            hasMore = false;
+          }
+        } catch (error) {
+          console.warn('Erreur lors du chargement des produits, page:', page, error);
           hasMore = false;
         }
       }
@@ -218,13 +254,13 @@ export const useStockValuationPaginated = ({
       // 5. Appliquer la recherche côté client
       if (debouncedSearchTerm) {
         allProducts = allProducts.filter(product => 
-          product.libelle_produit.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-          product.code_cip.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+          product.libelle_produit?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+          product.code_cip?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
         );
       }
 
-      // 6. Calculer la rotation pour tous les produits (dynamique depuis les mouvements)
-      const productIds = allProducts.map(p => p.id);
+      // 6. Calculer la rotation pour tous les produits (avec limite)
+      const productIds = allProducts.slice(0, 1000).map(p => p.id); // Limite à 1000 pour la rotation
       const rotationMap = await calculateProductRotationsBatch(productIds);
 
       // 7. Traiter les produits avec rotation dynamique
@@ -235,10 +271,14 @@ export const useStockValuationPaginated = ({
           sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0)), 0
         );
 
+        // Utiliser la logique en cascade pour les seuils
+        const criticalThreshold = getStockThreshold('critical', product.stock_alerte, alertSettings?.critical_stock_threshold);
+        const lowThreshold = getStockThreshold('low', product.stock_limite, alertSettings?.low_stock_threshold);
+
         const statut: 'disponible' | 'faible' | 'critique' | 'rupture' = 
           stock_actuel === 0 ? 'rupture' :
-          stock_actuel <= (product.stock_alerte || 0) * 0.5 ? 'critique' :
-          stock_actuel <= (product.stock_alerte || 0) ? 'faible' : 'disponible';
+          stock_actuel <= criticalThreshold ? 'critique' :
+          stock_actuel <= lowThreshold ? 'faible' : 'disponible';
 
         const rotation = rotationMap.get(product.id) || 'normale';
 
@@ -246,7 +286,7 @@ export const useStockValuationPaginated = ({
           id: product.id,
           tenant_id: product.tenant_id,
           code_cip: product.code_cip || '',
-          libelle_produit: product.libelle_produit,
+          libelle_produit: product.libelle_produit || '',
           famille_id: product.famille_id,
           famille_libelle: product.famille_produit?.libelle_famille,
           rayon_id: product.rayon_id,
@@ -290,13 +330,84 @@ export const useStockValuationPaginated = ({
         return sortDirection === 'asc' ? comparison : -comparison;
       });
 
-      // 10. Top 20 produits par valorisation
+      // 10. Recalculer les métriques si les RPC ont échoué
+      if (metrics.totalStockValue === 0 && processedItems.length > 0) {
+        metrics.totalStockValue = processedItems.reduce((sum, item) => sum + item.valeur_stock, 0);
+        metrics.availableStockValue = processedItems
+          .filter(item => item.statut_stock === 'disponible')
+          .reduce((sum, item) => sum + item.valeur_stock, 0);
+        metrics.lowStockValue = processedItems
+          .filter(item => item.statut_stock === 'faible' || item.statut_stock === 'critique')
+          .reduce((sum, item) => sum + item.valeur_stock, 0);
+        metrics.totalProducts = processedItems.length;
+        metrics.availableProducts = processedItems.filter(item => item.statut_stock === 'disponible').length;
+        metrics.lowStockProducts = processedItems.filter(item => item.statut_stock === 'faible' || item.statut_stock === 'critique').length;
+        metrics.outOfStockProducts = processedItems.filter(item => item.statut_stock === 'rupture').length;
+        metrics.averageValuePerProduct = metrics.totalProducts > 0 ? metrics.totalStockValue / metrics.totalProducts : 0;
+      }
+
+      // 11. Calculer la valorisation par famille côté client
+      const familyMap = new Map<string, { name: string; value: number; quantity: number; productCount: number }>();
+      processedItems.forEach(product => {
+        if (product.famille_libelle) {
+          const key = product.famille_id || 'unknown';
+          const existing = familyMap.get(key) || { 
+            name: product.famille_libelle, 
+            value: 0, 
+            quantity: 0, 
+            productCount: 0 
+          };
+          existing.value += product.valeur_stock;
+          existing.quantity += product.stock_actuel;
+          existing.productCount += 1;
+          familyMap.set(key, existing);
+        }
+      });
+
+      const totalValue = processedItems.reduce((sum, p) => sum + p.valeur_stock, 0);
+      valuationByFamily = Array.from(familyMap.entries()).map(([id, data]) => ({
+        id,
+        name: data.name,
+        value: data.value,
+        quantity: data.quantity,
+        percentage: totalValue > 0 ? (data.value / totalValue) * 100 : 0,
+        productCount: data.productCount
+      })).sort((a, b) => b.value - a.value);
+
+      // 12. Calculer la valorisation par rayon côté client
+      const rayonMap = new Map<string, { name: string; value: number; quantity: number; productCount: number }>();
+      processedItems.forEach(product => {
+        if (product.rayon_libelle) {
+          const key = product.rayon_id || 'unknown';
+          const existing = rayonMap.get(key) || { 
+            name: product.rayon_libelle, 
+            value: 0, 
+            quantity: 0, 
+            productCount: 0 
+          };
+          existing.value += product.valeur_stock;
+          existing.quantity += product.stock_actuel;
+          existing.productCount += 1;
+          rayonMap.set(key, existing);
+        }
+      });
+
+      valuationByRayon = Array.from(rayonMap.entries()).map(([id, data]) => ({
+        id,
+        name: data.name,
+        value: data.value,
+        quantity: data.quantity,
+        percentage: totalValue > 0 ? (data.value / totalValue) * 100 : 0,
+        productCount: data.productCount
+      })).sort((a, b) => b.value - a.value);
+
+      // 13. Top 20 produits par valorisation
       const topValueProducts = filteredItems
         .slice()
         .sort((a, b) => b.valeur_stock - a.valeur_stock)
         .slice(0, 20);
 
-      // 11. Pagination client-side
+      // 14. Pagination client-side
       const allItemsCount = filteredItems.length;
       const totalPages = Math.ceil(allItemsCount / itemsPerPage);
       const startIndex = (currentPage - 1) * itemsPerPage;
@@ -306,16 +417,29 @@ export const useStockValuationPaginated = ({
         valuationItems: paginatedItems,
         allItemsCount,
         totalPages,
-        metrics,
+        metrics: {
+          totalStockValue: globalMetrics.totalValue,
+          availableStockValue: globalMetrics.totalValue,
+          lowStockValue: processedItems
+             .filter(p => p.statut_stock === 'faible')
+             .reduce((sum, p) => sum + (p.valeur_stock || 0), 0),
+          averageValuePerProduct: globalMetrics.totalProducts > 0 
+            ? globalMetrics.totalValue / globalMetrics.totalProducts 
+            : 0,
+          totalProducts: globalMetrics.totalProducts,
+          availableProducts: globalMetrics.availableProducts,
+          lowStockProducts: globalMetrics.lowStockProducts,
+          outOfStockProducts: globalMetrics.totalProducts - globalMetrics.availableProducts,
+        },
         valuationByFamily,
         valuationByRayon,
         topValueProducts
       };
     },
     enabled: !!tenantId,
-    staleTime: 30 * 1000, // 30 secondes
+    staleTime: 60 * 1000, // 1 minute au lieu de 30 secondes
     refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false, // Désactivé pour améliorer les performances
     placeholderData: (previousData) => previousData,
   });
 

@@ -17,6 +17,7 @@ import PharmacyPasswordReset from "./pages/PharmacyPasswordReset";
 import PharmacySetPassword from "./pages/PharmacySetPassword";
 import TestInterface from "./pages/TestInterface";
 import TestingPage from "./pages/TestingPage";
+import TestSuitePage from "./pages/TestSuitePage";
 import NotFound from "./pages/NotFound";
 import UserLogin from "./pages/UserLogin";
 import UserRegister from "./pages/UserRegister";
@@ -50,6 +51,7 @@ const App = () => (
                     <Route path="/password-reset" element={<PasswordReset />} />
                     <Route path="/test-interface" element={<TestInterface />} />
                     <Route path="/testing" element={<TestingPage />} />
+                    <Route path="/dashboard/tests" element={<TestSuitePage />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </BrowserRouter>

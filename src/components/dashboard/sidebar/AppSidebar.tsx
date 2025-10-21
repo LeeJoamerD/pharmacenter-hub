@@ -9,7 +9,7 @@ import { Home, ShoppingCart, Package, Calculator, BarChart,
   Settings, LogOut, Pill, Shield, Bot, MessageCircle, Users, Handshake, Tag, User, Lock, 
   Clipboard, ChartBar, RefreshCw, DollarSign, CreditCard, Receipt, Briefcase, Target, 
   Building, Banknote, Smartphone, Wrench, Map, Globe, Palette, Search, TrendingUp, 
-  Eye, GraduationCap, Folder, Paperclip, Zap } from 'lucide-react';
+  Eye, GraduationCap, Folder, Paperclip, Zap, TestTube, Activity, Database } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PERMISSIONS, ROLES } from '@/types/permissions';
 
@@ -163,6 +163,12 @@ const AppSidebar = ({
       { name: 'Multi-canaux Réseau', icon: Globe },
       { name: 'Personnalisation Réseau', icon: Palette },
       { name: 'Administration Réseau', icon: Settings }
+    ],
+    tests: [
+      { name: 'Sécurité', icon: Shield },
+      { name: 'Performance', icon: Activity },
+      { name: 'Données de Test', icon: Database },
+      { name: 'Validation', icon: TestTube }
     ]
   };
 
@@ -355,6 +361,22 @@ const AppSidebar = ({
                     ))}
                   </SidebarMenuSub>
                 )}
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Tests & Développement</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  className={activeModule === 'tests' ? 'bg-primary/10 text-primary' : ''} 
+                  onClick={() => navigate('/dashboard/tests')}
+                >
+                  <TestTube className="h-5 w-5 text-amber-600" />
+                  <span>Suites de Tests</span>
+                </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>

@@ -83,8 +83,8 @@ export default {
 				sm: 'calc(var(--radius) - 4px)'
 			},
 			fontFamily: {
-				sans: ['Inter var', 'sans-serif'],
-				display: ['SF Pro Display', 'Inter var', 'sans-serif'],
+				sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+				display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
 			},
 			backgroundImage: {
 				'radial': 'radial-gradient(circle, var(--tw-gradient-stops))',

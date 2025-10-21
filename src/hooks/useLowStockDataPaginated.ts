@@ -80,169 +80,115 @@ export const useLowStockDataPaginated = (params: UseLowStockDataPaginatedParams 
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
-  // Récupérer seulement les produits en stock faible avec pagination serveur
-  const { data: products = [], isLoading: isLoadingProducts, refetch } = useTenantQueryWithCache(
-    ['products-for-low-stock-paginated-v2', String(page), String(limit), debouncedSearch, category, status],
-    'produits',
-    `
-      id, tenant_id, libelle_produit, code_cip,
-      prix_achat, prix_vente_ttc, stock_limite, stock_alerte,
-      famille_id, rayon_id, created_at, updated_at, is_active,
-      famille_produit(id, libelle_famille),
-      rayons_produits(id, libelle_rayon),
-      lots(quantite_restante, prix_achat_unitaire)
-    `,
-    { is_active: true }
-  );
+  // Utiliser la nouvelle RPC pour charger uniquement les produits critiques/faibles
+  const { data: lowStockProductsData, isLoading: isLoadingProducts, refetch } = useQuery({
+    queryKey: ['low-stock-products-rpc', tenantId, page, limit, debouncedSearch, category, status],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_low_stock_products' as any, {
+        p_tenant_id: tenantId,
+        p_search: debouncedSearch || null,
+        p_category: category || null,
+        p_status: status || null,
+        p_limit: limit,
+        p_offset: (page - 1) * limit
+      });
+
+      if (error) {
+        console.error('❌ [LOW STOCK RPC] Erreur:', error);
+        throw error;
+      }
+
+      return data || [];
+    },
+    enabled: !!tenantId,
+    staleTime: 30 * 1000, // 30 secondes
+  });
 
   // Récupérer les catégories pour les filtres
   const { data: categories = [] } = useTenantQueryWithCache(
     ['categories-for-low-stock-filters'],
     'famille_produit',
-    'libelle_famille'
+    'id, libelle_famille'
   );
 
   // Process products to determine low stock status et charger les métriques
   useEffect(() => {
     const processLowStockData = async () => {
-      if (!products || products.length === 0) {
+      // ✅ Charger les métriques depuis la RPC corrigée
+      const { data: metricsData, error: metricsError } = await supabase
+        .rpc('calculate_low_stock_metrics_v2', {
+          p_critical_threshold: 5,
+          p_low_threshold: 10
+        });
+      
+      if (metricsError) {
+        console.error('❌ [LOW STOCK METRICS] Erreur lors du chargement des métriques:', metricsError);
+      }
+      
+      const metricsJson = metricsData as any;
+      if (metricsJson && typeof metricsJson === 'object') {
+        setMetrics({
+          totalItems: Number(metricsJson.totalItems) || 0,
+          criticalItems: Number(metricsJson.criticalItems) || 0,
+          lowItems: Number(metricsJson.lowItems) || 0,
+          attentionItems: 0, // Pas utilisé dans la nouvelle logique
+          totalValue: parseFloat(String(metricsJson.totalValue)) || 0,
+          averageRotation: 0,
+          urgentActions: Number(metricsJson.urgentActions) || 0
+        });
+      }
+
+      if (!lowStockProductsData || !Array.isArray(lowStockProductsData) || lowStockProductsData.length === 0) {
         setAllLowStockItems([]);
-        
-        // Charger quand même les métriques depuis la RPC
-        const { data: metricsData } = await supabase
-          .rpc('calculate_low_stock_metrics', { p_tenant_id: tenantId });
-        
-        const metricsJson = metricsData as any;
-        if (metricsJson) {
-          setMetrics({
-            totalItems: metricsJson.totalItems || 0,
-            criticalItems: metricsJson.criticalItems || 0,
-            lowItems: metricsJson.lowItems || 0,
-            attentionItems: metricsJson.attentionItems || 0,
-            totalValue: parseFloat(metricsJson.totalValue) || 0,
-            averageRotation: 0,
-            urgentActions: metricsJson.urgentActions || 0
-          });
-        }
         return;
       }
 
-      console.log('🔍 [LOW STOCK PAGINATED] Traitement de', products.length, 'produits');
+      console.log('🔍 [LOW STOCK PAGINATED] Traitement de', lowStockProductsData.length, 'produits depuis RPC');
 
-      const processedItems: LowStockItem[] = [];
-
-      for (const product of products) {
-        const lots = (product as any).lots || [];
-        const currentStock = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
-        
-        // Get category-specific threshold
-        const categoryThreshold = thresholds?.find(t => 
-          t.category === (product as any).famille_produit?.libelle_famille && t.enabled
-        );
-        const effectiveThreshold = categoryThreshold?.threshold || product.stock_limite || 10;
-        const optimalThreshold = product.stock_alerte || effectiveThreshold * 3;
-
-        // Determine if this is a low stock item
-        let stockStatus: 'critique' | 'faible' | 'attention' | null = null;
-        
-        if (currentStock === 0) {
-          stockStatus = 'critique';
-        } else if (currentStock <= Math.floor(effectiveThreshold * 0.3)) {
-          stockStatus = 'critique';
-        } else if (currentStock <= effectiveThreshold) {
-          stockStatus = 'faible';
-        } else if (currentStock <= Math.floor(effectiveThreshold * 1.5)) {
-          stockStatus = 'attention';
-        }
-
-        // Only include items that are actually low in stock
-        if (!stockStatus) continue;
-
-        // Calculate stock value
-        const stockValue = lots.reduce((sum: number, lot: any) => 
-          sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0)), 0
-        );
-
-        // Determine rotation (simplified logic)
+      // Convertir les données RPC en format LowStockItem
+      const processedItems: LowStockItem[] = lowStockProductsData.map((product: any) => {
+        // Déterminer la rotation (logique simplifiée)
+        const daysSinceUpdate = Math.floor((Date.now() - new Date(product.updated_at).getTime()) / (1000 * 60 * 60 * 24));
         const rotation: 'rapide' | 'normale' | 'lente' = 
-          currentStock < effectiveThreshold * 0.5 ? 'rapide' :
-          currentStock < effectiveThreshold ? 'normale' : 'lente';
+          daysSinceUpdate < 7 ? 'rapide' :
+          daysSinceUpdate < 30 ? 'normale' : 'lente';
 
-        const lowStockItem: LowStockItem = {
+        return {
           id: product.id,
           tenant_id: product.tenant_id,
           codeProduit: product.code_cip || '',
           nomProduit: product.libelle_produit,
           dci: product.libelle_produit,
-          quantiteActuelle: currentStock,
-          seuilMinimum: effectiveThreshold,
-          seuilOptimal: optimalThreshold,
+          quantiteActuelle: product.stock_actuel,
+          seuilMinimum: product.stock_limite || 10,
+          seuilOptimal: product.stock_alerte || (product.stock_limite || 10) * 3,
           unite: 'unité',
-          categorie: (product as any).famille_produit?.libelle_famille || 'Non classé',
+          categorie: product.famille_libelle || 'Non classé',
           fournisseurPrincipal: 'N/A',
           prixUnitaire: product.prix_achat || 0,
-          valeurStock: stockValue,
+          valeurStock: product.valeur_stock || 0,
           dernierMouvement: new Date(product.updated_at),
-          statut: stockStatus,
+          statut: product.statut_stock as 'critique' | 'faible' | 'attention',
           famille_id: product.famille_id,
           rayon_id: product.rayon_id,
           rotation,
-          jours_sans_mouvement: Math.floor((Date.now() - new Date(product.updated_at).getTime()) / (1000 * 60 * 60 * 24))
+          jours_sans_mouvement: daysSinceUpdate
         };
+      });
 
-        processedItems.push(lowStockItem);
-      }
-
-      console.log('📊 [LOW STOCK PAGINATED] Items traités:', processedItems.length);
+      console.log('📊 [LOW STOCK PAGINATED] Items traités depuis RPC:', processedItems.length);
       setAllLowStockItems(processedItems);
-
-      // Charger les métriques depuis la RPC
-      const { data: metricsData } = await supabase
-        .rpc('calculate_low_stock_metrics', { p_tenant_id: tenantId });
-      
-      const metricsJson = metricsData as any;
-      if (metricsJson) {
-        setMetrics({
-          totalItems: metricsJson.totalItems || 0,
-          criticalItems: metricsJson.criticalItems || 0,
-          lowItems: metricsJson.lowItems || 0,
-          attentionItems: metricsJson.attentionItems || 0,
-          totalValue: parseFloat(metricsJson.totalValue) || 0,
-          averageRotation: processedItems.length > 0 ? 
-            processedItems.reduce((sum, item) => sum + item.jours_sans_mouvement, 0) / processedItems.length : 0,
-          urgentActions: metricsJson.urgentActions || 0
-        });
-      }
     };
 
     processLowStockData();
-  }, [products, thresholds, stockSettings, tenantId]);
+  }, [lowStockProductsData, tenantId]);
 
-  // Filter and sort items
+  // Filter and sort items (simplifié car la RPC fait déjà le filtrage principal)
   const filteredAndSortedItems = useMemo(() => {
     let filtered = [...allLowStockItems];
 
-    // Apply search filter
-    if (debouncedSearch) {
-      const searchLower = debouncedSearch.toLowerCase();
-      filtered = filtered.filter(item =>
-        item.nomProduit.toLowerCase().includes(searchLower) ||
-        item.codeProduit.toLowerCase().includes(searchLower) ||
-        item.categorie.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Apply category filter
-    if (category && category !== '') {
-      filtered = filtered.filter(item => item.famille_id === category);
-    }
-
-    // Apply status filter
-    if (status && status !== '') {
-      filtered = filtered.filter(item => item.statut === status);
-    }
-
-    // Apply sorting
+    // Le filtrage par recherche, catégorie et statut est déjà fait par la RPC
+    // On garde seulement le tri local
     filtered.sort((a, b) => {
       let aValue: any = a[sortBy as keyof LowStockItem];
       let bValue: any = b[sortBy as keyof LowStockItem];
@@ -279,9 +225,9 @@ export const useLowStockDataPaginated = (params: UseLowStockDataPaginatedParams 
     });
 
     return filtered;
-  }, [allLowStockItems, debouncedSearch, category, status, sortBy, sortOrder]);
+  }, [allLowStockItems, sortBy, sortOrder]);
 
-  // Paginate items
+  // Pagination locale pour les items filtrés et triés
   const paginatedItems = useMemo(() => {
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
@@ -290,6 +236,25 @@ export const useLowStockDataPaginated = (params: UseLowStockDataPaginatedParams 
 
   const totalPages = Math.ceil(filteredAndSortedItems.length / limit);
   const totalItems = filteredAndSortedItems.length;
+
+  // Souscription temps réel aux changements de lots/produits pour mise à jour automatique
+  useEffect(() => {
+    const channel = (supabase as any)
+      .channel('low-stock-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lots', filter: `tenant_id=eq.${tenantId}` }, () => {
+        refetch();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'produits', filter: `tenant_id=eq.${tenantId}` }, () => {
+        refetch();
+      })
+      .subscribe();
+  
+    return () => {
+      try {
+        (supabase as any).removeChannel(channel);
+      } catch {}
+    };
+  }, [tenantId, refetch]);
 
   return {
     lowStockItems: paginatedItems,

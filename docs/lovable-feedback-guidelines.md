@@ -354,4 +354,8 @@ npx supabase gen types typescript --project-id PROJECT_ID > src/lib/database.typ
 
 ---
 
+## 📚 **LOGIQUE EN CASCADE**
+- Le système utilise maintenant pour les alertes de stock 
+- 1) valeurs produit (stock_limite, stock_alert et stock critique) → 2) paramètres utilisateur (alert_settings) → 3) valeurs par défaut.
+
 > **💡 RAPPEL :** Ce document doit être consulté avant chaque implémentation majeure pour éviter de répéter les erreurs identifiées par Lovable.dev.

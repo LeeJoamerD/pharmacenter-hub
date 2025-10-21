@@ -7,23 +7,20 @@ import { Search, Package, CheckCircle, XCircle, AlertTriangle, BarChart3, Loader
 import { useQuickStockSearch } from '@/hooks/useQuickStockSearch';
 
 const QuickStockCheck = () => {
+  const [pageSize, setPageSize] = useState(50);
   const [searchQuery, setSearchQuery] = useState('');
+  
   const { 
-    products: searchResults, 
-    totalCount,
-    hasMore,
-    isLoading: isSearching, 
-    loadMore,
-    resetSearch 
-  } = useQuickStockSearch(searchQuery, 10);
+    data: searchResults, 
+    isLoading, 
+    error,
+    refetch,
+    validationError
+  } = useQuickStockSearch(searchQuery, pageSize);
 
   const handleSearch = (query = searchQuery) => {
     const searchTerm = query.trim();
-    if (!searchTerm) {
-      resetSearch();
-      return;
-    }
-    // La recherche est maintenant gérée automatiquement par le hook
+    setSearchQuery(searchTerm);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -34,7 +31,10 @@ const QuickStockCheck = () => {
 
   const handleQuickSearch = (term: string) => {
     setSearchQuery(term);
-    // Le hook se charge automatiquement de la recherche avec debounce
+  };
+
+  const resetSearch = () => {
+    setSearchQuery('');
   };
 
   const getStockIcon = (status: string) => {
@@ -102,15 +102,14 @@ const QuickStockCheck = () => {
                   onChange={(e) => handleQuickSearch(e.target.value)}
                   onKeyPress={handleKeyPress}
                   className="pl-10 text-lg"
-                  disabled={isSearching}
                 />
               </div>
               <Button 
                 onClick={() => handleSearch()}
-                disabled={isSearching || !searchQuery.trim()}
+                disabled={isLoading || !searchQuery.trim()}
                 size="lg"
               >
-                {isSearching ? (
+                {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Recherche...
@@ -171,29 +170,46 @@ const QuickStockCheck = () => {
       </Card>
 
       {/* Résultats de recherche */}
-      {(searchResults.length > 0 || (searchQuery && !isSearching)) && (
+      {(searchResults?.products?.length > 0 || (searchQuery && !isLoading)) && (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5" />
               Résultats de Vérification
-              {totalCount > 0 && (
+              {searchResults?.totalCount > 0 && (
                 <Badge variant="outline">
-                  {searchResults.length} affiché{searchResults.length > 1 ? 's' : ''} sur {totalCount} trouvé{totalCount > 1 ? 's' : ''}
+                  {searchResults.products.length} affiché{searchResults.products.length > 1 ? 's' : ''} sur {searchResults.totalCount} trouvé{searchResults.totalCount > 1 ? 's' : ''}
                 </Badge>
               )}
             </CardTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                disabled={isLoading}
+              >
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Actualiser"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetSearch}
+              >
+                Réinitialiser
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            {searchResults.length === 0 && searchQuery && !isSearching ? (
+            {searchResults?.products?.length === 0 && searchQuery && !isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Search className="h-16 w-16 mx-auto mb-4" />
                 <p className="text-lg font-medium">Aucun produit trouvé</p>
-                <p>Essayez avec un autre terme de recherche</p>
+                <p>Essayez avec un autre terme de recherche (minimum 2 caractères)</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {searchResults.map((product) => (
+                {searchResults?.products?.map((product) => (
                   <div key={product.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
@@ -215,7 +231,7 @@ const QuickStockCheck = () => {
                             <div className="font-semibold text-lg">{product.stock_actuel}</div>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Stock Limite:</span>
+                            <span className="text-muted-foreground">Stock Minimum:</span>
                             <div>{product.stock_limite}</div>
                           </div>
                           <div>
@@ -260,28 +276,74 @@ const QuickStockCheck = () => {
                   </div>
                 ))}
 
-                {/* Bouton "Voir plus" pour la pagination */}
-                {hasMore && (
-                  <div className="text-center pt-4">
+                {/* Contrôles de pagination */}
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Taille de page:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => setPageSize(Number(e.target.value))}
+                      className="border rounded px-2 py-1 text-sm"
+                    >
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value={200}>200</option>
+                    </select>
+                  </div>
+                  
+                  {searchResults?.hasMore && (
                     <Button 
                       variant="outline" 
-                      onClick={loadMore}
-                      disabled={isSearching}
-                      className="w-full"
+                      onClick={() => {
+                        // Charger plus de résultats en augmentant la taille de page
+                        setPageSize(prev => prev + 50);
+                      }}
+                      disabled={isLoading}
                     >
-                      {isSearching ? (
+                      {isLoading ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           Chargement...
                         </>
                       ) : (
-                        `Voir plus de produits (${totalCount - searchResults.length} restants)`
+                        'Voir plus'
                       )}
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Indicateur de chargement */}
+      {isLoading && searchQuery && (
+        <Card>
+          <CardContent className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin mr-2" />
+            <span>Recherche en cours...</span>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Affichage des erreurs de validation */}
+      {validationError && (
+        <Card className="border-orange-200">
+          <CardContent className="flex items-center gap-2 py-4 text-orange-600">
+            <AlertTriangle className="h-5 w-5" />
+            <span>{validationError}</span>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Affichage des erreurs */}
+      {error && (
+        <Card className="border-red-200">
+          <CardContent className="flex items-center gap-2 py-4 text-red-600">
+            <XCircle className="h-5 w-5" />
+            <span>Erreur lors de la recherche: {error.message}</span>
           </CardContent>
         </Card>
       )}

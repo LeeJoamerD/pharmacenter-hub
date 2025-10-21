@@ -19,6 +19,9 @@ export const useTenantQuery = () => {
         limit?: number;
         single?: boolean;
         tenantScoped?: boolean;
+        // Ajout: pagination avancée et comptage
+        range?: { from: number; to: number };
+        count?: 'exact' | 'planned' | 'estimated';
       }
     ) => {
       const shouldScopeTenant = options?.tenantScoped ?? true;
@@ -27,9 +30,10 @@ export const useTenantQuery = () => {
         throw new Error('Tenant ID is required for tenant queries');
       }
 
+      // Ajout: support du comptage dans select
       let query = (supabase as any)
         .from(tableName)
-        .select(selectQuery);
+        .select(selectQuery, options?.count ? { count: options.count } : undefined as any);
         
       // Only add tenant filter if table is tenant-scoped
       if (shouldScopeTenant && tenantId) {
@@ -49,6 +53,8 @@ export const useTenantQuery = () => {
               query = query.eq(key, value.eq);
             } else if ('neq' in value) {
               query = query.neq(key, value.neq);
+            } else if ('ilike' in value) {
+              query = query.ilike(key, value.ilike);
             }
           } else if (value !== undefined && value !== null) {
             query = query.eq(key, value);
@@ -63,8 +69,11 @@ export const useTenantQuery = () => {
         });
       }
 
-      // Ajouter la limite
-      if (options?.limit) {
+      // Ajout: pagination serveur via range (supprime la limite par défaut de 1000)
+      if (options?.range) {
+        query = query.range(options.range.from, options.range.to);
+      } else if (options?.limit) {
+        // Fallback vers limit si range non fourni
         query = query.limit(options.limit);
       }
 
@@ -90,6 +99,9 @@ export const useTenantQuery = () => {
       single?: boolean;
       enabled?: boolean;
       tenantScoped?: boolean;
+      // Ajout: support de range et count côté cache
+      range?: { from: number; to: number };
+      count?: 'exact' | 'planned' | 'estimated';
     }
   ) => {
     const shouldScopeTenant = options?.tenantScoped ?? true;

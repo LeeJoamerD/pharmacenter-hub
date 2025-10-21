@@ -240,9 +240,9 @@ const StockValuation = () => {
               <span className="text-sm font-medium">Stock Faible</span>
             </div>
             <div className="text-2xl font-bold text-yellow-600">
-              {formatCurrency(lowStockValue)}
+              {metrics.lowStockProducts}
             </div>
-            <p className="text-xs text-muted-foreground">À réapprovisionner</p>
+            <p className="text-xs text-muted-foreground">Produits à réapprovisionner</p>
           </CardContent>
         </Card>
 

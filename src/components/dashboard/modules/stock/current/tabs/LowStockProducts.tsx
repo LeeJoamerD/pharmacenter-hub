@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Search, Filter, AlertTriangle, Package, TrendingDown, Download, ShoppingCart, Bell, FileText, FileSpreadsheet, FileDown, X, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Filter, AlertTriangle, Package, TrendingDown, Download, ShoppingCart, Bell, FileText, FileSpreadsheet, FileDown, X, ArrowUpDown, ArrowUp, ArrowDown, RefreshCw, RotateCcw } from "lucide-react";
 import { useLowStockDataPaginated } from "@/hooks/useLowStockDataPaginated";
 import { useDebouncedValue } from "@/hooks/use-debounce";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +33,7 @@ export const LowStockProducts = () => {
   const [sortField, setSortField] = useState<SortField>('statut');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50); // ✅ Ajout du choix de pagination
   
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
   
@@ -51,7 +52,7 @@ export const LowStockProducts = () => {
     sortBy: sortField,
     sortOrder: sortDirection,
     page: currentPage,
-    limit: 50
+    limit: pageSize // ✅ Utilisation du pageSize dynamique
   });
 
   // Selection state
@@ -84,6 +85,40 @@ export const LowStockProducts = () => {
         ? prev.filter(id => id !== itemId)
         : [...prev, itemId]
     );
+  };
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    try {
+      await refetch();
+      toast({
+        title: "Données actualisées",
+        description: "Les données de stock faible ont été mises à jour",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'actualiser les données",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle reset filters
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setCategoryFilter('');
+    setStatusFilter('');
+    setSortField('statut');
+    setSortDirection('desc');
+    setCurrentPage(1);
+    setPageSize(50); // ✅ Reset du pageSize
+    handleClearSelection();
+    
+    toast({
+      title: "Filtres réinitialisés",
+      description: "Tous les filtres ont été remis à zéro",
+    });
   };
 
   // Clear selection
@@ -280,6 +315,16 @@ export const LowStockProducts = () => {
             <div className="flex items-center gap-2">
               <Filter className="h-5 w-5 text-primary" />
               <h3 className="font-semibold">Filtres et Recherche</h3>
+              <div className="ml-auto flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleRefresh}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Actualiser
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleResetFilters}>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Réinitialiser
+                </Button>
+              </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -303,7 +348,7 @@ export const LowStockProducts = () => {
               <SelectContent>
                 <SelectItem value="all">Toutes les catégories</SelectItem>
                 {categories.map((cat: any) => (
-                  <SelectItem key={cat.libelle_famille} value={cat.libelle_famille}>
+                  <SelectItem key={cat.id} value={cat.id}>
                     {cat.libelle_famille}
                   </SelectItem>
                 ))}
@@ -328,7 +373,7 @@ export const LowStockProducts = () => {
 
             {lowStockItems.length > 0 && (
               <p className="text-sm text-muted-foreground">
-                <strong>{allItemsCount}</strong> produit{allItemsCount > 1 ? 's' : ''} au total, 
+                <strong>{metrics.totalItems}</strong> produit{metrics.totalItems > 1 ? 's' : ''} au total, 
                 <strong> {lowStockItems.length}</strong> affiché{lowStockItems.length > 1 ? 's' : ''}
               </p>
             )}
@@ -616,8 +661,27 @@ export const LowStockProducts = () => {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="mt-6 flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                Page {currentPage} sur {totalPages}
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-muted-foreground">
+                  Page {currentPage} sur {totalPages}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Éléments par page:</span>
+                  <Select value={pageSize.toString()} onValueChange={(value) => {
+                    setPageSize(Number(value));
+                    setCurrentPage(1); // Reset à la première page
+                  }}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="200">200</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Button
