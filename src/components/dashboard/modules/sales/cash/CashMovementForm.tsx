@@ -5,15 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowDownLeft, ArrowUpRight, DollarSign, FileText, Receipt } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, DollarSign, FileText, Receipt, ShoppingCart, CreditCard } from 'lucide-react';
 import { CashMovement } from '@/hooks/useCashRegister';
 
 interface CashMovementFormProps {
-  sessionId: number;
+  sessionId: string;
   onClose: () => void;
   onSubmit: (
-    sessionId: number,
-    type: CashMovement['type'],
+    sessionId: string,
+    type: CashMovement['type_mouvement'],
     amount: number,
     description: string,
     reference?: string
@@ -23,17 +23,18 @@ interface CashMovementFormProps {
 
 const CashMovementForm = ({ sessionId, onClose, onSubmit, loading }: CashMovementFormProps) => {
   const [formData, setFormData] = useState({
-    type: '' as CashMovement['type'] | '',
+    type: '' as CashMovement['type_mouvement'] | '',
     amount: '',
     description: '',
     reference: ''
   });
 
   const movementTypes = [
-    { value: 'deposit', label: 'Dépôt', icon: ArrowDownLeft, color: 'text-green-600' },
-    { value: 'withdrawal', label: 'Retrait', icon: ArrowUpRight, color: 'text-red-600' },
-    { value: 'expense', label: 'Dépense', icon: Receipt, color: 'text-orange-600' },
-    { value: 'sale', label: 'Vente', icon: DollarSign, color: 'text-blue-600' }
+    { value: 'entree', label: 'Entrée d\'argent', icon: ArrowDownLeft, color: 'text-green-600', description: 'Ajout d\'argent en caisse' },
+    { value: 'sortie', label: 'Sortie d\'argent', icon: ArrowUpRight, color: 'text-red-600', description: 'Retrait d\'argent de la caisse' },
+    { value: 'vente', label: 'Vente', icon: ShoppingCart, color: 'text-blue-600', description: 'Encaissement d\'une vente' },
+    { value: 'remboursement', label: 'Remboursement', icon: CreditCard, color: 'text-orange-600', description: 'Remboursement client' },
+    { value: 'depense', label: 'Dépense', icon: Receipt, color: 'text-purple-600', description: 'Dépense opérationnelle' }
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,8 +44,8 @@ const CashMovementForm = ({ sessionId, onClose, onSubmit, loading }: CashMovemen
 
     try {
       const amount = parseFloat(formData.amount);
-      // Pour les retraits et dépenses, on inverse le signe
-      const adjustedAmount = (formData.type === 'withdrawal' || formData.type === 'expense') 
+      // Pour les sorties, remboursements et dépenses, on inverse le signe
+      const adjustedAmount = (['sortie', 'remboursement', 'depense'].includes(formData.type)) 
         ? -Math.abs(amount) 
         : Math.abs(amount);
 
@@ -93,12 +94,20 @@ const CashMovementForm = ({ sessionId, onClose, onSubmit, loading }: CashMovemen
                   <SelectItem key={type.value} value={type.value}>
                     <div className="flex items-center gap-2">
                       <type.icon className={`h-4 w-4 ${type.color}`} />
-                      {type.label}
+                      <div className="flex flex-col">
+                        <span>{type.label}</span>
+                        <span className="text-xs text-muted-foreground">{type.description}</span>
+                      </div>
                     </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {selectedType && (
+              <p className="text-xs text-muted-foreground">
+                {selectedType.description}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -122,6 +131,11 @@ const CashMovementForm = ({ sessionId, onClose, onSubmit, loading }: CashMovemen
                 FCFA
               </span>
             </div>
+            {selectedType && ['sortie', 'remboursement', 'depense'].includes(formData.type) && (
+              <p className="text-xs text-orange-600">
+                Ce montant sera automatiquement déduit du solde de la caisse
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -131,7 +145,7 @@ const CashMovementForm = ({ sessionId, onClose, onSubmit, loading }: CashMovemen
             </Label>
             <Textarea
               id="description"
-              placeholder="Description du mouvement..."
+              placeholder="Description détaillée du mouvement..."
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
               required
@@ -146,7 +160,7 @@ const CashMovementForm = ({ sessionId, onClose, onSubmit, loading }: CashMovemen
             </Label>
             <Input
               id="reference"
-              placeholder="Numéro de reçu, facture..."
+              placeholder="Numéro de reçu, facture, bon de commande..."
               value={formData.reference}
               onChange={(e) => handleInputChange('reference', e.target.value)}
             />
@@ -159,6 +173,7 @@ const CashMovementForm = ({ sessionId, onClose, onSubmit, loading }: CashMovemen
             <Button 
               type="submit" 
               disabled={loading || !formData.type || !formData.amount || !formData.description}
+              variant={selectedType && ['sortie', 'remboursement', 'depense'].includes(formData.type) ? "destructive" : "default"}
             >
               {loading ? 'Enregistrement...' : 'Enregistrer le Mouvement'}
             </Button>

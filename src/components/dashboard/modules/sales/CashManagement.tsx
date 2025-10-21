@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,7 +22,7 @@ import CashReport from './cash/CashReport';
 const CashManagement = () => {
   const { 
     currentSession, 
-    sessions, 
+    allSessions, 
     movements, 
     loading,
     openSession,
@@ -35,12 +35,23 @@ const CashManagement = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showSessionForm, setShowSessionForm] = useState(false);
   const [showMovementForm, setShowMovementForm] = useState(false);
-  const [selectedSession, setSelectedSession] = useState<number | null>(null);
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const [totalBalance, setTotalBalance] = useState(0);
 
-  const totalBalance = currentSession ? getSessionBalance(currentSession.id) : 0;
-  const todaySessions = sessions.filter(s => {
+  // Calculer le solde actuel
+  useEffect(() => {
+    if (currentSession) {
+      getSessionBalance(currentSession.id).then(balance => {
+        setTotalBalance(balance);
+      });
+    } else {
+      setTotalBalance(0);
+    }
+  }, [currentSession, getSessionBalance]);
+
+  const todaySessions = allSessions.filter(s => {
     const today = new Date();
-    const sessionDate = new Date(s.openingDate);
+    const sessionDate = new Date(s.date_ouverture);
     return sessionDate.toDateString() === today.toDateString();
   });
 
@@ -85,7 +96,7 @@ const CashManagement = () => {
               {currentSession ? '1' : '0'}
             </div>
             <p className="text-xs text-muted-foreground">
-              {currentSession ? `Caisse ${currentSession.cashRegisterId}` : 'Aucune session'}
+              {currentSession ? `Session ${currentSession.numero_session}` : 'Aucune session'}
             </p>
           </CardContent>
         </Card>
@@ -113,7 +124,7 @@ const CashManagement = () => {
           <CardContent>
             <div className="text-2xl font-bold">{todaySessions.length}</div>
             <p className="text-xs text-muted-foreground">
-              {todaySessions.filter(s => s.status === 'Fermée').length} fermées
+              {todaySessions.filter(s => s.statut === 'fermee').length} fermées
             </p>
           </CardContent>
         </Card>
@@ -125,7 +136,7 @@ const CashManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {currentSession ? movements.filter(m => m.sessionId === currentSession.id).length : 0}
+              {currentSession ? movements.filter(m => m.session_caisse_id === currentSession.id).length : 0}
             </div>
             <p className="text-xs text-muted-foreground">
               Session en cours
@@ -141,10 +152,10 @@ const CashManagement = () => {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Calculator className="h-5 w-5" />
-                Session Active - Caisse {currentSession.cashRegisterId}
+                Session Active - {currentSession.numero_session}
               </CardTitle>
               <Badge variant="outline" className="bg-green-100 text-green-800">
-                {currentSession.status}
+                {currentSession.statut}
               </Badge>
             </div>
           </CardHeader>
@@ -152,16 +163,16 @@ const CashManagement = () => {
             <div className="grid gap-4 md:grid-cols-3">
               <div>
                 <p className="text-sm text-muted-foreground">Ouverture</p>
-                <p className="font-semibold">{formatPrice(currentSession.openingAmount)}</p>
+                <p className="font-semibold">{formatPrice(currentSession.montant_ouverture)}</p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(currentSession.openingDate).toLocaleString('fr-FR')}
+                  {new Date(currentSession.date_ouverture).toLocaleString('fr-FR')}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Solde Actuel</p>
                 <p className="font-semibold">{formatPrice(totalBalance)}</p>
                 <p className="text-xs text-muted-foreground">
-                  {movements.filter(m => m.sessionId === currentSession.id).length} mouvements
+                  {movements.filter(m => m.session_caisse_id === currentSession.id).length} mouvements
                 </p>
               </div>
               <div className="flex items-end">
@@ -188,7 +199,7 @@ const CashManagement = () => {
 
         <TabsContent value="overview" className="space-y-4">
           <CashSessionList 
-            sessions={sessions.slice(0, 5)} 
+            sessions={allSessions.slice(0, 5)} 
             onSelectSession={setSelectedSession}
             onViewReport={(sessionId) => {
               setSelectedSession(sessionId);
@@ -199,7 +210,7 @@ const CashManagement = () => {
 
         <TabsContent value="sessions" className="space-y-4">
           <CashSessionList 
-            sessions={sessions} 
+            sessions={allSessions} 
             onSelectSession={setSelectedSession}
             onViewReport={(sessionId) => {
               setSelectedSession(sessionId);
@@ -228,17 +239,20 @@ const CashManagement = () => {
                       <div>
                         <p className="font-medium">{movement.description}</p>
                         <p className="text-sm text-muted-foreground">
-                          {new Date(movement.timestamp).toLocaleString('fr-FR')}
+                          {new Date(movement.date_mouvement).toLocaleString('fr-FR')}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className={`font-semibold ${
-                          movement.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                          movement.type_mouvement === 'entree' || movement.type_mouvement === 'vente' 
+                            ? 'text-green-600' 
+                            : 'text-red-600'
                         }`}>
-                          {movement.amount >= 0 ? '+' : ''}{formatPrice(movement.amount)}
+                          {movement.type_mouvement === 'entree' || movement.type_mouvement === 'vente' ? '+' : '-'}
+                          {formatPrice(movement.montant)}
                         </p>
                         <Badge variant="outline" className="text-xs">
-                          {movement.type}
+                          {movement.type_mouvement}
                         </Badge>
                       </div>
                     </div>
@@ -290,7 +304,7 @@ const CashManagement = () => {
         <CashSessionForm 
           sessionId={selectedSession}
           onClose={() => setSelectedSession(null)}
-          onSubmit={(sessionId, _, amount, notes) => closeSession(sessionId, amount, notes)}
+          onSubmit={(agentId, montantFermeture, notes) => closeSession(selectedSession, montantFermeture, notes)}
           loading={loading}
           isClosing
         />

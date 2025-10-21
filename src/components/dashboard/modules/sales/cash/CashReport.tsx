@@ -19,7 +19,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 interface CashReportProps {
-  sessionId: number;
+  sessionId: string;
   report: any; // Type will come from useCashRegister hook
 }
 
@@ -39,7 +39,7 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
     );
   }
 
-  const { session, movements, expenses, summary } = report;
+  const { session, movements, summary } = report;
   
   const getVarianceColor = (variance: number) => {
     if (variance > 0) return 'text-green-600';
@@ -53,6 +53,28 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
     return <DollarSign className="h-4 w-4 text-muted-foreground" />;
   };
 
+  const getMovementTypeLabel = (type: string) => {
+    const typeLabels = {
+      'entree': 'Entrée',
+      'sortie': 'Sortie',
+      'vente': 'Vente',
+      'remboursement': 'Remboursement',
+      'depense': 'Dépense'
+    };
+    return typeLabels[type] || type;
+  };
+
+  const getMovementTypeColor = (type: string) => {
+    const typeColors = {
+      'entree': 'bg-green-100 text-green-800',
+      'sortie': 'bg-red-100 text-red-800',
+      'vente': 'bg-blue-100 text-blue-800',
+      'remboursement': 'bg-orange-100 text-orange-800',
+      'depense': 'bg-purple-100 text-purple-800'
+    };
+    return typeColors[type] || 'bg-gray-100 text-gray-800';
+  };
+
   return (
     <div className="space-y-6">
       {/* En-tête du rapport */}
@@ -61,7 +83,7 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Rapport de Caisse - Session #{session.id}
+              Rapport de Caisse - Session #{session.numero_session}
             </CardTitle>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm">
@@ -82,12 +104,12 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                 <User className="h-3 w-3" />
                 Informations
               </p>
-              <p className="font-semibold">Caisse {session.cashRegisterId}</p>
-              <p className="text-sm">Agent {session.agentId}</p>
+              <p className="font-semibold">Session #{session.numero_session}</p>
+              <p className="text-sm">Agent: {session.agent_id}</p>
               <Badge variant="outline" className={
-                session.status === 'Ouverte' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                session.statut === 'ouverte' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
               }>
-                {session.status}
+                {session.statut === 'ouverte' ? 'Ouverte' : 'Fermée'}
               </Badge>
             </div>
 
@@ -97,11 +119,11 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                 Période
               </p>
               <p className="font-semibold">
-                {format(new Date(session.openingDate), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                {format(new Date(session.date_ouverture), 'dd/MM/yyyy HH:mm', { locale: fr })}
               </p>
-              {session.closingDate && (
+              {session.date_fermeture && (
                 <p className="text-sm">
-                  au {format(new Date(session.closingDate), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                  au {format(new Date(session.date_fermeture), 'dd/MM/yyyy HH:mm', { locale: fr })}
                 </p>
               )}
             </div>
@@ -146,13 +168,13 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
               </div>
               
               <div className="flex justify-between items-center text-green-600">
-                <span className="text-sm">+ Dépôts</span>
-                <span className="font-semibold">{formatPrice(summary.totalDeposits)}</span>
+                <span className="text-sm">+ Entrées</span>
+                <span className="font-semibold">{formatPrice(summary.totalEntries)}</span>
               </div>
               
               <div className="flex justify-between items-center text-red-600">
-                <span className="text-sm">- Retraits</span>
-                <span className="font-semibold">{formatPrice(summary.totalWithdrawals)}</span>
+                <span className="text-sm">- Sorties</span>
+                <span className="font-semibold">{formatPrice(summary.totalExits)}</span>
               </div>
               
               <div className="flex justify-between items-center text-red-600">
@@ -163,14 +185,14 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
               <Separator />
               
               <div className="flex justify-between items-center font-semibold">
-                <span>Solde attendu</span>
-                <span>{formatPrice(summary.expectedClosing)}</span>
+                <span>Solde théorique</span>
+                <span>{formatPrice(summary.theoreticalClosing)}</span>
               </div>
             </div>
 
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm">Solde comptabilisé</span>
+                <span className="text-sm">Solde réel</span>
                 <span className="font-semibold">{formatPrice(summary.actualClosing)}</span>
               </div>
               
@@ -181,9 +203,9 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                 <span>{formatPrice(summary.variance)}</span>
               </div>
               
-              {summary.variance !== 0 && (
+              {summary.variance !== 0 && summary.theoreticalClosing !== 0 && (
                 <div className="text-xs text-muted-foreground">
-                  {summary.variance > 0 ? 'Excédent' : 'Manquant'}: {Math.abs((summary.variance / summary.expectedClosing) * 100).toFixed(2)}%
+                  {summary.variance > 0 ? 'Excédent' : 'Manquant'}: {Math.abs((summary.variance / summary.theoreticalClosing) * 100).toFixed(2)}%
                 </div>
               )}
             </div>
@@ -210,21 +232,21 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="text-xs">
-                        {movement.type}
+                      <Badge variant="outline" className={`text-xs ${getMovementTypeColor(movement.type_mouvement)}`}>
+                        {getMovementTypeLabel(movement.type_mouvement)}
                       </Badge>
                       <span className="font-medium">{movement.description}</span>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {format(new Date(movement.timestamp), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                      {format(new Date(movement.date_mouvement), 'dd/MM/yyyy HH:mm', { locale: fr })}
                       {movement.reference && ` - Réf: ${movement.reference}`}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className={`font-semibold ${
-                      movement.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                      movement.montant >= 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {movement.amount >= 0 ? '+' : ''}{formatPrice(movement.amount)}
+                      {movement.montant >= 0 ? '+' : ''}{formatPrice(movement.montant)}
                     </p>
                   </div>
                 </div>
