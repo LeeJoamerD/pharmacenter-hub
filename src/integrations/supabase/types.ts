@@ -20,7 +20,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_user_tenant_id: { Args: never; Returns: string }
     }
     Enums: {
       situation_familiale_enum:
