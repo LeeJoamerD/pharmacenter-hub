@@ -14,1141 +14,570 @@ export type Database = {
   }
   public: {
     Tables: {
-      alertes: {
+      categorie_tarification: {
         Row: {
-          created_at: string | null
-          date_expiration: string | null
+          coefficient_prix_vente: number | null
+          created_at: string
           id: string
-          lu: boolean | null
-          message: string
-          niveau_priorite: number | null
-          produit_id: string | null
-          tenant_id: string | null
-          titre: string
-          type_alerte: Database["public"]["Enums"]["alert_type"]
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          date_expiration?: string | null
-          id?: string
-          lu?: boolean | null
-          message: string
-          niveau_priorite?: number | null
-          produit_id?: string | null
-          tenant_id?: string | null
-          titre: string
-          type_alerte: Database["public"]["Enums"]["alert_type"]
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          date_expiration?: string | null
-          id?: string
-          lu?: boolean | null
-          message?: string
-          niveau_priorite?: number | null
-          produit_id?: string | null
-          tenant_id?: string | null
-          titre?: string
-          type_alerte?: Database["public"]["Enums"]["alert_type"]
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "alertes_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "produits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "alertes_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_produits_expires"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "alertes_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_stock_critique"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "alertes_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      audit_logs: {
-        Row: {
-          action: string
-          created_at: string | null
-          id: string
-          new_values: Json | null
-          old_values: Json | null
-          record_id: string | null
-          table_name: string
-          tenant_id: string | null
-          user_id: string | null
-        }
-        Insert: {
-          action: string
-          created_at?: string | null
-          id?: string
-          new_values?: Json | null
-          old_values?: Json | null
-          record_id?: string | null
-          table_name: string
-          tenant_id?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          action?: string
-          created_at?: string | null
-          id?: string
-          new_values?: Json | null
-          old_values?: Json | null
-          record_id?: string | null
-          table_name?: string
-          tenant_id?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "audit_logs_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      clients: {
-        Row: {
-          adresse: string | null
-          created_at: string | null
-          date_naissance: string | null
-          email: string | null
-          id: string
-          mutuelle: string | null
-          nom: string
-          numero_mutuelle: string | null
-          numero_securite_sociale: string | null
-          prenom: string | null
-          telephone: string | null
-          tenant_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          adresse?: string | null
-          created_at?: string | null
-          date_naissance?: string | null
-          email?: string | null
-          id?: string
-          mutuelle?: string | null
-          nom: string
-          numero_mutuelle?: string | null
-          numero_securite_sociale?: string | null
-          prenom?: string | null
-          telephone?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          adresse?: string | null
-          created_at?: string | null
-          date_naissance?: string | null
-          email?: string | null
-          id?: string
-          mutuelle?: string | null
-          nom?: string
-          numero_mutuelle?: string | null
-          numero_securite_sociale?: string | null
-          prenom?: string | null
-          telephone?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "clients_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      commandes: {
-        Row: {
-          created_at: string | null
-          date_commande: string | null
-          date_livraison_prevue: string | null
-          date_livraison_reelle: string | null
-          fournisseur_id: string | null
-          id: string
-          montant_total: number | null
-          montant_ttc: number | null
-          montant_tva: number | null
-          notes: string | null
-          numero_commande: string
-          statut: Database["public"]["Enums"]["order_status"] | null
-          tenant_id: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          date_commande?: string | null
-          date_livraison_prevue?: string | null
-          date_livraison_reelle?: string | null
-          fournisseur_id?: string | null
-          id?: string
-          montant_total?: number | null
-          montant_ttc?: number | null
-          montant_tva?: number | null
-          notes?: string | null
-          numero_commande: string
-          statut?: Database["public"]["Enums"]["order_status"] | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          date_commande?: string | null
-          date_livraison_prevue?: string | null
-          date_livraison_reelle?: string | null
-          fournisseur_id?: string | null
-          id?: string
-          montant_total?: number | null
-          montant_ttc?: number | null
-          montant_tva?: number | null
-          notes?: string | null
-          numero_commande?: string
-          statut?: Database["public"]["Enums"]["order_status"] | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "commandes_fournisseur_id_fkey"
-            columns: ["fournisseur_id"]
-            isOneToOne: false
-            referencedRelation: "fournisseurs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "commandes_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      encaissements: {
-        Row: {
-          caissier_id: string
-          created_at: string | null
-          date_encaissement: string
-          id: string
-          mode_paiement: string
-          montant_a_encaisser: number
-          montant_recu: number
-          montant_rendu: number
-          notes: string | null
-          numero_encaissement: string
-          reference_paiement: string | null
-          session_caisse_id: string | null
-          statut: string
+          libelle_categorie: string
+          taux_centime_additionnel: number | null
+          taux_tva: number | null
           tenant_id: string
-          updated_at: string | null
-          vente_id: string
+          updated_at: string
         }
         Insert: {
-          caissier_id: string
-          created_at?: string | null
-          date_encaissement: string
+          coefficient_prix_vente?: number | null
+          created_at?: string
           id?: string
-          mode_paiement: string
-          montant_a_encaisser: number
-          montant_recu?: number
-          montant_rendu?: number
-          notes?: string | null
-          numero_encaissement: string
-          reference_paiement?: string | null
-          session_caisse_id?: string | null
-          statut?: string
+          libelle_categorie: string
+          taux_centime_additionnel?: number | null
+          taux_tva?: number | null
           tenant_id: string
-          updated_at?: string | null
-          vente_id: string
+          updated_at?: string
         }
         Update: {
-          caissier_id?: string
-          created_at?: string | null
-          date_encaissement?: string
+          coefficient_prix_vente?: number | null
+          created_at?: string
           id?: string
-          mode_paiement?: string
-          montant_a_encaisser?: number
-          montant_recu?: number
-          montant_rendu?: number
-          notes?: string | null
-          numero_encaissement?: string
-          reference_paiement?: string | null
-          session_caisse_id?: string | null
-          statut?: string
+          libelle_categorie?: string
+          taux_centime_additionnel?: number | null
+          taux_tva?: number | null
           tenant_id?: string
-          updated_at?: string | null
-          vente_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      channel_participants: {
+        Row: {
+          channel_id: string
+          id: string
+          joined_at: string
+          last_read_at: string | null
+          pharmacy_id: string
+          role: string | null
+          tenant_id: string
+        }
+        Insert: {
+          channel_id: string
+          id?: string
+          joined_at?: string
+          last_read_at?: string | null
+          pharmacy_id: string
+          role?: string | null
+          tenant_id: string
+        }
+        Update: {
+          channel_id?: string
+          id?: string
+          joined_at?: string
+          last_read_at?: string | null
+          pharmacy_id?: string
+          role?: string | null
+          tenant_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "encaissements_caissier_id_fkey"
-            columns: ["caissier_id"]
+            foreignKeyName: "channel_participants_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "network_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_participants_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_participants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commandes_fournisseurs: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          date_commande: string | null
+          fournisseur_id: string
+          id: string
+          statut: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          date_commande?: string | null
+          fournisseur_id: string
+          id?: string
+          statut?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          date_commande?: string | null
+          fournisseur_id?: string
+          id?: string
+          statut?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commandes_fournisseurs_agent_id_fkey"
+            columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "encaissements_session_caisse_id_fkey"
-            columns: ["session_caisse_id"]
+            foreignKeyName: "commandes_fournisseurs_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
             isOneToOne: false
-            referencedRelation: "sessions_caisse"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "encaissements_vente_id_fkey"
-            columns: ["vente_id"]
-            isOneToOne: false
-            referencedRelation: "ventes"
+            referencedRelation: "fournisseurs"
             referencedColumns: ["id"]
           },
         ]
       }
-      familles_produits: {
+      compte_depenses: {
         Row: {
-          created_at: string | null
-          description: string | null
+          created_at: string
           id: string
-          nom: string
-          tenant_id: string | null
-          updated_at: string | null
+          libelle_compte: string
+          tenant_id: string
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
-          description?: string | null
+          created_at?: string
           id?: string
-          nom: string
-          tenant_id?: string | null
-          updated_at?: string | null
+          libelle_compte: string
+          tenant_id: string
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
-          description?: string | null
+          created_at?: string
           id?: string
-          nom?: string
-          tenant_id?: string | null
-          updated_at?: string | null
+          libelle_compte?: string
+          tenant_id?: string
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "familles_produits_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      famille_produit: {
+        Row: {
+          created_at: string
+          id: string
+          libelle_famille: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          libelle_famille: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          libelle_famille?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       fournisseurs: {
         Row: {
           adresse: string | null
-          conditions_paiement: string | null
-          contact_email: string | null
-          contact_nom: string | null
-          contact_telephone: string | null
-          created_at: string | null
-          delai_livraison: number | null
+          created_at: string
+          email: string | null
           id: string
+          niu: string | null
           nom: string
-          tenant_id: string | null
-          updated_at: string | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          tenant_id: string
+          updated_at: string
         }
         Insert: {
           adresse?: string | null
-          conditions_paiement?: string | null
-          contact_email?: string | null
-          contact_nom?: string | null
-          contact_telephone?: string | null
-          created_at?: string | null
-          delai_livraison?: number | null
+          created_at?: string
+          email?: string | null
           id?: string
+          niu?: string | null
           nom: string
-          tenant_id?: string | null
-          updated_at?: string | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id: string
+          updated_at?: string
         }
         Update: {
           adresse?: string | null
-          conditions_paiement?: string | null
-          contact_email?: string | null
-          contact_nom?: string | null
-          contact_telephone?: string | null
-          created_at?: string | null
-          delai_livraison?: number | null
+          created_at?: string
+          email?: string | null
           id?: string
+          niu?: string | null
           nom?: string
-          tenant_id?: string | null
-          updated_at?: string | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "fournisseurs_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      inventaires: {
+      inventaire_sessions: {
         Row: {
-          created_at: string | null
-          date_inventaire: string | null
+          agent_id: string
+          created_at: string
+          date_debut: string | null
+          date_fin: string | null
           id: string
-          notes: string | null
-          numero_inventaire: string
           statut: string | null
-          tenant_id: string | null
-          updated_at: string | null
-          user_id: string | null
+          tenant_id: string
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
-          date_inventaire?: string | null
+          agent_id: string
+          created_at?: string
+          date_debut?: string | null
+          date_fin?: string | null
           id?: string
-          notes?: string | null
-          numero_inventaire: string
           statut?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
+          tenant_id: string
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
-          date_inventaire?: string | null
+          agent_id?: string
+          created_at?: string
+          date_debut?: string | null
+          date_fin?: string | null
           id?: string
-          notes?: string | null
-          numero_inventaire?: string
           statut?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
+          tenant_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "inventaires_tenant_id_fkey"
-            columns: ["tenant_id"]
+            foreignKeyName: "inventaire_sessions_agent_id_fkey"
+            columns: ["agent_id"]
             isOneToOne: false
-            referencedRelation: "pharmacies"
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
         ]
       }
       laboratoires: {
         Row: {
-          adresse: string | null
-          created_at: string | null
-          email: string | null
+          created_at: string
+          email_delegation_local: string | null
+          email_siege: string | null
           id: string
-          nom: string
-          telephone: string | null
-          tenant_id: string | null
-          updated_at: string | null
+          libelle: string
+          pays_siege: string | null
+          telephone_appel_delegation_local: string | null
+          telephone_whatsapp_delegation_local: string | null
+          tenant_id: string
+          updated_at: string
         }
         Insert: {
-          adresse?: string | null
-          created_at?: string | null
-          email?: string | null
+          created_at?: string
+          email_delegation_local?: string | null
+          email_siege?: string | null
           id?: string
-          nom: string
-          telephone?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
+          libelle: string
+          pays_siege?: string | null
+          telephone_appel_delegation_local?: string | null
+          telephone_whatsapp_delegation_local?: string | null
+          tenant_id: string
+          updated_at?: string
         }
         Update: {
-          adresse?: string | null
-          created_at?: string | null
-          email?: string | null
+          created_at?: string
+          email_delegation_local?: string | null
+          email_siege?: string | null
           id?: string
-          nom?: string
-          telephone?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
+          libelle?: string
+          pays_siege?: string | null
+          telephone_appel_delegation_local?: string | null
+          telephone_whatsapp_delegation_local?: string | null
+          tenant_id?: string
+          updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "laboratoires_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      lignes_commande: {
+      lignes_commande_fournisseur: {
         Row: {
-          commande_id: string | null
-          created_at: string | null
+          commande_id: string
+          created_at: string
           id: string
-          montant_ligne: number | null
-          prix_unitaire: number
-          produit_id: string | null
+          prix_achat_unitaire_attendu: number | null
+          produit_id: string
           quantite_commandee: number
-          quantite_livree: number | null
-          remise_pourcentage: number | null
-          tenant_id: string | null
-          updated_at: string | null
+          tenant_id: string
+          updated_at: string
         }
         Insert: {
-          commande_id?: string | null
-          created_at?: string | null
+          commande_id: string
+          created_at?: string
           id?: string
-          montant_ligne?: number | null
-          prix_unitaire: number
-          produit_id?: string | null
+          prix_achat_unitaire_attendu?: number | null
+          produit_id: string
           quantite_commandee: number
-          quantite_livree?: number | null
-          remise_pourcentage?: number | null
-          tenant_id?: string | null
-          updated_at?: string | null
+          tenant_id: string
+          updated_at?: string
         }
         Update: {
-          commande_id?: string | null
-          created_at?: string | null
+          commande_id?: string
+          created_at?: string
           id?: string
-          montant_ligne?: number | null
-          prix_unitaire?: number
-          produit_id?: string | null
+          prix_achat_unitaire_attendu?: number | null
+          produit_id?: string
           quantite_commandee?: number
-          quantite_livree?: number | null
-          remise_pourcentage?: number | null
-          tenant_id?: string | null
-          updated_at?: string | null
+          tenant_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "lignes_commande_commande_id_fkey"
+            foreignKeyName: "lignes_commande_fournisseur_commande_id_fkey"
             columns: ["commande_id"]
             isOneToOne: false
-            referencedRelation: "commandes"
+            referencedRelation: "commandes_fournisseurs"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "lignes_commande_produit_id_fkey"
+            foreignKeyName: "lignes_commande_fournisseur_produit_id_fkey"
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "lignes_commande_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_produits_expires"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_commande_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_stock_critique"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_commande_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
         ]
       }
-      lignes_inventaire: {
+      lignes_reception_fournisseur: {
         Row: {
-          created_at: string | null
-          ecart: number | null
-          id: string
-          inventaire_id: string | null
-          lot_id: string | null
-          produit_id: string | null
-          quantite_physique: number | null
-          quantite_theorique: number | null
-          tenant_id: string | null
-          updated_at: string | null
-          valeur_ecart: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          ecart?: number | null
-          id?: string
-          inventaire_id?: string | null
-          lot_id?: string | null
-          produit_id?: string | null
-          quantite_physique?: number | null
-          quantite_theorique?: number | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          valeur_ecart?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          ecart?: number | null
-          id?: string
-          inventaire_id?: string | null
-          lot_id?: string | null
-          produit_id?: string | null
-          quantite_physique?: number | null
-          quantite_theorique?: number | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          valeur_ecart?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lignes_inventaire_inventaire_id_fkey"
-            columns: ["inventaire_id"]
-            isOneToOne: false
-            referencedRelation: "inventaires"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_inventaire_lot_id_fkey"
-            columns: ["lot_id"]
-            isOneToOne: false
-            referencedRelation: "lots_produit"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_inventaire_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "produits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_inventaire_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_produits_expires"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_inventaire_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_stock_critique"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_inventaire_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lignes_reception: {
-        Row: {
-          created_at: string | null
-          date_expiration: string | null
+          created_at: string
+          date_peremption: string | null
           id: string
           lot_id: string | null
-          numero_lot: string | null
-          prix_unitaire: number | null
-          produit_id: string | null
+          prix_achat_unitaire_reel: number
+          produit_id: string
           quantite_recue: number
-          reception_id: string | null
-          tenant_id: string | null
-          updated_at: string | null
+          reception_id: string
+          tenant_id: string
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
-          date_expiration?: string | null
+          created_at?: string
+          date_peremption?: string | null
           id?: string
           lot_id?: string | null
-          numero_lot?: string | null
-          prix_unitaire?: number | null
-          produit_id?: string | null
+          prix_achat_unitaire_reel: number
+          produit_id: string
           quantite_recue: number
-          reception_id?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
+          reception_id: string
+          tenant_id: string
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
-          date_expiration?: string | null
+          created_at?: string
+          date_peremption?: string | null
           id?: string
           lot_id?: string | null
-          numero_lot?: string | null
-          prix_unitaire?: number | null
-          produit_id?: string | null
+          prix_achat_unitaire_reel?: number
+          produit_id?: string
           quantite_recue?: number
-          reception_id?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
+          reception_id?: string
+          tenant_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "lignes_reception_lot_id_fkey"
+            foreignKeyName: "lignes_reception_fournisseur_lot_id_fkey"
             columns: ["lot_id"]
             isOneToOne: false
-            referencedRelation: "lots_produit"
+            referencedRelation: "lots"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "lignes_reception_produit_id_fkey"
+            foreignKeyName: "lignes_reception_fournisseur_produit_id_fkey"
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "lignes_reception_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_produits_expires"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_reception_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_stock_critique"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_reception_reception_id_fkey"
+            foreignKeyName: "lignes_reception_fournisseur_reception_id_fkey"
             columns: ["reception_id"]
             isOneToOne: false
-            referencedRelation: "receptions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_reception_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
+            referencedRelation: "receptions_fournisseurs"
             referencedColumns: ["id"]
           },
         ]
       }
-      lignes_vente: {
+      lots: {
         Row: {
-          created_at: string | null
-          id: string
-          lot_id: string | null
-          montant_ligne: number | null
-          prix_unitaire: number
-          produit_id: string | null
-          quantite: number
-          remise_montant: number | null
-          remise_pourcentage: number | null
-          tenant_id: string | null
-          updated_at: string | null
-          vente_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          lot_id?: string | null
-          montant_ligne?: number | null
-          prix_unitaire: number
-          produit_id?: string | null
-          quantite: number
-          remise_montant?: number | null
-          remise_pourcentage?: number | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          vente_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          lot_id?: string | null
-          montant_ligne?: number | null
-          prix_unitaire?: number
-          produit_id?: string | null
-          quantite?: number
-          remise_montant?: number | null
-          remise_pourcentage?: number | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          vente_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lignes_vente_lot_id_fkey"
-            columns: ["lot_id"]
-            isOneToOne: false
-            referencedRelation: "lots_produit"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_vente_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "produits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_vente_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_produits_expires"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_vente_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_stock_critique"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_vente_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lignes_vente_vente_id_fkey"
-            columns: ["vente_id"]
-            isOneToOne: false
-            referencedRelation: "ventes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lots_produit: {
-        Row: {
-          created_at: string | null
-          date_expiration: string | null
-          date_fabrication: string | null
-          fournisseur_id: string | null
+          created_at: string
+          date_peremption: string | null
           id: string
           numero_lot: string
-          prix_achat_unitaire: number | null
-          produit_id: string | null
+          produit_id: string
           quantite_initiale: number
           quantite_restante: number
-          tenant_id: string | null
-          updated_at: string | null
+          tenant_id: string
+          updated_at: string
         }
         Insert: {
-          created_at?: string | null
-          date_expiration?: string | null
-          date_fabrication?: string | null
-          fournisseur_id?: string | null
+          created_at?: string
+          date_peremption?: string | null
           id?: string
           numero_lot: string
-          prix_achat_unitaire?: number | null
-          produit_id?: string | null
-          quantite_initiale?: number
-          quantite_restante?: number
-          tenant_id?: string | null
-          updated_at?: string | null
+          produit_id: string
+          quantite_initiale: number
+          quantite_restante: number
+          tenant_id: string
+          updated_at?: string
         }
         Update: {
-          created_at?: string | null
-          date_expiration?: string | null
-          date_fabrication?: string | null
-          fournisseur_id?: string | null
+          created_at?: string
+          date_peremption?: string | null
           id?: string
           numero_lot?: string
-          prix_achat_unitaire?: number | null
-          produit_id?: string | null
+          produit_id?: string
           quantite_initiale?: number
           quantite_restante?: number
-          tenant_id?: string | null
-          updated_at?: string | null
+          tenant_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "lots_produit_fournisseur_id_fkey"
-            columns: ["fournisseur_id"]
-            isOneToOne: false
-            referencedRelation: "fournisseurs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lots_produit_produit_id_fkey"
+            foreignKeyName: "lots_produit_id_fkey"
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "lots_produit_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_produits_expires"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lots_produit_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_stock_critique"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lots_produit_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
         ]
       }
-      mouvements_caisse: {
+      network_channels: {
         Row: {
-          created_at: string | null
-          id: string
-          montant: number
-          motif: string
-          reference: string | null
-          session_id: string | null
-          tenant_id: string | null
-          type_mouvement: string
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          montant: number
-          motif: string
-          reference?: string | null
-          session_id?: string | null
-          tenant_id?: string | null
-          type_mouvement: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          montant?: number
-          motif?: string
-          reference?: string | null
-          session_id?: string | null
-          tenant_id?: string | null
-          type_mouvement?: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "mouvements_caisse_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "sessions_caisse"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mouvements_caisse_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      mouvements_stock: {
-        Row: {
-          created_at: string | null
-          id: string
-          lot_id: string | null
-          motif: string | null
-          prix_unitaire: number | null
-          produit_id: string | null
-          quantite: number
-          quantite_apres: number | null
-          quantite_avant: number | null
-          reference_document: string | null
-          tenant_id: string | null
-          type_mouvement: Database["public"]["Enums"]["movement_type"]
-          updated_at: string | null
-          user_id: string | null
-          valeur_totale: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          lot_id?: string | null
-          motif?: string | null
-          prix_unitaire?: number | null
-          produit_id?: string | null
-          quantite: number
-          quantite_apres?: number | null
-          quantite_avant?: number | null
-          reference_document?: string | null
-          tenant_id?: string | null
-          type_mouvement: Database["public"]["Enums"]["movement_type"]
-          updated_at?: string | null
-          user_id?: string | null
-          valeur_totale?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          lot_id?: string | null
-          motif?: string | null
-          prix_unitaire?: number | null
-          produit_id?: string | null
-          quantite?: number
-          quantite_apres?: number | null
-          quantite_avant?: number | null
-          reference_document?: string | null
-          tenant_id?: string | null
-          type_mouvement?: Database["public"]["Enums"]["movement_type"]
-          updated_at?: string | null
-          user_id?: string | null
-          valeur_totale?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "mouvements_stock_lot_id_fkey"
-            columns: ["lot_id"]
-            isOneToOne: false
-            referencedRelation: "lots_produit"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mouvements_stock_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "produits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mouvements_stock_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_produits_expires"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mouvements_stock_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_stock_critique"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mouvements_stock_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      paiements_vente: {
-        Row: {
-          created_at: string | null
-          id: string
-          methode_paiement: string
-          montant: number
-          reference_transaction: string | null
-          tenant_id: string | null
-          updated_at: string | null
-          vente_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          methode_paiement: string
-          montant: number
-          reference_transaction?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          vente_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          methode_paiement?: string
-          montant?: number
-          reference_transaction?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          vente_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "paiements_vente_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "paiements_vente_vente_id_fkey"
-            columns: ["vente_id"]
-            isOneToOne: false
-            referencedRelation: "ventes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      parametres_systeme: {
-        Row: {
-          cle: string
-          created_at: string | null
+          created_at: string
+          created_by: string | null
           description: string | null
           id: string
-          tenant_id: string | null
-          type_donnee: string | null
-          updated_at: string | null
-          valeur: string | null
+          is_system: boolean | null
+          name: string
+          tenant_id: string
+          type: string | null
+          updated_at: string
         }
         Insert: {
-          cle: string
-          created_at?: string | null
+          created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
-          tenant_id?: string | null
-          type_donnee?: string | null
-          updated_at?: string | null
-          valeur?: string | null
+          is_system?: boolean | null
+          name: string
+          tenant_id: string
+          type?: string | null
+          updated_at?: string
         }
         Update: {
-          cle?: string
-          created_at?: string | null
+          created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
-          tenant_id?: string | null
-          type_donnee?: string | null
-          updated_at?: string | null
-          valeur?: string | null
+          is_system?: boolean | null
+          name?: string
+          tenant_id?: string
+          type?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "parametres_systeme_tenant_id_fkey"
+            foreignKeyName: "network_channels_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_channels_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_messages: {
+        Row: {
+          channel_id: string
+          content: string
+          created_at: string
+          id: string
+          message_type: string | null
+          metadata: Json | null
+          priority: string | null
+          read_by: Json | null
+          sender_name: string
+          sender_pharmacy_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          channel_id: string
+          content: string
+          created_at?: string
+          id?: string
+          message_type?: string | null
+          metadata?: Json | null
+          priority?: string | null
+          read_by?: Json | null
+          sender_name: string
+          sender_pharmacy_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          message_type?: string | null
+          metadata?: Json | null
+          priority?: string | null
+          read_by?: Json | null
+          sender_name?: string
+          sender_pharmacy_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "network_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_messages_sender_pharmacy_id_fkey"
+            columns: ["sender_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_messages_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -1158,52 +587,100 @@ export type Database = {
       }
       personnel: {
         Row: {
-          actif: boolean | null
           adresse: string | null
           auth_user_id: string | null
-          created_at: string | null
-          date_embauche: string | null
-          email: string
+          created_at: string
+          date_naissance: string | null
+          date_recrutement: string | null
+          email: string | null
+          fonction: string | null
           id: string
-          nom: string
-          prenom: string
-          role: string | null
-          salaire: number | null
-          telephone: string | null
-          tenant_id: string | null
-          updated_at: string | null
+          is_active: boolean | null
+          limite_dette: number | null
+          niu_cni: string | null
+          nombre_enfants: number | null
+          noms: string
+          numero_cnss: string | null
+          photo_identite: string | null
+          prenoms: string
+          profession: string | null
+          reference_agent: string
+          role: string
+          salaire_base: number | null
+          situation_familiale:
+            | Database["public"]["Enums"]["situation_familiale_enum"]
+            | null
+          statut_contractuel:
+            | Database["public"]["Enums"]["statut_contractuel_enum"]
+            | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          tenant_id: string
+          updated_at: string
         }
         Insert: {
-          actif?: boolean | null
           adresse?: string | null
           auth_user_id?: string | null
-          created_at?: string | null
-          date_embauche?: string | null
-          email: string
+          created_at?: string
+          date_naissance?: string | null
+          date_recrutement?: string | null
+          email?: string | null
+          fonction?: string | null
           id?: string
-          nom: string
-          prenom: string
-          role?: string | null
-          salaire?: number | null
-          telephone?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
+          is_active?: boolean | null
+          limite_dette?: number | null
+          niu_cni?: string | null
+          nombre_enfants?: number | null
+          noms: string
+          numero_cnss?: string | null
+          photo_identite?: string | null
+          prenoms: string
+          profession?: string | null
+          reference_agent: string
+          role?: string
+          salaire_base?: number | null
+          situation_familiale?:
+            | Database["public"]["Enums"]["situation_familiale_enum"]
+            | null
+          statut_contractuel?:
+            | Database["public"]["Enums"]["statut_contractuel_enum"]
+            | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id: string
+          updated_at?: string
         }
         Update: {
-          actif?: boolean | null
           adresse?: string | null
           auth_user_id?: string | null
-          created_at?: string | null
-          date_embauche?: string | null
-          email?: string
+          created_at?: string
+          date_naissance?: string | null
+          date_recrutement?: string | null
+          email?: string | null
+          fonction?: string | null
           id?: string
-          nom?: string
-          prenom?: string
-          role?: string | null
-          salaire?: number | null
-          telephone?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
+          is_active?: boolean | null
+          limite_dette?: number | null
+          niu_cni?: string | null
+          nombre_enfants?: number | null
+          noms?: string
+          numero_cnss?: string | null
+          photo_identite?: string | null
+          prenoms?: string
+          profession?: string | null
+          reference_agent?: string
+          role?: string
+          salaire_base?: number | null
+          situation_familiale?:
+            | Database["public"]["Enums"]["situation_familiale_enum"]
+            | null
+          statut_contractuel?:
+            | Database["public"]["Enums"]["statut_contractuel_enum"]
+            | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -1217,410 +694,422 @@ export type Database = {
       }
       pharmacies: {
         Row: {
-          adresse: string | null
-          created_at: string | null
-          directeur_nom: string | null
-          directeur_prenom: string | null
+          address: string | null
+          arrondissement: string | null
+          city: string | null
+          code: string
+          created_at: string
+          departement: string | null
           email: string | null
           id: string
-          nom: string
-          numero_licence: string | null
-          telephone: string | null
-          updated_at: string | null
+          logo: string | null
+          name: string
+          pays: string | null
+          phone: string | null
+          photo_exterieur: string | null
+          photo_interieur: string | null
+          postal_code: string | null
+          quartier: string | null
+          region: string | null
+          status: string | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          type: string | null
+          updated_at: string
         }
         Insert: {
-          adresse?: string | null
-          created_at?: string | null
-          directeur_nom?: string | null
-          directeur_prenom?: string | null
+          address?: string | null
+          arrondissement?: string | null
+          city?: string | null
+          code: string
+          created_at?: string
+          departement?: string | null
           email?: string | null
           id?: string
-          nom: string
-          numero_licence?: string | null
-          telephone?: string | null
-          updated_at?: string | null
+          logo?: string | null
+          name: string
+          pays?: string | null
+          phone?: string | null
+          photo_exterieur?: string | null
+          photo_interieur?: string | null
+          postal_code?: string | null
+          quartier?: string | null
+          region?: string | null
+          status?: string | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          type?: string | null
+          updated_at?: string
         }
         Update: {
-          adresse?: string | null
-          created_at?: string | null
-          directeur_nom?: string | null
-          directeur_prenom?: string | null
+          address?: string | null
+          arrondissement?: string | null
+          city?: string | null
+          code?: string
+          created_at?: string
+          departement?: string | null
           email?: string | null
           id?: string
-          nom?: string
-          numero_licence?: string | null
-          telephone?: string | null
-          updated_at?: string | null
+          logo?: string | null
+          name?: string
+          pays?: string | null
+          phone?: string | null
+          photo_exterieur?: string | null
+          photo_interieur?: string | null
+          postal_code?: string | null
+          quartier?: string | null
+          region?: string | null
+          status?: string | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          type?: string | null
+          updated_at?: string
         }
         Relationships: []
+      }
+      pharmacy_presence: {
+        Row: {
+          current_users: number | null
+          id: string
+          last_seen: string | null
+          metadata: Json | null
+          pharmacy_id: string
+          status: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          current_users?: number | null
+          id?: string
+          last_seen?: string | null
+          metadata?: Json | null
+          pharmacy_id: string
+          status?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          current_users?: number | null
+          id?: string
+          last_seen?: string | null
+          metadata?: Json | null
+          pharmacy_id?: string
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_presence_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_presence_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       produits: {
         Row: {
-          code_barre: string | null
-          conditionnement: string | null
-          created_at: string | null
-          dci: string | null
-          description: string | null
-          dosage: string | null
-          famille_id: string | null
-          forme: string | null
-          fournisseur_principal_id: string | null
+          categorie_tarification_id: string | null
+          centime_additionnel: number | null
+          code_cip: string | null
+          created_at: string
+          famille_produit_id: string | null
           id: string
-          laboratoire_id: string | null
-          nom: string
-          prescription_requise: boolean | null
+          id_produit_source: string | null
+          libelle_produit: string
+          niveau_detail: number | null
           prix_achat: number | null
-          prix_vente: number | null
-          remboursable: boolean | null
-          stock_maximum: number | null
-          stock_minimum: number | null
-          taux_tva: number | null
-          tenant_id: string | null
-          unite: string | null
-          updated_at: string | null
+          prix_vente_ht: number | null
+          prix_vente_ttc: number | null
+          quantite_unites_details_source: number | null
+          rayon_produit_id: string | null
+          reference_agent_enregistrement_id: string | null
+          reference_agent_modification_id: string | null
+          stock_alerte: number | null
+          stock_limite: number | null
+          tenant_id: string
+          tva: number | null
+          updated_at: string
         }
         Insert: {
-          code_barre?: string | null
-          conditionnement?: string | null
-          created_at?: string | null
-          dci?: string | null
-          description?: string | null
-          dosage?: string | null
-          famille_id?: string | null
-          forme?: string | null
-          fournisseur_principal_id?: string | null
+          categorie_tarification_id?: string | null
+          centime_additionnel?: number | null
+          code_cip?: string | null
+          created_at?: string
+          famille_produit_id?: string | null
           id?: string
-          laboratoire_id?: string | null
-          nom: string
-          prescription_requise?: boolean | null
+          id_produit_source?: string | null
+          libelle_produit: string
+          niveau_detail?: number | null
           prix_achat?: number | null
-          prix_vente?: number | null
-          remboursable?: boolean | null
-          stock_maximum?: number | null
-          stock_minimum?: number | null
-          taux_tva?: number | null
-          tenant_id?: string | null
-          unite?: string | null
-          updated_at?: string | null
+          prix_vente_ht?: number | null
+          prix_vente_ttc?: number | null
+          quantite_unites_details_source?: number | null
+          rayon_produit_id?: string | null
+          reference_agent_enregistrement_id?: string | null
+          reference_agent_modification_id?: string | null
+          stock_alerte?: number | null
+          stock_limite?: number | null
+          tenant_id: string
+          tva?: number | null
+          updated_at?: string
         }
         Update: {
-          code_barre?: string | null
-          conditionnement?: string | null
-          created_at?: string | null
-          dci?: string | null
-          description?: string | null
-          dosage?: string | null
-          famille_id?: string | null
-          forme?: string | null
-          fournisseur_principal_id?: string | null
+          categorie_tarification_id?: string | null
+          centime_additionnel?: number | null
+          code_cip?: string | null
+          created_at?: string
+          famille_produit_id?: string | null
           id?: string
-          laboratoire_id?: string | null
-          nom?: string
-          prescription_requise?: boolean | null
+          id_produit_source?: string | null
+          libelle_produit?: string
+          niveau_detail?: number | null
           prix_achat?: number | null
-          prix_vente?: number | null
-          remboursable?: boolean | null
-          stock_maximum?: number | null
-          stock_minimum?: number | null
-          taux_tva?: number | null
-          tenant_id?: string | null
-          unite?: string | null
-          updated_at?: string | null
+          prix_vente_ht?: number | null
+          prix_vente_ttc?: number | null
+          quantite_unites_details_source?: number | null
+          rayon_produit_id?: string | null
+          reference_agent_enregistrement_id?: string | null
+          reference_agent_modification_id?: string | null
+          stock_alerte?: number | null
+          stock_limite?: number | null
+          tenant_id?: string
+          tva?: number | null
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "produits_famille_id_fkey"
-            columns: ["famille_id"]
+            foreignKeyName: "produits_categorie_tarification_id_fkey"
+            columns: ["categorie_tarification_id"]
             isOneToOne: false
-            referencedRelation: "familles_produits"
+            referencedRelation: "categorie_tarification"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "produits_fournisseur_principal_id_fkey"
-            columns: ["fournisseur_principal_id"]
+            foreignKeyName: "produits_famille_produit_id_fkey"
+            columns: ["famille_produit_id"]
             isOneToOne: false
-            referencedRelation: "fournisseurs"
+            referencedRelation: "famille_produit"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "produits_laboratoire_id_fkey"
-            columns: ["laboratoire_id"]
-            isOneToOne: false
-            referencedRelation: "laboratoires"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "produits_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      profiles: {
-        Row: {
-          created_at: string | null
-          email: string
-          id: string
-          nom: string | null
-          prenom: string | null
-          role: string | null
-          tenant_id: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          id: string
-          nom?: string | null
-          prenom?: string | null
-          role?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          id?: string
-          nom?: string | null
-          prenom?: string | null
-          role?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      receptions: {
-        Row: {
-          commande_id: string | null
-          created_at: string | null
-          date_reception: string | null
-          id: string
-          montant_facture: number | null
-          notes: string | null
-          numero_facture: string | null
-          numero_reception: string
-          tenant_id: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          commande_id?: string | null
-          created_at?: string | null
-          date_reception?: string | null
-          id?: string
-          montant_facture?: number | null
-          notes?: string | null
-          numero_facture?: string | null
-          numero_reception: string
-          tenant_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          commande_id?: string | null
-          created_at?: string | null
-          date_reception?: string | null
-          id?: string
-          montant_facture?: number | null
-          notes?: string | null
-          numero_facture?: string | null
-          numero_reception?: string
-          tenant_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "receptions_commande_id_fkey"
-            columns: ["commande_id"]
-            isOneToOne: false
-            referencedRelation: "commandes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "receptions_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      security_incidents: {
-        Row: {
-          created_at: string | null
-          description: string
-          id: string
-          incident_type: string
-          ip_address: unknown | null
-          resolved: boolean | null
-          resolved_at: string | null
-          severity: string | null
-          tenant_id: string | null
-          user_agent: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          description: string
-          id?: string
-          incident_type: string
-          ip_address?: unknown | null
-          resolved?: boolean | null
-          resolved_at?: string | null
-          severity?: string | null
-          tenant_id?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          description?: string
-          id?: string
-          incident_type?: string
-          ip_address?: unknown | null
-          resolved?: boolean | null
-          resolved_at?: string | null
-          severity?: string | null
-          tenant_id?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "security_incidents_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      sessions_caisse: {
-        Row: {
-          created_at: string | null
-          date_fermeture: string | null
-          date_ouverture: string | null
-          id: string
-          montant_autres: number | null
-          montant_cartes: number | null
-          montant_especes: number | null
-          montant_final: number | null
-          montant_initial: number | null
-          statut: string | null
-          tenant_id: string | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          date_fermeture?: string | null
-          date_ouverture?: string | null
-          id?: string
-          montant_autres?: number | null
-          montant_cartes?: number | null
-          montant_especes?: number | null
-          montant_final?: number | null
-          montant_initial?: number | null
-          statut?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          date_fermeture?: string | null
-          date_ouverture?: string | null
-          id?: string
-          montant_autres?: number | null
-          montant_cartes?: number | null
-          montant_especes?: number | null
-          montant_final?: number | null
-          montant_initial?: number | null
-          statut?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "sessions_caisse_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      stock_actuel: {
-        Row: {
-          created_at: string | null
-          derniere_entree: string | null
-          derniere_sortie: string | null
-          id: string
-          produit_id: string | null
-          quantite_disponible: number | null
-          quantite_reservee: number | null
-          quantite_totale: number | null
-          tenant_id: string | null
-          updated_at: string | null
-          valeur_stock: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          derniere_entree?: string | null
-          derniere_sortie?: string | null
-          id?: string
-          produit_id?: string | null
-          quantite_disponible?: number | null
-          quantite_reservee?: number | null
-          quantite_totale?: number | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          valeur_stock?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          derniere_entree?: string | null
-          derniere_sortie?: string | null
-          id?: string
-          produit_id?: string | null
-          quantite_disponible?: number | null
-          quantite_reservee?: number | null
-          quantite_totale?: number | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          valeur_stock?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "stock_actuel_produit_id_fkey"
-            columns: ["produit_id"]
+            foreignKeyName: "produits_id_produit_source_fkey"
+            columns: ["id_produit_source"]
             isOneToOne: false
             referencedRelation: "produits"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "stock_actuel_produit_id_fkey"
-            columns: ["produit_id"]
+            foreignKeyName: "produits_rayon_produit_id_fkey"
+            columns: ["rayon_produit_id"]
             isOneToOne: false
-            referencedRelation: "vue_produits_expires"
+            referencedRelation: "rayon_produit"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "stock_actuel_produit_id_fkey"
-            columns: ["produit_id"]
+            foreignKeyName: "produits_reference_agent_enregistrement_id_fkey"
+            columns: ["reference_agent_enregistrement_id"]
             isOneToOne: false
-            referencedRelation: "vue_stock_critique"
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "stock_actuel_tenant_id_fkey"
-            columns: ["tenant_id"]
+            foreignKeyName: "produits_reference_agent_modification_id_fkey"
+            columns: ["reference_agent_modification_id"]
             isOneToOne: false
-            referencedRelation: "pharmacies"
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rayon_produit: {
+        Row: {
+          created_at: string
+          id: string
+          libelle_rayon: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          libelle_rayon: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          libelle_rayon?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      receptions_fournisseurs: {
+        Row: {
+          agent_id: string | null
+          commande_id: string | null
+          created_at: string
+          date_reception: string | null
+          fournisseur_id: string
+          id: string
+          reference_facture: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          commande_id?: string | null
+          created_at?: string
+          date_reception?: string | null
+          fournisseur_id: string
+          id?: string
+          reference_facture?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          commande_id?: string | null
+          created_at?: string
+          date_reception?: string | null
+          fournisseur_id?: string
+          id?: string
+          reference_facture?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receptions_fournisseurs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receptions_fournisseurs_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commandes_fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receptions_fournisseurs_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sous_compte_depenses: {
+        Row: {
+          compte_depenses_id: string
+          created_at: string
+          id: string
+          libelle_sous_compte: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          compte_depenses_id: string
+          created_at?: string
+          id?: string
+          libelle_sous_compte: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          compte_depenses_id?: string
+          created_at?: string
+          id?: string
+          libelle_sous_compte?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sous_compte_depenses_compte_depenses_id_fkey"
+            columns: ["compte_depenses_id"]
+            isOneToOne: false
+            referencedRelation: "compte_depenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_mouvements: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          date_mouvement: string | null
+          id: string
+          lot_id: string | null
+          produit_id: string
+          quantite: number
+          reference_id: string | null
+          reference_type: string | null
+          tenant_id: string
+          type_mouvement: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          date_mouvement?: string | null
+          id?: string
+          lot_id?: string | null
+          produit_id: string
+          quantite: number
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id: string
+          type_mouvement: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          date_mouvement?: string | null
+          id?: string
+          lot_id?: string | null
+          produit_id?: string
+          quantite?: number
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id?: string
+          type_mouvement?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_mouvements_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_mouvements_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_mouvements_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
             referencedColumns: ["id"]
           },
         ]
@@ -1668,194 +1157,75 @@ export type Database = {
           tenant_id?: string
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "suggestions_vente_lot_id_fkey"
-            columns: ["lot_id"]
-            isOneToOne: false
-            referencedRelation: "lots_produit"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "suggestions_vente_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "produits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "suggestions_vente_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_produits_expires"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "suggestions_vente_produit_id_fkey"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "vue_stock_critique"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ventes: {
-        Row: {
-          client_id: string | null
-          created_at: string | null
-          date_vente: string | null
-          id: string
-          montant_ht: number | null
-          montant_ttc: number | null
-          montant_tva: number | null
-          numero_ticket: string
-          remise_globale: number | null
-          statut: string | null
-          tenant_id: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          client_id?: string | null
-          created_at?: string | null
-          date_vente?: string | null
-          id?: string
-          montant_ht?: number | null
-          montant_ttc?: number | null
-          montant_tva?: number | null
-          numero_ticket: string
-          remise_globale?: number | null
-          statut?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          client_id?: string | null
-          created_at?: string | null
-          date_vente?: string | null
-          id?: string
-          montant_ht?: number | null
-          montant_ttc?: number | null
-          montant_tva?: number | null
-          numero_ticket?: string
-          remise_globale?: number | null
-          statut?: string | null
-          tenant_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ventes_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ventes_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
-      vue_produits_expires: {
-        Row: {
-          date_expiration: string | null
-          id: string | null
-          nom: string | null
-          numero_lot: string | null
-          quantite_restante: number | null
-          tenant_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "produits_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vue_stock_critique: {
-        Row: {
-          id: string | null
-          nom: string | null
-          quantite_disponible: number | null
-          stock_minimum: number | null
-          tenant_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "produits_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
+      calculate_low_stock_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       calculate_low_stock_metrics_v2: {
         Args: { p_critical_threshold?: number; p_low_threshold?: number }
         Returns: Json
       }
-      check_product_availability: {
-        Args: { p_product_id: string; p_quantity: number; p_tenant_id: string }
-        Returns: boolean
+      generate_inventaire_report: {
+        Args: { p_session_id: string; p_tenant_id: string; p_type: string }
+        Returns: Json
       }
-      check_stock_availability: {
-        Args: { p_produit_id: string; p_quantite_demandee: number }
-        Returns: boolean
+      generate_sales_suggestions: {
+        Args: { p_tenant_id: string }
+        Returns: number
       }
-      generate_ticket_number: {
-        Args: Record<PropertyKey, never> | { p_tenant_id: string }
-        Returns: string
-      }
-      get_current_user_tenant_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_current_user_tenant_id: { Args: never; Returns: string }
       get_low_stock_products: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          id: string
-          nom: string
-          pourcentage_stock: number
-          stock_actuel: number
-          stock_minimum: number
-        }[]
-      }
-      process_sale: {
-        Args: { p_lignes_vente: Json[]; p_vente_data: Json }
-        Returns: string
-      }
-      update_stock_after_sale: {
         Args: {
-          p_product_id: string
-          p_quantity: number
+          p_category?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
           p_tenant_id: string
-          p_user_id: string
         }
-        Returns: boolean
+        Returns: {
+          code_cip: string
+          created_at: string
+          famille_id: string
+          famille_libelle: string
+          id: string
+          is_active: boolean
+          libelle_produit: string
+          prix_achat: number
+          prix_vente_ttc: number
+          rayon_id: string
+          rayon_libelle: string
+          statut_stock: string
+          stock_actuel: number
+          stock_alerte: number
+          stock_limite: number
+          tenant_id: string
+          updated_at: string
+          valeur_stock: number
+        }[]
       }
     }
     Enums: {
-      alert_type: "stock_bas" | "expiration" | "rupture" | "commande"
-      movement_type:
-        | "entree"
-        | "sortie"
-        | "ajustement"
-        | "peremption"
-        | "retour"
-      order_status: "en_attente" | "confirme" | "expedie" | "livre" | "annule"
+      situation_familiale_enum:
+        | "Célibataire"
+        | "Marié(e)"
+        | "Divorcé(e)"
+        | "Veuf/Veuve"
+        | "Concubinage"
+      statut_contractuel_enum:
+        | "CDI"
+        | "CDD"
+        | "Stage"
+        | "Freelance"
+        | "Consultant"
+        | "Temporaire"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1983,9 +1353,21 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      alert_type: ["stock_bas", "expiration", "rupture", "commande"],
-      movement_type: ["entree", "sortie", "ajustement", "peremption", "retour"],
-      order_status: ["en_attente", "confirme", "expedie", "livre", "annule"],
+      situation_familiale_enum: [
+        "Célibataire",
+        "Marié(e)",
+        "Divorcé(e)",
+        "Veuf/Veuve",
+        "Concubinage",
+      ],
+      statut_contractuel_enum: [
+        "CDI",
+        "CDD",
+        "Stage",
+        "Freelance",
+        "Consultant",
+        "Temporaire",
+      ],
     },
   },
 } as const
