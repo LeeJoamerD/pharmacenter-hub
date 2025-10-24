@@ -428,6 +428,57 @@ export type Database = {
           },
         ]
       }
+      lots: {
+        Row: {
+          created_at: string
+          date_peremption: string | null
+          id: string
+          numero_lot: string
+          produit_id: string
+          quantite_initiale: number
+          quantite_restante: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_peremption?: string | null
+          id?: string
+          numero_lot: string
+          produit_id: string
+          quantite_initiale: number
+          quantite_restante: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_peremption?: string | null
+          id?: string
+          numero_lot?: string
+          produit_id?: string
+          quantite_initiale?: number
+          quantite_restante?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lots_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lots_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       network_channels: {
         Row: {
           created_at: string
@@ -762,6 +813,128 @@ export type Database = {
           },
           {
             foreignKeyName: "pharmacy_presence_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      produits: {
+        Row: {
+          categorie_tarification_id: string | null
+          centime_additionnel: number | null
+          code_cip: string | null
+          created_at: string
+          famille_produit_id: string | null
+          id: string
+          id_produit_source: string | null
+          libelle_produit: string
+          niveau_detail: number | null
+          prix_achat: number | null
+          prix_vente_ht: number | null
+          prix_vente_ttc: number | null
+          quantite_unites_details_source: number | null
+          rayon_produit_id: string | null
+          reference_agent_enregistrement_id: string | null
+          reference_agent_modification_id: string | null
+          stock_alerte: number | null
+          stock_limite: number | null
+          tenant_id: string
+          tva: number | null
+          updated_at: string
+        }
+        Insert: {
+          categorie_tarification_id?: string | null
+          centime_additionnel?: number | null
+          code_cip?: string | null
+          created_at?: string
+          famille_produit_id?: string | null
+          id?: string
+          id_produit_source?: string | null
+          libelle_produit: string
+          niveau_detail?: number | null
+          prix_achat?: number | null
+          prix_vente_ht?: number | null
+          prix_vente_ttc?: number | null
+          quantite_unites_details_source?: number | null
+          rayon_produit_id?: string | null
+          reference_agent_enregistrement_id?: string | null
+          reference_agent_modification_id?: string | null
+          stock_alerte?: number | null
+          stock_limite?: number | null
+          tenant_id: string
+          tva?: number | null
+          updated_at?: string
+        }
+        Update: {
+          categorie_tarification_id?: string | null
+          centime_additionnel?: number | null
+          code_cip?: string | null
+          created_at?: string
+          famille_produit_id?: string | null
+          id?: string
+          id_produit_source?: string | null
+          libelle_produit?: string
+          niveau_detail?: number | null
+          prix_achat?: number | null
+          prix_vente_ht?: number | null
+          prix_vente_ttc?: number | null
+          quantite_unites_details_source?: number | null
+          rayon_produit_id?: string | null
+          reference_agent_enregistrement_id?: string | null
+          reference_agent_modification_id?: string | null
+          stock_alerte?: number | null
+          stock_limite?: number | null
+          tenant_id?: string
+          tva?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produits_categorie_tarification_id_fkey"
+            columns: ["categorie_tarification_id"]
+            isOneToOne: false
+            referencedRelation: "categorie_tarification"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_famille_produit_id_fkey"
+            columns: ["famille_produit_id"]
+            isOneToOne: false
+            referencedRelation: "famille_produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_id_produit_source_fkey"
+            columns: ["id_produit_source"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_rayon_produit_id_fkey"
+            columns: ["rayon_produit_id"]
+            isOneToOne: false
+            referencedRelation: "rayon_produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_reference_agent_enregistrement_id_fkey"
+            columns: ["reference_agent_enregistrement_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_reference_agent_modification_id_fkey"
+            columns: ["reference_agent_modification_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
