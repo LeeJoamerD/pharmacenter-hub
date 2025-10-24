@@ -157,6 +157,119 @@ export type Database = {
           },
         ]
       }
+      clients: {
+        Row: {
+          adresse: string | null
+          contact_email: string | null
+          contact_fonction: string | null
+          contact_nom: string | null
+          contact_telephone: string | null
+          created_at: string
+          credit_actuel: number | null
+          date_adhesion: string | null
+          date_expiration_police: string | null
+          date_naissance: string | null
+          email: string | null
+          id: string
+          limite_credit: number | null
+          metadata: Json | null
+          niu: string | null
+          nom_complet: string
+          notes: string | null
+          numero_cni: string | null
+          numero_police: string | null
+          numero_registre_commerce: string | null
+          plafond_annuel: number | null
+          plafond_mensuel: number | null
+          raison_sociale: string | null
+          secteur_activite: string | null
+          statut: Database["public"]["Enums"]["statut_client"] | null
+          taux_couverture: number | null
+          taux_remise_automatique: number | null
+          telephone: string | null
+          telephone_whatsapp: string | null
+          tenant_id: string
+          type_client: Database["public"]["Enums"]["type_client"]
+          updated_at: string
+        }
+        Insert: {
+          adresse?: string | null
+          contact_email?: string | null
+          contact_fonction?: string | null
+          contact_nom?: string | null
+          contact_telephone?: string | null
+          created_at?: string
+          credit_actuel?: number | null
+          date_adhesion?: string | null
+          date_expiration_police?: string | null
+          date_naissance?: string | null
+          email?: string | null
+          id?: string
+          limite_credit?: number | null
+          metadata?: Json | null
+          niu?: string | null
+          nom_complet: string
+          notes?: string | null
+          numero_cni?: string | null
+          numero_police?: string | null
+          numero_registre_commerce?: string | null
+          plafond_annuel?: number | null
+          plafond_mensuel?: number | null
+          raison_sociale?: string | null
+          secteur_activite?: string | null
+          statut?: Database["public"]["Enums"]["statut_client"] | null
+          taux_couverture?: number | null
+          taux_remise_automatique?: number | null
+          telephone?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id: string
+          type_client?: Database["public"]["Enums"]["type_client"]
+          updated_at?: string
+        }
+        Update: {
+          adresse?: string | null
+          contact_email?: string | null
+          contact_fonction?: string | null
+          contact_nom?: string | null
+          contact_telephone?: string | null
+          created_at?: string
+          credit_actuel?: number | null
+          date_adhesion?: string | null
+          date_expiration_police?: string | null
+          date_naissance?: string | null
+          email?: string | null
+          id?: string
+          limite_credit?: number | null
+          metadata?: Json | null
+          niu?: string | null
+          nom_complet?: string
+          notes?: string | null
+          numero_cni?: string | null
+          numero_police?: string | null
+          numero_registre_commerce?: string | null
+          plafond_annuel?: number | null
+          plafond_mensuel?: number | null
+          raison_sociale?: string | null
+          secteur_activite?: string | null
+          statut?: Database["public"]["Enums"]["statut_client"] | null
+          taux_couverture?: number | null
+          taux_remise_automatique?: number | null
+          telephone?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string
+          type_client?: Database["public"]["Enums"]["type_client"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compte_depenses: {
         Row: {
           created_at: string
@@ -799,6 +912,7 @@ export type Database = {
         | "Divorcé(e)"
         | "Veuf/Veuve"
         | "Concubinage"
+      statut_client: "Actif" | "Inactif" | "Suspendu"
       statut_contractuel: "CDI" | "CDD" | "Stage" | "Intérim" | "Freelance"
       statut_contractuel_enum:
         | "CDI"
@@ -807,6 +921,7 @@ export type Database = {
         | "Freelance"
         | "Consultant"
         | "Temporaire"
+      type_client: "Particulier" | "Assureur" | "Société" | "Conventionné"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -947,6 +1062,7 @@ export const Constants = {
         "Veuf/Veuve",
         "Concubinage",
       ],
+      statut_client: ["Actif", "Inactif", "Suspendu"],
       statut_contractuel: ["CDI", "CDD", "Stage", "Intérim", "Freelance"],
       statut_contractuel_enum: [
         "CDI",
@@ -956,6 +1072,7 @@ export const Constants = {
         "Consultant",
         "Temporaire",
       ],
+      type_client: ["Particulier", "Assureur", "Société", "Conventionné"],
     },
   },
 } as const
