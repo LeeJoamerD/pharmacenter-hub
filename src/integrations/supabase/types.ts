@@ -64,6 +64,64 @@ export type Database = {
           },
         ]
       }
+      balances: {
+        Row: {
+          compte_id: string
+          created_at: string
+          exercice_id: string
+          id: string
+          periode: string
+          solde_credit: number | null
+          solde_debit: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          compte_id: string
+          created_at?: string
+          exercice_id: string
+          id?: string
+          periode: string
+          solde_credit?: number | null
+          solde_debit?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          compte_id?: string
+          created_at?: string
+          exercice_id?: string
+          id?: string
+          periode?: string
+          solde_credit?: number | null
+          solde_debit?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "balances_compte_id_fkey"
+            columns: ["compte_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "balances_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "balances_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorie_tarification: {
         Row: {
           coefficient_prix_vente: number | null
@@ -357,6 +415,73 @@ export type Database = {
           },
         ]
       }
+      ecritures_comptables: {
+        Row: {
+          created_at: string
+          date_ecriture: string
+          exercice_id: string
+          id: string
+          journal_id: string
+          libelle: string
+          numero_piece: string
+          reference_id: string | null
+          reference_type: string | null
+          statut: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_ecriture: string
+          exercice_id: string
+          id?: string
+          journal_id: string
+          libelle: string
+          numero_piece: string
+          reference_id?: string | null
+          reference_type?: string | null
+          statut?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_ecriture?: string
+          exercice_id?: string
+          id?: string
+          journal_id?: string
+          libelle?: string
+          numero_piece?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          statut?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ecritures_comptables_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecritures_comptables_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journaux_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecritures_comptables_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       encaissements: {
         Row: {
           created_at: string
@@ -417,6 +542,47 @@ export type Database = {
             columns: ["vente_id"]
             isOneToOne: false
             referencedRelation: "ventes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercices_comptables: {
+        Row: {
+          created_at: string
+          date_debut: string
+          date_fin: string
+          id: string
+          libelle: string
+          statut: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_debut: string
+          date_fin: string
+          id?: string
+          libelle: string
+          statut?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_debut?: string
+          date_fin?: string
+          id?: string
+          libelle?: string
+          statut?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercices_comptables_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
         ]
@@ -500,6 +666,66 @@ export type Database = {
           },
         ]
       }
+      immobilisations: {
+        Row: {
+          compte_id: string | null
+          created_at: string
+          date_acquisition: string
+          duree_amortissement: number | null
+          id: string
+          libelle: string
+          statut: string | null
+          taux_amortissement: number | null
+          tenant_id: string
+          updated_at: string
+          valeur_acquisition: number
+          valeur_residuelle: number | null
+        }
+        Insert: {
+          compte_id?: string | null
+          created_at?: string
+          date_acquisition: string
+          duree_amortissement?: number | null
+          id?: string
+          libelle: string
+          statut?: string | null
+          taux_amortissement?: number | null
+          tenant_id: string
+          updated_at?: string
+          valeur_acquisition: number
+          valeur_residuelle?: number | null
+        }
+        Update: {
+          compte_id?: string | null
+          created_at?: string
+          date_acquisition?: string
+          duree_amortissement?: number | null
+          id?: string
+          libelle?: string
+          statut?: string | null
+          taux_amortissement?: number | null
+          tenant_id?: string
+          updated_at?: string
+          valeur_acquisition?: number
+          valeur_residuelle?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "immobilisations_compte_id_fkey"
+            columns: ["compte_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "immobilisations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventaire_sessions: {
         Row: {
           agent_id: string
@@ -541,6 +767,47 @@ export type Database = {
           },
           {
             foreignKeyName: "inventaire_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journaux_comptables: {
+        Row: {
+          code_journal: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          libelle_journal: string
+          tenant_id: string
+          type_journal: string
+          updated_at: string
+        }
+        Insert: {
+          code_journal: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          libelle_journal: string
+          tenant_id: string
+          type_journal: string
+          updated_at?: string
+        }
+        Update: {
+          code_journal?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          libelle_journal?: string
+          tenant_id?: string
+          type_journal?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journaux_comptables_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -643,6 +910,64 @@ export type Database = {
           },
           {
             foreignKeyName: "lignes_commande_fournisseur_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lignes_ecriture: {
+        Row: {
+          compte_id: string
+          created_at: string
+          credit: number | null
+          debit: number | null
+          ecriture_id: string
+          id: string
+          libelle: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          compte_id: string
+          created_at?: string
+          credit?: number | null
+          debit?: number | null
+          ecriture_id: string
+          id?: string
+          libelle?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          compte_id?: string
+          created_at?: string
+          credit?: number | null
+          debit?: number | null
+          ecriture_id?: string
+          id?: string
+          libelle?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lignes_ecriture_compte_id_fkey"
+            columns: ["compte_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_ecriture_ecriture_id_fkey"
+            columns: ["ecriture_id"]
+            isOneToOne: false
+            referencedRelation: "ecritures_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_ecriture_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -1254,6 +1579,60 @@ export type Database = {
           },
         ]
       }
+      plan_comptable: {
+        Row: {
+          classe: number
+          compte_parent_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          libelle_compte: string
+          numero_compte: string
+          tenant_id: string
+          type_compte: string
+          updated_at: string
+        }
+        Insert: {
+          classe: number
+          compte_parent_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          libelle_compte: string
+          numero_compte: string
+          tenant_id: string
+          type_compte: string
+          updated_at?: string
+        }
+        Update: {
+          classe?: number
+          compte_parent_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          libelle_compte?: string
+          numero_compte?: string
+          tenant_id?: string
+          type_compte?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_comptable_compte_parent_id_fkey"
+            columns: ["compte_parent_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_comptable_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       produits: {
         Row: {
           categorie_tarification_id: string | null
@@ -1369,6 +1748,54 @@ export type Database = {
           },
           {
             foreignKeyName: "produits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rapports_comptables: {
+        Row: {
+          contenu: Json
+          created_at: string
+          date_debut: string
+          date_fin: string
+          exercice_id: string | null
+          id: string
+          tenant_id: string
+          type_rapport: string
+        }
+        Insert: {
+          contenu?: Json
+          created_at?: string
+          date_debut: string
+          date_fin: string
+          exercice_id?: string | null
+          id?: string
+          tenant_id: string
+          type_rapport: string
+        }
+        Update: {
+          contenu?: Json
+          created_at?: string
+          date_debut?: string
+          date_fin?: string
+          exercice_id?: string | null
+          id?: string
+          tenant_id?: string
+          type_rapport?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rapports_comptables_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rapports_comptables_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -1765,6 +2192,60 @@ export type Database = {
           },
           {
             foreignKeyName: "suggestions_vente_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tva_declaration: {
+        Row: {
+          created_at: string
+          exercice_id: string
+          id: string
+          periode: string
+          statut: string | null
+          tenant_id: string
+          tva_a_payer: number | null
+          tva_collectee: number | null
+          tva_deductible: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          exercice_id: string
+          id?: string
+          periode: string
+          statut?: string | null
+          tenant_id: string
+          tva_a_payer?: number | null
+          tva_collectee?: number | null
+          tva_deductible?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          exercice_id?: string
+          id?: string
+          periode?: string
+          statut?: string | null
+          tenant_id?: string
+          tva_a_payer?: number | null
+          tva_collectee?: number | null
+          tva_deductible?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tva_declaration_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tva_declaration_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
