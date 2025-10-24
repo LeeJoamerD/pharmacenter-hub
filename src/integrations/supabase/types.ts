@@ -1286,7 +1286,7 @@ export type Database = {
           email: string
           failure_reason: string | null
           id: string
-          ip_address: unknown
+          ip_address: string | null
           success: boolean
           tenant_id: string
           user_agent: string | null
@@ -1296,7 +1296,7 @@ export type Database = {
           email: string
           failure_reason?: string | null
           id?: string
-          ip_address?: unknown
+          ip_address?: string | null
           success: boolean
           tenant_id: string
           user_agent?: string | null
@@ -1306,7 +1306,7 @@ export type Database = {
           email?: string
           failure_reason?: string | null
           id?: string
-          ip_address?: unknown
+          ip_address?: string | null
           success?: boolean
           tenant_id?: string
           user_agent?: string | null
@@ -2022,15 +2022,40 @@ export type Database = {
           },
         ]
       }
-      password_policies: {
+      password_history: {
         Row: {
           created_at: string
           id: string
-          lockout_attempts: number | null
+          password_hash: string
+          personnel_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          password_hash: string
+          personnel_id: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          password_hash?: string
+          personnel_id?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
+      password_policies: {
+        Row: {
+          created_at: string
+          force_2fa_for_roles: string[] | null
+          id: string
           lockout_duration_minutes: number | null
           max_age_days: number | null
+          max_failed_attempts: number | null
           min_length: number | null
-          prevent_reuse_count: number | null
+          remember_last_passwords: number | null
           require_lowercase: boolean | null
           require_numbers: boolean | null
           require_special_chars: boolean | null
@@ -2041,12 +2066,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          force_2fa_for_roles?: string[] | null
           id?: string
-          lockout_attempts?: number | null
           lockout_duration_minutes?: number | null
           max_age_days?: number | null
+          max_failed_attempts?: number | null
           min_length?: number | null
-          prevent_reuse_count?: number | null
+          remember_last_passwords?: number | null
           require_lowercase?: boolean | null
           require_numbers?: boolean | null
           require_special_chars?: boolean | null
@@ -2057,12 +2083,13 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          force_2fa_for_roles?: string[] | null
           id?: string
-          lockout_attempts?: number | null
           lockout_duration_minutes?: number | null
           max_age_days?: number | null
+          max_failed_attempts?: number | null
           min_length?: number | null
-          prevent_reuse_count?: number | null
+          remember_last_passwords?: number | null
           require_lowercase?: boolean | null
           require_numbers?: boolean | null
           require_special_chars?: boolean | null
@@ -2985,15 +3012,52 @@ export type Database = {
           },
         ]
       }
+      two_factor_auth: {
+        Row: {
+          backup_codes: string[] | null
+          created_at: string
+          id: string
+          is_enabled: boolean | null
+          last_used_at: string | null
+          personnel_id: string
+          secret_key: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          backup_codes?: string[] | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          last_used_at?: string | null
+          personnel_id: string
+          secret_key: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          backup_codes?: string[] | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          last_used_at?: string | null
+          personnel_id?: string
+          secret_key?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_sessions: {
         Row: {
           created_at: string
           expires_at: string | null
           id: string
-          ip_address: unknown
+          ip_address: string | null
           is_active: boolean | null
           last_activity: string | null
           personnel_id: string
+          requires_2fa: boolean | null
           risk_score: number | null
           security_level: string | null
           session_token: string
@@ -3005,10 +3069,11 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
-          ip_address?: unknown
+          ip_address?: string | null
           is_active?: boolean | null
           last_activity?: string | null
           personnel_id: string
+          requires_2fa?: boolean | null
           risk_score?: number | null
           security_level?: string | null
           session_token: string
@@ -3020,10 +3085,11 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
-          ip_address?: unknown
+          ip_address?: string | null
           is_active?: boolean | null
           last_activity?: string | null
           personnel_id?: string
+          requires_2fa?: boolean | null
           risk_score?: number | null
           security_level?: string | null
           session_token?: string
@@ -3153,11 +3219,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_session_risk_score: {
+        Args: {
+          p_ip_address: string
+          p_personnel_id: string
+          p_user_agent: string
+        }
+        Returns: number
+      }
+      check_login_attempts: {
+        Args: { p_email: string; p_tenant_id: string }
+        Returns: Json
+      }
       generate_sales_suggestions: {
         Args: { p_tenant_id: string }
         Returns: number
       }
       get_current_user_tenant_id: { Args: never; Returns: string }
+      validate_password_strength: {
+        Args: { p_tenant_id: string; password: string }
+        Returns: Json
+      }
     }
     Enums: {
       mode_paiement:
