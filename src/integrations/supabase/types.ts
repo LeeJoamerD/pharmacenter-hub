@@ -14,7 +14,188 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      personnel: {
+        Row: {
+          adresse: string | null
+          auth_user_id: string | null
+          created_at: string
+          date_naissance: string | null
+          date_recrutement: string | null
+          email: string | null
+          fonction: string | null
+          id: string
+          is_active: boolean | null
+          limite_dette: number | null
+          niu_cni: string | null
+          nombre_enfants: number | null
+          noms: string
+          numero_cnss: string | null
+          photo_identite: string | null
+          prenoms: string
+          profession: string | null
+          reference_agent: string
+          role: string
+          salaire_base: number | null
+          situation_familiale:
+            | Database["public"]["Enums"]["situation_familiale"]
+            | null
+          statut_contractuel:
+            | Database["public"]["Enums"]["statut_contractuel"]
+            | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          adresse?: string | null
+          auth_user_id?: string | null
+          created_at?: string
+          date_naissance?: string | null
+          date_recrutement?: string | null
+          email?: string | null
+          fonction?: string | null
+          id?: string
+          is_active?: boolean | null
+          limite_dette?: number | null
+          niu_cni?: string | null
+          nombre_enfants?: number | null
+          noms: string
+          numero_cnss?: string | null
+          photo_identite?: string | null
+          prenoms: string
+          profession?: string | null
+          reference_agent: string
+          role?: string
+          salaire_base?: number | null
+          situation_familiale?:
+            | Database["public"]["Enums"]["situation_familiale"]
+            | null
+          statut_contractuel?:
+            | Database["public"]["Enums"]["statut_contractuel"]
+            | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          adresse?: string | null
+          auth_user_id?: string | null
+          created_at?: string
+          date_naissance?: string | null
+          date_recrutement?: string | null
+          email?: string | null
+          fonction?: string | null
+          id?: string
+          is_active?: boolean | null
+          limite_dette?: number | null
+          niu_cni?: string | null
+          nombre_enfants?: number | null
+          noms?: string
+          numero_cnss?: string | null
+          photo_identite?: string | null
+          prenoms?: string
+          profession?: string | null
+          reference_agent?: string
+          role?: string
+          salaire_base?: number | null
+          situation_familiale?:
+            | Database["public"]["Enums"]["situation_familiale"]
+            | null
+          statut_contractuel?:
+            | Database["public"]["Enums"]["statut_contractuel"]
+            | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personnel_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacies: {
+        Row: {
+          address: string | null
+          arrondissement: string | null
+          city: string | null
+          code: string
+          created_at: string
+          departement: string | null
+          email: string | null
+          id: string
+          logo: string | null
+          name: string
+          pays: string | null
+          phone: string | null
+          photo_exterieur: string | null
+          photo_interieur: string | null
+          postal_code: string | null
+          quartier: string | null
+          region: string | null
+          status: string | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          arrondissement?: string | null
+          city?: string | null
+          code: string
+          created_at?: string
+          departement?: string | null
+          email?: string | null
+          id?: string
+          logo?: string | null
+          name: string
+          pays?: string | null
+          phone?: string | null
+          photo_exterieur?: string | null
+          photo_interieur?: string | null
+          postal_code?: string | null
+          quartier?: string | null
+          region?: string | null
+          status?: string | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          arrondissement?: string | null
+          city?: string | null
+          code?: string
+          created_at?: string
+          departement?: string | null
+          email?: string | null
+          id?: string
+          logo?: string | null
+          name?: string
+          pays?: string | null
+          phone?: string | null
+          photo_exterieur?: string | null
+          photo_interieur?: string | null
+          postal_code?: string | null
+          quartier?: string | null
+          region?: string | null
+          status?: string | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,12 +204,18 @@ export type Database = {
       get_current_user_tenant_id: { Args: never; Returns: string }
     }
     Enums: {
+      situation_familiale:
+        | "Célibataire"
+        | "Marié(e)"
+        | "Divorcé(e)"
+        | "Veuf(ve)"
       situation_familiale_enum:
         | "Célibataire"
         | "Marié(e)"
         | "Divorcé(e)"
         | "Veuf/Veuve"
         | "Concubinage"
+      statut_contractuel: "CDI" | "CDD" | "Stage" | "Intérim" | "Freelance"
       statut_contractuel_enum:
         | "CDI"
         | "CDD"
@@ -163,6 +350,12 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      situation_familiale: [
+        "Célibataire",
+        "Marié(e)",
+        "Divorcé(e)",
+        "Veuf(ve)",
+      ],
       situation_familiale_enum: [
         "Célibataire",
         "Marié(e)",
@@ -170,6 +363,7 @@ export const Constants = {
         "Veuf/Veuve",
         "Concubinage",
       ],
+      statut_contractuel: ["CDI", "CDD", "Stage", "Intérim", "Freelance"],
       statut_contractuel_enum: [
         "CDI",
         "CDD",
