@@ -69,8 +69,10 @@ export default function PharmacyCreation() {
     try {
       console.log('PHARMACY-CREATION: Début de la création de pharmacie:', formData.email);
 
-      // 1. Créer d'abord l'utilisateur dans Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      let userId: string;
+
+      // 1. Tenter de créer l'utilisateur
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -82,17 +84,39 @@ export default function PharmacyCreation() {
         }
       });
 
-      if (authError || !authData.user) {
-        console.error('PHARMACY-CREATION: Erreur création utilisateur:', authError);
+      // Si l'utilisateur existe déjà, tenter de se connecter
+      if (signUpError?.message?.includes('already registered')) {
+        console.log('PHARMACY-CREATION: Utilisateur existe déjà, tentative de connexion...');
+        
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password
+        });
+
+        if (signInError || !signInData.user) {
+          console.error('PHARMACY-CREATION: Erreur connexion utilisateur existant:', signInError);
+          toast({
+            title: "Erreur",
+            description: "L'utilisateur existe déjà mais le mot de passe est incorrect",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        userId = signInData.user.id;
+        console.log('PHARMACY-CREATION: Connexion réussie avec utilisateur existant:', userId);
+      } else if (signUpError || !signUpData.user) {
+        console.error('PHARMACY-CREATION: Erreur création utilisateur:', signUpError);
         toast({
           title: "Erreur",
-          description: authError?.message || "Erreur lors de la création du compte utilisateur",
+          description: signUpError?.message || "Erreur lors de la création du compte utilisateur",
           variant: "destructive"
         });
         return;
+      } else {
+        userId = signUpData.user.id;
+        console.log('PHARMACY-CREATION: Nouvel utilisateur créé avec succès:', userId);
       }
-
-      console.log('PHARMACY-CREATION: Utilisateur créé avec succès:', authData.user.id);
 
       // 2. Créer la pharmacie et le personnel admin
       const { data, error } = await supabase.rpc('register_pharmacy_with_admin', {
@@ -124,9 +148,6 @@ export default function PharmacyCreation() {
       const result = data as any;
       if (error || !result?.success) {
         console.error('PHARMACY-CREATION: Erreur lors de la création:', error);
-        
-        // En cas d'erreur, supprimer l'utilisateur créé
-        await supabase.auth.admin.deleteUser(authData.user.id);
         
         toast({
           title: "Erreur",
