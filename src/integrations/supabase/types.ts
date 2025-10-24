@@ -64,6 +64,47 @@ export type Database = {
           },
         ]
       }
+      categorie_tarification: {
+        Row: {
+          coefficient_prix_vente: number | null
+          created_at: string
+          id: string
+          libelle_categorie: string
+          taux_centime_additionnel: number | null
+          taux_tva: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          coefficient_prix_vente?: number | null
+          created_at?: string
+          id?: string
+          libelle_categorie: string
+          taux_centime_additionnel?: number | null
+          taux_tva?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          coefficient_prix_vente?: number | null
+          created_at?: string
+          id?: string
+          libelle_categorie?: string
+          taux_centime_additionnel?: number | null
+          taux_tva?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categorie_tarification_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_participants: {
         Row: {
           channel_id: string
@@ -109,6 +150,164 @@ export type Database = {
           },
           {
             foreignKeyName: "channel_participants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compte_depenses: {
+        Row: {
+          created_at: string
+          id: string
+          libelle_compte: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          libelle_compte: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          libelle_compte?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compte_depenses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      famille_produit: {
+        Row: {
+          created_at: string
+          id: string
+          libelle_famille: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          libelle_famille: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          libelle_famille?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "famille_produit_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fournisseurs: {
+        Row: {
+          adresse: string | null
+          created_at: string
+          email: string | null
+          id: string
+          niu: string | null
+          nom: string
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          adresse?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          niu?: string | null
+          nom: string
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          adresse?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          niu?: string | null
+          nom?: string
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fournisseurs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      laboratoires: {
+        Row: {
+          created_at: string
+          email_delegation_local: string | null
+          email_siege: string | null
+          id: string
+          libelle: string
+          pays_siege: string | null
+          telephone_appel_delegation_local: string | null
+          telephone_whatsapp_delegation_local: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email_delegation_local?: string | null
+          email_siege?: string | null
+          id?: string
+          libelle: string
+          pays_siege?: string | null
+          telephone_appel_delegation_local?: string | null
+          telephone_whatsapp_delegation_local?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email_delegation_local?: string | null
+          email_siege?: string | null
+          id?: string
+          libelle?: string
+          pays_siege?: string | null
+          telephone_appel_delegation_local?: string | null
+          telephone_whatsapp_delegation_local?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "laboratoires_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -457,6 +656,38 @@ export type Database = {
           },
         ]
       }
+      rayon_produit: {
+        Row: {
+          created_at: string
+          id: string
+          libelle_rayon: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          libelle_rayon: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          libelle_rayon?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rayon_produit_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       security_alerts: {
         Row: {
           alert_type: string
@@ -500,6 +731,48 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "security_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sous_compte_depenses: {
+        Row: {
+          compte_depenses_id: string
+          created_at: string
+          id: string
+          libelle_sous_compte: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          compte_depenses_id: string
+          created_at?: string
+          id?: string
+          libelle_sous_compte: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          compte_depenses_id?: string
+          created_at?: string
+          id?: string
+          libelle_sous_compte?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sous_compte_depenses_compte_depenses_id_fkey"
+            columns: ["compte_depenses_id"]
+            isOneToOne: false
+            referencedRelation: "compte_depenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sous_compte_depenses_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
