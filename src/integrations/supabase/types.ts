@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_templates: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          is_system: boolean | null
+          name: string
+          prompt_template: string
+          tenant_id: string
+          type: string
+          updated_at: string
+          variables: Json | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          is_system?: boolean | null
+          name: string
+          prompt_template: string
+          tenant_id: string
+          type: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          is_system?: boolean | null
+          name?: string
+          prompt_template?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -22,6 +72,7 @@ export type Database = {
           ip_address: unknown
           new_values: Json | null
           old_values: Json | null
+          personnel_id: string | null
           record_id: string | null
           table_name: string
           tenant_id: string
@@ -35,6 +86,7 @@ export type Database = {
           ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
+          personnel_id?: string | null
           record_id?: string | null
           table_name: string
           tenant_id: string
@@ -48,6 +100,7 @@ export type Database = {
           ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
+          personnel_id?: string | null
           record_id?: string | null
           table_name?: string
           tenant_id?: string
@@ -55,6 +108,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "audit_logs_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "audit_logs_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -408,6 +468,106 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "compte_depenses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          category: string | null
+          content: string | null
+          created_at: string
+          document_type: string
+          due_date: string | null
+          file_path: string | null
+          id: string
+          metadata: Json | null
+          name: string
+          priority: string | null
+          recipient: string | null
+          sender: string | null
+          status: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          content?: string | null
+          created_at?: string
+          document_type: string
+          due_date?: string | null
+          file_path?: string | null
+          id?: string
+          metadata?: Json | null
+          name: string
+          priority?: string | null
+          recipient?: string | null
+          sender?: string | null
+          status?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          content?: string | null
+          created_at?: string
+          document_type?: string
+          due_date?: string | null
+          file_path?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string
+          priority?: string | null
+          recipient?: string | null
+          sender?: string | null
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -1120,6 +1280,47 @@ export type Database = {
           },
         ]
       }
+      login_attempts: {
+        Row: {
+          created_at: string
+          email: string
+          failure_reason: string | null
+          id: string
+          ip_address: unknown
+          success: boolean
+          tenant_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          failure_reason?: string | null
+          id?: string
+          ip_address?: unknown
+          success: boolean
+          tenant_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          failure_reason?: string | null
+          id?: string
+          ip_address?: unknown
+          success?: boolean
+          tenant_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "login_attempts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lots: {
         Row: {
           created_at: string
@@ -1238,6 +1439,206 @@ export type Database = {
           },
         ]
       }
+      network_admin_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_sensitive: boolean | null
+          setting_category: string
+          setting_key: string
+          setting_type: string | null
+          setting_value: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_sensitive?: boolean | null
+          setting_category: string
+          setting_key: string
+          setting_type?: string | null
+          setting_value?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_sensitive?: boolean | null
+          setting_category?: string
+          setting_key?: string
+          setting_type?: string | null
+          setting_value?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_admin_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_backup_jobs: {
+        Row: {
+          compression_enabled: boolean | null
+          configuration: Json | null
+          created_at: string
+          encryption_enabled: boolean | null
+          id: string
+          is_active: boolean | null
+          job_name: string
+          job_type: string
+          last_run: string | null
+          last_size_mb: number | null
+          last_status: string | null
+          next_run: string | null
+          retention_days: number | null
+          schedule_days: number[] | null
+          schedule_time: string | null
+          schedule_type: string | null
+          target_path: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          compression_enabled?: boolean | null
+          configuration?: Json | null
+          created_at?: string
+          encryption_enabled?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          job_name: string
+          job_type: string
+          last_run?: string | null
+          last_size_mb?: number | null
+          last_status?: string | null
+          next_run?: string | null
+          retention_days?: number | null
+          schedule_days?: number[] | null
+          schedule_time?: string | null
+          schedule_type?: string | null
+          target_path?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          compression_enabled?: boolean | null
+          configuration?: Json | null
+          created_at?: string
+          encryption_enabled?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          job_name?: string
+          job_type?: string
+          last_run?: string | null
+          last_size_mb?: number | null
+          last_status?: string | null
+          next_run?: string | null
+          retention_days?: number | null
+          schedule_days?: number[] | null
+          schedule_time?: string | null
+          schedule_type?: string | null
+          target_path?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_backup_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_backup_runs: {
+        Row: {
+          backup_job_id: string | null
+          completed_at: string | null
+          configuration: Json | null
+          created_at: string
+          duration_seconds: number | null
+          error_message: string | null
+          id: string
+          is_archived: boolean | null
+          size_mb: number | null
+          started_at: string | null
+          status: string | null
+          storage_target: string | null
+          tenant_id: string
+          triggered_by: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          backup_job_id?: string | null
+          completed_at?: string | null
+          configuration?: Json | null
+          created_at?: string
+          duration_seconds?: number | null
+          error_message?: string | null
+          id?: string
+          is_archived?: boolean | null
+          size_mb?: number | null
+          started_at?: string | null
+          status?: string | null
+          storage_target?: string | null
+          tenant_id: string
+          triggered_by?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          backup_job_id?: string | null
+          completed_at?: string | null
+          configuration?: Json | null
+          created_at?: string
+          duration_seconds?: number | null
+          error_message?: string | null
+          id?: string
+          is_archived?: boolean | null
+          size_mb?: number | null
+          started_at?: string | null
+          status?: string | null
+          storage_target?: string | null
+          tenant_id?: string
+          triggered_by?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_backup_runs_backup_job_id_fkey"
+            columns: ["backup_job_id"]
+            isOneToOne: false
+            referencedRelation: "network_backup_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_backup_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_backup_runs_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       network_channels: {
         Row: {
           created_at: string
@@ -1278,6 +1679,66 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_maintenance_task_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          message: string | null
+          metadata: Json | null
+          started_at: string | null
+          status: string | null
+          task_name: string
+          tenant_id: string
+          triggered_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          started_at?: string | null
+          status?: string | null
+          task_name: string
+          tenant_id: string
+          triggered_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          started_at?: string | null
+          status?: string | null
+          task_name?: string
+          tenant_id?: string
+          triggered_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_maintenance_task_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_maintenance_task_runs_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
         ]
@@ -1342,6 +1803,277 @@ export type Database = {
           },
           {
             foreignKeyName: "network_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_security_assets: {
+        Row: {
+          asset_name: string
+          asset_type: string
+          configuration: Json | null
+          created_at: string
+          expiry_date: string | null
+          id: string
+          last_updated: string | null
+          status: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          asset_name: string
+          asset_type: string
+          configuration?: Json | null
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          last_updated?: string | null
+          status?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          asset_name?: string
+          asset_type?: string
+          configuration?: Json | null
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          last_updated?: string | null
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_security_assets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_system_components: {
+        Row: {
+          configuration: Json | null
+          cpu_load: number | null
+          created_at: string
+          description: string | null
+          id: string
+          ip_address: unknown
+          last_check: string | null
+          memory_usage: number | null
+          name: string
+          port: number | null
+          status: string | null
+          storage_usage: number | null
+          tenant_id: string
+          type: string
+          updated_at: string
+          uptime_start: string | null
+        }
+        Insert: {
+          configuration?: Json | null
+          cpu_load?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          ip_address?: unknown
+          last_check?: string | null
+          memory_usage?: number | null
+          name: string
+          port?: number | null
+          status?: string | null
+          storage_usage?: number | null
+          tenant_id: string
+          type: string
+          updated_at?: string
+          uptime_start?: string | null
+        }
+        Update: {
+          configuration?: Json | null
+          cpu_load?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          ip_address?: unknown
+          last_check?: string | null
+          memory_usage?: number | null
+          name?: string
+          port?: number | null
+          status?: string | null
+          storage_usage?: number | null
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+          uptime_start?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_system_components_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_system_stats: {
+        Row: {
+          cpu_usage: number | null
+          created_at: string
+          database_size_mb: number | null
+          disk_usage: number | null
+          id: string
+          last_maintenance_at: string | null
+          log_size_mb: number | null
+          memory_usage: number | null
+          next_maintenance_at: string | null
+          temp_files_mb: number | null
+          tenant_id: string
+          updated_at: string
+          uptime_seconds: number | null
+        }
+        Insert: {
+          cpu_usage?: number | null
+          created_at?: string
+          database_size_mb?: number | null
+          disk_usage?: number | null
+          id?: string
+          last_maintenance_at?: string | null
+          log_size_mb?: number | null
+          memory_usage?: number | null
+          next_maintenance_at?: string | null
+          temp_files_mb?: number | null
+          tenant_id: string
+          updated_at?: string
+          uptime_seconds?: number | null
+        }
+        Update: {
+          cpu_usage?: number | null
+          created_at?: string
+          database_size_mb?: number | null
+          disk_usage?: number | null
+          id?: string
+          last_maintenance_at?: string | null
+          log_size_mb?: number | null
+          memory_usage?: number | null
+          next_maintenance_at?: string | null
+          temp_files_mb?: number | null
+          tenant_id?: string
+          updated_at?: string
+          uptime_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_system_stats_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parametres_systeme: {
+        Row: {
+          categorie: string
+          cle_parametre: string
+          created_at: string
+          description: string | null
+          id: string
+          tenant_id: string
+          type_parametre: string | null
+          updated_at: string
+          valeur_parametre: string | null
+        }
+        Insert: {
+          categorie: string
+          cle_parametre: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          tenant_id: string
+          type_parametre?: string | null
+          updated_at?: string
+          valeur_parametre?: string | null
+        }
+        Update: {
+          categorie?: string
+          cle_parametre?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          tenant_id?: string
+          type_parametre?: string | null
+          updated_at?: string
+          valeur_parametre?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parametres_systeme_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      password_policies: {
+        Row: {
+          created_at: string
+          id: string
+          lockout_attempts: number | null
+          lockout_duration_minutes: number | null
+          max_age_days: number | null
+          min_length: number | null
+          prevent_reuse_count: number | null
+          require_lowercase: boolean | null
+          require_numbers: boolean | null
+          require_special_chars: boolean | null
+          require_uppercase: boolean | null
+          session_timeout_minutes: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lockout_attempts?: number | null
+          lockout_duration_minutes?: number | null
+          max_age_days?: number | null
+          min_length?: number | null
+          prevent_reuse_count?: number | null
+          require_lowercase?: boolean | null
+          require_numbers?: boolean | null
+          require_special_chars?: boolean | null
+          require_uppercase?: boolean | null
+          session_timeout_minutes?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lockout_attempts?: number | null
+          lockout_duration_minutes?: number | null
+          max_age_days?: number | null
+          min_length?: number | null
+          prevent_reuse_count?: number | null
+          require_lowercase?: boolean | null
+          require_numbers?: boolean | null
+          require_special_chars?: boolean | null
+          require_uppercase?: boolean | null
+          session_timeout_minutes?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "password_policies_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -2246,6 +2978,69 @@ export type Database = {
           },
           {
             foreignKeyName: "tva_declaration_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_sessions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          ip_address: unknown
+          is_active: boolean | null
+          last_activity: string | null
+          personnel_id: string
+          risk_score: number | null
+          security_level: string | null
+          session_token: string
+          tenant_id: string
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          ip_address?: unknown
+          is_active?: boolean | null
+          last_activity?: string | null
+          personnel_id: string
+          risk_score?: number | null
+          security_level?: string | null
+          session_token: string
+          tenant_id: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          ip_address?: unknown
+          is_active?: boolean | null
+          last_activity?: string | null
+          personnel_id?: string
+          risk_score?: number | null
+          security_level?: string | null
+          session_token?: string
+          tenant_id?: string
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_sessions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
