@@ -357,6 +357,70 @@ export type Database = {
           },
         ]
       }
+      encaissements: {
+        Row: {
+          created_at: string
+          date_encaissement: string | null
+          id: string
+          mode_paiement: Database["public"]["Enums"]["mode_paiement"]
+          montant: number
+          notes: string | null
+          reference_transaction: string | null
+          session_caisse_id: string | null
+          tenant_id: string
+          updated_at: string
+          vente_id: string
+        }
+        Insert: {
+          created_at?: string
+          date_encaissement?: string | null
+          id?: string
+          mode_paiement: Database["public"]["Enums"]["mode_paiement"]
+          montant: number
+          notes?: string | null
+          reference_transaction?: string | null
+          session_caisse_id?: string | null
+          tenant_id: string
+          updated_at?: string
+          vente_id: string
+        }
+        Update: {
+          created_at?: string
+          date_encaissement?: string | null
+          id?: string
+          mode_paiement?: Database["public"]["Enums"]["mode_paiement"]
+          montant?: number
+          notes?: string | null
+          reference_transaction?: string | null
+          session_caisse_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+          vente_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encaissements_session_caisse_id_fkey"
+            columns: ["session_caisse_id"]
+            isOneToOne: false
+            referencedRelation: "sessions_caisse"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encaissements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encaissements_vente_id_fkey"
+            columns: ["vente_id"]
+            isOneToOne: false
+            referencedRelation: "ventes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       famille_produit: {
         Row: {
           created_at: string
@@ -654,6 +718,83 @@ export type Database = {
           },
         ]
       }
+      lignes_ventes: {
+        Row: {
+          created_at: string
+          id: string
+          lot_id: string | null
+          montant_total_ligne: number
+          prix_unitaire_ht: number
+          prix_unitaire_ttc: number
+          produit_id: string
+          quantite: number
+          remise_ligne: number | null
+          taux_tva: number | null
+          tenant_id: string
+          updated_at: string
+          vente_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lot_id?: string | null
+          montant_total_ligne: number
+          prix_unitaire_ht: number
+          prix_unitaire_ttc: number
+          produit_id: string
+          quantite: number
+          remise_ligne?: number | null
+          taux_tva?: number | null
+          tenant_id: string
+          updated_at?: string
+          vente_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lot_id?: string | null
+          montant_total_ligne?: number
+          prix_unitaire_ht?: number
+          prix_unitaire_ttc?: number
+          produit_id?: string
+          quantite?: number
+          remise_ligne?: number | null
+          taux_tva?: number | null
+          tenant_id?: string
+          updated_at?: string
+          vente_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lignes_ventes_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_ventes_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_ventes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_ventes_vente_id_fkey"
+            columns: ["vente_id"]
+            isOneToOne: false
+            referencedRelation: "ventes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lots: {
         Row: {
           created_at: string
@@ -698,6 +839,73 @@ export type Database = {
           },
           {
             foreignKeyName: "lots_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mouvements_caisse: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          date_mouvement: string | null
+          id: string
+          montant: number
+          motif: string
+          notes: string | null
+          reference: string | null
+          session_caisse_id: string
+          tenant_id: string
+          type_mouvement: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          date_mouvement?: string | null
+          id?: string
+          montant: number
+          motif: string
+          notes?: string | null
+          reference?: string | null
+          session_caisse_id: string
+          tenant_id: string
+          type_mouvement: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          date_mouvement?: string | null
+          id?: string
+          montant?: number
+          motif?: string
+          notes?: string | null
+          reference?: string | null
+          session_caisse_id?: string
+          tenant_id?: string
+          type_mouvement?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mouvements_caisse_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_caisse_session_caisse_id_fkey"
+            columns: ["session_caisse_id"]
+            isOneToOne: false
+            referencedRelation: "sessions_caisse"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_caisse_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -1315,6 +1523,72 @@ export type Database = {
           },
         ]
       }
+      sessions_caisse: {
+        Row: {
+          agent_id: string
+          created_at: string
+          date_fermeture: string | null
+          date_ouverture: string | null
+          ecart: number | null
+          fond_caisse_fermeture: number | null
+          fond_caisse_ouverture: number | null
+          id: string
+          montant_total_encaissements: number | null
+          montant_total_ventes: number | null
+          notes: string | null
+          statut: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          date_fermeture?: string | null
+          date_ouverture?: string | null
+          ecart?: number | null
+          fond_caisse_fermeture?: number | null
+          fond_caisse_ouverture?: number | null
+          id?: string
+          montant_total_encaissements?: number | null
+          montant_total_ventes?: number | null
+          notes?: string | null
+          statut?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          date_fermeture?: string | null
+          date_ouverture?: string | null
+          ecart?: number | null
+          fond_caisse_fermeture?: number | null
+          fond_caisse_ouverture?: number | null
+          id?: string
+          montant_total_encaissements?: number | null
+          montant_total_ventes?: number | null
+          notes?: string | null
+          statut?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_caisse_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_caisse_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sous_compte_depenses: {
         Row: {
           compte_depenses_id: string
@@ -1498,6 +1772,106 @@ export type Database = {
           },
         ]
       }
+      ventes: {
+        Row: {
+          agent_id: string | null
+          client_id: string | null
+          created_at: string
+          date_vente: string | null
+          id: string
+          metadata: Json | null
+          mode_paiement: Database["public"]["Enums"]["mode_paiement"] | null
+          montant_net: number
+          montant_part_assurance: number | null
+          montant_part_patient: number | null
+          montant_paye: number | null
+          montant_rendu: number | null
+          montant_total_ht: number
+          montant_total_ttc: number
+          montant_tva: number | null
+          notes: string | null
+          numero_vente: string
+          remise_globale: number | null
+          statut: Database["public"]["Enums"]["statut_vente"] | null
+          taux_couverture_assurance: number | null
+          tenant_id: string
+          type_vente: Database["public"]["Enums"]["type_vente"] | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          date_vente?: string | null
+          id?: string
+          metadata?: Json | null
+          mode_paiement?: Database["public"]["Enums"]["mode_paiement"] | null
+          montant_net?: number
+          montant_part_assurance?: number | null
+          montant_part_patient?: number | null
+          montant_paye?: number | null
+          montant_rendu?: number | null
+          montant_total_ht?: number
+          montant_total_ttc?: number
+          montant_tva?: number | null
+          notes?: string | null
+          numero_vente: string
+          remise_globale?: number | null
+          statut?: Database["public"]["Enums"]["statut_vente"] | null
+          taux_couverture_assurance?: number | null
+          tenant_id: string
+          type_vente?: Database["public"]["Enums"]["type_vente"] | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          date_vente?: string | null
+          id?: string
+          metadata?: Json | null
+          mode_paiement?: Database["public"]["Enums"]["mode_paiement"] | null
+          montant_net?: number
+          montant_part_assurance?: number | null
+          montant_part_patient?: number | null
+          montant_paye?: number | null
+          montant_rendu?: number | null
+          montant_total_ht?: number
+          montant_total_ttc?: number
+          montant_tva?: number | null
+          notes?: string | null
+          numero_vente?: string
+          remise_globale?: number | null
+          statut?: Database["public"]["Enums"]["statut_vente"] | null
+          taux_couverture_assurance?: number | null
+          tenant_id?: string
+          type_vente?: Database["public"]["Enums"]["type_vente"] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ventes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1510,6 +1884,12 @@ export type Database = {
       get_current_user_tenant_id: { Args: never; Returns: string }
     }
     Enums: {
+      mode_paiement:
+        | "Espèces"
+        | "Mobile Money"
+        | "Carte Bancaire"
+        | "Chèque"
+        | "Virement"
       situation_familiale:
         | "Célibataire"
         | "Marié(e)"
@@ -1530,7 +1910,9 @@ export type Database = {
         | "Freelance"
         | "Consultant"
         | "Temporaire"
+      statut_vente: "En cours" | "Validée" | "Annulée" | "Remboursée"
       type_client: "Particulier" | "Assureur" | "Société" | "Conventionné"
+      type_vente: "Comptant" | "Crédit" | "Assurance"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1658,6 +2040,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      mode_paiement: [
+        "Espèces",
+        "Mobile Money",
+        "Carte Bancaire",
+        "Chèque",
+        "Virement",
+      ],
       situation_familiale: [
         "Célibataire",
         "Marié(e)",
@@ -1681,7 +2070,9 @@ export const Constants = {
         "Consultant",
         "Temporaire",
       ],
+      statut_vente: ["En cours", "Validée", "Annulée", "Remboursée"],
       type_client: ["Particulier", "Assureur", "Société", "Conventionné"],
+      type_vente: ["Comptant", "Crédit", "Assurance"],
     },
   },
 } as const
