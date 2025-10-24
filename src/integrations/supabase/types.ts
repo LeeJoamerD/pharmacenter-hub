@@ -64,56 +64,6 @@ export type Database = {
           },
         ]
       }
-      backup_logs: {
-        Row: {
-          created_at: string
-          date_debut: string | null
-          date_fin: string | null
-          erreur_message: string | null
-          fichier_backup: string | null
-          id: string
-          metadata: Json | null
-          statut: string
-          taille_backup: number | null
-          tenant_id: string
-          type_backup: string
-        }
-        Insert: {
-          created_at?: string
-          date_debut?: string | null
-          date_fin?: string | null
-          erreur_message?: string | null
-          fichier_backup?: string | null
-          id?: string
-          metadata?: Json | null
-          statut?: string
-          taille_backup?: number | null
-          tenant_id: string
-          type_backup: string
-        }
-        Update: {
-          created_at?: string
-          date_debut?: string | null
-          date_fin?: string | null
-          erreur_message?: string | null
-          fichier_backup?: string | null
-          id?: string
-          metadata?: Json | null
-          statut?: string
-          taille_backup?: number | null
-          tenant_id?: string
-          type_backup?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "backup_logs_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       balances: {
         Row: {
           compte_id: string
@@ -1683,65 +1633,6 @@ export type Database = {
           },
         ]
       }
-      print_templates: {
-        Row: {
-          body_html: string | null
-          created_at: string
-          css_custom: string | null
-          footer_html: string | null
-          format_page: string | null
-          header_html: string | null
-          id: string
-          is_active: boolean | null
-          is_default: boolean | null
-          nom_template: string
-          orientation: string | null
-          tenant_id: string
-          type_document: string
-          updated_at: string
-        }
-        Insert: {
-          body_html?: string | null
-          created_at?: string
-          css_custom?: string | null
-          footer_html?: string | null
-          format_page?: string | null
-          header_html?: string | null
-          id?: string
-          is_active?: boolean | null
-          is_default?: boolean | null
-          nom_template: string
-          orientation?: string | null
-          tenant_id: string
-          type_document: string
-          updated_at?: string
-        }
-        Update: {
-          body_html?: string | null
-          created_at?: string
-          css_custom?: string | null
-          footer_html?: string | null
-          format_page?: string | null
-          header_html?: string | null
-          id?: string
-          is_active?: boolean | null
-          is_default?: boolean | null
-          nom_template?: string
-          orientation?: string | null
-          tenant_id?: string
-          type_document?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "print_templates_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       produits: {
         Row: {
           categorie_tarification_id: string | null
@@ -2308,89 +2199,6 @@ export type Database = {
           },
         ]
       }
-      system_settings: {
-        Row: {
-          afficher_logo_ticket: boolean | null
-          afficher_qr_code_ticket: boolean | null
-          alerte_peremption_jours: number | null
-          alerte_stock_critique: number | null
-          alerte_stock_faible: number | null
-          autoriser_remise_ligne: boolean | null
-          autoriser_vente_stock_negatif: boolean | null
-          created_at: string
-          devise: string | null
-          format_date: string | null
-          format_heure: string | null
-          format_ticket: string | null
-          id: string
-          langue_defaut: string | null
-          metadata: Json | null
-          notifications_email: boolean | null
-          notifications_sms: boolean | null
-          remise_maximale: number | null
-          taux_centime_additionnel_defaut: number | null
-          taux_tva_defaut: number | null
-          tenant_id: string
-          updated_at: string
-        }
-        Insert: {
-          afficher_logo_ticket?: boolean | null
-          afficher_qr_code_ticket?: boolean | null
-          alerte_peremption_jours?: number | null
-          alerte_stock_critique?: number | null
-          alerte_stock_faible?: number | null
-          autoriser_remise_ligne?: boolean | null
-          autoriser_vente_stock_negatif?: boolean | null
-          created_at?: string
-          devise?: string | null
-          format_date?: string | null
-          format_heure?: string | null
-          format_ticket?: string | null
-          id?: string
-          langue_defaut?: string | null
-          metadata?: Json | null
-          notifications_email?: boolean | null
-          notifications_sms?: boolean | null
-          remise_maximale?: number | null
-          taux_centime_additionnel_defaut?: number | null
-          taux_tva_defaut?: number | null
-          tenant_id: string
-          updated_at?: string
-        }
-        Update: {
-          afficher_logo_ticket?: boolean | null
-          afficher_qr_code_ticket?: boolean | null
-          alerte_peremption_jours?: number | null
-          alerte_stock_critique?: number | null
-          alerte_stock_faible?: number | null
-          autoriser_remise_ligne?: boolean | null
-          autoriser_vente_stock_negatif?: boolean | null
-          created_at?: string
-          devise?: string | null
-          format_date?: string | null
-          format_heure?: string | null
-          format_ticket?: string | null
-          id?: string
-          langue_defaut?: string | null
-          metadata?: Json | null
-          notifications_email?: boolean | null
-          notifications_sms?: boolean | null
-          remise_maximale?: number | null
-          taux_centime_additionnel_defaut?: number | null
-          taux_tva_defaut?: number | null
-          tenant_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "system_settings_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: true
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       tva_declaration: {
         Row: {
           created_at: string
@@ -2438,65 +2246,6 @@ export type Database = {
           },
           {
             foreignKeyName: "tva_declaration_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_preferences: {
-        Row: {
-          colonnes_visibles: Json | null
-          created_at: string
-          id: string
-          langue: string | null
-          lignes_par_page: number | null
-          metadata: Json | null
-          notifications_actives: boolean | null
-          notifications_desktop: boolean | null
-          notifications_email: boolean | null
-          raccourcis_clavier: Json | null
-          tenant_id: string
-          theme: string | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          colonnes_visibles?: Json | null
-          created_at?: string
-          id?: string
-          langue?: string | null
-          lignes_par_page?: number | null
-          metadata?: Json | null
-          notifications_actives?: boolean | null
-          notifications_desktop?: boolean | null
-          notifications_email?: boolean | null
-          raccourcis_clavier?: Json | null
-          tenant_id: string
-          theme?: string | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          colonnes_visibles?: Json | null
-          created_at?: string
-          id?: string
-          langue?: string | null
-          lignes_par_page?: number | null
-          metadata?: Json | null
-          notifications_actives?: boolean | null
-          notifications_desktop?: boolean | null
-          notifications_email?: boolean | null
-          raccourcis_clavier?: Json | null
-          tenant_id?: string
-          theme?: string | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_preferences_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
