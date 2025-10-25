@@ -3031,6 +3031,293 @@ export type Database = {
           },
         ]
       }
+      report_api_tokens: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          last_used: string | null
+          permissions: Json | null
+          tenant_id: string
+          token_hash: string
+          token_name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_used?: string | null
+          permissions?: Json | null
+          tenant_id: string
+          token_hash: string
+          token_name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_used?: string | null
+          permissions?: Json | null
+          tenant_id?: string
+          token_hash?: string
+          token_name?: string
+        }
+        Relationships: []
+      }
+      report_archiving_policies: {
+        Row: {
+          created_at: string
+          id: string
+          purge_enabled: boolean
+          retention_days: number
+          storage_location: string | null
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          purge_enabled?: boolean
+          retention_days?: number
+          storage_location?: string | null
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          purge_enabled?: boolean
+          retention_days?: number
+          storage_location?: string | null
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      report_connectors: {
+        Row: {
+          connection_config: Json | null
+          connector_name: string
+          connector_type: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          last_sync: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          connection_config?: Json | null
+          connector_name: string
+          connector_type: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_sync?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          connection_config?: Json | null
+          connector_name?: string
+          connector_type?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_sync?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      report_permissions: {
+        Row: {
+          can_create: boolean | null
+          can_delete: boolean | null
+          can_edit: boolean | null
+          can_export: boolean | null
+          can_view: boolean | null
+          created_at: string
+          id: string
+          report_type: string
+          subject: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          can_create?: boolean | null
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_export?: boolean | null
+          can_view?: boolean | null
+          created_at?: string
+          id?: string
+          report_type: string
+          subject: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          can_create?: boolean | null
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_export?: boolean | null
+          can_view?: boolean | null
+          created_at?: string
+          id?: string
+          report_type?: string
+          subject?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      report_schedules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          frequency: string
+          id: string
+          is_active: boolean | null
+          last_run: string | null
+          next_run: string | null
+          recipients: Json | null
+          report_type: string
+          schedule_config: Json | null
+          schedule_name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          frequency: string
+          id?: string
+          is_active?: boolean | null
+          last_run?: string | null
+          next_run?: string | null
+          recipients?: Json | null
+          report_type: string
+          schedule_config?: Json | null
+          schedule_name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          last_run?: string | null
+          next_run?: string | null
+          recipients?: Json | null
+          report_type?: string
+          schedule_config?: Json | null
+          schedule_name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      report_template_versions: {
+        Row: {
+          change_notes: string | null
+          content: Json | null
+          created_at: string
+          created_by: string | null
+          id: string
+          template_id: string
+          tenant_id: string
+          version_number: number
+        }
+        Insert: {
+          change_notes?: string | null
+          content?: Json | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          template_id: string
+          tenant_id: string
+          version_number: number
+        }
+        Update: {
+          change_notes?: string | null
+          content?: Json | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          template_id?: string
+          tenant_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_template_versions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_templates: {
+        Row: {
+          category: string
+          content: Json | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_system: boolean | null
+          name: string
+          template_type: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          content?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_system?: boolean | null
+          name: string
+          template_type: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_system?: boolean | null
+          name?: string
+          template_type?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       security_alerts: {
         Row: {
           alert_type: string
@@ -3629,6 +3916,7 @@ export type Database = {
             }
             Returns: Json
           }
+      reports_apply_archiving_policy: { Args: never; Returns: number }
       rpc_stock_delete_movement: {
         Args: { p_mouvement_id: string; p_tenant_id: string }
         Returns: Json
