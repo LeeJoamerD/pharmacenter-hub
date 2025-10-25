@@ -3917,31 +3917,65 @@ export type Database = {
             Returns: Json
           }
       reports_apply_archiving_policy: { Args: never; Returns: number }
-      rpc_stock_delete_movement: {
-        Args: { p_mouvement_id: string; p_tenant_id: string }
-        Returns: Json
-      }
-      rpc_stock_record_movement: {
-        Args: {
-          p_agent_id?: string
-          p_lot_id: string
-          p_motif?: string
-          p_produit_id: string
-          p_quantite: number
-          p_tenant_id: string
-          p_type_mouvement: string
-        }
-        Returns: Json
-      }
-      rpc_stock_update_movement: {
-        Args: {
-          p_motif?: string
-          p_mouvement_id: string
-          p_quantite: number
-          p_tenant_id: string
-        }
-        Returns: Json
-      }
+      reports_get_configuration: { Args: never; Returns: Json }
+      reports_upsert_settings: { Args: { payload: Json }; Returns: Json }
+      rpc_stock_delete_movement:
+        | { Args: { p_mouvement_id: string }; Returns: Json }
+        | {
+            Args: { p_mouvement_id: string; p_tenant_id: string }
+            Returns: Json
+          }
+      rpc_stock_record_movement:
+        | {
+            Args: {
+              p_agent_id?: string
+              p_emplacement_destination?: string
+              p_emplacement_source?: string
+              p_lot_destination_id?: string
+              p_lot_id: string
+              p_metadata?: Json
+              p_motif?: string
+              p_produit_id: string
+              p_quantite_mouvement: number
+              p_quantite_reelle?: number
+              p_reference_document?: string
+              p_reference_id?: string
+              p_reference_type?: string
+              p_type_mouvement: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_agent_id?: string
+              p_lot_id: string
+              p_motif?: string
+              p_produit_id: string
+              p_quantite: number
+              p_tenant_id: string
+              p_type_mouvement: string
+            }
+            Returns: Json
+          }
+      rpc_stock_update_movement:
+        | {
+            Args: {
+              p_metadata?: Json
+              p_motif?: string
+              p_mouvement_id: string
+              p_quantite_mouvement: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_motif?: string
+              p_mouvement_id: string
+              p_quantite: number
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
       validate_password_strength: {
         Args: { p_tenant_id: string; password: string }
         Returns: Json
