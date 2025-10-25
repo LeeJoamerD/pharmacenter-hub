@@ -1479,6 +1479,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "lots_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lots_produit_id_fkey"
             columns: ["produit_id"]
             isOneToOne: false
@@ -2676,6 +2683,7 @@ export type Database = {
           reference_agent_modification_id: string | null
           stock_alerte: number | null
           stock_limite: number | null
+          taux_tva: number | null
           tenant_id: string
           tva: number | null
           updated_at: string
@@ -2706,6 +2714,7 @@ export type Database = {
           reference_agent_modification_id?: string | null
           stock_alerte?: number | null
           stock_limite?: number | null
+          taux_tva?: number | null
           tenant_id: string
           tva?: number | null
           updated_at?: string
@@ -2736,6 +2745,7 @@ export type Database = {
           reference_agent_modification_id?: string | null
           stock_alerte?: number | null
           stock_limite?: number | null
+          taux_tva?: number | null
           tenant_id?: string
           tva?: number | null
           updated_at?: string
@@ -3525,6 +3535,10 @@ export type Database = {
         }
         Returns: Json
       }
+      rpc_stock_delete_movement: {
+        Args: { p_mouvement_id: string; p_tenant_id: string }
+        Returns: Json
+      }
       rpc_stock_record_movement: {
         Args: {
           p_agent_id?: string
@@ -3534,6 +3548,15 @@ export type Database = {
           p_quantite: number
           p_tenant_id: string
           p_type_mouvement: string
+        }
+        Returns: Json
+      }
+      rpc_stock_update_movement: {
+        Args: {
+          p_motif?: string
+          p_mouvement_id: string
+          p_quantite: number
+          p_tenant_id: string
         }
         Returns: Json
       }
