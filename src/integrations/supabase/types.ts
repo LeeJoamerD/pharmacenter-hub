@@ -1501,6 +1501,57 @@ export type Database = {
           },
         ]
       }
+      metriques_performance_lots: {
+        Row: {
+          created_at: string | null
+          expirations_avoided: number | null
+          expirations_avoided_value: number | null
+          fifo_corrections: number | null
+          id: string
+          metadata: Json | null
+          metric_date: string
+          stock_reorders_suggested: number | null
+          suggestions_applied: number | null
+          suggestions_ignored: number | null
+          tenant_id: string
+          total_savings: number | null
+          total_suggestions_generated: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expirations_avoided?: number | null
+          expirations_avoided_value?: number | null
+          fifo_corrections?: number | null
+          id?: string
+          metadata?: Json | null
+          metric_date?: string
+          stock_reorders_suggested?: number | null
+          suggestions_applied?: number | null
+          suggestions_ignored?: number | null
+          tenant_id: string
+          total_savings?: number | null
+          total_suggestions_generated?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expirations_avoided?: number | null
+          expirations_avoided_value?: number | null
+          fifo_corrections?: number | null
+          id?: string
+          metadata?: Json | null
+          metric_date?: string
+          stock_reorders_suggested?: number | null
+          suggestions_applied?: number | null
+          suggestions_ignored?: number | null
+          tenant_id?: string
+          total_savings?: number | null
+          total_suggestions_generated?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       mouvements_caisse: {
         Row: {
           agent_id: string | null
@@ -2206,8 +2257,17 @@ export type Database = {
           categorie: string
           cle_parametre: string
           created_at: string
+          critical_stock_threshold: number | null
           description: string | null
+          expiration_alert_days: number | null
           id: string
+          low_stock_enabled: boolean | null
+          low_stock_threshold: number | null
+          maximum_stock_threshold: number | null
+          near_expiration_days: number | null
+          overdue_inventory_days: number | null
+          purge_enabled: boolean | null
+          retention_days: number | null
           tenant_id: string
           type_parametre: string | null
           updated_at: string
@@ -2217,8 +2277,17 @@ export type Database = {
           categorie: string
           cle_parametre: string
           created_at?: string
+          critical_stock_threshold?: number | null
           description?: string | null
+          expiration_alert_days?: number | null
           id?: string
+          low_stock_enabled?: boolean | null
+          low_stock_threshold?: number | null
+          maximum_stock_threshold?: number | null
+          near_expiration_days?: number | null
+          overdue_inventory_days?: number | null
+          purge_enabled?: boolean | null
+          retention_days?: number | null
           tenant_id: string
           type_parametre?: string | null
           updated_at?: string
@@ -2228,8 +2297,17 @@ export type Database = {
           categorie?: string
           cle_parametre?: string
           created_at?: string
+          critical_stock_threshold?: number | null
           description?: string | null
+          expiration_alert_days?: number | null
           id?: string
+          low_stock_enabled?: boolean | null
+          low_stock_threshold?: number | null
+          maximum_stock_threshold?: number | null
+          near_expiration_days?: number | null
+          overdue_inventory_days?: number | null
+          purge_enabled?: boolean | null
+          retention_days?: number | null
           tenant_id?: string
           type_parametre?: string | null
           updated_at?: string
@@ -2683,6 +2761,7 @@ export type Database = {
           reference_agent_modification_id: string | null
           stock_alerte: number | null
           stock_limite: number | null
+          taux_centime_additionnel: number | null
           taux_tva: number | null
           tenant_id: string
           tva: number | null
@@ -2714,6 +2793,7 @@ export type Database = {
           reference_agent_modification_id?: string | null
           stock_alerte?: number | null
           stock_limite?: number | null
+          taux_centime_additionnel?: number | null
           taux_tva?: number | null
           tenant_id: string
           tva?: number | null
@@ -2745,6 +2825,7 @@ export type Database = {
           reference_agent_modification_id?: string | null
           stock_alerte?: number | null
           stock_limite?: number | null
+          taux_centime_additionnel?: number | null
           taux_tva?: number | null
           tenant_id?: string
           tva?: number | null
