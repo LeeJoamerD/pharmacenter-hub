@@ -57,23 +57,6 @@ const [resetSending, setResetSending] = useState(false);
 
     setLoading(true);
     try {
-      // Vérifier que ce compte a déjà été authentifié par Google (sans déclencher OAuth)
-      const { data: checkData, error: checkError } = await supabase.rpc("check_google_verified", {
-        tenant_id: connectedPharmacy.id,
-        email,
-      });
-
-      if (checkError) throw checkError;
-
-      const found = (checkData as any)?.found;
-      const googleVerified = (checkData as any)?.google_verified;
-
-      if (!found || !googleVerified) {
-        toast.error("Première connexion requise via Google. Utilisez 'Continuer avec Google'.");
-        setLoading(false);
-        return;
-      }
-
       const { error } = await enhancedSignIn(email, password);
       if (error) {
         toast.error(error.message || "Échec de la connexion");
@@ -91,27 +74,6 @@ const [resetSending, setResetSending] = useState(false);
     }
   };
 
-const handleGoogle = async () => {
-  setLoading(true);
-  try {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/user-login`,
-        queryParams: {
-          access_type: "offline",
-          prompt: "select_account",
-        },
-      },
-    });
-    if (error) throw error;
-    // OAuth redirigera vers cette page; un effet ci-dessous gère la suite
-  } catch (err: any) {
-    console.error(err);
-    toast.error(err.message || "Erreur OAuth Google");
-    setLoading(false);
-  }
-};
 
 const handleForgotPassword = async () => {
   if (!forgotEmail) {
@@ -135,139 +97,6 @@ const handleForgotPassword = async () => {
   }
 };
 
-  // Au retour d'OAuth Google: si session active -> résoudre le statut et rediriger
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      // 1) Capturer une éventuelle erreur OAuth dans l'URL et l'afficher
-      try {
-        const url = new URL(window.location.href);
-        const searchErr = url.searchParams.get("error") || url.searchParams.get("error_description");
-        const hash = url.hash ? new URLSearchParams(url.hash.replace(/^#/, "")) : null;
-        const hashErr = hash?.get("error") || hash?.get("error_description");
-        const oauthError = searchErr || hashErr;
-        if (oauthError) {
-          const decoded = decodeURIComponent(oauthError);
-          const friendly = decoded.includes('server_error')
-            ? "Échec de l'authentification Google (server_error). Réessayez ou créez un compte par email."
-            : decoded;
-          toast.error(friendly);
-          // Nettoyer l'URL pour éviter de réafficher le message au refresh
-          url.searchParams.delete("error");
-          url.searchParams.delete("error_description");
-          window.history.replaceState({}, document.title, url.pathname + url.search);
-        }
-      } catch (e) {
-        // ignore parsing errors
-      }
-
-      // 2) Vérifier la session et résoudre le lien personnel
-      const { data } = await supabase.auth.getSession();
-      const session = data.session;
-      if (!mounted || !session) return;
-
-      setLoading(true);
-      try {
-        // Marquer le compte comme vérifié Google pour la pharmacie connectée
-        const markGoogleVerified = async () => {
-          try {
-            if (!connectedPharmacy?.id) return;
-            await supabase.rpc("mark_personnel_google_verified", { p_tenant_id: connectedPharmacy.id });
-          } catch (e) {
-            console.error(e);
-          }
-        };
-
-        // S'assurer qu'un profil personnel existe pour la pharmacie connectée
-        const ensurePersonnelInConnectedPharmacy = async (session: any) => {
-          if (!connectedPharmacy?.id) {
-            toast.error("Aucune pharmacie connectée. Veuillez d'abord vous connecter à une pharmacie.");
-            return false;
-          }
-          const { data: fpData, error: fpErr } = await supabase.rpc("find_personnel_for_current_user", {
-            tenant_id: connectedPharmacy.id,
-          });
-          if (fpErr) throw fpErr;
-          if ((fpData as any)?.exists) return true;
-
-          const meta: any = session.user.user_metadata || {};
-          const fullName: string | undefined = meta.name;
-          const prenoms = meta.given_name || meta.first_name || (fullName ? fullName.split(" ")[0] : "");
-          const noms = meta.family_name || meta.last_name || (fullName ? fullName.split(" ").slice(1).join(" ") : "");
-
-          const payload = {
-            noms,
-            prenoms,
-            email: session.user.email,
-            telephone: meta.phone_number || null,
-            google_verified: true,
-            google_user_id: session.user.id,
-            google_phone: meta.phone_number || null,
-          };
-
-          const { data: cpData, error: cpErr } = await supabase.rpc("create_personnel_for_user", {
-            pharmacy_id: connectedPharmacy.id,
-            data: payload,
-          });
-          if (cpErr) throw cpErr;
-          if (!(cpData as any)?.success) {
-            throw new Error((cpData as any)?.error || "Création du profil utilisateur échouée");
-          }
-          return true;
-        };
-
-const { data: resolveData, error } = await supabase.rpc("resolve_oauth_personnel_link");
-if (error) throw error;
-const status = (resolveData as any)?.status;
-const hasEmailIdentity = Array.isArray((session.user as any)?.identities)
-  ? (session.user as any).identities.some((i: any) => i.provider === "email")
-  : false;
-
-switch (status) {
-  case "active":
-  case "linked_and_activated":
-    await markGoogleVerified();
-    await ensurePersonnelInConnectedPharmacy(session);
-    toast.success("Connexion réussie");
-    if (!hasEmailIdentity) {
-      toast.info("Définissez un mot de passe pour activer la connexion email");
-      navigate("/set-password");
-    } else {
-      navigate("/");
-    }
-    break;
-  case "inactive_linked":
-    toast.error("Votre compte est inactif. Contactez l’administrateur.");
-    await supabase.auth.signOut();
-    navigate("/");
-    break;
-  case "new_user":
-    await markGoogleVerified();
-    await ensurePersonnelInConnectedPharmacy(session);
-    toast.success("Compte créé et connecté");
-    if (!hasEmailIdentity) {
-      toast.info("Définissez un mot de passe pour activer la connexion email");
-      navigate("/set-password");
-    } else {
-      navigate("/");
-    }
-    break;
-  default:
-    toast.error("Connexion Google incomplète. Réessayez.");
-    break;
-}
-
-      } catch (e: any) {
-        console.error(e);
-        toast.error(e.message || "Erreur lors de la résolution de l'authentification");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [navigate, connectedPharmacy?.id]);
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4 py-12">
@@ -349,18 +178,6 @@ switch (status) {
   </button>
 </div>
             </form>
-
-            <div className="my-4 text-center text-sm text-muted-foreground">Ou</div>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleGoogle}
-              disabled={loading}
-            >
-              Continuer avec Google
-            </Button>
 
             <div className="mt-6 text-center text-sm">
               Vous n'avez pas encore de compte ?{" "}

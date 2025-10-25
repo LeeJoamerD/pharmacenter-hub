@@ -10,13 +10,6 @@ interface ConnectedPharmacy extends Pharmacy {
   sessionToken: string;
 }
 
-interface OAuthLinkResult {
-  status: 'active' | 'inactive_linked' | 'linked_and_activated' | 'new_user';
-  personnel_id?: string;
-  tenant_id?: string;
-  google_verified_updated?: boolean;
-}
-
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -58,12 +51,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchUserData = async (userId: string) => {
     try {
       console.log('AUTH: Fetching user data for:', userId);
-      
-      // Debug: Utiliser la fonction de debug pour diagnostiquer l'état
-      const { data: debugState, error: debugError } = await supabase.rpc('debug_user_connection_state');
-      if (!debugError && debugState) {
-        console.log('AUTH: Debug état connexion:', debugState);
-      }
 
       // Fetch personnel data - utilise maybeSingle pour permettre NULL
       const { data: personnelData, error: personnelError } = await supabase
@@ -74,70 +61,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (personnelError) {
         console.error('AUTH: Error fetching personnel:', personnelError);
-        // Si erreur RLS ou autre, essayer la résolution OAuth
-        if (personnelError.code === '42501' || personnelError.code === '42P17') {
-          console.log('AUTH: Erreur RLS détectée, tentative résolution OAuth...');
-        } else {
-          return;
-        }
+        return;
       }
 
-      // Si aucun personnel trouvé ou erreur RLS, essayer de résoudre automatiquement le lien OAuth
-      if (!personnelData || personnelError) {
-        console.log('AUTH: Personnel non trouvé ou erreur RLS, tentative résolution OAuth...');
-        
-        const { data: linkResult, error: linkError } = await supabase.rpc(
-          'resolve_oauth_personnel_link'
-        );
-        
-        if (linkError) {
-          console.error('AUTH: Erreur lors de la résolution OAuth:', linkError);
-          return;
-        }
-        
-        console.log('AUTH: Résultat résolution OAuth:', linkResult);
-        
-        // Si le lien a été résolu avec succès, re-fetch les données
-        const linkData = linkResult as unknown as OAuthLinkResult;
-        if (linkData?.status === 'active' || linkData?.status === 'linked_and_activated') {
-          console.log('AUTH: Lien OAuth résolu, rechargement des données personnel...');
-          
-          const { data: newPersonnelData, error: newPersonnelError } = await supabase
-            .from('personnel')
-            .select('*')
-            .eq('auth_user_id', userId)
-            .maybeSingle();
-          
-          if (newPersonnelError) {
-            console.error('AUTH: Erreur après résolution OAuth:', newPersonnelError);
-            return;
-          }
-          
-          if (newPersonnelData) {
-            console.log('AUTH: Personnel récupéré après résolution:', newPersonnelData.id);
-            setPersonnel(newPersonnelData);
-            
-            // Fetch pharmacy data si tenant_id existe
-            if (newPersonnelData.tenant_id) {
-              const { data: pharmacyData, error: pharmacyError } = await supabase
-                .from('pharmacies')
-                .select('*')
-                .eq('id', newPersonnelData.tenant_id)
-                .maybeSingle();
-              
-              if (pharmacyError) {
-                console.error('AUTH: Erreur chargement pharmacie:', pharmacyError);
-              } else if (pharmacyData) {
-                console.log('AUTH: Pharmacie chargée:', pharmacyData.name);
-                setPharmacy(pharmacyData);
-              }
-            }
-          }
-        } else if (linkData?.status === 'new_user') {
-          console.log('AUTH: Nouvel utilisateur détecté, création de compte requise');
-          // Pour les nouveaux utilisateur, on laisse le processus normal
-        }
-        
+      // Si aucun personnel trouvé, retourner simplement
+      if (!personnelData) {
+        console.log('AUTH: Personnel non trouvé pour cet utilisateur');
         return;
       }
 

@@ -78,34 +78,6 @@ const UserRegister = () => {
     }
   }, []);
 
-  // Pré-remplir si une session Google existe (sinon inscription email classique)
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      const session = data.session;
-      if (!mounted) return;
-
-      if (session) {
-        setHasSession(true);
-        const u = session.user;
-        const displayName = (u.user_metadata as any)?.name || "";
-        if (displayName) {
-          const parts = displayName.split(" ");
-          setPrenoms(parts.slice(0, -1).join(" ") || parts[0] || "");
-          setNoms(parts.slice(-1).join(" ") || "");
-        }
-        setEmail(u.email || "");
-        const metaPhone = (u.user_metadata as any)?.phone_number || (u.user_metadata as any)?.phone || "";
-        setPhone(metaPhone || "");
-      } else {
-        setHasSession(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   const disabledReason = useMemo(() => {
     if (!connectedPharmacy) return "Aucune pharmacie connectée. Veuillez connecter votre pharmacie avant de créer un compte utilisateur.";
@@ -140,46 +112,7 @@ const UserRegister = () => {
         return;
       }
 
-      const { data: sess } = await supabase.auth.getSession();
-      const session = sess.session;
-
-      if (session && hasSession) {
-        // Cas 1: déjà connecté via Google -> définir le mot de passe et créer le personnel
-        const { error: updateError } = await supabase.auth.updateUser({ password });
-        if (updateError) throw updateError;
-
-        const u = session.user;
-        const identities = Array.isArray((u as any)?.identities) ? (u as any).identities : [];
-        const googleIdentity = identities.find((i: any) => i.provider === "google");
-        const providerIsGoogle = Boolean(googleIdentity);
-        const googleUserId = providerIsGoogle ? (googleIdentity as any)?.id : null;
-        const googlePhone = (u?.user_metadata as any)?.phone_number || (u?.user_metadata as any)?.phone || phone || null;
-
-        const payload = {
-          noms,
-          prenoms,
-          email: u.email || email,
-          telephone: googlePhone || phone || "",
-          google_verified: providerIsGoogle,
-          google_user_id: googleUserId,
-          google_phone: providerIsGoogle ? googlePhone : null,
-          reference_agent: `AG-${Date.now()}`,
-        };
-
-        const { data: created, error } = await supabase.rpc("create_personnel_for_user", {
-          pharmacy_id: connectedPharmacy.id,
-          data: payload as any,
-        });
-        if (error) throw error;
-        const success = (created as any)?.success;
-        if (!success) {
-          throw new Error((created as any)?.error || "Échec de la création du profil utilisateur");
-        }
-
-        toast.success("Compte créé et connecté");
-        navigate("/");
-      } else {
-        // Cas 2: inscription email classique (sans session)
+      // Inscription email classique
         // Tenter signUp classique puis fallback OTP si GoTrue renvoie une 500 (Database error finding user)
         const currentUrl = `${window.location.protocol}//${window.location.host}/user-register`;
         try {
@@ -223,7 +156,6 @@ const UserRegister = () => {
                 prenoms,
                 email: normEmail,
                 telephone: phone || "",
-                google_verified: false,
                 reference_agent: `AG-${Date.now()}`,
               };
               const { data: created3, error: cpErr3 } = await supabase.rpc("create_personnel_for_user", {
@@ -274,7 +206,6 @@ const UserRegister = () => {
                 prenoms,
                 email: normEmail,
                 telephone: phone || "",
-                google_verified: false,
                 reference_agent: `AG-${Date.now()}`,
               };
               const { data: created2, error: cpErr2 } = await supabase.rpc("create_personnel_for_user", {
@@ -307,7 +238,6 @@ const UserRegister = () => {
           prenoms,
           email: normEmail,
           telephone: phone || "",
-          google_verified: false,
           reference_agent: `AG-${Date.now()}`,
         };
         const { data: created, error: cpErr } = await supabase.rpc("create_personnel_for_user", {
@@ -320,7 +250,6 @@ const UserRegister = () => {
         }
         toast.success("Compte créé et connecté");
         navigate("/");
-      }
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Erreur lors de la création du compte");
@@ -382,14 +311,14 @@ const UserRegister = () => {
                   <Label htmlFor="email">Adresse Email *</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9" required disabled={loading || !!disabledReason || hasSession} />
+                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9" required disabled={loading || !!disabledReason} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="telephone">Téléphone *</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="telephone" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-9" required disabled={loading || !!disabledReason || hasSession} />
+                    <Input id="telephone" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-9" required disabled={loading || !!disabledReason} />
                   </div>
                 </div>
               </div>
