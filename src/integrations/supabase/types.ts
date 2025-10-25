@@ -3231,11 +3231,22 @@ export type Database = {
         Args: { p_email: string; p_tenant_id: string }
         Returns: Json
       }
+      debug_user_connection_state: { Args: never; Returns: Json }
       generate_sales_suggestions: {
         Args: { p_tenant_id: string }
         Returns: number
       }
       get_current_user_tenant_id: { Args: never; Returns: string }
+      register_pharmacy_with_admin: {
+        Args: {
+          p_admin_email: string
+          p_admin_noms: string
+          p_admin_prenoms: string
+          p_pharmacy_data: Json
+          p_pharmacy_name: string
+        }
+        Returns: Json
+      }
       validate_password_strength: {
         Args: { p_tenant_id: string; password: string }
         Returns: Json
