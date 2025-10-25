@@ -75,7 +75,7 @@ export type Database = {
           personnel_id: string | null
           record_id: string | null
           table_name: string
-          tenant_id: string
+          tenant_id: string | null
           user_agent: string | null
           user_id: string | null
         }
@@ -89,7 +89,7 @@ export type Database = {
           personnel_id?: string | null
           record_id?: string | null
           table_name: string
-          tenant_id: string
+          tenant_id?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
@@ -103,7 +103,7 @@ export type Database = {
           personnel_id?: string | null
           record_id?: string | null
           table_name?: string
-          tenant_id?: string
+          tenant_id?: string | null
           user_agent?: string | null
           user_id?: string | null
         }
@@ -113,13 +113,6 @@ export type Database = {
             columns: ["personnel_id"]
             isOneToOne: false
             referencedRelation: "personnel"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "audit_logs_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
         ]
