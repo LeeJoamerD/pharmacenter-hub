@@ -475,6 +475,60 @@ export type Database = {
           },
         ]
       }
+      conventionnes: {
+        Row: {
+          adresse: string | null
+          caution: number | null
+          created_at: string
+          email: string | null
+          id: string
+          limite_dette: number | null
+          niu: string | null
+          noms: string
+          taux_remise_automatique: number | null
+          taux_ticket_moderateur: number | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          tenant_id: string
+          updated_at: string
+          ville: string | null
+        }
+        Insert: {
+          adresse?: string | null
+          caution?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          limite_dette?: number | null
+          niu?: string | null
+          noms: string
+          taux_remise_automatique?: number | null
+          taux_ticket_moderateur?: number | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id: string
+          updated_at?: string
+          ville?: string | null
+        }
+        Update: {
+          adresse?: string | null
+          caution?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          limite_dette?: number | null
+          niu?: string | null
+          noms?: string
+          taux_remise_automatique?: number | null
+          taux_ticket_moderateur?: number | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string
+          updated_at?: string
+          ville?: string | null
+        }
+        Relationships: []
+      }
       document_categories: {
         Row: {
           created_at: string
@@ -638,6 +692,68 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      emails: {
+        Row: {
+          classification: string | null
+          content: string | null
+          created_at: string | null
+          document_id: string | null
+          from_email: string | null
+          id: string
+          priority: string | null
+          processed: boolean | null
+          received_at: string | null
+          subject: string | null
+          suggested_response: string | null
+          summary: string | null
+          tenant_id: string
+          to_email: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          classification?: string | null
+          content?: string | null
+          created_at?: string | null
+          document_id?: string | null
+          from_email?: string | null
+          id?: string
+          priority?: string | null
+          processed?: boolean | null
+          received_at?: string | null
+          subject?: string | null
+          suggested_response?: string | null
+          summary?: string | null
+          tenant_id: string
+          to_email?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          classification?: string | null
+          content?: string | null
+          created_at?: string | null
+          document_id?: string | null
+          from_email?: string | null
+          id?: string
+          priority?: string | null
+          processed?: boolean | null
+          received_at?: string | null
+          subject?: string | null
+          suggested_response?: string | null
+          summary?: string | null
+          tenant_id?: string
+          to_email?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emails_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
         ]
@@ -1325,8 +1441,10 @@ export type Database = {
         Row: {
           created_at: string
           date_peremption: string | null
+          fournisseur_id: string | null
           id: string
           numero_lot: string
+          prix_achat_unitaire: number | null
           produit_id: string
           quantite_initiale: number
           quantite_restante: number
@@ -1336,8 +1454,10 @@ export type Database = {
         Insert: {
           created_at?: string
           date_peremption?: string | null
+          fournisseur_id?: string | null
           id?: string
           numero_lot: string
+          prix_achat_unitaire?: number | null
           produit_id: string
           quantite_initiale: number
           quantite_restante: number
@@ -1347,8 +1467,10 @@ export type Database = {
         Update: {
           created_at?: string
           date_peremption?: string | null
+          fournisseur_id?: string | null
           id?: string
           numero_lot?: string
+          prix_achat_unitaire?: number | null
           produit_id?: string
           quantite_initiale?: number
           quantite_restante?: number
@@ -1435,6 +1557,100 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mouvements_lots: {
+        Row: {
+          agent_id: string | null
+          created_at: string | null
+          date_mouvement: string | null
+          emplacement_destination: string | null
+          emplacement_source: string | null
+          id: string
+          lot_destination_id: string | null
+          lot_id: string
+          metadata: Json | null
+          motif: string | null
+          prix_unitaire: number | null
+          produit_id: string
+          quantite_apres: number
+          quantite_avant: number
+          quantite_mouvement: number
+          reference_document: string | null
+          reference_id: string | null
+          reference_type: string | null
+          tenant_id: string
+          type_mouvement: string
+          valeur_mouvement: number | null
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string | null
+          date_mouvement?: string | null
+          emplacement_destination?: string | null
+          emplacement_source?: string | null
+          id?: string
+          lot_destination_id?: string | null
+          lot_id: string
+          metadata?: Json | null
+          motif?: string | null
+          prix_unitaire?: number | null
+          produit_id: string
+          quantite_apres: number
+          quantite_avant: number
+          quantite_mouvement: number
+          reference_document?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id: string
+          type_mouvement: string
+          valeur_mouvement?: number | null
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string | null
+          date_mouvement?: string | null
+          emplacement_destination?: string | null
+          emplacement_source?: string | null
+          id?: string
+          lot_destination_id?: string | null
+          lot_id?: string
+          metadata?: Json | null
+          motif?: string | null
+          prix_unitaire?: number | null
+          produit_id?: string
+          quantite_apres?: number
+          quantite_avant?: number
+          quantite_mouvement?: number
+          reference_document?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id?: string
+          type_mouvement?: string
+          valeur_mouvement?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mouvements_lots_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_lots_lot_destination_id_fkey"
+            columns: ["lot_destination_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_lots_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
             referencedColumns: ["id"]
           },
         ]
@@ -2392,21 +2608,69 @@ export type Database = {
           },
         ]
       }
+      preferences_utilisateur: {
+        Row: {
+          cle_preference: string
+          created_at: string
+          id: string
+          personnel_id: string
+          tenant_id: string
+          type_preference: string
+          updated_at: string
+          valeur_preference: string | null
+        }
+        Insert: {
+          cle_preference: string
+          created_at?: string
+          id?: string
+          personnel_id: string
+          tenant_id: string
+          type_preference?: string
+          updated_at?: string
+          valeur_preference?: string | null
+        }
+        Update: {
+          cle_preference?: string
+          created_at?: string
+          id?: string
+          personnel_id?: string
+          tenant_id?: string
+          type_preference?: string
+          updated_at?: string
+          valeur_preference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "preferences_utilisateur_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       produits: {
         Row: {
           categorie_tarification_id: string | null
           centime_additionnel: number | null
+          classe_therapeutique_id: string | null
           code_cip: string | null
           created_at: string
+          dci_id: string | null
+          famille_id: string | null
           famille_produit_id: string | null
+          forme_id: string | null
           id: string
           id_produit_source: string | null
+          is_active: boolean | null
+          laboratoires_id: string | null
           libelle_produit: string
           niveau_detail: number | null
           prix_achat: number | null
           prix_vente_ht: number | null
           prix_vente_ttc: number | null
           quantite_unites_details_source: number | null
+          rayon_id: string | null
           rayon_produit_id: string | null
           reference_agent_enregistrement_id: string | null
           reference_agent_modification_id: string | null
@@ -2419,17 +2683,24 @@ export type Database = {
         Insert: {
           categorie_tarification_id?: string | null
           centime_additionnel?: number | null
+          classe_therapeutique_id?: string | null
           code_cip?: string | null
           created_at?: string
+          dci_id?: string | null
+          famille_id?: string | null
           famille_produit_id?: string | null
+          forme_id?: string | null
           id?: string
           id_produit_source?: string | null
+          is_active?: boolean | null
+          laboratoires_id?: string | null
           libelle_produit: string
           niveau_detail?: number | null
           prix_achat?: number | null
           prix_vente_ht?: number | null
           prix_vente_ttc?: number | null
           quantite_unites_details_source?: number | null
+          rayon_id?: string | null
           rayon_produit_id?: string | null
           reference_agent_enregistrement_id?: string | null
           reference_agent_modification_id?: string | null
@@ -2442,17 +2713,24 @@ export type Database = {
         Update: {
           categorie_tarification_id?: string | null
           centime_additionnel?: number | null
+          classe_therapeutique_id?: string | null
           code_cip?: string | null
           created_at?: string
+          dci_id?: string | null
+          famille_id?: string | null
           famille_produit_id?: string | null
+          forme_id?: string | null
           id?: string
           id_produit_source?: string | null
+          is_active?: boolean | null
+          laboratoires_id?: string | null
           libelle_produit?: string
           niveau_detail?: number | null
           prix_achat?: number | null
           prix_vente_ht?: number | null
           prix_vente_ttc?: number | null
           quantite_unites_details_source?: number | null
+          rayon_id?: string | null
           rayon_produit_id?: string | null
           reference_agent_enregistrement_id?: string | null
           reference_agent_modification_id?: string | null
@@ -3244,6 +3522,18 @@ export type Database = {
           p_admin_prenoms: string
           p_pharmacy_data: Json
           p_pharmacy_name: string
+        }
+        Returns: Json
+      }
+      rpc_stock_record_movement: {
+        Args: {
+          p_agent_id?: string
+          p_lot_id: string
+          p_motif?: string
+          p_produit_id: string
+          p_quantite: number
+          p_tenant_id: string
+          p_type_mouvement: string
         }
         Returns: Json
       }
