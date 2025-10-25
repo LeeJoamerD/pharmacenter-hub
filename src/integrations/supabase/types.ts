@@ -3889,6 +3889,10 @@ export type Database = {
         Args: { p_email: string; p_tenant_id: string }
         Returns: Json
       }
+      check_pharmacy_email_exists: {
+        Args: { email_to_check: string }
+        Returns: Json
+      }
       debug_user_connection_state: { Args: never; Returns: Json }
       generate_sales_suggestions: {
         Args: { p_tenant_id: string }
