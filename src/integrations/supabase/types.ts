@@ -2256,63 +2256,42 @@ export type Database = {
           categorie: string
           cle_parametre: string
           created_at: string
-          critical_stock_threshold: number | null
           description: string | null
-          expiration_alert_days: number | null
           id: string
           is_modifiable: boolean | null
-          low_stock_enabled: boolean | null
-          low_stock_threshold: number | null
-          maximum_stock_threshold: number | null
-          near_expiration_days: number | null
-          overdue_inventory_days: number | null
-          purge_enabled: boolean | null
-          retention_days: number | null
+          is_visible: boolean | null
           tenant_id: string
           type_parametre: string | null
           updated_at: string
+          valeur_defaut: string | null
           valeur_parametre: string | null
         }
         Insert: {
           categorie: string
           cle_parametre: string
           created_at?: string
-          critical_stock_threshold?: number | null
           description?: string | null
-          expiration_alert_days?: number | null
           id?: string
           is_modifiable?: boolean | null
-          low_stock_enabled?: boolean | null
-          low_stock_threshold?: number | null
-          maximum_stock_threshold?: number | null
-          near_expiration_days?: number | null
-          overdue_inventory_days?: number | null
-          purge_enabled?: boolean | null
-          retention_days?: number | null
+          is_visible?: boolean | null
           tenant_id: string
           type_parametre?: string | null
           updated_at?: string
+          valeur_defaut?: string | null
           valeur_parametre?: string | null
         }
         Update: {
           categorie?: string
           cle_parametre?: string
           created_at?: string
-          critical_stock_threshold?: number | null
           description?: string | null
-          expiration_alert_days?: number | null
           id?: string
           is_modifiable?: boolean | null
-          low_stock_enabled?: boolean | null
-          low_stock_threshold?: number | null
-          maximum_stock_threshold?: number | null
-          near_expiration_days?: number | null
-          overdue_inventory_days?: number | null
-          purge_enabled?: boolean | null
-          retention_days?: number | null
+          is_visible?: boolean | null
           tenant_id?: string
           type_parametre?: string | null
           updated_at?: string
+          valeur_defaut?: string | null
           valeur_parametre?: string | null
         }
         Relationships: [
