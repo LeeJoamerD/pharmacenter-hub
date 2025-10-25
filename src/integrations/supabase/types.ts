@@ -2538,6 +2538,7 @@ export type Database = {
           status: string | null
           telephone_appel: string | null
           telephone_whatsapp: string | null
+          tenant_id: string
           type: string | null
           updated_at: string
         }
@@ -2562,6 +2563,7 @@ export type Database = {
           status?: string | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
+          tenant_id: string
           type?: string | null
           updated_at?: string
         }
@@ -2586,6 +2588,7 @@ export type Database = {
           status?: string | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
+          tenant_id?: string
           type?: string | null
           updated_at?: string
         }
@@ -3606,16 +3609,26 @@ export type Database = {
         Returns: number
       }
       get_current_user_tenant_id: { Args: never; Returns: string }
-      register_pharmacy_with_admin: {
-        Args: {
-          p_admin_email: string
-          p_admin_noms: string
-          p_admin_prenoms: string
-          p_pharmacy_data: Json
-          p_pharmacy_name: string
-        }
-        Returns: Json
-      }
+      register_pharmacy_with_admin:
+        | {
+            Args: {
+              p_admin_email: string
+              p_admin_noms: string
+              p_admin_prenoms: string
+              p_pharmacy_data: Json
+              p_pharmacy_name: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              admin_data: Json
+              admin_email: string
+              admin_password: string
+              pharmacy_data: Json
+            }
+            Returns: Json
+          }
       rpc_stock_delete_movement: {
         Args: { p_mouvement_id: string; p_tenant_id: string }
         Returns: Json
