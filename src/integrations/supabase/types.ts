@@ -2641,6 +2641,56 @@ export type Database = {
           },
         ]
       }
+      pharmacy_sessions: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          ip_address: unknown
+          is_active: boolean | null
+          last_activity: string | null
+          metadata: Json | null
+          pharmacy_id: string | null
+          session_token: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          ip_address?: unknown
+          is_active?: boolean | null
+          last_activity?: string | null
+          metadata?: Json | null
+          pharmacy_id?: string | null
+          session_token: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          ip_address?: unknown
+          is_active?: boolean | null
+          last_activity?: string | null
+          metadata?: Json | null
+          pharmacy_id?: string | null
+          session_token?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_sessions_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_comptable: {
         Row: {
           classe: number
@@ -3891,6 +3941,15 @@ export type Database = {
       }
       check_pharmacy_email_exists: {
         Args: { email_to_check: string }
+        Returns: Json
+      }
+      cleanup_expired_pharmacy_sessions: { Args: never; Returns: number }
+      create_pharmacy_session: {
+        Args: {
+          p_ip_address?: unknown
+          p_pharmacy_id: string
+          p_user_agent?: string
+        }
         Returns: Json
       }
       debug_user_connection_state: { Args: never; Returns: Json }
