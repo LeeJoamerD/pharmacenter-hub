@@ -24,7 +24,7 @@ export const ClientCard = ({ clients, onEdit, onDelete }: ClientCardProps) => {
                   {client.nom_complet || 'N/A'}
                 </h3>
               </div>
-              <Badge variant={client.type_client === 'Ordinaire' ? 'default' : 'secondary'}>
+              <Badge variant={client.type_client === 'Particulier' ? 'default' : 'secondary'}>
                 {client.type_client}
               </Badge>
             </div>
@@ -62,7 +62,7 @@ export const ClientCard = ({ clients, onEdit, onDelete }: ClientCardProps) => {
                 <Edit className="h-3 w-3 mr-1" />
                 Modifier
               </Button>
-              {client.type_client === 'Ordinaire' && (
+              {client.type_client === 'Particulier' && (
                 <Button
                   variant="outline"
                   size="sm"

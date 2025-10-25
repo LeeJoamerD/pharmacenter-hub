@@ -44,7 +44,7 @@ export const ClientTable = ({ clients, onEdit, onDelete }: ClientTableProps) => 
                   {client.nom_complet || 'N/A'}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={client.type_client === 'Ordinaire' ? 'default' : 'secondary'}>
+                  <Badge variant={client.type_client === 'Particulier' ? 'default' : 'secondary'}>
                     {client.type_client}
                   </Badge>
                 </TableCell>
@@ -69,7 +69,7 @@ export const ClientTable = ({ clients, onEdit, onDelete }: ClientTableProps) => 
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    {client.type_client === 'Ordinaire' && (
+                    {client.type_client === 'Particulier' && (
                       <Button
                         variant="ghost"
                         size="sm"
