@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Building2, Phone, MapPin, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { FadeIn } from '@/components/FadeIn';
 import { useToast } from '@/hooks/use-toast';
@@ -25,7 +26,7 @@ export default function PharmacyCreation() {
     telephone_whatsapp: '',
     email: '',
     departement: '',
-    type: 'Pharmacie',
+    type: 'standard',
     noms: '',
     prenoms: '',
     reference_agent: '',
@@ -296,6 +297,25 @@ export default function PharmacyCreation() {
                         required
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="type" className="text-sm font-medium">
+                      Type de pharmacie *
+                    </Label>
+                    <Select 
+                      value={formData.type} 
+                      onValueChange={(value) => handleInputChange('type', value)}
+                    >
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="Sélectionnez un type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="standard">Pharmacie Standard</SelectItem>
+                        <SelectItem value="hospital">Pharmacie Hospitalière</SelectItem>
+                        <SelectItem value="clinic">Pharmacie de Clinique</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 

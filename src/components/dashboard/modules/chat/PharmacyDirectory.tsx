@@ -54,12 +54,24 @@ const PharmacyDirectory = () => {
     }
   };
 
+  const getPharmacyTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      'standard': 'Standard',
+      'hospital': 'Hospitalière',
+      'clinic': 'Clinique'
+    };
+    return labels[type] || type;
+  };
+
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'Centre-ville': return 'bg-blue-500/10 text-blue-600';
       case 'Grande surface': return 'bg-purple-500/10 text-purple-600';
       case 'Rurale': return 'bg-green-500/10 text-green-600';
       case 'Hospitalière': return 'bg-red-500/10 text-red-600';
+      case 'standard': return 'bg-blue-500/10 text-blue-600';
+      case 'hospital': return 'bg-red-500/10 text-red-600';
+      case 'clinic': return 'bg-purple-500/10 text-purple-600';
       default: return 'bg-gray-500/10 text-gray-600';
     }
   };

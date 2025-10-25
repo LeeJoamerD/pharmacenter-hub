@@ -116,10 +116,9 @@ export const PharmacyInfoForm = ({ form, onNext }: PharmacyInfoFormProps) => {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="standard">Standard</SelectItem>
-                <SelectItem value="hospitalière">Hospitalière</SelectItem>
-                <SelectItem value="rurale">Rurale</SelectItem>
-                <SelectItem value="clinique">Clinique</SelectItem>
+                <SelectItem value="standard">Pharmacie Standard</SelectItem>
+                <SelectItem value="hospital">Pharmacie Hospitalière</SelectItem>
+                <SelectItem value="clinic">Pharmacie de Clinique</SelectItem>
               </SelectContent>
             </Select>
           </div>
