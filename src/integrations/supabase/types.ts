@@ -3895,26 +3895,15 @@ export type Database = {
         Returns: number
       }
       get_current_user_tenant_id: { Args: never; Returns: string }
-      register_pharmacy_with_admin:
-        | {
-            Args: {
-              p_admin_email: string
-              p_admin_noms: string
-              p_admin_prenoms: string
-              p_pharmacy_data: Json
-              p_pharmacy_name: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              admin_data: Json
-              admin_email: string
-              admin_password: string
-              pharmacy_data: Json
-            }
-            Returns: Json
-          }
+      register_pharmacy_with_admin: {
+        Args: {
+          admin_data: Json
+          admin_email: string
+          admin_password: string
+          pharmacy_data: Json
+        }
+        Returns: Json
+      }
       reports_apply_archiving_policy: { Args: never; Returns: number }
       reports_get_configuration: { Args: never; Returns: Json }
       reports_upsert_settings: { Args: { payload: Json }; Returns: Json }
