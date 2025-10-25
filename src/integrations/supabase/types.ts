@@ -2260,6 +2260,7 @@ export type Database = {
           description: string | null
           expiration_alert_days: number | null
           id: string
+          is_modifiable: boolean | null
           low_stock_enabled: boolean | null
           low_stock_threshold: number | null
           maximum_stock_threshold: number | null
@@ -2280,6 +2281,7 @@ export type Database = {
           description?: string | null
           expiration_alert_days?: number | null
           id?: string
+          is_modifiable?: boolean | null
           low_stock_enabled?: boolean | null
           low_stock_threshold?: number | null
           maximum_stock_threshold?: number | null
@@ -2300,6 +2302,7 @@ export type Database = {
           description?: string | null
           expiration_alert_days?: number | null
           id?: string
+          is_modifiable?: boolean | null
           low_stock_enabled?: boolean | null
           low_stock_threshold?: number | null
           maximum_stock_threshold?: number | null
@@ -3958,6 +3961,7 @@ export type Database = {
         Returns: number
       }
       get_current_user_tenant_id: { Args: never; Returns: string }
+      is_system_admin: { Args: never; Returns: boolean }
       register_pharmacy_with_admin: {
         Args: {
           admin_data: Json
