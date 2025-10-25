@@ -68,12 +68,14 @@ export type Database = {
         Row: {
           action: string
           created_at: string
+          error_message: string | null
           id: string
           ip_address: unknown
           new_values: Json | null
           old_values: Json | null
           personnel_id: string | null
           record_id: string | null
+          status: string | null
           table_name: string
           tenant_id: string | null
           user_agent: string | null
@@ -82,12 +84,14 @@ export type Database = {
         Insert: {
           action: string
           created_at?: string
+          error_message?: string | null
           id?: string
           ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
           personnel_id?: string | null
           record_id?: string | null
+          status?: string | null
           table_name: string
           tenant_id?: string | null
           user_agent?: string | null
@@ -96,12 +100,14 @@ export type Database = {
         Update: {
           action?: string
           created_at?: string
+          error_message?: string | null
           id?: string
           ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
           personnel_id?: string | null
           record_id?: string | null
+          status?: string | null
           table_name?: string
           tenant_id?: string | null
           user_agent?: string | null
