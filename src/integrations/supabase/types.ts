@@ -4165,6 +4165,7 @@ export type Database = {
         Returns: Json
       }
       debug_user_connection_state: { Args: never; Returns: Json }
+      detect_suspicious_patterns: { Args: never; Returns: undefined }
       generate_sales_suggestions: {
         Args: { p_tenant_id: string }
         Returns: number

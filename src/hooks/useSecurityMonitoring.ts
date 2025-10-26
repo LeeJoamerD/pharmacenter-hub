@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocation } from 'react-router-dom';
@@ -173,7 +173,7 @@ export const useSecurityMonitoring = (selectedTimeRange: TimeRange = '24h') => {
   };
 
   // Charger les événements de sécurité avec filtre temporel
-  const loadSecurityEvents = async (timeRange?: TimeRange) => {
+  const loadSecurityEvents = useCallback(async (timeRange?: TimeRange) => {
     if (!personnel) return;
 
     try {
@@ -200,7 +200,7 @@ export const useSecurityMonitoring = (selectedTimeRange: TimeRange = '24h') => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [personnel, selectedTimeRange]);
 
   // Calculer les distributions pour les onglets Analytics et Patterns
   const calculateDistributions = (events: SecurityEvent[]) => {
@@ -258,7 +258,7 @@ export const useSecurityMonitoring = (selectedTimeRange: TimeRange = '24h') => {
   };
 
   // Charger les métriques de sécurité avec filtre temporel
-  const loadSecurityMetrics = async (timeRange?: TimeRange) => {
+  const loadSecurityMetrics = useCallback(async (timeRange?: TimeRange) => {
     if (!personnel) return;
 
     try {
@@ -311,7 +311,7 @@ export const useSecurityMonitoring = (selectedTimeRange: TimeRange = '24h') => {
     } catch (error) {
       console.error('Erreur chargement métriques sécurité:', error);
     }
-  };
+  }, [personnel, selectedTimeRange, user?.id]);
 
   // Charger les rapports de sécurité
   const loadSecurityReports = async () => {
@@ -429,15 +429,26 @@ export const useSecurityMonitoring = (selectedTimeRange: TimeRange = '24h') => {
             calculateDistributions(updated);
             return updated;
           });
-          loadSecurityMetrics(); // Recharger les métriques
+          
+          // Optimisation : Incrémenter uniquement le compteur sans nouvelle requête
+          setMetrics(prev => ({
+            ...prev,
+            suspiciousActivity: prev.suspiciousActivity + 1,
+            securityScore: calculateSecurityScore({
+              totalAttempts: prev.totalAttempts,
+              deniedAttempts: prev.deniedAttempts,
+              suspiciousActivity: prev.suspiciousActivity + 1,
+              lastActivity: prev.lastActivity
+            })
+          }));
         }
       )
       .subscribe();
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, [personnel, isMonitoring]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [personnel, isMonitoring]);
 
   // Tracking automatique des changements de route
   useEffect(() => {
