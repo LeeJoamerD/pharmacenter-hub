@@ -434,10 +434,10 @@ export const useSecurityMonitoring = (selectedTimeRange: TimeRange = '24h') => {
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [personnel, isMonitoring, selectedTimeRange]);
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [personnel, isMonitoring]);
 
   // Tracking automatique des changements de route
   useEffect(() => {
@@ -458,7 +458,7 @@ export const useSecurityMonitoring = (selectedTimeRange: TimeRange = '24h') => {
         loadSecurityReports()
       ]);
     }
-  }, [personnel, selectedTimeRange]);
+  }, [personnel, selectedTimeRange, loadSecurityEvents, loadSecurityMetrics]);
 
   const startMonitoring = async () => {
     setIsMonitoring(true);
