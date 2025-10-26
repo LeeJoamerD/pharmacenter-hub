@@ -2384,7 +2384,7 @@ export type Database = {
           {
             foreignKeyName: "password_policies_tenant_id_fkey"
             columns: ["tenant_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
@@ -3772,6 +3772,53 @@ export type Database = {
             foreignKeyName: "suggestions_vente_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_security_config: {
+        Row: {
+          allow_cross_tenant_read: boolean
+          allowed_source_tenants: string[] | null
+          auto_block_violations: boolean
+          created_at: string
+          id: string
+          max_violations_per_hour: number
+          notification_webhook: string | null
+          security_level: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          allow_cross_tenant_read?: boolean
+          allowed_source_tenants?: string[] | null
+          auto_block_violations?: boolean
+          created_at?: string
+          id?: string
+          max_violations_per_hour?: number
+          notification_webhook?: string | null
+          security_level?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          allow_cross_tenant_read?: boolean
+          allowed_source_tenants?: string[] | null
+          auto_block_violations?: boolean
+          created_at?: string
+          id?: string
+          max_violations_per_hour?: number
+          notification_webhook?: string | null
+          security_level?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_security_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
