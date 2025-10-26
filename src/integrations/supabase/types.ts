@@ -2390,6 +2390,39 @@ export type Database = {
           },
         ]
       }
+      permissions: {
+        Row: {
+          categorie: string
+          code_permission: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_system: boolean | null
+          nom_permission: string
+          updated_at: string | null
+        }
+        Insert: {
+          categorie?: string
+          code_permission: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          nom_permission: string
+          updated_at?: string | null
+        }
+        Update: {
+          categorie?: string
+          code_permission?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean | null
+          nom_permission?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       personnel: {
         Row: {
           adresse: string | null
@@ -3348,6 +3381,102 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_system: boolean | null
+          niveau_hierarchique: number
+          nom_role: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_system?: boolean | null
+          niveau_hierarchique?: number
+          nom_role: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_system?: boolean | null
+          niveau_hierarchique?: number
+          nom_role?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles_permissions: {
+        Row: {
+          accorde: boolean | null
+          created_at: string | null
+          id: string
+          permission_id: string
+          role_id: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          accorde?: boolean | null
+          created_at?: string | null
+          id?: string
+          permission_id: string
+          role_id: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          accorde?: boolean | null
+          created_at?: string | null
+          id?: string
+          permission_id?: string
+          role_id?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roles_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roles_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roles_permissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       security_alerts: {
         Row: {
