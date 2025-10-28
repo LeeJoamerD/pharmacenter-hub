@@ -1001,6 +1001,41 @@ export type Database = {
           },
         ]
       }
+      incident_comments: {
+        Row: {
+          comment: string
+          created_at: string
+          id: string
+          incident_id: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string
+          id?: string
+          incident_id: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          id?: string
+          incident_id?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incident_comments_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "security_incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventaire_sessions: {
         Row: {
           agent_id: string
@@ -3527,6 +3562,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      security_incidents: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          incident_type: string
+          metadata: Json | null
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          incident_type?: string
+          metadata?: Json | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          incident_type?: string
+          metadata?: Json | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       security_reports: {
         Row: {
