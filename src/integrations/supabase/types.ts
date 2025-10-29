@@ -3461,10 +3461,11 @@ export type Database = {
           id: string
           is_active: boolean | null
           last_used: string | null
+          name: string
           permissions: Json | null
+          scopes: string[] | null
           tenant_id: string
           token_hash: string
-          token_name: string
         }
         Insert: {
           created_at?: string
@@ -3473,10 +3474,11 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_used?: string | null
+          name: string
           permissions?: Json | null
+          scopes?: string[] | null
           tenant_id: string
           token_hash: string
-          token_name: string
         }
         Update: {
           created_at?: string
@@ -3485,10 +3487,11 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_used?: string | null
+          name?: string
           permissions?: Json | null
+          scopes?: string[] | null
           tenant_id?: string
           token_hash?: string
-          token_name?: string
         }
         Relationships: []
       }
@@ -3527,38 +3530,38 @@ export type Database = {
       }
       report_connectors: {
         Row: {
-          connection_config: Json | null
+          config: Json | null
           connector_name: string
-          connector_type: string
           created_at: string
           created_by: string | null
           id: string
-          is_active: boolean | null
+          is_enabled: boolean | null
           last_sync: string | null
+          provider: string
           tenant_id: string
           updated_at: string
         }
         Insert: {
-          connection_config?: Json | null
+          config?: Json | null
           connector_name: string
-          connector_type: string
           created_at?: string
           created_by?: string | null
           id?: string
-          is_active?: boolean | null
+          is_enabled?: boolean | null
           last_sync?: string | null
+          provider: string
           tenant_id: string
           updated_at?: string
         }
         Update: {
-          connection_config?: Json | null
+          config?: Json | null
           connector_name?: string
-          connector_type?: string
           created_at?: string
           created_by?: string | null
           id?: string
-          is_active?: boolean | null
+          is_enabled?: boolean | null
           last_sync?: string | null
+          provider?: string
           tenant_id?: string
           updated_at?: string
         }
@@ -3568,39 +3571,48 @@ export type Database = {
         Row: {
           can_create: boolean | null
           can_delete: boolean | null
-          can_edit: boolean | null
           can_export: boolean | null
+          can_modify: boolean | null
           can_view: boolean | null
           created_at: string
           id: string
+          report_key: string
           report_type: string
           subject: string
+          subject_id: string
+          subject_type: string
           tenant_id: string
           updated_at: string
         }
         Insert: {
           can_create?: boolean | null
           can_delete?: boolean | null
-          can_edit?: boolean | null
           can_export?: boolean | null
+          can_modify?: boolean | null
           can_view?: boolean | null
           created_at?: string
           id?: string
+          report_key: string
           report_type: string
           subject: string
+          subject_id: string
+          subject_type: string
           tenant_id: string
           updated_at?: string
         }
         Update: {
           can_create?: boolean | null
           can_delete?: boolean | null
-          can_edit?: boolean | null
           can_export?: boolean | null
+          can_modify?: boolean | null
           can_view?: boolean | null
           created_at?: string
           id?: string
+          report_key?: string
           report_type?: string
           subject?: string
+          subject_id?: string
+          subject_type?: string
           tenant_id?: string
           updated_at?: string
         }
@@ -3608,51 +3620,86 @@ export type Database = {
       }
       report_schedules: {
         Row: {
+          active: boolean | null
           created_at: string
           created_by: string | null
+          cron_expr: string | null
+          day_of_month: number | null
+          day_of_week: number | null
+          format: string
           frequency: string
           id: string
-          is_active: boolean | null
-          last_run: string | null
-          next_run: string | null
+          last_run_at: string | null
+          next_run_at: string | null
+          options: Json | null
           recipients: Json | null
+          report_key: string | null
           report_type: string
           schedule_config: Json | null
           schedule_name: string
+          schedule_type: string
+          template_id: string | null
           tenant_id: string
+          time_of_day: string | null
           updated_at: string
         }
         Insert: {
+          active?: boolean | null
           created_at?: string
           created_by?: string | null
+          cron_expr?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          format: string
           frequency: string
           id?: string
-          is_active?: boolean | null
-          last_run?: string | null
-          next_run?: string | null
+          last_run_at?: string | null
+          next_run_at?: string | null
+          options?: Json | null
           recipients?: Json | null
+          report_key?: string | null
           report_type: string
           schedule_config?: Json | null
           schedule_name: string
+          schedule_type: string
+          template_id?: string | null
           tenant_id: string
+          time_of_day?: string | null
           updated_at?: string
         }
         Update: {
+          active?: boolean | null
           created_at?: string
           created_by?: string | null
+          cron_expr?: string | null
+          day_of_month?: number | null
+          day_of_week?: number | null
+          format?: string
           frequency?: string
           id?: string
-          is_active?: boolean | null
-          last_run?: string | null
-          next_run?: string | null
+          last_run_at?: string | null
+          next_run_at?: string | null
+          options?: Json | null
           recipients?: Json | null
+          report_key?: string | null
           report_type?: string
           schedule_config?: Json | null
           schedule_name?: string
+          schedule_type?: string
+          template_id?: string | null
           tenant_id?: string
+          time_of_day?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_report_schedules_template"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       report_template_versions: {
         Row: {
@@ -3704,11 +3751,13 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          is_default: boolean | null
           is_system: boolean | null
           name: string
           template_type: string
           tenant_id: string
           updated_at: string
+          version: number | null
         }
         Insert: {
           category: string
@@ -3718,11 +3767,13 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_default?: boolean | null
           is_system?: boolean | null
           name: string
           template_type: string
           tenant_id: string
           updated_at?: string
+          version?: number | null
         }
         Update: {
           category?: string
@@ -3732,11 +3783,13 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_default?: boolean | null
           is_system?: boolean | null
           name?: string
           template_type?: string
           tenant_id?: string
           updated_at?: string
+          version?: number | null
         }
         Relationships: []
       }
@@ -4639,6 +4692,7 @@ export type Database = {
       reports_apply_archiving_policy: { Args: never; Returns: number }
       reports_get_configuration: { Args: never; Returns: Json }
       reports_upsert_settings: { Args: { payload: Json }; Returns: Json }
+      reports_upsert_template: { Args: { template: Json }; Returns: string }
       rpc_stock_delete_movement:
         | { Args: { p_mouvement_id: string }; Returns: Json }
         | {
