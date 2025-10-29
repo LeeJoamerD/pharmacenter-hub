@@ -324,6 +324,99 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_settings: {
+        Row: {
+          alert_end_time: string | null
+          alert_frequency: string | null
+          alert_start_time: string | null
+          business_days_only: boolean | null
+          created_at: string
+          critical_stock_threshold: number | null
+          dashboard_notifications: boolean | null
+          email_notifications: boolean | null
+          expiration_alert_days: number | null
+          id: string
+          low_stock_enabled: boolean | null
+          low_stock_threshold: number | null
+          near_expiration_days: number | null
+          overdue_inventory_days: number | null
+          slow_moving_days: number | null
+          sms_notifications: boolean | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          alert_end_time?: string | null
+          alert_frequency?: string | null
+          alert_start_time?: string | null
+          business_days_only?: boolean | null
+          created_at?: string
+          critical_stock_threshold?: number | null
+          dashboard_notifications?: boolean | null
+          email_notifications?: boolean | null
+          expiration_alert_days?: number | null
+          id?: string
+          low_stock_enabled?: boolean | null
+          low_stock_threshold?: number | null
+          near_expiration_days?: number | null
+          overdue_inventory_days?: number | null
+          slow_moving_days?: number | null
+          sms_notifications?: boolean | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          alert_end_time?: string | null
+          alert_frequency?: string | null
+          alert_start_time?: string | null
+          business_days_only?: boolean | null
+          created_at?: string
+          critical_stock_threshold?: number | null
+          dashboard_notifications?: boolean | null
+          email_notifications?: boolean | null
+          expiration_alert_days?: number | null
+          id?: string
+          low_stock_enabled?: boolean | null
+          low_stock_threshold?: number | null
+          near_expiration_days?: number | null
+          overdue_inventory_days?: number | null
+          slow_moving_days?: number | null
+          sms_notifications?: boolean | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      alert_thresholds_by_category: {
+        Row: {
+          category: string
+          created_at: string
+          enabled: boolean | null
+          id: string
+          tenant_id: string
+          threshold: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          enabled?: boolean | null
+          id?: string
+          tenant_id: string
+          threshold?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          enabled?: boolean | null
+          id?: string
+          tenant_id?: string
+          threshold?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -445,7 +538,9 @@ export type Database = {
         Row: {
           coefficient_prix_vente: number | null
           created_at: string
+          description: string | null
           id: string
+          is_active: boolean | null
           libelle_categorie: string
           taux_centime_additionnel: number | null
           taux_tva: number | null
@@ -455,7 +550,9 @@ export type Database = {
         Insert: {
           coefficient_prix_vente?: number | null
           created_at?: string
+          description?: string | null
           id?: string
+          is_active?: boolean | null
           libelle_categorie: string
           taux_centime_additionnel?: number | null
           taux_tva?: number | null
@@ -465,7 +562,9 @@ export type Database = {
         Update: {
           coefficient_prix_vente?: number | null
           created_at?: string
+          description?: string | null
           id?: string
+          is_active?: boolean | null
           libelle_categorie?: string
           taux_centime_additionnel?: number | null
           taux_tva?: number | null
@@ -1935,6 +2034,42 @@ export type Database = {
           },
         ]
       }
+      margin_rules: {
+        Row: {
+          active: boolean | null
+          category: string
+          created_at: string
+          id: string
+          margin: number
+          max_price: number | null
+          min_price: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          category: string
+          created_at?: string
+          id?: string
+          margin?: number
+          max_price?: number | null
+          min_price?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          category?: string
+          created_at?: string
+          id?: string
+          margin?: number
+          max_price?: number | null
+          min_price?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       metriques_performance_lots: {
         Row: {
           created_at: string | null
@@ -3314,6 +3449,66 @@ export type Database = {
           },
         ]
       }
+      pricing_settings: {
+        Row: {
+          allow_discounts: boolean | null
+          auto_update_prices: boolean | null
+          created_at: string
+          default_centime_additionnel_rate: number | null
+          default_margin: number | null
+          default_tax_rate: number | null
+          id: string
+          include_tax_in_price: boolean | null
+          max_discount_percent: number | null
+          maximum_margin: number | null
+          minimum_margin: number | null
+          price_rounding_method: string | null
+          price_rounding_value: number | null
+          require_discount_approval: boolean | null
+          show_cost_to_customers: boolean | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          allow_discounts?: boolean | null
+          auto_update_prices?: boolean | null
+          created_at?: string
+          default_centime_additionnel_rate?: number | null
+          default_margin?: number | null
+          default_tax_rate?: number | null
+          id?: string
+          include_tax_in_price?: boolean | null
+          max_discount_percent?: number | null
+          maximum_margin?: number | null
+          minimum_margin?: number | null
+          price_rounding_method?: string | null
+          price_rounding_value?: number | null
+          require_discount_approval?: boolean | null
+          show_cost_to_customers?: boolean | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          allow_discounts?: boolean | null
+          auto_update_prices?: boolean | null
+          created_at?: string
+          default_centime_additionnel_rate?: number | null
+          default_margin?: number | null
+          default_tax_rate?: number | null
+          id?: string
+          include_tax_in_price?: boolean | null
+          max_discount_percent?: number | null
+          maximum_margin?: number | null
+          minimum_margin?: number | null
+          price_rounding_method?: string | null
+          price_rounding_value?: number | null
+          require_discount_approval?: boolean | null
+          show_cost_to_customers?: boolean | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       print_printers: {
         Row: {
           connection_type: string
@@ -4428,6 +4623,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      stock_settings: {
+        Row: {
+          allow_negative_stock: boolean | null
+          auto_generate_lots: boolean | null
+          auto_reorder_enabled: boolean | null
+          created_at: string
+          default_units: string | null
+          id: string
+          maximum_stock_days: number | null
+          minimum_stock_days: number | null
+          reorder_point_days: number | null
+          require_lot_numbers: boolean | null
+          rounding_precision: number | null
+          safety_stock_percentage: number | null
+          tenant_id: string
+          track_expiration_dates: boolean | null
+          updated_at: string
+          valuation_method: string | null
+        }
+        Insert: {
+          allow_negative_stock?: boolean | null
+          auto_generate_lots?: boolean | null
+          auto_reorder_enabled?: boolean | null
+          created_at?: string
+          default_units?: string | null
+          id?: string
+          maximum_stock_days?: number | null
+          minimum_stock_days?: number | null
+          reorder_point_days?: number | null
+          require_lot_numbers?: boolean | null
+          rounding_precision?: number | null
+          safety_stock_percentage?: number | null
+          tenant_id: string
+          track_expiration_dates?: boolean | null
+          updated_at?: string
+          valuation_method?: string | null
+        }
+        Update: {
+          allow_negative_stock?: boolean | null
+          auto_generate_lots?: boolean | null
+          auto_reorder_enabled?: boolean | null
+          created_at?: string
+          default_units?: string | null
+          id?: string
+          maximum_stock_days?: number | null
+          minimum_stock_days?: number | null
+          reorder_point_days?: number | null
+          require_lot_numbers?: boolean | null
+          rounding_precision?: number | null
+          safety_stock_percentage?: number | null
+          tenant_id?: string
+          track_expiration_dates?: boolean | null
+          updated_at?: string
+          valuation_method?: string | null
+        }
+        Relationships: []
       }
       suggestions_vente: {
         Row: {
