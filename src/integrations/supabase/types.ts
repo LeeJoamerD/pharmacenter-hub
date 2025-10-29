@@ -1269,7 +1269,7 @@ export type Database = {
           date_debut: string
           date_fin: string
           id: string
-          libelle: string
+          libelle_exercice: string
           statut: string | null
           tenant_id: string
           updated_at: string
@@ -1279,7 +1279,7 @@ export type Database = {
           date_debut: string
           date_fin: string
           id?: string
-          libelle: string
+          libelle_exercice: string
           statut?: string | null
           tenant_id: string
           updated_at?: string
@@ -1289,7 +1289,7 @@ export type Database = {
           date_debut?: string
           date_fin?: string
           id?: string
-          libelle?: string
+          libelle_exercice?: string
           statut?: string | null
           tenant_id?: string
           updated_at?: string
