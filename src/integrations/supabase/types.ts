@@ -528,6 +528,86 @@ export type Database = {
         }
         Relationships: []
       }
+      cross_tenant_permissions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          granted_at: string
+          granted_by: string | null
+          id: string
+          is_active: boolean
+          metadata: Json | null
+          permission_type: string
+          resource_id: string | null
+          resource_type: string | null
+          source_tenant_id: string
+          target_tenant_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          permission_type: string
+          resource_id?: string | null
+          resource_type?: string | null
+          source_tenant_id: string
+          target_tenant_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          granted_at?: string
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          permission_type?: string
+          resource_id?: string | null
+          resource_type?: string | null
+          source_tenant_id?: string
+          target_tenant_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_cross_tenant_permissions_granted_by"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_cross_tenant_permissions_source"
+            columns: ["source_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_cross_tenant_permissions_target"
+            columns: ["target_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_cross_tenant_permissions_tenant"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_categories: {
         Row: {
           created_at: string
@@ -4257,6 +4337,16 @@ export type Database = {
         Returns: number
       }
       get_current_user_tenant_id: { Args: never; Returns: string }
+      is_cross_tenant_authorized: {
+        Args: {
+          p_permission_type: string
+          p_resource_id?: string
+          p_resource_type?: string
+          p_source_tenant_id: string
+          p_target_tenant_id: string
+        }
+        Returns: boolean
+      }
       is_system_admin: { Args: never; Returns: boolean }
       register_pharmacy_with_admin: {
         Args: {
