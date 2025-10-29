@@ -1307,6 +1307,7 @@ export type Database = {
       famille_produit: {
         Row: {
           created_at: string
+          description: string | null
           id: string
           libelle_famille: string
           tenant_id: string
@@ -1314,6 +1315,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
           libelle_famille: string
           tenant_id: string
@@ -1321,6 +1323,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
           libelle_famille?: string
           tenant_id?: string
