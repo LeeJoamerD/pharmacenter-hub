@@ -64,6 +64,63 @@ export type Database = {
           },
         ]
       }
+      alert_rules: {
+        Row: {
+          comparison_operator: string | null
+          condition_config: Json
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          notification_channels: Json
+          priority: string
+          recipient_emails: string[] | null
+          recipient_phones: string[] | null
+          rule_name: string
+          rule_type: string
+          schedule_config: Json | null
+          tenant_id: string
+          threshold_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          comparison_operator?: string | null
+          condition_config?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          notification_channels?: Json
+          priority?: string
+          recipient_emails?: string[] | null
+          recipient_phones?: string[] | null
+          rule_name: string
+          rule_type: string
+          schedule_config?: Json | null
+          tenant_id: string
+          threshold_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          comparison_operator?: string | null
+          condition_config?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          notification_channels?: Json
+          priority?: string
+          recipient_emails?: string[] | null
+          recipient_phones?: string[] | null
+          rule_name?: string
+          rule_type?: string
+          schedule_config?: Json | null
+          tenant_id?: string
+          threshold_value?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1020,6 +1077,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      global_alert_settings: {
+        Row: {
+          alert_check_frequency_minutes: number
+          alert_retention_days: number
+          auto_archive_resolved: boolean
+          business_hours_end: string | null
+          business_hours_start: string | null
+          created_at: string
+          default_email_template: string | null
+          default_sms_template: string | null
+          default_whatsapp_template: string | null
+          escalation_delay_minutes: number | null
+          escalation_enabled: boolean
+          escalation_recipient_emails: string[] | null
+          id: string
+          system_alerts_enabled: boolean
+          tenant_id: string
+          updated_at: string
+          weekend_alerts_enabled: boolean
+        }
+        Insert: {
+          alert_check_frequency_minutes?: number
+          alert_retention_days?: number
+          auto_archive_resolved?: boolean
+          business_hours_end?: string | null
+          business_hours_start?: string | null
+          created_at?: string
+          default_email_template?: string | null
+          default_sms_template?: string | null
+          default_whatsapp_template?: string | null
+          escalation_delay_minutes?: number | null
+          escalation_enabled?: boolean
+          escalation_recipient_emails?: string[] | null
+          id?: string
+          system_alerts_enabled?: boolean
+          tenant_id: string
+          updated_at?: string
+          weekend_alerts_enabled?: boolean
+        }
+        Update: {
+          alert_check_frequency_minutes?: number
+          alert_retention_days?: number
+          auto_archive_resolved?: boolean
+          business_hours_end?: string | null
+          business_hours_start?: string | null
+          created_at?: string
+          default_email_template?: string | null
+          default_sms_template?: string | null
+          default_whatsapp_template?: string | null
+          escalation_delay_minutes?: number | null
+          escalation_enabled?: boolean
+          escalation_recipient_emails?: string[] | null
+          id?: string
+          system_alerts_enabled?: boolean
+          tenant_id?: string
+          updated_at?: string
+          weekend_alerts_enabled?: boolean
+        }
+        Relationships: []
       }
       immobilisations: {
         Row: {
@@ -2365,6 +2482,81 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notification_configurations: {
+        Row: {
+          created_at: string
+          email_enabled: boolean
+          email_from_address: string | null
+          email_from_name: string | null
+          email_smtp_host: string | null
+          email_smtp_password: string | null
+          email_smtp_port: number | null
+          email_smtp_user: string | null
+          email_template_footer: string | null
+          email_template_header: string | null
+          id: string
+          sms_api_key: string | null
+          sms_api_secret: string | null
+          sms_enabled: boolean
+          sms_provider: string | null
+          sms_sender_id: string | null
+          tenant_id: string
+          updated_at: string
+          whatsapp_api_key: string | null
+          whatsapp_business_id: string | null
+          whatsapp_enabled: boolean
+          whatsapp_phone_number: string | null
+        }
+        Insert: {
+          created_at?: string
+          email_enabled?: boolean
+          email_from_address?: string | null
+          email_from_name?: string | null
+          email_smtp_host?: string | null
+          email_smtp_password?: string | null
+          email_smtp_port?: number | null
+          email_smtp_user?: string | null
+          email_template_footer?: string | null
+          email_template_header?: string | null
+          id?: string
+          sms_api_key?: string | null
+          sms_api_secret?: string | null
+          sms_enabled?: boolean
+          sms_provider?: string | null
+          sms_sender_id?: string | null
+          tenant_id: string
+          updated_at?: string
+          whatsapp_api_key?: string | null
+          whatsapp_business_id?: string | null
+          whatsapp_enabled?: boolean
+          whatsapp_phone_number?: string | null
+        }
+        Update: {
+          created_at?: string
+          email_enabled?: boolean
+          email_from_address?: string | null
+          email_from_name?: string | null
+          email_smtp_host?: string | null
+          email_smtp_password?: string | null
+          email_smtp_port?: number | null
+          email_smtp_user?: string | null
+          email_template_footer?: string | null
+          email_template_header?: string | null
+          id?: string
+          sms_api_key?: string | null
+          sms_api_secret?: string | null
+          sms_enabled?: boolean
+          sms_provider?: string | null
+          sms_sender_id?: string | null
+          tenant_id?: string
+          updated_at?: string
+          whatsapp_api_key?: string | null
+          whatsapp_business_id?: string | null
+          whatsapp_enabled?: boolean
+          whatsapp_phone_number?: string | null
+        }
+        Relationships: []
       }
       parametres_systeme: {
         Row: {
