@@ -10,24 +10,52 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Shield, Key, AlertTriangle, Clock, Users, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useSecuritySettings } from '@/hooks/useSecuritySettings';
+import { useSecuritySettings, type PasswordPolicy, type TenantSecurityConfig } from '@/hooks/useSecuritySettings';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const SecuritySettings = () => {
   const { toast } = useToast();
+  const { pharmacy } = useAuth();
   const { settings, loading, saving, savePasswordPolicy, saveSecurityConfig, resolveAlert } = useSecuritySettings();
   
-  const [localPasswordPolicy, setLocalPasswordPolicy] = useState(settings?.passwordPolicy);
-  const [localSecurityConfig, setLocalSecurityConfig] = useState(settings?.securityConfig);
+  // Initialiser avec des valeurs par défaut complètes pour éviter le passage uncontrolled -> controlled
+  const [localPasswordPolicy, setLocalPasswordPolicy] = useState<PasswordPolicy>({
+    tenant_id: pharmacy?.id || '',
+    min_length: 8,
+    require_uppercase: true,
+    require_lowercase: true,
+    require_numbers: true,
+    require_special_chars: true,
+    max_age_days: 90,
+    remember_last_passwords: 5,
+    max_failed_attempts: 3,
+    lockout_duration_minutes: 15,
+    session_timeout_minutes: 30,
+    force_2fa_for_roles: []
+  });
+  
+  const [localSecurityConfig, setLocalSecurityConfig] = useState<TenantSecurityConfig>({
+    tenant_id: pharmacy?.id || '',
+    allow_cross_tenant_read: false,
+    security_level: 'standard',
+    auto_block_violations: true,
+    max_violations_per_hour: 5
+  });
+  
   const [hasPasswordChanges, setHasPasswordChanges] = useState(false);
   const [hasSecurityChanges, setHasSecurityChanges] = useState(false);
 
   // Mettre à jour les états locaux quand les settings se chargent
   React.useEffect(() => {
-    if (settings) {
+    if (settings?.passwordPolicy) {
       setLocalPasswordPolicy(settings.passwordPolicy);
+      setHasPasswordChanges(false);
+    }
+    if (settings?.securityConfig) {
       setLocalSecurityConfig(settings.securityConfig);
+      setHasSecurityChanges(false);
     }
   }, [settings]);
 
