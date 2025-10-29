@@ -2849,6 +2849,7 @@ export type Database = {
           id: string
           logo: string | null
           name: string
+          niu: string | null
           pays: string | null
           phone: string | null
           photo_exterieur: string | null
@@ -2874,6 +2875,7 @@ export type Database = {
           id?: string
           logo?: string | null
           name: string
+          niu?: string | null
           pays?: string | null
           phone?: string | null
           photo_exterieur?: string | null
@@ -2899,6 +2901,7 @@ export type Database = {
           id?: string
           logo?: string | null
           name?: string
+          niu?: string | null
           pays?: string | null
           phone?: string | null
           photo_exterieur?: string | null
