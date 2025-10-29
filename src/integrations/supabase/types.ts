@@ -338,6 +338,7 @@ export type Database = {
           id: string
           low_stock_enabled: boolean | null
           low_stock_threshold: number | null
+          maximum_stock_threshold: number | null
           near_expiration_days: number | null
           overdue_inventory_days: number | null
           slow_moving_days: number | null
@@ -358,6 +359,7 @@ export type Database = {
           id?: string
           low_stock_enabled?: boolean | null
           low_stock_threshold?: number | null
+          maximum_stock_threshold?: number | null
           near_expiration_days?: number | null
           overdue_inventory_days?: number | null
           slow_moving_days?: number | null
@@ -378,6 +380,7 @@ export type Database = {
           id?: string
           low_stock_enabled?: boolean | null
           low_stock_threshold?: number | null
+          maximum_stock_threshold?: number | null
           near_expiration_days?: number | null
           overdue_inventory_days?: number | null
           slow_moving_days?: number | null
