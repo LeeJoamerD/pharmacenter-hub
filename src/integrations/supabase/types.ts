@@ -6167,6 +6167,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_low_stock_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
+      calculate_out_of_stock_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       calculate_session_risk_score: {
         Args: {
           p_ip_address: string
@@ -6174,6 +6182,19 @@ export type Database = {
           p_user_agent: string
         }
         Returns: number
+      }
+      calculate_stock_metrics: { Args: { p_tenant_id: string }; Returns: Json }
+      calculate_valuation_by_family: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
+      calculate_valuation_by_rayon: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
+      calculate_valuation_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
       }
       check_login_attempts: {
         Args: { p_email: string; p_tenant_id: string }
