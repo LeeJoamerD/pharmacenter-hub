@@ -1202,28 +1202,34 @@ export type Database = {
       }
       document_categories: {
         Row: {
+          color: string | null
           created_at: string
           description: string | null
           icon: string | null
           id: string
+          is_system: boolean | null
           name: string
           tenant_id: string
           updated_at: string
         }
         Insert: {
+          color?: string | null
           created_at?: string
           description?: string | null
           icon?: string | null
           id?: string
+          is_system?: boolean | null
           name: string
           tenant_id: string
           updated_at?: string
         }
         Update: {
+          color?: string | null
           created_at?: string
           description?: string | null
           icon?: string | null
           id?: string
+          is_system?: boolean | null
           name?: string
           tenant_id?: string
           updated_at?: string
@@ -1240,57 +1246,100 @@ export type Database = {
       }
       documents: {
         Row: {
+          ai_generated: boolean | null
+          author_id: string | null
           category: string | null
           content: string | null
           created_at: string
+          description: string | null
           document_type: string
           due_date: string | null
+          email_from: string | null
+          email_subject: string | null
+          email_to: string | null
           file_path: string | null
+          file_size: number | null
+          file_type: string | null
+          file_url: string | null
           id: string
           metadata: Json | null
           name: string
+          original_filename: string | null
           priority: string | null
           recipient: string | null
           sender: string | null
           status: string | null
+          tags: string[] | null
+          template_id: string | null
           tenant_id: string
           updated_at: string
         }
         Insert: {
+          ai_generated?: boolean | null
+          author_id?: string | null
           category?: string | null
           content?: string | null
           created_at?: string
+          description?: string | null
           document_type: string
           due_date?: string | null
+          email_from?: string | null
+          email_subject?: string | null
+          email_to?: string | null
           file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
           id?: string
           metadata?: Json | null
           name: string
+          original_filename?: string | null
           priority?: string | null
           recipient?: string | null
           sender?: string | null
           status?: string | null
+          tags?: string[] | null
+          template_id?: string | null
           tenant_id: string
           updated_at?: string
         }
         Update: {
+          ai_generated?: boolean | null
+          author_id?: string | null
           category?: string | null
           content?: string | null
           created_at?: string
+          description?: string | null
           document_type?: string
           due_date?: string | null
+          email_from?: string | null
+          email_subject?: string | null
+          email_to?: string | null
           file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
           id?: string
           metadata?: Json | null
           name?: string
+          original_filename?: string | null
           priority?: string | null
           recipient?: string | null
           sender?: string | null
           status?: string | null
+          tags?: string[] | null
+          template_id?: string | null
           tenant_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "documents_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "ai_templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "documents_tenant_id_fkey"
             columns: ["tenant_id"]
