@@ -269,56 +269,56 @@ export type Database = {
       }
       alert_rules: {
         Row: {
-          comparison_operator: string | null
-          condition_config: Json
+          conditions: Json
           created_at: string
           description: string | null
           id: string
           is_active: boolean
+          name: string
           notification_channels: Json
           priority: string
           recipient_emails: string[] | null
           recipient_phones: string[] | null
-          rule_name: string
           rule_type: string
           schedule_config: Json | null
           tenant_id: string
+          threshold_operator: string | null
           threshold_value: number | null
           updated_at: string
         }
         Insert: {
-          comparison_operator?: string | null
-          condition_config?: Json
+          conditions?: Json
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean
+          name: string
           notification_channels?: Json
           priority?: string
           recipient_emails?: string[] | null
           recipient_phones?: string[] | null
-          rule_name: string
           rule_type: string
           schedule_config?: Json | null
           tenant_id: string
+          threshold_operator?: string | null
           threshold_value?: number | null
           updated_at?: string
         }
         Update: {
-          comparison_operator?: string | null
-          condition_config?: Json
+          conditions?: Json
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean
+          name?: string
           notification_channels?: Json
           priority?: string
           recipient_emails?: string[] | null
           recipient_phones?: string[] | null
-          rule_name?: string
           rule_type?: string
           schedule_config?: Json | null
           tenant_id?: string
+          threshold_operator?: string | null
           threshold_value?: number | null
           updated_at?: string
         }
@@ -419,6 +419,68 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      alertes_fournisseurs: {
+        Row: {
+          canal_envoi: string
+          created_at: string | null
+          created_by: string | null
+          date_envoi: string | null
+          date_reponse: string | null
+          fournisseur_id: string
+          id: string
+          message: string
+          metadata: Json | null
+          produits_ids: string[]
+          reponse_fournisseur: string | null
+          statut: string
+          tenant_id: string
+          type_alerte: string
+          updated_at: string | null
+        }
+        Insert: {
+          canal_envoi?: string
+          created_at?: string | null
+          created_by?: string | null
+          date_envoi?: string | null
+          date_reponse?: string | null
+          fournisseur_id: string
+          id?: string
+          message: string
+          metadata?: Json | null
+          produits_ids: string[]
+          reponse_fournisseur?: string | null
+          statut?: string
+          tenant_id: string
+          type_alerte: string
+          updated_at?: string | null
+        }
+        Update: {
+          canal_envoi?: string
+          created_at?: string | null
+          created_by?: string | null
+          date_envoi?: string | null
+          date_reponse?: string | null
+          fournisseur_id?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+          produits_ids?: string[]
+          reponse_fournisseur?: string | null
+          statut?: string
+          tenant_id?: string
+          type_alerte?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alertes_fournisseurs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       alertes_peremption: {
         Row: {
@@ -1958,61 +2020,70 @@ export type Database = {
       }
       global_alert_settings: {
         Row: {
-          alert_check_frequency_minutes: number
           alert_retention_days: number
-          auto_archive_resolved: boolean
-          business_hours_end: string | null
-          business_hours_start: string | null
+          auto_cleanup_enabled: boolean | null
+          business_days: number[] | null
+          business_end_time: string | null
+          business_hours_only: boolean | null
+          business_start_time: string | null
+          check_frequency_minutes: number
           created_at: string
           default_email_template: string | null
           default_sms_template: string | null
           default_whatsapp_template: string | null
+          duplicate_alert_cooldown_minutes: number | null
           escalation_delay_minutes: number | null
           escalation_enabled: boolean
-          escalation_recipient_emails: string[] | null
           id: string
-          system_alerts_enabled: boolean
+          max_alerts_per_hour: number | null
+          max_escalation_level: number | null
+          system_enabled: boolean
           tenant_id: string
           updated_at: string
-          weekend_alerts_enabled: boolean
         }
         Insert: {
-          alert_check_frequency_minutes?: number
           alert_retention_days?: number
-          auto_archive_resolved?: boolean
-          business_hours_end?: string | null
-          business_hours_start?: string | null
+          auto_cleanup_enabled?: boolean | null
+          business_days?: number[] | null
+          business_end_time?: string | null
+          business_hours_only?: boolean | null
+          business_start_time?: string | null
+          check_frequency_minutes?: number
           created_at?: string
           default_email_template?: string | null
           default_sms_template?: string | null
           default_whatsapp_template?: string | null
+          duplicate_alert_cooldown_minutes?: number | null
           escalation_delay_minutes?: number | null
           escalation_enabled?: boolean
-          escalation_recipient_emails?: string[] | null
           id?: string
-          system_alerts_enabled?: boolean
+          max_alerts_per_hour?: number | null
+          max_escalation_level?: number | null
+          system_enabled?: boolean
           tenant_id: string
           updated_at?: string
-          weekend_alerts_enabled?: boolean
         }
         Update: {
-          alert_check_frequency_minutes?: number
           alert_retention_days?: number
-          auto_archive_resolved?: boolean
-          business_hours_end?: string | null
-          business_hours_start?: string | null
+          auto_cleanup_enabled?: boolean | null
+          business_days?: number[] | null
+          business_end_time?: string | null
+          business_hours_only?: boolean | null
+          business_start_time?: string | null
+          check_frequency_minutes?: number
           created_at?: string
           default_email_template?: string | null
           default_sms_template?: string | null
           default_whatsapp_template?: string | null
+          duplicate_alert_cooldown_minutes?: number | null
           escalation_delay_minutes?: number | null
           escalation_enabled?: boolean
-          escalation_recipient_emails?: string[] | null
           id?: string
-          system_alerts_enabled?: boolean
+          max_alerts_per_hour?: number | null
+          max_escalation_level?: number | null
+          system_enabled?: boolean
           tenant_id?: string
           updated_at?: string
-          weekend_alerts_enabled?: boolean
         }
         Relationships: []
       }
@@ -3018,6 +3089,60 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      low_stock_actions_log: {
+        Row: {
+          action_details: Json | null
+          action_type: string
+          created_at: string
+          error_message: string | null
+          executed_at: string
+          executed_by: string | null
+          id: string
+          produit_id: string
+          result_status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          action_details?: Json | null
+          action_type: string
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string
+          executed_by?: string | null
+          id?: string
+          produit_id: string
+          result_status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          action_details?: Json | null
+          action_type?: string
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string
+          executed_by?: string | null
+          id?: string
+          produit_id?: string
+          result_status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "low_stock_actions_log_executed_by_fkey"
+            columns: ["executed_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "low_stock_actions_log_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
             referencedColumns: ["id"]
           },
         ]
@@ -4906,6 +5031,59 @@ export type Database = {
           },
         ]
       }
+      produits_substituts: {
+        Row: {
+          created_at: string | null
+          date_derniere_utilisation: string | null
+          efficacite_validee: boolean | null
+          id: string
+          is_active: boolean | null
+          nombre_utilisations: number | null
+          priorite: number | null
+          produit_principal_id: string
+          produit_substitut_id: string
+          raison_substitution: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date_derniere_utilisation?: string | null
+          efficacite_validee?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          nombre_utilisations?: number | null
+          priorite?: number | null
+          produit_principal_id: string
+          produit_substitut_id: string
+          raison_substitution?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date_derniere_utilisation?: string | null
+          efficacite_validee?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          nombre_utilisations?: number | null
+          priorite?: number | null
+          produit_principal_id?: string
+          produit_substitut_id?: string
+          raison_substitution?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produits_substituts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rapports_comptables: {
         Row: {
           contenu: Json
@@ -5894,6 +6072,54 @@ export type Database = {
           },
         ]
       }
+      stock_alert_recipients: {
+        Row: {
+          alert_id: string
+          created_at: string
+          id: string
+          notification_type: string
+          personnel_id: string
+          read_at: string | null
+          sent_at: string | null
+          tenant_id: string
+        }
+        Insert: {
+          alert_id: string
+          created_at?: string
+          id?: string
+          notification_type: string
+          personnel_id: string
+          read_at?: string | null
+          sent_at?: string | null
+          tenant_id: string
+        }
+        Update: {
+          alert_id?: string
+          created_at?: string
+          id?: string
+          notification_type?: string
+          personnel_id?: string
+          read_at?: string | null
+          sent_at?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_alert_recipients_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "alertes_peremption"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_alert_recipients_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_mouvements: {
         Row: {
           agent_id: string | null
@@ -6847,6 +7073,13 @@ export type Database = {
         Returns: boolean
       }
       is_system_admin: { Args: never; Returns: boolean }
+      nettoyer_alertes_expiration_anciennes: {
+        Args: { p_jours_retention?: number; p_tenant_id: string }
+        Returns: {
+          alertes_archivees: number
+          alertes_supprimees: number
+        }[]
+      }
       network_get_pharmacy_overview: {
         Args: { target_tenant_id: string }
         Returns: Json
