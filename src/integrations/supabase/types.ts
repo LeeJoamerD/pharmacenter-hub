@@ -775,6 +775,42 @@ export type Database = {
           },
         ]
       }
+      categories_tarification: {
+        Row: {
+          code_categorie: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          libelle: string
+          taux_marge_defaut: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          code_categorie?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          libelle: string
+          taux_marge_defaut?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          code_categorie?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          libelle?: string
+          taux_marge_defaut?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       channel_participants: {
         Row: {
           channel_id: string
@@ -1054,6 +1090,271 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      compliance_actions: {
+        Row: {
+          action_description: string
+          action_type: string
+          assigned_to: string | null
+          completion_date: string | null
+          control_id: string
+          created_at: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          priority: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          action_description: string
+          action_type?: string
+          assigned_to?: string | null
+          completion_date?: string | null
+          control_id: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          action_description?: string
+          action_type?: string
+          assigned_to?: string | null
+          completion_date?: string | null
+          control_id?: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_actions_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_actions_control_id_fkey"
+            columns: ["control_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_controls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_controls: {
+        Row: {
+          compliance_score: number | null
+          control_frequency: string
+          control_notes: string | null
+          control_type: string
+          created_at: string
+          id: string
+          last_control_date: string | null
+          next_control_date: string | null
+          requirement_id: string
+          responsible_person_id: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          compliance_score?: number | null
+          control_frequency?: string
+          control_notes?: string | null
+          control_type?: string
+          created_at?: string
+          id?: string
+          last_control_date?: string | null
+          next_control_date?: string | null
+          requirement_id: string
+          responsible_person_id?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          compliance_score?: number | null
+          control_frequency?: string
+          control_notes?: string | null
+          control_type?: string
+          created_at?: string
+          id?: string
+          last_control_date?: string | null
+          next_control_date?: string | null
+          requirement_id?: string
+          responsible_person_id?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_controls_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_requirements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_controls_responsible_person_id_fkey"
+            columns: ["responsible_person_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_metrics_history: {
+        Row: {
+          category_scores: Json | null
+          compliant_count: number
+          created_at: string
+          expired_count: number
+          global_score: number
+          id: string
+          in_progress_count: number
+          metric_date: string
+          non_compliant_count: number
+          tenant_id: string
+          total_requirements: number
+        }
+        Insert: {
+          category_scores?: Json | null
+          compliant_count?: number
+          created_at?: string
+          expired_count?: number
+          global_score?: number
+          id?: string
+          in_progress_count?: number
+          metric_date?: string
+          non_compliant_count?: number
+          tenant_id: string
+          total_requirements?: number
+        }
+        Update: {
+          category_scores?: Json | null
+          compliant_count?: number
+          created_at?: string
+          expired_count?: number
+          global_score?: number
+          id?: string
+          in_progress_count?: number
+          metric_date?: string
+          non_compliant_count?: number
+          tenant_id?: string
+          total_requirements?: number
+        }
+        Relationships: []
+      }
+      compliance_product_requirements: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          product_family_id: string | null
+          product_id: string | null
+          requirement_id: string
+          specific_rules: Json | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          product_family_id?: string | null
+          product_id?: string | null
+          requirement_id: string
+          specific_rules?: Json | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          product_family_id?: string | null
+          product_id?: string | null
+          requirement_id?: string
+          specific_rules?: Json | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_product_requirements_product_family_id_fkey"
+            columns: ["product_family_id"]
+            isOneToOne: false
+            referencedRelation: "famille_produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_product_requirements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_product_requirements_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_requirements: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          priority_level: string
+          regulation_reference: string | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          priority_level?: string
+          regulation_reference?: string | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          priority_level?: string
+          regulation_reference?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       compte_depenses: {
         Row: {
@@ -6995,6 +7296,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_compliance_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       calculate_low_stock_metrics: {
         Args: { p_tenant_id: string }
         Returns: Json
