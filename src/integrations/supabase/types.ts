@@ -6645,12 +6645,10 @@ export type Database = {
       reports_get_configuration: { Args: never; Returns: Json }
       reports_upsert_settings: { Args: { payload: Json }; Returns: Json }
       reports_upsert_template: { Args: { template: Json }; Returns: string }
-      rpc_stock_delete_movement:
-        | {
-            Args: { p_mouvement_id: string; p_tenant_id: string }
-            Returns: Json
-          }
-        | { Args: { p_movement_id: string }; Returns: Json }
+      rpc_stock_delete_movement: {
+        Args: { p_movement_id: string }
+        Returns: Json
+      }
       rpc_stock_record_movement:
         | {
             Args: {
@@ -6667,18 +6665,6 @@ export type Database = {
               p_reference_document?: string
               p_reference_id?: string
               p_reference_type?: string
-              p_type_mouvement: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_agent_id?: string
-              p_lot_id: string
-              p_motif?: string
-              p_produit_id: string
-              p_quantite: number
-              p_tenant_id: string
               p_type_mouvement: string
             }
             Returns: Json
@@ -6709,15 +6695,6 @@ export type Database = {
               p_motif?: string
               p_mouvement_id: string
               p_quantite_mouvement: number
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_motif?: string
-              p_mouvement_id: string
-              p_quantite: number
-              p_tenant_id: string
             }
             Returns: Json
           }
