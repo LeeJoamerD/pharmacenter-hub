@@ -836,6 +836,76 @@ export type Database = {
           },
         ]
       }
+      conges_employes: {
+        Row: {
+          approuve_par: string | null
+          commentaires: string | null
+          created_at: string
+          date_approbation: string | null
+          date_debut: string
+          date_fin: string
+          employe_id: string
+          id: string
+          motif: string
+          statut: string
+          tenant_id: string
+          type_conge: string
+          updated_at: string
+        }
+        Insert: {
+          approuve_par?: string | null
+          commentaires?: string | null
+          created_at?: string
+          date_approbation?: string | null
+          date_debut: string
+          date_fin: string
+          employe_id: string
+          id?: string
+          motif: string
+          statut?: string
+          tenant_id: string
+          type_conge: string
+          updated_at?: string
+        }
+        Update: {
+          approuve_par?: string | null
+          commentaires?: string | null
+          created_at?: string
+          date_approbation?: string | null
+          date_debut?: string
+          date_fin?: string
+          employe_id?: string
+          id?: string
+          motif?: string
+          statut?: string
+          tenant_id?: string
+          type_conge?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conges_employes_approuve_par_fkey"
+            columns: ["approuve_par"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conges_employes_employe_id_fkey"
+            columns: ["employe_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conges_employes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conventionnes: {
         Row: {
           adresse: string | null
@@ -1332,6 +1402,65 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "famille_produit_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formations_employes: {
+        Row: {
+          certificat_requis: boolean
+          cout: number | null
+          created_at: string
+          date_debut: string
+          date_fin: string
+          description: string | null
+          duree: number
+          id: string
+          lieu: string
+          nom: string
+          organisme: string
+          statut: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          certificat_requis?: boolean
+          cout?: number | null
+          created_at?: string
+          date_debut: string
+          date_fin: string
+          description?: string | null
+          duree: number
+          id?: string
+          lieu: string
+          nom: string
+          organisme: string
+          statut?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          certificat_requis?: boolean
+          cout?: number | null
+          created_at?: string
+          date_debut?: string
+          date_fin?: string
+          description?: string | null
+          duree?: number
+          id?: string
+          lieu?: string
+          nom?: string
+          organisme?: string
+          statut?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formations_employes_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -2955,6 +3084,73 @@ export type Database = {
           },
         ]
       }
+      participations_formation: {
+        Row: {
+          certificat_obtenu: boolean | null
+          commentaires: string | null
+          created_at: string
+          date_completion: string | null
+          date_inscription: string
+          employe_id: string
+          formation_id: string
+          id: string
+          note_finale: number | null
+          statut_participation: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          certificat_obtenu?: boolean | null
+          commentaires?: string | null
+          created_at?: string
+          date_completion?: string | null
+          date_inscription?: string
+          employe_id: string
+          formation_id: string
+          id?: string
+          note_finale?: number | null
+          statut_participation?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          certificat_obtenu?: boolean | null
+          commentaires?: string | null
+          created_at?: string
+          date_completion?: string | null
+          date_inscription?: string
+          employe_id?: string
+          formation_id?: string
+          id?: string
+          note_finale?: number | null
+          statut_participation?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participations_formation_employe_id_fkey"
+            columns: ["employe_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "participations_formation_formation_id_fkey"
+            columns: ["formation_id"]
+            isOneToOne: false
+            referencedRelation: "formations_employes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "participations_formation_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       password_history: {
         Row: {
           created_at: string
@@ -3407,6 +3603,66 @@ export type Database = {
           },
           {
             foreignKeyName: "plan_comptable_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planning_employes: {
+        Row: {
+          created_at: string
+          date: string
+          employe_id: string
+          heure_debut: string
+          heure_fin: string
+          id: number
+          notes: string | null
+          poste: string
+          statut: string
+          tenant_id: string
+          type_shift: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          employe_id: string
+          heure_debut: string
+          heure_fin: string
+          id?: number
+          notes?: string | null
+          poste: string
+          statut?: string
+          tenant_id: string
+          type_shift: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          employe_id?: string
+          heure_debut?: string
+          heure_fin?: string
+          id?: number
+          notes?: string | null
+          poste?: string
+          statut?: string
+          tenant_id?: string
+          type_shift?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planning_employes_employe_id_fkey"
+            columns: ["employe_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_employes_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
