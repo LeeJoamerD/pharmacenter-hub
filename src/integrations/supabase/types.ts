@@ -686,6 +686,36 @@ export type Database = {
           },
         ]
       }
+      classes_therapeutiques: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          libelle_classe: string
+          systeme_anatomique: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          libelle_classe: string
+          systeme_anatomique: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          libelle_classe?: string
+          systeme_anatomique?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           adresse: string | null
@@ -1106,6 +1136,56 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dci: {
+        Row: {
+          classe_therapeutique_id: string | null
+          contre_indications: string | null
+          created_at: string
+          description: string | null
+          effets_secondaires: string | null
+          id: string
+          nom_dci: string
+          posologie: string | null
+          produits_associes: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          classe_therapeutique_id?: string | null
+          contre_indications?: string | null
+          created_at?: string
+          description?: string | null
+          effets_secondaires?: string | null
+          id?: string
+          nom_dci: string
+          posologie?: string | null
+          produits_associes?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          classe_therapeutique_id?: string | null
+          contre_indications?: string | null
+          created_at?: string
+          description?: string | null
+          effets_secondaires?: string | null
+          id?: string
+          nom_dci?: string
+          posologie?: string | null
+          produits_associes?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_dci_classe_therapeutique"
+            columns: ["classe_therapeutique_id"]
+            isOneToOne: false
+            referencedRelation: "classes_therapeutiques"
             referencedColumns: ["id"]
           },
         ]
@@ -1537,6 +1617,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      formes_galeniques: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          libelle_forme: string
+          tenant_id: string
+          updated_at: string
+          voie_administration: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          libelle_forme: string
+          tenant_id: string
+          updated_at?: string
+          voie_administration?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          libelle_forme?: string
+          tenant_id?: string
+          updated_at?: string
+          voie_administration?: string | null
+        }
+        Relationships: []
       }
       fournisseurs: {
         Row: {
@@ -3988,6 +4098,34 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_produits_classe_therapeutique"
+            columns: ["classe_therapeutique_id"]
+            isOneToOne: false
+            referencedRelation: "classes_therapeutiques"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_produits_dci"
+            columns: ["dci_id"]
+            isOneToOne: false
+            referencedRelation: "dci"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_produits_forme"
+            columns: ["forme_id"]
+            isOneToOne: false
+            referencedRelation: "formes_galeniques"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_produits_rayon"
+            columns: ["rayon_id"]
+            isOneToOne: false
+            referencedRelation: "rayons_produits"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "produits_categorie_tarification_id_fkey"
             columns: ["categorie_tarification_id"]
             isOneToOne: false
@@ -4118,6 +4256,33 @@ export type Database = {
           },
         ]
       }
+      rayons_produits: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          libelle_rayon: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          libelle_rayon: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          libelle_rayon?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       receptions_fournisseurs: {
         Row: {
           agent_id: string | null
@@ -4182,6 +4347,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      reglementations: {
+        Row: {
+          autorite_competente: string
+          created_at: string
+          date_application: string
+          date_expiration: string | null
+          description: string | null
+          id: string
+          niveau_restriction: string
+          nom_reglementation: string
+          produits_concernes: number | null
+          reference_legale: string
+          statut: string
+          tenant_id: string
+          type_reglementation: string
+          updated_at: string
+        }
+        Insert: {
+          autorite_competente: string
+          created_at?: string
+          date_application: string
+          date_expiration?: string | null
+          description?: string | null
+          id?: string
+          niveau_restriction: string
+          nom_reglementation: string
+          produits_concernes?: number | null
+          reference_legale: string
+          statut?: string
+          tenant_id: string
+          type_reglementation: string
+          updated_at?: string
+        }
+        Update: {
+          autorite_competente?: string
+          created_at?: string
+          date_application?: string
+          date_expiration?: string | null
+          description?: string | null
+          id?: string
+          niveau_restriction?: string
+          nom_reglementation?: string
+          produits_concernes?: number | null
+          reference_legale?: string
+          statut?: string
+          tenant_id?: string
+          type_reglementation?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       report_api_tokens: {
         Row: {
