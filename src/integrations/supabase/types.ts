@@ -739,6 +739,7 @@ export type Database = {
           numero_cni: string | null
           numero_police: string | null
           numero_registre_commerce: string | null
+          personnel_id: string | null
           plafond_annuel: number | null
           plafond_mensuel: number | null
           raison_sociale: string | null
@@ -775,6 +776,7 @@ export type Database = {
           numero_cni?: string | null
           numero_police?: string | null
           numero_registre_commerce?: string | null
+          personnel_id?: string | null
           plafond_annuel?: number | null
           plafond_mensuel?: number | null
           raison_sociale?: string | null
@@ -811,6 +813,7 @@ export type Database = {
           numero_cni?: string | null
           numero_police?: string | null
           numero_registre_commerce?: string | null
+          personnel_id?: string | null
           plafond_annuel?: number | null
           plafond_mensuel?: number | null
           raison_sociale?: string | null
@@ -831,6 +834,13 @@ export type Database = {
             columns: ["conventionne_id"]
             isOneToOne: false
             referencedRelation: "conventionnes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
           {
