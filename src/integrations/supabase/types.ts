@@ -5871,7 +5871,12 @@ export type Database = {
         | "Temporaire"
       statut_vente: "En cours" | "Validée" | "Annulée" | "Remboursée"
       type_client: "Particulier" | "Assureur" | "Société" | "Conventionné"
-      type_client_enum: "Particulier" | "Assuré" | "Conventionné" | "Entreprise"
+      type_client_enum:
+        | "Particulier"
+        | "Assuré"
+        | "Conventionné"
+        | "Entreprise"
+        | "Personnel"
       type_vente: "Comptant" | "Crédit" | "Assurance"
     }
     CompositeTypes: {
@@ -6032,7 +6037,13 @@ export const Constants = {
       ],
       statut_vente: ["En cours", "Validée", "Annulée", "Remboursée"],
       type_client: ["Particulier", "Assureur", "Société", "Conventionné"],
-      type_client_enum: ["Particulier", "Assuré", "Conventionné", "Entreprise"],
+      type_client_enum: [
+        "Particulier",
+        "Assuré",
+        "Conventionné",
+        "Entreprise",
+        "Personnel",
+      ],
       type_vente: ["Comptant", "Crédit", "Assurance"],
     },
   },
