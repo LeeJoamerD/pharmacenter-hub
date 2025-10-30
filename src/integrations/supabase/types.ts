@@ -420,6 +420,56 @@ export type Database = {
         }
         Relationships: []
       }
+      assureurs: {
+        Row: {
+          adresse: string | null
+          created_at: string
+          email: string | null
+          id: string
+          libelle_assureur: string
+          limite_dette: number | null
+          niu: string | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          adresse?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          libelle_assureur: string
+          limite_dette?: number | null
+          niu?: string | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          adresse?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          libelle_assureur?: string
+          limite_dette?: number | null
+          niu?: string | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assureurs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -643,6 +693,7 @@ export type Database = {
           contact_fonction: string | null
           contact_nom: string | null
           contact_telephone: string | null
+          conventionne_id: string | null
           created_at: string
           credit_actuel: number | null
           date_adhesion: string | null
@@ -662,6 +713,7 @@ export type Database = {
           plafond_mensuel: number | null
           raison_sociale: string | null
           secteur_activite: string | null
+          societe_id: string | null
           statut: Database["public"]["Enums"]["statut_client"] | null
           taux_couverture: number | null
           taux_remise_automatique: number | null
@@ -677,6 +729,7 @@ export type Database = {
           contact_fonction?: string | null
           contact_nom?: string | null
           contact_telephone?: string | null
+          conventionne_id?: string | null
           created_at?: string
           credit_actuel?: number | null
           date_adhesion?: string | null
@@ -696,6 +749,7 @@ export type Database = {
           plafond_mensuel?: number | null
           raison_sociale?: string | null
           secteur_activite?: string | null
+          societe_id?: string | null
           statut?: Database["public"]["Enums"]["statut_client"] | null
           taux_couverture?: number | null
           taux_remise_automatique?: number | null
@@ -711,6 +765,7 @@ export type Database = {
           contact_fonction?: string | null
           contact_nom?: string | null
           contact_telephone?: string | null
+          conventionne_id?: string | null
           created_at?: string
           credit_actuel?: number | null
           date_adhesion?: string | null
@@ -730,6 +785,7 @@ export type Database = {
           plafond_mensuel?: number | null
           raison_sociale?: string | null
           secteur_activite?: string | null
+          societe_id?: string | null
           statut?: Database["public"]["Enums"]["statut_client"] | null
           taux_couverture?: number | null
           taux_remise_automatique?: number | null
@@ -740,6 +796,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "clients_conventionne_id_fkey"
+            columns: ["conventionne_id"]
+            isOneToOne: false
+            referencedRelation: "conventionnes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_societe_id_fkey"
+            columns: ["societe_id"]
+            isOneToOne: false
+            referencedRelation: "societes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clients_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -4770,6 +4840,72 @@ export type Database = {
           },
         ]
       }
+      societes: {
+        Row: {
+          adresse: string | null
+          assureur_id: string
+          created_at: string
+          email: string | null
+          id: string
+          libelle_societe: string
+          limite_dette: number | null
+          niu: string | null
+          taux_couverture_agent: number | null
+          taux_couverture_ayant_droit: number | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          adresse?: string | null
+          assureur_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          libelle_societe: string
+          limite_dette?: number | null
+          niu?: string | null
+          taux_couverture_agent?: number | null
+          taux_couverture_ayant_droit?: number | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          adresse?: string | null
+          assureur_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          libelle_societe?: string
+          limite_dette?: number | null
+          niu?: string | null
+          taux_couverture_agent?: number | null
+          taux_couverture_ayant_droit?: number | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "societes_assureur_id_fkey"
+            columns: ["assureur_id"]
+            isOneToOne: false
+            referencedRelation: "assureurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "societes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sous_compte_depenses: {
         Row: {
           compte_depenses_id: string
@@ -5509,6 +5645,7 @@ export type Database = {
         | "Temporaire"
       statut_vente: "En cours" | "Validée" | "Annulée" | "Remboursée"
       type_client: "Particulier" | "Assureur" | "Société" | "Conventionné"
+      type_client_enum: "Particulier" | "Assuré" | "Conventionné" | "Entreprise"
       type_vente: "Comptant" | "Crédit" | "Assurance"
     }
     CompositeTypes: {
@@ -5669,6 +5806,7 @@ export const Constants = {
       ],
       statut_vente: ["En cours", "Validée", "Annulée", "Remboursée"],
       type_client: ["Particulier", "Assureur", "Société", "Conventionné"],
+      type_client_enum: ["Particulier", "Assuré", "Conventionné", "Entreprise"],
       type_vente: ["Comptant", "Crédit", "Assurance"],
     },
   },
