@@ -2111,35 +2111,281 @@ export type Database = {
           },
         ]
       }
+      inventaire_items: {
+        Row: {
+          code_barre: string
+          created_at: string
+          date_comptage: string | null
+          emplacement_reel: string | null
+          emplacement_theorique: string
+          id: string
+          lot_id: string | null
+          lot_numero: string | null
+          notes: string | null
+          operateur_id: string | null
+          operateur_nom: string | null
+          produit_id: string | null
+          produit_nom: string
+          quantite_comptee: number | null
+          quantite_theorique: number
+          session_id: string
+          statut: string
+          tenant_id: string
+          unite: string
+          updated_at: string
+        }
+        Insert: {
+          code_barre: string
+          created_at?: string
+          date_comptage?: string | null
+          emplacement_reel?: string | null
+          emplacement_theorique?: string
+          id?: string
+          lot_id?: string | null
+          lot_numero?: string | null
+          notes?: string | null
+          operateur_id?: string | null
+          operateur_nom?: string | null
+          produit_id?: string | null
+          produit_nom: string
+          quantite_comptee?: number | null
+          quantite_theorique?: number
+          session_id: string
+          statut?: string
+          tenant_id: string
+          unite?: string
+          updated_at?: string
+        }
+        Update: {
+          code_barre?: string
+          created_at?: string
+          date_comptage?: string | null
+          emplacement_reel?: string | null
+          emplacement_theorique?: string
+          id?: string
+          lot_id?: string | null
+          lot_numero?: string | null
+          notes?: string | null
+          operateur_id?: string | null
+          operateur_nom?: string | null
+          produit_id?: string | null
+          produit_nom?: string
+          quantite_comptee?: number | null
+          quantite_theorique?: number
+          session_id?: string
+          statut?: string
+          tenant_id?: string
+          unite?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventaire_items_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventaire_items_operateur_id_fkey"
+            columns: ["operateur_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventaire_items_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventaire_items_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "inventaire_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventaire_rapports: {
+        Row: {
+          contenu: Json | null
+          created_at: string
+          date_generation: string
+          fichier_url: string | null
+          format: string | null
+          genere_par_id: string | null
+          id: string
+          nom: string
+          parametres: Json | null
+          session_id: string | null
+          statut: string | null
+          taille_fichier: number | null
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          contenu?: Json | null
+          created_at?: string
+          date_generation?: string
+          fichier_url?: string | null
+          format?: string | null
+          genere_par_id?: string | null
+          id?: string
+          nom: string
+          parametres?: Json | null
+          session_id?: string | null
+          statut?: string | null
+          taille_fichier?: number | null
+          tenant_id: string
+          type: string
+        }
+        Update: {
+          contenu?: Json | null
+          created_at?: string
+          date_generation?: string
+          fichier_url?: string | null
+          format?: string | null
+          genere_par_id?: string | null
+          id?: string
+          nom?: string
+          parametres?: Json | null
+          session_id?: string | null
+          statut?: string | null
+          taille_fichier?: number | null
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventaire_rapports_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "inventaire_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventaire_saisies: {
+        Row: {
+          code_barre: string
+          created_at: string
+          date_saisie: string
+          emplacement: string | null
+          id: string
+          lot_id: string | null
+          notes: string | null
+          operateur_id: string
+          produit_id: string | null
+          produit_trouve: boolean | null
+          quantite: number
+          session_id: string
+          tenant_id: string
+        }
+        Insert: {
+          code_barre: string
+          created_at?: string
+          date_saisie?: string
+          emplacement?: string | null
+          id?: string
+          lot_id?: string | null
+          notes?: string | null
+          operateur_id: string
+          produit_id?: string | null
+          produit_trouve?: boolean | null
+          quantite?: number
+          session_id: string
+          tenant_id: string
+        }
+        Update: {
+          code_barre?: string
+          created_at?: string
+          date_saisie?: string
+          emplacement?: string | null
+          id?: string
+          lot_id?: string | null
+          notes?: string | null
+          operateur_id?: string
+          produit_id?: string | null
+          produit_trouve?: boolean | null
+          quantite?: number
+          session_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventaire_saisies_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "inventaire_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventaire_sessions: {
         Row: {
           agent_id: string
           created_at: string
+          date_creation: string | null
           date_debut: string | null
           date_fin: string | null
+          description: string | null
+          ecarts: number | null
           id: string
+          nom: string | null
+          participants: string[] | null
+          produits_comptes: number | null
+          produits_total: number | null
+          progression: number | null
+          responsable: string | null
+          secteurs: string[] | null
           statut: string | null
           tenant_id: string
+          type: string | null
           updated_at: string
         }
         Insert: {
           agent_id: string
           created_at?: string
+          date_creation?: string | null
           date_debut?: string | null
           date_fin?: string | null
+          description?: string | null
+          ecarts?: number | null
           id?: string
+          nom?: string | null
+          participants?: string[] | null
+          produits_comptes?: number | null
+          produits_total?: number | null
+          progression?: number | null
+          responsable?: string | null
+          secteurs?: string[] | null
           statut?: string | null
           tenant_id: string
+          type?: string | null
           updated_at?: string
         }
         Update: {
           agent_id?: string
           created_at?: string
+          date_creation?: string | null
           date_debut?: string | null
           date_fin?: string | null
+          description?: string | null
+          ecarts?: number | null
           id?: string
+          nom?: string | null
+          participants?: string[] | null
+          produits_comptes?: number | null
+          produits_total?: number | null
+          progression?: number | null
+          responsable?: string | null
+          secteurs?: string[] | null
           statut?: string | null
           tenant_id?: string
+          type?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -6571,6 +6817,10 @@ export type Database = {
       }
       debug_user_connection_state: { Args: never; Returns: Json }
       detect_suspicious_patterns: { Args: never; Returns: undefined }
+      generate_inventaire_report: {
+        Args: { p_session_id: string; p_tenant_id: string; p_type: string }
+        Returns: Json
+      }
       generate_sales_suggestions: {
         Args: { p_tenant_id: string }
         Returns: number
@@ -6585,6 +6835,7 @@ export type Database = {
         }
         Returns: string
       }
+      init_inventaire_items: { Args: { p_session_id: string }; Returns: Json }
       is_cross_tenant_authorized: {
         Args: {
           p_permission_type: string
@@ -6645,6 +6896,29 @@ export type Database = {
       reports_get_configuration: { Args: never; Returns: Json }
       reports_upsert_settings: { Args: { payload: Json }; Returns: Json }
       reports_upsert_template: { Args: { template: Json }; Returns: string }
+      rpc_inventory_create_session: {
+        Args: {
+          session_description?: string
+          session_name: string
+          session_participants?: string[]
+          session_secteurs?: string[]
+          session_type?: string
+        }
+        Returns: string
+      }
+      rpc_inventory_record_entry: {
+        Args: {
+          code_barre: string
+          emplacement?: string
+          quantite?: number
+          session_id: string
+        }
+        Returns: Json
+      }
+      rpc_inventory_start_session: {
+        Args: { session_id: string }
+        Returns: boolean
+      }
       rpc_stock_delete_movement: {
         Args: { p_movement_id: string }
         Returns: Json
