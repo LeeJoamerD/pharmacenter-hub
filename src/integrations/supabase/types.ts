@@ -420,6 +420,85 @@ export type Database = {
         }
         Relationships: []
       }
+      alertes_peremption: {
+        Row: {
+          action_recommandee: string | null
+          created_at: string | null
+          date_expiration: string
+          date_traitement: string | null
+          id: string
+          jours_restants: number | null
+          lot_id: string
+          niveau_urgence: string
+          notes: string | null
+          produit_id: string
+          quantite_concernee: number
+          statut: string | null
+          tenant_id: string
+          traitee_par: string | null
+          type_alerte: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_recommandee?: string | null
+          created_at?: string | null
+          date_expiration: string
+          date_traitement?: string | null
+          id?: string
+          jours_restants?: number | null
+          lot_id: string
+          niveau_urgence: string
+          notes?: string | null
+          produit_id: string
+          quantite_concernee: number
+          statut?: string | null
+          tenant_id: string
+          traitee_par?: string | null
+          type_alerte: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_recommandee?: string | null
+          created_at?: string | null
+          date_expiration?: string
+          date_traitement?: string | null
+          id?: string
+          jours_restants?: number | null
+          lot_id?: string
+          niveau_urgence?: string
+          notes?: string | null
+          produit_id?: string
+          quantite_concernee?: number
+          statut?: string | null
+          tenant_id?: string
+          traitee_par?: string | null
+          type_alerte?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alertes_peremption_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alertes_peremption_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alertes_peremption_traitee_par_fkey"
+            columns: ["traitee_par"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assureurs: {
         Row: {
           adresse: string | null
@@ -942,6 +1021,60 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      configurations_fifo: {
+        Row: {
+          action_automatique: string | null
+          created_at: string | null
+          delai_alerte_jours: number | null
+          famille_produit_id: string | null
+          id: string
+          priorite_fifo: number | null
+          produit_id: string | null
+          tenant_id: string
+          tolerance_ecart_prix: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          action_automatique?: string | null
+          created_at?: string | null
+          delai_alerte_jours?: number | null
+          famille_produit_id?: string | null
+          id?: string
+          priorite_fifo?: number | null
+          produit_id?: string | null
+          tenant_id: string
+          tolerance_ecart_prix?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          action_automatique?: string | null
+          created_at?: string | null
+          delai_alerte_jours?: number | null
+          famille_produit_id?: string | null
+          id?: string
+          priorite_fifo?: number | null
+          produit_id?: string | null
+          tenant_id?: string
+          tolerance_ecart_prix?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "configurations_fifo_famille_produit_id_fkey"
+            columns: ["famille_produit_id"]
+            isOneToOne: false
+            referencedRelation: "famille_produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "configurations_fifo_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
             referencedColumns: ["id"]
           },
         ]
@@ -2413,6 +2546,172 @@ export type Database = {
           },
         ]
       }
+      lot_optimization_metrics: {
+        Row: {
+          created_at: string | null
+          expirations_avoided: number | null
+          expirations_avoided_value: number | null
+          fifo_corrections: number | null
+          id: string
+          metadata: Json | null
+          metric_date: string | null
+          stock_reorders_suggested: number | null
+          suggestions_applied: number | null
+          suggestions_ignored: number | null
+          tenant_id: string
+          total_savings: number | null
+          total_suggestions_generated: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          expirations_avoided?: number | null
+          expirations_avoided_value?: number | null
+          fifo_corrections?: number | null
+          id?: string
+          metadata?: Json | null
+          metric_date?: string | null
+          stock_reorders_suggested?: number | null
+          suggestions_applied?: number | null
+          suggestions_ignored?: number | null
+          tenant_id: string
+          total_savings?: number | null
+          total_suggestions_generated?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          expirations_avoided?: number | null
+          expirations_avoided_value?: number | null
+          fifo_corrections?: number | null
+          id?: string
+          metadata?: Json | null
+          metric_date?: string | null
+          stock_reorders_suggested?: number | null
+          suggestions_applied?: number | null
+          suggestions_ignored?: number | null
+          tenant_id?: string
+          total_savings?: number | null
+          total_suggestions_generated?: number | null
+        }
+        Relationships: []
+      }
+      lot_optimization_rules: {
+        Row: {
+          actions: Json | null
+          conditions: Json | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          priority: number | null
+          rule_id: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          actions?: Json | null
+          conditions?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          priority?: number | null
+          rule_id: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          actions?: Json | null
+          conditions?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          priority?: number | null
+          rule_id?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      lot_optimization_suggestions: {
+        Row: {
+          applied_at: string | null
+          applied_by: string | null
+          created_at: string | null
+          current_value: number | null
+          description: string | null
+          expected_benefit: string | null
+          id: string
+          lot_id: string | null
+          priority: string
+          product_id: string | null
+          status: string | null
+          suggested_value: number | null
+          suggestion_type: string
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string | null
+          current_value?: number | null
+          description?: string | null
+          expected_benefit?: string | null
+          id?: string
+          lot_id?: string | null
+          priority: string
+          product_id?: string | null
+          status?: string | null
+          suggested_value?: number | null
+          suggestion_type: string
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string | null
+          current_value?: number | null
+          description?: string | null
+          expected_benefit?: string | null
+          id?: string
+          lot_id?: string | null
+          priority?: string
+          product_id?: string | null
+          status?: string | null
+          suggested_value?: number | null
+          suggestion_type?: string
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lot_optimization_suggestions_applied_by_fkey"
+            columns: ["applied_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lot_optimization_suggestions_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lot_optimization_suggestions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lots: {
         Row: {
           created_at: string
@@ -3338,6 +3637,63 @@ export type Database = {
           whatsapp_phone_number?: string | null
         }
         Relationships: []
+      }
+      parametres_expiration: {
+        Row: {
+          action_automatique: string | null
+          created_at: string | null
+          famille_produit_id: string | null
+          id: string
+          jours_alerte: number
+          jours_blocage: number
+          jours_critique: number
+          priorite: number | null
+          produit_id: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_automatique?: string | null
+          created_at?: string | null
+          famille_produit_id?: string | null
+          id?: string
+          jours_alerte?: number
+          jours_blocage?: number
+          jours_critique?: number
+          priorite?: number | null
+          produit_id?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_automatique?: string | null
+          created_at?: string | null
+          famille_produit_id?: string | null
+          id?: string
+          jours_alerte?: number
+          jours_blocage?: number
+          jours_critique?: number
+          priorite?: number | null
+          produit_id?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parametres_expiration_famille_produit_id_fkey"
+            columns: ["famille_produit_id"]
+            isOneToOne: false
+            referencedRelation: "famille_produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parametres_expiration_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       parametres_systeme: {
         Row: {
@@ -6219,6 +6575,7 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: number
       }
+      generer_alertes_expiration_automatiques: { Args: never; Returns: Json }
       get_current_user_tenant_id: { Args: never; Returns: string }
       get_next_accounting_number: {
         Args: {
