@@ -24,8 +24,12 @@ export const ClientForm = ({ form, onSubmit, isEdit, onCancel, client }: ClientF
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-sm text-blue-800">
               Ce client est de type "{client.type_client}". Pour modifier ses informations, 
-              utilisez le module {client.type_client === 'Personnel' ? 'Personnel' : 
-                                client.type_client === 'Assuré' ? 'Sociétés' : 'Conventionnés'}.
+              utilisez le module {
+                client.type_client === 'Personnel' ? 'Personnel' : 
+                client.type_client === 'Entreprise' ? 'Sociétés' : 
+                client.type_client === 'Conventionné' ? 'Conventionnés' :
+                client.type_client === 'Assuré' ? 'Assurés' : 'Clients'
+              }.
             </p>
           </div>
         )}

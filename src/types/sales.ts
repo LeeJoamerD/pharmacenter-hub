@@ -7,7 +7,7 @@ export interface Client {
   telephone?: string;
   email?: string;
   adresse?: string;
-  type_client: 'Ordinaire' | 'Conventionné' | 'Personnel' | 'Assuré';
+  type_client: 'Ordinaire' | 'Assuré' | 'Conventionné' | 'Entreprise' | 'Personnel';
   numero_assure?: string;
   assureur_id?: number;
   convention_id?: number;

@@ -7554,15 +7554,7 @@ export type Database = {
         | "Temporaire"
       statut_vente: "En cours" | "Validée" | "Annulée" | "Remboursée"
       type_client:
-        | "Particulier"
-        | "Assureur"
-        | "Société"
-        | "Conventionné"
-        | "Personnel"
         | "Ordinaire"
-        | "Assuré"
-      type_client_enum:
-        | "Particulier"
         | "Assuré"
         | "Conventionné"
         | "Entreprise"
@@ -7727,16 +7719,7 @@ export const Constants = {
       ],
       statut_vente: ["En cours", "Validée", "Annulée", "Remboursée"],
       type_client: [
-        "Particulier",
-        "Assureur",
-        "Société",
-        "Conventionné",
-        "Personnel",
         "Ordinaire",
-        "Assuré",
-      ],
-      type_client_enum: [
-        "Particulier",
         "Assuré",
         "Conventionné",
         "Entreprise",

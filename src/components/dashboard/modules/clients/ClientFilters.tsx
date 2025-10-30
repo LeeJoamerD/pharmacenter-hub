@@ -53,9 +53,10 @@ export const ClientFilters = ({ filters, onFiltersChange, onClearFilters }: Clie
               >
                 <option value="">Tous les types</option>
                 <option value="Ordinaire">Ordinaire</option>
-                <option value="Personnel">Personnel</option>
                 <option value="Assuré">Assuré</option>
                 <option value="Conventionné">Conventionné</option>
+                <option value="Entreprise">Entreprise</option>
+                <option value="Personnel">Personnel</option>
               </select>
             </div>
             
