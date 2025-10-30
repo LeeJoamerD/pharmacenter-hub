@@ -1869,6 +1869,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "documents_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "documents_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
