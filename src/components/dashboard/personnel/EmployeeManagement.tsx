@@ -198,16 +198,16 @@ export const EmployeeManagement = () => {
   };
 
   const filteredEmployees = employees.filter((employee: Employee) => {
-    // Recherche par texte
+    // Recherche par texte avec vérification de null/undefined
     const matchesSearch = searchTerm === '' || 
-      employee.noms.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.prenoms.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.fonction.toLowerCase().includes(searchTerm.toLowerCase());
+      (employee.noms && employee.noms.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (employee.prenoms && employee.prenoms.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (employee.fonction && employee.fonction.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    // Filtres
-    const matchesFonction = filters.fonction === '' || employee.fonction === filters.fonction;
-    const matchesStatut = filters.statut_contractuel === '' || employee.statut_contractuel === filters.statut_contractuel;
-    const matchesSituation = filters.situation_familiale === '' || employee.situation_familiale === filters.situation_familiale;
+    // Filtres avec vérification de null/undefined
+    const matchesFonction = filters.fonction === '' || (employee.fonction && employee.fonction === filters.fonction);
+    const matchesStatut = filters.statut_contractuel === '' || (employee.statut_contractuel && employee.statut_contractuel === filters.statut_contractuel);
+    const matchesSituation = filters.situation_familiale === '' || (employee.situation_familiale && employee.situation_familiale === filters.situation_familiale);
     
     const salaire = employee.salaire_base || 0;
     const matchesSalaireMin = filters.salaire_min === '' || salaire >= parseFloat(filters.salaire_min);

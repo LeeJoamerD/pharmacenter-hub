@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, GraduationCap, Calendar, Users, Edit, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,9 +31,9 @@ export const TrainingManagement = () => {
     ['employees'],
     'personnel',
     '*',
+    {},
     { 
-      orderBy: { column: 'noms', ascending: true },
-      filters: { auth_user_id: { is: null } } // Seulement les employés
+      orderBy: { column: 'noms', ascending: true }
     }
   );
 
@@ -196,6 +196,7 @@ export const TrainingManagement = () => {
                 <DialogTitle>
                   {editingTraining ? 'Modifier la formation' : 'Créer une nouvelle formation'}
                 </DialogTitle>
+                <DialogDescription></DialogDescription>
               </DialogHeader>
               <TrainingForm
                 form={form}

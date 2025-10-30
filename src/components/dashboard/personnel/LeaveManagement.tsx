@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Calendar, Clock, Filter, Edit, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,9 +31,9 @@ export const LeaveManagement = () => {
     ['employees'],
     'personnel',
     '*',
+    {},
     { 
-      orderBy: { column: 'noms', ascending: true },
-      filters: { auth_user_id: { is: null } } // Seulement les employés
+      orderBy: { column: 'noms', ascending: true }
     }
   );
 
@@ -204,6 +204,7 @@ export const LeaveManagement = () => {
                 <DialogTitle>
                   {editingLeave ? 'Modifier la demande' : 'Créer une nouvelle demande'}
                 </DialogTitle>
+                <DialogDescription></DialogDescription>
               </DialogHeader>
               <LeaveRequestForm
                 form={form}
