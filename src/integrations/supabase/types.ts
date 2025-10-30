@@ -7559,6 +7559,8 @@ export type Database = {
         | "Société"
         | "Conventionné"
         | "Personnel"
+        | "Ordinaire"
+        | "Assuré"
       type_client_enum:
         | "Particulier"
         | "Assuré"
@@ -7730,6 +7732,8 @@ export const Constants = {
         "Société",
         "Conventionné",
         "Personnel",
+        "Ordinaire",
+        "Assuré",
       ],
       type_client_enum: [
         "Particulier",
