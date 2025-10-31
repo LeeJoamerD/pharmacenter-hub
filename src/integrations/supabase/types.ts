@@ -7340,7 +7340,7 @@ export type Database = {
           tags?: string[] | null
           tenant_id: string
           trigger_config?: Json
-          trigger_type: string
+          trigger_type?: string
           updated_at?: string
         }
         Update: {
