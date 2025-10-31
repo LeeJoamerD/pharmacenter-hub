@@ -7217,6 +7217,7 @@ export type Database = {
           category: string | null
           configuration: Json
           created_at: string
+          created_by: string | null
           description: string | null
           id: string
           is_system: boolean
@@ -7229,6 +7230,7 @@ export type Database = {
           category?: string | null
           configuration?: Json
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
           is_system?: boolean
@@ -7241,6 +7243,7 @@ export type Database = {
           category?: string | null
           configuration?: Json
           created_at?: string
+          created_by?: string | null
           description?: string | null
           id?: string
           is_system?: boolean
@@ -7294,6 +7297,7 @@ export type Database = {
       }
       workflows: {
         Row: {
+          category: string | null
           configuration: Json
           created_at: string
           created_by: string | null
@@ -7308,6 +7312,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category?: string | null
           configuration?: Json
           created_at?: string
           created_by?: string | null
@@ -7322,6 +7327,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category?: string | null
           configuration?: Json
           created_at?: string
           created_by?: string | null
