@@ -7222,6 +7222,7 @@ export type Database = {
           id: string
           is_system: boolean
           name: string
+          tags: string[] | null
           tenant_id: string
           updated_at: string
           usage_count: number
@@ -7235,6 +7236,7 @@ export type Database = {
           id?: string
           is_system?: boolean
           name: string
+          tags?: string[] | null
           tenant_id: string
           updated_at?: string
           usage_count?: number
@@ -7248,6 +7250,7 @@ export type Database = {
           id?: string
           is_system?: boolean
           name?: string
+          tags?: string[] | null
           tenant_id?: string
           updated_at?: string
           usage_count?: number
@@ -7297,46 +7300,67 @@ export type Database = {
       }
       workflows: {
         Row: {
+          actual_duration: number | null
+          assigned_to: string | null
           category: string | null
+          completion_rate: number | null
           configuration: Json
           created_at: string
           created_by: string | null
+          deadline: string | null
           description: string | null
+          estimated_duration: number | null
+          execution_count: number | null
           id: string
           last_executed_at: string | null
           name: string
           priority: number
           status: string
+          tags: string[] | null
           tenant_id: string
           trigger_type: string
           updated_at: string
         }
         Insert: {
+          actual_duration?: number | null
+          assigned_to?: string | null
           category?: string | null
+          completion_rate?: number | null
           configuration?: Json
           created_at?: string
           created_by?: string | null
+          deadline?: string | null
           description?: string | null
+          estimated_duration?: number | null
+          execution_count?: number | null
           id?: string
           last_executed_at?: string | null
           name: string
           priority?: number
           status?: string
+          tags?: string[] | null
           tenant_id: string
           trigger_type: string
           updated_at?: string
         }
         Update: {
+          actual_duration?: number | null
+          assigned_to?: string | null
           category?: string | null
+          completion_rate?: number | null
           configuration?: Json
           created_at?: string
           created_by?: string | null
+          deadline?: string | null
           description?: string | null
+          estimated_duration?: number | null
+          execution_count?: number | null
           id?: string
           last_executed_at?: string | null
           name?: string
           priority?: number
           status?: string
+          tags?: string[] | null
           tenant_id?: string
           trigger_type?: string
           updated_at?: string
