@@ -7215,7 +7215,6 @@ export type Database = {
       workflow_templates: {
         Row: {
           category: string | null
-          configuration: Json
           created_at: string
           created_by: string | null
           description: string | null
@@ -7223,13 +7222,13 @@ export type Database = {
           is_system: boolean
           name: string
           tags: string[] | null
+          template_data: Json
           tenant_id: string
           updated_at: string
           usage_count: number
         }
         Insert: {
           category?: string | null
-          configuration?: Json
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -7237,13 +7236,13 @@ export type Database = {
           is_system?: boolean
           name: string
           tags?: string[] | null
+          template_data?: Json
           tenant_id: string
           updated_at?: string
           usage_count?: number
         }
         Update: {
           category?: string | null
-          configuration?: Json
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -7251,6 +7250,7 @@ export type Database = {
           is_system?: boolean
           name?: string
           tags?: string[] | null
+          template_data?: Json
           tenant_id?: string
           updated_at?: string
           usage_count?: number
@@ -7304,7 +7304,6 @@ export type Database = {
           assigned_to: string | null
           category: string | null
           completion_rate: number | null
-          configuration: Json
           created_at: string
           created_by: string | null
           deadline: string | null
@@ -7312,12 +7311,13 @@ export type Database = {
           estimated_duration: number | null
           execution_count: number | null
           id: string
-          last_executed_at: string | null
+          last_executed: string | null
           name: string
-          priority: number
+          priority: string | null
           status: string
           tags: string[] | null
           tenant_id: string
+          trigger_config: Json
           trigger_type: string
           updated_at: string
         }
@@ -7326,7 +7326,6 @@ export type Database = {
           assigned_to?: string | null
           category?: string | null
           completion_rate?: number | null
-          configuration?: Json
           created_at?: string
           created_by?: string | null
           deadline?: string | null
@@ -7334,12 +7333,13 @@ export type Database = {
           estimated_duration?: number | null
           execution_count?: number | null
           id?: string
-          last_executed_at?: string | null
+          last_executed?: string | null
           name: string
-          priority?: number
+          priority?: string | null
           status?: string
           tags?: string[] | null
           tenant_id: string
+          trigger_config?: Json
           trigger_type: string
           updated_at?: string
         }
@@ -7348,7 +7348,6 @@ export type Database = {
           assigned_to?: string | null
           category?: string | null
           completion_rate?: number | null
-          configuration?: Json
           created_at?: string
           created_by?: string | null
           deadline?: string | null
@@ -7356,12 +7355,13 @@ export type Database = {
           estimated_duration?: number | null
           execution_count?: number | null
           id?: string
-          last_executed_at?: string | null
+          last_executed?: string | null
           name?: string
-          priority?: number
+          priority?: string | null
           status?: string
           tags?: string[] | null
           tenant_id?: string
+          trigger_config?: Json
           trigger_type?: string
           updated_at?: string
         }
