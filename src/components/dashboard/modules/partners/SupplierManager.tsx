@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Edit, Trash2, Truck, Phone, MessageCircle, AtSign } from 'lucide-react';
@@ -277,6 +277,9 @@ const SupplierManager = () => {
                   <DialogTitle>
                     {editingFournisseur ? 'Modifier le fournisseur' : 'Nouveau fournisseur'}
                   </DialogTitle>
+                  <DialogDescription>
+                    {editingFournisseur ? 'Modifiez les informations du fournisseur ci-dessous.' : 'Remplissez les informations pour créer un nouveau fournisseur.'}
+                  </DialogDescription>
                 </DialogHeader>
                 <FournisseurForm />
               </DialogContent>

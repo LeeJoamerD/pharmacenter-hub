@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Edit, Trash2, Shield, Phone, MessageCircle, AtSign } from 'lucide-react';
@@ -295,6 +295,9 @@ const InsuranceManager = () => {
                   <DialogTitle>
                     {editingAssureur ? 'Modifier l\'assureur' : 'Nouvel assureur'}
                   </DialogTitle>
+                  <DialogDescription>
+                    {editingAssureur ? 'Modifiez les informations de l\'assureur ci-dessous.' : 'Remplissez les informations pour créer un nouvel assureur.'}
+                  </DialogDescription>
                 </DialogHeader>
                 <AssureurForm />
               </DialogContent>
