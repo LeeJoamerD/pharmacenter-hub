@@ -198,6 +198,18 @@ export const useTenantQuery = () => {
                   onConflict: 'tenant_id,setting_category,setting_key',
                   ignoreDuplicates: false 
                 });
+            } else if (tableName === 'workflow_settings') {
+              // Pour workflow_settings, utiliser la résolution de conflit sur tenant_id,setting_key
+              if (!variables.setting_key) {
+                throw new Error('setting_key is required for workflow_settings upsert');
+              }
+              console.log('TenantMutation - Using onConflict for workflow_settings');
+              query = (supabase as any)
+                .from(tableName)
+                .upsert(dataWithTenant, { 
+                  onConflict: 'tenant_id,setting_key',
+                  ignoreDuplicates: false 
+                });
             } else {
               // Upsert générique pour les autres tables
               query = (supabase as any).from(tableName).upsert(dataWithTenant);
