@@ -814,42 +814,6 @@ export type Database = {
           },
         ]
       }
-      categories_tarification: {
-        Row: {
-          code_categorie: string | null
-          created_at: string
-          description: string | null
-          id: string
-          is_active: boolean | null
-          libelle: string
-          taux_marge_defaut: number | null
-          tenant_id: string
-          updated_at: string
-        }
-        Insert: {
-          code_categorie?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean | null
-          libelle: string
-          taux_marge_defaut?: number | null
-          tenant_id: string
-          updated_at?: string
-        }
-        Update: {
-          code_categorie?: string | null
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean | null
-          libelle?: string
-          taux_marge_defaut?: number | null
-          tenant_id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       channel_participants: {
         Row: {
           channel_id: string
