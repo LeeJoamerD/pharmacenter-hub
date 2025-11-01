@@ -3030,6 +3030,7 @@ export type Database = {
           date_peremption: string | null
           id: string
           lot_id: string | null
+          prix_achat_reel: number | null
           prix_achat_unitaire_reel: number
           produit_id: string
           quantite_recue: number
@@ -3042,6 +3043,7 @@ export type Database = {
           date_peremption?: string | null
           id?: string
           lot_id?: string | null
+          prix_achat_reel?: number | null
           prix_achat_unitaire_reel: number
           produit_id: string
           quantite_recue: number
@@ -3054,6 +3056,7 @@ export type Database = {
           date_peremption?: string | null
           id?: string
           lot_id?: string | null
+          prix_achat_reel?: number | null
           prix_achat_unitaire_reel?: number
           produit_id?: string
           quantite_recue?: number
@@ -5567,7 +5570,10 @@ export type Database = {
           date_reception: string | null
           fournisseur_id: string
           id: string
+          notes: string | null
+          numero_reception: string | null
           reference_facture: string | null
+          statut: string | null
           tenant_id: string
           updated_at: string
         }
@@ -5578,7 +5584,10 @@ export type Database = {
           date_reception?: string | null
           fournisseur_id: string
           id?: string
+          notes?: string | null
+          numero_reception?: string | null
           reference_facture?: string | null
+          statut?: string | null
           tenant_id: string
           updated_at?: string
         }
@@ -5589,7 +5598,10 @@ export type Database = {
           date_reception?: string | null
           fournisseur_id?: string
           id?: string
+          notes?: string | null
+          numero_reception?: string | null
           reference_facture?: string | null
+          statut?: string | null
           tenant_id?: string
           updated_at?: string
         }
