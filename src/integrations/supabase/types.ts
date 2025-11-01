@@ -6118,11 +6118,13 @@ export type Database = {
           description: string
           id: string
           metadata: Json | null
-          resolved: boolean | null
           resolved_at: string | null
           resolved_by: string | null
           severity: string
+          status: string
           tenant_id: string
+          title: string
+          updated_at: string
           user_id: string | null
         }
         Insert: {
@@ -6131,11 +6133,13 @@ export type Database = {
           description: string
           id?: string
           metadata?: Json | null
-          resolved?: boolean | null
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string
+          status?: string
           tenant_id: string
+          title: string
+          updated_at?: string
           user_id?: string | null
         }
         Update: {
@@ -6144,11 +6148,13 @@ export type Database = {
           description?: string
           id?: string
           metadata?: Json | null
-          resolved?: boolean | null
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string
+          status?: string
           tenant_id?: string
+          title?: string
+          updated_at?: string
           user_id?: string | null
         }
         Relationships: [
@@ -6163,12 +6169,13 @@ export type Database = {
       }
       security_incidents: {
         Row: {
+          affected_systems: string[] | null
           created_at: string
           description: string | null
           id: string
+          impact_level: string
           incident_type: string
           metadata: Json | null
-          resolved: boolean | null
           resolved_at: string | null
           resolved_by: string | null
           severity: string
@@ -6179,12 +6186,13 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          affected_systems?: string[] | null
           created_at?: string
           description?: string | null
           id?: string
+          impact_level?: string
           incident_type?: string
           metadata?: Json | null
-          resolved?: boolean | null
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string
@@ -6195,12 +6203,13 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          affected_systems?: string[] | null
           created_at?: string
           description?: string | null
           id?: string
+          impact_level?: string
           incident_type?: string
           metadata?: Json | null
-          resolved?: boolean | null
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string
