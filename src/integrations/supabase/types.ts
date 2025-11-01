@@ -5226,6 +5226,7 @@ export type Database = {
           rayon_produit_id: string | null
           reference_agent_enregistrement_id: string | null
           reference_agent_modification_id: string | null
+          stock_actuel: number | null
           stock_alerte: number | null
           stock_limite: number | null
           taux_centime_additionnel: number | null
@@ -5258,6 +5259,7 @@ export type Database = {
           rayon_produit_id?: string | null
           reference_agent_enregistrement_id?: string | null
           reference_agent_modification_id?: string | null
+          stock_actuel?: number | null
           stock_alerte?: number | null
           stock_limite?: number | null
           taux_centime_additionnel?: number | null
@@ -5290,6 +5292,7 @@ export type Database = {
           rayon_produit_id?: string | null
           reference_agent_enregistrement_id?: string | null
           reference_agent_modification_id?: string | null
+          stock_actuel?: number | null
           stock_alerte?: number | null
           stock_limite?: number | null
           taux_centime_additionnel?: number | null
