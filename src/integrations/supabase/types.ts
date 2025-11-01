@@ -3140,6 +3140,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_lignes_ventes_produit"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lignes_ventes_vente"
+            columns: ["vente_id"]
+            isOneToOne: false
+            referencedRelation: "ventes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lignes_ventes_lot_id_fkey"
             columns: ["lot_id"]
             isOneToOne: false
@@ -5210,7 +5224,6 @@ export type Database = {
           created_at: string
           dci_id: string | null
           famille_id: string | null
-          famille_produit_id: string | null
           forme_id: string | null
           id: string
           id_produit_source: string | null
@@ -5243,7 +5256,6 @@ export type Database = {
           created_at?: string
           dci_id?: string | null
           famille_id?: string | null
-          famille_produit_id?: string | null
           forme_id?: string | null
           id?: string
           id_produit_source?: string | null
@@ -5276,7 +5288,6 @@ export type Database = {
           created_at?: string
           dci_id?: string | null
           famille_id?: string | null
-          famille_produit_id?: string | null
           forme_id?: string | null
           id?: string
           id_produit_source?: string | null
@@ -5303,6 +5314,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_produits_categorie_tarification"
+            columns: ["categorie_tarification_id"]
+            isOneToOne: false
+            referencedRelation: "categorie_tarification"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_produits_classe_therapeutique"
             columns: ["classe_therapeutique_id"]
             isOneToOne: false
@@ -5314,6 +5332,13 @@ export type Database = {
             columns: ["dci_id"]
             isOneToOne: false
             referencedRelation: "dci"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_produits_famille"
+            columns: ["famille_id"]
+            isOneToOne: false
+            referencedRelation: "famille_produit"
             referencedColumns: ["id"]
           },
           {
@@ -5335,13 +5360,6 @@ export type Database = {
             columns: ["categorie_tarification_id"]
             isOneToOne: false
             referencedRelation: "categorie_tarification"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "produits_famille_produit_id_fkey"
-            columns: ["famille_produit_id"]
-            isOneToOne: false
-            referencedRelation: "famille_produit"
             referencedColumns: ["id"]
           },
           {
@@ -7631,7 +7649,12 @@ export type Database = {
         | "Freelance"
         | "Consultant"
         | "Temporaire"
-      statut_vente: "En cours" | "Validée" | "Annulée" | "Remboursée"
+      statut_vente:
+        | "En cours"
+        | "Validée"
+        | "Annulée"
+        | "Remboursée"
+        | "Finalisée"
       type_client:
         | "Ordinaire"
         | "Assuré"
@@ -7796,7 +7819,13 @@ export const Constants = {
         "Consultant",
         "Temporaire",
       ],
-      statut_vente: ["En cours", "Validée", "Annulée", "Remboursée"],
+      statut_vente: [
+        "En cours",
+        "Validée",
+        "Annulée",
+        "Remboursée",
+        "Finalisée",
+      ],
       type_client: [
         "Ordinaire",
         "Assuré",
