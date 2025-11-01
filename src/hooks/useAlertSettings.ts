@@ -51,7 +51,7 @@ export const useAlertSettings = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .rpc('get_current_tenant_alert_settings')
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         throw error;
