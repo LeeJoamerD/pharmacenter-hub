@@ -7475,6 +7475,30 @@ export type Database = {
         Returns: number
       }
       generer_alertes_expiration_automatiques: { Args: never; Returns: Json }
+      get_current_tenant_alert_settings: {
+        Args: never
+        Returns: {
+          alert_end_time: string
+          alert_frequency: string
+          alert_start_time: string
+          business_days_only: boolean
+          created_at: string
+          critical_stock_threshold: number
+          dashboard_notifications: boolean
+          email_notifications: boolean
+          expiration_alert_days: number
+          id: string
+          low_stock_enabled: boolean
+          low_stock_threshold: number
+          maximum_stock_threshold: number
+          near_expiration_days: number
+          overdue_inventory_days: number
+          slow_moving_days: number
+          sms_notifications: boolean
+          tenant_id: string
+          updated_at: string
+        }[]
+      }
       get_current_user_tenant_id: { Args: never; Returns: string }
       get_next_accounting_number: {
         Args: {
