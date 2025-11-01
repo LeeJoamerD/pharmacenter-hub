@@ -3097,7 +3097,7 @@ export type Database = {
           created_at: string
           id: string
           lot_id: string | null
-          montant_total_ligne: number
+          montant_ligne_ttc: number
           prix_unitaire_ht: number
           prix_unitaire_ttc: number
           produit_id: string
@@ -3112,7 +3112,7 @@ export type Database = {
           created_at?: string
           id?: string
           lot_id?: string | null
-          montant_total_ligne: number
+          montant_ligne_ttc: number
           prix_unitaire_ht: number
           prix_unitaire_ttc: number
           produit_id: string
@@ -3127,7 +3127,7 @@ export type Database = {
           created_at?: string
           id?: string
           lot_id?: string | null
-          montant_total_ligne?: number
+          montant_ligne_ttc?: number
           prix_unitaire_ht?: number
           prix_unitaire_ttc?: number
           produit_id?: string
