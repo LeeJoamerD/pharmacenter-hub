@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
@@ -19,6 +19,12 @@ export const useProductsPaginated = (
 ) => {
   const { tenantId } = useTenant();
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Réinitialiser à la page 1 quand les filtres ou la recherche changent
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filters.famille_id, filters.rayon_id, filters.forme_id, 
+      filters.dci_id, filters.classe_therapeutique_id, filters.laboratoire_id]);
 
   const query = useQuery({
     queryKey: ['products-paginated', tenantId, currentPage, pageSize, searchTerm, filters],
