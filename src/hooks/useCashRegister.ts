@@ -129,10 +129,12 @@ const useCashRegister = () => {
     }
   }, [tenantId]);
 
-  // Ouvrir une nouvelle session
+  // Ouvrir une nouvelle session (avec support optionnel type_session et caisse_id)
   const openSession = useCallback(async (
     caissierId: string,
-    fondCaisseOuverture: number
+    fondCaisseOuverture: number,
+    type_session?: string,
+    caisse_id?: string
   ): Promise<CashSession | undefined> => {
     if (!tenantId) {
       toast.error('Aucun tenant trouvé');
@@ -143,9 +145,12 @@ const useCashRegister = () => {
     setError(null);
     
     try {
-      // Vérifier qu'il n'y a pas de session ouverte
+      // Vérifier qu'il n'y a pas de session ouverte (pour la compatibilité)
       const { data: existingSession } = await supabase
-        .rpc('has_open_session' as any) as { data: boolean };
+        .rpc('has_open_session', {
+          p_type_session: type_session || null,
+          p_caisse_id: caisse_id || null
+        });
 
       if (existingSession) {
         throw new Error('Une session est déjà ouverte');
@@ -153,23 +158,32 @@ const useCashRegister = () => {
 
       // Générer le numéro de session
       const { data: numeroSession, error: numeroError } = await supabase
-        .rpc('generate_session_number' as any) as { data: string; error: any };
+        .rpc('generate_session_number', {
+          p_type_session: type_session || 'Matin',
+          p_caisse_id: caisse_id || null
+        });
 
       if (numeroError) throw numeroError;
 
       // Créer la nouvelle session
+      const insertData: any = {
+        numero_session: numeroSession,
+        caissier_id: caissierId,
+        agent_id: caissierId,
+        date_ouverture: new Date().toISOString(),
+        fond_caisse_ouverture: fondCaisseOuverture,
+        statut: 'Ouverte'
+      };
+
+      // Ajouter les champs conditionnellement s'ils sont fournis
+      if (type_session) insertData.type_session = type_session;
+      if (caisse_id) insertData.caisse_id = caisse_id;
+
       const { data: newSession, error } = await supabase
         .from('sessions_caisse')
-        .insert({
-          tenant_id: tenantId,
-          numero_session: numeroSession,
-          caissier_id: caissierId,
-          date_ouverture: new Date().toISOString(),
-          fond_caisse_ouverture: fondCaisseOuverture,
-          statut: 'Ouverte' as const
-        })
+        .insert(insertData)
         .select()
-        .single() as { data: CashSession; error: any };
+        .single();
 
       if (error) throw error;
 
@@ -177,11 +191,11 @@ const useCashRegister = () => {
       await supabase
         .from('mouvements_caisse')
         .insert({
-          tenant_id: tenantId,
           session_caisse_id: newSession.id,
-          type_mouvement: 'Fond_initial' as const,
+          type_mouvement: 'Fond_initial',
           montant: fondCaisseOuverture,
           description: 'Fond de caisse initial',
+          motif: 'Fond de caisse initial',
           agent_id: caissierId,
           date_mouvement: new Date().toISOString()
         });
