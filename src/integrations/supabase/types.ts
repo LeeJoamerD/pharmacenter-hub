@@ -767,6 +767,48 @@ export type Database = {
           },
         ]
       }
+      caisses: {
+        Row: {
+          code_caisse: string
+          created_at: string | null
+          description: string | null
+          emplacement: string | null
+          id: string
+          is_active: boolean | null
+          metadata: Json | null
+          nom_caisse: string
+          tenant_id: string
+          type_caisse: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          code_caisse: string
+          created_at?: string | null
+          description?: string | null
+          emplacement?: string | null
+          id?: string
+          is_active?: boolean | null
+          metadata?: Json | null
+          nom_caisse: string
+          tenant_id: string
+          type_caisse?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          code_caisse?: string
+          created_at?: string | null
+          description?: string | null
+          emplacement?: string | null
+          id?: string
+          is_active?: boolean | null
+          metadata?: Json | null
+          nom_caisse?: string
+          tenant_id?: string
+          type_caisse?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       categorie_tarification: {
         Row: {
           coefficient_prix_vente: number | null
@@ -1986,6 +2028,7 @@ export type Database = {
       }
       encaissements: {
         Row: {
+          caisse_id: string | null
           created_at: string
           date_encaissement: string | null
           id: string
@@ -1999,6 +2042,7 @@ export type Database = {
           vente_id: string
         }
         Insert: {
+          caisse_id?: string | null
           created_at?: string
           date_encaissement?: string | null
           id?: string
@@ -2012,6 +2056,7 @@ export type Database = {
           vente_id: string
         }
         Update: {
+          caisse_id?: string | null
           created_at?: string
           date_encaissement?: string | null
           id?: string
@@ -2026,11 +2071,32 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "encaissements_caisse_id_fkey"
+            columns: ["caisse_id"]
+            isOneToOne: false
+            referencedRelation: "caisses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encaissements_caisse_id_fkey"
+            columns: ["caisse_id"]
+            isOneToOne: false
+            referencedRelation: "v_rapport_par_caisse_type"
+            referencedColumns: ["caisse_id"]
+          },
+          {
             foreignKeyName: "encaissements_session_caisse_id_fkey"
             columns: ["session_caisse_id"]
             isOneToOne: false
             referencedRelation: "sessions_caisse"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encaissements_session_caisse_id_fkey"
+            columns: ["session_caisse_id"]
+            isOneToOne: false
+            referencedRelation: "v_rapport_session_complet"
+            referencedColumns: ["session_id"]
           },
           {
             foreignKeyName: "encaissements_session_caisse_id_fkey"
@@ -3635,6 +3701,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "sessions_caisse"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_caisse_session_caisse_id_fkey"
+            columns: ["session_caisse_id"]
+            isOneToOne: false
+            referencedRelation: "v_rapport_session_complet"
+            referencedColumns: ["session_id"]
           },
           {
             foreignKeyName: "mouvements_caisse_session_caisse_id_fkey"
@@ -6277,10 +6350,12 @@ export type Database = {
       sessions_caisse: {
         Row: {
           agent_id: string
+          caisse_id: string | null
           caissier_id: string | null
           created_at: string
           date_fermeture: string | null
           date_ouverture: string | null
+          date_session: string
           ecart: number | null
           fond_caisse_fermeture: number | null
           fond_caisse_ouverture: number | null
@@ -6293,14 +6368,17 @@ export type Database = {
           numero_session: string | null
           statut: string | null
           tenant_id: string
+          type_session: Database["public"]["Enums"]["type_session_enum"]
           updated_at: string
         }
         Insert: {
           agent_id: string
+          caisse_id?: string | null
           caissier_id?: string | null
           created_at?: string
           date_fermeture?: string | null
           date_ouverture?: string | null
+          date_session?: string
           ecart?: number | null
           fond_caisse_fermeture?: number | null
           fond_caisse_ouverture?: number | null
@@ -6313,14 +6391,17 @@ export type Database = {
           numero_session?: string | null
           statut?: string | null
           tenant_id: string
+          type_session?: Database["public"]["Enums"]["type_session_enum"]
           updated_at?: string
         }
         Update: {
           agent_id?: string
+          caisse_id?: string | null
           caissier_id?: string | null
           created_at?: string
           date_fermeture?: string | null
           date_ouverture?: string | null
+          date_session?: string
           ecart?: number | null
           fond_caisse_fermeture?: number | null
           fond_caisse_ouverture?: number | null
@@ -6333,6 +6414,7 @@ export type Database = {
           numero_session?: string | null
           statut?: string | null
           tenant_id?: string
+          type_session?: Database["public"]["Enums"]["type_session_enum"]
           updated_at?: string
         }
         Relationships: [
@@ -6342,6 +6424,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "personnel"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_caisse_caisse_id_fkey"
+            columns: ["caisse_id"]
+            isOneToOne: false
+            referencedRelation: "caisses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_caisse_caisse_id_fkey"
+            columns: ["caisse_id"]
+            isOneToOne: false
+            referencedRelation: "v_rapport_par_caisse_type"
+            referencedColumns: ["caisse_id"]
           },
           {
             foreignKeyName: "sessions_caisse_tenant_id_fkey"
@@ -7026,6 +7122,7 @@ export type Database = {
       ventes: {
         Row: {
           agent_id: string | null
+          caisse_id: string | null
           client_id: string | null
           created_at: string
           date_vente: string | null
@@ -7043,6 +7140,7 @@ export type Database = {
           notes: string | null
           numero_vente: string
           remise_globale: number | null
+          session_caisse_id: string | null
           statut: Database["public"]["Enums"]["statut_vente"] | null
           taux_couverture_assurance: number | null
           tenant_id: string
@@ -7051,6 +7149,7 @@ export type Database = {
         }
         Insert: {
           agent_id?: string | null
+          caisse_id?: string | null
           client_id?: string | null
           created_at?: string
           date_vente?: string | null
@@ -7068,6 +7167,7 @@ export type Database = {
           notes?: string | null
           numero_vente: string
           remise_globale?: number | null
+          session_caisse_id?: string | null
           statut?: Database["public"]["Enums"]["statut_vente"] | null
           taux_couverture_assurance?: number | null
           tenant_id: string
@@ -7076,6 +7176,7 @@ export type Database = {
         }
         Update: {
           agent_id?: string | null
+          caisse_id?: string | null
           client_id?: string | null
           created_at?: string
           date_vente?: string | null
@@ -7093,6 +7194,7 @@ export type Database = {
           notes?: string | null
           numero_vente?: string
           remise_globale?: number | null
+          session_caisse_id?: string | null
           statut?: Database["public"]["Enums"]["statut_vente"] | null
           taux_couverture_assurance?: number | null
           tenant_id?: string
@@ -7108,10 +7210,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ventes_caisse_id_fkey"
+            columns: ["caisse_id"]
+            isOneToOne: false
+            referencedRelation: "caisses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_caisse_id_fkey"
+            columns: ["caisse_id"]
+            isOneToOne: false
+            referencedRelation: "v_rapport_par_caisse_type"
+            referencedColumns: ["caisse_id"]
+          },
+          {
             foreignKeyName: "ventes_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_session_caisse_id_fkey"
+            columns: ["session_caisse_id"]
+            isOneToOne: false
+            referencedRelation: "sessions_caisse"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_session_caisse_id_fkey"
+            columns: ["session_caisse_id"]
+            isOneToOne: false
+            referencedRelation: "v_rapport_session_complet"
+            referencedColumns: ["session_id"]
+          },
+          {
+            foreignKeyName: "ventes_session_caisse_id_fkey"
+            columns: ["session_caisse_id"]
+            isOneToOne: false
+            referencedRelation: "v_sessions_caisse_resumees"
             referencedColumns: ["id"]
           },
           {
@@ -7410,6 +7547,83 @@ export type Database = {
       }
     }
     Views: {
+      v_rapport_par_caisse_type: {
+        Row: {
+          caisse_id: string | null
+          code_caisse: string | null
+          date_session: string | null
+          montant_moyen_vente: number | null
+          nom_caisse: string | null
+          nombre_sessions: number | null
+          nombre_ventes: number | null
+          tenant_id: string | null
+          total_ventes: number | null
+          type_session: Database["public"]["Enums"]["type_session_enum"] | null
+        }
+        Relationships: []
+      }
+      v_rapport_session_complet: {
+        Row: {
+          caisse_emplacement: string | null
+          caissier_nom: string | null
+          code_caisse: string | null
+          date_fermeture: string | null
+          date_ouverture: string | null
+          date_session: string | null
+          ecart: number | null
+          fond_caisse_fermeture: number | null
+          fond_caisse_ouverture: number | null
+          montant_moyen_vente: number | null
+          montant_theorique_fermeture: number | null
+          nom_caisse: string | null
+          nombre_articles_vendus: number | null
+          nombre_ventes: number | null
+          numero_session: string | null
+          session_id: string | null
+          statut: string | null
+          tenant_id: string | null
+          total_carte: number | null
+          total_cheque: number | null
+          total_entrees: number | null
+          total_especes: number | null
+          total_mobile: number | null
+          total_sorties: number | null
+          total_ventes: number | null
+          total_virement: number | null
+          type_session: Database["public"]["Enums"]["type_session_enum"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_caisse_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_resume_journalier: {
+        Row: {
+          date_session: string | null
+          nombre_caisses_actives: number | null
+          nombre_sessions_ouvertes: number | null
+          nombre_ventes_journee: number | null
+          tenant_id: string | null
+          total_matin: number | null
+          total_midi: number | null
+          total_soir: number | null
+          total_ventes_journee: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_caisse_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_sessions_caisse_resumees: {
         Row: {
           agent_id: string | null
@@ -7504,7 +7718,12 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: number
       }
-      generate_session_number: { Args: never; Returns: string }
+      generate_session_number:
+        | { Args: never; Returns: string }
+        | {
+            Args: { p_caisse_id?: string; p_type_session?: string }
+            Returns: string
+          }
       generer_alertes_expiration_automatiques: { Args: never; Returns: Json }
       get_current_tenant_alert_settings: {
         Args: never
@@ -7539,7 +7758,12 @@ export type Database = {
         }
         Returns: string
       }
-      has_open_session: { Args: never; Returns: boolean }
+      has_open_session:
+        | { Args: never; Returns: boolean }
+        | {
+            Args: { p_caisse_id?: string; p_type_session?: string }
+            Returns: boolean
+          }
       init_inventaire_items: { Args: { p_session_id: string }; Returns: Json }
       is_cross_tenant_authorized: {
         Args: {
@@ -7738,6 +7962,7 @@ export type Database = {
         | "Conventionné"
         | "Entreprise"
         | "Personnel"
+      type_session_enum: "Matin" | "Midi" | "Soir"
       type_vente: "Comptant" | "Crédit" | "Assurance"
     }
     CompositeTypes: {
@@ -7910,6 +8135,7 @@ export const Constants = {
         "Entreprise",
         "Personnel",
       ],
+      type_session_enum: ["Matin", "Midi", "Soir"],
       type_vente: ["Comptant", "Crédit", "Assurance"],
     },
   },
