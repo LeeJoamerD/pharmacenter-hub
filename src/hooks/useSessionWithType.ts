@@ -251,18 +251,9 @@ export const useSessionWithType = () => {
     }
   }, [tenantId]);
 
-  // Charger les caisses au montage
-  useEffect(() => {
-    if (tenantId) {
-      loadCaisses();
-    }
-  }, [tenantId, loadCaisses]);
-
   return {
-    caisses,
     loading,
     error,
-    loadCaisses,
     hasOpenSession,
     getOpenSession,
     getDailySessions,
