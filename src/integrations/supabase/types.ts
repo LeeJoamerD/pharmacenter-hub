@@ -2033,6 +2033,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "encaissements_session_caisse_id_fkey"
+            columns: ["session_caisse_id"]
+            isOneToOne: false
+            referencedRelation: "v_sessions_caisse_resumees"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "encaissements_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -3567,11 +3574,14 @@ export type Database = {
           agent_id: string | null
           created_at: string
           date_mouvement: string | null
+          description: string | null
           id: string
           montant: number
           motif: string
           notes: string | null
           reference: string | null
+          reference_id: string | null
+          reference_type: string | null
           session_caisse_id: string
           tenant_id: string
           type_mouvement: string
@@ -3581,11 +3591,14 @@ export type Database = {
           agent_id?: string | null
           created_at?: string
           date_mouvement?: string | null
+          description?: string | null
           id?: string
           montant: number
           motif: string
           notes?: string | null
           reference?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
           session_caisse_id: string
           tenant_id: string
           type_mouvement: string
@@ -3595,11 +3608,14 @@ export type Database = {
           agent_id?: string | null
           created_at?: string
           date_mouvement?: string | null
+          description?: string | null
           id?: string
           montant?: number
           motif?: string
           notes?: string | null
           reference?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
           session_caisse_id?: string
           tenant_id?: string
           type_mouvement?: string
@@ -3618,6 +3634,13 @@ export type Database = {
             columns: ["session_caisse_id"]
             isOneToOne: false
             referencedRelation: "sessions_caisse"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_caisse_session_caisse_id_fkey"
+            columns: ["session_caisse_id"]
+            isOneToOne: false
+            referencedRelation: "v_sessions_caisse_resumees"
             referencedColumns: ["id"]
           },
           {
@@ -6254,6 +6277,7 @@ export type Database = {
       sessions_caisse: {
         Row: {
           agent_id: string
+          caissier_id: string | null
           created_at: string
           date_fermeture: string | null
           date_ouverture: string | null
@@ -6261,15 +6285,19 @@ export type Database = {
           fond_caisse_fermeture: number | null
           fond_caisse_ouverture: number | null
           id: string
+          montant_reel_fermeture: number | null
+          montant_theorique_fermeture: number | null
           montant_total_encaissements: number | null
           montant_total_ventes: number | null
           notes: string | null
+          numero_session: string | null
           statut: string | null
           tenant_id: string
           updated_at: string
         }
         Insert: {
           agent_id: string
+          caissier_id?: string | null
           created_at?: string
           date_fermeture?: string | null
           date_ouverture?: string | null
@@ -6277,15 +6305,19 @@ export type Database = {
           fond_caisse_fermeture?: number | null
           fond_caisse_ouverture?: number | null
           id?: string
+          montant_reel_fermeture?: number | null
+          montant_theorique_fermeture?: number | null
           montant_total_encaissements?: number | null
           montant_total_ventes?: number | null
           notes?: string | null
+          numero_session?: string | null
           statut?: string | null
           tenant_id: string
           updated_at?: string
         }
         Update: {
           agent_id?: string
+          caissier_id?: string | null
           created_at?: string
           date_fermeture?: string | null
           date_ouverture?: string | null
@@ -6293,9 +6325,12 @@ export type Database = {
           fond_caisse_fermeture?: number | null
           fond_caisse_ouverture?: number | null
           id?: string
+          montant_reel_fermeture?: number | null
+          montant_theorique_fermeture?: number | null
           montant_total_encaissements?: number | null
           montant_total_ventes?: number | null
           notes?: string | null
+          numero_session?: string | null
           statut?: string | null
           tenant_id?: string
           updated_at?: string
@@ -7375,12 +7410,43 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_sessions_caisse_resumees: {
+        Row: {
+          agent_id: string | null
+          date_fermeture: string | null
+          date_ouverture: string | null
+          ecart: number | null
+          fond_caisse_ouverture: number | null
+          id: string | null
+          montant_reel_fermeture: number | null
+          montant_theorique_fermeture: number | null
+          nombre_mouvements: number | null
+          notes: string | null
+          numero_session: string | null
+          statut: string | null
+          tenant_id: string | null
+          total_encaissements: number | null
+          total_retraits: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_caisse_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_compliance_metrics: {
         Args: { p_tenant_id: string }
         Returns: Json
+      }
+      calculate_expected_closing: {
+        Args: { p_session_id: string }
+        Returns: number
       }
       calculate_low_stock_metrics: {
         Args: { p_tenant_id: string }
@@ -7438,6 +7504,7 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: number
       }
+      generate_session_number: { Args: never; Returns: string }
       generer_alertes_expiration_automatiques: { Args: never; Returns: Json }
       get_current_tenant_alert_settings: {
         Args: never
@@ -7472,6 +7539,7 @@ export type Database = {
         }
         Returns: string
       }
+      has_open_session: { Args: never; Returns: boolean }
       init_inventaire_items: { Args: { p_session_id: string }; Returns: Json }
       is_cross_tenant_authorized: {
         Args: {
