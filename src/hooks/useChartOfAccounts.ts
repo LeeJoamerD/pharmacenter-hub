@@ -157,7 +157,7 @@ export const useChartOfAccounts = (): UseChartOfAccountsReturn => {
         .select('id')
         .eq('tenant_id', tenantId)
         .eq('numero_compte', data.code)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         toast({
