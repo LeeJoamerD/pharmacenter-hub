@@ -752,6 +752,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "balances_compte_id_fkey"
+            columns: ["compte_id"]
+            isOneToOne: false
+            referencedRelation: "v_comptes_avec_soldes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "balances_exercice_id_fkey"
             columns: ["exercice_id"]
             isOneToOne: false
@@ -2523,6 +2530,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "immobilisations_compte_id_fkey"
+            columns: ["compte_id"]
+            isOneToOne: false
+            referencedRelation: "v_comptes_avec_soldes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "immobilisations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -3043,6 +3057,13 @@ export type Database = {
             columns: ["compte_id"]
             isOneToOne: false
             referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_ecriture_compte_id_fkey"
+            columns: ["compte_id"]
+            isOneToOne: false
+            referencedRelation: "v_comptes_avec_soldes"
             referencedColumns: ["id"]
           },
           {
@@ -5017,37 +5038,49 @@ export type Database = {
       }
       plan_comptable: {
         Row: {
+          analytique: boolean | null
           classe: number
           compte_parent_id: string | null
           created_at: string
+          description: string | null
           id: string
           is_active: boolean | null
           libelle_compte: string
+          niveau: number | null
           numero_compte: string
+          rapprochement: boolean | null
           tenant_id: string
           type_compte: string
           updated_at: string
         }
         Insert: {
+          analytique?: boolean | null
           classe: number
           compte_parent_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           is_active?: boolean | null
           libelle_compte: string
+          niveau?: number | null
           numero_compte: string
+          rapprochement?: boolean | null
           tenant_id: string
           type_compte: string
           updated_at?: string
         }
         Update: {
+          analytique?: boolean | null
           classe?: number
           compte_parent_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           is_active?: boolean | null
           libelle_compte?: string
+          niveau?: number | null
           numero_compte?: string
+          rapprochement?: boolean | null
           tenant_id?: string
           type_compte?: string
           updated_at?: string
@@ -5058,6 +5091,13 @@ export type Database = {
             columns: ["compte_parent_id"]
             isOneToOne: false
             referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_comptable_compte_parent_id_fkey"
+            columns: ["compte_parent_id"]
+            isOneToOne: false
+            referencedRelation: "v_comptes_avec_soldes"
             referencedColumns: ["id"]
           },
           {
@@ -7547,6 +7587,49 @@ export type Database = {
       }
     }
     Views: {
+      v_comptes_avec_soldes: {
+        Row: {
+          actif: boolean | null
+          analytique: boolean | null
+          classe: number | null
+          code: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          libelle: string | null
+          niveau: number | null
+          parent_id: string | null
+          rapprochement: boolean | null
+          solde_crediteur: number | null
+          solde_debiteur: number | null
+          tenant_id: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_comptable_compte_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_comptable_compte_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "v_comptes_avec_soldes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_comptable_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_rapport_par_caisse_type: {
         Row: {
           caisse_id: string | null
@@ -7654,6 +7737,10 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_account_level: {
+        Args: { p_account_id: string; p_tenant_id: string }
+        Returns: number
+      }
       calculate_compliance_metrics: {
         Args: { p_tenant_id: string }
         Returns: Json
@@ -7691,6 +7778,10 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      can_delete_account: {
+        Args: { p_account_id: string; p_tenant_id: string }
+        Returns: Json
+      }
       check_login_attempts: {
         Args: { p_email: string; p_tenant_id: string }
         Returns: Json
@@ -7725,6 +7816,25 @@ export type Database = {
             Returns: string
           }
       generer_alertes_expiration_automatiques: { Args: never; Returns: Json }
+      get_account_hierarchy: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          actif: boolean
+          analytique: boolean
+          classe: number
+          code: string
+          description: string
+          id: string
+          libelle: string
+          niveau: number
+          parent_id: string
+          path: string
+          rapprochement: boolean
+          solde_crediteur: number
+          solde_debiteur: number
+          type: string
+        }[]
+      }
       get_current_tenant_alert_settings: {
         Args: never
         Returns: {

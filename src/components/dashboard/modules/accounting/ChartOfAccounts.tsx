@@ -9,33 +9,34 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { ChevronRight, ChevronDown, Search, Plus, Edit, Trash2, Filter, BookOpen, Building, DollarSign, CreditCard, Briefcase, TrendingUp, BarChart3 } from 'lucide-react';
+import { Skeleton } from "@/components/ui/skeleton";
+import { ChevronRight, ChevronDown, Search, Plus, Edit, Trash2, Filter, BookOpen, Building, DollarSign, CreditCard, Briefcase, TrendingUp, BarChart3, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-
-interface Account {
-  id: string;
-  code: string;
-  libelle: string;
-  classe: number;
-  type: 'detail' | 'titre' | 'sous-titre';
-  parent_id?: string;
-  niveau: number;
-  actif: boolean;
-  analytique: boolean;
-  rapprochement: boolean;
-  description?: string;
-  solde_debiteur: number;
-  solde_crediteur: number;
-  children?: Account[];
-}
+import { useChartOfAccounts, Account } from "@/hooks/useChartOfAccounts";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 const ChartOfAccounts = () => {
   const { toast } = useToast();
+  const {
+    accounts,
+    accountsTree,
+    accountsByClass,
+    analyticalAccounts,
+    loading,
+    error,
+    isSaving,
+    createAccount,
+    updateAccount,
+    deleteAccount,
+    refreshAccounts
+  } = useChartOfAccounts();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [showDialog, setShowDialog] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Classes OHADA
   const ohadaClasses = [
@@ -47,96 +48,6 @@ const ChartOfAccounts = () => {
     { classe: 6, nom: 'Comptes de charges', icon: TrendingUp, color: 'text-red-600' },
     { classe: 7, nom: 'Comptes de produits', icon: DollarSign, color: 'text-emerald-600' }
   ];
-
-  // Données exemple du plan comptable
-  const [accounts, setAccounts] = useState<Account[]>([
-    {
-      id: '1',
-      code: '10',
-      libelle: 'Capital et réserves',
-      classe: 1,
-      type: 'titre',
-      niveau: 1,
-      actif: true,
-      analytique: false,
-      rapprochement: false,
-      solde_debiteur: 0,
-      solde_crediteur: 250000,
-      children: [
-        {
-          id: '2',
-          code: '101',
-          libelle: 'Capital social',
-          classe: 1,
-          type: 'sous-titre',
-          parent_id: '1',
-          niveau: 2,
-          actif: true,
-          analytique: false,
-          rapprochement: false,
-          solde_debiteur: 0,
-          solde_crediteur: 100000
-        },
-        {
-          id: '3',
-          code: '106',
-          libelle: 'Réserves',
-          classe: 1,
-          type: 'detail',
-          parent_id: '1',
-          niveau: 2,
-          actif: true,
-          analytique: false,
-          rapprochement: false,
-          solde_debiteur: 0,
-          solde_crediteur: 150000
-        }
-      ]
-    },
-    {
-      id: '4',
-      code: '60',
-      libelle: 'Achats et variations de stocks',
-      classe: 6,
-      type: 'titre',
-      niveau: 1,
-      actif: true,
-      analytique: true,
-      rapprochement: false,
-      solde_debiteur: 850000,
-      solde_crediteur: 0,
-      children: [
-        {
-          id: '5',
-          code: '601',
-          libelle: 'Achats de matières premières',
-          classe: 6,
-          type: 'detail',
-          parent_id: '4',
-          niveau: 2,
-          actif: true,
-          analytique: true,
-          rapprochement: false,
-          solde_debiteur: 450000,
-          solde_crediteur: 0
-        },
-        {
-          id: '6',
-          code: '602',
-          libelle: 'Achats de médicaments',
-          classe: 6,
-          type: 'detail',
-          parent_id: '4',
-          niveau: 2,
-          actif: true,
-          analytique: true,
-          rapprochement: false,
-          solde_debiteur: 400000,
-          solde_crediteur: 0
-        }
-      ]
-    }
-  ]);
 
   const [newAccount, setNewAccount] = useState<Partial<Account>>({
     code: '',
@@ -150,14 +61,14 @@ const ChartOfAccounts = () => {
     description: ''
   });
 
-  const filteredAccounts = accounts.filter(account => {
+  const filteredAccounts = accountsTree.filter(account => {
     const matchesSearch = account.libelle.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          account.code.includes(searchTerm);
     const matchesClass = selectedClass === 'all' || account.classe.toString() === selectedClass;
     return matchesSearch && matchesClass;
   });
 
-  const handleSaveAccount = () => {
+  const handleSaveAccount = async () => {
     if (!newAccount.code || !newAccount.libelle) {
       toast({
         title: "Erreur",
@@ -169,28 +80,20 @@ const ChartOfAccounts = () => {
 
     if (editingAccount) {
       // Modification
-      setAccounts(prev => prev.map(acc => 
-        acc.id === editingAccount.id 
-          ? { ...acc, ...newAccount } as Account
-          : acc
-      ));
-      toast({
-        title: "Succès",
-        description: "Compte modifié avec succès"
-      });
+      await updateAccount(editingAccount.id, newAccount);
     } else {
       // Création
-      const account: Account = {
-        id: Date.now().toString(),
-        solde_debiteur: 0,
-        solde_crediteur: 0,
-        ...newAccount
-      } as Account;
-      
-      setAccounts(prev => [...prev, account]);
-      toast({
-        title: "Succès",
-        description: "Compte créé avec succès"
+      await createAccount({
+        code: newAccount.code!,
+        libelle: newAccount.libelle!,
+        classe: newAccount.classe!,
+        type: newAccount.type as 'detail' | 'titre' | 'sous-titre',
+        parent_id: newAccount.parent_id,
+        niveau: newAccount.niveau!,
+        actif: newAccount.actif!,
+        analytique: newAccount.analytique!,
+        rapprochement: newAccount.rapprochement!,
+        description: newAccount.description
       });
     }
 
@@ -215,12 +118,9 @@ const ChartOfAccounts = () => {
     setShowDialog(true);
   };
 
-  const handleDeleteAccount = (accountId: string) => {
-    setAccounts(prev => prev.filter(acc => acc.id !== accountId));
-    toast({
-      title: "Succès",
-      description: "Compte supprimé avec succès"
-    });
+  const handleDeleteAccount = async (accountId: string) => {
+    await deleteAccount(accountId);
+    setDeleteConfirmId(null);
   };
 
   const toggleNode = (nodeId: string) => {
@@ -269,13 +169,15 @@ const ChartOfAccounts = () => {
               variant="ghost" 
               size="sm"
               onClick={() => handleEditAccount(account)}
+              disabled={isSaving}
             >
               <Edit className="h-4 w-4" />
             </Button>
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => handleDeleteAccount(account.id)}
+              onClick={() => setDeleteConfirmId(account.id)}
+              disabled={isSaving}
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -296,7 +198,7 @@ const ChartOfAccounts = () => {
         <h2 className="text-2xl font-bold">Plan Comptable OHADA</h2>
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
           <DialogTrigger asChild>
-            <Button>
+            <Button disabled={isSaving}>
               <Plus className="mr-2 h-4 w-4" />
               Nouveau Compte
             </Button>
@@ -423,11 +325,18 @@ const ChartOfAccounts = () => {
             </div>
             
             <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setShowDialog(false)}>
+              <Button variant="outline" onClick={() => setShowDialog(false)} disabled={isSaving}>
                 Annuler
               </Button>
-              <Button onClick={handleSaveAccount}>
-                {editingAccount ? 'Modifier' : 'Créer'}
+              <Button onClick={handleSaveAccount} disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : (
+                  editingAccount ? 'Modifier' : 'Créer'
+                )}
               </Button>
             </div>
           </DialogContent>
@@ -442,113 +351,241 @@ const ChartOfAccounts = () => {
         </TabsList>
 
         <TabsContent value="tree" className="space-y-4">
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher un compte..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <Select value={selectedClass} onValueChange={setSelectedClass}>
-              <SelectTrigger className="w-[200px]">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Filtrer par classe" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes les classes</SelectItem>
-                {ohadaClasses.map(cls => (
-                  <SelectItem key={cls.classe} value={cls.classe.toString()}>
-                    Classe {cls.classe}
-                  </SelectItem>
+          {loading ? (
+            <Card>
+              <CardContent className="p-4 space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center space-x-3">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-10 flex-1" />
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Card>
-            <CardContent className="p-4">
-              {filteredAccounts.length > 0 ? (
-                renderAccountTree(filteredAccounts)
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Aucun compte trouvé
+              </CardContent>
+            </Card>
+          ) : error ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <p className="text-destructive mb-4">{error}</p>
+                <Button onClick={refreshAccounts}>Réessayer</Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="flex space-x-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Rechercher un compte..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <Select value={selectedClass} onValueChange={setSelectedClass}>
+                  <SelectTrigger className="w-[200px]">
+                    <Filter className="mr-2 h-4 w-4" />
+                    <SelectValue placeholder="Filtrer par classe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes les classes</SelectItem>
+                    {ohadaClasses.map(cls => (
+                      <SelectItem key={cls.classe} value={cls.classe.toString()}>
+                        Classe {cls.classe}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Card>
+                <CardContent className="p-4">
+                  {filteredAccounts.length > 0 ? (
+                    renderAccountTree(filteredAccounts)
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      {accounts.length === 0 ? (
+                        <>
+                          <p className="mb-4">Aucun compte dans le plan comptable</p>
+                          <Button onClick={() => setShowDialog(true)}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Créer le premier compte
+                          </Button>
+                        </>
+                      ) : (
+                        'Aucun compte trouvé'
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="classes" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {ohadaClasses.map(cls => {
-              const Icon = cls.icon;
-              const classAccounts = accounts.filter(acc => acc.classe === cls.classe);
-              return (
-                <Card key={cls.classe}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center space-x-2">
-                      <Icon className={`h-5 w-5 ${cls.color}`} />
-                      <span>Classe {cls.classe}</span>
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">{cls.nom}</p>
+          {loading ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {[...Array(7)].map((_, i) => (
+                <Card key={i}>
+                  <CardHeader>
+                    <Skeleton className="h-6 w-full" />
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Nombre de comptes:</span>
-                        <Badge variant="outline">{classAccounts.length}</Badge>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Solde total:</span>
-                        <span className="font-medium">
-                          {classAccounts.reduce((sum, acc) => sum + acc.solde_debiteur - acc.solde_crediteur, 0).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
+                    <Skeleton className="h-20 w-full" />
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {ohadaClasses.map(cls => {
+                const Icon = cls.icon;
+                const classAccounts = accountsByClass[cls.classe] || [];
+                const totalDebit = classAccounts.reduce((sum, acc) => sum + acc.solde_debiteur, 0);
+                const totalCredit = classAccounts.reduce((sum, acc) => sum + acc.solde_crediteur, 0);
+                return (
+                  <Card key={cls.classe} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => {
+                    setSelectedClass(cls.classe.toString());
+                  }}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center space-x-2">
+                        <Icon className={`h-5 w-5 ${cls.color}`} />
+                        <span>Classe {cls.classe}</span>
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground">{cls.nom}</p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Nombre de comptes:</span>
+                          <Badge variant="outline">{classAccounts.length}</Badge>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Total débit:</span>
+                          <span className="font-medium">{totalDebit.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Total crédit:</span>
+                          <span className="font-medium">{totalCredit.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="analytique" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Comptes analytiques</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Comptes utilisés pour la comptabilité analytique et les centres de coûts
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {accounts.filter(acc => acc.analytique).map(account => (
-                  <div key={account.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <Badge variant="outline">{account.code}</Badge>
-                      <span className="font-medium">{account.libelle}</span>
-                      <Badge variant="secondary">Analytique</Badge>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Classe {account.classe}
-                    </div>
-                  </div>
+          {loading ? (
+            <Card>
+              <CardContent className="p-4 space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
                 ))}
-                {accounts.filter(acc => acc.analytique).length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Aucun compte analytique configuré
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Statistiques</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Total comptes analytiques</p>
+                    <p className="text-2xl font-bold">{analyticalAccounts.length}</p>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Comptes actifs</p>
+                    <p className="text-2xl font-bold">{analyticalAccounts.filter(a => a.actif).length}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Solde total</p>
+                    <p className="text-2xl font-bold">
+                      {(analyticalAccounts.reduce((sum, acc) => sum + acc.solde_debiteur - acc.solde_crediteur, 0)).toLocaleString()}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Comptes analytiques</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Comptes utilisés pour la comptabilité analytique et les centres de coûts
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  {analyticalAccounts.length > 0 ? (
+                    <div className="space-y-4">
+                      {analyticalAccounts.map(account => (
+                        <div key={account.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+                          <div className="flex items-center space-x-3">
+                            <Badge variant="outline">{account.code}</Badge>
+                            <span className="font-medium">{account.libelle}</span>
+                            <Badge variant="secondary">Analytique</Badge>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <div className="text-sm text-muted-foreground">
+                              Classe {account.classe}
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleEditAccount(account)}
+                              disabled={isSaving}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Aucun compte analytique configuré
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
       </Tabs>
+
+      {/* Dialog de confirmation de suppression */}
+      <AlertDialog open={deleteConfirmId !== null} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer ce compte ? Cette action est irréversible.
+              Le compte ne sera supprimé que s'il n'a pas de comptes enfants ni d'écritures comptables.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSaving}>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => deleteConfirmId && handleDeleteAccount(deleteConfirmId)}
+              disabled={isSaving}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                'Supprimer'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
