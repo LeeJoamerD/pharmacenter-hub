@@ -1516,6 +1516,107 @@ export type Database = {
           },
         ]
       }
+      comptes_bancaires: {
+        Row: {
+          autoriser_decouvert: boolean
+          banque: string
+          cle_rib: string | null
+          code_banque: string | null
+          code_guichet: string | null
+          contact_banque: string | null
+          created_at: string
+          created_by_id: string | null
+          dernier_releve: string | null
+          devise: string
+          email_banque: string | null
+          est_actif: boolean
+          frequence_releve: string | null
+          iban: string | null
+          id: string
+          limite_decouvert: number | null
+          nom_compte: string
+          notes: string | null
+          numero_compte: string
+          releve_auto: boolean
+          solde_actuel: number
+          solde_initial: number
+          solde_rapproche: number
+          swift_bic: string | null
+          telephone_banque: string | null
+          tenant_id: string
+          type_compte: string
+          updated_at: string
+        }
+        Insert: {
+          autoriser_decouvert?: boolean
+          banque: string
+          cle_rib?: string | null
+          code_banque?: string | null
+          code_guichet?: string | null
+          contact_banque?: string | null
+          created_at?: string
+          created_by_id?: string | null
+          dernier_releve?: string | null
+          devise?: string
+          email_banque?: string | null
+          est_actif?: boolean
+          frequence_releve?: string | null
+          iban?: string | null
+          id?: string
+          limite_decouvert?: number | null
+          nom_compte: string
+          notes?: string | null
+          numero_compte: string
+          releve_auto?: boolean
+          solde_actuel?: number
+          solde_initial?: number
+          solde_rapproche?: number
+          swift_bic?: string | null
+          telephone_banque?: string | null
+          tenant_id: string
+          type_compte: string
+          updated_at?: string
+        }
+        Update: {
+          autoriser_decouvert?: boolean
+          banque?: string
+          cle_rib?: string | null
+          code_banque?: string | null
+          code_guichet?: string | null
+          contact_banque?: string | null
+          created_at?: string
+          created_by_id?: string | null
+          dernier_releve?: string | null
+          devise?: string
+          email_banque?: string | null
+          est_actif?: boolean
+          frequence_releve?: string | null
+          iban?: string | null
+          id?: string
+          limite_decouvert?: number | null
+          nom_compte?: string
+          notes?: string | null
+          numero_compte?: string
+          releve_auto?: boolean
+          solde_actuel?: number
+          solde_initial?: number
+          solde_rapproche?: number
+          swift_bic?: string | null
+          telephone_banque?: string | null
+          tenant_id?: string
+          type_compte?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comptes_bancaires_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configurations_fifo: {
         Row: {
           action_automatique: string | null
@@ -1976,6 +2077,123 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      echeanciers_paiements: {
+        Row: {
+          alerte_avant_echeance: number | null
+          client_id: string | null
+          created_at: string
+          created_by_id: string | null
+          date_derniere_echeance: string | null
+          date_emission: string
+          date_premiere_echeance: string
+          derniere_alerte: string | null
+          description: string | null
+          facture_id: string | null
+          fournisseur_id: string | null
+          id: string
+          libelle: string
+          montant_paye: number
+          montant_restant: number
+          montant_total: number
+          nombre_echeances: number
+          notes: string | null
+          periodicite: string | null
+          statut: string
+          tenant_id: string
+          tiers_nom: string | null
+          type_echeancier: string
+          updated_at: string
+        }
+        Insert: {
+          alerte_avant_echeance?: number | null
+          client_id?: string | null
+          created_at?: string
+          created_by_id?: string | null
+          date_derniere_echeance?: string | null
+          date_emission: string
+          date_premiere_echeance: string
+          derniere_alerte?: string | null
+          description?: string | null
+          facture_id?: string | null
+          fournisseur_id?: string | null
+          id?: string
+          libelle: string
+          montant_paye?: number
+          montant_restant: number
+          montant_total: number
+          nombre_echeances?: number
+          notes?: string | null
+          periodicite?: string | null
+          statut?: string
+          tenant_id: string
+          tiers_nom?: string | null
+          type_echeancier: string
+          updated_at?: string
+        }
+        Update: {
+          alerte_avant_echeance?: number | null
+          client_id?: string | null
+          created_at?: string
+          created_by_id?: string | null
+          date_derniere_echeance?: string | null
+          date_emission?: string
+          date_premiere_echeance?: string
+          derniere_alerte?: string | null
+          description?: string | null
+          facture_id?: string | null
+          fournisseur_id?: string | null
+          id?: string
+          libelle?: string
+          montant_paye?: number
+          montant_restant?: number
+          montant_total?: number
+          nombre_echeances?: number
+          notes?: string | null
+          periodicite?: string | null
+          statut?: string
+          tenant_id?: string
+          tiers_nom?: string | null
+          type_echeancier?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "echeanciers_paiements_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "echeanciers_paiements_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "echeanciers_paiements_facture_id_fkey"
+            columns: ["facture_id"]
+            isOneToOne: false
+            referencedRelation: "factures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "echeanciers_paiements_facture_id_fkey"
+            columns: ["facture_id"]
+            isOneToOne: false
+            referencedRelation: "v_factures_avec_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "echeanciers_paiements_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
             referencedColumns: ["id"]
           },
         ]
@@ -3255,6 +3473,72 @@ export type Database = {
           },
         ]
       }
+      lignes_echeancier: {
+        Row: {
+          created_at: string
+          date_echeance: string
+          date_paiement: string | null
+          echeancier_id: string
+          id: string
+          montant_echeance: number
+          montant_paye: number
+          montant_restant: number
+          notes: string | null
+          numero_echeance: number
+          paiement_facture_id: string | null
+          statut: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_echeance: string
+          date_paiement?: string | null
+          echeancier_id: string
+          id?: string
+          montant_echeance: number
+          montant_paye?: number
+          montant_restant: number
+          notes?: string | null
+          numero_echeance: number
+          paiement_facture_id?: string | null
+          statut?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_echeance?: string
+          date_paiement?: string | null
+          echeancier_id?: string
+          id?: string
+          montant_echeance?: number
+          montant_paye?: number
+          montant_restant?: number
+          notes?: string | null
+          numero_echeance?: number
+          paiement_facture_id?: string | null
+          statut?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lignes_echeancier_echeancier_id_fkey"
+            columns: ["echeancier_id"]
+            isOneToOne: false
+            referencedRelation: "echeanciers_paiements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_echeancier_paiement_facture_id_fkey"
+            columns: ["paiement_facture_id"]
+            isOneToOne: false
+            referencedRelation: "paiements_factures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lignes_ecriture: {
         Row: {
           compte_id: string
@@ -3960,6 +4244,97 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      modes_paiement_config: {
+        Row: {
+          code: string
+          compte_bancaire_id: string | null
+          compte_comptable_id: string | null
+          couleur: string | null
+          created_at: string
+          delai_encaissement: number | null
+          est_actif: boolean
+          exige_reference: boolean
+          exige_validation: boolean
+          frais_fixes: number | null
+          frais_pourcentage: number | null
+          icone: string | null
+          id: string
+          libelle: string
+          montant_maximum: number | null
+          montant_minimum: number | null
+          notes: string | null
+          ordre_affichage: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          compte_bancaire_id?: string | null
+          compte_comptable_id?: string | null
+          couleur?: string | null
+          created_at?: string
+          delai_encaissement?: number | null
+          est_actif?: boolean
+          exige_reference?: boolean
+          exige_validation?: boolean
+          frais_fixes?: number | null
+          frais_pourcentage?: number | null
+          icone?: string | null
+          id?: string
+          libelle: string
+          montant_maximum?: number | null
+          montant_minimum?: number | null
+          notes?: string | null
+          ordre_affichage?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          compte_bancaire_id?: string | null
+          compte_comptable_id?: string | null
+          couleur?: string | null
+          created_at?: string
+          delai_encaissement?: number | null
+          est_actif?: boolean
+          exige_reference?: boolean
+          exige_validation?: boolean
+          frais_fixes?: number | null
+          frais_pourcentage?: number | null
+          icone?: string | null
+          id?: string
+          libelle?: string
+          montant_maximum?: number | null
+          montant_minimum?: number | null
+          notes?: string | null
+          ordre_affichage?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modes_paiement_config_compte_bancaire_id_fkey"
+            columns: ["compte_bancaire_id"]
+            isOneToOne: false
+            referencedRelation: "comptes_bancaires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modes_paiement_config_compte_comptable_id_fkey"
+            columns: ["compte_comptable_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modes_paiement_config_compte_comptable_id_fkey"
+            columns: ["compte_comptable_id"]
+            isOneToOne: false
+            referencedRelation: "v_comptes_avec_soldes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mouvements_caisse: {
         Row: {
@@ -5969,6 +6344,109 @@ export type Database = {
           },
         ]
       }
+      rapprochements_bancaires: {
+        Row: {
+          commentaires: string | null
+          compte_bancaire_id: string
+          created_at: string
+          created_by_id: string | null
+          date_debut: string
+          date_fin: string
+          date_validation: string | null
+          ecart: number
+          ecart_justifie: number
+          ecart_non_justifie: number
+          id: string
+          nb_transactions_non_rapprochees: number
+          nb_transactions_rapprochees: number
+          nb_transactions_suspectes: number
+          notes: string | null
+          numero_rapprochement: string
+          solde_comptable_debut: number
+          solde_comptable_fin: number
+          solde_releve_debut: number
+          solde_releve_fin: number
+          statut: string
+          tenant_id: string
+          updated_at: string
+          valide_par_id: string | null
+        }
+        Insert: {
+          commentaires?: string | null
+          compte_bancaire_id: string
+          created_at?: string
+          created_by_id?: string | null
+          date_debut: string
+          date_fin: string
+          date_validation?: string | null
+          ecart?: number
+          ecart_justifie?: number
+          ecart_non_justifie?: number
+          id?: string
+          nb_transactions_non_rapprochees?: number
+          nb_transactions_rapprochees?: number
+          nb_transactions_suspectes?: number
+          notes?: string | null
+          numero_rapprochement: string
+          solde_comptable_debut: number
+          solde_comptable_fin: number
+          solde_releve_debut: number
+          solde_releve_fin: number
+          statut?: string
+          tenant_id: string
+          updated_at?: string
+          valide_par_id?: string | null
+        }
+        Update: {
+          commentaires?: string | null
+          compte_bancaire_id?: string
+          created_at?: string
+          created_by_id?: string | null
+          date_debut?: string
+          date_fin?: string
+          date_validation?: string | null
+          ecart?: number
+          ecart_justifie?: number
+          ecart_non_justifie?: number
+          id?: string
+          nb_transactions_non_rapprochees?: number
+          nb_transactions_rapprochees?: number
+          nb_transactions_suspectes?: number
+          notes?: string | null
+          numero_rapprochement?: string
+          solde_comptable_debut?: number
+          solde_comptable_fin?: number
+          solde_releve_debut?: number
+          solde_releve_fin?: number
+          statut?: string
+          tenant_id?: string
+          updated_at?: string
+          valide_par_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rapprochements_bancaires_compte_bancaire_id_fkey"
+            columns: ["compte_bancaire_id"]
+            isOneToOne: false
+            referencedRelation: "comptes_bancaires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rapprochements_bancaires_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rapprochements_bancaires_valide_par_id_fkey"
+            columns: ["valide_par_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rayon_produit: {
         Row: {
           created_at: string
@@ -7369,6 +7847,129 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions_bancaires: {
+        Row: {
+          categorie: string | null
+          compte_bancaire_id: string
+          created_at: string
+          created_by_id: string | null
+          date_import: string | null
+          date_rapprochement: string | null
+          date_transaction: string
+          date_valeur: string | null
+          description: string | null
+          encaissement_id: string | null
+          id: string
+          libelle: string
+          metadata: Json | null
+          montant: number
+          mouvement_caisse_id: string | null
+          notes: string | null
+          paiement_facture_id: string | null
+          pieces_jointes: Json | null
+          rapproche_par_id: string | null
+          reference: string
+          reference_externe: string | null
+          source_import: string | null
+          statut_rapprochement: string
+          tenant_id: string
+          type_transaction: string
+          updated_at: string
+        }
+        Insert: {
+          categorie?: string | null
+          compte_bancaire_id: string
+          created_at?: string
+          created_by_id?: string | null
+          date_import?: string | null
+          date_rapprochement?: string | null
+          date_transaction: string
+          date_valeur?: string | null
+          description?: string | null
+          encaissement_id?: string | null
+          id?: string
+          libelle: string
+          metadata?: Json | null
+          montant: number
+          mouvement_caisse_id?: string | null
+          notes?: string | null
+          paiement_facture_id?: string | null
+          pieces_jointes?: Json | null
+          rapproche_par_id?: string | null
+          reference: string
+          reference_externe?: string | null
+          source_import?: string | null
+          statut_rapprochement?: string
+          tenant_id: string
+          type_transaction: string
+          updated_at?: string
+        }
+        Update: {
+          categorie?: string | null
+          compte_bancaire_id?: string
+          created_at?: string
+          created_by_id?: string | null
+          date_import?: string | null
+          date_rapprochement?: string | null
+          date_transaction?: string
+          date_valeur?: string | null
+          description?: string | null
+          encaissement_id?: string | null
+          id?: string
+          libelle?: string
+          metadata?: Json | null
+          montant?: number
+          mouvement_caisse_id?: string | null
+          notes?: string | null
+          paiement_facture_id?: string | null
+          pieces_jointes?: Json | null
+          rapproche_par_id?: string | null
+          reference?: string
+          reference_externe?: string | null
+          source_import?: string | null
+          statut_rapprochement?: string
+          tenant_id?: string
+          type_transaction?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_bancaires_compte_bancaire_id_fkey"
+            columns: ["compte_bancaire_id"]
+            isOneToOne: false
+            referencedRelation: "comptes_bancaires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_bancaires_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_bancaires_encaissement_id_fkey"
+            columns: ["encaissement_id"]
+            isOneToOne: false
+            referencedRelation: "encaissements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_bancaires_paiement_facture_id_fkey"
+            columns: ["paiement_facture_id"]
+            isOneToOne: false
+            referencedRelation: "paiements_factures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_bancaires_rapproche_par_id_fkey"
+            columns: ["rapproche_par_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
         ]
