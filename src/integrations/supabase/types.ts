@@ -598,6 +598,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "alertes_peremption_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
             foreignKeyName: "alertes_peremption_traitee_par_fkey"
             columns: ["traitee_par"]
             isOneToOne: false
@@ -850,6 +857,140 @@ export type Database = {
           },
         ]
       }
+      budgets: {
+        Row: {
+          annee: number
+          centre_cout_id: string | null
+          commentaire_ecart: string | null
+          compte_id: string | null
+          created_at: string
+          created_by_id: string | null
+          date_debut: string
+          date_fin: string
+          date_validation: string | null
+          ecart_montant: number | null
+          ecart_pourcentage: number | null
+          exercice_comptable_id: string | null
+          id: string
+          libelle: string
+          mois: number | null
+          montant_engage: number
+          montant_prevu: number
+          montant_realise: number
+          notes: string | null
+          statut: string
+          tenant_id: string
+          trimestre: number | null
+          type_periode: string
+          updated_at: string
+          valide_par_id: string | null
+        }
+        Insert: {
+          annee: number
+          centre_cout_id?: string | null
+          commentaire_ecart?: string | null
+          compte_id?: string | null
+          created_at?: string
+          created_by_id?: string | null
+          date_debut: string
+          date_fin: string
+          date_validation?: string | null
+          ecart_montant?: number | null
+          ecart_pourcentage?: number | null
+          exercice_comptable_id?: string | null
+          id?: string
+          libelle: string
+          mois?: number | null
+          montant_engage?: number
+          montant_prevu?: number
+          montant_realise?: number
+          notes?: string | null
+          statut?: string
+          tenant_id: string
+          trimestre?: number | null
+          type_periode: string
+          updated_at?: string
+          valide_par_id?: string | null
+        }
+        Update: {
+          annee?: number
+          centre_cout_id?: string | null
+          commentaire_ecart?: string | null
+          compte_id?: string | null
+          created_at?: string
+          created_by_id?: string | null
+          date_debut?: string
+          date_fin?: string
+          date_validation?: string | null
+          ecart_montant?: number | null
+          ecart_pourcentage?: number | null
+          exercice_comptable_id?: string | null
+          id?: string
+          libelle?: string
+          mois?: number | null
+          montant_engage?: number
+          montant_prevu?: number
+          montant_realise?: number
+          notes?: string | null
+          statut?: string
+          tenant_id?: string
+          trimestre?: number | null
+          type_periode?: string
+          updated_at?: string
+          valide_par_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_centre_cout_id_fkey"
+            columns: ["centre_cout_id"]
+            isOneToOne: false
+            referencedRelation: "centres_couts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_centre_cout_id_fkey"
+            columns: ["centre_cout_id"]
+            isOneToOne: false
+            referencedRelation: "v_performance_centres_couts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_compte_id_fkey"
+            columns: ["compte_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_compte_id_fkey"
+            columns: ["compte_id"]
+            isOneToOne: false
+            referencedRelation: "v_comptes_avec_soldes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_exercice_comptable_id_fkey"
+            columns: ["exercice_comptable_id"]
+            isOneToOne: false
+            referencedRelation: "exercices_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "budgets_valide_par_id_fkey"
+            columns: ["valide_par_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       caisses: {
         Row: {
           code_caisse: string
@@ -939,6 +1080,115 @@ export type Database = {
           },
         ]
       }
+      centres_couts: {
+        Row: {
+          centre_parent_id: string | null
+          code: string
+          compte_analytique_id: string | null
+          created_at: string
+          created_by_id: string | null
+          date_fermeture: string | null
+          date_ouverture: string
+          description: string | null
+          est_actif: boolean
+          id: string
+          niveau: number
+          nom: string
+          notes: string | null
+          objectif_marge_min: number | null
+          objectif_rotation_stock: number | null
+          responsable_id: string | null
+          tenant_id: string
+          type_centre: string
+          updated_at: string
+        }
+        Insert: {
+          centre_parent_id?: string | null
+          code: string
+          compte_analytique_id?: string | null
+          created_at?: string
+          created_by_id?: string | null
+          date_fermeture?: string | null
+          date_ouverture?: string
+          description?: string | null
+          est_actif?: boolean
+          id?: string
+          niveau?: number
+          nom: string
+          notes?: string | null
+          objectif_marge_min?: number | null
+          objectif_rotation_stock?: number | null
+          responsable_id?: string | null
+          tenant_id: string
+          type_centre: string
+          updated_at?: string
+        }
+        Update: {
+          centre_parent_id?: string | null
+          code?: string
+          compte_analytique_id?: string | null
+          created_at?: string
+          created_by_id?: string | null
+          date_fermeture?: string | null
+          date_ouverture?: string
+          description?: string | null
+          est_actif?: boolean
+          id?: string
+          niveau?: number
+          nom?: string
+          notes?: string | null
+          objectif_marge_min?: number | null
+          objectif_rotation_stock?: number | null
+          responsable_id?: string | null
+          tenant_id?: string
+          type_centre?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "centres_couts_centre_parent_id_fkey"
+            columns: ["centre_parent_id"]
+            isOneToOne: false
+            referencedRelation: "centres_couts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "centres_couts_centre_parent_id_fkey"
+            columns: ["centre_parent_id"]
+            isOneToOne: false
+            referencedRelation: "v_performance_centres_couts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "centres_couts_compte_analytique_id_fkey"
+            columns: ["compte_analytique_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "centres_couts_compte_analytique_id_fkey"
+            columns: ["compte_analytique_id"]
+            isOneToOne: false
+            referencedRelation: "v_comptes_avec_soldes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "centres_couts_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "centres_couts_responsable_id_fkey"
+            columns: ["responsable_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channel_participants: {
         Row: {
           channel_id: string
@@ -1017,6 +1267,48 @@ export type Database = {
           libelle_classe?: string
           systeme_anatomique?: string
           tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cles_repartition: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          est_active: boolean
+          formule: Json | null
+          id: string
+          libelle: string
+          methode_calcul: string | null
+          tenant_id: string
+          type_cle: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          est_active?: boolean
+          formule?: Json | null
+          id?: string
+          libelle: string
+          methode_calcul?: string | null
+          tenant_id: string
+          type_cle: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          est_active?: boolean
+          formule?: Json | null
+          id?: string
+          libelle?: string
+          methode_calcul?: string | null
+          tenant_id?: string
+          type_cle?: string
           updated_at?: string
         }
         Relationships: []
@@ -1160,6 +1452,70 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coefficients_repartition: {
+        Row: {
+          centre_cout_id: string
+          cle_repartition_id: string
+          coefficient: number
+          created_at: string
+          date_debut: string
+          date_fin: string | null
+          id: string
+          notes: string | null
+          tenant_id: string
+          updated_at: string
+          valeur_base: number | null
+        }
+        Insert: {
+          centre_cout_id: string
+          cle_repartition_id: string
+          coefficient: number
+          created_at?: string
+          date_debut: string
+          date_fin?: string | null
+          id?: string
+          notes?: string | null
+          tenant_id: string
+          updated_at?: string
+          valeur_base?: number | null
+        }
+        Update: {
+          centre_cout_id?: string
+          cle_repartition_id?: string
+          coefficient?: number
+          created_at?: string
+          date_debut?: string
+          date_fin?: string | null
+          id?: string
+          notes?: string | null
+          tenant_id?: string
+          updated_at?: string
+          valeur_base?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coefficients_repartition_centre_cout_id_fkey"
+            columns: ["centre_cout_id"]
+            isOneToOne: false
+            referencedRelation: "centres_couts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coefficients_repartition_centre_cout_id_fkey"
+            columns: ["centre_cout_id"]
+            isOneToOne: false
+            referencedRelation: "v_performance_centres_couts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coefficients_repartition_cle_repartition_id_fkey"
+            columns: ["cle_repartition_id"]
+            isOneToOne: false
+            referencedRelation: "cles_repartition"
             referencedColumns: ["id"]
           },
         ]
@@ -1437,6 +1793,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "compliance_product_requirements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
             foreignKeyName: "compliance_product_requirements_requirement_id_fkey"
             columns: ["requirement_id"]
             isOneToOne: false
@@ -1668,6 +2031,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produits"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "configurations_fifo_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
           },
         ]
       }
@@ -3126,6 +3496,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventaire_items_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
             foreignKeyName: "inventaire_items_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
@@ -3465,6 +3842,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lignes_commande_fournisseur_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
             foreignKeyName: "lignes_commande_fournisseur_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -3541,6 +3925,7 @@ export type Database = {
       }
       lignes_ecriture: {
         Row: {
+          centre_cout_id: string | null
           compte_id: string
           created_at: string
           credit: number | null
@@ -3552,6 +3937,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          centre_cout_id?: string | null
           compte_id: string
           created_at?: string
           credit?: number | null
@@ -3563,6 +3949,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          centre_cout_id?: string | null
           compte_id?: string
           created_at?: string
           credit?: number | null
@@ -3574,6 +3961,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "lignes_ecriture_centre_cout_id_fkey"
+            columns: ["centre_cout_id"]
+            isOneToOne: false
+            referencedRelation: "centres_couts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_ecriture_centre_cout_id_fkey"
+            columns: ["centre_cout_id"]
+            isOneToOne: false
+            referencedRelation: "v_performance_centres_couts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "lignes_ecriture_compte_id_fkey"
             columns: ["compte_id"]
@@ -3727,6 +4128,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lignes_reception_fournisseur_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
             foreignKeyName: "lignes_reception_fournisseur_reception_id_fkey"
             columns: ["reception_id"]
             isOneToOne: false
@@ -3738,6 +4146,81 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lignes_repartition: {
+        Row: {
+          centre_cout_id: string
+          coefficient: number
+          compte_destination_id: string | null
+          created_at: string
+          id: string
+          justification: string | null
+          montant: number
+          repartition_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          centre_cout_id: string
+          coefficient: number
+          compte_destination_id?: string | null
+          created_at?: string
+          id?: string
+          justification?: string | null
+          montant: number
+          repartition_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          centre_cout_id?: string
+          coefficient?: number
+          compte_destination_id?: string | null
+          created_at?: string
+          id?: string
+          justification?: string | null
+          montant?: number
+          repartition_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lignes_repartition_centre_cout_id_fkey"
+            columns: ["centre_cout_id"]
+            isOneToOne: false
+            referencedRelation: "centres_couts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_repartition_centre_cout_id_fkey"
+            columns: ["centre_cout_id"]
+            isOneToOne: false
+            referencedRelation: "v_performance_centres_couts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_repartition_compte_destination_id_fkey"
+            columns: ["compte_destination_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_repartition_compte_destination_id_fkey"
+            columns: ["compte_destination_id"]
+            isOneToOne: false
+            referencedRelation: "v_comptes_avec_soldes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_repartition_repartition_id_fkey"
+            columns: ["repartition_id"]
+            isOneToOne: false
+            referencedRelation: "repartitions_charges"
             referencedColumns: ["id"]
           },
         ]
@@ -3797,6 +4280,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_lignes_ventes_produit"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
             foreignKeyName: "fk_lignes_ventes_vente"
             columns: ["vente_id"]
             isOneToOne: false
@@ -3816,6 +4306,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produits"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_ventes_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
           },
           {
             foreignKeyName: "lignes_ventes_tenant_id_fkey"
@@ -4038,6 +4535,13 @@ export type Database = {
             referencedRelation: "produits"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lot_optimization_suggestions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
         ]
       }
       lots: {
@@ -4094,6 +4598,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produits"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lots_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
           },
           {
             foreignKeyName: "lots_tenant_id_fkey"
@@ -4155,6 +4666,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produits"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "low_stock_actions_log_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
           },
         ]
       }
@@ -5250,6 +5768,13 @@ export type Database = {
             referencedRelation: "produits"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "parametres_expiration_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
         ]
       }
       parametres_systeme: {
@@ -6214,6 +6739,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "produits_id_produit_source_fkey"
+            columns: ["id_produit_source"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
             foreignKeyName: "produits_rayon_produit_id_fkey"
             columns: ["rayon_produit_id"]
             isOneToOne: false
@@ -6688,6 +7220,138 @@ export type Database = {
             columns: ["facture_id"]
             isOneToOne: false
             referencedRelation: "v_factures_avec_details"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repartitions_charges: {
+        Row: {
+          cle_repartition_id: string | null
+          comptabilise_par_id: string | null
+          compte_charge_id: string | null
+          created_at: string
+          created_by_id: string | null
+          date_comptabilisation: string | null
+          date_repartition: string
+          date_validation: string | null
+          ecriture_comptable_id: string | null
+          id: string
+          libelle: string
+          methode: string
+          montant_non_reparti: number | null
+          montant_reparti: number
+          montant_total: number
+          notes: string | null
+          numero_repartition: string
+          statut: string
+          tenant_id: string
+          type_charge: string
+          updated_at: string
+          valide_par_id: string | null
+        }
+        Insert: {
+          cle_repartition_id?: string | null
+          comptabilise_par_id?: string | null
+          compte_charge_id?: string | null
+          created_at?: string
+          created_by_id?: string | null
+          date_comptabilisation?: string | null
+          date_repartition: string
+          date_validation?: string | null
+          ecriture_comptable_id?: string | null
+          id?: string
+          libelle: string
+          methode: string
+          montant_non_reparti?: number | null
+          montant_reparti?: number
+          montant_total: number
+          notes?: string | null
+          numero_repartition: string
+          statut?: string
+          tenant_id: string
+          type_charge: string
+          updated_at?: string
+          valide_par_id?: string | null
+        }
+        Update: {
+          cle_repartition_id?: string | null
+          comptabilise_par_id?: string | null
+          compte_charge_id?: string | null
+          created_at?: string
+          created_by_id?: string | null
+          date_comptabilisation?: string | null
+          date_repartition?: string
+          date_validation?: string | null
+          ecriture_comptable_id?: string | null
+          id?: string
+          libelle?: string
+          methode?: string
+          montant_non_reparti?: number | null
+          montant_reparti?: number
+          montant_total?: number
+          notes?: string | null
+          numero_repartition?: string
+          statut?: string
+          tenant_id?: string
+          type_charge?: string
+          updated_at?: string
+          valide_par_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repartitions_charges_cle_repartition_id_fkey"
+            columns: ["cle_repartition_id"]
+            isOneToOne: false
+            referencedRelation: "cles_repartition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repartitions_charges_comptabilise_par_id_fkey"
+            columns: ["comptabilise_par_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repartitions_charges_compte_charge_id_fkey"
+            columns: ["compte_charge_id"]
+            isOneToOne: false
+            referencedRelation: "plan_comptable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repartitions_charges_compte_charge_id_fkey"
+            columns: ["compte_charge_id"]
+            isOneToOne: false
+            referencedRelation: "v_comptes_avec_soldes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repartitions_charges_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repartitions_charges_ecriture_comptable_id_fkey"
+            columns: ["ecriture_comptable_id"]
+            isOneToOne: false
+            referencedRelation: "ecritures_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repartitions_charges_ecriture_comptable_id_fkey"
+            columns: ["ecriture_comptable_id"]
+            isOneToOne: false
+            referencedRelation: "v_ecritures_avec_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repartitions_charges_valide_par_id_fkey"
+            columns: ["valide_par_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
         ]
@@ -7615,6 +8279,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "stock_mouvements_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
             foreignKeyName: "stock_mouvements_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
@@ -7737,6 +8408,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produits"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suggestions_vente_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
           },
           {
             foreignKeyName: "suggestions_vente_tenant_id_fkey"
@@ -8813,6 +9491,34 @@ export type Database = {
           },
         ]
       }
+      v_performance_centres_couts: {
+        Row: {
+          budget_total: number | null
+          budgets_depassement: number | null
+          code: string | null
+          created_at: string | null
+          ecart_montant: number | null
+          ecart_pourcentage: number | null
+          est_actif: boolean | null
+          id: string | null
+          nom: string | null
+          nombre_budgets: number | null
+          realise_total: number | null
+          responsable_id: string | null
+          responsable_nom: string | null
+          tenant_id: string | null
+          type_centre: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "centres_couts_responsable_id_fkey"
+            columns: ["responsable_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_rapport_par_caisse_type: {
         Row: {
           caisse_id: string | null
@@ -8861,6 +9567,30 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "sessions_caisse_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_rentabilite_produits: {
+        Row: {
+          chiffre_affaires: number | null
+          code_produit: string | null
+          cout_achat: number | null
+          derniere_vente: string | null
+          famille: string | null
+          marge_brute: number | null
+          produit_id: string | null
+          produit_nom: string | null
+          quantite_vendue: number | null
+          taux_marge: number | null
+          tenant_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produits_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -8924,6 +9654,19 @@ export type Database = {
         Args: { p_account_id: string; p_tenant_id: string }
         Returns: number
       }
+      calculate_automatic_allocation: {
+        Args: {
+          p_cle_id: string
+          p_date_ref: string
+          p_montant_total: number
+          p_tenant_id: string
+        }
+        Returns: {
+          centre_cout_id: string
+          coefficient: number
+          montant: number
+        }[]
+      }
       calculate_compliance_metrics: {
         Args: { p_tenant_id: string }
         Returns: Json
@@ -8985,6 +9728,10 @@ export type Database = {
       debug_user_connection_state: { Args: never; Returns: Json }
       detect_suspicious_patterns: { Args: never; Returns: undefined }
       generate_avoir_number: { Args: { p_tenant_id: string }; Returns: string }
+      generate_cost_center_code: {
+        Args: { p_tenant_id: string }
+        Returns: string
+      }
       generate_inventaire_report: {
         Args: { p_session_id: string; p_tenant_id: string; p_type: string }
         Returns: Json
