@@ -151,6 +151,8 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          prefixe: string | null
+          sequence_courante: number | null
           tenant_id: string
           type: string
           updated_at: string
@@ -163,6 +165,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          prefixe?: string | null
+          sequence_courante?: number | null
           tenant_id: string
           type: string
           updated_at?: string
@@ -175,6 +179,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          prefixe?: string | null
+          sequence_courante?: number | null
           tenant_id?: string
           type?: string
           updated_at?: string
@@ -1907,47 +1913,72 @@ export type Database = {
       ecritures_comptables: {
         Row: {
           created_at: string
+          created_by_id: string | null
           date_ecriture: string
           exercice_id: string
           id: string
           journal_id: string
           libelle: string
+          locked_at: string | null
+          locked_by_id: string | null
+          montant_total: number | null
           numero_piece: string
           reference_id: string | null
           reference_type: string | null
           statut: string | null
           tenant_id: string
           updated_at: string
+          validated_at: string | null
+          validated_by_id: string | null
         }
         Insert: {
           created_at?: string
+          created_by_id?: string | null
           date_ecriture: string
           exercice_id: string
           id?: string
           journal_id: string
           libelle: string
+          locked_at?: string | null
+          locked_by_id?: string | null
+          montant_total?: number | null
           numero_piece: string
           reference_id?: string | null
           reference_type?: string | null
           statut?: string | null
           tenant_id: string
           updated_at?: string
+          validated_at?: string | null
+          validated_by_id?: string | null
         }
         Update: {
           created_at?: string
+          created_by_id?: string | null
           date_ecriture?: string
           exercice_id?: string
           id?: string
           journal_id?: string
           libelle?: string
+          locked_at?: string | null
+          locked_by_id?: string | null
+          montant_total?: number | null
           numero_piece?: string
           reference_id?: string | null
           reference_type?: string | null
           statut?: string | null
           tenant_id?: string
           updated_at?: string
+          validated_at?: string | null
+          validated_by_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ecritures_comptables_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ecritures_comptables_exercice_id_fkey"
             columns: ["exercice_id"]
@@ -1963,10 +1994,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ecritures_comptables_locked_by_id_fkey"
+            columns: ["locked_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ecritures_comptables_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecritures_comptables_validated_by_id_fkey"
+            columns: ["validated_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
         ]
@@ -3071,6 +3116,13 @@ export type Database = {
             columns: ["ecriture_id"]
             isOneToOne: false
             referencedRelation: "ecritures_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_ecriture_ecriture_id_fkey"
+            columns: ["ecriture_id"]
+            isOneToOne: false
+            referencedRelation: "v_ecritures_avec_details"
             referencedColumns: ["id"]
           },
           {
@@ -7630,6 +7682,81 @@ export type Database = {
           },
         ]
       }
+      v_ecritures_avec_details: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          created_by_id: string | null
+          date_ecriture: string | null
+          exercice_debut: string | null
+          exercice_fin: string | null
+          exercice_id: string | null
+          exercice_name: string | null
+          id: string | null
+          journal_code: string | null
+          journal_id: string | null
+          journal_name: string | null
+          journal_type: string | null
+          libelle: string | null
+          locked_at: string | null
+          locked_by: string | null
+          locked_by_id: string | null
+          montant_total: number | null
+          numero_piece: string | null
+          reference_id: string | null
+          reference_type: string | null
+          statut: string | null
+          tenant_id: string | null
+          updated_at: string | null
+          validated_at: string | null
+          validated_by: string | null
+          validated_by_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ecritures_comptables_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecritures_comptables_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecritures_comptables_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journaux_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecritures_comptables_locked_by_id_fkey"
+            columns: ["locked_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecritures_comptables_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecritures_comptables_validated_by_id_fkey"
+            columns: ["validated_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_rapport_par_caisse_type: {
         Row: {
           caisse_id: string | null
@@ -7805,6 +7932,7 @@ export type Database = {
         Args: { p_session_id: string; p_tenant_id: string; p_type: string }
         Returns: Json
       }
+      generate_piece_number: { Args: { p_journal_id: string }; Returns: string }
       generate_sales_suggestions: {
         Args: { p_tenant_id: string }
         Returns: number

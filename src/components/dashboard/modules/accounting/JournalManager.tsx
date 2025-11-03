@@ -5,53 +5,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Search, Plus, Edit, Trash2, BookOpen, ShoppingCart, CreditCard, Banknote, FileText, Check, X, AlertCircle, Lock, Unlock, Link2 } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, BookOpen, ShoppingCart, CreditCard, Banknote, FileText, Check, X, AlertCircle, Lock, Unlock, Link2, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-
-interface JournalEntry {
-  id: string;
-  journal_id: string;
-  numero_piece: string;
-  date_ecriture: string;
-  libelle: string;
-  reference: string;
-  montant_total: number;
-  statut: 'brouillon' | 'valide' | 'verrouille';
-  lines: EntryLine[];
-  created_by: string;
-  validated_by?: string;
-  validation_date?: string;
-}
-
-interface EntryLine {
-  id: string;
-  compte_code: string;
-  compte_libelle: string;
-  libelle: string;
-  debit: number;
-  credit: number;
-  lettrage?: string;
-  analytique_code?: string;
-}
-
-interface Journal {
-  id: string;
-  code: string;
-  libelle: string;
-  type: 'AC' | 'VT' | 'CA' | 'BQ' | 'OD';
-  description: string;
-  actif: boolean;
-  sequence_courante: number;
-  prefixe: string;
-}
+import { useJournalManager, type JournalEntry, type EntryLine } from '@/hooks/useJournalManager';
+import AccountSelector from '@/components/accounting/AccountSelector';
+import { Skeleton } from "@/components/ui/skeleton";
 
 const JournalManager = () => {
   const { toast } = useToast();
+  const {
+    journals,
+    entries,
+    isLoadingJournals,
+    isLoadingEntries,
+    isSaving,
+    createEntry,
+    updateEntry,
+    validateEntry,
+    lockEntry,
+    calculateBalance,
+    getEntriesByStatus
+  } = useJournalManager();
+
   const [activeTab, setActiveTab] = useState('journals');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJournal, setSelectedJournal] = useState<string>('all');
@@ -67,115 +47,18 @@ const JournalManager = () => {
     { code: 'OD', libelle: 'Opérations Diverses', icon: FileText, color: 'text-gray-600' }
   ];
 
-  // Données exemple des journaux
-  const [journals, setJournals] = useState<Journal[]>([
-    {
-      id: '1',
-      code: 'AC',
-      libelle: 'Journal des Achats',
-      type: 'AC',
-      description: 'Enregistrement des factures d\'achat',
-      actif: true,
-      sequence_courante: 125,
-      prefixe: 'AC'
-    },
-    {
-      id: '2',
-      code: 'VT',
-      libelle: 'Journal des Ventes',
-      type: 'VT',
-      description: 'Enregistrement des factures de vente',
-      actif: true,
-      sequence_courante: 89,
-      prefixe: 'VT'
-    },
-    {
-      id: '3',
-      code: 'CA',
-      libelle: 'Journal de Caisse',
-      type: 'CA',
-      description: 'Mouvements d\'espèces',
-      actif: true,
-      sequence_courante: 234,
-      prefixe: 'CA'
-    }
-  ]);
-
-  // Données exemple des écritures
-  const [entries, setEntries] = useState<JournalEntry[]>([
-    {
-      id: '1',
-      journal_id: '1',
-      numero_piece: 'AC000123',
-      date_ecriture: '2024-01-15',
-      libelle: 'Achat médicaments Laboratoire XYZ',
-      reference: 'FAC-2024-001',
-      montant_total: 15000,
-      statut: 'valide',
-      created_by: 'Dr. Pharmacien',
-      validated_by: 'Chef Comptable',
-      validation_date: '2024-01-15T10:30:00',
-      lines: [
-        {
-          id: '1',
-          compte_code: '601',
-          compte_libelle: 'Achats de médicaments',
-          libelle: 'Achat médicaments',
-          debit: 15000,
-          credit: 0
-        },
-        {
-          id: '2',
-          compte_code: '401',
-          compte_libelle: 'Fournisseurs',
-          libelle: 'Laboratoire XYZ',
-          debit: 0,
-          credit: 15000
-        }
-      ]
-    },
-    {
-      id: '2',
-      journal_id: '2',
-      numero_piece: 'VT000089',
-      date_ecriture: '2024-01-15',
-      libelle: 'Vente médicaments Client ABC',
-      reference: 'FACT-2024-089',
-      montant_total: 8500,
-      statut: 'brouillon',
-      created_by: 'Pharmacien Assistant',
-      lines: [
-        {
-          id: '3',
-          compte_code: '411',
-          compte_libelle: 'Clients',
-          libelle: 'Client ABC',
-          debit: 8500,
-          credit: 0
-        },
-        {
-          id: '4',
-          compte_code: '701',
-          compte_libelle: 'Ventes de médicaments',
-          libelle: 'Vente médicaments',
-          debit: 0,
-          credit: 8500
-        }
-      ]
-    }
-  ]);
-
   // Nouvelle écriture
   const [newEntry, setNewEntry] = useState<Partial<JournalEntry>>({
     journal_id: '',
     date_ecriture: new Date().toISOString().split('T')[0],
     libelle: '',
-    reference: '',
-    statut: 'brouillon',
+    reference_type: '',
+    reference_id: '',
     lines: []
   });
 
   const [newLine, setNewLine] = useState<Partial<EntryLine>>({
+    compte_id: '',
     compte_code: '',
     compte_libelle: '',
     libelle: '',
@@ -190,13 +73,7 @@ const JournalManager = () => {
     return matchesSearch && matchesJournal;
   });
 
-  const calculateBalance = (lines: EntryLine[]) => {
-    const totalDebit = lines.reduce((sum, line) => sum + line.debit, 0);
-    const totalCredit = lines.reduce((sum, line) => sum + line.credit, 0);
-    return { totalDebit, totalCredit, isBalanced: Math.abs(totalDebit - totalCredit) < 0.01 };
-  };
-
-  const handleSaveEntry = () => {
+  const handleSaveEntry = async () => {
     if (!newEntry.journal_id || !newEntry.libelle || !newEntry.lines?.length) {
       toast({
         title: "Erreur",
@@ -216,46 +93,19 @@ const JournalManager = () => {
       return;
     }
 
-    const journal = journals.find(j => j.id === newEntry.journal_id);
-    const numerosPiece = `${journal?.prefixe}${String(journal?.sequence_courante || 1).padStart(6, '0')}`;
-
-    if (editingEntry) {
-      setEntries(prev => prev.map(entry => 
-        entry.id === editingEntry.id 
-          ? { ...entry, ...newEntry, montant_total: balance.totalDebit } as JournalEntry
-          : entry
-      ));
-      toast({
-        title: "Succès",
-        description: "Écriture modifiée avec succès"
-      });
-    } else {
-      const entry: JournalEntry = {
-        id: Date.now().toString(),
-        numero_piece: numerosPiece,
-        montant_total: balance.totalDebit,
-        created_by: 'Utilisateur actuel',
-        ...newEntry
-      } as JournalEntry;
+    try {
+      if (editingEntry) {
+        await updateEntry(editingEntry.id, newEntry);
+      } else {
+        await createEntry(newEntry);
+      }
       
-      setEntries(prev => [...prev, entry]);
-      
-      // Incrémenter la séquence du journal
-      setJournals(prev => prev.map(j => 
-        j.id === newEntry.journal_id 
-          ? { ...j, sequence_courante: j.sequence_courante + 1 }
-          : j
-      ));
-      
-      toast({
-        title: "Succès",
-        description: "Écriture créée avec succès"
-      });
+      setShowEntryDialog(false);
+      setEditingEntry(null);
+      resetForm();
+    } catch (error) {
+      // L'erreur est déjà gérée par le hook
     }
-
-    setShowEntryDialog(false);
-    setEditingEntry(null);
-    resetForm();
   };
 
   const resetForm = () => {
@@ -263,11 +113,12 @@ const JournalManager = () => {
       journal_id: '',
       date_ecriture: new Date().toISOString().split('T')[0],
       libelle: '',
-      reference: '',
-      statut: 'brouillon',
+      reference_type: '',
+      reference_id: '',
       lines: []
     });
     setNewLine({
+      compte_id: '',
       compte_code: '',
       compte_libelle: '',
       libelle: '',
@@ -277,7 +128,7 @@ const JournalManager = () => {
   };
 
   const addLineToEntry = () => {
-    if (!newLine.compte_code || !newLine.libelle || (newLine.debit === 0 && newLine.credit === 0)) {
+    if (!newLine.compte_id || !newLine.libelle || (newLine.debit === 0 && newLine.credit === 0)) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs de la ligne",
@@ -288,6 +139,10 @@ const JournalManager = () => {
 
     const line: EntryLine = {
       id: Date.now().toString(),
+      tenant_id: '',
+      ecriture_id: '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       ...newLine
     } as EntryLine;
 
@@ -297,6 +152,7 @@ const JournalManager = () => {
     }));
 
     setNewLine({
+      compte_id: '',
       compte_code: '',
       compte_libelle: '',
       libelle: '',
@@ -312,47 +168,16 @@ const JournalManager = () => {
     }));
   };
 
-  const validateEntry = (entryId: string) => {
-    setEntries(prev => prev.map(entry => 
-      entry.id === entryId 
-        ? { 
-            ...entry, 
-            statut: 'valide',
-            validated_by: 'Utilisateur actuel',
-            validation_date: new Date().toISOString()
-          }
-        : entry
-    ));
-    
-    toast({
-      title: "Succès",
-      description: "Écriture validée avec succès"
-    });
-  };
-
-  const lockEntry = (entryId: string) => {
-    setEntries(prev => prev.map(entry => 
-      entry.id === entryId 
-        ? { ...entry, statut: 'verrouille' }
-        : entry
-    ));
-    
-    toast({
-      title: "Succès",
-      description: "Écriture verrouillée avec succès"
-    });
-  };
-
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | null) => {
     switch (status) {
-      case 'brouillon':
+      case 'Brouillon':
         return <Badge variant="secondary">Brouillon</Badge>;
-      case 'valide':
+      case 'Validé':
         return <Badge variant="default">Validé</Badge>;
-      case 'verrouille':
+      case 'Verrouillé':
         return <Badge variant="destructive">Verrouillé</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline">{status || 'Inconnu'}</Badge>;
     }
   };
 
