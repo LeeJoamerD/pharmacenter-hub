@@ -64,22 +64,20 @@ const AlertConfiguration = () => {
         email_smtp_port: notificationSettings.email_smtp_port || 587,
         email_smtp_user: notificationSettings.email_smtp_user || '',
         email_smtp_password: notificationSettings.email_smtp_password || '',
-        email_template: notificationSettings.email_template || '',
+        email_from_name: notificationSettings.email_from_name || '',
+        email_from_address: notificationSettings.email_from_address || '',
       });
       setLocalSmsSettings({
         sms_enabled: notificationSettings.sms_enabled || false,
         sms_provider: notificationSettings.sms_provider || '',
         sms_api_key: notificationSettings.sms_api_key || '',
-        sms_api_url: notificationSettings.sms_api_url || '',
-        sms_sender_name: notificationSettings.sms_sender_name || '',
-        sms_template: notificationSettings.sms_template || '',
+        sms_sender_id: notificationSettings.sms_sender_id || '',
       });
       setLocalWhatsappSettings({
         whatsapp_enabled: notificationSettings.whatsapp_enabled || false,
-        whatsapp_business_account_id: notificationSettings.whatsapp_business_account_id || '',
-        whatsapp_access_token: notificationSettings.whatsapp_access_token || '',
-        whatsapp_phone_number_id: notificationSettings.whatsapp_phone_number_id || '',
-        whatsapp_templates: notificationSettings.whatsapp_templates || [],
+        whatsapp_business_id: notificationSettings.whatsapp_business_id || '',
+        whatsapp_api_key: notificationSettings.whatsapp_api_key || '',
+        whatsapp_phone_number: notificationSettings.whatsapp_phone_number || '',
       });
     }
   }, [notificationSettings]);
@@ -185,26 +183,26 @@ const AlertConfiguration = () => {
   };
 
   const handleTestSms = () => {
-    const { sms_provider, sms_api_key, sms_sender_name } = localSmsSettings;
+    const { sms_provider, sms_api_key, sms_sender_id } = localSmsSettings;
     if (!sms_provider || !sms_api_key) {
       return testSMSConnection({ provider: '', api_key: '', sender_name: '' });
     }
     testSMSConnection({
       provider: sms_provider,
       api_key: sms_api_key,
-      sender_name: sms_sender_name
+      sender_name: sms_sender_id || ''
     });
   };
 
   const handleTestWhatsapp = () => {
-    const { whatsapp_business_account_id, whatsapp_access_token, whatsapp_phone_number_id } = localWhatsappSettings;
-    if (!whatsapp_business_account_id || !whatsapp_access_token || !whatsapp_phone_number_id) {
+    const { whatsapp_business_id, whatsapp_api_key, whatsapp_phone_number } = localWhatsappSettings;
+    if (!whatsapp_business_id || !whatsapp_api_key || !whatsapp_phone_number) {
       return testWhatsAppConnection({ business_account_id: '', access_token: '', phone_number_id: '' });
     }
     testWhatsAppConnection({
-      business_account_id: whatsapp_business_account_id,
-      access_token: whatsapp_access_token,
-      phone_number_id: whatsapp_phone_number_id
+      business_account_id: whatsapp_business_id,
+      access_token: whatsapp_api_key,
+      phone_number_id: whatsapp_phone_number
     });
   };
 
@@ -309,12 +307,12 @@ const AlertConfiguration = () => {
                             <div className="text-xs text-muted-foreground">unités</div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                         <TableCell>
                           <div className="flex gap-1">
-                            {rule.notification_channels.includes('email') && <Mail className="h-3 w-3 text-blue-500" />}
-                            {rule.notification_channels.includes('sms') && <MessageSquare className="h-3 w-3 text-green-500" />}
-                            {rule.notification_channels.includes('dashboard') && <Bell className="h-3 w-3 text-orange-500" />}
-                            {rule.notification_channels.includes('whatsapp') && <MessageSquare className="h-3 w-3 text-green-600" />}
+                            {Array.isArray(rule.notification_channels) && rule.notification_channels.includes('email') && <Mail className="h-3 w-3 text-blue-500" />}
+                            {Array.isArray(rule.notification_channels) && rule.notification_channels.includes('sms') && <MessageSquare className="h-3 w-3 text-green-500" />}
+                            {Array.isArray(rule.notification_channels) && rule.notification_channels.includes('dashboard') && <Bell className="h-3 w-3 text-orange-500" />}
+                            {Array.isArray(rule.notification_channels) && rule.notification_channels.includes('whatsapp') && <MessageSquare className="h-3 w-3 text-green-600" />}
                           </div>
                         </TableCell>
                         <TableCell>

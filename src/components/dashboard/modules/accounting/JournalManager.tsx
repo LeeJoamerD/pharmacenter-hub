@@ -212,7 +212,7 @@ const JournalManager = () => {
                     <SelectContent>
                       {journals.map(journal => (
                         <SelectItem key={journal.id} value={journal.id}>
-                          {journal.code} - {journal.libelle}
+                          {journal.code} - {journal.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -243,8 +243,8 @@ const JournalManager = () => {
                   <Label htmlFor="reference">Référence</Label>
                   <Input
                     id="reference"
-                    value={newEntry.reference}
-                    onChange={(e) => setNewEntry(prev => ({ ...prev, reference: e.target.value }))}
+                    value={newEntry.reference_id || ''}
+                    onChange={(e) => setNewEntry(prev => ({ ...prev, reference_id: e.target.value }))}
                     placeholder="Numéro de pièce justificative"
                   />
                 </div>
@@ -382,11 +382,11 @@ const JournalManager = () => {
                         <Icon className={`h-5 w-5 ${journalType?.color}`} />
                         <span>{journal.code}</span>
                       </div>
-                      <Badge variant={journal.actif ? "default" : "secondary"}>
-                        {journal.actif ? "Actif" : "Inactif"}
+                      <Badge variant={journal.is_active ? "default" : "secondary"}>
+                        {journal.is_active ? "Actif" : "Inactif"}
                       </Badge>
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">{journal.libelle}</p>
+                    <p className="text-sm text-muted-foreground">{journal.name}</p>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
@@ -430,7 +430,7 @@ const JournalManager = () => {
                 <SelectItem value="all">Tous les journaux</SelectItem>
                 {journals.map(journal => (
                   <SelectItem key={journal.id} value={journal.id}>
-                    {journal.code} - {journal.libelle}
+                    {journal.code} - {journal.name}
                   </SelectItem>
                 ))}
               </SelectContent>

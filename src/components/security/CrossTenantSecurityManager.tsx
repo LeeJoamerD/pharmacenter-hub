@@ -98,7 +98,11 @@ export const CrossTenantSecurityManager: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (permissionsData) {
-        setPermissions(permissionsData as CrossTenantPermission[]);
+        setPermissions(permissionsData.map(p => ({
+          ...p,
+          table_name: (p as any).resource_type || '',
+          granted_to: (p as any).granted_by || null
+        })) as CrossTenantPermission[]);
       }
 
       // Charger la liste des pharmacies
@@ -148,10 +152,11 @@ export const CrossTenantSecurityManager: React.FC = () => {
         source_tenant_id: pharmacy.id,
         target_tenant_id: newPermission.target_tenant_id,
         permission_type: newPermission.permission_type,
-        table_name: newPermission.table_name,
+        resource_type: newPermission.table_name,
+        resource_id: newPermission.target_tenant_id,
         granted_by: personnel.id,
-        granted_to: newPermission.granted_to || null,
-        expires_at: newPermission.expires_at || null
+        expires_at: newPermission.expires_at || null,
+        tenant_id: pharmacy.id
       };
 
       const { error } = await supabase

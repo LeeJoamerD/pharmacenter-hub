@@ -41,7 +41,7 @@ const SecurityAnalyticsDashboard = () => {
 
   const totalAlerts = alerts.length;
   const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
-  const resolvedAlerts = alerts.filter(a => a.resolved).length;
+  const resolvedAlerts = alerts.filter(a => a.status === 'resolved').length;
   const resolutionRate = totalAlerts > 0 ? Math.round((resolvedAlerts / totalAlerts) * 100) : 0;
 
   return (

@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useSessionWithType } from './useSessionWithType';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Types
 export interface Invoice {
@@ -107,8 +107,11 @@ export interface Reminder {
 export const useInvoiceManager = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { session } = useSessionWithType();
+  const { pharmacy, personnel } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
+
+  const tenantId = pharmacy?.id;
+  const personnelId = personnel?.id;
 
   // Fetch invoices from view
   const { data: invoices = [], isLoading: isLoadingInvoices, error } = useQuery({
@@ -141,13 +144,13 @@ export const useInvoiceManager = () => {
   // Generate invoice number
   const generateInvoiceNumber = useCallback(async (type: 'client' | 'fournisseur') => {
     const { data, error } = await supabase.rpc('generate_invoice_number', {
-      p_tenant_id: session?.tenantId,
+      p_tenant_id: tenantId,
       p_type: type,
     });
     
     if (error) throw error;
     return data as string;
-  }, [session?.tenantId]);
+  }, [tenantId]);
 
   // Calculate line totals
   const calculateLineTotals = useCallback((line: Partial<InvoiceLine>) => {
@@ -178,9 +181,9 @@ export const useInvoiceManager = () => {
         .from('factures')
         .insert({
           ...invoiceData,
-          tenant_id: session?.tenantId,
-          created_by_id: session?.personnelId,
-        })
+          tenant_id: tenantId,
+          created_by_id: personnelId,
+        } as any)
         .select()
         .single();
 
@@ -191,16 +194,19 @@ export const useInvoiceManager = () => {
         const linesToInsert = lines.map(line => {
           const totals = calculateLineTotals(line);
           return {
-            ...line,
+            designation: line.designation || '',
+            quantite: line.quantite || 0,
+            prix_unitaire: line.prix_unitaire || 0,
+            taux_tva: line.taux_tva || 0,
             ...totals,
             facture_id: newInvoice.id,
-            tenant_id: session?.tenantId,
+            tenant_id: tenantId,
           };
         });
 
         const { error: linesError } = await supabase
           .from('lignes_facture')
-          .insert(linesToInsert);
+          .insert(linesToInsert as any);
 
         if (linesError) throw linesError;
       }
@@ -280,10 +286,15 @@ export const useInvoiceManager = () => {
       const { error: paymentError } = await supabase
         .from('paiements_factures')
         .insert({
-          ...payment,
-          tenant_id: session?.tenantId,
-          created_by_id: session?.personnelId,
-        });
+          facture_id: payment.facture_id!,
+          montant: payment.montant!,
+          mode_paiement: payment.mode_paiement!,
+          date_paiement: payment.date_paiement,
+          reference_paiement: payment.reference_paiement,
+          notes: payment.notes,
+          tenant_id: tenantId,
+          created_by_id: personnelId,
+        } as any);
 
       if (paymentError) throw paymentError;
 
@@ -326,10 +337,15 @@ export const useInvoiceManager = () => {
       const { error } = await supabase
         .from('relances_factures')
         .insert({
-          ...reminder,
-          tenant_id: session?.tenantId,
-          created_by_id: session?.personnelId,
-        });
+          facture_id: reminder.facture_id!,
+          type_relance: reminder.type_relance!,
+          date_relance: reminder.date_relance,
+          destinataire: reminder.destinataire,
+          message: reminder.message,
+          statut: reminder.statut || 'envoyee',
+          tenant_id: tenantId,
+          created_by_id: personnelId,
+        } as any);
 
       if (error) throw error;
 
@@ -372,7 +388,7 @@ export const useInvoiceManager = () => {
 
       // Generate numero
       const { data: numero, error: numeroError } = await supabase.rpc('generate_avoir_number', {
-        p_tenant_id: session?.tenantId,
+        p_tenant_id: tenantId,
       });
 
       if (numeroError) throw numeroError;
@@ -380,11 +396,17 @@ export const useInvoiceManager = () => {
       const { data, error } = await supabase
         .from('avoirs')
         .insert({
-          ...creditNote,
-          numero,
-          tenant_id: session?.tenantId,
-          created_by_id: session?.personnelId,
-        })
+          numero: numero as string,
+          facture_origine_id: creditNote.facture_origine_id!,
+          motif: creditNote.motif!,
+          montant_ht: creditNote.montant_ht || 0,
+          montant_tva: creditNote.montant_tva || 0,
+          montant_ttc: creditNote.montant_ttc || 0,
+          date_emission: creditNote.date_emission,
+          statut: creditNote.statut || 'brouillon',
+          tenant_id: tenantId,
+          created_by_id: personnelId,
+        } as any)
         .select()
         .single();
 

@@ -40,7 +40,7 @@ export const FournisseurSelector: React.FC<FournisseurSelectorProps> = ({
         .order('nom');
       
       if (error) throw error;
-      return data;
+      return data as Array<{id: string; nom: string; telephone_appel: string | null; email: string | null}>;
     },
   });
 

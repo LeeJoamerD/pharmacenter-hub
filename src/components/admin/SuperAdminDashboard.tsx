@@ -45,7 +45,7 @@ const SuperAdminDashboard = () => {
       const [pharmaciesCount, personnelCount, alertsCount] = await Promise.all([
         supabase.from('pharmacies').select('id', { count: 'exact' }),
         supabase.from('personnel').select('id', { count: 'exact' }),
-        supabase.from('security_alerts').select('id', { count: 'exact' }).eq('resolved', false)
+        supabase.from('security_alerts').select('id', { count: 'exact' }).eq('status', 'active')
       ]);
 
       return {
@@ -62,15 +62,27 @@ const SuperAdminDashboard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('security_alerts')
-        .select(`
-          *,
-          pharmacy:pharmacies(name, code)
-        `)
-        .eq('resolved', false)
+        .select('*')
+        .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(10);
       
       if (error) throw error;
+      
+      // Fetch pharmacy names separately
+      if (data && data.length > 0) {
+        const tenantIds = [...new Set(data.map(a => a.tenant_id))];
+        const { data: pharmacyData } = await supabase
+          .from('pharmacies')
+          .select('id, name, code')
+          .in('id', tenantIds);
+        
+        return data.map(alert => ({
+          ...alert,
+          pharmacy: pharmacyData?.find(p => p.id === alert.tenant_id)
+        }));
+      }
+      
       return data;
     }
   });
@@ -81,15 +93,31 @@ const SuperAdminDashboard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('audit_logs')
-        .select(`
-          *,
-          pharmacy:pharmacies(name, code),
-          personnel:personnel(noms, prenoms)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(20);
       
       if (error) throw error;
+      
+      // Fetch related data separately
+      if (data && data.length > 0) {
+        const tenantIds = [...new Set(data.map(a => a.tenant_id))];
+        const personnelIds = [...new Set(data.map(a => a.user_id).filter(Boolean))];
+        
+        const [pharmacyData, personnelData] = await Promise.all([
+          supabase.from('pharmacies').select('id, name, code').in('id', tenantIds),
+          personnelIds.length > 0 
+            ? supabase.from('personnel').select('id, noms, prenoms').in('id', personnelIds)
+            : Promise.resolve({ data: [] })
+        ]);
+        
+        return data.map(activity => ({
+          ...activity,
+          pharmacy: pharmacyData.data?.find(p => p.id === activity.tenant_id),
+          personnel: personnelData.data?.find(p => p.id === activity.user_id)
+        }));
+      }
+      
       return data;
     }
   });
@@ -310,7 +338,7 @@ const SuperAdminDashboard = () => {
                         <div>
                           <div className="font-medium">{alert.description}</div>
                           <div className="text-sm text-muted-foreground">
-                            {alert.pharmacy?.name} ({alert.pharmacy?.code}) - {new Date(alert.created_at).toLocaleString('fr-FR')}
+                            {(alert as any).pharmacy?.name} ({(alert as any).pharmacy?.code}) - {new Date(alert.created_at).toLocaleString('fr-FR')}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -354,7 +382,7 @@ const SuperAdminDashboard = () => {
                           {activity.action} sur {activity.table_name}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {activity.personnel?.prenoms} {activity.personnel?.noms} - {activity.pharmacy?.name}
+                          {(activity as any).personnel ? `${(activity as any).personnel.prenoms} ${(activity as any).personnel.noms}` : 'Utilisateur'} - {(activity as any).pharmacy?.name || 'Pharmacie'}
                         </div>
                       </div>
                     </div>

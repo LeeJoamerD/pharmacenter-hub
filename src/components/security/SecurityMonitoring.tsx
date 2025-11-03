@@ -24,7 +24,8 @@ interface SecurityAlert {
   description: string;
   metadata: any;
   created_at: string;
-  resolved: boolean;
+  status: string;
+  resolved_at: string | null;
 }
 
 interface SecurityMetrics {
@@ -79,7 +80,10 @@ export const SecurityMonitoring: React.FC = () => {
         .limit(50);
 
       if (alertsData) {
-        setAlerts(alertsData as SecurityAlert[]);
+        setAlerts(alertsData.map(a => ({
+          ...a,
+          status: a.status || 'active'
+        })) as SecurityAlert[]);
 
         // Calculer les métriques
         const now = new Date();
@@ -111,7 +115,10 @@ export const SecurityMonitoring: React.FC = () => {
     try {
       const { error } = await supabase
         .from('security_alerts')
-        .update({ resolved: true })
+        .update({ 
+          status: 'resolved',
+          resolved_at: new Date().toISOString()
+        })
         .eq('id', alertId);
 
       if (error) throw error;
@@ -299,7 +306,7 @@ export const SecurityMonitoring: React.FC = () => {
               </div>
             ) : (
               alerts.map((alert) => (
-                <Alert key={alert.id} className={`${getSeverityColor(alert.severity)} ${alert.resolved ? 'opacity-60' : ''}`}>
+                <Alert key={alert.id} className={`${getSeverityColor(alert.severity)} ${alert.status === 'resolved' ? 'opacity-60' : ''}`}>
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
                       {getAlertTypeIcon(alert.alert_type)}
@@ -311,7 +318,7 @@ export const SecurityMonitoring: React.FC = () => {
                           <Badge variant="secondary">
                             {alert.alert_type.replace('_', ' ')}
                           </Badge>
-                          {alert.resolved && (
+                          {alert.status === 'resolved' && (
                             <Badge variant="default">Résolue</Badge>
                           )}
                         </div>
@@ -336,7 +343,7 @@ export const SecurityMonitoring: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    {!alert.resolved && (
+                    {alert.status !== 'resolved' && (
                       <Button
                         size="sm"
                         variant="outline"
