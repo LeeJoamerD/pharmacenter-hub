@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
 import { PaymentSchedule } from '@/hooks/usePaymentManager';
-import ClientSelector from './ClientSelector';
-import FournisseurSelector from './FournisseurSelector';
+import { ClientSelector } from './ClientSelector';
+import { FournisseurSelector } from './FournisseurSelector';
 
 interface PaymentScheduleDialogProps {
   open: boolean;
