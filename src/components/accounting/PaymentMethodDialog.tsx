@@ -43,7 +43,7 @@ const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange(onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{method ? 'Modifier le mode' : 'Nouveau mode de paiement'}</DialogTitle>
@@ -183,4 +183,4 @@ const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
   );
 };
 
-export default PaymentScheduleDialog;
+export default PaymentMethodDialog;
