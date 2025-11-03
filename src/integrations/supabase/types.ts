@@ -715,6 +715,76 @@ export type Database = {
           },
         ]
       }
+      avoirs: {
+        Row: {
+          created_at: string
+          created_by_id: string | null
+          date_emission: string
+          facture_origine_id: string
+          id: string
+          montant_ht: number
+          montant_ttc: number
+          montant_tva: number
+          motif: string
+          numero: string
+          statut: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_id?: string | null
+          date_emission?: string
+          facture_origine_id: string
+          id?: string
+          montant_ht?: number
+          montant_ttc?: number
+          montant_tva?: number
+          motif: string
+          numero: string
+          statut?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by_id?: string | null
+          date_emission?: string
+          facture_origine_id?: string
+          id?: string
+          montant_ht?: number
+          montant_ttc?: number
+          montant_tva?: number
+          motif?: string
+          numero?: string
+          statut?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avoirs_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avoirs_facture_origine_id_fkey"
+            columns: ["facture_origine_id"]
+            isOneToOne: false
+            referencedRelation: "factures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avoirs_facture_origine_id_fkey"
+            columns: ["facture_origine_id"]
+            isOneToOne: false
+            referencedRelation: "v_factures_avec_details"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       balances: {
         Row: {
           compte_id: string
@@ -2283,6 +2353,129 @@ export type Database = {
           },
         ]
       }
+      factures: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by_id: string | null
+          date_echeance: string
+          date_emission: string
+          derniere_relance: string | null
+          fournisseur_id: string | null
+          id: string
+          libelle: string
+          montant_ht: number
+          montant_paye: number
+          montant_restant: number
+          montant_ttc: number
+          montant_tva: number
+          notes: string | null
+          numero: string
+          pieces_jointes: Json | null
+          reception_id: string | null
+          reference_externe: string | null
+          relances_effectuees: number
+          statut: string
+          statut_paiement: string
+          tenant_id: string
+          type: string
+          updated_at: string
+          vente_id: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by_id?: string | null
+          date_echeance: string
+          date_emission?: string
+          derniere_relance?: string | null
+          fournisseur_id?: string | null
+          id?: string
+          libelle: string
+          montant_ht?: number
+          montant_paye?: number
+          montant_restant?: number
+          montant_ttc?: number
+          montant_tva?: number
+          notes?: string | null
+          numero: string
+          pieces_jointes?: Json | null
+          reception_id?: string | null
+          reference_externe?: string | null
+          relances_effectuees?: number
+          statut?: string
+          statut_paiement?: string
+          tenant_id: string
+          type: string
+          updated_at?: string
+          vente_id?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by_id?: string | null
+          date_echeance?: string
+          date_emission?: string
+          derniere_relance?: string | null
+          fournisseur_id?: string | null
+          id?: string
+          libelle?: string
+          montant_ht?: number
+          montant_paye?: number
+          montant_restant?: number
+          montant_ttc?: number
+          montant_tva?: number
+          notes?: string | null
+          numero?: string
+          pieces_jointes?: Json | null
+          reception_id?: string | null
+          reference_externe?: string | null
+          relances_effectuees?: number
+          statut?: string
+          statut_paiement?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+          vente_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "factures_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "factures_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "factures_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "factures_reception_id_fkey"
+            columns: ["reception_id"]
+            isOneToOne: false
+            referencedRelation: "receptions_fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "factures_vente_id_fkey"
+            columns: ["vente_id"]
+            isOneToOne: false
+            referencedRelation: "ventes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       famille_produit: {
         Row: {
           created_at: string
@@ -3130,6 +3323,66 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lignes_facture: {
+        Row: {
+          created_at: string
+          designation: string
+          facture_id: string
+          id: string
+          montant_ht: number
+          montant_ttc: number
+          montant_tva: number
+          prix_unitaire: number
+          quantite: number
+          taux_tva: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          designation: string
+          facture_id: string
+          id?: string
+          montant_ht?: number
+          montant_ttc?: number
+          montant_tva?: number
+          prix_unitaire?: number
+          quantite?: number
+          taux_tva?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          designation?: string
+          facture_id?: string
+          id?: string
+          montant_ht?: number
+          montant_ttc?: number
+          montant_tva?: number
+          prix_unitaire?: number
+          quantite?: number
+          taux_tva?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lignes_facture_facture_id_fkey"
+            columns: ["facture_id"]
+            isOneToOne: false
+            referencedRelation: "factures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_facture_facture_id_fkey"
+            columns: ["facture_id"]
+            isOneToOne: false
+            referencedRelation: "v_factures_avec_details"
             referencedColumns: ["id"]
           },
         ]
@@ -4506,6 +4759,67 @@ export type Database = {
         }
         Relationships: []
       }
+      paiements_factures: {
+        Row: {
+          created_at: string
+          created_by_id: string | null
+          date_paiement: string
+          facture_id: string
+          id: string
+          mode_paiement: string
+          montant: number
+          notes: string | null
+          reference_paiement: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_id?: string | null
+          date_paiement?: string
+          facture_id: string
+          id?: string
+          mode_paiement: string
+          montant: number
+          notes?: string | null
+          reference_paiement?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by_id?: string | null
+          date_paiement?: string
+          facture_id?: string
+          id?: string
+          mode_paiement?: string
+          montant?: number
+          notes?: string | null
+          reference_paiement?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paiements_factures_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paiements_factures_facture_id_fkey"
+            columns: ["facture_id"]
+            isOneToOne: false
+            referencedRelation: "factures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paiements_factures_facture_id_fkey"
+            columns: ["facture_id"]
+            isOneToOne: false
+            referencedRelation: "v_factures_avec_details"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parametres_expiration: {
         Row: {
           action_automatique: string | null
@@ -5838,6 +6152,67 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      relances_factures: {
+        Row: {
+          created_at: string
+          created_by_id: string | null
+          date_relance: string
+          destinataire: string | null
+          facture_id: string
+          id: string
+          message: string | null
+          statut: string
+          tenant_id: string
+          type_relance: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_id?: string | null
+          date_relance?: string
+          destinataire?: string | null
+          facture_id: string
+          id?: string
+          message?: string | null
+          statut?: string
+          tenant_id: string
+          type_relance: string
+        }
+        Update: {
+          created_at?: string
+          created_by_id?: string | null
+          date_relance?: string
+          destinataire?: string | null
+          facture_id?: string
+          id?: string
+          message?: string | null
+          statut?: string
+          tenant_id?: string
+          type_relance?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "relances_factures_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "relances_factures_facture_id_fkey"
+            columns: ["facture_id"]
+            isOneToOne: false
+            referencedRelation: "factures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "relances_factures_facture_id_fkey"
+            columns: ["facture_id"]
+            isOneToOne: false
+            referencedRelation: "v_factures_avec_details"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       report_api_tokens: {
         Row: {
@@ -7757,6 +8132,86 @@ export type Database = {
           },
         ]
       }
+      v_factures_avec_details: {
+        Row: {
+          client_adresse: string | null
+          client_email: string | null
+          client_fournisseur: string | null
+          client_id: string | null
+          client_nom: string | null
+          client_telephone: string | null
+          created_at: string | null
+          created_by: string | null
+          created_by_id: string | null
+          date_echeance: string | null
+          date_emission: string | null
+          derniere_relance: string | null
+          fournisseur_adresse: string | null
+          fournisseur_email: string | null
+          fournisseur_id: string | null
+          fournisseur_nom: string | null
+          fournisseur_telephone: string | null
+          id: string | null
+          jours_avant_echeance: number | null
+          jours_retard: number | null
+          libelle: string | null
+          montant_ht: number | null
+          montant_paye: number | null
+          montant_restant: number | null
+          montant_ttc: number | null
+          montant_tva: number | null
+          nombre_lignes: number | null
+          notes: string | null
+          numero: string | null
+          pieces_jointes: Json | null
+          reception_id: string | null
+          reference_externe: string | null
+          relances_effectuees: number | null
+          statut: string | null
+          statut_paiement: string | null
+          tenant_id: string | null
+          type: string | null
+          updated_at: string | null
+          vente_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "factures_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "factures_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "factures_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "factures_reception_id_fkey"
+            columns: ["reception_id"]
+            isOneToOne: false
+            referencedRelation: "receptions_fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "factures_vente_id_fkey"
+            columns: ["vente_id"]
+            isOneToOne: false
+            referencedRelation: "ventes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_rapport_par_caisse_type: {
         Row: {
           caisse_id: string | null
@@ -7928,9 +8383,14 @@ export type Database = {
       }
       debug_user_connection_state: { Args: never; Returns: Json }
       detect_suspicious_patterns: { Args: never; Returns: undefined }
+      generate_avoir_number: { Args: { p_tenant_id: string }; Returns: string }
       generate_inventaire_report: {
         Args: { p_session_id: string; p_tenant_id: string; p_type: string }
         Returns: Json
+      }
+      generate_invoice_number: {
+        Args: { p_tenant_id: string; p_type: string }
+        Returns: string
       }
       generate_piece_number: { Args: { p_journal_id: string }; Returns: string }
       generate_sales_suggestions: {

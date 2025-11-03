@@ -1,0 +1,494 @@
+import { useState, useCallback, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useSessionWithType } from './useSessionWithType';
+
+// Types
+export interface Invoice {
+  id: string;
+  tenant_id: string;
+  numero: string;
+  type: 'client' | 'fournisseur';
+  date_emission: string;
+  date_echeance: string;
+  client_id?: string;
+  fournisseur_id?: string;
+  vente_id?: string;
+  reception_id?: string;
+  client_fournisseur?: string;
+  client_nom?: string;
+  client_telephone?: string;
+  client_email?: string;
+  client_adresse?: string;
+  fournisseur_nom?: string;
+  fournisseur_telephone?: string;
+  fournisseur_email?: string;
+  fournisseur_adresse?: string;
+  libelle: string;
+  reference_externe?: string;
+  notes?: string;
+  montant_ht: number;
+  montant_tva: number;
+  montant_ttc: number;
+  statut: 'brouillon' | 'emise' | 'partiellement_payee' | 'payee' | 'en_retard' | 'annulee';
+  statut_paiement: 'impayee' | 'partielle' | 'payee';
+  montant_paye: number;
+  montant_restant: number;
+  relances_effectuees: number;
+  derniere_relance?: string;
+  pieces_jointes: string[];
+  created_by_id?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+  jours_retard?: number;
+  jours_avant_echeance?: number;
+  nombre_lignes?: number;
+}
+
+export interface InvoiceLine {
+  id: string;
+  tenant_id: string;
+  facture_id: string;
+  designation: string;
+  quantite: number;
+  prix_unitaire: number;
+  taux_tva: number;
+  montant_ht: number;
+  montant_tva: number;
+  montant_ttc: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreditNote {
+  id: string;
+  tenant_id: string;
+  numero: string;
+  facture_origine_id: string;
+  date_emission: string;
+  motif: string;
+  montant_ht: number;
+  montant_tva: number;
+  montant_ttc: number;
+  statut: 'brouillon' | 'emis' | 'applique' | 'annule';
+  created_by_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Payment {
+  id: string;
+  tenant_id: string;
+  facture_id: string;
+  date_paiement: string;
+  montant: number;
+  mode_paiement: string;
+  reference_paiement?: string;
+  notes?: string;
+  created_by_id?: string;
+  created_at: string;
+}
+
+export interface Reminder {
+  id: string;
+  tenant_id: string;
+  facture_id: string;
+  date_relance: string;
+  type_relance: 'email' | 'sms' | 'telephone' | 'courrier';
+  message?: string;
+  destinataire: string;
+  statut: 'envoyee' | 'echec' | 'delivree' | 'lue';
+  created_by_id?: string;
+  created_at: string;
+}
+
+export const useInvoiceManager = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { session } = useSessionWithType();
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Fetch invoices from view
+  const { data: invoices = [], isLoading: isLoadingInvoices, error } = useQuery({
+    queryKey: ['factures'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('v_factures_avec_details')
+        .select('*')
+        .order('date_emission', { ascending: false });
+      
+      if (error) throw error;
+      return data as Invoice[];
+    },
+  });
+
+  // Fetch credit notes
+  const { data: creditNotes = [], isLoading: isLoadingCredits } = useQuery({
+    queryKey: ['avoirs'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('avoirs')
+        .select('*')
+        .order('date_emission', { ascending: false });
+      
+      if (error) throw error;
+      return data as CreditNote[];
+    },
+  });
+
+  // Generate invoice number
+  const generateInvoiceNumber = useCallback(async (type: 'client' | 'fournisseur') => {
+    const { data, error } = await supabase.rpc('generate_invoice_number', {
+      p_tenant_id: session?.tenantId,
+      p_type: type,
+    });
+    
+    if (error) throw error;
+    return data as string;
+  }, [session?.tenantId]);
+
+  // Calculate line totals
+  const calculateLineTotals = useCallback((line: Partial<InvoiceLine>) => {
+    const quantite = line.quantite || 0;
+    const prix_unitaire = line.prix_unitaire || 0;
+    const taux_tva = line.taux_tva || 0;
+
+    const montant_ht = quantite * prix_unitaire;
+    const montant_tva = (montant_ht * taux_tva) / 100;
+    const montant_ttc = montant_ht + montant_tva;
+
+    return { montant_ht, montant_tva, montant_ttc };
+  }, []);
+
+  // Create invoice
+  const createInvoiceMutation = useMutation({
+    mutationFn: async (invoice: Partial<Invoice> & { lines: Partial<InvoiceLine>[] }) => {
+      setIsSaving(true);
+      const { lines, ...invoiceData } = invoice;
+
+      // Generate numero if not provided
+      if (!invoiceData.numero && invoiceData.type) {
+        invoiceData.numero = await generateInvoiceNumber(invoiceData.type);
+      }
+
+      // Insert invoice
+      const { data: newInvoice, error: invoiceError } = await supabase
+        .from('factures')
+        .insert({
+          ...invoiceData,
+          tenant_id: session?.tenantId,
+          created_by_id: session?.personnelId,
+        })
+        .select()
+        .single();
+
+      if (invoiceError) throw invoiceError;
+
+      // Insert lines
+      if (lines && lines.length > 0) {
+        const linesToInsert = lines.map(line => {
+          const totals = calculateLineTotals(line);
+          return {
+            ...line,
+            ...totals,
+            facture_id: newInvoice.id,
+            tenant_id: session?.tenantId,
+          };
+        });
+
+        const { error: linesError } = await supabase
+          .from('lignes_facture')
+          .insert(linesToInsert);
+
+        if (linesError) throw linesError;
+      }
+
+      return newInvoice;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['factures'] });
+      toast({ title: 'Succès', description: 'Facture créée avec succès' });
+      setIsSaving(false);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Erreur', 
+        description: error.message || 'Erreur lors de la création de la facture',
+        variant: 'destructive' 
+      });
+      setIsSaving(false);
+    },
+  });
+
+  // Update invoice
+  const updateInvoiceMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Invoice> }) => {
+      setIsSaving(true);
+      const { error } = await supabase
+        .from('factures')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['factures'] });
+      toast({ title: 'Succès', description: 'Facture mise à jour' });
+      setIsSaving(false);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Erreur', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+      setIsSaving(false);
+    },
+  });
+
+  // Delete invoice
+  const deleteInvoiceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('factures')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['factures'] });
+      toast({ title: 'Succès', description: 'Facture supprimée' });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Erreur', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  // Record payment
+  const recordPaymentMutation = useMutation({
+    mutationFn: async (payment: Partial<Payment>) => {
+      setIsSaving(true);
+      
+      // Insert payment
+      const { error: paymentError } = await supabase
+        .from('paiements_factures')
+        .insert({
+          ...payment,
+          tenant_id: session?.tenantId,
+          created_by_id: session?.personnelId,
+        });
+
+      if (paymentError) throw paymentError;
+
+      // Update invoice montant_paye
+      const { data: invoice, error: fetchError } = await supabase
+        .from('factures')
+        .select('montant_paye')
+        .eq('id', payment.facture_id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { error: updateError } = await supabase
+        .from('factures')
+        .update({ 
+          montant_paye: (invoice.montant_paye || 0) + (payment.montant || 0) 
+        })
+        .eq('id', payment.facture_id);
+
+      if (updateError) throw updateError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['factures'] });
+      toast({ title: 'Succès', description: 'Paiement enregistré' });
+      setIsSaving(false);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Erreur', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+      setIsSaving(false);
+    },
+  });
+
+  // Send reminder
+  const sendReminderMutation = useMutation({
+    mutationFn: async (reminder: Partial<Reminder>) => {
+      const { error } = await supabase
+        .from('relances_factures')
+        .insert({
+          ...reminder,
+          tenant_id: session?.tenantId,
+          created_by_id: session?.personnelId,
+        });
+
+      if (error) throw error;
+
+      // Update invoice relances count
+      const { data: invoice, error: fetchError } = await supabase
+        .from('factures')
+        .select('relances_effectuees')
+        .eq('id', reminder.facture_id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { error: updateError } = await supabase
+        .from('factures')
+        .update({ 
+          relances_effectuees: (invoice.relances_effectuees || 0) + 1,
+          derniere_relance: new Date().toISOString().split('T')[0],
+        })
+        .eq('id', reminder.facture_id);
+
+      if (updateError) throw updateError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['factures'] });
+      toast({ title: 'Succès', description: 'Relance envoyée' });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Erreur', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  // Create credit note
+  const createCreditNoteMutation = useMutation({
+    mutationFn: async (creditNote: Partial<CreditNote>) => {
+      setIsSaving(true);
+
+      // Generate numero
+      const { data: numero, error: numeroError } = await supabase.rpc('generate_avoir_number', {
+        p_tenant_id: session?.tenantId,
+      });
+
+      if (numeroError) throw numeroError;
+
+      const { data, error } = await supabase
+        .from('avoirs')
+        .insert({
+          ...creditNote,
+          numero,
+          tenant_id: session?.tenantId,
+          created_by_id: session?.personnelId,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['avoirs'] });
+      toast({ title: 'Succès', description: 'Avoir créé' });
+      setIsSaving(false);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Erreur', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+      setIsSaving(false);
+    },
+  });
+
+  // Search and filter functions
+  const searchInvoices = useCallback((term: string, type?: 'client' | 'fournisseur') => {
+    return invoices.filter(inv => {
+      const matchesType = !type || inv.type === type;
+      const matchesTerm = 
+        inv.numero.toLowerCase().includes(term.toLowerCase()) ||
+        inv.client_fournisseur?.toLowerCase().includes(term.toLowerCase()) ||
+        inv.libelle.toLowerCase().includes(term.toLowerCase());
+      return matchesType && matchesTerm;
+    });
+  }, [invoices]);
+
+  const getInvoicesByType = useCallback((type: 'client' | 'fournisseur') => {
+    return invoices.filter(inv => inv.type === type);
+  }, [invoices]);
+
+  const getInvoicesByStatus = useCallback((status: string) => {
+    return invoices.filter(inv => inv.statut === status);
+  }, [invoices]);
+
+  const getOverdueInvoices = useCallback((type?: 'client' | 'fournisseur') => {
+    return invoices.filter(inv => {
+      const matchesType = !type || inv.type === type;
+      return matchesType && inv.statut === 'en_retard';
+    });
+  }, [invoices]);
+
+  const getUpcomingInvoices = useCallback((days: number, type?: 'client' | 'fournisseur') => {
+    return invoices.filter(inv => {
+      const matchesType = !type || inv.type === type;
+      return matchesType && inv.jours_avant_echeance && inv.jours_avant_echeance <= days && inv.jours_avant_echeance > 0;
+    });
+  }, [invoices]);
+
+  // Statistics
+  const getInvoiceStats = useCallback((type: 'client' | 'fournisseur') => {
+    const filtered = invoices.filter(inv => inv.type === type);
+    
+    return {
+      totalCreances: filtered.reduce((sum, inv) => sum + inv.montant_restant, 0),
+      totalDettes: filtered.reduce((sum, inv) => sum + inv.montant_ttc, 0),
+      countOverdue: filtered.filter(inv => inv.statut === 'en_retard').length,
+      countPaid: filtered.filter(inv => inv.statut_paiement === 'payee').length,
+      countUnpaid: filtered.filter(inv => inv.statut_paiement === 'impayee').length,
+      averageAmount: filtered.length > 0 ? filtered.reduce((sum, inv) => sum + inv.montant_ttc, 0) / filtered.length : 0,
+    };
+  }, [invoices]);
+
+  return {
+    // Data
+    invoices,
+    creditNotes,
+    currentInvoice: null,
+    
+    // Loading states
+    isLoadingInvoices,
+    isLoadingCredits,
+    isLoading: isLoadingInvoices || isLoadingCredits,
+    isSaving,
+    
+    // Error
+    error,
+    
+    // Actions
+    createInvoice: createInvoiceMutation.mutate,
+    updateInvoice: (id: string, updates: Partial<Invoice>) => updateInvoiceMutation.mutate({ id, updates }),
+    deleteInvoice: deleteInvoiceMutation.mutate,
+    recordPayment: recordPaymentMutation.mutate,
+    sendReminder: sendReminderMutation.mutate,
+    createCreditNote: createCreditNoteMutation.mutate,
+    
+    // Utilities
+    searchInvoices,
+    getInvoicesByType,
+    getInvoicesByStatus,
+    getOverdueInvoices,
+    getUpcomingInvoices,
+    getInvoiceStats,
+    calculateLineTotals,
+    generateInvoiceNumber,
+    
+    // Refresh
+    refreshInvoices: () => queryClient.invalidateQueries({ queryKey: ['factures'] }),
+    refreshCreditNotes: () => queryClient.invalidateQueries({ queryKey: ['avoirs'] }),
+  };
+};

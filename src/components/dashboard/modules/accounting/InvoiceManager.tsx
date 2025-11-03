@@ -9,183 +9,48 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Search, Plus, Edit, Trash2, FileText, Users, Building, CreditCard, AlertCircle, CheckCircle, Clock, Send, Download, Archive, Eye, Calendar as CalendarIcon } from 'lucide-react';
-import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
-
-interface Invoice {
-  id: string;
-  numero: string;
-  type: 'client' | 'fournisseur';
-  date_emission: string;
-  date_echeance: string;
-  client_fournisseur: string;
-  libelle: string;
-  montant_ht: number;
-  montant_tva: number;
-  montant_ttc: number;
-  statut: 'brouillon' | 'emise' | 'partiellement_payee' | 'payee' | 'en_retard' | 'annulee';
-  statut_paiement: 'impayee' | 'partielle' | 'payee';
-  montant_paye: number;
-  montant_restant: number;
-  reference_externe?: string;
-  notes?: string;
-  pieces_jointes: string[];
-  relances_effectuees: number;
-  derniere_relance?: string;
-  created_by: string;
-  created_at: string;
-  lines: InvoiceLine[];
-}
-
-interface InvoiceLine {
-  id: string;
-  designation: string;
-  quantite: number;
-  prix_unitaire: number;
-  taux_tva: number;
-  montant_ht: number;
-  montant_tva: number;
-  montant_ttc: number;
-}
-
-interface CreditNote {
-  id: string;
-  numero: string;
-  facture_origine_id: string;
-  date_emission: string;
-  motif: string;
-  montant_ht: number;
-  montant_tva: number;
-  montant_ttc: number;
-  statut: 'brouillon' | 'emis' | 'applique';
-}
+import { Search, Plus, Edit, Trash2, Eye, Send, Download, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { ClientSelector } from '@/components/accounting/ClientSelector';
+import { FournisseurSelector } from '@/components/accounting/FournisseurSelector';
+import { useInvoiceManager, Invoice, InvoiceLine, CreditNote } from '@/hooks/useInvoiceManager';
 
 const InvoiceManager = () => {
-  const { toast } = useToast();
+  const {
+    invoices,
+    creditNotes,
+    isLoading,
+    isSaving,
+    createInvoice,
+    updateInvoice,
+    deleteInvoice,
+    recordPayment,
+    sendReminder,
+    createCreditNote,
+    searchInvoices,
+    getInvoicesByType,
+    getOverdueInvoices,
+    getUpcomingInvoices,
+    getInvoiceStats,
+    calculateLineTotals,
+  } = useInvoiceManager();
+
   const [activeTab, setActiveTab] = useState('clients');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
   const [showCreditDialog, setShowCreditDialog] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showReminderDialog, setShowReminderDialog] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date>();
+  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<Invoice | null>(null);
+  const [selectedInvoiceForReminder, setSelectedInvoiceForReminder] = useState<Invoice | null>(null);
 
-  // Données exemple des factures
-  const [invoices, setInvoices] = useState<Invoice[]>([
-    {
-      id: '1',
-      numero: 'FC2024-001',
-      type: 'client',
-      date_emission: '2024-01-15',
-      date_echeance: '2024-02-14',
-      client_fournisseur: 'Pharmacie Centrale',
-      libelle: 'Vente médicaments janvier',
-      montant_ht: 25000,
-      montant_tva: 0,
-      montant_ttc: 25000,
-      statut: 'emise',
-      statut_paiement: 'partielle',
-      montant_paye: 15000,
-      montant_restant: 10000,
-      reference_externe: 'CMD-2024-15',
-      pieces_jointes: ['facture_fc2024-001.pdf'],
-      relances_effectuees: 1,
-      derniere_relance: '2024-02-20',
-      created_by: 'Pharmacien',
-      created_at: '2024-01-15T10:00:00',
-      lines: [
-        {
-          id: '1',
-          designation: 'Paracétamol 500mg',
-          quantite: 100,
-          prix_unitaire: 150,
-          taux_tva: 0,
-          montant_ht: 15000,
-          montant_tva: 0,
-          montant_ttc: 15000
-        },
-        {
-          id: '2',
-          designation: 'Aspirine 100mg',
-          quantite: 50,
-          prix_unitaire: 200,
-          taux_tva: 0,
-          montant_ht: 10000,
-          montant_tva: 0,
-          montant_ttc: 10000
-        }
-      ]
-    },
-    {
-      id: '2',
-      numero: 'FF2024-012',
-      type: 'fournisseur',
-      date_emission: '2024-01-20',
-      date_echeance: '2024-02-19',
-      client_fournisseur: 'Laboratoire PharmaCorp',
-      libelle: 'Achat médicaments génériques',
-      montant_ht: 45000,
-      montant_tva: 0,
-      montant_ttc: 45000,
-      statut: 'emise',
-      statut_paiement: 'impayee',
-      montant_paye: 0,
-      montant_restant: 45000,
-      reference_externe: 'FACT-PC-2024-012',
-      pieces_jointes: ['facture_ff2024-012.pdf'],
-      relances_effectuees: 0,
-      created_by: 'Responsable Achats',
-      created_at: '2024-01-20T14:30:00',
-      lines: [
-        {
-          id: '3',
-          designation: 'Amoxicilline 500mg',
-          quantite: 200,
-          prix_unitaire: 180,
-          taux_tva: 0,
-          montant_ht: 36000,
-          montant_tva: 0,
-          montant_ttc: 36000
-        },
-        {
-          id: '4',
-          designation: 'Ibuprofène 400mg',
-          quantite: 50,
-          prix_unitaire: 180,
-          taux_tva: 0,
-          montant_ht: 9000,
-          montant_tva: 0,
-          montant_ttc: 9000
-        }
-      ]
-    }
-  ]);
-
-  const [creditNotes, setCreditNotes] = useState<CreditNote[]>([
-    {
-      id: '1',
-      numero: 'AV2024-001',
-      facture_origine_id: '1',
-      date_emission: '2024-01-25',
-      motif: 'Retour marchandise défectueuse',
-      montant_ht: 2000,
-      montant_tva: 0,
-      montant_ttc: 2000,
-      statut: 'emis'
-    }
-  ]);
-
-  // Nouveau formulaire de facture
-  const [newInvoice, setNewInvoice] = useState<Partial<Invoice>>({
+  const [newInvoice, setNewInvoice] = useState<Partial<Invoice & { lines: Partial<InvoiceLine>[] }>>({
     type: 'client',
     date_emission: new Date().toISOString().split('T')[0],
     date_echeance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    client_fournisseur: '',
+    client_id: '',
+    fournisseur_id: '',
     libelle: '',
     montant_ht: 0,
     montant_tva: 0,
@@ -204,65 +69,61 @@ const InvoiceManager = () => {
     quantite: 1,
     prix_unitaire: 0,
     taux_tva: 0,
-    montant_ht: 0,
-    montant_tva: 0,
-    montant_ttc: 0
+  });
+
+  const [paymentData, setPaymentData] = useState({
+    montant: 0,
+    mode_paiement: 'Espèces',
+    reference_paiement: '',
+    notes: '',
+  });
+
+  const [reminderData, setReminderData] = useState({
+    type_relance: 'email' as 'email' | 'sms' | 'telephone' | 'courrier',
+    message: '',
+    destinataire: '',
   });
 
   const [newCreditNote, setNewCreditNote] = useState<Partial<CreditNote>>({
     facture_origine_id: '',
-    date_emission: new Date().toISOString().split('T')[0],
     motif: '',
     montant_ht: 0,
     montant_tva: 0,
     montant_ttc: 0,
-    statut: 'brouillon'
   });
 
   const filteredInvoices = (type: 'client' | 'fournisseur') => {
-    return invoices.filter(invoice => {
-      const matchesType = invoice.type === type;
-      const matchesSearch = invoice.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           invoice.client_fournisseur.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           invoice.libelle.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || invoice.statut === statusFilter;
-      return matchesType && matchesSearch && matchesStatus;
-    });
-  };
-
-  const calculateLineTotals = (line: Partial<InvoiceLine>) => {
-    const montant_ht = (line.quantite || 0) * (line.prix_unitaire || 0);
-    const montant_tva = montant_ht * ((line.taux_tva || 0) / 100);
-    const montant_ttc = montant_ht + montant_tva;
-    return { montant_ht, montant_tva, montant_ttc };
-  };
-
-  const calculateInvoiceTotals = (lines: InvoiceLine[]) => {
-    const montant_ht = lines.reduce((sum, line) => sum + line.montant_ht, 0);
-    const montant_tva = lines.reduce((sum, line) => sum + line.montant_tva, 0);
-    const montant_ttc = montant_ht + montant_tva;
-    return { montant_ht, montant_tva, montant_ttc };
+    let filtered = getInvoicesByType(type);
+    
+    if (searchTerm) {
+      filtered = searchInvoices(searchTerm, type);
+    }
+    
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(inv => inv.statut === statusFilter);
+    }
+    
+    return filtered;
   };
 
   const addLineToInvoice = () => {
-    if (!newLine.designation || !newLine.quantite || !newLine.prix_unitaire) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs de la ligne",
-        variant: "destructive"
-      });
+    if (!newLine.designation || !newLine.quantite || newLine.prix_unitaire === undefined) {
       return;
     }
 
     const totals = calculateLineTotals(newLine);
-    const line: InvoiceLine = {
+    const line: Partial<InvoiceLine> = {
       id: Date.now().toString(),
       ...newLine,
       ...totals
-    } as InvoiceLine;
+    };
 
     const updatedLines = [...(newInvoice.lines || []), line];
-    const invoiceTotals = calculateInvoiceTotals(updatedLines);
+    const invoiceTotals = {
+      montant_ht: updatedLines.reduce((sum, l) => sum + (l.montant_ht || 0), 0),
+      montant_tva: updatedLines.reduce((sum, l) => sum + (l.montant_tva || 0), 0),
+      montant_ttc: updatedLines.reduce((sum, l) => sum + (l.montant_ttc || 0), 0),
+    };
 
     setNewInvoice(prev => ({
       ...prev,
@@ -276,15 +137,16 @@ const InvoiceManager = () => {
       quantite: 1,
       prix_unitaire: 0,
       taux_tva: 0,
-      montant_ht: 0,
-      montant_tva: 0,
-      montant_ttc: 0
     });
   };
 
   const removeLineFromInvoice = (lineId: string) => {
     const updatedLines = (newInvoice.lines || []).filter(line => line.id !== lineId);
-    const invoiceTotals = calculateInvoiceTotals(updatedLines);
+    const invoiceTotals = {
+      montant_ht: updatedLines.reduce((sum, l) => sum + (l.montant_ht || 0), 0),
+      montant_tva: updatedLines.reduce((sum, l) => sum + (l.montant_tva || 0), 0),
+      montant_ttc: updatedLines.reduce((sum, l) => sum + (l.montant_ttc || 0), 0),
+    };
 
     setNewInvoice(prev => ({
       ...prev,
@@ -295,47 +157,25 @@ const InvoiceManager = () => {
   };
 
   const handleSaveInvoice = () => {
-    if (!newInvoice.client_fournisseur || !newInvoice.libelle || !newInvoice.lines?.length) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs obligatoires",
-        variant: "destructive"
-      });
+    if (!newInvoice.libelle || !newInvoice.lines?.length) {
       return;
     }
 
-    const invoiceNumber = newInvoice.type === 'client' 
-      ? `FC${new Date().getFullYear()}-${String(invoices.filter(i => i.type === 'client').length + 1).padStart(3, '0')}`
-      : `FF${new Date().getFullYear()}-${String(invoices.filter(i => i.type === 'fournisseur').length + 1).padStart(3, '0')}`;
-
-    if (editingInvoice) {
-      setInvoices(prev => prev.map(invoice => 
-        invoice.id === editingInvoice.id 
-          ? { ...invoice, ...newInvoice } as Invoice
-          : invoice
-      ));
-      toast({
-        title: "Succès",
-        description: "Facture modifiée avec succès"
-      });
-    } else {
-      const invoice: Invoice = {
-        id: Date.now().toString(),
-        numero: invoiceNumber,
-        created_by: 'Utilisateur actuel',
-        created_at: new Date().toISOString(),
-        ...newInvoice
-      } as Invoice;
-      
-      setInvoices(prev => [...prev, invoice]);
-      toast({
-        title: "Succès",
-        description: "Facture créée avec succès"
-      });
+    if (newInvoice.type === 'client' && !newInvoice.client_id) {
+      return;
     }
 
+    if (newInvoice.type === 'fournisseur' && !newInvoice.fournisseur_id) {
+      return;
+    }
+
+    const invoiceData = {
+      ...newInvoice,
+      lines: newInvoice.lines || [],
+    };
+
+    createInvoice(invoiceData as any);
     setShowInvoiceDialog(false);
-    setEditingInvoice(null);
     resetInvoiceForm();
   };
 
@@ -344,7 +184,8 @@ const InvoiceManager = () => {
       type: 'client',
       date_emission: new Date().toISOString().split('T')[0],
       date_echeance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      client_fournisseur: '',
+      client_id: '',
+      fournisseur_id: '',
       libelle: '',
       montant_ht: 0,
       montant_tva: 0,
@@ -362,50 +203,68 @@ const InvoiceManager = () => {
       quantite: 1,
       prix_unitaire: 0,
       taux_tva: 0,
+    });
+  };
+
+  const handleRecordPayment = () => {
+    if (!selectedInvoiceForPayment || !paymentData.montant) {
+      return;
+    }
+
+    recordPayment({
+      facture_id: selectedInvoiceForPayment.id,
+      date_paiement: new Date().toISOString().split('T')[0],
+      ...paymentData,
+    });
+
+    setShowPaymentDialog(false);
+    setSelectedInvoiceForPayment(null);
+    setPaymentData({
+      montant: 0,
+      mode_paiement: 'Espèces',
+      reference_paiement: '',
+      notes: '',
+    });
+  };
+
+  const handleSendReminder = () => {
+    if (!selectedInvoiceForReminder) {
+      return;
+    }
+
+    sendReminder({
+      facture_id: selectedInvoiceForReminder.id,
+      date_relance: new Date().toISOString().split('T')[0],
+      ...reminderData,
+    });
+
+    setShowReminderDialog(false);
+    setSelectedInvoiceForReminder(null);
+    setReminderData({
+      type_relance: 'email',
+      message: '',
+      destinataire: '',
+    });
+  };
+
+  const handleCreateCreditNote = () => {
+    if (!newCreditNote.facture_origine_id || !newCreditNote.motif || !newCreditNote.montant_ttc) {
+      return;
+    }
+
+    createCreditNote({
+      ...newCreditNote,
+      date_emission: new Date().toISOString().split('T')[0],
+      statut: 'brouillon',
+    } as any);
+
+    setShowCreditDialog(false);
+    setNewCreditNote({
+      facture_origine_id: '',
+      motif: '',
       montant_ht: 0,
       montant_tva: 0,
-      montant_ttc: 0
-    });
-  };
-
-  const sendReminder = (invoiceId: string) => {
-    setInvoices(prev => prev.map(invoice => 
-      invoice.id === invoiceId 
-        ? { 
-            ...invoice, 
-            relances_effectuees: invoice.relances_effectuees + 1,
-            derniere_relance: new Date().toISOString().split('T')[0]
-          }
-        : invoice
-    ));
-    
-    toast({
-      title: "Relance envoyée",
-      description: "La relance a été envoyée au client"
-    });
-  };
-
-  const markAsPaid = (invoiceId: string, amount?: number) => {
-    setInvoices(prev => prev.map(invoice => {
-      if (invoice.id === invoiceId) {
-        const paidAmount = amount || invoice.montant_restant;
-        const newMontantPaye = invoice.montant_paye + paidAmount;
-        const newMontantRestant = invoice.montant_ttc - newMontantPaye;
-        
-        return {
-          ...invoice,
-          montant_paye: newMontantPaye,
-          montant_restant: newMontantRestant,
-          statut_paiement: newMontantRestant <= 0 ? 'payee' : 'partielle',
-          statut: newMontantRestant <= 0 ? 'payee' : 'partiellement_payee'
-        };
-      }
-      return invoice;
-    }));
-    
-    toast({
-      title: "Paiement enregistré",
-      description: "Le paiement a été enregistré avec succès"
+      montant_ttc: 0,
     });
   };
 
@@ -425,8 +284,10 @@ const InvoiceManager = () => {
 
     switch (status) {
       case 'brouillon':
+      case 'Brouillon':
         return <Badge variant="secondary">Brouillon</Badge>;
       case 'emise':
+      case 'Validé':
         return <Badge variant="default">Émise</Badge>;
       case 'partiellement_payee':
         return <Badge variant="secondary">Partiellement payée</Badge>;
@@ -435,20 +296,19 @@ const InvoiceManager = () => {
       case 'en_retard':
         return <Badge variant="destructive">En retard</Badge>;
       case 'annulee':
+      case 'Verrouillé':
         return <Badge variant="outline">Annulée</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const getOverdueInvoices = (type: 'client' | 'fournisseur') => {
-    const today = new Date();
-    return invoices.filter(invoice => 
-      invoice.type === type &&
-      invoice.statut_paiement !== 'payee' &&
-      new Date(invoice.date_echeance) < today
-    );
-  };
+  const clientStats = getInvoiceStats('client');
+  const fournisseurStats = getInvoiceStats('fournisseur');
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center p-8">Chargement...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -456,21 +316,19 @@ const InvoiceManager = () => {
         <h2 className="text-2xl font-bold">Gestion des Factures</h2>
         <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
           <DialogTrigger asChild>
-            <Button>
+            <Button disabled={isSaving}>
               <Plus className="mr-2 h-4 w-4" />
               Nouvelle Facture
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
-                {editingInvoice ? 'Modifier la facture' : 'Créer une nouvelle facture'}
-              </DialogTitle>
+              <DialogTitle>Créer une nouvelle facture</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="type">Type de facture</Label>
+                  <Label>Type de facture</Label>
                   <Select 
                     value={newInvoice.type} 
                     onValueChange={(value: 'client' | 'fournisseur') => setNewInvoice(prev => ({ ...prev, type: value }))}
@@ -485,32 +343,35 @@ const InvoiceManager = () => {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="client_fournisseur">
+                  <Label>
                     {newInvoice.type === 'client' ? 'Client' : 'Fournisseur'}
                   </Label>
-                  <Input
-                    id="client_fournisseur"
-                    value={newInvoice.client_fournisseur}
-                    onChange={(e) => setNewInvoice(prev => ({ ...prev, client_fournisseur: e.target.value }))}
-                    placeholder={`Nom du ${newInvoice.type}`}
-                  />
+                  {newInvoice.type === 'client' ? (
+                    <ClientSelector
+                      value={newInvoice.client_id || ''}
+                      onChange={(value) => setNewInvoice(prev => ({ ...prev, client_id: value }))}
+                    />
+                  ) : (
+                    <FournisseurSelector
+                      value={newInvoice.fournisseur_id || ''}
+                      onChange={(value) => setNewInvoice(prev => ({ ...prev, fournisseur_id: value }))}
+                    />
+                  )}
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="date_emission">Date d'émission</Label>
+                  <Label>Date d'émission</Label>
                   <Input
-                    id="date_emission"
                     type="date"
                     value={newInvoice.date_emission}
                     onChange={(e) => setNewInvoice(prev => ({ ...prev, date_emission: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="date_echeance">Date d'échéance</Label>
+                  <Label>Date d'échéance</Label>
                   <Input
-                    id="date_echeance"
                     type="date"
                     value={newInvoice.date_echeance}
                     onChange={(e) => setNewInvoice(prev => ({ ...prev, date_echeance: e.target.value }))}
@@ -519,9 +380,8 @@ const InvoiceManager = () => {
               </div>
 
               <div>
-                <Label htmlFor="libelle">Libellé</Label>
+                <Label>Libellé</Label>
                 <Input
-                  id="libelle"
                   value={newInvoice.libelle}
                   onChange={(e) => setNewInvoice(prev => ({ ...prev, libelle: e.target.value }))}
                   placeholder="Description de la facture"
@@ -564,48 +424,47 @@ const InvoiceManager = () => {
                 </div>
 
                 {newInvoice.lines && newInvoice.lines.length > 0 && (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Désignation</TableHead>
-                        <TableHead>Qté</TableHead>
-                        <TableHead>Prix Unit.</TableHead>
-                        <TableHead>TVA</TableHead>
-                        <TableHead>Total HT</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {newInvoice.lines.map(line => (
-                        <TableRow key={line.id}>
-                          <TableCell>{line.designation}</TableCell>
-                          <TableCell>{line.quantite}</TableCell>
-                          <TableCell>{line.prix_unitaire.toLocaleString()}</TableCell>
-                          <TableCell>{line.taux_tva}%</TableCell>
-                          <TableCell>{line.montant_ht.toLocaleString()}</TableCell>
-                          <TableCell>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => removeLineFromInvoice(line.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Désignation</TableHead>
+                          <TableHead>Qté</TableHead>
+                          <TableHead>Prix Unit.</TableHead>
+                          <TableHead>TVA</TableHead>
+                          <TableHead>Total HT</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-
-                {newInvoice.lines && newInvoice.lines.length > 0 && (
-                  <div className="mt-4 p-3 bg-muted rounded-lg">
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>Total HT: <span className="font-medium">{(newInvoice.montant_ht || 0).toLocaleString()}</span></div>
-                      <div>TVA: <span className="font-medium">{(newInvoice.montant_tva || 0).toLocaleString()}</span></div>
-                      <div>Total TTC: <span className="font-medium">{(newInvoice.montant_ttc || 0).toLocaleString()}</span></div>
+                      </TableHeader>
+                      <TableBody>
+                        {newInvoice.lines.map(line => (
+                          <TableRow key={line.id}>
+                            <TableCell>{line.designation}</TableCell>
+                            <TableCell>{line.quantite}</TableCell>
+                            <TableCell>{line.prix_unitaire?.toLocaleString()}</TableCell>
+                            <TableCell>{line.taux_tva}%</TableCell>
+                            <TableCell>{line.montant_ht?.toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => removeLineFromInvoice(line.id!)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <div className="mt-4 p-3 bg-muted rounded-lg">
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div>Total HT: <span className="font-medium">{(newInvoice.montant_ht || 0).toLocaleString()}</span></div>
+                        <div>TVA: <span className="font-medium">{(newInvoice.montant_tva || 0).toLocaleString()}</span></div>
+                        <div>Total TTC: <span className="font-medium">{(newInvoice.montant_ttc || 0).toLocaleString()}</span></div>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             </div>
@@ -614,8 +473,8 @@ const InvoiceManager = () => {
               <Button variant="outline" onClick={() => setShowInvoiceDialog(false)}>
                 Annuler
               </Button>
-              <Button onClick={handleSaveInvoice}>
-                {editingInvoice ? 'Modifier' : 'Créer'}
+              <Button onClick={handleSaveInvoice} disabled={isSaving}>
+                Créer
               </Button>
             </div>
           </DialogContent>
@@ -630,6 +489,7 @@ const InvoiceManager = () => {
           <TabsTrigger value="relances">Relances</TabsTrigger>
         </TabsList>
 
+        {/* Factures Clients */}
         <TabsContent value="clients" className="space-y-4">
           <div className="flex space-x-4">
             <div className="flex-1">
@@ -665,7 +525,7 @@ const InvoiceManager = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {filteredInvoices('client').reduce((sum, inv) => sum + inv.montant_restant, 0).toLocaleString()}
+                  {clientStats.totalCreances.toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground">FCFA</p>
               </CardContent>
@@ -676,18 +536,18 @@ const InvoiceManager = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">
-                  {getOverdueInvoices('client').length}
+                  {clientStats.countOverdue}
                 </div>
                 <p className="text-xs text-muted-foreground">Factures</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Payées ce mois</CardTitle>
+                <CardTitle className="text-sm font-medium">Payées</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  {filteredInvoices('client').filter(inv => inv.statut_paiement === 'payee').length}
+                  {clientStats.countPaid}
                 </div>
                 <p className="text-xs text-muted-foreground">Factures</p>
               </CardContent>
@@ -698,9 +558,7 @@ const InvoiceManager = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {filteredInvoices('client').length > 0 
-                    ? Math.round(filteredInvoices('client').reduce((sum, inv) => sum + inv.montant_ttc, 0) / filteredInvoices('client').length).toLocaleString()
-                    : 0}
+                  {Math.round(clientStats.averageAmount).toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground">FCFA</p>
               </CardContent>
@@ -752,14 +610,22 @@ const InvoiceManager = () => {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                onClick={() => sendReminder(invoice.id)}
+                                onClick={() => {
+                                  setSelectedInvoiceForReminder(invoice);
+                                  setReminderData(prev => ({ ...prev, destinataire: invoice.client_telephone || invoice.client_email || '' }));
+                                  setShowReminderDialog(true);
+                                }}
                               >
                                 <Send className="h-4 w-4" />
                               </Button>
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                onClick={() => markAsPaid(invoice.id)}
+                                onClick={() => {
+                                  setSelectedInvoiceForPayment(invoice);
+                                  setPaymentData(prev => ({ ...prev, montant: invoice.montant_restant }));
+                                  setShowPaymentDialog(true);
+                                }}
                               >
                                 <CheckCircle className="h-4 w-4" />
                               </Button>
@@ -775,6 +641,7 @@ const InvoiceManager = () => {
           </Card>
         </TabsContent>
 
+        {/* Factures Fournisseurs */}
         <TabsContent value="fournisseurs" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4 mb-6">
             <Card>
@@ -783,7 +650,7 @@ const InvoiceManager = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {filteredInvoices('fournisseur').reduce((sum, inv) => sum + inv.montant_restant, 0).toLocaleString()}
+                  {fournisseurStats.totalCreances.toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground">FCFA</p>
               </CardContent>
@@ -794,7 +661,7 @@ const InvoiceManager = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-600">
-                  {filteredInvoices('fournisseur').filter(inv => inv.statut_paiement === 'impayee').length}
+                  {fournisseurStats.countUnpaid}
                 </div>
                 <p className="text-xs text-muted-foreground">Factures</p>
               </CardContent>
@@ -805,18 +672,18 @@ const InvoiceManager = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">
-                  {getOverdueInvoices('fournisseur').length}
+                  {fournisseurStats.countOverdue}
                 </div>
                 <p className="text-xs text-muted-foreground">Factures</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Payées ce mois</CardTitle>
+                <CardTitle className="text-sm font-medium">Payées</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  {filteredInvoices('fournisseur').filter(inv => inv.statut_paiement === 'payee').length}
+                  {fournisseurStats.countPaid}
                 </div>
                 <p className="text-xs text-muted-foreground">Factures</p>
               </CardContent>
@@ -867,7 +734,11 @@ const InvoiceManager = () => {
                             <Button 
                               variant="ghost" 
                               size="sm"
-                              onClick={() => markAsPaid(invoice.id)}
+                              onClick={() => {
+                                setSelectedInvoiceForPayment(invoice);
+                                setPaymentData(prev => ({ ...prev, montant: invoice.montant_restant }));
+                                setShowPaymentDialog(true);
+                              }}
                             >
                               <CheckCircle className="h-4 w-4" />
                             </Button>
@@ -882,6 +753,7 @@ const InvoiceManager = () => {
           </Card>
         </TabsContent>
 
+        {/* Avoirs */}
         <TabsContent value="avoirs" className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-medium">Notes de crédit et avoirs</h3>
@@ -898,7 +770,7 @@ const InvoiceManager = () => {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div>
-                    <Label htmlFor="facture_origine">Facture d'origine</Label>
+                    <Label>Facture d'origine</Label>
                     <Select 
                       value={newCreditNote.facture_origine_id} 
                       onValueChange={(value) => setNewCreditNote(prev => ({ ...prev, facture_origine_id: value }))}
@@ -907,7 +779,7 @@ const InvoiceManager = () => {
                         <SelectValue placeholder="Sélectionner une facture" />
                       </SelectTrigger>
                       <SelectContent>
-                        {invoices.filter(inv => inv.type === 'client').map(invoice => (
+                        {getInvoicesByType('client').map(invoice => (
                           <SelectItem key={invoice.id} value={invoice.id}>
                             {invoice.numero} - {invoice.client_fournisseur}
                           </SelectItem>
@@ -916,18 +788,16 @@ const InvoiceManager = () => {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="motif">Motif de l'avoir</Label>
+                    <Label>Motif de l'avoir</Label>
                     <Textarea
-                      id="motif"
                       value={newCreditNote.motif}
                       onChange={(e) => setNewCreditNote(prev => ({ ...prev, motif: e.target.value }))}
                       placeholder="Raison de la création de l'avoir"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="montant">Montant TTC</Label>
+                    <Label>Montant TTC</Label>
                     <Input
-                      id="montant"
                       type="number"
                       value={newCreditNote.montant_ttc || ''}
                       onChange={(e) => {
@@ -947,14 +817,7 @@ const InvoiceManager = () => {
                   <Button variant="outline" onClick={() => setShowCreditDialog(false)}>
                     Annuler
                   </Button>
-                  <Button onClick={() => {
-                    // Logique de création d'avoir
-                    setShowCreditDialog(false);
-                    toast({
-                      title: "Avoir créé",
-                      description: "L'avoir a été créé avec succès"
-                    });
-                  }}>
+                  <Button onClick={handleCreateCreditNote} disabled={isSaving}>
                     Créer
                   </Button>
                 </div>
@@ -1006,6 +869,7 @@ const InvoiceManager = () => {
           </Card>
         </TabsContent>
 
+        {/* Relances */}
         <TabsContent value="relances" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
@@ -1021,17 +885,21 @@ const InvoiceManager = () => {
                     <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
                         <div className="font-medium">{invoice.numero}</div>
-                        <div className="text-sm text-muted-foreference">
+                        <div className="text-sm text-muted-foreground">
                           {invoice.client_fournisseur} - {invoice.montant_restant.toLocaleString()} FCFA
                         </div>
                         <div className="text-xs text-red-600">
-                          Échue depuis {Math.ceil((Date.now() - new Date(invoice.date_echeance).getTime()) / (1000 * 60 * 60 * 24))} jours
+                          Échue depuis {invoice.jours_retard} jours
                         </div>
                       </div>
                       <div className="flex space-x-2">
                         <Button 
                           size="sm" 
-                          onClick={() => sendReminder(invoice.id)}
+                          onClick={() => {
+                            setSelectedInvoiceForReminder(invoice);
+                            setReminderData(prev => ({ ...prev, destinataire: invoice.client_email || invoice.client_telephone || '' }));
+                            setShowReminderDialog(true);
+                          }}
                         >
                           <Send className="mr-2 h-4 w-4" />
                           Relancer
@@ -1057,40 +925,159 @@ const InvoiceManager = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {invoices
-                    .filter(inv => {
-                      const daysTodue = Math.ceil((new Date(inv.date_echeance).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                      return inv.statut_paiement !== 'payee' && daysTodue <= 7 && daysTodue >= 0;
-                    })
-                    .map(invoice => (
-                      <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <div className="font-medium">{invoice.numero}</div>
-                          <div className="text-sm text-muted-foregrund">
-                            {invoice.client_fournisseur} - {invoice.montant_restant.toLocaleString()} FCFA
-                          </div>
-                          <div className="text-xs text-orange-600">
-                            Échéance dans {Math.ceil((new Date(invoice.date_echeance).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} jours
-                          </div>
+                  {getUpcomingInvoices(7, 'client').map(invoice => (
+                    <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <div className="font-medium">{invoice.numero}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {invoice.client_fournisseur} - {invoice.montant_restant.toLocaleString()} FCFA
                         </div>
-                        <div className="flex space-x-2">
-                          <Button 
-                            variant="outline"
-                            size="sm" 
-                            onClick={() => sendReminder(invoice.id)}
-                          >
-                            <Send className="mr-2 h-4 w-4" />
-                            Prérelance
-                          </Button>
+                        <div className="text-xs text-orange-600">
+                          Échéance dans {invoice.jours_avant_echeance} jours
                         </div>
                       </div>
-                    ))}
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="outline"
+                          size="sm" 
+                          onClick={() => {
+                            setSelectedInvoiceForReminder(invoice);
+                            setReminderData(prev => ({ ...prev, destinataire: invoice.client_email || invoice.client_telephone || '' }));
+                            setShowReminderDialog(true);
+                          }}
+                        >
+                          <Send className="mr-2 h-4 w-4" />
+                          Prérelance
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {getUpcomingInvoices(7, 'client').length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Aucune échéance proche
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Payment Dialog */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enregistrer un paiement</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div>
+              <Label>Montant payé</Label>
+              <Input
+                type="number"
+                value={paymentData.montant}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, montant: parseFloat(e.target.value) || 0 }))}
+                placeholder="Montant du paiement"
+              />
+            </div>
+            <div>
+              <Label>Mode de paiement</Label>
+              <Select 
+                value={paymentData.mode_paiement} 
+                onValueChange={(value) => setPaymentData(prev => ({ ...prev, mode_paiement: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Espèces">Espèces</SelectItem>
+                  <SelectItem value="Chèque">Chèque</SelectItem>
+                  <SelectItem value="Virement">Virement</SelectItem>
+                  <SelectItem value="Carte bancaire">Carte bancaire</SelectItem>
+                  <SelectItem value="Mobile money">Mobile money</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Référence paiement (optionnel)</Label>
+              <Input
+                value={paymentData.reference_paiement}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, reference_paiement: e.target.value }))}
+                placeholder="Numéro chèque, référence..."
+              />
+            </div>
+            <div>
+              <Label>Notes (optionnel)</Label>
+              <Textarea
+                value={paymentData.notes}
+                onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Notes supplémentaires"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleRecordPayment} disabled={isSaving}>
+              Enregistrer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reminder Dialog */}
+      <Dialog open={showReminderDialog} onOpenChange={setShowReminderDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Envoyer une relance</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div>
+              <Label>Type de relance</Label>
+              <Select 
+                value={reminderData.type_relance} 
+                onValueChange={(value: any) => setReminderData(prev => ({ ...prev, type_relance: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="sms">SMS</SelectItem>
+                  <SelectItem value="telephone">Téléphone</SelectItem>
+                  <SelectItem value="courrier">Courrier</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Destinataire</Label>
+              <Input
+                value={reminderData.destinataire}
+                onChange={(e) => setReminderData(prev => ({ ...prev, destinataire: e.target.value }))}
+                placeholder="Email ou téléphone"
+              />
+            </div>
+            <div>
+              <Label>Message</Label>
+              <Textarea
+                value={reminderData.message}
+                onChange={(e) => setReminderData(prev => ({ ...prev, message: e.target.value }))}
+                placeholder="Message de la relance"
+                rows={4}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setShowReminderDialog(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleSendReminder} disabled={isSaving}>
+              Envoyer
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
