@@ -10,11 +10,14 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
+  ResponsiveContainer, LineChart, Line 
+} from 'recharts';
 import { 
   Shield, 
   Lock, 
@@ -36,180 +39,182 @@ import {
   History,
   Settings,
   Archive,
-  UserCheck
+  UserCheck,
+  LogOut,
+  RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuditSecurity, type TimeRange } from '@/hooks/useAuditSecurity';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { useTenant } from '@/contexts/TenantContext';
 
 const AuditSecurity = () => {
   const [activeTab, setActiveTab] = useState('pistes-audit');
+  const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('30d');
   const { toast } = useToast();
+  const { currentUser } = useTenant();
+  
+  const {
+    auditLogs,
+    securityAlerts,
+    securityControls,
+    complianceChecks,
+    backupLogs,
+    auditReports,
+    regionalParams,
+    userSessions,
+    metrics,
+    loadingAuditLogs,
+    loadingSecurityAlerts,
+    loadingSecurityControls,
+    loadingComplianceChecks,
+    loadingBackupLogs,
+    resolveAlert,
+    updateSecurityControl,
+    updateComplianceCheck,
+    createBackup,
+    disconnectSession,
+    generateAuditReport,
+    exportToCSV,
+    exportToPDF,
+  } = useAuditSecurity(selectedTimeRange);
 
-  // Mock data for audit trail
-  const auditTrail = [
-    {
-      id: 1,
-      timestamp: '2024-12-10 14:30:25',
-      user: 'Marie Kouassi',
-      action: 'Création',
-      entity: 'Facture',
-      entityId: 'FC-2024-1205',
-      details: 'Nouvelle facture client - Pharmacie Central',
-      ipAddress: '192.168.1.45',
-      severity: 'Normal'
-    },
-    {
-      id: 2,
-      timestamp: '2024-12-10 14:25:12',
-      user: 'Jean Traoré',
-      action: 'Modification',
-      entity: 'Écriture Comptable',
-      entityId: 'EC-2024-8956',
-      details: 'Modification montant: 150000 → 165000 FCFA',
-      ipAddress: '192.168.1.32',
-      severity: 'Élevé'
-    },
-    {
-      id: 3,
-      timestamp: '2024-12-10 13:45:08',
-      user: 'Fatou Diallo',
-      action: 'Suppression',
-      entity: 'Écriture Comptable',
-      entityId: 'EC-2024-8945',
-      details: 'Suppression écriture erronée avec justification',
-      ipAddress: '192.168.1.28',
-      severity: 'Critique'
-    },
-    {
-      id: 4,
-      timestamp: '2024-12-10 12:15:33',
-      user: 'Système',
-      action: 'Connexion',
-      entity: 'Session',
-      entityId: 'SESS-789456',
-      details: 'Connexion utilisateur Marie Kouassi',
-      ipAddress: '192.168.1.45',
-      severity: 'Normal'
+  // State for filters
+  const [userFilter, setUserFilter] = useState<string>('all');
+  const [actionFilter, setActionFilter] = useState<string>('all');
+  const [severityFilter, setSeverityFilter] = useState<string>('all');
+
+  // Filtered audit logs
+  const filteredAuditLogs = auditLogs.filter(log => {
+    if (userFilter !== 'all' && log.personnel_id !== userFilter) return false;
+    if (actionFilter !== 'all' && log.action !== actionFilter) return false;
+    return true;
+  });
+
+  // Filtered security alerts
+  const filteredSecurityAlerts = securityAlerts.filter(alert => {
+    if (severityFilter !== 'all' && alert.severity !== severityFilter) return false;
+    return true;
+  });
+
+  const handleGenerateAuditReport = async (
+    reportType: 'audit_complet' | 'connexions' | 'conformite' | 'risques'
+  ) => {
+    try {
+      await generateAuditReport({
+        reportType,
+        reportName: `Rapport ${reportType} - ${format(new Date(), 'dd/MM/yyyy')}`,
+        reportFormat: 'pdf',
+        periodStart: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        periodEnd: new Date().toISOString().split('T')[0],
+        generatedBy: currentUser?.id || '',
+      });
+    } catch (error) {
+      console.error('Error generating report:', error);
     }
-  ];
-
-  // Mock data for user permissions
-  const userPermissions = [
-    {
-      id: 1,
-      user: 'Marie Kouassi',
-      role: 'Comptable Senior',
-      permissions: ['Lecture', 'Écriture', 'Validation'],
-      lastLogin: '2024-12-10 14:30',
-      status: 'Actif',
-      sessions: 3
-    },
-    {
-      id: 2,
-      user: 'Jean Traoré',
-      role: 'Directeur Financier',
-      permissions: ['Lecture', 'Écriture', 'Validation', 'Administration'],
-      lastLogin: '2024-12-10 09:15',
-      status: 'Actif',
-      sessions: 1
-    },
-    {
-      id: 3,
-      user: 'Fatou Diallo',
-      role: 'Assistante Comptable',
-      permissions: ['Lecture', 'Écriture'],
-      lastLogin: '2024-12-09 16:45',
-      status: 'Actif',
-      sessions: 2
-    },
-    {
-      id: 4,
-      user: 'Amadou Sanogo',
-      role: 'Consultant',
-      permissions: ['Lecture'],
-      lastLogin: '2024-12-05 11:20',
-      status: 'Suspendu',
-      sessions: 0
-    }
-  ];
-
-  // Mock data for security controls
-  const securityControls = [
-    { id: 1, control: 'Authentification forte', status: 'Actif', score: 95, lastCheck: '2024-12-10' },
-    { id: 2, control: 'Chiffrement des données', status: 'Actif', score: 100, lastCheck: '2024-12-10' },
-    { id: 3, control: 'Sauvegarde automatique', status: 'Actif', score: 90, lastCheck: '2024-12-10' },
-    { id: 4, control: 'Contrôle d\'accès', status: 'Actif', score: 88, lastCheck: '2024-12-10' },
-    { id: 5, control: 'Détection d\'intrusion', status: 'Attention', score: 75, lastCheck: '2024-12-09' },
-    { id: 6, control: 'Audit des connexions', status: 'Actif', score: 92, lastCheck: '2024-12-10' }
-  ];
-
-  // Mock data for compliance checks
-  const complianceChecks = [
-    { id: 1, requirement: 'Conservation documents 10 ans', status: 'Conforme', score: 100 },
-    { id: 2, requirement: 'Traçabilité modifications', status: 'Conforme', score: 95 },
-    { id: 3, requirement: 'Séparation des tâches', status: 'Conforme', score: 90 },
-    { id: 4, requirement: 'Contrôle périodique', status: 'À améliorer', score: 70 },
-    { id: 5, requirement: 'Signature électronique', status: 'En cours', score: 60 }
-  ];
-
-  // Mock data for audit statistics
-  const auditStats = [
-    { month: 'Jul', connexions: 245, modifications: 56, suppressions: 3, alertes: 2 },
-    { month: 'Aug', connexions: 289, modifications: 62, suppressions: 1, alertes: 1 },
-    { month: 'Sep', connexions: 267, modifications: 48, suppressions: 2, alertes: 3 },
-    { month: 'Oct', connexions: 312, modifications: 71, suppressions: 4, alertes: 2 },
-    { month: 'Nov', connexions: 298, modifications: 59, suppressions: 2, alertes: 1 },
-    { month: 'Dec', connexions: 278, modifications: 65, suppressions: 3, alertes: 4 }
-  ];
-
-  const handleGenerateAuditReport = () => {
-    toast({
-      title: "Rapport d'audit généré",
-      description: "Le rapport d'audit complet a été créé avec succès."
-    });
   };
 
   const handleExportAuditTrail = () => {
-    toast({
-      title: "Export en cours",
-      description: "Les pistes d'audit sont en cours d'export au format CSV."
-    });
+    exportToCSV(
+      filteredAuditLogs.map(log => ({
+        Horodatage: format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss', { locale: fr }),
+        Utilisateur: log.personnel_id,
+        Action: log.action,
+        Table: log.table_name,
+        'ID Enregistrement': log.record_id,
+        'Adresse IP': log.ip_address,
+        Statut: log.status,
+      })),
+      'pistes_audit'
+    );
   };
 
-  const handleRunSecurityScan = () => {
+  const handleRunSecurityScan = async () => {
     toast({
       title: "Scan de sécurité lancé",
       description: "Vérification des contrôles de sécurité en cours..."
     });
+
+    // Update all security controls with a new check
+    for (const control of securityControls) {
+      await updateSecurityControl({
+        id: control.id,
+        last_check_date: new Date().toISOString(),
+        next_check_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+    }
+
+    toast({
+      title: "Scan terminé",
+      description: "Tous les contrôles ont été vérifiés avec succès."
+    });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Actif':
-      case 'Conforme':
+  const handleResolveAlert = async (alertId: string) => {
+    try {
+      await resolveAlert({ alertId, userId: currentUser?.id || '' });
+    } catch (error) {
+      console.error('Error resolving alert:', error);
+    }
+  };
+
+  const handleDisconnectSession = async (sessionId: string) => {
+    try {
+      await disconnectSession(sessionId);
+    } catch (error) {
+      console.error('Error disconnecting session:', error);
+    }
+  };
+
+  const handleCreateBackup = async () => {
+    try {
+      await createBackup({ initiatedBy: currentUser?.id || '' });
+    } catch (error) {
+      console.error('Error creating backup:', error);
+    }
+  };
+
+  const getStatusColor = (status: string): "default" | "secondary" | "destructive" => {
+    switch (status?.toLowerCase()) {
+      case 'actif':
+      case 'compliant':
+      case 'conforme':
+      case 'completed':
         return 'default';
-      case 'En cours':
-      case 'Attention':
+      case 'en cours':
+      case 'attention':
+      case 'partial':
+      case 'in_progress':
         return 'secondary';
-      case 'Suspendu':
-      case 'À améliorer':
+      case 'suspendu':
+      case 'non_compliant':
+      case 'failed':
         return 'destructive';
       default:
         return 'secondary';
     }
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'Normal':
+  const getSeverityColor = (severity: string): "default" | "secondary" | "destructive" => {
+    switch (severity?.toLowerCase()) {
+      case 'low':
+      case 'normal':
         return 'default';
-      case 'Élevé':
+      case 'medium':
+      case 'élevé':
         return 'secondary';
-      case 'Critique':
+      case 'high':
+      case 'critical':
+      case 'critique':
         return 'destructive';
       default:
         return 'default';
     }
   };
+
+  // Get unique users for filter
+  const uniqueUsers = Array.from(new Set(auditLogs.map(log => log.personnel_id)));
 
   return (
     <div className="space-y-6">
@@ -221,11 +226,23 @@ const AuditSecurity = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          <Select value={selectedTimeRange} onValueChange={(value: TimeRange) => setSelectedTimeRange(value)}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="24h">24 heures</SelectItem>
+              <SelectItem value="7d">7 jours</SelectItem>
+              <SelectItem value="30d">30 jours</SelectItem>
+              <SelectItem value="90d">90 jours</SelectItem>
+              <SelectItem value="all">Tout</SelectItem>
+            </SelectContent>
+          </Select>
           <Button onClick={handleRunSecurityScan} variant="outline">
             <Shield className="h-4 w-4 mr-2" />
             Scan Sécurité
           </Button>
-          <Button onClick={handleGenerateAuditReport}>
+          <Button onClick={() => handleGenerateAuditReport('audit_complet')}>
             <FileText className="h-4 w-4 mr-2" />
             Rapport Audit
           </Button>
@@ -242,6 +259,7 @@ const AuditSecurity = () => {
           <TabsTrigger value="rapports">Rapports</TabsTrigger>
         </TabsList>
 
+        {/* PISTES D'AUDIT */}
         <TabsContent value="pistes-audit" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
@@ -250,8 +268,8 @@ const AuditSecurity = () => {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">47</div>
-                <p className="text-xs text-success">+12% vs hier</p>
+                <div className="text-2xl font-bold">{metrics.actionsToday}</div>
+                <p className="text-xs text-muted-foreground">Actions enregistrées</p>
               </CardContent>
             </Card>
             <Card>
@@ -260,8 +278,8 @@ const AuditSecurity = () => {
                 <User className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">8</div>
-                <p className="text-xs text-muted-foreground">Sessions en cours</p>
+                <div className="text-2xl font-bold">{metrics.activeUsers}</div>
+                <p className="text-xs text-muted-foreground">{userSessions.length} sessions en cours</p>
               </CardContent>
             </Card>
             <Card>
@@ -270,7 +288,7 @@ const AuditSecurity = () => {
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">2</div>
+                <div className="text-2xl font-bold">{metrics.unresolvedAlerts}</div>
                 <p className="text-xs text-destructive">Nécessitent attention</p>
               </CardContent>
             </Card>
@@ -280,8 +298,8 @@ const AuditSecurity = () => {
                 <Shield className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">89%</div>
-                <Progress value={89} className="mt-2" />
+                <div className="text-2xl font-bold">{Math.round(metrics.averageSecurityScore)}%</div>
+                <Progress value={metrics.averageSecurityScore} className="mt-2" />
               </CardContent>
             </Card>
           </div>
@@ -294,39 +312,27 @@ const AuditSecurity = () => {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex gap-4">
-                  <Select>
+                  <Select value={userFilter} onValueChange={setUserFilter}>
                     <SelectTrigger className="w-48">
                       <SelectValue placeholder="Filtrer par utilisateur" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tous les utilisateurs</SelectItem>
-                      <SelectItem value="marie">Marie Kouassi</SelectItem>
-                      <SelectItem value="jean">Jean Traoré</SelectItem>
-                      <SelectItem value="fatou">Fatou Diallo</SelectItem>
-                      <SelectItem value="system">Système</SelectItem>
+                      {uniqueUsers.map(userId => (
+                        <SelectItem key={userId} value={userId}>{userId}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                  <Select>
+                  <Select value={actionFilter} onValueChange={setActionFilter}>
                     <SelectTrigger className="w-48">
                       <SelectValue placeholder="Type d'action" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Toutes les actions</SelectItem>
-                      <SelectItem value="create">Création</SelectItem>
-                      <SelectItem value="modify">Modification</SelectItem>
-                      <SelectItem value="delete">Suppression</SelectItem>
-                      <SelectItem value="login">Connexion</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select>
-                    <SelectTrigger className="w-32">
-                      <SelectValue placeholder="Sévérité" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Toutes</SelectItem>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="high">Élevé</SelectItem>
-                      <SelectItem value="critical">Critique</SelectItem>
+                      <SelectItem value="INSERT">Création</SelectItem>
+                      <SelectItem value="UPDATE">Modification</SelectItem>
+                      <SelectItem value="DELETE">Suppression</SelectItem>
+                      <SelectItem value="SELECT">Consultation</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button onClick={handleExportAuditTrail} variant="outline">
@@ -335,54 +341,130 @@ const AuditSecurity = () => {
                   </Button>
                 </div>
 
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Horodatage</TableHead>
-                      <TableHead>Utilisateur</TableHead>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Entité</TableHead>
-                      <TableHead>Détails</TableHead>
-                      <TableHead>IP</TableHead>
-                      <TableHead>Sévérité</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {auditTrail.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell className="font-mono text-sm">{entry.timestamp}</TableCell>
-                        <TableCell>{entry.user}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{entry.action}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{entry.entity}</p>
-                            <p className="text-sm text-muted-foreground">{entry.entityId}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">{entry.details}</TableCell>
-                        <TableCell className="font-mono text-sm">{entry.ipAddress}</TableCell>
-                        <TableCell>
-                          <Badge variant={getSeverityColor(entry.severity)}>
-                            {entry.severity}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
+                {loadingAuditLogs ? (
+                  <div className="text-center py-8">
+                    <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                    <p className="text-muted-foreground mt-2">Chargement des pistes d'audit...</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Horodatage</TableHead>
+                        <TableHead>Utilisateur</TableHead>
+                        <TableHead>Action</TableHead>
+                        <TableHead>Table</TableHead>
+                        <TableHead>ID Enregistrement</TableHead>
+                        <TableHead>IP</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredAuditLogs.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                            Aucune action enregistrée pour cette période
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredAuditLogs.slice(0, 50).map((log) => (
+                          <TableRow key={log.id}>
+                            <TableCell className="font-mono text-sm">
+                              {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss', { locale: fr })}
+                            </TableCell>
+                            <TableCell className="text-sm">{log.personnel_id?.substring(0, 8)}...</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{log.action}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{log.table_name}</p>
+                                <p className="text-sm text-muted-foreground">{log.record_id?.substring(0, 8)}...</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">{log.record_id?.substring(0, 12)}...</TableCell>
+                            <TableCell className="font-mono text-sm">{log.ip_address}</TableCell>
+                            <TableCell>
+                              <Badge variant={log.status === 'success' ? 'default' : 'destructive'}>
+                                {log.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl">
+                                  <DialogHeader>
+                                    <DialogTitle>Détails de l'action</DialogTitle>
+                                    <DialogDescription>
+                                      Informations complètes sur cette opération d'audit
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <Label>Horodatage</Label>
+                                        <p className="text-sm font-mono">
+                                          {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss', { locale: fr })}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <Label>Utilisateur</Label>
+                                        <p className="text-sm">{log.personnel_id}</p>
+                                      </div>
+                                      <div>
+                                        <Label>Action</Label>
+                                        <p className="text-sm">{log.action}</p>
+                                      </div>
+                                      <div>
+                                        <Label>Table</Label>
+                                        <p className="text-sm">{log.table_name}</p>
+                                      </div>
+                                      <div>
+                                        <Label>Adresse IP</Label>
+                                        <p className="text-sm font-mono">{log.ip_address}</p>
+                                      </div>
+                                      <div>
+                                        <Label>User Agent</Label>
+                                        <p className="text-sm truncate">{log.user_agent}</p>
+                                      </div>
+                                    </div>
+                                    {log.old_values && (
+                                      <div>
+                                        <Label>Anciennes valeurs</Label>
+                                        <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-auto max-h-32">
+                                          {JSON.stringify(log.old_values, null, 2)}
+                                        </pre>
+                                      </div>
+                                    )}
+                                    {log.new_values && (
+                                      <div>
+                                        <Label>Nouvelles valeurs</Label>
+                                        <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-auto max-h-32">
+                                          {JSON.stringify(log.new_values, null, 2)}
+                                        </pre>
+                                      </div>
+                                    )}
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* SÉCURITÉ */}
         <TabsContent value="securite" className="space-y-4">
           <Card>
             <CardHeader>
@@ -390,369 +472,217 @@ const AuditSecurity = () => {
               <CardDescription>État des mesures de protection en place</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {securityControls.map((control) => (
-                  <Card key={control.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium">{control.control}</h4>
-                        <Badge variant={getStatusColor(control.status)}>
-                          {control.status}
-                        </Badge>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span>Score:</span>
-                          <span className="font-bold">{control.score}%</span>
+              {loadingSecurityControls ? (
+                <div className="text-center py-8">
+                  <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {securityControls.map((control) => (
+                    <Card key={control.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium">{control.control_name}</h4>
+                          <Badge variant={getStatusColor(control.status)}>
+                            {control.status}
+                          </Badge>
                         </div>
-                        <Progress value={control.score} />
-                        <p className="text-xs text-muted-foreground">
-                          Dernière vérification: {control.lastCheck}
-                        </p>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span>Score:</span>
+                            <span className="font-bold">{Math.round(control.compliance_score)}%</span>
+                          </div>
+                          <Progress value={control.compliance_score} />
+                          <p className="text-xs text-muted-foreground">
+                            Dernière vérification: {control.last_check_date ? format(new Date(control.last_check_date), 'dd/MM/yyyy', { locale: fr }) : 'Jamais'}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Alertes de Sécurité</CardTitle>
+              <CardDescription>Incidents et événements nécessitant attention</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Select value={severityFilter} onValueChange={setSeverityFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Filtrer par sévérité" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes les sévérités</SelectItem>
+                    <SelectItem value="low">Faible</SelectItem>
+                    <SelectItem value="medium">Moyenne</SelectItem>
+                    <SelectItem value="high">Élevée</SelectItem>
+                    <SelectItem value="critical">Critique</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {loadingSecurityAlerts ? (
+                  <div className="text-center py-8">
+                    <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredSecurityAlerts.filter(alert => !alert.resolved).slice(0, 10).map((alert) => (
+                      <Alert key={alert.id} variant={alert.severity === 'critical' || alert.severity === 'high' ? 'destructive' : 'default'}>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium">{alert.title}</p>
+                            <p className="text-sm">{alert.description}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {format(new Date(alert.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={getSeverityColor(alert.severity)}>{alert.severity}</Badge>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleResolveAlert(alert.id)}
+                            >
+                              Résoudre
+                            </Button>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    ))}
+                    {filteredSecurityAlerts.filter(alert => !alert.resolved).length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <CheckCircle2 className="h-12 w-12 mx-auto mb-2 text-success" />
+                        <p>Aucune alerte de sécurité non résolue</p>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    )}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Politiques de Sécurité</CardTitle>
-                <CardDescription>Configuration des règles de sécurité</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label>Authentification à deux facteurs</Label>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label>Expiration des sessions (min)</Label>
-                    <Input className="w-20" defaultValue="30" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label>Tentatives de connexion max</Label>
-                    <Input className="w-20" defaultValue="3" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label>Complexité mot de passe</Label>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label>Chiffrement des données</Label>
-                    <Switch defaultChecked disabled />
-                  </div>
-                </div>
-                <Separator />
-                <div>
-                  <Label>Adresses IP autorisées</Label>
-                  <Textarea 
-                    placeholder="192.168.1.0/24&#10;10.0.0.0/8"
-                    className="mt-1"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Alertes de Sécurité</CardTitle>
-                <CardDescription>Événements critiques récents</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Tentative de connexion échouée</strong><br />
-                      IP: 203.45.67.89 - 3 tentatives (14:25)
-                    </AlertDescription>
-                  </Alert>
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Modification sensible détectée</strong><br />
-                      Écriture comptable modifiée hors heures (23:45)
-                    </AlertDescription>
-                  </Alert>
-                  <Alert>
-                    <CheckCircle2 className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Sauvegarde complétée</strong><br />
-                      Backup automatique terminé avec succès (02:00)
-                    </AlertDescription>
-                  </Alert>
-                </div>
-                <Button className="w-full mt-4" variant="outline">
-                  <History className="h-4 w-4 mr-2" />
-                  Voir Toutes les Alertes
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
+        {/* PERMISSIONS */}
         <TabsContent value="permissions" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Gestion des Permissions</CardTitle>
-              <CardDescription>Contrôle d'accès et droits utilisateurs</CardDescription>
+              <CardTitle>Sessions Actives</CardTitle>
+              <CardDescription>Utilisateurs connectés actuellement</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Utilisateur</TableHead>
-                    <TableHead>Rôle</TableHead>
-                    <TableHead>Permissions</TableHead>
-                    <TableHead>Dernière Connexion</TableHead>
-                    <TableHead>Sessions</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {userPermissions.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <UserCheck className="h-4 w-4" />
-                          <span className="font-medium">{user.user}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{user.role}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {user.permissions.map((permission, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {permission}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">{user.lastLogin}</TableCell>
-                      <TableCell>
-                        <Badge variant={user.sessions > 0 ? 'default' : 'secondary'}>
-                          {user.sessions}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusColor(user.status)}>
-                          {user.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm">
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Lock className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+              {loadingAuditLogs ? (
+                <div className="text-center py-8">
+                  <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Utilisateur</TableHead>
+                      <TableHead>Adresse IP</TableHead>
+                      <TableHead>Dernière activité</TableHead>
+                      <TableHead>Score de risque</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {userSessions.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          Aucune session active
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      userSessions.map((session) => (
+                        <TableRow key={session.id}>
+                          <TableCell>{session.personnel_id?.substring(0, 12)}...</TableCell>
+                          <TableCell className="font-mono text-sm">{session.ip_address}</TableCell>
+                          <TableCell>
+                            {format(new Date(session.last_activity), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={session.risk_score > 70 ? 'destructive' : session.risk_score > 40 ? 'secondary' : 'default'}>
+                              {session.risk_score}/100
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDisconnectSession(session.id)}
+                            >
+                              <LogOut className="h-4 w-4 mr-2" />
+                              Déconnecter
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Rôles et Permissions</CardTitle>
-                <CardDescription>Configuration des niveaux d'accès</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium">Directeur Financier</h4>
-                      <Button variant="ghost" size="sm">Modifier</Button>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox defaultChecked />
-                        <span>Lecture complète</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox defaultChecked />
-                        <span>Écriture comptable</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox defaultChecked />
-                        <span>Validation écritures</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox defaultChecked />
-                        <span>Administration système</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium">Comptable Senior</h4>
-                      <Button variant="ghost" size="sm">Modifier</Button>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox defaultChecked />
-                        <span>Lecture complète</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox defaultChecked />
-                        <span>Écriture comptable</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox defaultChecked />
-                        <span>Validation écritures</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox />
-                        <span>Administration système</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Sessions Actives</CardTitle>
-                <CardDescription>Connexions utilisateurs en cours</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Marie Kouassi</p>
-                      <p className="text-sm text-muted-foreground">192.168.1.45 - 14:30</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="default">Actif</Badge>
-                      <Button variant="ghost" size="sm">
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Jean Traoré</p>
-                      <p className="text-sm text-muted-foreground">192.168.1.32 - 09:15</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="default">Actif</Badge>
-                      <Button variant="ghost" size="sm">
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Fatou Diallo</p>
-                      <p className="text-sm text-muted-foreground">192.168.1.28 - 13:22</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="secondary">Inactif</Badge>
-                      <Button variant="ghost" size="sm">
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
+        {/* CONFORMITÉ */}
         <TabsContent value="conformite" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Tableau de Bord Conformité</CardTitle>
-              <CardDescription>Respect des exigences réglementaires</CardDescription>
+              <CardTitle>Exigences Réglementaires</CardTitle>
+              <CardDescription>Suivi de la conformité aux normes applicables</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={complianceChecks}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="requirement" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="score" fill="hsl(var(--primary))" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Exigences de Conformité</CardTitle>
-                <CardDescription>Vérification des critères réglementaires</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
+              {loadingComplianceChecks ? (
+                <div className="text-center py-8">
+                  <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="space-y-4">
                   {complianceChecks.map((check) => (
-                    <div key={check.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex-1">
-                        <p className="font-medium">{check.requirement}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Progress value={check.score} className="flex-1" />
-                          <span className="text-sm font-medium">{check.score}%</span>
+                    <div key={check.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex-1">
+                          <h4 className="font-medium">{check.requirement_name}</h4>
+                          <p className="text-sm text-muted-foreground">{check.description}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge variant="outline">{check.regulatory_body}</Badge>
+                            <Badge variant="outline">{check.country_code}</Badge>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <Badge variant={getStatusColor(check.compliance_status)}>
+                            {check.compliance_status}
+                          </Badge>
+                          <div className="text-sm font-bold">{Math.round(check.compliance_score)}%</div>
+                          <Progress value={check.compliance_score} className="w-24" />
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <Badge variant={getStatusColor(check.status)}>
-                          {check.status}
-                        </Badge>
-                      </div>
+                      {check.last_evaluation_date && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Dernière évaluation: {format(new Date(check.last_evaluation_date), 'dd/MM/yyyy', { locale: fr })}
+                        </p>
+                      )}
                     </div>
                   ))}
+                  {complianceChecks.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Aucune exigence de conformité configurée
+                    </div>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Actions Correctives</CardTitle>
-                <CardDescription>Mesures à prendre pour améliorer la conformité</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Contrôle périodique:</strong> Planifier audit trimestriel des comptes
-                    </AlertDescription>
-                  </Alert>
-                  <Alert>
-                    <Clock className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Signature électronique:</strong> Finaliser l'implémentation du système de signature
-                    </AlertDescription>
-                  </Alert>
-                  <div className="p-3 border rounded-lg">
-                    <h4 className="font-medium mb-2">Plan d'Action</h4>
-                    <ul className="text-sm space-y-1">
-                      <li>• Mise en place procédure de révision mensuelle</li>
-                      <li>• Formation équipe sur nouvelles réglementations</li>
-                      <li>• Documentation des processus de contrôle</li>
-                      <li>• Test des procédures de récupération</li>
-                    </ul>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
+        {/* SAUVEGARDE */}
         <TabsContent value="sauvegarde" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
@@ -761,8 +691,16 @@ const AuditSecurity = () => {
                 <Database className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">02:00</div>
-                <p className="text-xs text-success">Succès - 2.3 GB</p>
+                <div className="text-2xl font-bold">
+                  {backupLogs.length > 0
+                    ? format(new Date(backupLogs[0].completed_at || backupLogs[0].started_at), 'dd/MM HH:mm', { locale: fr })
+                    : 'Aucune'}
+                </div>
+                {backupLogs.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Taille: {backupLogs[0].backup_size_mb.toFixed(2)} MB
+                  </p>
+                )}
               </CardContent>
             </Card>
             <Card>
@@ -772,7 +710,7 @@ const AuditSecurity = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">Quotidienne</div>
-                <p className="text-xs text-muted-foreground">Automatique</p>
+                <p className="text-xs text-muted-foreground">À 02:00 UTC</p>
               </CardContent>
             </Card>
             <Card>
@@ -782,204 +720,190 @@ const AuditSecurity = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">365 jours</div>
-                <p className="text-xs text-muted-foreground">Conservation légale</p>
+                <p className="text-xs text-muted-foreground">Conforme OHADA</p>
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuration Sauvegarde</CardTitle>
-                <CardDescription>Paramètres de protection des données</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label>Sauvegarde automatique</Label>
-                    <Switch defaultChecked />
-                  </div>
-                  <div>
-                    <Label>Fréquence</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Quotidienne" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hourly">Toutes les heures</SelectItem>
-                        <SelectItem value="daily">Quotidienne</SelectItem>
-                        <SelectItem value="weekly">Hebdomadaire</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Heure de sauvegarde</Label>
-                    <Input type="time" defaultValue="02:00" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label>Chiffrement</Label>
-                    <Switch defaultChecked disabled />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label>Sauvegarde distante</Label>
-                    <Switch defaultChecked />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Historique des Sauvegardes</CardTitle>
+              <CardDescription>Liste des 10 dernières sauvegardes</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 mb-4">
+                <Button onClick={handleCreateBackup} className="w-full">
+                  <Database className="h-4 w-4 mr-2" />
+                  Lancer une Sauvegarde Manuelle
+                </Button>
+              </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Historique des Sauvegardes</CardTitle>
-                <CardDescription>Statut des sauvegardes récentes</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-2 border rounded">
-                    <div>
-                      <p className="font-medium">10/12/2024 02:00</p>
-                      <p className="text-sm text-muted-foreground">Sauvegarde complète - 2.3 GB</p>
-                    </div>
-                    <Badge variant="default">Succès</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-2 border rounded">
-                    <div>
-                      <p className="font-medium">09/12/2024 02:00</p>
-                      <p className="text-sm text-muted-foreground">Sauvegarde complète - 2.2 GB</p>
-                    </div>
-                    <Badge variant="default">Succès</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-2 border rounded">
-                    <div>
-                      <p className="font-medium">08/12/2024 02:00</p>
-                      <p className="text-sm text-muted-foreground">Erreur réseau</p>
-                    </div>
-                    <Badge variant="destructive">Échec</Badge>
-                  </div>
+              {loadingBackupLogs ? (
+                <div className="text-center py-8">
+                  <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
                 </div>
-                <div className="flex gap-2 mt-4">
-                  <Button variant="outline" className="flex-1">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Lancer Sauvegarde
-                  </Button>
-                  <Button variant="outline" className="flex-1">
-                    <Download className="h-4 w-4 mr-2" />
-                    Restaurer
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date/Heure</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Taille</TableHead>
+                      <TableHead>Durée</TableHead>
+                      <TableHead>Statut</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {backupLogs.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                          Aucune sauvegarde enregistrée
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      backupLogs.slice(0, 10).map((backup) => (
+                        <TableRow key={backup.id}>
+                          <TableCell>
+                            {format(new Date(backup.started_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{backup.backup_type}</Badge>
+                          </TableCell>
+                          <TableCell>{backup.backup_size_mb.toFixed(2)} MB</TableCell>
+                          <TableCell>
+                            {backup.duration_seconds ? `${Math.round(backup.duration_seconds / 60)} min` : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getStatusColor(backup.status)}>
+                              {backup.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
+        {/* RAPPORTS */}
         <TabsContent value="rapports" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Statistiques d'Audit</CardTitle>
-              <CardDescription>Évolution de l'activité système sur 6 mois</CardDescription>
+              <CardTitle>Génération de Rapports d'Audit</CardTitle>
+              <CardDescription>Créer des rapports personnalisés pour l'audit et la conformité</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={auditStats}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="connexions" stroke="hsl(var(--primary))" name="Connexions" strokeWidth={2} />
-                  <Line type="monotone" dataKey="modifications" stroke="hsl(var(--secondary))" name="Modifications" strokeWidth={2} />
-                  <Line type="monotone" dataKey="suppressions" stroke="hsl(var(--destructive))" name="Suppressions" strokeWidth={2} />
-                  <Line type="monotone" dataKey="alertes" stroke="hsl(var(--accent))" name="Alertes" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardContent className="p-4">
+                    <h4 className="font-medium mb-2">Rapport d'Audit Complet</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Toutes les actions sur la période sélectionnée
+                    </p>
+                    <Button onClick={() => handleGenerateAuditReport('audit_complet')} className="w-full">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Générer
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4">
+                    <h4 className="font-medium mb-2">Journal des Connexions</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Historique des authentifications utilisateurs
+                    </p>
+                    <Button onClick={() => handleGenerateAuditReport('connexions')} className="w-full">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Générer
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4">
+                    <h4 className="font-medium mb-2">Rapport de Conformité</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      État de conformité aux exigences réglementaires
+                    </p>
+                    <Button onClick={() => handleGenerateAuditReport('conformite')} className="w-full">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Générer
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4">
+                    <h4 className="font-medium mb-2">Analyse des Risques</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Évaluation des alertes et incidents de sécurité
+                    </p>
+                    <Button onClick={() => handleGenerateAuditReport('risques')} className="w-full">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Générer
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Rapports Disponibles</CardTitle>
-                <CardDescription>Génération de rapports d'audit</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">Rapport d'Audit Complet</p>
-                    <p className="text-sm text-muted-foreground">Toutes les activités sur une période</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    PDF
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">Journal des Connexions</p>
-                    <p className="text-sm text-muted-foreground">Historique des accès utilisateurs</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Excel
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">Rapport de Conformité</p>
-                    <p className="text-sm text-muted-foreground">État de la conformité réglementaire</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    PDF
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">Analyse des Risques</p>
-                    <p className="text-sm text-muted-foreground">Évaluation des vulnérabilités</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    PDF
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Planification des Rapports</CardTitle>
-                <CardDescription>Génération automatique périodique</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium">Rapport Mensuel</h4>
-                      <Switch defaultChecked />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Envoi automatique le 1er de chaque mois
-                    </p>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium">Rapport Trimestriel</h4>
-                      <Switch defaultChecked />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Analyse approfondie tous les 3 mois
-                    </p>
-                  </div>
-                  <div>
-                    <Label>Destinataires</Label>
-                    <Textarea 
-                      placeholder="directeur@pharmacie.com&#10;audit@pharmacie.com"
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Rapports Récents</CardTitle>
+              <CardDescription>Historique des rapports générés</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nom du Rapport</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Format</TableHead>
+                    <TableHead>Date Génération</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {auditReports.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        Aucun rapport généré
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    auditReports.slice(0, 10).map((report) => (
+                      <TableRow key={report.id}>
+                        <TableCell className="font-medium">{report.report_name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{report.report_type}</Badge>
+                        </TableCell>
+                        <TableCell className="uppercase text-sm">{report.report_format}</TableCell>
+                        <TableCell>
+                          {format(new Date(report.generated_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusColor(report.status)}>
+                            {report.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="sm">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

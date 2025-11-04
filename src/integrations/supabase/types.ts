@@ -829,6 +829,69 @@ export type Database = {
           },
         ]
       }
+      audit_reports: {
+        Row: {
+          created_at: string
+          file_size_kb: number | null
+          file_url: string | null
+          generated_at: string
+          generated_by: string | null
+          id: string
+          metadata: Json | null
+          period_end: string
+          period_start: string
+          recipients: Json | null
+          report_format: string
+          report_name: string
+          report_type: string
+          schedule_frequency: string | null
+          scheduled: boolean
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          file_size_kb?: number | null
+          file_url?: string | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          metadata?: Json | null
+          period_end: string
+          period_start: string
+          recipients?: Json | null
+          report_format?: string
+          report_name: string
+          report_type: string
+          schedule_frequency?: string | null
+          scheduled?: boolean
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          file_size_kb?: number | null
+          file_url?: string | null
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          metadata?: Json | null
+          period_end?: string
+          period_start?: string
+          recipients?: Json | null
+          report_format?: string
+          report_name?: string
+          report_type?: string
+          schedule_frequency?: string | null
+          scheduled?: boolean
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       avoirs: {
         Row: {
           created_at: string
@@ -898,6 +961,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      backup_logs: {
+        Row: {
+          backup_location: string | null
+          backup_scope: string
+          backup_size_mb: number | null
+          backup_type: string
+          completed_at: string | null
+          created_at: string
+          duration_seconds: number | null
+          encryption_algorithm: string | null
+          error_message: string | null
+          id: string
+          initiated_by: string | null
+          is_encrypted: boolean
+          metadata: Json | null
+          started_at: string
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          backup_location?: string | null
+          backup_scope?: string
+          backup_size_mb?: number | null
+          backup_type: string
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          encryption_algorithm?: string | null
+          error_message?: string | null
+          id?: string
+          initiated_by?: string | null
+          is_encrypted?: boolean
+          metadata?: Json | null
+          started_at?: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          backup_location?: string | null
+          backup_scope?: string
+          backup_size_mb?: number | null
+          backup_type?: string
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          encryption_algorithm?: string | null
+          error_message?: string | null
+          id?: string
+          initiated_by?: string | null
+          is_encrypted?: boolean
+          metadata?: Json | null
+          started_at?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       balances: {
         Row: {
@@ -1744,6 +1867,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      compliance_checks: {
+        Row: {
+          assigned_to: string | null
+          category: string
+          compliance_score: number | null
+          compliance_status: string
+          corrective_actions: Json | null
+          country_code: string
+          created_at: string
+          description: string | null
+          evaluation_frequency: string | null
+          evidence_documents: Json | null
+          id: string
+          last_evaluation_date: string | null
+          metadata: Json | null
+          next_evaluation_date: string | null
+          priority: string | null
+          regulatory_body: string | null
+          requirement_code: string
+          requirement_name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          category: string
+          compliance_score?: number | null
+          compliance_status?: string
+          corrective_actions?: Json | null
+          country_code?: string
+          created_at?: string
+          description?: string | null
+          evaluation_frequency?: string | null
+          evidence_documents?: Json | null
+          id?: string
+          last_evaluation_date?: string | null
+          metadata?: Json | null
+          next_evaluation_date?: string | null
+          priority?: string | null
+          regulatory_body?: string | null
+          requirement_code: string
+          requirement_name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          category?: string
+          compliance_score?: number | null
+          compliance_status?: string
+          corrective_actions?: Json | null
+          country_code?: string
+          created_at?: string
+          description?: string | null
+          evaluation_frequency?: string | null
+          evidence_documents?: Json | null
+          id?: string
+          last_evaluation_date?: string | null
+          metadata?: Json | null
+          next_evaluation_date?: string | null
+          priority?: string | null
+          regulatory_body?: string | null
+          requirement_code?: string
+          requirement_name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       compliance_controls: {
         Row: {
@@ -5960,6 +6152,66 @@ export type Database = {
           },
         ]
       }
+      parametres_audit_regionaux: {
+        Row: {
+          code_devise: string
+          created_at: string
+          duree_conservation_ans: number
+          exige_rgpd: boolean
+          exige_signature_electronique: boolean
+          exigences_obligatoires: Json
+          format_date: string
+          format_heure: string
+          id: string
+          labels_interface: Json
+          libelle_pays: string
+          mentions_legales: string | null
+          organisme_normalisation: string
+          pays: string
+          referentiel_comptable: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          code_devise: string
+          created_at?: string
+          duree_conservation_ans?: number
+          exige_rgpd?: boolean
+          exige_signature_electronique?: boolean
+          exigences_obligatoires?: Json
+          format_date?: string
+          format_heure?: string
+          id?: string
+          labels_interface?: Json
+          libelle_pays: string
+          mentions_legales?: string | null
+          organisme_normalisation: string
+          pays: string
+          referentiel_comptable: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          code_devise?: string
+          created_at?: string
+          duree_conservation_ans?: number
+          exige_rgpd?: boolean
+          exige_signature_electronique?: boolean
+          exigences_obligatoires?: Json
+          format_date?: string
+          format_heure?: string
+          id?: string
+          labels_interface?: Json
+          libelle_pays?: string
+          mentions_legales?: string | null
+          organisme_normalisation?: string
+          pays?: string
+          referentiel_comptable?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       parametres_bancaires: {
         Row: {
           alertes_actives: boolean
@@ -8962,6 +9214,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      security_controls: {
+        Row: {
+          check_frequency: string | null
+          compliance_score: number | null
+          control_name: string
+          control_type: string
+          created_at: string
+          description: string | null
+          id: string
+          is_enabled: boolean
+          last_check_date: string | null
+          metadata: Json | null
+          next_check_date: string | null
+          risk_level: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          check_frequency?: string | null
+          compliance_score?: number | null
+          control_name: string
+          control_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          last_check_date?: string | null
+          metadata?: Json | null
+          next_check_date?: string | null
+          risk_level?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          check_frequency?: string | null
+          compliance_score?: number | null
+          control_name?: string
+          control_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          last_check_date?: string | null
+          metadata?: Json | null
+          next_check_date?: string | null
+          risk_level?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       security_incidents: {
         Row: {
