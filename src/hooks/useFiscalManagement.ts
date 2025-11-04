@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
+import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -104,6 +106,69 @@ export interface VATSummary {
 export const useFiscalManagement = () => {
   const { tenantId } = useTenant();
   const queryClient = useQueryClient();
+  const { formatPrice, currentCurrency, changeCurrency } = useCurrency();
+  const { settings } = useGlobalSystemSettings();
+
+  // ==================== PARAMÈTRES RÉGIONAUX ====================
+  const { data: regionalParams, isLoading: loadingRegionalParams } = useQuery({
+    queryKey: ['parametres_regionaux_fiscaux', tenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('parametres_regionaux_fiscaux')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      
+      // Si pas de config, initialiser avec Congo-Brazzaville par défaut
+      if (!data) {
+        const { data: initData, error: initError } = await supabase
+          .rpc('init_fiscal_params_for_tenant', { p_tenant_id: tenantId, p_country_code: 'CG' });
+        
+        if (initError) throw initError;
+        
+        // Récupérer la config nouvellement créée
+        const { data: newData, error: fetchError } = await supabase
+          .from('parametres_regionaux_fiscaux')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .single();
+        
+        if (fetchError) throw fetchError;
+        return newData;
+      }
+      
+      return data;
+    },
+    enabled: !!tenantId,
+  });
+
+  // Fonctions utilitaires
+  const formatAmount = (amount: number): string => {
+    return formatPrice(amount);
+  };
+
+  const getVATRate = (type: 'standard' | 'reduit' | 'super_reduit' = 'standard'): number => {
+    if (!regionalParams) return 18.0;
+    
+    if (type === 'standard') {
+      return regionalParams.taux_tva_standard || 18.0;
+    }
+    
+    // Pour les taux réduits, parser le JSON
+    if (regionalParams.taux_tva_reduits && typeof regionalParams.taux_tva_reduits === 'object') {
+      const reduits = regionalParams.taux_tva_reduits as any;
+      if (type === 'reduit' && reduits.reduit) {
+        return reduits.reduit;
+      }
+      if (type === 'super_reduit' && reduits.super_reduit) {
+        return reduits.super_reduit;
+      }
+    }
+    
+    return regionalParams.taux_tva_standard || 18.0;
+  };
 
   // ==================== TAUX TVA ====================
   const { data: tauxTVA = [], isLoading: loadingTaux } = useQuery({
@@ -470,7 +535,7 @@ export const useFiscalManagement = () => {
       const vatCollected = salesTTC - salesHT;
 
       const purchasesHT = lignesReception?.reduce((sum, l: any) => sum + ((l.prix_achat_unitaire || 0) * (l.quantite_recue || 0)), 0) || 0;
-      const vatDeductible = purchasesHT * 0.18; // Assuming 18% TVA
+      const vatDeductible = purchasesHT * (getVATRate('standard') / 100);
 
       const vatDue = vatCollected - vatDeductible;
       const averageRate = salesHT > 0 ? (vatCollected / salesHT) * 100 : 0;
@@ -524,31 +589,47 @@ export const useFiscalManagement = () => {
   // ==================== GÉNÉRATION RAPPORTS ====================
   const generateJournalTVAPDF = () => {
     const doc = new jsPDF();
+    const devise = regionalParams?.devise_principale || 'XAF';
+    const pays = regionalParams?.pays || 'Congo-Brazzaville';
+    const systeme = regionalParams?.systeme_comptable || 'OHADA';
+    
     doc.setFontSize(16);
     doc.text('Journal TVA', 14, 20);
-    doc.setFontSize(10);
-    doc.text(`Période: ${new Date().toLocaleDateString()}`, 14, 30);
+    doc.setFontSize(9);
+    doc.text(`Pays: ${pays} | Système: ${systeme} | Devise: ${devise}`, 14, 28);
+    doc.text(`Période: ${new Date().toLocaleDateString()}`, 14, 35);
     
     const tableData = declarations.map(d => [
       d.periode,
-      d.tva_collectee.toLocaleString() + ' FCFA',
-      d.tva_deductible.toLocaleString() + ' FCFA',
-      d.tva_a_payer.toLocaleString() + ' FCFA',
+      formatAmount(d.tva_collectee),
+      formatAmount(d.tva_deductible),
+      formatAmount(d.tva_a_payer),
       d.statut,
     ]);
 
     (doc as any).autoTable({
-      startY: 40,
+      startY: 42,
       head: [['Période', 'TVA Collectée', 'TVA Déductible', 'TVA à Payer', 'Statut']],
       body: tableData,
     });
+
+    // Footer avec mentions légales
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    doc.setFontSize(8);
+    doc.text(regionalParams?.mention_legale_footer || '', 14, doc.internal.pageSize.height - 10);
 
     doc.save('journal_tva.pdf');
     toast.success('Journal TVA généré');
   };
 
   const generateEtatTVAExcel = () => {
+    const devise = regionalParams?.devise_principale || 'XAF';
+    const pays = regionalParams?.pays || 'Congo-Brazzaville';
+    
     const wsData = [
+      [`État TVA - ${pays}`, '', '', '', ''],
+      [`Devise: ${devise}`, '', '', '', ''],
+      [],
       ['Période', 'TVA Collectée', 'TVA Déductible', 'TVA à Payer', 'Statut'],
       ...declarations.map(d => [
         d.periode,
@@ -568,12 +649,18 @@ export const useFiscalManagement = () => {
 
   const generateAnnexeFiscalePDF = () => {
     const doc = new jsPDF();
+    const devise = regionalParams?.devise_principale || 'XAF';
+    const pays = regionalParams?.pays || 'Congo-Brazzaville';
+    const systeme = regionalParams?.systeme_comptable || 'OHADA';
+    
     doc.setFontSize(16);
     doc.text('Annexe Fiscale', 14, 20);
     doc.setFontSize(10);
-    doc.text(`Année: ${new Date().getFullYear()}`, 14, 30);
+    doc.text(`Année: ${new Date().getFullYear()}`, 14, 28);
+    doc.setFontSize(9);
+    doc.text(`Pays: ${pays} | Système: ${systeme} | Devise: ${devise}`, 14, 35);
     
-    doc.text('Taux TVA Configurés:', 14, 45);
+    doc.text('Taux TVA Configurés:', 14, 48);
     const tauxData = tauxTVA.map(t => [
       t.nom_taux,
       t.taux_pourcentage + '%',
@@ -582,10 +669,13 @@ export const useFiscalManagement = () => {
     ]);
 
     (doc as any).autoTable({
-      startY: 50,
+      startY: 53,
       head: [['Nom', 'Taux', 'Type', 'Statut']],
       body: tauxData,
     });
+
+    doc.setFontSize(8);
+    doc.text(regionalParams?.mention_legale_footer || '', 14, doc.internal.pageSize.height - 10);
 
     doc.save('annexe_fiscale.pdf');
     toast.success('Annexe fiscale générée');
@@ -637,5 +727,11 @@ export const useFiscalManagement = () => {
     generateJournalTVAPDF,
     generateEtatTVAExcel,
     generateAnnexeFiscalePDF,
+
+    // Paramètres régionaux
+    regionalParams,
+    loadingRegionalParams,
+    formatAmount,
+    getVATRate,
   };
 };

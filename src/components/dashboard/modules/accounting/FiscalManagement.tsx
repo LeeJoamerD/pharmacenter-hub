@@ -68,7 +68,12 @@ const FiscalManagement = () => {
     generateJournalTVAPDF,
     generateEtatTVAExcel,
     generateAnnexeFiscalePDF,
+    regionalParams,
+    loadingRegionalParams,
+    formatAmount,
   } = useFiscalManagement();
+
+  const devise = regionalParams?.devise_principale || 'XAF';
 
   const handleSaveTaux = (data: any) => {
     if (editingTaux) {
@@ -103,9 +108,6 @@ const FiscalManagement = () => {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-  };
 
   return (
     <div className="space-y-6">
@@ -115,6 +117,13 @@ const FiscalManagement = () => {
           <p className="text-muted-foreground">
             TVA, déclarations fiscales et conformité réglementaire
           </p>
+          {regionalParams && (
+            <div className="flex gap-2 mt-2">
+              <Badge variant="outline">{regionalParams.pays}</Badge>
+              <Badge variant="outline">{regionalParams.systeme_comptable}</Badge>
+              <Badge variant="outline">{devise}</Badge>
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" disabled={loadingVAT}>
@@ -148,9 +157,9 @@ const FiscalManagement = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {formatCurrency(vatSummary?.vatCollected || 0)}
+                  {formatAmount(vatSummary?.vatCollected || 0)}
                 </div>
-                <p className="text-xs text-muted-foreground">FCFA ce mois</p>
+                <p className="text-xs text-muted-foreground">{devise} ce mois</p>
               </CardContent>
             </Card>
             <Card>
@@ -160,9 +169,9 @@ const FiscalManagement = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {formatCurrency(vatSummary?.vatDeductible || 0)}
+                  {formatAmount(vatSummary?.vatDeductible || 0)}
                 </div>
-                <p className="text-xs text-muted-foreground">FCFA ce mois</p>
+                <p className="text-xs text-muted-foreground">{devise} ce mois</p>
               </CardContent>
             </Card>
             <Card>
@@ -172,7 +181,7 @@ const FiscalManagement = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {formatCurrency(vatSummary?.vatDue || 0)}
+                  {formatAmount(vatSummary?.vatDue || 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {vatSummary && vatSummary.vatDue < 0 ? 'Crédit de TVA' : 'À payer'}
@@ -203,25 +212,25 @@ const FiscalManagement = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span>Ventes HT</span>
-                    <span className="font-medium">{formatCurrency(vatSummary?.salesHT || 0)} FCFA</span>
+                    <span className="font-medium">{formatAmount(vatSummary?.salesHT || 0)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>TVA Collectée</span>
-                    <span className="font-medium">{formatCurrency(vatSummary?.vatCollected || 0)} FCFA</span>
+                    <span className="font-medium">{formatAmount(vatSummary?.vatCollected || 0)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between items-center">
                     <span>Achats HT</span>
-                    <span className="font-medium">{formatCurrency(vatSummary?.purchasesHT || 0)} FCFA</span>
+                    <span className="font-medium">{formatAmount(vatSummary?.purchasesHT || 0)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>TVA Déductible</span>
-                    <span className="font-medium">{formatCurrency(vatSummary?.vatDeductible || 0)} FCFA</span>
+                    <span className="font-medium">{formatAmount(vatSummary?.vatDeductible || 0)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between items-center font-bold">
                     <span>TVA à Payer</span>
-                    <span className="text-primary">{formatCurrency(vatSummary?.vatDue || 0)} FCFA</span>
+                    <span className="text-primary">{formatAmount(vatSummary?.vatDue || 0)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -302,9 +311,9 @@ const FiscalManagement = () => {
                   {declarations.map((declaration) => (
                     <TableRow key={declaration.id}>
                       <TableCell className="font-medium">{declaration.periode}</TableCell>
-                      <TableCell>{formatCurrency(declaration.tva_collectee)} FCFA</TableCell>
-                      <TableCell>{formatCurrency(declaration.tva_deductible)} FCFA</TableCell>
-                      <TableCell className="font-semibold">{formatCurrency(declaration.tva_a_payer)} FCFA</TableCell>
+                      <TableCell>{formatAmount(declaration.tva_collectee)}</TableCell>
+                      <TableCell>{formatAmount(declaration.tva_deductible)}</TableCell>
+                      <TableCell className="font-semibold">{formatAmount(declaration.tva_a_payer)}</TableCell>
                       <TableCell>
                         <Badge variant={getStatusColor(declaration.statut)}>
                           {declaration.statut}
