@@ -1,179 +1,112 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/contexts/TenantContext";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { toast } from "@/hooks/use-toast";
+import { Database } from "@/integrations/supabase/types";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
-// Types
-export interface BankAccount {
-  id: string;
-  tenant_id: string;
-  nom_compte: string;
-  numero_compte: string; // RIB 23 chiffres Congo
-  iban?: string; // Format CG
-  banque: string; // UBA CONGO, BGFI, etc.
-  type_compte: 'Courant' | 'Épargne' | 'Devise';
-  devise: string;
-  solde_actuel: number;
-  solde_initial: number;
-  date_ouverture: string;
-  est_actif: boolean;
-  api_connectee: boolean;
-  derniere_sync?: string;
-  statut_connexion?: 'Connecté' | 'Erreur' | 'En attente';
-  configuration?: any;
-  created_at: string;
-  updated_at: string;
-}
+// ==================== TYPES USING SUPABASE GENERATED TYPES ====================
 
-export interface BankTransaction {
-  id: string;
-  tenant_id: string;
-  compte_bancaire_id: string;
-  date_transaction: string;
-  date_valeur: string;
-  libelle: string;
-  reference?: string;
-  montant: number;
-  type_mouvement: 'Credit' | 'Debit';
-  categorie?: string;
-  est_rapproche: boolean;
-  ecriture_comptable_id?: string;
-  mode_saisie: 'Manuel' | 'Import' | 'API';
-  metadata?: any;
-  created_at: string;
-  updated_at: string;
-}
+type BankAccount = Database['public']['Tables']['comptes_bancaires']['Row'];
+type BankAccountInsert = Database['public']['Tables']['comptes_bancaires']['Insert'];
 
-export interface BankReconciliation {
-  id: string;
-  tenant_id: string;
-  compte_bancaire_id: string;
-  periode_debut: string;
-  periode_fin: string;
-  solde_initial: number;
-  solde_final: number;
-  solde_comptable: number;
-  ecart: number;
-  nombre_transactions: number;
-  nombre_rapprochees: number;
-  statut: 'En cours' | 'Validé' | 'En attente';
-  valide_par?: string;
-  date_validation?: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-}
+type BankTransaction = Database['public']['Tables']['transactions_bancaires']['Row'];
+type BankTransactionInsert = Database['public']['Tables']['transactions_bancaires']['Insert'];
 
-export interface CategorizationRule {
-  id: string;
-  tenant_id: string;
-  nom_regle: string;
-  priorite: number;
-  pattern_recherche: string;
-  type_pattern: 'contient' | 'commence_par' | 'termine_par' | 'regex' | 'exact';
-  categorie_cible: string;
-  type_transaction: 'credit' | 'debit' | 'tous';
-  banque_specifique?: string;
-  montant_min?: number;
-  montant_max?: number;
-  est_actif: boolean;
-  appliquee_automatiquement: boolean;
-  created_at: string;
-  updated_at: string;
-}
+type BankReconciliation = Database['public']['Tables']['rapprochements_bancaires']['Row'];
+type BankReconciliationInsert = Database['public']['Tables']['rapprochements_bancaires']['Insert'];
 
-export interface TreasuryForecast {
-  id: string;
-  tenant_id: string;
-  exercice_id?: string;
-  periode_debut: string;
-  periode_fin: string;
-  type_scenario: 'Optimiste' | 'Réaliste' | 'Pessimiste';
-  coefficient_ajustement: number;
-  solde_initial_xaf: number;
-  entrees_prevues_xaf: number;
-  sorties_prevues_xaf: number;
-  solde_final_previsionnel_xaf: number;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-}
+type CategorizationRule = Database['public']['Tables']['regles_categorisation_bancaire']['Row'];
+type CategorizationRuleInsert = Database['public']['Tables']['regles_categorisation_bancaire']['Insert'];
 
-export interface TreasuryCommitment {
-  id: string;
-  tenant_id: string;
-  type_engagement: 'Salaires' | 'Fournisseurs' | 'Charges sociales' | 'Impôts BEAC' | 'Loyers' | 'Autres';
-  libelle: string;
-  date_echeance: string;
-  montant_xaf: number;
-  statut: 'Prévu' | 'Confirmé' | 'Payé' | 'Annulé';
-  compte_bancaire_id?: string;
-  reference_document?: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-}
+type TreasuryForecast = Database['public']['Tables']['previsions_tresorerie']['Row'];
+type TreasuryForecastInsert = Database['public']['Tables']['previsions_tresorerie']['Insert'];
 
-export interface TreasuryAlert {
-  id: string;
-  tenant_id: string;
-  type_alerte: 'Seuil bas' | 'Seuil critique' | 'Découvert' | 'Échéance proche' | 'Anomalie';
-  titre: string;
-  description: string;
-  severite: 'info' | 'warning' | 'error' | 'critical';
-  seuil_montant_xaf?: number;
-  compte_bancaire_id?: string;
-  date_alerte: string;
-  statut: 'Active' | 'Résolue' | 'Ignorée';
-  resolu_le?: string;
-  resolu_par_id?: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-}
+type TreasuryCommitment = Database['public']['Tables']['engagements_tresorerie']['Row'];
+type TreasuryCommitmentInsert = Database['public']['Tables']['engagements_tresorerie']['Insert'];
 
-export interface BankingParameters {
+type TreasuryAlert = Database['public']['Tables']['alertes_tresorerie']['Row'];
+type TreasuryAlertInsert = Database['public']['Tables']['alertes_tresorerie']['Insert'];
+
+type BankingParameters = Database['public']['Tables']['parametres_bancaires']['Row'];
+type BankingParametersUpdate = Database['public']['Tables']['parametres_bancaires']['Update'];
+
+export interface BankingRegionalParams {
   id: string;
   tenant_id: string;
-  synchronisation_auto: boolean;
-  frequence_sync: 'Temps réel' | 'Horaire' | 'Quotidien' | 'Hebdomadaire';
-  rapprochement_auto: boolean;
-  tolerance_rapprochement_jours: number;
-  tolerance_rapprochement_montant_xaf: number;
-  alertes_actives: boolean;
-  seuil_alerte_bas_xaf: number;
-  seuil_alerte_critique_xaf: number;
-  emails_alertes?: string[];
-  format_import_defaut: 'CSV_BEAC' | 'Excel_Standard' | 'OFX' | 'MT940';
-  devise_principale: string;
+  pays: string;
   code_pays: string;
+  devise_principale: string;
+  format_rib: string;
+  longueur_rib: number | null;
+  format_iban: string | null;
+  banque_centrale: string;
+  format_import_defaut: string;
+  liste_banques: { code: string; name: string }[];
+  validation_regex_rib: string | null;
+  validation_regex_iban: string | null;
+  mention_legale_footer: string;
+  seuil_alerte_bas: number;
+  seuil_alerte_critique: number;
   created_at: string;
   updated_at: string;
 }
 
-// Banques Congo-Brazzaville
-export const CONGO_BANKS = [
-  { code: '10001', name: 'UBA CONGO' },
-  { code: '10002', name: 'BGFI BANK CONGO' },
-  { code: '10003', name: 'ECOBANK CONGO' },
-  { code: '10004', name: 'LA POSTE FINANCIERE' },
-  { code: '10005', name: 'MUCODEC' },
-  { code: '10006', name: 'CRÉDIT DU CONGO' },
-];
+// Export types for external use
+export type { BankAccount, BankTransaction, BankReconciliation, CategorizationRule, TreasuryForecast, TreasuryCommitment, TreasuryAlert, BankingParameters };
 
-// Hook principal
+// ==================== MAIN HOOK ====================
+
 export const useBankingManager = () => {
-  const { session, tenantId } = useAuth();
+  const { tenantId } = useTenant();
+  const { formatPrice } = useCurrency();
   const queryClient = useQueryClient();
+
+  // ========== REGIONAL PARAMETERS ==========
+
+  const { data: regionalParams, isLoading: loadingRegionalParams } = useQuery({
+    queryKey: ["banking-regional-params", tenantId],
+    queryFn: async () => {
+      if (!tenantId) return null;
+      
+      const { data, error } = await supabase
+        .from("parametres_regionaux_bancaires")
+        .select("*")
+        .eq("tenant_id", tenantId)
+        .single();
+      
+      if (error) {
+        // Create default if not exists
+        await supabase.rpc(
+          'init_banking_params_for_tenant',
+          { p_tenant_id: tenantId, p_country_code: 'CG' }
+        );
+        
+        // Fetch again
+        const { data: createdData } = await supabase
+          .from("parametres_regionaux_bancaires")
+          .select("*")
+          .eq("tenant_id", tenantId)
+          .single();
+        
+        return createdData as BankingRegionalParams;
+      }
+      
+      return data as BankingRegionalParams;
+    },
+    enabled: !!tenantId,
+  });
 
   // ========== BANK ACCOUNTS ==========
 
   const { data: bankAccounts = [], isLoading: loadingAccounts } = useQuery({
     queryKey: ["bank-accounts", tenantId],
     queryFn: async () => {
+      if (!tenantId) return [];
+      
       const { data, error } = await supabase
         .from("comptes_bancaires")
         .select("*")
@@ -181,18 +114,21 @@ export const useBankingManager = () => {
         .order("created_at", { ascending: false });
       
       if (error) throw error;
-      return data as BankAccount[];
+      return data;
     },
     enabled: !!tenantId,
   });
 
   const createBankAccount = useMutation({
-    mutationFn: async (account: Partial<BankAccount>) => {
+    mutationFn: async (account: Partial<BankAccountInsert>) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { data, error } = await supabase
         .from("comptes_bancaires")
-        .insert([{ ...account, tenant_id: tenantId }])
+        .insert([{ ...account, tenant_id: tenantId } as BankAccountInsert])
         .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
@@ -204,6 +140,8 @@ export const useBankingManager = () => {
 
   const updateBankAccount = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<BankAccount> & { id: string }) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { data, error } = await supabase
         .from("comptes_bancaires")
         .update(updates)
@@ -211,6 +149,7 @@ export const useBankingManager = () => {
         .eq("tenant_id", tenantId)
         .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
@@ -222,11 +161,14 @@ export const useBankingManager = () => {
 
   const deleteBankAccount = useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { error } = await supabase
         .from("comptes_bancaires")
         .delete()
         .eq("id", id)
         .eq("tenant_id", tenantId);
+      
       if (error) throw error;
     },
     onSuccess: () => {
@@ -240,6 +182,8 @@ export const useBankingManager = () => {
   const { data: transactions = [], isLoading: loadingTransactions } = useQuery({
     queryKey: ["bank-transactions", tenantId],
     queryFn: async () => {
+      if (!tenantId) return [];
+      
       const { data, error } = await supabase
         .from("transactions_bancaires")
         .select("*, compte:comptes_bancaires(nom_compte, banque)")
@@ -248,18 +192,21 @@ export const useBankingManager = () => {
         .limit(100);
       
       if (error) throw error;
-      return data as BankTransaction[];
+      return data;
     },
     enabled: !!tenantId,
   });
 
   const createTransaction = useMutation({
-    mutationFn: async (transaction: Partial<BankTransaction>) => {
+    mutationFn: async (transaction: Partial<BankTransactionInsert>) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { data, error } = await supabase
         .from("transactions_bancaires")
-        .insert([{ ...transaction, tenant_id: tenantId }])
+        .insert([{ ...transaction, tenant_id: tenantId } as BankTransactionInsert])
         .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
@@ -271,6 +218,8 @@ export const useBankingManager = () => {
 
   const updateTransaction = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<BankTransaction> & { id: string }) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { data, error } = await supabase
         .from("transactions_bancaires")
         .update(updates)
@@ -278,6 +227,7 @@ export const useBankingManager = () => {
         .eq("tenant_id", tenantId)
         .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
@@ -292,6 +242,8 @@ export const useBankingManager = () => {
   const { data: reconciliations = [], isLoading: loadingReconciliations } = useQuery({
     queryKey: ["bank-reconciliations", tenantId],
     queryFn: async () => {
+      if (!tenantId) return [];
+      
       const { data, error } = await supabase
         .from("rapprochements_bancaires")
         .select("*, compte:comptes_bancaires(nom_compte)")
@@ -299,18 +251,21 @@ export const useBankingManager = () => {
         .order("created_at", { ascending: false });
       
       if (error) throw error;
-      return data as BankReconciliation[];
+      return data;
     },
     enabled: !!tenantId,
   });
 
   const createReconciliation = useMutation({
-    mutationFn: async (reconciliation: Partial<BankReconciliation>) => {
+    mutationFn: async (reconciliation: Partial<BankReconciliationInsert>) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { data, error } = await supabase
         .from("rapprochements_bancaires")
-        .insert([{ ...reconciliation, tenant_id: tenantId }])
+        .insert([{ ...reconciliation, tenant_id: tenantId } as BankReconciliationInsert])
         .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
@@ -325,6 +280,8 @@ export const useBankingManager = () => {
   const { data: categorizationRules = [] } = useQuery({
     queryKey: ["categorization-rules", tenantId],
     queryFn: async () => {
+      if (!tenantId) return [];
+      
       const { data, error } = await supabase
         .from("regles_categorisation_bancaire")
         .select("*")
@@ -333,18 +290,21 @@ export const useBankingManager = () => {
         .order("priorite", { ascending: false });
       
       if (error) throw error;
-      return data as CategorizationRule[];
+      return data;
     },
     enabled: !!tenantId,
   });
 
   const createCategorizationRule = useMutation({
-    mutationFn: async (rule: Partial<CategorizationRule>) => {
+    mutationFn: async (rule: Partial<CategorizationRuleInsert>) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { data, error } = await supabase
         .from("regles_categorisation_bancaire")
-        .insert([{ ...rule, tenant_id: tenantId }])
+        .insert([{ ...rule, tenant_id: tenantId } as CategorizationRuleInsert])
         .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
@@ -356,6 +316,8 @@ export const useBankingManager = () => {
 
   const updateCategorizationRule = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<CategorizationRule> & { id: string }) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { data, error } = await supabase
         .from("regles_categorisation_bancaire")
         .update(updates)
@@ -363,6 +325,7 @@ export const useBankingManager = () => {
         .eq("tenant_id", tenantId)
         .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
@@ -374,11 +337,14 @@ export const useBankingManager = () => {
 
   const deleteCategorizationRule = useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { error } = await supabase
         .from("regles_categorisation_bancaire")
         .delete()
         .eq("id", id)
         .eq("tenant_id", tenantId);
+      
       if (error) throw error;
     },
     onSuccess: () => {
@@ -392,6 +358,8 @@ export const useBankingManager = () => {
   const { data: forecasts = [] } = useQuery({
     queryKey: ["treasury-forecasts", tenantId],
     queryFn: async () => {
+      if (!tenantId) return [];
+      
       const { data, error } = await supabase
         .from("previsions_tresorerie")
         .select("*")
@@ -399,18 +367,21 @@ export const useBankingManager = () => {
         .order("created_at", { ascending: false });
       
       if (error) throw error;
-      return data as TreasuryForecast[];
+      return data;
     },
     enabled: !!tenantId,
   });
 
   const createForecast = useMutation({
-    mutationFn: async (forecast: Partial<TreasuryForecast>) => {
+    mutationFn: async (forecast: Partial<TreasuryForecastInsert>) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { data, error } = await supabase
         .from("previsions_tresorerie")
-        .insert([{ ...forecast, tenant_id: tenantId }])
+        .insert([{ ...forecast, tenant_id: tenantId } as TreasuryForecastInsert])
         .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
@@ -425,6 +396,8 @@ export const useBankingManager = () => {
   const { data: commitments = [] } = useQuery({
     queryKey: ["treasury-commitments", tenantId],
     queryFn: async () => {
+      if (!tenantId) return [];
+      
       const { data, error } = await supabase
         .from("engagements_tresorerie")
         .select("*, compte:comptes_bancaires(nom_compte)")
@@ -432,18 +405,21 @@ export const useBankingManager = () => {
         .order("date_echeance", { ascending: true });
       
       if (error) throw error;
-      return data as TreasuryCommitment[];
+      return data;
     },
     enabled: !!tenantId,
   });
 
   const createCommitment = useMutation({
-    mutationFn: async (commitment: Partial<TreasuryCommitment>) => {
+    mutationFn: async (commitment: Partial<TreasuryCommitmentInsert>) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { data, error } = await supabase
         .from("engagements_tresorerie")
-        .insert([{ ...commitment, tenant_id: tenantId }])
+        .insert([{ ...commitment, tenant_id: tenantId } as TreasuryCommitmentInsert])
         .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
@@ -455,6 +431,8 @@ export const useBankingManager = () => {
 
   const updateCommitment = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<TreasuryCommitment> & { id: string }) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { data, error } = await supabase
         .from("engagements_tresorerie")
         .update(updates)
@@ -462,6 +440,7 @@ export const useBankingManager = () => {
         .eq("tenant_id", tenantId)
         .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
@@ -476,6 +455,8 @@ export const useBankingManager = () => {
   const { data: alerts = [] } = useQuery({
     queryKey: ["treasury-alerts", tenantId],
     queryFn: async () => {
+      if (!tenantId) return [];
+      
       const { data, error } = await supabase
         .from("alertes_tresorerie")
         .select("*, compte:comptes_bancaires(nom_compte)")
@@ -484,18 +465,21 @@ export const useBankingManager = () => {
         .order("date_alerte", { ascending: false });
       
       if (error) throw error;
-      return data as TreasuryAlert[];
+      return data;
     },
     enabled: !!tenantId,
   });
 
   const createAlert = useMutation({
-    mutationFn: async (alert: Partial<TreasuryAlert>) => {
+    mutationFn: async (alert: Partial<TreasuryAlertInsert>) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { data, error } = await supabase
         .from("alertes_tresorerie")
-        .insert([{ ...alert, tenant_id: tenantId }])
+        .insert([{ ...alert, tenant_id: tenantId } as TreasuryAlertInsert])
         .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
@@ -506,19 +490,17 @@ export const useBankingManager = () => {
   });
 
   const resolveAlert = useMutation({
-    mutationFn: async ({ id, notes }: { id: string; notes?: string }) => {
+    mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { data, error } = await supabase
         .from("alertes_tresorerie")
-        .update({ 
-          statut: 'Résolue', 
-          resolu_le: new Date().toISOString(),
-          resolu_par_id: session?.user?.id,
-          notes 
-        })
+        .update({ statut: "Résolue", resolu_le: new Date().toISOString() })
         .eq("id", id)
         .eq("tenant_id", tenantId)
         .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
@@ -533,35 +515,31 @@ export const useBankingManager = () => {
   const { data: parameters } = useQuery({
     queryKey: ["banking-parameters", tenantId],
     queryFn: async () => {
+      if (!tenantId) return null;
+      
       const { data, error } = await supabase
         .from("parametres_bancaires")
         .select("*")
         .eq("tenant_id", tenantId)
         .single();
       
-      if (error) {
-        // Create default if not exists
-        const { data: newData, error: createError } = await supabase
-          .from("parametres_bancaires")
-          .insert([{ tenant_id: tenantId }])
-          .select()
-          .single();
-        if (createError) throw createError;
-        return newData as BankingParameters;
-      }
-      return data as BankingParameters;
+      if (error) throw error;
+      return data;
     },
     enabled: !!tenantId,
   });
 
   const updateParameters = useMutation({
-    mutationFn: async (updates: Partial<BankingParameters>) => {
+    mutationFn: async (updates: BankingParametersUpdate) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
       const { data, error } = await supabase
         .from("parametres_bancaires")
         .update(updates)
         .eq("tenant_id", tenantId)
         .select()
         .single();
+      
       if (error) throw error;
       return data;
     },
@@ -571,133 +549,191 @@ export const useBankingManager = () => {
     },
   });
 
-  // ========== UTILITIES ==========
+  // ==================== UTILITY FUNCTIONS ====================
 
-  const validateCongoRIB = (rib: string): boolean => {
-    // Format: 23 chiffres (Code banque 5 + Code guichet 5 + N° compte 11 + Clé 2)
-    return /^\d{23}$/.test(rib.replace(/\s/g, ''));
+  /**
+   * Get dynamic list of banks based on regional parameters
+   */
+  const getBanksList = (): { code: string; name: string }[] => {
+    return regionalParams?.liste_banques || [];
   };
 
-  const validateCongoIBAN = (iban: string): boolean => {
-    // Format: CG + 2 chiffres contrôle + 23 chiffres
-    return /^CG\d{25}$/.test(iban.replace(/\s/g, ''));
+  /**
+   * Validate RIB format based on regional parameters
+   */
+  const validateRIB = (rib: string): boolean => {
+    if (!regionalParams?.validation_regex_rib) return true;
+    const regex = new RegExp(regionalParams.validation_regex_rib);
+    return regex.test(rib.replace(/\s/g, ''));
   };
 
+  /**
+   * Validate IBAN format based on regional parameters
+   */
+  const validateIBAN = (iban: string): boolean => {
+    if (!regionalParams?.validation_regex_iban) return true;
+    const regex = new RegExp(regionalParams.validation_regex_iban);
+    return regex.test(iban.replace(/\s/g, ''));
+  };
+
+  /**
+   * Format amount with currency context
+   */
+  const formatAmount = (amount: number): string => {
+    return formatPrice(amount);
+  };
+
+  /**
+   * Calculate total balance in main currency
+   */
   const getTotalBalance = (): number => {
+    const mainCurrency = regionalParams?.devise_principale || 'XAF';
     return bankAccounts.reduce((sum, account) => {
-      if (account.devise === 'XAF') {
-        return sum + account.solde_actuel;
+      if (account.devise === mainCurrency) {
+        return sum + (account.solde_actuel || 0);
       }
       return sum;
     }, 0);
   };
 
+  /**
+   * Calculate reconciliation rate
+   */
   const getReconciliationRate = (): number => {
     if (transactions.length === 0) return 0;
-    const reconciled = transactions.filter(t => t.est_rapproche).length;
-    return (reconciled / transactions.length) * 100;
+    const rapprochees = transactions.filter((t: any) => t.statut_rapprochement === 'Rapproché').length;
+    return Math.round((rapprochees / transactions.length) * 100);
   };
 
-  // ========== EXPORTS ==========
-
+  /**
+   * Export transactions to Excel with adaptive headers
+   */
   const exportTransactionsExcel = (transactionsList: BankTransaction[]) => {
+    const currency = regionalParams?.devise_principale || 'XAF';
+    const countryName = regionalParams?.pays || 'Congo-Brazzaville';
+    
     const ws = XLSX.utils.json_to_sheet(transactionsList.map(t => ({
       'Date': t.date_transaction,
       'Libellé': t.libelle,
-      'Montant (XAF)': t.montant,
-      'Type': t.type_mouvement,
+      [`Montant (${currency})`]: t.montant,
+      'Type': t.type_transaction,
       'Catégorie': t.categorie || 'N/A',
-      'Rapproché': t.est_rapproche ? 'Oui' : 'Non'
+      'Rapproché': t.statut_rapprochement === 'Rapproché' ? 'Oui' : 'Non'
     })));
+    
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
-    XLSX.writeFile(wb, `transactions_${new Date().toISOString().split('T')[0]}.xlsx`);
-    toast({ title: "Export Excel généré" });
+    XLSX.utils.book_append_sheet(wb, ws, "Transactions");
+    XLSX.writeFile(wb, `transactions_bancaires_${countryName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    toast({ title: "Export Excel généré avec succès" });
   };
 
+  /**
+   * Generate bank journal PDF with adaptive formatting
+   */
   const generateBankJournalPDF = (accountId: string, periodStart: string, periodEnd: string) => {
     const account = bankAccounts.find(a => a.id === accountId);
+    if (!account) {
+      toast({ title: "Compte introuvable", variant: "destructive" });
+      return;
+    }
+    
+    const doc = new jsPDF();
+    const countryName = regionalParams?.pays || 'Congo-Brazzaville';
+    const currency = regionalParams?.devise_principale || 'XAF';
+    const centralBank = regionalParams?.banque_centrale || 'BEAC';
+    const legalFooter = regionalParams?.mention_legale_footer || '';
+    
+    // Header
+    doc.setFontSize(16);
+    doc.text(`Journal de Banque - ${account.nom_compte}`, 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Période: ${periodStart} au ${periodEnd}`, 14, 28);
+    doc.text(`${countryName} - Devise: ${currency} (${centralBank})`, 14, 34);
+    
     const accountTransactions = transactions.filter(
-      t => t.compte_bancaire_id === accountId && 
-      t.date_transaction >= periodStart && 
+      t => t.compte_bancaire_id === accountId &&
+      t.date_transaction >= periodStart &&
       t.date_transaction <= periodEnd
     );
-
-    const doc = new jsPDF();
     
-    doc.setFontSize(16);
-    doc.text(`Journal de Banque - ${account?.nom_compte}`, 14, 20);
-    doc.setFontSize(10);
-    doc.text(`Période: ${periodStart} au ${periodEnd}`, 14, 30);
-    doc.text(`République du Congo - Devise: XAF (Franc CFA BEAC)`, 14, 36);
-
     autoTable(doc, {
-      startY: 45,
-      head: [['Date', 'Libellé', 'Débit', 'Crédit', 'Solde']],
+      startY: 42,
+      head: [['Date', 'Libellé', 'Référence', `Montant (${currency})`, 'Type']],
       body: accountTransactions.map(t => [
         t.date_transaction,
         t.libelle,
-        t.type_mouvement === 'Debit' ? t.montant.toLocaleString() : '',
-        t.type_mouvement === 'Credit' ? t.montant.toLocaleString() : '',
-        ''
+        t.reference || '-',
+        t.montant.toLocaleString(),
+        t.type_transaction
       ]),
     });
-
-    doc.save(`journal_banque_${account?.nom_compte}_${periodStart}.pdf`);
-    toast({ title: "Journal de banque généré (PDF)" });
+    
+    // Footer with regional legal mention
+    const finalY = (doc as any).lastAutoTable.finalY || 42;
+    doc.setFontSize(8);
+    doc.text(legalFooter, 14, finalY + 15, { maxWidth: 180 });
+    
+    doc.save(`journal_bancaire_${account.nom_compte}_${new Date().toISOString().split('T')[0]}.pdf`);
+    toast({ title: "Journal PDF généré avec succès" });
   };
 
+  // ==================== RETURN ====================
+
   return {
+    // Regional params
+    regionalParams,
+    loadingRegionalParams,
+    
     // Bank Accounts
     bankAccounts,
     loadingAccounts,
     createBankAccount,
     updateBankAccount,
     deleteBankAccount,
-
+    
     // Transactions
     transactions,
     loadingTransactions,
     createTransaction,
     updateTransaction,
-
+    
     // Reconciliation
     reconciliations,
     loadingReconciliations,
     createReconciliation,
-
+    
     // Categorization Rules
     categorizationRules,
     createCategorizationRule,
     updateCategorizationRule,
     deleteCategorizationRule,
-
-    // Forecasts
+    
+    // Treasury Forecasts
     forecasts,
     createForecast,
-
-    // Commitments
+    
+    // Treasury Commitments
     commitments,
     createCommitment,
     updateCommitment,
-
-    // Alerts
+    
+    // Treasury Alerts
     alerts,
     createAlert,
     resolveAlert,
-
-    // Parameters
+    
+    // Banking Parameters
     parameters,
     updateParameters,
-
+    
     // Utilities
-    validateCongoRIB,
-    validateCongoIBAN,
+    getBanksList,
+    validateRIB,
+    validateIBAN,
+    formatAmount,
     getTotalBalance,
     getReconciliationRate,
-    CONGO_BANKS,
-
-    // Exports
     exportTransactionsExcel,
     generateBankJournalPDF,
   };

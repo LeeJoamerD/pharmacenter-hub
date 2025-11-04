@@ -6129,6 +6129,77 @@ export type Database = {
         }
         Relationships: []
       }
+      parametres_regionaux_bancaires: {
+        Row: {
+          banque_centrale: string
+          code_pays: string
+          created_at: string
+          devise_principale: string
+          format_iban: string | null
+          format_import_defaut: string
+          format_rib: string
+          id: string
+          liste_banques: Json
+          longueur_rib: number
+          mention_legale_footer: string
+          pays: string
+          seuil_alerte_bas: number
+          seuil_alerte_critique: number
+          tenant_id: string
+          updated_at: string
+          validation_regex_iban: string | null
+          validation_regex_rib: string | null
+        }
+        Insert: {
+          banque_centrale?: string
+          code_pays?: string
+          created_at?: string
+          devise_principale?: string
+          format_iban?: string | null
+          format_import_defaut?: string
+          format_rib?: string
+          id?: string
+          liste_banques?: Json
+          longueur_rib?: number
+          mention_legale_footer?: string
+          pays?: string
+          seuil_alerte_bas?: number
+          seuil_alerte_critique?: number
+          tenant_id: string
+          updated_at?: string
+          validation_regex_iban?: string | null
+          validation_regex_rib?: string | null
+        }
+        Update: {
+          banque_centrale?: string
+          code_pays?: string
+          created_at?: string
+          devise_principale?: string
+          format_iban?: string | null
+          format_import_defaut?: string
+          format_rib?: string
+          id?: string
+          liste_banques?: Json
+          longueur_rib?: number
+          mention_legale_footer?: string
+          pays?: string
+          seuil_alerte_bas?: number
+          seuil_alerte_critique?: number
+          tenant_id?: string
+          updated_at?: string
+          validation_regex_iban?: string | null
+          validation_regex_rib?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parametres_regionaux_bancaires_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parametres_regionaux_rapports: {
         Row: {
           champ_identification_1: string
@@ -10381,6 +10452,10 @@ export type Database = {
             Args: { p_caisse_id?: string; p_type_session?: string }
             Returns: boolean
           }
+      init_banking_params_for_tenant: {
+        Args: { p_country_code?: string; p_tenant_id: string }
+        Returns: string
+      }
       init_inventaire_items: { Args: { p_session_id: string }; Returns: Json }
       init_regional_params_for_tenant: {
         Args: { p_country_code?: string; p_tenant_id: string }
