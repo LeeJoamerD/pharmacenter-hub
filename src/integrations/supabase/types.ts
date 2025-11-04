@@ -613,6 +613,51 @@ export type Database = {
           },
         ]
       }
+      archives_fiscales: {
+        Row: {
+          created_at: string
+          date_archivage: string
+          date_expiration: string | null
+          fichier_url: string | null
+          id: string
+          periode: string
+          reference_document: string
+          statut_archivage: string
+          taille_fichier_ko: number | null
+          tenant_id: string
+          type_document: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_archivage?: string
+          date_expiration?: string | null
+          fichier_url?: string | null
+          id?: string
+          periode: string
+          reference_document: string
+          statut_archivage?: string
+          taille_fichier_ko?: number | null
+          tenant_id: string
+          type_document: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_archivage?: string
+          date_expiration?: string | null
+          fichier_url?: string | null
+          id?: string
+          periode?: string
+          reference_document?: string
+          statut_archivage?: string
+          taille_fichier_ko?: number | null
+          tenant_id?: string
+          type_document?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       assureurs: {
         Row: {
           adresse: string | null
@@ -2040,6 +2085,48 @@ export type Database = {
             referencedColumns: ["produit_id"]
           },
         ]
+      }
+      conformite_fiscale: {
+        Row: {
+          created_at: string
+          derniere_verification: string | null
+          description: string | null
+          element_controle: string
+          id: string
+          prochaine_verification: string | null
+          recommandations: string | null
+          score_conformite: number | null
+          statut_conformite: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          derniere_verification?: string | null
+          description?: string | null
+          element_controle: string
+          id?: string
+          prochaine_verification?: string | null
+          recommandations?: string | null
+          score_conformite?: number | null
+          statut_conformite?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          derniere_verification?: string | null
+          description?: string | null
+          element_controle?: string
+          id?: string
+          prochaine_verification?: string | null
+          recommandations?: string | null
+          score_conformite?: number | null
+          statut_conformite?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       conges_employes: {
         Row: {
@@ -5652,6 +5739,51 @@ export type Database = {
         }
         Relationships: []
       }
+      obligations_fiscales: {
+        Row: {
+          created_at: string
+          description: string | null
+          est_actif: boolean
+          frequence: string
+          id: string
+          prochaine_echeance: string
+          rappel_email: boolean
+          rappel_jours_avant: number | null
+          statut: string
+          tenant_id: string
+          type_obligation: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          est_actif?: boolean
+          frequence: string
+          id?: string
+          prochaine_echeance: string
+          rappel_email?: boolean
+          rappel_jours_avant?: number | null
+          statut?: string
+          tenant_id: string
+          type_obligation: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          est_actif?: boolean
+          frequence?: string
+          id?: string
+          prochaine_echeance?: string
+          rappel_email?: boolean
+          rappel_jours_avant?: number | null
+          statut?: string
+          tenant_id?: string
+          type_obligation?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       paiements_factures: {
         Row: {
           created_at: string
@@ -5776,6 +5908,54 @@ export type Database = {
             referencedColumns: ["produit_id"]
           },
         ]
+      }
+      parametres_fiscaux: {
+        Row: {
+          alerte_echeances: boolean
+          alerte_reglementations: boolean
+          alerte_seuil_tva: boolean
+          created_at: string
+          email_alertes: string | null
+          frequence_declaration: string
+          id: string
+          jours_alerte_avant_echeance: number | null
+          numero_tva: string | null
+          rapport_mensuel_auto: boolean
+          regime_tva: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          alerte_echeances?: boolean
+          alerte_reglementations?: boolean
+          alerte_seuil_tva?: boolean
+          created_at?: string
+          email_alertes?: string | null
+          frequence_declaration?: string
+          id?: string
+          jours_alerte_avant_echeance?: number | null
+          numero_tva?: string | null
+          rapport_mensuel_auto?: boolean
+          regime_tva?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          alerte_echeances?: boolean
+          alerte_reglementations?: boolean
+          alerte_seuil_tva?: boolean
+          created_at?: string
+          email_alertes?: string | null
+          frequence_declaration?: string
+          id?: string
+          jours_alerte_avant_echeance?: number | null
+          numero_tva?: string | null
+          rapport_mensuel_auto?: boolean
+          regime_tva?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       parametres_systeme: {
         Row: {
@@ -8481,6 +8661,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      taux_tva: {
+        Row: {
+          created_at: string
+          description: string | null
+          est_actif: boolean
+          est_par_defaut: boolean
+          id: string
+          nom_taux: string
+          taux_pourcentage: number
+          tenant_id: string
+          type_taux: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          est_actif?: boolean
+          est_par_defaut?: boolean
+          id?: string
+          nom_taux: string
+          taux_pourcentage: number
+          tenant_id: string
+          type_taux: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          est_actif?: boolean
+          est_par_defaut?: boolean
+          id?: string
+          nom_taux?: string
+          taux_pourcentage?: number
+          tenant_id?: string
+          type_taux?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       tenant_security_config: {
         Row: {
