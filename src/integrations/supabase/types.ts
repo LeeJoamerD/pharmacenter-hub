@@ -6296,6 +6296,95 @@ export type Database = {
         }
         Relationships: []
       }
+      parametres_journalisation_regionaux: {
+        Row: {
+          code_pays: string
+          conservation_brouillons_jours: number | null
+          created_at: string | null
+          devise_principale: string
+          equilibre_obligatoire: boolean | null
+          format_date: string | null
+          format_numero_achat: string
+          format_numero_banque: string
+          format_numero_caisse: string
+          format_numero_od: string
+          format_numero_vente: string
+          id: string
+          longueur_numero: number | null
+          mentions_legales_ecritures: string | null
+          pays: string
+          position_symbole_devise: string | null
+          reference_obligatoire: boolean | null
+          separateur_decimal: string | null
+          separateur_milliers: string | null
+          symbole_devise: string
+          tenant_id: string
+          updated_at: string | null
+          validation_automatique: boolean | null
+          verrouillage_auto_fin_mois: boolean | null
+        }
+        Insert: {
+          code_pays: string
+          conservation_brouillons_jours?: number | null
+          created_at?: string | null
+          devise_principale: string
+          equilibre_obligatoire?: boolean | null
+          format_date?: string | null
+          format_numero_achat: string
+          format_numero_banque: string
+          format_numero_caisse: string
+          format_numero_od: string
+          format_numero_vente: string
+          id?: string
+          longueur_numero?: number | null
+          mentions_legales_ecritures?: string | null
+          pays: string
+          position_symbole_devise?: string | null
+          reference_obligatoire?: boolean | null
+          separateur_decimal?: string | null
+          separateur_milliers?: string | null
+          symbole_devise: string
+          tenant_id: string
+          updated_at?: string | null
+          validation_automatique?: boolean | null
+          verrouillage_auto_fin_mois?: boolean | null
+        }
+        Update: {
+          code_pays?: string
+          conservation_brouillons_jours?: number | null
+          created_at?: string | null
+          devise_principale?: string
+          equilibre_obligatoire?: boolean | null
+          format_date?: string | null
+          format_numero_achat?: string
+          format_numero_banque?: string
+          format_numero_caisse?: string
+          format_numero_od?: string
+          format_numero_vente?: string
+          id?: string
+          longueur_numero?: number | null
+          mentions_legales_ecritures?: string | null
+          pays?: string
+          position_symbole_devise?: string | null
+          reference_obligatoire?: boolean | null
+          separateur_decimal?: string | null
+          separateur_milliers?: string | null
+          symbole_devise?: string
+          tenant_id?: string
+          updated_at?: string | null
+          validation_automatique?: boolean | null
+          verrouillage_auto_fin_mois?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parametres_journalisation_regionaux_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parametres_paiements_regionaux: {
         Row: {
           code_pays: string
@@ -10791,6 +10880,10 @@ export type Database = {
       }
       init_inventaire_items: { Args: { p_session_id: string }; Returns: Json }
       init_invoice_params_for_tenant: {
+        Args: { p_country_code?: string; p_tenant_id: string }
+        Returns: undefined
+      }
+      init_journal_params_for_tenant: {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: undefined
       }
