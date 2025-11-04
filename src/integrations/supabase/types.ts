@@ -613,6 +613,68 @@ export type Database = {
           },
         ]
       }
+      alertes_tresorerie: {
+        Row: {
+          compte_bancaire_id: string | null
+          created_at: string
+          date_alerte: string
+          description: string
+          id: string
+          notes: string | null
+          resolu_le: string | null
+          resolu_par_id: string | null
+          seuil_montant_xaf: number | null
+          severite: string
+          statut: string
+          tenant_id: string
+          titre: string
+          type_alerte: string
+          updated_at: string
+        }
+        Insert: {
+          compte_bancaire_id?: string | null
+          created_at?: string
+          date_alerte?: string
+          description: string
+          id?: string
+          notes?: string | null
+          resolu_le?: string | null
+          resolu_par_id?: string | null
+          seuil_montant_xaf?: number | null
+          severite?: string
+          statut?: string
+          tenant_id: string
+          titre: string
+          type_alerte: string
+          updated_at?: string
+        }
+        Update: {
+          compte_bancaire_id?: string | null
+          created_at?: string
+          date_alerte?: string
+          description?: string
+          id?: string
+          notes?: string | null
+          resolu_le?: string | null
+          resolu_par_id?: string | null
+          seuil_montant_xaf?: number | null
+          severite?: string
+          statut?: string
+          tenant_id?: string
+          titre?: string
+          type_alerte?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alertes_tresorerie_compte_bancaire_id_fkey"
+            columns: ["compte_bancaire_id"]
+            isOneToOne: false
+            referencedRelation: "comptes_bancaires"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       archives_fiscales: {
         Row: {
           created_at: string
@@ -2914,6 +2976,59 @@ export type Database = {
             columns: ["vente_id"]
             isOneToOne: false
             referencedRelation: "ventes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      engagements_tresorerie: {
+        Row: {
+          compte_bancaire_id: string | null
+          created_at: string
+          date_echeance: string
+          id: string
+          libelle: string
+          montant_xaf: number
+          notes: string | null
+          reference_document: string | null
+          statut: string
+          tenant_id: string
+          type_engagement: string
+          updated_at: string
+        }
+        Insert: {
+          compte_bancaire_id?: string | null
+          created_at?: string
+          date_echeance: string
+          id?: string
+          libelle: string
+          montant_xaf: number
+          notes?: string | null
+          reference_document?: string | null
+          statut?: string
+          tenant_id: string
+          type_engagement: string
+          updated_at?: string
+        }
+        Update: {
+          compte_bancaire_id?: string | null
+          created_at?: string
+          date_echeance?: string
+          id?: string
+          libelle?: string
+          montant_xaf?: number
+          notes?: string | null
+          reference_document?: string | null
+          statut?: string
+          tenant_id?: string
+          type_engagement?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engagements_tresorerie_compte_bancaire_id_fkey"
+            columns: ["compte_bancaire_id"]
+            isOneToOne: false
+            referencedRelation: "comptes_bancaires"
             referencedColumns: ["id"]
           },
         ]
@@ -5845,6 +5960,63 @@ export type Database = {
           },
         ]
       }
+      parametres_bancaires: {
+        Row: {
+          alertes_actives: boolean
+          code_pays: string
+          created_at: string
+          devise_principale: string
+          emails_alertes: string[] | null
+          format_import_defaut: string
+          frequence_sync: string
+          id: string
+          rapprochement_auto: boolean
+          seuil_alerte_bas_xaf: number
+          seuil_alerte_critique_xaf: number
+          synchronisation_auto: boolean
+          tenant_id: string
+          tolerance_rapprochement_jours: number
+          tolerance_rapprochement_montant_xaf: number
+          updated_at: string
+        }
+        Insert: {
+          alertes_actives?: boolean
+          code_pays?: string
+          created_at?: string
+          devise_principale?: string
+          emails_alertes?: string[] | null
+          format_import_defaut?: string
+          frequence_sync?: string
+          id?: string
+          rapprochement_auto?: boolean
+          seuil_alerte_bas_xaf?: number
+          seuil_alerte_critique_xaf?: number
+          synchronisation_auto?: boolean
+          tenant_id: string
+          tolerance_rapprochement_jours?: number
+          tolerance_rapprochement_montant_xaf?: number
+          updated_at?: string
+        }
+        Update: {
+          alertes_actives?: boolean
+          code_pays?: string
+          created_at?: string
+          devise_principale?: string
+          emails_alertes?: string[] | null
+          format_import_defaut?: string
+          frequence_sync?: string
+          id?: string
+          rapprochement_auto?: boolean
+          seuil_alerte_bas_xaf?: number
+          seuil_alerte_critique_xaf?: number
+          synchronisation_auto?: boolean
+          tenant_id?: string
+          tolerance_rapprochement_jours?: number
+          tolerance_rapprochement_montant_xaf?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       parametres_expiration: {
         Row: {
           action_automatique: string | null
@@ -6656,6 +6828,57 @@ export type Database = {
           },
         ]
       }
+      previsions_tresorerie: {
+        Row: {
+          coefficient_ajustement: number
+          created_at: string
+          entrees_prevues_xaf: number
+          exercice_id: string | null
+          id: string
+          notes: string | null
+          periode_debut: string
+          periode_fin: string
+          solde_final_previsionnel_xaf: number
+          solde_initial_xaf: number
+          sorties_prevues_xaf: number
+          tenant_id: string
+          type_scenario: string
+          updated_at: string
+        }
+        Insert: {
+          coefficient_ajustement?: number
+          created_at?: string
+          entrees_prevues_xaf?: number
+          exercice_id?: string | null
+          id?: string
+          notes?: string | null
+          periode_debut: string
+          periode_fin: string
+          solde_final_previsionnel_xaf?: number
+          solde_initial_xaf?: number
+          sorties_prevues_xaf?: number
+          tenant_id: string
+          type_scenario?: string
+          updated_at?: string
+        }
+        Update: {
+          coefficient_ajustement?: number
+          created_at?: string
+          entrees_prevues_xaf?: number
+          exercice_id?: string | null
+          id?: string
+          notes?: string | null
+          periode_debut?: string
+          periode_fin?: string
+          solde_final_previsionnel_xaf?: number
+          solde_initial_xaf?: number
+          sorties_prevues_xaf?: number
+          tenant_id?: string
+          type_scenario?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pricing_settings: {
         Row: {
           allow_discounts: boolean | null
@@ -7339,6 +7562,60 @@ export type Database = {
           statut?: string
           tenant_id?: string
           type_reglementation?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      regles_categorisation_bancaire: {
+        Row: {
+          appliquee_automatiquement: boolean
+          banque_specifique: string | null
+          categorie_cible: string
+          created_at: string
+          est_actif: boolean
+          id: string
+          montant_max: number | null
+          montant_min: number | null
+          nom_regle: string
+          pattern_recherche: string
+          priorite: number
+          tenant_id: string
+          type_pattern: string
+          type_transaction: string
+          updated_at: string
+        }
+        Insert: {
+          appliquee_automatiquement?: boolean
+          banque_specifique?: string | null
+          categorie_cible: string
+          created_at?: string
+          est_actif?: boolean
+          id?: string
+          montant_max?: number | null
+          montant_min?: number | null
+          nom_regle: string
+          pattern_recherche: string
+          priorite?: number
+          tenant_id: string
+          type_pattern?: string
+          type_transaction?: string
+          updated_at?: string
+        }
+        Update: {
+          appliquee_automatiquement?: boolean
+          banque_specifique?: string | null
+          categorie_cible?: string
+          created_at?: string
+          est_actif?: boolean
+          id?: string
+          montant_max?: number | null
+          montant_min?: number | null
+          nom_regle?: string
+          pattern_recherche?: string
+          priorite?: number
+          tenant_id?: string
+          type_pattern?: string
+          type_transaction?: string
           updated_at?: string
         }
         Relationships: []
