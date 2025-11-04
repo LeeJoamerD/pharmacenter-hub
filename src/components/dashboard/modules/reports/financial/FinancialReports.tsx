@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useFinancialReports } from '@/hooks/useFinancialReports';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -13,7 +15,7 @@ import {
   BarChart3, 
   Calculator,
   Banknote,
-  CreditCard,
+  FileText,
   Receipt,
   Target,
   AlertTriangle,
@@ -21,91 +23,38 @@ import {
   Clock,
   ArrowUpRight,
   ArrowDownRight,
-  RefreshCw,
   Download,
-  Filter
+  Globe,
+  Building
 } from 'lucide-react';
 
 const FinancialReports = () => {
-  const [selectedPeriod, setSelectedPeriod] = useState('month');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedExerciceId, setSelectedExerciceId] = useState<string | undefined>();
 
-  // Données financières simulées
-  const financialMetrics = [
-    {
-      title: 'Chiffre d\'Affaires',
-      value: '12 450 000',
-      unit: 'FCFA',
-      change: '+18.5%',
-      trend: 'up',
-      icon: DollarSign,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50'
-    },
-    {
-      title: 'Marge Brute',
-      value: '3 890 000',
-      unit: 'FCFA',
-      change: '+12.3%',
-      trend: 'up',
-      icon: TrendingUp,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
-    },
-    {
-      title: 'Charges Exploitation',
-      value: '2 180 000',
-      unit: 'FCFA',
-      change: '+5.2%',
-      trend: 'up',
-      icon: Calculator,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50'
-    },
-    {
-      title: 'Résultat Net',
-      value: '1 710 000',
-      unit: 'FCFA',
-      change: '+22.8%',
-      trend: 'up',
-      icon: Target,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
-    }
-  ];
+  const {
+    regionalParams,
+    exercices,
+    currentExercice,
+    balanceSheet,
+    incomeStatement,
+    financialRatios,
+    isLoading,
+    formatAmount,
+    exportBalanceSheetPDF,
+    exportIncomeStatementExcel,
+  } = useFinancialReports(selectedExerciceId);
 
-  const revenueAnalysis = [
-    { category: 'Médicaments Éthiques', amount: 8500000, percentage: 68.3, margin: 32.5 },
-    { category: 'Produits OTC', amount: 2100000, percentage: 16.9, margin: 28.7 },
-    { category: 'Parapharmacie', amount: 980000, percentage: 7.9, margin: 45.2 },
-    { category: 'Matériel Médical', amount: 870000, percentage: 6.9, margin: 38.9 }
-  ];
+  const activeExercice = selectedExerciceId 
+    ? exercices?.find(e => e.id === selectedExerciceId) 
+    : currentExercice;
 
-  const profitabilityTrends = [
-    { month: 'Jan', revenue: 9800000, margin: 28.5, costs: 7000000 },
-    { month: 'Fév', revenue: 10200000, margin: 29.2, costs: 7200000 },
-    { month: 'Mar', revenue: 11100000, margin: 30.1, costs: 7750000 },
-    { month: 'Avr', revenue: 10800000, margin: 29.8, costs: 7580000 },
-    { month: 'Mai', revenue: 11800000, margin: 31.2, costs: 8120000 },
-    { month: 'Jun', revenue: 12450000, margin: 31.8, costs: 8490000 }
-  ];
-
-  const cashFlowData = [
-    { type: 'Encaissements', amount: 12450000, status: 'positive' },
-    { type: 'Décaissements', amount: -9240000, status: 'negative' },
-    { type: 'Flux Net', amount: 3210000, status: 'positive' },
-    { type: 'Trésorerie Début', amount: 8900000, status: 'neutral' },
-    { type: 'Trésorerie Fin', amount: 12110000, status: 'positive' }
-  ];
-
-  const ratiosFinanciers = [
-    { name: 'Marge Brute', value: 31.8, target: 30, status: 'excellent' },
-    { name: 'Marge Nette', value: 13.7, target: 12, status: 'excellent' },
-    { name: 'Rotation Stock', value: 8.2, target: 6, status: 'excellent' },
-    { name: 'Créances Clients', value: 18.5, target: 20, status: 'good' },
-    { name: 'Liquidité Générale', value: 2.8, target: 2, status: 'excellent' },
-    { name: 'Endettement', value: 0.35, target: 0.5, status: 'excellent' }
-  ];
+  const getRatioStatus = (value: number, threshold: number, inverse: boolean = false): string => {
+    const ratio = inverse ? threshold / value : value / threshold;
+    if (ratio >= 1.2) return 'excellent';
+    if (ratio >= 1) return 'good';
+    if (ratio >= 0.8) return 'warning';
+    return 'critical';
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -127,261 +76,463 @@ const FinancialReports = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-12 w-full" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map(i => (
+            <Skeleton key={i} className="h-32" />
+          ))}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Rapports Financiers</h2>
+          <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            Rapports Financiers
+            {regionalParams && (
+              <Badge variant="outline" className="ml-2">
+                <Globe className="h-3 w-3 mr-1" />
+                {regionalParams.pays}
+              </Badge>
+            )}
+            {regionalParams && (
+              <Badge variant="outline">
+                <Building className="h-3 w-3 mr-1" />
+                {regionalParams.systeme_comptable}
+              </Badge>
+            )}
+          </h2>
           <p className="text-muted-foreground">
-            Analyses financières et comptables détaillées
+            {regionalParams?.mention_legale_footer || 'Analyses financières et comptables détaillées'}
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="day">Aujourd'hui</SelectItem>
-              <SelectItem value="week">Cette semaine</SelectItem>
-              <SelectItem value="month">Ce mois</SelectItem>
-              <SelectItem value="quarter">Ce trimestre</SelectItem>
-              <SelectItem value="year">Cette année</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Exporter
-          </Button>
+          {exercices && exercices.length > 0 && (
+            <Select 
+              value={selectedExerciceId || currentExercice?.id} 
+              onValueChange={setSelectedExerciceId}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Sélectionner un exercice" />
+              </SelectTrigger>
+              <SelectContent>
+                {exercices.map(exercice => (
+                  <SelectItem key={exercice.id} value={exercice.id}>
+                    {exercice.libelle} ({exercice.statut})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
       {/* Métriques principales */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {financialMetrics.map((metric, index) => {
-          const IconComponent = metric.icon;
-          return (
-            <Card key={index} className="hover-scale">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
-                <div className={`p-2 rounded-lg ${metric.bgColor}`}>
-                  <IconComponent className={`h-4 w-4 ${metric.color}`} />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {metric.value} <span className="text-sm font-normal text-muted-foreground">{metric.unit}</span>
-                </div>
-                <div className="flex items-center text-xs text-muted-foreground">
-                  {metric.trend === 'up' ? (
-                    <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />
-                  ) : (
-                    <ArrowDownRight className="h-3 w-3 text-red-500 mr-1" />
-                  )}
-                  {metric.change} vs mois précédent
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      {incomeStatement && balanceSheet && financialRatios && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="hover-scale">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Actif</CardTitle>
+              <div className="p-2 rounded-lg bg-blue-50">
+                <DollarSign className="h-4 w-4 text-blue-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatAmount(balanceSheet.actif.total)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Bilan actif</p>
+            </CardContent>
+          </Card>
 
-      <Tabs defaultValue="revenue" className="space-y-6">
+          <Card className="hover-scale">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Résultat Net</CardTitle>
+              <div className="p-2 rounded-lg bg-green-50">
+                <TrendingUp className="h-4 w-4 text-green-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatAmount(incomeStatement.resultatNet)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Résultat de l'exercice</p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover-scale">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Marge Nette</CardTitle>
+              <div className="p-2 rounded-lg bg-purple-50">
+                <Target className="h-4 w-4 text-purple-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {financialRatios.margeNette.toFixed(1)}%
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Rentabilité</p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover-scale">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Ratio Liquidité</CardTitle>
+              <div className="p-2 rounded-lg bg-orange-50">
+                <Banknote className="h-4 w-4 text-orange-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {financialRatios.ratioLiquidite.toFixed(2)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Solvabilité</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <Tabs defaultValue="bilan" className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="revenue">Revenus</TabsTrigger>
-          <TabsTrigger value="profitability">Rentabilité</TabsTrigger>
-          <TabsTrigger value="costs">Coûts</TabsTrigger>
-          <TabsTrigger value="cashflow">Trésorerie</TabsTrigger>
+          <TabsTrigger value="bilan">Bilan</TabsTrigger>
+          <TabsTrigger value="resultat">Compte de Résultat</TabsTrigger>
+          <TabsTrigger value="flux">Flux de Trésorerie</TabsTrigger>
           <TabsTrigger value="ratios">Ratios</TabsTrigger>
+          <TabsTrigger value="annexes">États Annexes</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="revenue" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <PieChart className="h-5 w-5" />
-                  Répartition du CA par Catégorie
-                </CardTitle>
-                <CardDescription>Analyse des revenus par famille de produits</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {revenueAnalysis.map((item, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">{item.category}</span>
-                        <div className="text-sm text-muted-foreground">
-                          {item.percentage}% • Marge: {item.margin}%
-                        </div>
-                      </div>
-                      <Progress value={item.percentage} className="h-2" />
-                      <div className="text-xs text-muted-foreground">
-                        {(item.amount / 1000000).toFixed(1)}M FCFA
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Évolution Mensuelle des Revenus
-                </CardTitle>
-                <CardDescription>Tendance du chiffre d'affaires sur 6 mois</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {profitabilityTrends.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <p className="font-medium">{item.month}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Marge: {item.margin}%
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold">
-                          {(item.revenue / 1000000).toFixed(1)}M
-                        </p>
-                        <p className="text-xs text-muted-foreground">FCFA</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="profitability" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Analyse de Rentabilité
-              </CardTitle>
-              <CardDescription>Évolution des marges et de la profitabilité</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Marge Brute Moyenne</p>
-                  <p className="text-2xl font-bold text-green-600">31.8%</p>
-                  <p className="text-xs text-muted-foreground">+2.3% vs période précédente</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Marge Nette</p>
-                  <p className="text-2xl font-bold text-blue-600">13.7%</p>
-                  <p className="text-xs text-muted-foreground">+1.8% vs période précédente</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">ROI</p>
-                  <p className="text-2xl font-bold text-purple-600">24.5%</p>
-                  <p className="text-xs text-muted-foreground">+3.2% vs période précédente</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="costs" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calculator className="h-5 w-5" />
-                Analyse des Coûts
-              </CardTitle>
-              <CardDescription>Décomposition des charges d'exploitation</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  { name: 'Coût des Marchandises', amount: 8490000, percentage: 68.2 },
-                  { name: 'Charges Personnel', amount: 1250000, percentage: 10.0 },
-                  { name: 'Charges Locatives', amount: 650000, percentage: 5.2 },
-                  { name: 'Marketing & Communication', amount: 380000, percentage: 3.1 },
-                  { name: 'Charges Diverses', amount: 470000, percentage: 3.8 }
-                ].map((cost, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+        <TabsContent value="bilan" className="space-y-6">
+          {balanceSheet && (
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">{cost.name}</p>
-                      <p className="text-sm text-muted-foreground">{cost.percentage}% du CA</p>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        ACTIF
+                      </CardTitle>
+                      <CardDescription>Patrimoine de l'entreprise</CardDescription>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold">{(cost.amount / 1000000).toFixed(2)}M</p>
-                      <p className="text-xs text-muted-foreground">FCFA</p>
+                    <Button variant="outline" size="sm" onClick={exportBalanceSheetPDF}>
+                      <Download className="h-4 w-4 mr-2" />
+                      PDF
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Immobilisations</h4>
+                      {balanceSheet.actif.immobilise.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-1 text-sm">
+                          <span className="text-muted-foreground">{item.libelle}</span>
+                          <span className="font-medium">{formatAmount(item.montant_n)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Actif Circulant</h4>
+                      {balanceSheet.actif.circulant.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-1 text-sm">
+                          <span className="text-muted-foreground">{item.libelle}</span>
+                          <span className="font-medium">{formatAmount(item.montant_n)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Trésorerie</h4>
+                      {balanceSheet.actif.tresorerie.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-1 text-sm">
+                          <span className="text-muted-foreground">{item.libelle}</span>
+                          <span className="font-medium">{formatAmount(item.montant_n)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t pt-2">
+                      <div className="flex justify-between font-bold">
+                        <span>TOTAL ACTIF</span>
+                        <span className="text-blue-600">{formatAmount(balanceSheet.actif.total)}</span>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Receipt className="h-5 w-5" />
+                    PASSIF
+                  </CardTitle>
+                  <CardDescription>Sources de financement</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Capitaux Propres</h4>
+                      {balanceSheet.passif.capitauxPropres.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-1 text-sm">
+                          <span className="text-muted-foreground">{item.libelle}</span>
+                          <span className="font-medium">{formatAmount(item.montant_n)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Dettes</h4>
+                      {balanceSheet.passif.dettes.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-1 text-sm">
+                          <span className="text-muted-foreground">{item.libelle}</span>
+                          <span className="font-medium">{formatAmount(item.montant_n)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t pt-2">
+                      <div className="flex justify-between font-bold">
+                        <span>TOTAL PASSIF</span>
+                        <span className="text-green-600">{formatAmount(balanceSheet.passif.total)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </TabsContent>
 
-        <TabsContent value="cashflow" className="space-y-6">
+        <TabsContent value="resultat" className="space-y-6">
+          {incomeStatement && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Compte de Résultat
+                    </CardTitle>
+                    <CardDescription>Analyse des produits et charges</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={exportIncomeStatementExcel}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Excel
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-green-600">PRODUITS</h3>
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Produits d'Exploitation</h4>
+                      {incomeStatement.produits.exploitation.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-1 text-sm">
+                          <span className="text-muted-foreground">{item.libelle}</span>
+                          <span className="font-medium">{formatAmount(item.montant_n)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Produits Financiers</h4>
+                      {incomeStatement.produits.financiers.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-1 text-sm">
+                          <span className="text-muted-foreground">{item.libelle}</span>
+                          <span className="font-medium">{formatAmount(item.montant_n)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t pt-2">
+                      <div className="flex justify-between font-bold text-green-600">
+                        <span>TOTAL PRODUITS</span>
+                        <span>{formatAmount(incomeStatement.produits.total)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-red-600">CHARGES</h3>
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Charges d'Exploitation</h4>
+                      {incomeStatement.charges.exploitation.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-1 text-sm">
+                          <span className="text-muted-foreground">{item.libelle}</span>
+                          <span className="font-medium">{formatAmount(item.montant_n)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Charges Financières</h4>
+                      {incomeStatement.charges.financiers.map((item, idx) => (
+                        <div key={idx} className="flex justify-between py-1 text-sm">
+                          <span className="text-muted-foreground">{item.libelle}</span>
+                          <span className="font-medium">{formatAmount(item.montant_n)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t pt-2">
+                      <div className="flex justify-between font-bold text-red-600">
+                        <span>TOTAL CHARGES</span>
+                        <span>{formatAmount(incomeStatement.charges.total)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 space-y-3 p-4 bg-muted rounded-lg">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">Résultat d'Exploitation</span>
+                    <span className={incomeStatement.resultatExploitation >= 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+                      {formatAmount(incomeStatement.resultatExploitation)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">Résultat Financier</span>
+                    <span className={incomeStatement.resultatFinancier >= 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+                      {formatAmount(incomeStatement.resultatFinancier)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t pt-2">
+                    <span className="font-bold">RÉSULTAT NET</span>
+                    <span className={incomeStatement.resultatNet >= 0 ? 'text-green-600 font-bold text-xl' : 'text-red-600 font-bold text-xl'}>
+                      {formatAmount(incomeStatement.resultatNet)}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="flux" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Banknote className="h-5 w-5" />
-                Analyse de Trésorerie
+                Tableau des Flux de Trésorerie
               </CardTitle>
-              <CardDescription>Flux de trésorerie et liquidités</CardDescription>
+              <CardDescription>À implémenter - Analyse des flux de trésorerie OHADA</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {cashFlowData.map((flow, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-2">
-                      {flow.status === 'positive' && <ArrowUpRight className="h-4 w-4 text-green-600" />}
-                      {flow.status === 'negative' && <ArrowDownRight className="h-4 w-4 text-red-600" />}
-                      {flow.status === 'neutral' && <div className="h-4 w-4 bg-gray-400 rounded-full" />}
-                      <span className="font-medium">{flow.type}</span>
-                    </div>
-                    <div className={`text-right font-bold ${
-                      flow.status === 'positive' ? 'text-green-600' : 
-                      flow.status === 'negative' ? 'text-red-600' : 'text-gray-600'
-                    }`}>
-                      {(flow.amount / 1000000).toFixed(2)}M FCFA
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p className="text-muted-foreground">Ce rapport nécessite des données complémentaires sur les amortissements et variations du BFR.</p>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="ratios" className="space-y-6">
+          {financialRatios && regionalParams && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  Ratios Financiers
+                </CardTitle>
+                <CardDescription>Indicateurs clés de performance financière</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {[
+                    { 
+                      name: 'Liquidité Générale', 
+                      value: financialRatios.ratioLiquidite, 
+                      target: regionalParams.seuil_ratio_liquidite,
+                      format: (v: number) => v.toFixed(2),
+                      inverse: false
+                    },
+                    { 
+                      name: 'Taux d\'Endettement', 
+                      value: financialRatios.ratioEndettement, 
+                      target: regionalParams.seuil_ratio_endettement,
+                      format: (v: number) => v.toFixed(1) + '%',
+                      inverse: true
+                    },
+                    { 
+                      name: 'Autonomie Financière', 
+                      value: financialRatios.ratioAutonomie, 
+                      target: regionalParams.seuil_ratio_autonomie,
+                      format: (v: number) => v.toFixed(1) + '%',
+                      inverse: false
+                    },
+                    { 
+                      name: 'Marge d\'Exploitation', 
+                      value: financialRatios.margeExploitation, 
+                      target: regionalParams.seuil_marge_exploitation,
+                      format: (v: number) => v.toFixed(1) + '%',
+                      inverse: false
+                    },
+                    { 
+                      name: 'Marge Nette', 
+                      value: financialRatios.margeNette, 
+                      target: regionalParams.seuil_marge_nette,
+                      format: (v: number) => v.toFixed(1) + '%',
+                      inverse: false
+                    },
+                    { 
+                      name: 'Rentabilité des Capitaux', 
+                      value: financialRatios.rentabiliteCapitaux, 
+                      target: regionalParams.seuil_rentabilite_capitaux,
+                      format: (v: number) => v.toFixed(1) + '%',
+                      inverse: false
+                    },
+                  ].map((ratio, index) => {
+                    const status = getRatioStatus(ratio.value, ratio.target, ratio.inverse);
+                    return (
+                      <div key={index} className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium">{ratio.name}</span>
+                          {getStatusIcon(status)}
+                        </div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-2xl font-bold">{ratio.format(ratio.value)}</span>
+                          <Badge className={getStatusColor(status)}>
+                            {status}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Objectif: {ratio.format(ratio.target)}
+                        </div>
+                        <Progress 
+                          value={ratio.inverse ? (ratio.target / ratio.value) * 100 : (ratio.value / ratio.target) * 100} 
+                          className="h-2 mt-2" 
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="annexes" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Ratios Financiers
+                <FileText className="h-5 w-5" />
+                États Annexes
               </CardTitle>
-              <CardDescription>Indicateurs clés de performance financière</CardDescription>
+              <CardDescription>Notes et informations complémentaires aux états financiers</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                {ratiosFinanciers.map((ratio, index) => (
-                  <div key={index} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">{ratio.name}</span>
-                      {getStatusIcon(ratio.status)}
-                    </div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-2xl font-bold">{ratio.value}</span>
-                      <Badge className={getStatusColor(ratio.status)}>
-                        {ratio.status}
-                      </Badge>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Objectif: {ratio.target} • Performance excellente
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-4">
+                <p className="text-muted-foreground">
+                  Les états annexes incluront :
+                </p>
+                <ul className="list-disc list-inside space-y-2 text-sm">
+                  <li>Tableau des amortissements</li>
+                  <li>Tableau des provisions</li>
+                  <li>État des créances clients</li>
+                  <li>État des dettes fournisseurs</li>
+                  <li>Engagements hors bilan</li>
+                </ul>
+                <p className="text-xs text-muted-foreground mt-4">
+                  {regionalParams?.mention_legale_footer}
+                </p>
               </div>
             </CardContent>
           </Card>

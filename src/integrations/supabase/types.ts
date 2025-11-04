@@ -6129,6 +6129,81 @@ export type Database = {
         }
         Relationships: []
       }
+      parametres_regionaux_rapports: {
+        Row: {
+          champ_identification_1: string
+          champ_identification_2: string
+          code_pays: string
+          created_at: string
+          devise_principale: string
+          export_excel_enabled: boolean
+          export_pdf_enabled: boolean
+          format_date: string
+          format_nombre: string
+          id: string
+          mention_legale_footer: string
+          mention_signature: string
+          pays: string
+          seuil_marge_exploitation: number
+          seuil_marge_nette: number
+          seuil_ratio_autonomie: number
+          seuil_ratio_endettement: number
+          seuil_ratio_liquidite: number
+          seuil_rentabilite_capitaux: number
+          systeme_comptable: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          champ_identification_1?: string
+          champ_identification_2?: string
+          code_pays?: string
+          created_at?: string
+          devise_principale?: string
+          export_excel_enabled?: boolean
+          export_pdf_enabled?: boolean
+          format_date?: string
+          format_nombre?: string
+          id?: string
+          mention_legale_footer?: string
+          mention_signature?: string
+          pays?: string
+          seuil_marge_exploitation?: number
+          seuil_marge_nette?: number
+          seuil_ratio_autonomie?: number
+          seuil_ratio_endettement?: number
+          seuil_ratio_liquidite?: number
+          seuil_rentabilite_capitaux?: number
+          systeme_comptable?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          champ_identification_1?: string
+          champ_identification_2?: string
+          code_pays?: string
+          created_at?: string
+          devise_principale?: string
+          export_excel_enabled?: boolean
+          export_pdf_enabled?: boolean
+          format_date?: string
+          format_nombre?: string
+          id?: string
+          mention_legale_footer?: string
+          mention_signature?: string
+          pays?: string
+          seuil_marge_exploitation?: number
+          seuil_marge_nette?: number
+          seuil_ratio_autonomie?: number
+          seuil_ratio_endettement?: number
+          seuil_ratio_liquidite?: number
+          seuil_rentabilite_capitaux?: number
+          systeme_comptable?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       parametres_systeme: {
         Row: {
           categorie: string
@@ -10307,6 +10382,10 @@ export type Database = {
             Returns: boolean
           }
       init_inventaire_items: { Args: { p_session_id: string }; Returns: Json }
+      init_regional_params_for_tenant: {
+        Args: { p_country_code?: string; p_tenant_id: string }
+        Returns: string
+      }
       is_cross_tenant_authorized: {
         Args: {
           p_permission_type: string
