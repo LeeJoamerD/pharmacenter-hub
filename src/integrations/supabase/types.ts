@@ -6126,6 +6126,128 @@ export type Database = {
           },
         ]
       }
+      parametres_factures_regionaux: {
+        Row: {
+          adresse_societe: string | null
+          archivage_obligatoire_annees: number | null
+          code_pays: string
+          conditions_paiement_defaut: string | null
+          created_at: string | null
+          delai_paiement_defaut: number | null
+          devise_principale: string | null
+          email_societe: string | null
+          format_date: string | null
+          format_numero: string | null
+          id: string
+          libelle_tva: string | null
+          longueur_numero: number | null
+          mentions_legales_facture: string | null
+          montant_max_sans_facture: number | null
+          nom_societe: string | null
+          numero_tva: string | null
+          numero_tva_obligatoire: boolean | null
+          pays: string | null
+          penalite_retard_pourcentage: number | null
+          position_symbole_devise: string | null
+          prefixe_avoir: string | null
+          prefixe_facture_client: string | null
+          prefixe_facture_fournisseur: string | null
+          registre_commerce: string | null
+          separateur_decimal: string | null
+          separateur_milliers: string | null
+          signature_electronique_requise: boolean | null
+          site_web: string | null
+          symbole_devise: string | null
+          taux_tva_reduit: number | null
+          taux_tva_standard: number | null
+          telephone_societe: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          adresse_societe?: string | null
+          archivage_obligatoire_annees?: number | null
+          code_pays: string
+          conditions_paiement_defaut?: string | null
+          created_at?: string | null
+          delai_paiement_defaut?: number | null
+          devise_principale?: string | null
+          email_societe?: string | null
+          format_date?: string | null
+          format_numero?: string | null
+          id?: string
+          libelle_tva?: string | null
+          longueur_numero?: number | null
+          mentions_legales_facture?: string | null
+          montant_max_sans_facture?: number | null
+          nom_societe?: string | null
+          numero_tva?: string | null
+          numero_tva_obligatoire?: boolean | null
+          pays?: string | null
+          penalite_retard_pourcentage?: number | null
+          position_symbole_devise?: string | null
+          prefixe_avoir?: string | null
+          prefixe_facture_client?: string | null
+          prefixe_facture_fournisseur?: string | null
+          registre_commerce?: string | null
+          separateur_decimal?: string | null
+          separateur_milliers?: string | null
+          signature_electronique_requise?: boolean | null
+          site_web?: string | null
+          symbole_devise?: string | null
+          taux_tva_reduit?: number | null
+          taux_tva_standard?: number | null
+          telephone_societe?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          adresse_societe?: string | null
+          archivage_obligatoire_annees?: number | null
+          code_pays?: string
+          conditions_paiement_defaut?: string | null
+          created_at?: string | null
+          delai_paiement_defaut?: number | null
+          devise_principale?: string | null
+          email_societe?: string | null
+          format_date?: string | null
+          format_numero?: string | null
+          id?: string
+          libelle_tva?: string | null
+          longueur_numero?: number | null
+          mentions_legales_facture?: string | null
+          montant_max_sans_facture?: number | null
+          nom_societe?: string | null
+          numero_tva?: string | null
+          numero_tva_obligatoire?: boolean | null
+          pays?: string | null
+          penalite_retard_pourcentage?: number | null
+          position_symbole_devise?: string | null
+          prefixe_avoir?: string | null
+          prefixe_facture_client?: string | null
+          prefixe_facture_fournisseur?: string | null
+          registre_commerce?: string | null
+          separateur_decimal?: string | null
+          separateur_milliers?: string | null
+          signature_electronique_requise?: boolean | null
+          site_web?: string | null
+          symbole_devise?: string | null
+          taux_tva_reduit?: number | null
+          taux_tva_standard?: number | null
+          telephone_societe?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parametres_factures_regionaux_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parametres_fiscaux: {
         Row: {
           alerte_echeances: boolean
@@ -10668,6 +10790,10 @@ export type Database = {
         Returns: string
       }
       init_inventaire_items: { Args: { p_session_id: string }; Returns: Json }
+      init_invoice_params_for_tenant: {
+        Args: { p_country_code?: string; p_tenant_id: string }
+        Returns: undefined
+      }
       init_payment_params_for_tenant: {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: string

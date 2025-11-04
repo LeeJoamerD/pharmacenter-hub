@@ -20,6 +20,10 @@ const InvoiceManager = () => {
     creditNotes,
     isLoading,
     isSaving,
+    regionalParams,
+    formatAmount,
+    getDevise,
+    getTVARate,
     createInvoice,
     updateInvoice,
     deleteInvoice,
@@ -313,7 +317,16 @@ const InvoiceManager = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Gestion des Factures</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold">Gestion des Factures</h2>
+          {regionalParams && (
+            <div className="flex gap-2">
+              <Badge variant="outline">{regionalParams.pays}</Badge>
+              <Badge variant="secondary">{regionalParams.devise_principale}</Badge>
+              <Badge variant="outline">{regionalParams.libelle_tva} {regionalParams.taux_tva_standard}%</Badge>
+            </div>
+          )}
+        </div>
         <Dialog open={showInvoiceDialog} onOpenChange={setShowInvoiceDialog}>
           <DialogTrigger asChild>
             <Button disabled={isSaving}>
@@ -412,8 +425,8 @@ const InvoiceManager = () => {
                   <Input
                     type="number"
                     placeholder="TVA %"
-                    value={newLine.taux_tva || ''}
-                    onChange={(e) => setNewLine(prev => ({ ...prev, taux_tva: parseFloat(e.target.value) || 0 }))}
+                    value={newLine.taux_tva || getTVARate()}
+                    onChange={(e) => setNewLine(prev => ({ ...prev, taux_tva: parseFloat(e.target.value) || getTVARate() }))}
                   />
                   <div className="text-sm text-muted-foreground self-center">
                     {((newLine.quantite || 0) * (newLine.prix_unitaire || 0)).toLocaleString()}
@@ -527,7 +540,7 @@ const InvoiceManager = () => {
                 <div className="text-2xl font-bold">
                   {clientStats.totalCreances.toLocaleString()}
                 </div>
-                <p className="text-xs text-muted-foreground">FCFA</p>
+                <p className="text-xs text-muted-foreground">{getDevise()}</p>
               </CardContent>
             </Card>
             <Card>
@@ -560,7 +573,7 @@ const InvoiceManager = () => {
                 <div className="text-2xl font-bold">
                   {Math.round(clientStats.averageAmount).toLocaleString()}
                 </div>
-                <p className="text-xs text-muted-foreground">FCFA</p>
+                <p className="text-xs text-muted-foreground">{getDevise()}</p>
               </CardContent>
             </Card>
           </div>

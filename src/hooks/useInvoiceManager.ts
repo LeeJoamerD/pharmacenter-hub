@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
+import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 
 // Types
 export interface Invoice {
@@ -108,10 +110,45 @@ export const useInvoiceManager = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { pharmacy, personnel } = useAuth();
+  const { formatPrice, currentCurrency } = useCurrency();
+  const { settings } = useGlobalSystemSettings();
   const [isSaving, setIsSaving] = useState(false);
 
   const tenantId = pharmacy?.id;
   const personnelId = personnel?.id;
+
+  // Fetch regional invoice parameters
+  const { data: regionalParams, isLoading: isLoadingRegional } = useQuery({
+    queryKey: ['invoice-regional-params', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return null;
+      
+      const { data, error } = await supabase
+        .from('parametres_factures_regionaux')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .single();
+      
+      if (error && error.code === 'PGRST116') {
+        // Init auto avec template Congo si pas trouvé
+        await supabase.rpc('init_invoice_params_for_tenant', {
+          p_tenant_id: tenantId,
+          p_country_code: 'CG'
+        });
+        
+        const { data: retryData } = await supabase
+          .from('parametres_factures_regionaux')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .single();
+        return retryData;
+      }
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!tenantId,
+  });
 
   // Fetch invoices from view
   const { data: invoices = [], isLoading: isLoadingInvoices, error } = useQuery({
@@ -140,6 +177,70 @@ export const useInvoiceManager = () => {
       return data as CreditNote[];
     },
   });
+
+  // Regional utility functions
+  const formatAmount = useCallback((amount: number): string => {
+    if (!regionalParams) return formatPrice(amount);
+    
+    const formatted = amount.toFixed(2);
+    const [integer, decimal] = formatted.split('.');
+    
+    const integerFormatted = integer.replace(
+      /\B(?=(\d{3})+(?!\d))/g, 
+      regionalParams.separateur_milliers || ' '
+    );
+    
+    const numberFormatted = `${integerFormatted}${regionalParams.separateur_decimal || ','}${decimal}`;
+    
+    if (regionalParams.position_symbole_devise === 'before') {
+      return `${regionalParams.symbole_devise} ${numberFormatted}`;
+    }
+    return `${numberFormatted} ${regionalParams.symbole_devise}`;
+  }, [regionalParams, formatPrice]);
+
+  const getDevise = useCallback((): string => {
+    return regionalParams?.symbole_devise || currentCurrency.symbol;
+  }, [regionalParams, currentCurrency]);
+
+  const getInvoicePrefix = useCallback((type: 'client' | 'fournisseur' | 'avoir'): string => {
+    if (!regionalParams) return type === 'client' ? 'FC' : 'FF';
+    
+    switch(type) {
+      case 'client': return regionalParams.prefixe_facture_client || 'FC';
+      case 'fournisseur': return regionalParams.prefixe_facture_fournisseur || 'FF';
+      case 'avoir': return regionalParams.prefixe_avoir || 'AV';
+      default: return 'FC';
+    }
+  }, [regionalParams]);
+
+  const getTVARate = useCallback((reduced: boolean = false): number => {
+    if (!regionalParams) return 18.00;
+    return reduced && regionalParams.taux_tva_reduit 
+      ? regionalParams.taux_tva_reduit 
+      : regionalParams.taux_tva_standard || 18.00;
+  }, [regionalParams]);
+
+  const formatInvoiceNumber = useCallback((prefix: string, year: number, number: number): string => {
+    if (!regionalParams || !regionalParams.format_numero) {
+      return `${prefix}-${year}-${String(number).padStart(4, '0')}`;
+    }
+    
+    const template = regionalParams.format_numero;
+    return template
+      .replace('{PREFIX}', prefix)
+      .replace('{YEAR}', String(year))
+      .replace('{NUMBER:04d}', String(number).padStart(regionalParams.longueur_numero || 4, '0'))
+      .replace('{NUMBER:05d}', String(number).padStart(regionalParams.longueur_numero || 5, '0'))
+      .replace('{NUMBER}', String(number));
+  }, [regionalParams]);
+
+  const getLegalMentions = useCallback((): string => {
+    return regionalParams?.mentions_legales_facture || '';
+  }, [regionalParams]);
+
+  const getPaymentTerms = useCallback((): string => {
+    return regionalParams?.conditions_paiement_defaut || '';
+  }, [regionalParams]);
 
   // Generate invoice number
   const generateInvoiceNumber = useCallback(async (type: 'client' | 'fournisseur') => {
@@ -487,9 +588,22 @@ export const useInvoiceManager = () => {
     isLoadingCredits,
     isLoading: isLoadingInvoices || isLoadingCredits,
     isSaving,
+    loadingRegionalParams: isLoadingRegional,
     
     // Error
     error,
+    
+    // Regional params
+    regionalParams,
+    
+    // Regional utilities
+    formatAmount,
+    getDevise,
+    getInvoicePrefix,
+    getTVARate,
+    formatInvoiceNumber,
+    getLegalMentions,
+    getPaymentTerms,
     
     // Actions
     createInvoice: createInvoiceMutation.mutate,

@@ -5,9 +5,29 @@ interface ExportResult {
   filename: string;
 }
 
+interface RegionalInvoiceParams {
+  symbole_devise?: string;
+  libelle_tva?: string;
+  separateur_milliers?: string;
+  separateur_decimal?: string;
+  position_symbole_devise?: string;
+  mentions_legales_facture?: string;
+  conditions_paiement_defaut?: string;
+  nom_societe?: string;
+  adresse_societe?: string;
+  registre_commerce?: string;
+  numero_tva?: string;
+  telephone_societe?: string;
+  email_societe?: string;
+}
+
 export class InvoicePDFService {
-  static async generateInvoicePDF(invoice: Invoice, lines: InvoiceLine[] = []): Promise<ExportResult> {
-    const html = this.generateInvoiceHTML(invoice, lines);
+  static async generateInvoicePDF(
+    invoice: Invoice, 
+    lines: InvoiceLine[] = [], 
+    regionalParams?: RegionalInvoiceParams | null
+  ): Promise<ExportResult> {
+    const html = this.generateInvoiceHTML(invoice, lines, regionalParams);
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     
@@ -16,12 +36,45 @@ export class InvoicePDFService {
     return { url, filename };
   }
 
-  private static generateInvoiceHTML(invoice: Invoice, lines: InvoiceLine[]): string {
+  private static generateInvoiceHTML(
+    invoice: Invoice, 
+    lines: InvoiceLine[], 
+    regionalParams?: RegionalInvoiceParams | null
+  ): string {
     const isClient = invoice.type === 'client';
     const clientName = isClient ? invoice.client_nom : invoice.fournisseur_nom;
     const clientPhone = isClient ? invoice.client_telephone : invoice.fournisseur_telephone;
     const clientEmail = isClient ? invoice.client_email : invoice.fournisseur_email;
     const clientAddress = isClient ? invoice.client_adresse : invoice.fournisseur_adresse;
+
+    // Regional formatting
+    const devise = regionalParams?.symbole_devise || 'FCFA';
+    const tvaLabel = regionalParams?.libelle_tva || 'TVA';
+    const companyInfo = {
+      nom: regionalParams?.nom_societe || 'PharmaSoft',
+      adresse: regionalParams?.adresse_societe || 'Système de Gestion Pharmaceutique',
+      rc: regionalParams?.registre_commerce || '',
+      tva: regionalParams?.numero_tva || '',
+      tel: regionalParams?.telephone_societe || '',
+      email: regionalParams?.email_societe || '',
+    };
+
+    const formatAmount = (amount: number): string => {
+      if (!regionalParams) return `${amount.toFixed(2)} FCFA`;
+      
+      const formatted = amount.toFixed(2);
+      const [integer, decimal] = formatted.split('.');
+      const integerFormatted = integer.replace(
+        /\B(?=(\d{3})+(?!\d))/g,
+        regionalParams.separateur_milliers || ' '
+      );
+      const numberFormatted = `${integerFormatted}${regionalParams.separateur_decimal || ','}${decimal}`;
+      
+      if (regionalParams.position_symbole_devise === 'before') {
+        return `${devise} ${numberFormatted}`;
+      }
+      return `${numberFormatted} ${devise}`;
+    };
 
     return `
 <!DOCTYPE html>
@@ -230,8 +283,12 @@ export class InvoicePDFService {
   <div class="container">
     <div class="header">
       <div class="company-info">
-        <h1>PharmaSoft</h1>
-        <p>Système de Gestion Pharmaceutique</p>
+        <h1>${companyInfo.nom}</h1>
+        ${companyInfo.adresse ? `<p>${companyInfo.adresse}</p>` : ''}
+        ${companyInfo.rc ? `<p>RC: ${companyInfo.rc}</p>` : ''}
+        ${companyInfo.tva ? `<p>${tvaLabel}: ${companyInfo.tva}</p>` : ''}
+        ${companyInfo.tel ? `<p>Tél: ${companyInfo.tel}</p>` : ''}
+        ${companyInfo.email ? `<p>Email: ${companyInfo.email}</p>` : ''}
       </div>
       <div class="invoice-info">
         <h2>FACTURE</h2>
@@ -273,9 +330,9 @@ export class InvoicePDFService {
           <tr>
             <td>${line.designation}</td>
             <td class="text-right">${line.quantite}</td>
-            <td class="text-right">${line.prix_unitaire.toFixed(2)} FCFA</td>
+            <td class="text-right">${formatAmount(line.prix_unitaire)}</td>
             <td class="text-right">${line.taux_tva}%</td>
-            <td class="text-right"><strong>${line.montant_ttc.toFixed(2)} FCFA</strong></td>
+            <td class="text-right"><strong>${formatAmount(line.montant_ttc)}</strong></td>
           </tr>
         `).join('')}
       </tbody>
@@ -285,26 +342,33 @@ export class InvoicePDFService {
     <div class="totals">
       <div class="total-row subtotal">
         <span>Sous-total HT:</span>
-        <span>${invoice.montant_ht.toFixed(2)} FCFA</span>
+        <span>${formatAmount(invoice.montant_ht)}</span>
       </div>
       <div class="total-row tax">
-        <span>TVA:</span>
-        <span>${invoice.montant_tva.toFixed(2)} FCFA</span>
+        <span>${tvaLabel}:</span>
+        <span>${formatAmount(invoice.montant_tva)}</span>
       </div>
       <div class="total-row grand">
         <span>TOTAL TTC:</span>
-        <span>${invoice.montant_ttc.toFixed(2)} FCFA</span>
+        <span>${formatAmount(invoice.montant_ttc)}</span>
       </div>
     </div>
 
     <div class="payment-info">
       <h3>Informations de Paiement</h3>
-      <p><strong>Montant payé:</strong> ${invoice.montant_paye.toFixed(2)} FCFA</p>
-      <p><strong>Montant restant:</strong> ${invoice.montant_restant.toFixed(2)} FCFA</p>
+      <p><strong>Montant payé:</strong> ${formatAmount(invoice.montant_paye)}</p>
+      <p><strong>Montant restant:</strong> ${formatAmount(invoice.montant_restant)}</p>
       <span class="payment-status ${invoice.statut_paiement === 'payee' ? 'paid' : invoice.statut_paiement === 'partielle' ? 'partial' : 'unpaid'}">
         ${invoice.statut_paiement === 'payee' ? 'PAYÉE' : invoice.statut_paiement === 'partielle' ? 'PARTIELLEMENT PAYÉE' : 'IMPAYÉE'}
       </span>
     </div>
+
+    ${regionalParams?.conditions_paiement_defaut ? `
+    <div class="payment-info">
+      <h3>Conditions de paiement</h3>
+      <p>${regionalParams.conditions_paiement_defaut}</p>
+    </div>
+    ` : ''}
 
     ${invoice.notes ? `
     <div class="notes">
@@ -313,9 +377,16 @@ export class InvoicePDFService {
     </div>
     ` : ''}
 
+    ${regionalParams?.mentions_legales_facture ? `
+    <div class="notes">
+      <h3>Mentions légales</h3>
+      <p>${regionalParams.mentions_legales_facture.replace(/\n/g, '<br>')}</p>
+    </div>
+    ` : ''}
+
     <div class="footer">
       <p>Document généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
-      <p>PharmaSoft - Système de Gestion Pharmaceutique</p>
+      <p>${companyInfo.nom} - ${companyInfo.adresse || 'Système de Gestion Pharmaceutique'}</p>
     </div>
   </div>
 
