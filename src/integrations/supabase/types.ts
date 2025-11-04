@@ -6200,6 +6200,92 @@ export type Database = {
           },
         ]
       }
+      parametres_regionaux_fiscaux: {
+        Row: {
+          autorite_fiscale: string
+          code_pays: string
+          created_at: string | null
+          devise_principale: string
+          duree_conservation_annees: number
+          exoneration_medicaments_essentiels: boolean
+          format_numero_tva: string
+          frequence_declaration_defaut: string
+          id: string
+          jour_echeance_mensuelle: number
+          jour_echeance_trimestrielle: number
+          mention_legale_footer: string
+          mois_cloture_fiscale: number
+          obligations_templates: Json
+          pays: string
+          regime_fiscal: string
+          seuil_franchise_tva: number | null
+          seuil_regime_simplifie: number | null
+          systeme_comptable: string
+          taux_tva_reduits: Json
+          taux_tva_standard: number
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          autorite_fiscale?: string
+          code_pays?: string
+          created_at?: string | null
+          devise_principale?: string
+          duree_conservation_annees?: number
+          exoneration_medicaments_essentiels?: boolean
+          format_numero_tva?: string
+          frequence_declaration_defaut?: string
+          id?: string
+          jour_echeance_mensuelle?: number
+          jour_echeance_trimestrielle?: number
+          mention_legale_footer?: string
+          mois_cloture_fiscale?: number
+          obligations_templates?: Json
+          pays?: string
+          regime_fiscal?: string
+          seuil_franchise_tva?: number | null
+          seuil_regime_simplifie?: number | null
+          systeme_comptable?: string
+          taux_tva_reduits?: Json
+          taux_tva_standard?: number
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          autorite_fiscale?: string
+          code_pays?: string
+          created_at?: string | null
+          devise_principale?: string
+          duree_conservation_annees?: number
+          exoneration_medicaments_essentiels?: boolean
+          format_numero_tva?: string
+          frequence_declaration_defaut?: string
+          id?: string
+          jour_echeance_mensuelle?: number
+          jour_echeance_trimestrielle?: number
+          mention_legale_footer?: string
+          mois_cloture_fiscale?: number
+          obligations_templates?: Json
+          pays?: string
+          regime_fiscal?: string
+          seuil_franchise_tva?: number | null
+          seuil_regime_simplifie?: number | null
+          systeme_comptable?: string
+          taux_tva_reduits?: Json
+          taux_tva_standard?: number
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parametres_regionaux_fiscaux_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parametres_regionaux_rapports: {
         Row: {
           champ_identification_1: string
@@ -10453,6 +10539,10 @@ export type Database = {
             Returns: boolean
           }
       init_banking_params_for_tenant: {
+        Args: { p_country_code?: string; p_tenant_id: string }
+        Returns: string
+      }
+      init_fiscal_params_for_tenant: {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: string
       }
