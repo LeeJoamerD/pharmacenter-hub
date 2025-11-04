@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 
 export interface Account {
   id: string;
@@ -20,6 +21,36 @@ export interface Account {
   children?: Account[];
 }
 
+export interface CoaRegionalParams {
+  id: string;
+  tenant_id: string;
+  code_pays: string;
+  pays: string;
+  systeme_comptable: string;
+  version_systeme: string;
+  classes_definition: Array<{
+    classe: number;
+    nom: string;
+    description: string;
+    icon: string;
+    color: string;
+  }>;
+  format_code_compte: string;
+  longueur_code_min: number;
+  longueur_code_max: number;
+  devise_principale: string;
+  symbole_devise: string;
+  separateur_milliers: string;
+  separateur_decimal: string;
+  position_symbole_devise: string;
+  validation_code_strict: boolean;
+  autoriser_comptes_negatifs: boolean;
+  gestion_analytique_obligatoire: boolean;
+  organisme_normalisation: string;
+  reference_reglementaire: string;
+  mentions_legales_plan: string;
+}
+
 interface UseChartOfAccountsReturn {
   accounts: Account[];
   accountsTree: Account[];
@@ -35,7 +66,29 @@ interface UseChartOfAccountsReturn {
   refreshAccounts: () => Promise<void>;
   getAccountById: (id: string) => Account | undefined;
   searchAccounts: (term: string) => Account[];
+  // Regional parameters
+  coaParams: CoaRegionalParams | null | undefined;
+  loadingCoaParams: boolean;
+  // Regional utilities
+  getAccountingSystemName: () => string;
+  getAccountingSystemVersion: () => string;
+  getClassesDefinition: () => Array<any>;
+  formatAmount: (amount: number) => string;
+  validateAccountCode: (code: string) => boolean;
+  getAccountingRules: () => any;
+  getLegalMentions: () => string;
+  getRegulatoryBody: () => string;
 }
+
+const defaultOhadaClasses = [
+  { classe: 1, nom: 'Comptes de ressources durables', description: 'Capitaux propres et dettes à plus d\'un an', icon: 'Building', color: 'text-blue-600' },
+  { classe: 2, nom: 'Comptes d\'actif immobilisé', description: 'Immobilisations corporelles et incorporelles', icon: 'BookOpen', color: 'text-green-600' },
+  { classe: 3, nom: 'Comptes de stocks', description: 'Stocks de marchandises et produits', icon: 'Package', color: 'text-orange-600' },
+  { classe: 4, nom: 'Comptes de tiers', description: 'Créances et dettes d\'exploitation', icon: 'Briefcase', color: 'text-purple-600' },
+  { classe: 5, nom: 'Comptes de trésorerie', description: 'Comptes financiers et valeurs mobilières', icon: 'CreditCard', color: 'text-cyan-600' },
+  { classe: 6, nom: 'Comptes de charges', description: 'Charges des activités ordinaires', icon: 'TrendingUp', color: 'text-red-600' },
+  { classe: 7, nom: 'Comptes de produits', description: 'Produits des activités ordinaires', icon: 'DollarSign', color: 'text-emerald-600' }
+];
 
 export const useChartOfAccounts = (): UseChartOfAccountsReturn => {
   const { tenantId } = useTenant();
@@ -45,6 +98,38 @@ export const useChartOfAccounts = (): UseChartOfAccountsReturn => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Query paramètres régionaux Plan Comptable
+  const { data: coaParams, isLoading: isLoadingCOA } = useQuery({
+    queryKey: ['coa-regional-params', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return null;
+      
+      const { data, error } = await supabase
+        .from('parametres_plan_comptable_regionaux')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .single();
+      
+      if (error && error.code === 'PGRST116') {
+        // Auto-init avec Congo par défaut
+        await supabase.rpc('init_coa_params_for_tenant', {
+          p_tenant_id: tenantId,
+          p_country_code: 'CG'
+        });
+        const { data: retryData } = await supabase
+          .from('parametres_plan_comptable_regionaux')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .single();
+        return retryData as unknown as CoaRegionalParams | null;
+      }
+      
+      if (error) throw error;
+      return data as unknown as CoaRegionalParams | null;
+    },
+    enabled: !!tenantId,
+  });
 
   // Charger tous les comptes depuis la vue avec les soldes
   const loadAccounts = useCallback(async () => {
@@ -264,10 +349,11 @@ export const useChartOfAccounts = (): UseChartOfAccountsReturn => {
           p_tenant_id: tenantId 
         });
 
-      if (!canDelete?.can_delete) {
+      const canDeleteData = canDelete as any;
+      if (!canDeleteData?.can_delete) {
         toast({
           title: 'Impossible de supprimer',
-          description: canDelete?.message || 'Ce compte ne peut pas être supprimé',
+          description: canDeleteData?.message || 'Ce compte ne peut pas être supprimé',
           variant: 'destructive'
         });
         return;
@@ -325,12 +411,76 @@ export const useChartOfAccounts = (): UseChartOfAccountsReturn => {
     );
   };
 
+  // Regional utilities
+  const getAccountingSystemName = useCallback((): string => {
+    return coaParams?.systeme_comptable || 'OHADA';
+  }, [coaParams]);
+
+  const getAccountingSystemVersion = useCallback((): string => {
+    return coaParams?.version_systeme || 'OHADA 2017';
+  }, [coaParams]);
+
+  const getClassesDefinition = useCallback((): any[] => {
+    if (!coaParams?.classes_definition) {
+      return defaultOhadaClasses;
+    }
+    return coaParams.classes_definition as any[];
+  }, [coaParams]);
+
+  const formatAmount = useCallback((amount: number): string => {
+    if (!coaParams) {
+      return amount.toLocaleString('fr-CG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    
+    const formatted = amount.toFixed(2);
+    const [integer, decimal] = formatted.split('.');
+    
+    const integerFormatted = integer.replace(
+      /\B(?=(\d{3})+(?!\d))/g, 
+      coaParams.separateur_milliers
+    );
+    
+    const numberFormatted = `${integerFormatted}${coaParams.separateur_decimal}${decimal}`;
+    
+    if (coaParams.position_symbole_devise === 'before') {
+      return `${coaParams.symbole_devise} ${numberFormatted}`;
+    }
+    return `${numberFormatted} ${coaParams.symbole_devise}`;
+  }, [coaParams]);
+
+  const validateAccountCode = useCallback((code: string): boolean => {
+    if (!coaParams) return true;
+    
+    const regex = new RegExp(coaParams.format_code_compte);
+    const lengthValid = code.length >= coaParams.longueur_code_min && 
+                        code.length <= coaParams.longueur_code_max;
+    
+    return regex.test(code) && lengthValid;
+  }, [coaParams]);
+
+  const getAccountingRules = useCallback(() => {
+    if (!coaParams) return null;
+    return {
+      validationCodeStrict: coaParams.validation_code_strict,
+      autoriserComptesNegatifs: coaParams.autoriser_comptes_negatifs,
+      gestionAnalytiqueObligatoire: coaParams.gestion_analytique_obligatoire,
+    };
+  }, [coaParams]);
+
+  const getLegalMentions = useCallback((): string => {
+    return coaParams?.mentions_legales_plan || '';
+  }, [coaParams]);
+
+  const getRegulatoryBody = useCallback((): string => {
+    return coaParams?.organisme_normalisation || 'OHADA';
+  }, [coaParams]);
+
   return {
     accounts,
     accountsTree,
     accountsByClass,
     analyticalAccounts,
-    loading,
+    loading: loading || isLoadingCOA,
     error,
     isSaving,
     createAccount,
@@ -339,6 +489,18 @@ export const useChartOfAccounts = (): UseChartOfAccountsReturn => {
     toggleAccountStatus,
     refreshAccounts,
     getAccountById,
-    searchAccounts
+    searchAccounts,
+    // Regional parameters
+    coaParams,
+    loadingCoaParams: isLoadingCOA,
+    // Regional utilities
+    getAccountingSystemName,
+    getAccountingSystemVersion,
+    getClassesDefinition,
+    formatAmount,
+    validateAccountCode,
+    getAccountingRules,
+    getLegalMentions,
+    getRegulatoryBody,
   };
 };

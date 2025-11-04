@@ -6457,6 +6457,104 @@ export type Database = {
         }
         Relationships: []
       }
+      parametres_plan_comptable_regionaux: {
+        Row: {
+          autoriser_comptes_negatifs: boolean | null
+          classes_definition: Json
+          code_pays: string
+          created_at: string | null
+          devise_principale: string
+          format_code_compte: string | null
+          gestion_analytique_obligatoire: boolean | null
+          id: string
+          longueur_code_max: number | null
+          longueur_code_min: number | null
+          mentions_legales_plan: string | null
+          organisme_normalisation: string | null
+          pays: string
+          position_symbole_devise: string | null
+          reference_reglementaire: string | null
+          separateur_decimal: string | null
+          separateur_hierarchique: string | null
+          separateur_milliers: string | null
+          symbole_devise: string
+          systeme_comptable: string
+          template_json: Json | null
+          template_predefini: boolean | null
+          tenant_id: string
+          terminologie_comptes: Json | null
+          updated_at: string | null
+          validation_code_strict: boolean | null
+          version_systeme: string | null
+        }
+        Insert: {
+          autoriser_comptes_negatifs?: boolean | null
+          classes_definition: Json
+          code_pays: string
+          created_at?: string | null
+          devise_principale: string
+          format_code_compte?: string | null
+          gestion_analytique_obligatoire?: boolean | null
+          id?: string
+          longueur_code_max?: number | null
+          longueur_code_min?: number | null
+          mentions_legales_plan?: string | null
+          organisme_normalisation?: string | null
+          pays: string
+          position_symbole_devise?: string | null
+          reference_reglementaire?: string | null
+          separateur_decimal?: string | null
+          separateur_hierarchique?: string | null
+          separateur_milliers?: string | null
+          symbole_devise: string
+          systeme_comptable: string
+          template_json?: Json | null
+          template_predefini?: boolean | null
+          tenant_id: string
+          terminologie_comptes?: Json | null
+          updated_at?: string | null
+          validation_code_strict?: boolean | null
+          version_systeme?: string | null
+        }
+        Update: {
+          autoriser_comptes_negatifs?: boolean | null
+          classes_definition?: Json
+          code_pays?: string
+          created_at?: string | null
+          devise_principale?: string
+          format_code_compte?: string | null
+          gestion_analytique_obligatoire?: boolean | null
+          id?: string
+          longueur_code_max?: number | null
+          longueur_code_min?: number | null
+          mentions_legales_plan?: string | null
+          organisme_normalisation?: string | null
+          pays?: string
+          position_symbole_devise?: string | null
+          reference_reglementaire?: string | null
+          separateur_decimal?: string | null
+          separateur_hierarchique?: string | null
+          separateur_milliers?: string | null
+          symbole_devise?: string
+          systeme_comptable?: string
+          template_json?: Json | null
+          template_predefini?: boolean | null
+          tenant_id?: string
+          terminologie_comptes?: Json | null
+          updated_at?: string | null
+          validation_code_strict?: boolean | null
+          version_systeme?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parametres_plan_comptable_regionaux_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parametres_regionaux_bancaires: {
         Row: {
           banque_centrale: string
@@ -10873,6 +10971,10 @@ export type Database = {
       init_banking_params_for_tenant: {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: string
+      }
+      init_coa_params_for_tenant: {
+        Args: { p_country_code?: string; p_tenant_id: string }
+        Returns: undefined
       }
       init_fiscal_params_for_tenant: {
         Args: { p_country_code?: string; p_tenant_id: string }

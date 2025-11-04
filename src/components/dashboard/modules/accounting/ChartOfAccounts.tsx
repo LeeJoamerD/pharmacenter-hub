@@ -14,6 +14,8 @@ import { ChevronRight, ChevronDown, Search, Plus, Edit, Trash2, Filter, BookOpen
 import { useToast } from "@/hooks/use-toast";
 import { useChartOfAccounts, Account } from "@/hooks/useChartOfAccounts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ChartOfAccountsRegionalSettingsDialog } from "@/components/accounting/ChartOfAccountsRegionalSettingsDialog";
+import { Settings } from 'lucide-react';
 
 const ChartOfAccounts = () => {
   const { toast } = useToast();
@@ -28,7 +30,15 @@ const ChartOfAccounts = () => {
     createAccount,
     updateAccount,
     deleteAccount,
-    refreshAccounts
+    refreshAccounts,
+    coaParams,
+    getAccountingSystemName,
+    getAccountingSystemVersion,
+    getClassesDefinition,
+    formatAmount,
+    validateAccountCode,
+    getLegalMentions,
+    getRegulatoryBody
   } = useChartOfAccounts();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,17 +47,10 @@ const ChartOfAccounts = () => {
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [regionalDialog, setRegionalDialog] = useState(false);
 
-  // Classes OHADA
-  const ohadaClasses = [
-    { classe: 1, nom: 'Comptes de ressources durables', icon: Building, color: 'text-blue-600' },
-    { classe: 2, nom: 'Comptes d\'actif immobilisé', icon: BookOpen, color: 'text-green-600' },
-    { classe: 3, nom: 'Comptes de stocks', icon: BarChart3, color: 'text-orange-600' },
-    { classe: 4, nom: 'Comptes de tiers', icon: Briefcase, color: 'text-purple-600' },
-    { classe: 5, nom: 'Comptes de trésorerie', icon: CreditCard, color: 'text-cyan-600' },
-    { classe: 6, nom: 'Comptes de charges', icon: TrendingUp, color: 'text-red-600' },
-    { classe: 7, nom: 'Comptes de produits', icon: DollarSign, color: 'text-emerald-600' }
-  ];
+  // Classes dynamiques
+  const accountingClasses = getClassesDefinition();
 
   const [newAccount, setNewAccount] = useState<Partial<Account>>({
     code: '',
@@ -73,6 +76,16 @@ const ChartOfAccounts = () => {
       toast({
         title: "Erreur",
         description: "Le code et le libellé sont obligatoires",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validation code
+    if (!validateAccountCode(newAccount.code!)) {
+      toast({
+        title: "Code invalide",
+        description: `Le code doit respecter le format ${coaParams?.systeme_comptable}: entre ${coaParams?.longueur_code_min} et ${coaParams?.longueur_code_max} caractères`,
         variant: "destructive"
       });
       return;
@@ -159,8 +172,8 @@ const ChartOfAccounts = () => {
                 {account.rapprochement && <Badge variant="secondary">Rapprochement</Badge>}
               </div>
               <div className="flex space-x-4 text-sm text-muted-foreground">
-                <span>Débit: {account.solde_debiteur.toLocaleString()}</span>
-                <span>Crédit: {account.solde_crediteur.toLocaleString()}</span>
+                <span>Débit: {formatAmount(account.solde_debiteur)}</span>
+                <span>Crédit: {formatAmount(account.solde_crediteur)}</span>
               </div>
             </div>
           </div>
@@ -195,8 +208,23 @@ const ChartOfAccounts = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Plan Comptable OHADA</h2>
-        <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold">
+            Plan Comptable {getAccountingSystemName()}
+          </h2>
+          {coaParams && (
+            <div className="flex gap-2">
+              <Badge variant="outline">{coaParams.pays}</Badge>
+              <Badge variant="secondary">{coaParams.devise_principale}</Badge>
+            </div>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setRegionalDialog(true)}>
+            <Settings className="mr-2 h-4 w-4" />
+            Configuration Régionale
+          </Button>
+          <Dialog open={showDialog} onOpenChange={setShowDialog}>
           <DialogTrigger asChild>
             <Button disabled={isSaving}>
               <Plus className="mr-2 h-4 w-4" />
@@ -233,7 +261,7 @@ const ChartOfAccounts = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {ohadaClasses.map(cls => (
+                      {accountingClasses.map(cls => (
                         <SelectItem key={cls.classe} value={cls.classe.toString()}>
                           {cls.classe} - {cls.nom}
                         </SelectItem>
@@ -343,8 +371,15 @@ const ChartOfAccounts = () => {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
+
+      <ChartOfAccountsRegionalSettingsDialog
+        open={regionalDialog}
+        onOpenChange={setRegionalDialog}
+        currentCountry={coaParams?.code_pays}
+      />
 
       <Tabs defaultValue="tree" className="w-full">
         <TabsList>
