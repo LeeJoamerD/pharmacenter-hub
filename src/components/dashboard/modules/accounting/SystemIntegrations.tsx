@@ -10,134 +10,159 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   Download, 
-  Upload, 
   RefreshCw, 
-  CheckCircle, 
   AlertTriangle,
   Settings,
   Database,
   FileText,
   Link,
   Zap,
-  Calendar,
   ExternalLink,
-  ArrowRightLeft
+  Trash2,
+  Plus,
+  Check
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useSystemIntegrations } from '@/hooks/useSystemIntegrations';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 const SystemIntegrations = () => {
-  const { toast } = useToast();
-  const [syncProgress, setSyncProgress] = useState(0);
-  const [isExporting, setIsExporting] = useState(false);
-  const [lastSync, setLastSync] = useState('2024-01-15 14:30');
+  const {
+    moduleSyncConfigs,
+    externalIntegrations,
+    fecExports,
+    webhooksConfig,
+    apiTokens,
+    regionalParameters,
+    metrics,
+    isLoading,
+    syncModule,
+    isSyncingModule,
+    updateModuleSyncConfig,
+    createExternalIntegration,
+    testConnection,
+    isTestingConnection,
+    generateFEC,
+    isGeneratingFEC,
+    createWebhook,
+    updateWebhook,
+    deleteWebhook,
+    testWebhook,
+    isTestingWebhook,
+  } = useSystemIntegrations();
 
-  const handleModuleSync = async (module: string) => {
-    setSyncProgress(0);
-    const interval = setInterval(() => {
-      setSyncProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          toast({
-            title: "Synchronisation terminée",
-            description: `Module ${module} synchronisé avec succès`,
-          });
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
-  };
+  const [selectedStartDate, setSelectedStartDate] = useState('2024-01-01');
+  const [selectedEndDate, setSelectedEndDate] = useState('2024-12-31');
+  const [selectedFormat, setSelectedFormat] = useState<'txt' | 'xlsx' | 'xml'>('txt');
+  const [includeAnalytics, setIncludeAnalytics] = useState(false);
+  
+  const [newIntegrationType, setNewIntegrationType] = useState('');
+  const [newIntegrationName, setNewIntegrationName] = useState('');
 
-  const handleFECExport = async () => {
-    setIsExporting(true);
-    setTimeout(() => {
-      setIsExporting(false);
-      toast({
-        title: "Export FEC généré",
-        description: "Le fichier FEC a été généré et téléchargé",
-      });
-    }, 3000);
-  };
-
-  const moduleIntegrations = [
-    {
-      name: 'Module Stock',
-      status: 'connected',
-      lastSync: '15/01/2024 14:30',
-      autoSync: true,
-      description: 'Synchronisation des mouvements de stock et valorisation'
-    },
-    {
-      name: 'Module Ventes',
-      status: 'connected',
-      lastSync: '15/01/2024 14:25',
-      autoSync: true,
-      description: 'Import automatique des factures et encaissements'
-    },
-    {
-      name: 'Module Personnel',
-      status: 'warning',
-      lastSync: '14/01/2024 16:45',
-      autoSync: false,
-      description: 'Synchronisation des charges sociales et salaires'
-    },
-    {
-      name: 'Module Partenaires',
-      status: 'connected',
-      lastSync: '15/01/2024 14:30',
-      autoSync: true,
-      description: 'Mise à jour des données fournisseurs et clients'
-    }
-  ];
-
-  const externalIntegrations = [
-    {
-      name: 'Banque Populaire',
-      type: 'bank',
-      status: 'connected',
-      description: 'Relevés bancaires automatiques'
-    },
-    {
-      name: 'Expert-Comptable Portal',
-      type: 'accounting',
-      status: 'pending',
-      description: 'Transmission des documents comptables'
-    },
-    {
-      name: 'Administration Fiscale',
-      type: 'tax',
-      status: 'configured',
-      description: 'Déclarations TVA et fiscales'
-    },
-    {
-      name: 'CNSS',
-      type: 'social',
-      status: 'disconnected',
-      description: 'Déclarations sociales automatiques'
-    }
-  ];
+  const [newWebhookName, setNewWebhookName] = useState('');
+  const [newWebhookUrl, setNewWebhookUrl] = useState('');
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'success':
       case 'connected': return 'bg-green-500';
       case 'warning': return 'bg-yellow-500';
       case 'pending': return 'bg-blue-500';
       case 'configured': return 'bg-purple-500';
+      case 'error':
+      case 'disconnected': return 'bg-gray-500';
       default: return 'bg-gray-500';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
+      case 'success': return 'Réussi';
       case 'connected': return 'Connecté';
       case 'warning': return 'Attention';
       case 'pending': return 'En attente';
       case 'configured': return 'Configuré';
-      default: return 'Déconnecté';
+      case 'error': return 'Erreur';
+      case 'disconnected': return 'Déconnecté';
+      default: return status;
     }
   };
+
+  const getModuleDescription = (moduleName: string) => {
+    const descriptions: Record<string, string> = {
+      stock: 'Synchronisation des mouvements de stock et valorisation',
+      ventes: 'Import automatique des factures et encaissements',
+      personnel: 'Synchronisation des charges sociales et salaires',
+      partenaires: 'Mise à jour des données fournisseurs et clients',
+    };
+    return descriptions[moduleName] || '';
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Jamais';
+    try {
+      return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: fr });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const handleGenerateFEC = () => {
+    generateFEC({
+      start_date: selectedStartDate,
+      end_date: selectedEndDate,
+      format: selectedFormat,
+      include_analytics: includeAnalytics,
+    });
+  };
+
+  const handleCreateIntegration = () => {
+    if (!newIntegrationType || !newIntegrationName) return;
+    
+    createExternalIntegration({
+      integration_type: newIntegrationType as any,
+      provider_name: newIntegrationName,
+      status: 'configured',
+      is_active: true,
+      tenant_id: '',
+      created_at: '',
+      updated_at: '',
+    } as any);
+    
+    setNewIntegrationType('');
+    setNewIntegrationName('');
+  };
+
+  const handleCreateWebhook = () => {
+    if (!newWebhookName || !newWebhookUrl) return;
+    
+    createWebhook({
+      name: newWebhookName,
+      url: newWebhookUrl,
+      is_active: true,
+      events: ['invoice.created', 'payment.received'],
+      retry_count: 3,
+      timeout_seconds: 30,
+      tenant_id: '',
+      total_calls: 0,
+      success_calls: 0,
+      failed_calls: 0,
+      created_at: '',
+      updated_at: '',
+    } as any);
+    
+    setNewWebhookName('');
+    setNewWebhookUrl('');
+  };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-64">
+      <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+    </div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -156,6 +181,7 @@ const SystemIntegrations = () => {
           <TabsTrigger value="api">API & Webhooks</TabsTrigger>
         </TabsList>
 
+        {/* ONGLET MODULES INTERNES */}
         <TabsContent value="modules" className="space-y-6">
           <Card>
             <CardHeader>
@@ -168,62 +194,69 @@ const SystemIntegrations = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">Synchronisation Globale</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Dernière synchronisation : {lastSync}
-                  </p>
-                </div>
-                <Button onClick={() => handleModuleSync('Tous')} className="flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4" />
-                  Synchroniser Tout
-                </Button>
+              <div className="grid grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-2xl font-bold">{metrics.totalModules}</div>
+                    <p className="text-sm text-muted-foreground">Total Modules</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-2xl font-bold">{metrics.connectedModules}</div>
+                    <p className="text-sm text-muted-foreground">Actifs</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-2xl font-bold">{metrics.autoSyncModules}</div>
+                    <p className="text-sm text-muted-foreground">Auto Sync</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-sm font-medium">{formatDate(metrics.lastGlobalSync)}</div>
+                    <p className="text-sm text-muted-foreground">Dernière Sync</p>
+                  </CardContent>
+                </Card>
               </div>
-
-              {syncProgress > 0 && syncProgress < 100 && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Synchronisation en cours...</span>
-                    <span className="text-sm text-muted-foreground">{syncProgress}%</span>
-                  </div>
-                  <Progress value={syncProgress} className="w-full" />
-                </div>
-              )}
 
               <Separator />
 
               <div className="grid gap-4">
-                {moduleIntegrations.map((module, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                {moduleSyncConfigs?.map((module) => (
+                  <div key={module.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-4">
-                      <div className={`w-3 h-3 rounded-full ${getStatusColor(module.status)}`} />
+                      <div className={`w-3 h-3 rounded-full ${getStatusColor(module.last_sync_status || 'disconnected')}`} />
                       <div>
-                        <h4 className="font-medium">{module.name}</h4>
-                        <p className="text-sm text-muted-foreground">{module.description}</p>
+                        <h4 className="font-medium capitalize">{module.module_name}</h4>
+                        <p className="text-sm text-muted-foreground">{getModuleDescription(module.module_name)}</p>
                         <p className="text-xs text-muted-foreground">
-                          Dernière sync : {module.lastSync}
+                          Dernière sync : {formatDate(module.last_sync_at)}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor={`auto-${index}`} className="text-sm">Auto</Label>
+                        <Label htmlFor={`auto-${module.id}`} className="text-sm">Auto</Label>
                         <Switch 
-                          id={`auto-${index}`}
-                          checked={module.autoSync}
-                          onCheckedChange={() => {}} 
+                          id={`auto-${module.id}`}
+                          checked={module.auto_sync}
+                          onCheckedChange={(checked) => 
+                            updateModuleSyncConfig({ ...module, auto_sync: checked })
+                          }
                         />
                       </div>
                       <Badge variant="outline">
-                        {getStatusText(module.status)}
+                        {getStatusText(module.last_sync_status || 'disconnected')}
                       </Badge>
                       <Button 
                         size="sm" 
                         variant="outline"
-                        onClick={() => handleModuleSync(module.name)}
+                        onClick={() => syncModule(module.module_name)}
+                        disabled={isSyncingModule}
                       >
-                        <RefreshCw className="h-4 w-4" />
+                        <RefreshCw className={`h-4 w-4 ${isSyncingModule ? 'animate-spin' : ''}`} />
                       </Button>
                     </div>
                   </div>
@@ -233,6 +266,7 @@ const SystemIntegrations = () => {
           </Card>
         </TabsContent>
 
+        {/* ONGLET INTEGRATIONS EXTERNES */}
         <TabsContent value="external" className="space-y-6">
           <Card>
             <CardHeader>
@@ -245,16 +279,43 @@ const SystemIntegrations = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="grid grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-2xl font-bold">{metrics.totalExternalIntegrations}</div>
+                    <p className="text-sm text-muted-foreground">Total</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-2xl font-bold">{metrics.connectedExternals}</div>
+                    <p className="text-sm text-muted-foreground">Connectées</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-sm font-medium">
+                      {regionalParameters?.banking_api_available ? 'Oui' : 'Non'}
+                    </div>
+                    <p className="text-sm text-muted-foreground">API Bancaire</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Separator />
+
               <div className="grid gap-4">
-                {externalIntegrations.map((integration, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                {externalIntegrations?.map((integration) => (
+                  <div key={integration.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-4">
                       <div className={`w-3 h-3 rounded-full ${getStatusColor(integration.status)}`} />
                       <div>
-                        <h4 className="font-medium">{integration.name}</h4>
-                        <p className="text-sm text-muted-foreground">{integration.description}</p>
+                        <h4 className="font-medium">{integration.provider_name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {integration.metadata?.description || `Intégration ${integration.integration_type}`}
+                        </p>
                         <Badge variant="secondary" className="mt-1">
-                          {integration.type}
+                          {integration.integration_type}
                         </Badge>
                       </div>
                     </div>
@@ -262,11 +323,16 @@ const SystemIntegrations = () => {
                       <Badge variant="outline">
                         {getStatusText(integration.status)}
                       </Badge>
-                      <Button size="sm" variant="outline">
-                        <Settings className="h-4 w-4" />
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => testConnection(integration.id)}
+                        disabled={isTestingConnection}
+                      >
+                        <Check className="h-4 w-4" />
                       </Button>
                       <Button size="sm" variant="outline">
-                        <ExternalLink className="h-4 w-4" />
+                        <Settings className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -280,7 +346,7 @@ const SystemIntegrations = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="integration-type">Type d'intégration</Label>
-                    <Select>
+                    <Select value={newIntegrationType} onValueChange={setNewIntegrationType}>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner le type" />
                       </SelectTrigger>
@@ -295,11 +361,16 @@ const SystemIntegrations = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="integration-name">Nom du service</Label>
-                    <Input id="integration-name" placeholder="Nom du service" />
+                    <Input 
+                      id="integration-name" 
+                      placeholder="Nom du service"
+                      value={newIntegrationName}
+                      onChange={(e) => setNewIntegrationName(e.target.value)}
+                    />
                   </div>
                 </div>
-                <Button className="w-full">
-                  <Link className="h-4 w-4 mr-2" />
+                <Button className="w-full" onClick={handleCreateIntegration}>
+                  <Plus className="h-4 w-4 mr-2" />
                   Configurer l'Intégration
                 </Button>
               </div>
@@ -307,6 +378,7 @@ const SystemIntegrations = () => {
           </Card>
         </TabsContent>
 
+        {/* ONGLET EXPORT FEC */}
         <TabsContent value="fec" className="space-y-6">
           <Card>
             <CardHeader>
@@ -319,51 +391,69 @@ const SystemIntegrations = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Information Importante</AlertTitle>
-                <AlertDescription>
-                  Le FEC est obligatoire pour les entreprises soumises aux BIC/BNC 
-                  et tenant une comptabilité informatisée.
-                </AlertDescription>
-              </Alert>
+              {regionalParameters?.fec_obligatoire && (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Obligation FEC</AlertTitle>
+                  <AlertDescription>
+                    Le FEC est obligatoire en {regionalParameters.pays} pour les entreprises 
+                    tenant une comptabilité informatisée. Conservation : {regionalParameters.data_retention_years} ans.
+                  </AlertDescription>
+                </Alert>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="fec-start">Date de début</Label>
-                  <Input type="date" id="fec-start" defaultValue="2024-01-01" />
+                  <Input 
+                    type="date" 
+                    id="fec-start" 
+                    value={selectedStartDate}
+                    onChange={(e) => setSelectedStartDate(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="fec-end">Date de fin</Label>
-                  <Input type="date" id="fec-end" defaultValue="2024-12-31" />
+                  <Input 
+                    type="date" 
+                    id="fec-end" 
+                    value={selectedEndDate}
+                    onChange={(e) => setSelectedEndDate(e.target.value)}
+                  />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="fec-format">Format d'export</Label>
-                <Select>
+                <Select value={selectedFormat} onValueChange={(v) => setSelectedFormat(v as any)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Format FEC" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="standard">FEC Standard (TXT)</SelectItem>
-                    <SelectItem value="excel">FEC Excel (XLSX)</SelectItem>
-                    <SelectItem value="xml">FEC XML</SelectItem>
+                    <SelectItem value="txt">FEC Standard (TXT)</SelectItem>
+                    <SelectItem value="xlsx">FEC Excel (XLSX)</SelectItem>
+                    {regionalParameters?.fec_format_defaut === 'xml' && (
+                      <SelectItem value="xml">FEC XML</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="flex items-center space-x-2">
-                <Switch id="include-analytics" />
+                <Switch 
+                  id="include-analytics" 
+                  checked={includeAnalytics}
+                  onCheckedChange={setIncludeAnalytics}
+                />
                 <Label htmlFor="include-analytics">Inclure la comptabilité analytique</Label>
               </div>
 
               <Button 
-                onClick={handleFECExport}
-                disabled={isExporting}
+                onClick={handleGenerateFEC}
+                disabled={isGeneratingFEC}
                 className="w-full"
               >
-                {isExporting ? (
+                {isGeneratingFEC ? (
                   <>
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                     Export en cours...
@@ -381,29 +471,40 @@ const SystemIntegrations = () => {
               <div className="space-y-4">
                 <h4 className="font-medium">Historique des Exports</h4>
                 <div className="space-y-2">
-                  {[
-                    { date: '15/01/2024', period: '2023', format: 'TXT', size: '2.5 MB' },
-                    { date: '10/07/2023', period: '2023 S1', format: 'Excel', size: '1.8 MB' },
-                    { date: '15/01/2023', period: '2022', format: 'TXT', size: '2.1 MB' }
-                  ].map((export_, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded">
+                  {fecExports?.map((fecExport) => (
+                    <div key={fecExport.id} className="flex items-center justify-between p-3 border rounded">
                       <div>
-                        <p className="font-medium">FEC {export_.period}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {export_.date} • {export_.format} • {export_.size}
+                        <p className="font-medium">
+                          FEC {format(new Date(fecExport.start_date), 'yyyy')}
+                          {fecExport.exercice_id && ` - Exercice ${fecExport.exercice_id.slice(0, 8)}`}
                         </p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(fecExport.created_at)} • 
+                          {fecExport.format.toUpperCase()} • 
+                          {fecExport.file_size_mb} MB • 
+                          {fecExport.total_entries} écritures
+                        </p>
+                        {fecExport.validation_errors && (
+                          <Badge variant="destructive">Erreurs de validation</Badge>
+                        )}
                       </div>
                       <Button size="sm" variant="outline">
                         <Download className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
+                  {(!fecExports || fecExports.length === 0) && (
+                    <p className="text-center text-sm text-muted-foreground py-4">
+                      Aucun export disponible
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ONGLET API & WEBHOOKS */}
         <TabsContent value="api" className="space-y-6">
           <Card>
             <CardHeader>
@@ -423,13 +524,15 @@ const SystemIntegrations = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label>URL de base</Label>
-                      <Input value="https://api.votresite.com/v1" readOnly />
-                    </div>
-                    <div className="space-y-2">
                       <Label>Clé d'API</Label>
                       <div className="flex gap-2">
-                        <Input value="sk_prod_••••••••••••••••" readOnly />
+                        <Input 
+                          value={apiTokens?.[0]?.token_hash ? 
+                            `sk_prod_${'•'.repeat(24)}${apiTokens[0].token_hash.slice(-4)}` : 
+                            'Aucun token'
+                          }
+                          readOnly 
+                        />
                         <Button size="sm" variant="outline">
                           Copier
                         </Button>
@@ -447,27 +550,11 @@ const SystemIntegrations = () => {
                     <CardTitle className="text-lg">Webhooks</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>URL de notification</Label>
-                      <Input placeholder="https://votre-site.com/webhook" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Événements</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionner les événements" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="invoice.created">Facture créée</SelectItem>
-                          <SelectItem value="payment.received">Paiement reçu</SelectItem>
-                          <SelectItem value="account.updated">Compte mis à jour</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button variant="outline" className="w-full">
-                      <Zap className="h-4 w-4 mr-2" />
-                      Tester Webhook
-                    </Button>
+                    <div className="text-2xl font-bold">{metrics.totalWebhooks}</div>
+                    <p className="text-sm text-muted-foreground">
+                      {metrics.activeWebhooks} actifs • 
+                      {metrics.webhookSuccessRate.toFixed(1)}% succès
+                    </p>
                   </CardContent>
                 </Card>
               </div>
@@ -475,58 +562,88 @@ const SystemIntegrations = () => {
               <Separator />
 
               <div className="space-y-4">
-                <h4 className="font-medium">Synchronisation Programmée</h4>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Fréquence</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Fréquence" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hourly">Toutes les heures</SelectItem>
-                        <SelectItem value="daily">Quotidienne</SelectItem>
-                        <SelectItem value="weekly">Hebdomadaire</SelectItem>
-                        <SelectItem value="monthly">Mensuelle</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Heure</Label>
-                    <Input type="time" defaultValue="02:00" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Statut</Label>
-                    <div className="flex items-center space-x-2 mt-2">
-                      <Switch defaultChecked />
-                      <Label>Activé</Label>
-                    </div>
-                  </div>
-                </div>
+                <h4 className="font-medium">Webhooks Configurés</h4>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nom</TableHead>
+                      <TableHead>URL</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>Appels</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {webhooksConfig?.map((webhook) => (
+                      <TableRow key={webhook.id}>
+                        <TableCell className="font-medium">{webhook.name}</TableCell>
+                        <TableCell className="text-sm">{webhook.url}</TableCell>
+                        <TableCell>
+                          <Switch 
+                            checked={webhook.is_active}
+                            onCheckedChange={(checked) => 
+                              updateWebhook({ id: webhook.id, updates: { is_active: checked } })
+                            }
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {webhook.success_calls}/{webhook.total_calls}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => testWebhook(webhook.id)}
+                              disabled={isTestingWebhook}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => deleteWebhook(webhook.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
 
+              <Separator />
+
               <div className="space-y-4">
-                <h4 className="font-medium">Logs d'Intégration</h4>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {[
-                    { time: '14:30:15', type: 'success', message: 'Synchronisation module Stock réussie' },
-                    { time: '14:25:32', type: 'info', message: 'Import automatique factures - 15 éléments' },
-                    { time: '14:20:08', type: 'warning', message: 'Tentative de reconnexion API bancaire' },
-                    { time: '14:15:45', type: 'error', message: 'Échec synchronisation CNSS - Token expiré' },
-                    { time: '14:10:22', type: 'success', message: 'Export FEC généré avec succès' }
-                  ].map((log, index) => (
-                    <div key={index} className="flex items-center gap-3 p-2 text-sm border-l-2 border-l-blue-500">
-                      <span className="text-muted-foreground">{log.time}</span>
-                      <Badge 
-                        variant={log.type === 'error' ? 'destructive' : 
-                               log.type === 'warning' ? 'secondary' : 'default'}
-                      >
-                        {log.type}
-                      </Badge>
-                      <span>{log.message}</span>
-                    </div>
-                  ))}
+                <h4 className="font-medium">Nouveau Webhook</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="webhook-name">Nom du webhook</Label>
+                    <Input 
+                      id="webhook-name" 
+                      placeholder="Nom du webhook"
+                      value={newWebhookName}
+                      onChange={(e) => setNewWebhookName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="webhook-url">URL de notification</Label>
+                    <Input 
+                      id="webhook-url" 
+                      placeholder="https://votre-site.com/webhook"
+                      value={newWebhookUrl}
+                      onChange={(e) => setNewWebhookUrl(e.target.value)}
+                    />
+                  </div>
                 </div>
+                <Button className="w-full" onClick={handleCreateWebhook}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer Webhook
+                </Button>
               </div>
             </CardContent>
           </Card>

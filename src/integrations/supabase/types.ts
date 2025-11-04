@@ -675,6 +675,62 @@ export type Database = {
           },
         ]
       }
+      api_scheduled_tasks: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          frequency: string | null
+          id: string
+          is_active: boolean | null
+          last_run_at: string | null
+          last_status: string | null
+          next_run_at: string | null
+          schedule_time: string | null
+          task_name: string
+          task_type: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          frequency?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          last_status?: string | null
+          next_run_at?: string | null
+          schedule_time?: string | null
+          task_name: string
+          task_type?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          frequency?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          last_status?: string | null
+          next_run_at?: string | null
+          schedule_time?: string | null
+          task_name?: string
+          task_type?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_scheduled_tasks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       archives_fiscales: {
         Row: {
           created_at: string
@@ -3335,6 +3391,75 @@ export type Database = {
           },
         ]
       }
+      external_integrations: {
+        Row: {
+          connection_config: Json | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          integration_type: string
+          is_active: boolean | null
+          last_connection_at: string | null
+          last_error: string | null
+          last_sync_at: string | null
+          metadata: Json | null
+          provider_name: string
+          status: string | null
+          sync_settings: Json | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          connection_config?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          integration_type: string
+          is_active?: boolean | null
+          last_connection_at?: string | null
+          last_error?: string | null
+          last_sync_at?: string | null
+          metadata?: Json | null
+          provider_name: string
+          status?: string | null
+          sync_settings?: Json | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          connection_config?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          integration_type?: string
+          is_active?: boolean | null
+          last_connection_at?: string | null
+          last_error?: string | null
+          last_sync_at?: string | null
+          metadata?: Json | null
+          provider_name?: string
+          status?: string | null
+          sync_settings?: Json | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_integrations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_integrations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       factures: {
         Row: {
           client_id: string | null
@@ -3486,6 +3611,91 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "famille_produit_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fec_exports: {
+        Row: {
+          created_at: string | null
+          download_count: number | null
+          downloaded_at: string | null
+          downloaded_by: string | null
+          end_date: string
+          exercice_id: string | null
+          export_status: string | null
+          exported_by: string | null
+          file_path: string | null
+          file_size_mb: number | null
+          format: string | null
+          generation_duration_seconds: number | null
+          id: string
+          include_analytics: boolean | null
+          start_date: string
+          tenant_id: string
+          total_entries: number | null
+          validation_errors: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          download_count?: number | null
+          downloaded_at?: string | null
+          downloaded_by?: string | null
+          end_date: string
+          exercice_id?: string | null
+          export_status?: string | null
+          exported_by?: string | null
+          file_path?: string | null
+          file_size_mb?: number | null
+          format?: string | null
+          generation_duration_seconds?: number | null
+          id?: string
+          include_analytics?: boolean | null
+          start_date: string
+          tenant_id: string
+          total_entries?: number | null
+          validation_errors?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          download_count?: number | null
+          downloaded_at?: string | null
+          downloaded_by?: string | null
+          end_date?: string
+          exercice_id?: string | null
+          export_status?: string | null
+          exported_by?: string | null
+          file_path?: string | null
+          file_size_mb?: number | null
+          format?: string | null
+          generation_duration_seconds?: number | null
+          id?: string
+          include_analytics?: boolean | null
+          start_date?: string
+          tenant_id?: string
+          total_entries?: number | null
+          validation_errors?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fec_exports_downloaded_by_fkey"
+            columns: ["downloaded_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fec_exports_exported_by_fkey"
+            columns: ["exported_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fec_exports_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -5248,6 +5458,141 @@ export type Database = {
           },
         ]
       }
+      module_sync_configs: {
+        Row: {
+          auto_sync: boolean | null
+          config: Json | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          is_enabled: boolean | null
+          last_sync_at: string | null
+          last_sync_status: string | null
+          module_name: string
+          sync_count: number | null
+          sync_frequency: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          auto_sync?: boolean | null
+          config?: Json | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          last_sync_at?: string | null
+          last_sync_status?: string | null
+          module_name: string
+          sync_count?: number | null
+          sync_frequency?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          auto_sync?: boolean | null
+          config?: Json | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          last_sync_at?: string | null
+          last_sync_status?: string | null
+          module_name?: string
+          sync_count?: number | null
+          sync_frequency?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_sync_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      module_sync_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          duration_seconds: number | null
+          error_details: Json | null
+          id: string
+          module_name: string
+          records_created: number | null
+          records_failed: number | null
+          records_processed: number | null
+          records_updated: number | null
+          started_at: string | null
+          status: string | null
+          sync_config_id: string | null
+          sync_type: string | null
+          tenant_id: string
+          triggered_by: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          error_details?: Json | null
+          id?: string
+          module_name: string
+          records_created?: number | null
+          records_failed?: number | null
+          records_processed?: number | null
+          records_updated?: number | null
+          started_at?: string | null
+          status?: string | null
+          sync_config_id?: string | null
+          sync_type?: string | null
+          tenant_id: string
+          triggered_by?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          error_details?: Json | null
+          id?: string
+          module_name?: string
+          records_created?: number | null
+          records_failed?: number | null
+          records_processed?: number | null
+          records_updated?: number | null
+          started_at?: string | null
+          status?: string | null
+          sync_config_id?: string | null
+          sync_type?: string | null
+          tenant_id?: string
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_sync_logs_sync_config_id_fkey"
+            columns: ["sync_config_id"]
+            isOneToOne: false
+            referencedRelation: "module_sync_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_sync_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_sync_logs_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mouvements_caisse: {
         Row: {
           agent_id: string | null
@@ -6547,6 +6892,86 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      parametres_integrations_regionaux: {
+        Row: {
+          archiving_required: boolean | null
+          banking_api_available: boolean | null
+          banking_standard: string | null
+          code_pays: string
+          created_at: string | null
+          data_retention_years: number | null
+          fec_encodage: string | null
+          fec_format_defaut: string | null
+          fec_obligatoire: boolean | null
+          fec_separateur: string | null
+          id: string
+          labels: Json | null
+          pays: string
+          social_org_name: string | null
+          social_portal_available: boolean | null
+          social_portal_url: string | null
+          tax_declaration_format: string | null
+          tax_portal_available: boolean | null
+          tax_portal_url: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          archiving_required?: boolean | null
+          banking_api_available?: boolean | null
+          banking_standard?: string | null
+          code_pays: string
+          created_at?: string | null
+          data_retention_years?: number | null
+          fec_encodage?: string | null
+          fec_format_defaut?: string | null
+          fec_obligatoire?: boolean | null
+          fec_separateur?: string | null
+          id?: string
+          labels?: Json | null
+          pays: string
+          social_org_name?: string | null
+          social_portal_available?: boolean | null
+          social_portal_url?: string | null
+          tax_declaration_format?: string | null
+          tax_portal_available?: boolean | null
+          tax_portal_url?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          archiving_required?: boolean | null
+          banking_api_available?: boolean | null
+          banking_standard?: string | null
+          code_pays?: string
+          created_at?: string | null
+          data_retention_years?: number | null
+          fec_encodage?: string | null
+          fec_format_defaut?: string | null
+          fec_obligatoire?: boolean | null
+          fec_separateur?: string | null
+          id?: string
+          labels?: Json | null
+          pays?: string
+          social_org_name?: string | null
+          social_portal_available?: boolean | null
+          social_portal_url?: string | null
+          tax_declaration_format?: string | null
+          tax_portal_available?: boolean | null
+          tax_portal_url?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parametres_integrations_regionaux_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       parametres_journalisation_regionaux: {
         Row: {
@@ -10462,6 +10887,144 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhooks_config: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          events: string[] | null
+          failed_calls: number | null
+          id: string
+          is_active: boolean | null
+          last_status: string | null
+          last_triggered_at: string | null
+          name: string
+          retry_count: number | null
+          secret_key: string | null
+          success_calls: number | null
+          tenant_id: string
+          timeout_seconds: number | null
+          total_calls: number | null
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          events?: string[] | null
+          failed_calls?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_status?: string | null
+          last_triggered_at?: string | null
+          name: string
+          retry_count?: number | null
+          secret_key?: string | null
+          success_calls?: number | null
+          tenant_id: string
+          timeout_seconds?: number | null
+          total_calls?: number | null
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          events?: string[] | null
+          failed_calls?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_status?: string | null
+          last_triggered_at?: string | null
+          name?: string
+          retry_count?: number | null
+          secret_key?: string | null
+          success_calls?: number | null
+          tenant_id?: string
+          timeout_seconds?: number | null
+          total_calls?: number | null
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhooks_config_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhooks_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webhooks_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          event_type: string | null
+          id: string
+          payload: Json | null
+          request_headers: Json | null
+          response_body: string | null
+          response_status: number | null
+          response_time_ms: number | null
+          retry_count: number | null
+          success: boolean | null
+          tenant_id: string
+          webhook_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          event_type?: string | null
+          id?: string
+          payload?: Json | null
+          request_headers?: Json | null
+          response_body?: string | null
+          response_status?: number | null
+          response_time_ms?: number | null
+          retry_count?: number | null
+          success?: boolean | null
+          tenant_id: string
+          webhook_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          event_type?: string | null
+          id?: string
+          payload?: Json | null
+          request_headers?: Json | null
+          response_body?: string | null
+          response_status?: number | null
+          response_time_ms?: number | null
+          retry_count?: number | null
+          success?: boolean | null
+          tenant_id?: string
+          webhook_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhooks_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhooks_logs_webhook_id_fkey"
+            columns: ["webhook_id"]
+            isOneToOne: false
+            referencedRelation: "webhooks_config"
             referencedColumns: ["id"]
           },
         ]
