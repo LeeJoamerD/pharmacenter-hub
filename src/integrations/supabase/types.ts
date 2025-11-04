@@ -6017,6 +6017,51 @@ export type Database = {
         }
         Relationships: []
       }
+      parametres_comptabilite_analytique_regionale: {
+        Row: {
+          centres_types: Json
+          cles_repartition_types: Json
+          code_pays: string
+          created_at: string
+          devise_principale: string
+          id: string
+          nom_pays: string
+          seuils_alertes: Json
+          systeme_comptable: string
+          tenant_id: string
+          terminologie: Json
+          updated_at: string
+        }
+        Insert: {
+          centres_types?: Json
+          cles_repartition_types?: Json
+          code_pays: string
+          created_at?: string
+          devise_principale: string
+          id?: string
+          nom_pays: string
+          seuils_alertes?: Json
+          systeme_comptable: string
+          tenant_id: string
+          terminologie?: Json
+          updated_at?: string
+        }
+        Update: {
+          centres_types?: Json
+          cles_repartition_types?: Json
+          code_pays?: string
+          created_at?: string
+          devise_principale?: string
+          id?: string
+          nom_pays?: string
+          seuils_alertes?: Json
+          systeme_comptable?: string
+          tenant_id?: string
+          terminologie?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       parametres_expiration: {
         Row: {
           action_automatique: string | null
@@ -10538,6 +10583,10 @@ export type Database = {
             Args: { p_caisse_id?: string; p_type_session?: string }
             Returns: boolean
           }
+      init_analytical_params_for_tenant: {
+        Args: { p_country_code?: string; p_tenant_id: string }
+        Returns: Json
+      }
       init_banking_params_for_tenant: {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: string
