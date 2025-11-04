@@ -384,8 +384,9 @@ const ChartOfAccounts = () => {
       <Tabs defaultValue="tree" className="w-full">
         <TabsList>
           <TabsTrigger value="tree">Arbre des comptes</TabsTrigger>
-          <TabsTrigger value="classes">Classes OHADA</TabsTrigger>
+          <TabsTrigger value="classes">Classes {getAccountingSystemName()}</TabsTrigger>
           <TabsTrigger value="analytique">Comptes analytiques</TabsTrigger>
+          <TabsTrigger value="mentions">Mentions légales</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tree" className="space-y-4">
@@ -428,7 +429,7 @@ const ChartOfAccounts = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Toutes les classes</SelectItem>
-                    {ohadaClasses.map(cls => (
+                    {accountingClasses.map(cls => (
                       <SelectItem key={cls.classe} value={cls.classe.toString()}>
                         Classe {cls.classe}
                       </SelectItem>
@@ -478,7 +479,7 @@ const ChartOfAccounts = () => {
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {ohadaClasses.map(cls => {
+              {accountingClasses.map(cls => {
                 const Icon = cls.icon;
                 const classAccounts = accountsByClass[cls.classe] || [];
                 const totalDebit = classAccounts.reduce((sum, acc) => sum + acc.solde_debiteur, 0);
@@ -502,11 +503,11 @@ const ChartOfAccounts = () => {
                         </div>
                         <div className="flex justify-between text-sm">
                           <span>Total débit:</span>
-                          <span className="font-medium">{totalDebit.toLocaleString()}</span>
+                          <span className="font-medium">{formatAmount(totalDebit)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span>Total crédit:</span>
-                          <span className="font-medium">{totalCredit.toLocaleString()}</span>
+                          <span className="font-medium">{formatAmount(totalCredit)}</span>
                         </div>
                       </div>
                     </CardContent>
@@ -544,7 +545,7 @@ const ChartOfAccounts = () => {
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Solde total</p>
                     <p className="text-2xl font-bold">
-                      {(analyticalAccounts.reduce((sum, acc) => sum + acc.solde_debiteur - acc.solde_crediteur, 0)).toLocaleString()}
+                      {formatAmount(analyticalAccounts.reduce((sum, acc) => sum + acc.solde_debiteur - acc.solde_crediteur, 0))}
                     </p>
                   </div>
                 </CardContent>
@@ -592,6 +593,84 @@ const ChartOfAccounts = () => {
               </Card>
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="mentions" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Mentions légales et réglementaires</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Informations légales relatives au plan comptable {getAccountingSystemName()}
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Système comptable */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">Système comptable</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Système:</span>
+                    <p className="font-medium">{getAccountingSystemName()}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Version:</span>
+                    <p className="font-medium">{getAccountingSystemVersion()}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Pays:</span>
+                    <p className="font-medium">{coaParams?.pays}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Organisme réglementaire:</span>
+                    <p className="font-medium">{getRegulatoryBody()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mentions légales */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">Mentions obligatoires</h3>
+                <div className="prose prose-sm max-w-none">
+                  <div className="bg-muted/50 p-4 rounded-lg text-sm">
+                    <p className="leading-relaxed whitespace-pre-line">{getLegalMentions()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Structure des classes */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg">Structure des classes comptables</h3>
+                <div className="grid gap-2">
+                  {accountingClasses.map(cls => {
+                    const Icon = cls.icon;
+                    return (
+                      <div key={cls.classe} className="flex items-center gap-3 p-3 border rounded-lg">
+                        <Icon className="h-5 w-5 text-primary" />
+                        <div className="flex-1">
+                          <span className="font-medium">Classe {cls.classe}</span>
+                          <span className="text-muted-foreground ml-2">- {cls.label}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Information de conformité */}
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-2">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  Conformité réglementaire
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Ce plan comptable est conforme aux normes {getAccountingSystemName()} en vigueur.
+                  Il respecte les principes comptables fondamentaux et les obligations légales applicables
+                  en {coaParams?.pays}. Toute modification doit être effectuée en conformité avec
+                  la réglementation locale et les directives de {getRegulatoryBody()}.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
