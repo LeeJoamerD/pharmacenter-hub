@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useCurrency } from '@/contexts/CurrencyContext';
+import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 
 // Interfaces
 export interface BankAccount {
@@ -134,13 +136,77 @@ export interface ConsolidatedPayment {
   created_at: string;
 }
 
+export interface RegionalPaymentParams {
+  id: string;
+  tenant_id: string;
+  pays: string;
+  code_pays: string;
+  devise_principale: string;
+  symbole_devise: string;
+  modes_paiement_defaut: any[];
+  format_iban?: string;
+  validation_iban_active: boolean;
+  swift_obligatoire: boolean;
+  frais_bancaires_standard: number;
+  frais_mobile_money_pourcentage: number;
+  frais_carte_pourcentage: number;
+  delai_encaissement_cheque: number;
+  delai_compensation_virement: number;
+  montant_max_especes?: number;
+  plafond_mobile_money?: number;
+  require_kyc_au_dessus?: number;
+  tolerance_rapprochement: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export const usePaymentManager = () => {
   const queryClient = useQueryClient();
   const { session } = useAuth();
   const { toast } = useToast();
+  const { formatPrice, currentCurrency, changeCurrency, currencies } = useCurrency();
+  const { settings: systemSettings } = useGlobalSystemSettings();
   
   const tenantId = session?.user?.user_metadata?.tenant_id;
   const personnelId = session?.user?.user_metadata?.personnel_id;
+
+  // Fetch regional payment parameters
+  const { data: regionalParams, isLoading: isLoadingRegional } = useQuery({
+    queryKey: ['payment-regional-params', tenantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('parametres_paiements_regionaux')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .single();
+      
+      if (error) {
+        // If not found, initialize with Congo-Brazzaville default
+        if (error.code === 'PGRST116') {
+          const { error: rpcError } = await supabase.rpc('init_payment_params_for_tenant', {
+            p_tenant_id: tenantId,
+            p_country_code: 'CG'
+          });
+          
+          if (rpcError) throw rpcError;
+          
+          // Retry fetch after initialization
+          const { data: retryData, error: retryError } = await supabase
+            .from('parametres_paiements_regionaux')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .single();
+          
+          if (retryError) throw retryError;
+          return retryData as RegionalPaymentParams;
+        }
+        throw error;
+      }
+      
+      return data as RegionalPaymentParams;
+    },
+    enabled: !!tenantId,
+  });
 
   // Fetch bank accounts
   const { data: bankAccounts = [], isLoading: isLoadingBankAccounts } = useQuery({
@@ -562,6 +628,45 @@ export const usePaymentManager = () => {
     };
   };
 
+  // Regional utility functions
+  const formatAmount = (amount: number): string => {
+    return formatPrice(amount);
+  };
+
+  const getDevise = (): string => {
+    return regionalParams?.symbole_devise || currentCurrency.symbol;
+  };
+
+  const getDefaultPaymentMethods = () => {
+    return regionalParams?.modes_paiement_defaut || [];
+  };
+
+  const validatePaymentAmount = (amount: number, methodCode: string): { isValid: boolean; error?: string } => {
+    if (!regionalParams) return { isValid: true };
+
+    // Validate cash limit
+    if (methodCode === 'especes' && regionalParams.montant_max_especes) {
+      if (amount > regionalParams.montant_max_especes) {
+        return {
+          isValid: false,
+          error: `Montant espèces limité à ${formatAmount(regionalParams.montant_max_especes)}`
+        };
+      }
+    }
+
+    // Validate mobile money limit
+    if (methodCode.includes('mobile') && regionalParams.plafond_mobile_money) {
+      if (amount > regionalParams.plafond_mobile_money) {
+        return {
+          isValid: false,
+          error: `Montant Mobile Money limité à ${formatAmount(regionalParams.plafond_mobile_money)}`
+        };
+      }
+    }
+
+    return { isValid: true };
+  };
+
   return {
     // Data
     payments,
@@ -569,13 +674,15 @@ export const usePaymentManager = () => {
     bankTransactions,
     paymentSchedules,
     paymentMethods,
+    regionalParams,
 
     // Loading states
     isLoadingPayments,
     isLoadingBankAccounts,
     isLoadingTransactions,
     isLoadingSchedules,
-    isLoading: isLoadingPayments || isLoadingBankAccounts || isLoadingTransactions || isLoadingSchedules || isLoadingMethods,
+    isLoadingRegional,
+    isLoading: isLoadingPayments || isLoadingBankAccounts || isLoadingTransactions || isLoadingSchedules || isLoadingMethods || isLoadingRegional,
 
     // Bank accounts
     createBankAccount: createBankAccount.mutate,
@@ -600,5 +707,11 @@ export const usePaymentManager = () => {
     getPaymentStats,
     getBankReconciliationStats,
     getScheduleStats,
+
+    // Regional utilities
+    formatAmount,
+    getDevise,
+    getDefaultPaymentMethods,
+    validatePaymentAmount,
   };
 };

@@ -6174,6 +6174,78 @@ export type Database = {
         }
         Relationships: []
       }
+      parametres_paiements_regionaux: {
+        Row: {
+          code_pays: string
+          created_at: string
+          delai_compensation_virement: number | null
+          delai_encaissement_cheque: number | null
+          devise_principale: string
+          format_iban: string | null
+          frais_bancaires_standard: number | null
+          frais_carte_pourcentage: number | null
+          frais_mobile_money_pourcentage: number | null
+          id: string
+          modes_paiement_defaut: Json
+          montant_max_especes: number | null
+          pays: string
+          plafond_mobile_money: number | null
+          require_kyc_au_dessus: number | null
+          swift_obligatoire: boolean | null
+          symbole_devise: string
+          tenant_id: string
+          tolerance_rapprochement: number | null
+          updated_at: string
+          validation_iban_active: boolean | null
+        }
+        Insert: {
+          code_pays: string
+          created_at?: string
+          delai_compensation_virement?: number | null
+          delai_encaissement_cheque?: number | null
+          devise_principale: string
+          format_iban?: string | null
+          frais_bancaires_standard?: number | null
+          frais_carte_pourcentage?: number | null
+          frais_mobile_money_pourcentage?: number | null
+          id?: string
+          modes_paiement_defaut?: Json
+          montant_max_especes?: number | null
+          pays: string
+          plafond_mobile_money?: number | null
+          require_kyc_au_dessus?: number | null
+          swift_obligatoire?: boolean | null
+          symbole_devise: string
+          tenant_id: string
+          tolerance_rapprochement?: number | null
+          updated_at?: string
+          validation_iban_active?: boolean | null
+        }
+        Update: {
+          code_pays?: string
+          created_at?: string
+          delai_compensation_virement?: number | null
+          delai_encaissement_cheque?: number | null
+          devise_principale?: string
+          format_iban?: string | null
+          frais_bancaires_standard?: number | null
+          frais_carte_pourcentage?: number | null
+          frais_mobile_money_pourcentage?: number | null
+          id?: string
+          modes_paiement_defaut?: Json
+          montant_max_especes?: number | null
+          pays?: string
+          plafond_mobile_money?: number | null
+          require_kyc_au_dessus?: number | null
+          swift_obligatoire?: boolean | null
+          symbole_devise?: string
+          tenant_id?: string
+          tolerance_rapprochement?: number | null
+          updated_at?: string
+          validation_iban_active?: boolean | null
+        }
+        Relationships: []
+      }
       parametres_regionaux_bancaires: {
         Row: {
           banque_centrale: string
@@ -10596,6 +10668,10 @@ export type Database = {
         Returns: string
       }
       init_inventaire_items: { Args: { p_session_id: string }; Returns: Json }
+      init_payment_params_for_tenant: {
+        Args: { p_country_code?: string; p_tenant_id: string }
+        Returns: string
+      }
       init_regional_params_for_tenant: {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: string

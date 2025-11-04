@@ -22,6 +22,7 @@ const PaymentManagerNew = () => {
     bankTransactions,
     paymentSchedules,
     paymentMethods,
+    regionalParams,
     isLoading,
     createBankAccount,
     updateBankAccount,
@@ -33,6 +34,10 @@ const PaymentManagerNew = () => {
     getPaymentStats,
     getBankReconciliationStats,
     getScheduleStats,
+    formatAmount,
+    getDevise,
+    getDefaultPaymentMethods,
+    validatePaymentAmount,
   } = usePaymentManager();
 
   const [activeTab, setActiveTab] = useState('paiements');
@@ -49,7 +54,13 @@ const PaymentManagerNew = () => {
   const reconStats = getBankReconciliationStats();
   const scheduleStats = getScheduleStats();
 
-  const paymentMethodsMap = [
+  // Dynamic payment methods based on regional parameters
+  const paymentMethodsMap = regionalParams?.modes_paiement_defaut?.map((method: any) => ({
+    code: method.code,
+    libelle: method.libelle,
+    icon: method.icone === 'banknote' ? Banknote : method.icone === 'credit-card' ? CreditCard : method.icone === 'smartphone' ? Smartphone : RefreshCw,
+    color: `text-${method.couleur?.replace('#', '')}`
+  })) || [
     { code: 'especes', libelle: 'Espèces', icon: Banknote, color: 'text-green-600' },
     { code: 'carte', libelle: 'Carte bancaire', icon: CreditCard, color: 'text-blue-600' },
     { code: 'virement', libelle: 'Virement', icon: RefreshCw, color: 'text-purple-600' },
@@ -95,7 +106,17 @@ const PaymentManagerNew = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Suivi des Paiements</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold">Suivi des Paiements</h2>
+          <div className="flex gap-2 items-center">
+            <Badge variant="outline">
+              {regionalParams?.pays || 'Congo-Brazzaville'}
+            </Badge>
+            <Badge variant="secondary">
+              {regionalParams?.devise_principale || 'XAF'}
+            </Badge>
+          </div>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -115,9 +136,9 @@ const PaymentManagerNew = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-                  {stats.totalEncaisse.toLocaleString()}
+                  {formatAmount(stats.totalEncaisse)}
                 </div>
-                <p className="text-xs text-muted-foreground">FCFA</p>
+                <p className="text-xs text-muted-foreground">{getDevise()}</p>
               </CardContent>
             </Card>
             <Card>
@@ -137,9 +158,9 @@ const PaymentManagerNew = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {stats.totalCarte.toLocaleString()}
+                  {formatAmount(stats.totalCarte)}
                 </div>
-                <p className="text-xs text-muted-foreground">FCFA</p>
+                <p className="text-xs text-muted-foreground">{getDevise()}</p>
               </CardContent>
             </Card>
             <Card>
@@ -148,9 +169,9 @@ const PaymentManagerNew = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {stats.totalMobileMoney.toLocaleString()}
+                  {formatAmount(stats.totalMobileMoney)}
                 </div>
-                <p className="text-xs text-muted-foreground">FCFA</p>
+                <p className="text-xs text-muted-foreground">{getDevise()}</p>
               </CardContent>
             </Card>
           </div>
@@ -203,7 +224,7 @@ const PaymentManagerNew = () => {
                           <TableCell className="font-medium">{payment.numero_piece}</TableCell>
                           <TableCell>{new Date(payment.date_paiement).toLocaleDateString()}</TableCell>
                           <TableCell>{payment.tiers || '-'}</TableCell>
-                          <TableCell className="font-medium">{payment.montant.toLocaleString()} FCFA</TableCell>
+                          <TableCell className="font-medium">{formatAmount(payment.montant)}</TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
                               <Icon className={`h-4 w-4 ${method?.color}`} />
@@ -386,8 +407,8 @@ const PaymentManagerNew = () => {
                 <CardTitle className="text-sm font-medium">Montant à payer</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{scheduleStats.montantTotalAPayer.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">FCFA</p>
+                <div className="text-2xl font-bold">{formatAmount(scheduleStats.montantTotalAPayer)}</div>
+                <p className="text-xs text-muted-foreground">{getDevise()}</p>
               </CardContent>
             </Card>
             <Card>
@@ -438,7 +459,7 @@ const PaymentManagerNew = () => {
                             <Badge variant="destructive">{daysLate} jours</Badge>
                           </TableCell>
                           <TableCell className="font-medium text-red-600">
-                            {schedule.montant_restant.toLocaleString()} FCFA
+                            {formatAmount(schedule.montant_restant)}
                           </TableCell>
                           <TableCell>
                             <Button size="sm" variant="outline">Enregistrer paiement</Button>
@@ -490,7 +511,7 @@ const PaymentManagerNew = () => {
                             </Badge>
                           </TableCell>
                           <TableCell className="font-medium">
-                            {schedule.montant_restant.toLocaleString()} FCFA
+                            {formatAmount(schedule.montant_restant)}
                           </TableCell>
                           <TableCell>
                             <Button size="sm" variant="outline">Voir détails</Button>
@@ -513,19 +534,39 @@ const PaymentManagerNew = () => {
               Nouveau mode
             </Button>
             <Button variant="outline" onClick={() => {
-              // Create default payment methods
-              const defaultMethods = [
-                { code: 'especes', libelle: 'Espèces', icone: 'banknote', couleur: '#22c55e', ordre_affichage: 1 },
-                { code: 'carte', libelle: 'Carte bancaire', icone: 'credit-card', couleur: '#3b82f6', ordre_affichage: 2 },
-                { code: 'virement', libelle: 'Virement', icone: 'refresh-cw', couleur: '#a855f7', ordre_affichage: 3 },
-                { code: 'mobile_money', libelle: 'Mobile Money', icone: 'smartphone', couleur: '#f97316', ordre_affichage: 4 },
-                { code: 'cheque', libelle: 'Chèque', icone: 'file-text', couleur: '#6b7280', ordre_affichage: 5 },
-              ];
+              const defaultMethods = getDefaultPaymentMethods();
               
-              defaultMethods.forEach(method => createPaymentMethod(method));
-              toast({ title: 'Modes de paiement par défaut créés' });
+              if (defaultMethods.length === 0) {
+                toast({ 
+                  title: 'Aucun mode de paiement régional défini', 
+                  description: 'Veuillez configurer les paramètres régionaux',
+                  variant: 'destructive' 
+                });
+                return;
+              }
+              
+              defaultMethods.forEach((method: any) => {
+                createPaymentMethod({
+                  code: method.code,
+                  libelle: method.libelle,
+                  icone: method.icone,
+                  couleur: method.couleur,
+                  ordre_affichage: method.ordre,
+                  est_actif: method.est_actif,
+                  frais_pourcentage: method.frais_pourcentage || 0,
+                  frais_fixes: method.frais_fixes || 0,
+                  delai_encaissement: method.delai_encaissement || 0,
+                  exige_reference: method.exige_reference || false,
+                  exige_validation: method.exige_validation || false,
+                });
+              });
+              
+              toast({ 
+                title: `Modes de paiement ${regionalParams?.pays || 'par défaut'} créés`,
+                description: `${defaultMethods.length} modes de paiement ajoutés`
+              });
             }}>
-              Modes par défaut
+              Modes par défaut ({regionalParams?.code_pays || 'CG'})
             </Button>
           </div>
 
@@ -558,14 +599,14 @@ const PaymentManagerNew = () => {
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Montant total:</span>
-                        <span className="font-medium">{totalAmount.toLocaleString()} FCFA</span>
+                        <span className="font-medium">{formatAmount(totalAmount)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Moyenne:</span>
                         <span className="text-muted-foreground">
                           {methodPayments.length > 0 
-                            ? Math.round(totalAmount / methodPayments.length).toLocaleString()
-                            : 0} FCFA
+                            ? formatAmount(Math.round(totalAmount / methodPayments.length))
+                            : formatAmount(0)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
