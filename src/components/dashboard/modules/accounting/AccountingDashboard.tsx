@@ -221,7 +221,7 @@ const AccountingDashboard = () => {
                     <XAxis dataKey="month" />
                     <YAxis />
                     <Tooltip 
-                      formatter={(value) => [`${formatAmount(Number(value))} ${regionalParams?.symbole_devise || 'FCFA'}`, '']}
+                      formatter={(value) => [`${formatAmount(Number(value))} ${currency}`, '']}
                     />
                     <Bar dataKey="recettes" fill="#10b981" name="Recettes" />
                     <Bar dataKey="depenses" fill="#ef4444" name="Dépenses" />
@@ -258,21 +258,21 @@ const AccountingDashboard = () => {
                       ))}
                     </Pie>
                     <Tooltip 
-                      formatter={(value) => [`${formatAmount(Number(value))} ${regionalParams?.symbole_devise || 'FCFA'}`, '']}
+                      formatter={(value) => [`${formatAmount(Number(value))} ${currency}`, '']}
                     />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="mt-4 space-y-2">
                   {expenseCategories.map((category, index) => (
                     <div key={index} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: category.color }}
-                        />
-                        <span>{category.name}</span>
-                      </div>
-                      <span className="font-medium">{formatAmount(category.value)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: category.color }}
+                          />
+                          <span>{category.name}</span>
+                        </div>
+                        <span className="font-medium">{formatAmount(category.value)} {currency}</span>
                     </div>
                   ))}
                 </div>
@@ -298,10 +298,10 @@ const AccountingDashboard = () => {
                   <XAxis dataKey="date" />
                   <YAxis />
                   <Tooltip 
-                    formatter={(value) => [`${formatAmount(Number(value))} ${regionalParams?.symbole_devise || 'FCFA'}`, 'Solde']}
+                    formatter={(value) => [`${formatAmount(Number(value))} ${currency}`, 'Solde']}
                   />
                   <Area 
-                    type="monotone" 
+                    type="monotone"
                     dataKey="solde" 
                     stroke="#3b82f6" 
                     fill="#3b82f6" 
@@ -325,24 +325,24 @@ const AccountingDashboard = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
                     <span className="font-medium">ACTIF</span>
-                    <span className="font-bold">{formatAmount(balanceSheet.actif.total)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                    <span className="font-bold">{formatAmount(balanceSheet.actif.total)} {currency}</span>
                   </div>
                   <div className="space-y-2 pl-4">
                     <div className="flex justify-between">
                       <span>Immobilisations</span>
-                      <span>{formatAmount(balanceSheet.actif.immobilisations)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                      <span>{formatAmount(balanceSheet.actif.immobilisations)} {currency}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Stocks</span>
-                      <span>{formatAmount(balanceSheet.actif.stocks)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                      <span>{formatAmount(balanceSheet.actif.stocks)} {currency}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Créances</span>
-                      <span>{formatAmount(balanceSheet.actif.creances)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                      <span>{formatAmount(balanceSheet.actif.creances)} {currency}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Disponibilités</span>
-                      <span>{formatAmount(balanceSheet.actif.disponibilites)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                      <span>{formatAmount(balanceSheet.actif.disponibilites)} {currency}</span>
                     </div>
                   </div>
                 </div>
@@ -350,24 +350,24 @@ const AccountingDashboard = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
                     <span className="font-medium">PASSIF</span>
-                    <span className="font-bold">{formatAmount(balanceSheet.passif.total)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                    <span className="font-bold">{formatAmount(balanceSheet.passif.total)} {currency}</span>
                   </div>
                   <div className="space-y-2 pl-4">
                     <div className="flex justify-between">
                       <span>Capitaux propres</span>
-                      <span>{formatAmount(balanceSheet.passif.capitaux_propres)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                      <span>{formatAmount(balanceSheet.passif.capitaux_propres)} {currency}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Emprunts</span>
-                      <span>{formatAmount(balanceSheet.passif.emprunts)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                      <span>{formatAmount(balanceSheet.passif.emprunts)} {currency}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Dettes fournisseurs</span>
-                      <span>{formatAmount(balanceSheet.passif.dettes_fournisseurs)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                      <span>{formatAmount(balanceSheet.passif.dettes_fournisseurs)} {currency}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Autres dettes</span>
-                      <span>{formatAmount(balanceSheet.passif.autres_dettes)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                      <span>{formatAmount(balanceSheet.passif.autres_dettes)} {currency}</span>
                     </div>
                   </div>
                 </div>
@@ -384,20 +384,20 @@ const AccountingDashboard = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center p-2 bg-green-50 rounded">
                     <span className="font-medium text-green-700">Produits</span>
-                    <span className="font-bold text-green-700">{formatAmount(incomeStatement.produits.total)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                    <span className="font-bold text-green-700">{formatAmount(incomeStatement.produits.total)} {currency}</span>
                   </div>
                   <div className="space-y-1 pl-4 text-sm">
                     <div className="flex justify-between">
                       <span>Ventes de marchandises</span>
-                      <span>{formatAmount(incomeStatement.produits.ventes_marchandises)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                      <span>{formatAmount(incomeStatement.produits.ventes_marchandises)} {currency}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Prestations de services</span>
-                      <span>{formatAmount(incomeStatement.produits.prestations_services)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                      <span>{formatAmount(incomeStatement.produits.prestations_services)} {currency}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Autres produits</span>
-                      <span>{formatAmount(incomeStatement.produits.autres_produits)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                      <span>{formatAmount(incomeStatement.produits.autres_produits)} {currency}</span>
                     </div>
                   </div>
                 </div>
@@ -405,27 +405,27 @@ const AccountingDashboard = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center p-2 bg-red-50 rounded">
                     <span className="font-medium text-red-700">Charges</span>
-                    <span className="font-bold text-red-700">{formatAmount(incomeStatement.charges.total)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                    <span className="font-bold text-red-700">{formatAmount(incomeStatement.charges.total)} {currency}</span>
                   </div>
                   <div className="space-y-1 pl-4 text-sm">
                     <div className="flex justify-between">
                       <span>Achats de marchandises</span>
-                      <span>{formatAmount(incomeStatement.charges.achats_marchandises)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                      <span>{formatAmount(incomeStatement.charges.achats_marchandises)} {currency}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Charges de personnel</span>
-                      <span>{formatAmount(incomeStatement.charges.charges_personnel)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                      <span>{formatAmount(incomeStatement.charges.charges_personnel)} {currency}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Autres charges</span>
-                      <span>{formatAmount(incomeStatement.charges.autres_charges)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                      <span>{formatAmount(incomeStatement.charges.autres_charges)} {currency}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
                   <span className="font-bold text-blue-700">Résultat Net</span>
-                  <span className="font-bold text-blue-700">{formatAmount(incomeStatement.resultat_net)} {regionalParams?.symbole_devise || 'FCFA'}</span>
+                  <span className="font-bold text-blue-700">{formatAmount(incomeStatement.resultat_net)} {currency}</span>
                 </div>
               </CardContent>
             </Card>
@@ -482,7 +482,7 @@ const AccountingDashboard = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="trimestre" />
                     <YAxis />
-                    <Tooltip formatter={(value) => [`${formatAmount(Number(value))} ${regionalParams?.symbole_devise || 'FCFA'}`, 'CA']} />
+                    <Tooltip formatter={(value) => [`${formatAmount(Number(value))} ${currency}`, 'CA']} />
                     <Line type="monotone" dataKey="ca" stroke="#3b82f6" strokeWidth={3} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -502,7 +502,7 @@ const AccountingDashboard = () => {
                         <div>
                           <p className="font-medium">{client.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            {formatAmount(client.amount)} {regionalParams?.symbole_devise || 'FCFA'}
+                            {formatAmount(client.amount)} {currency}
                           </p>
                         </div>
                         <div className="text-right">

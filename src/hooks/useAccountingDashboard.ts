@@ -219,7 +219,8 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
         .select(`
           *,
           plan_comptable (
-            code_compte,
+            id,
+            code,
             libelle,
             type_compte,
             classe
@@ -246,7 +247,8 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
           lignes_ecriture (
             *,
             plan_comptable (
-              code_compte,
+              id,
+              code,
               libelle,
               classe,
               type_compte
@@ -365,9 +367,12 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
   const formatAmount = (amount: number): string => {
     if (!regionalParams) return amount.toLocaleString();
     
+    const params = regionalParams as any;
+    const decimales = params.nombre_decimales ?? 0;
+    
     const formatted = amount.toLocaleString('fr-FR', {
-      minimumFractionDigits: regionalParams.nombre_decimales,
-      maximumFractionDigits: regionalParams.nombre_decimales
+      minimumFractionDigits: decimales,
+      maximumFractionDigits: decimales
     });
 
     return formatted;
@@ -377,8 +382,9 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
   const formatDate = (date: string): string => {
     if (!regionalParams) return date;
     
+    const params = regionalParams as any;
     const parsedDate = parseISO(date);
-    return format(parsedDate, regionalParams.format_date.toLowerCase().replace('dd', 'dd').replace('mm', 'MM').replace('yyyy', 'yyyy'), { locale: fr });
+    return format(parsedDate, params.format_date?.toLowerCase().replace('dd', 'dd').replace('mm', 'MM').replace('yyyy', 'yyyy') || 'dd/MM/yyyy', { locale: fr });
   };
 
   // Calcul évolution mensuelle (6 derniers mois)
@@ -397,12 +403,12 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
       ecritures.forEach(ecriture => {
         const ecritureDate = parseISO(ecriture.date_ecriture);
         if (isAfter(ecritureDate, monthStart) && isBefore(ecritureDate, monthEnd)) {
-          ecriture.lignes_ecriture?.forEach(ligne => {
+          ecriture.lignes_ecriture?.forEach((ligne: any) => {
             const classe = ligne.plan_comptable?.classe;
             if (classe === '7') {
-              recettes += ligne.montant_credit || 0;
+              recettes += ligne.credit || 0;
             } else if (classe === '6') {
-              depenses += ligne.montant_debit || 0;
+              depenses += ligne.debit || 0;
             }
           });
         }
@@ -432,12 +438,12 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
       '65': { name: 'Autres Charges', value: 0, color: '#82ca9d' }
     };
 
-    balances.forEach(balance => {
-      const code = balance.plan_comptable?.code_compte || '';
+    balances.forEach((balance: any) => {
+      const code = balance.plan_comptable?.code || '';
       const prefix = code.substring(0, 2);
       
       if (categories[prefix]) {
-        categories[prefix].value += (balance.solde_debiteur || 0);
+        categories[prefix].value += (balance.solde_debit || 0);
       }
     });
 
@@ -494,10 +500,10 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
     let dettes_fournisseurs = 0;
     let autres_dettes = 0;
 
-    balances.forEach(balance => {
-      const code = balance.plan_comptable?.code_compte || '';
+    balances.forEach((balance: any) => {
+      const code = balance.plan_comptable?.code || '';
       const classe = balance.plan_comptable?.classe || '';
-      const solde = balance.solde_debiteur || balance.solde_crediteur || 0;
+      const solde = balance.solde_debit || balance.solde_credit || 0;
 
       // ACTIF
       if (classe === '2') immobilisations += solde;
@@ -555,10 +561,10 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
     let charges_personnel = 0;
     let autres_charges = 0;
 
-    balances.forEach(balance => {
-      const code = balance.plan_comptable?.code_compte || '';
+    balances.forEach((balance: any) => {
+      const code = balance.plan_comptable?.code || '';
       const classe = balance.plan_comptable?.classe || '';
-      const solde = balance.solde_crediteur || balance.solde_debiteur || 0;
+      const solde = balance.solde_credit || balance.solde_debit || 0;
 
       // PRODUITS (classe 7)
       if (code.startsWith('70')) ventes_marchandises += solde;
@@ -625,11 +631,13 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
     const chargesChange = '+8.1%';
     const tresorerieChange = '+15.8%';
 
+    const symbole = (regionalParams as any)?.symbole_devise || 'FCFA';
+
     return [
       {
         title: "Chiffre d'Affaires",
         value: formatAmount(ca),
-        unit: regionalParams?.symbole_devise || 'FCFA',
+        unit: symbole,
         change: caChange,
         trend: 'up' as const,
         icon: DollarSign,
@@ -638,7 +646,7 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
       {
         title: 'Résultat Net',
         value: formatAmount(resultat),
-        unit: regionalParams?.symbole_devise || 'FCFA',
+        unit: symbole,
         change: resultatChange,
         trend: (resultat >= 0 ? 'up' : 'down') as const,
         icon: TrendingUp,
@@ -647,7 +655,7 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
       {
         title: 'Charges Totales',
         value: formatAmount(charges),
-        unit: regionalParams?.symbole_devise || 'FCFA',
+        unit: symbole,
         change: chargesChange,
         trend: 'up' as const,
         icon: CreditCard,
@@ -656,7 +664,7 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
       {
         title: 'Trésorerie',
         value: formatAmount(tresorerie),
-        unit: regionalParams?.symbole_devise || 'FCFA',
+        unit: symbole,
         change: tresorerieChange,
         trend: 'up' as const,
         icon: Banknote,
@@ -671,7 +679,7 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
 
     const clientsCA: { [key: string]: { name: string; amount: number } } = {};
 
-    ventes.forEach(vente => {
+    ventes.forEach((vente: any) => {
       const clientId = vente.partenaire_id || 'Inconnu';
       const clientName = vente.partenaires?.nom_complet || 'Client Inconnu';
       
@@ -708,11 +716,11 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
       const quarterEnd = endOfMonth(new Date(year, quarter * 3 - 1, 1));
 
       const ca = ventes
-        .filter(vente => {
+        .filter((vente: any) => {
           const venteDate = parseISO(vente.date_vente);
           return isAfter(venteDate, quarterStart) && isBefore(venteDate, quarterEnd);
         })
-        .reduce((sum, vente) => sum + (vente.montant_total || 0), 0);
+        .reduce((sum, vente: any) => sum + (vente.montant_total || 0), 0);
 
       quarters.push({
         trimestre: `T${quarter} ${year}`,
@@ -754,7 +762,8 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
     }
 
     // TVA à déclarer (selon périodicité)
-    const periodicite = regionalParams?.periodicite_tva || 'mensuelle';
+    const params = regionalParams as any;
+    const periodicite = params?.periodicite_tva || 'mensuelle';
     tasks.push({
       task: `Déclaration TVA`,
       count: 1,
@@ -768,7 +777,7 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
   const dashboardAlerts = useMemo((): Alert[] => {
     if (!alertes) return [];
 
-    return alertes.map(alerte => ({
+    return alertes.map((alerte: any) => ({
       type: alerte.niveau_alerte === 'Critique' ? 'error' : 
             alerte.niveau_alerte === 'Attention' ? 'warning' : 'info',
       title: alerte.message_alerte,
@@ -780,7 +789,8 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
   const upcomingDeadlines = useMemo((): Deadline[] => {
     const deadlines: Deadline[] = [];
     const now = new Date();
-    const periodicite = regionalParams?.periodicite_tva || 'mensuelle';
+    const params = regionalParams as any;
+    const periodicite = params?.periodicite_tva || 'mensuelle';
 
     // Déclaration TVA
     const nextTvaMonth = periodicite === 'mensuelle' ? 1 : 3;
