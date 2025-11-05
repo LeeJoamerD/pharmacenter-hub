@@ -7232,6 +7232,77 @@ export type Database = {
           },
         ]
       }
+      parametres_rapports_regionaux: {
+        Row: {
+          code_pays: string
+          created_at: string
+          exercice_fiscal_debut: string | null
+          exercice_fiscal_fin: string | null
+          format_date: string | null
+          format_nombre: string | null
+          id: string
+          labels: Json | null
+          nombre_decimales: number | null
+          pays: string
+          periodicite_tva: string | null
+          plan_comptable: string | null
+          separateur_decimales: string | null
+          separateur_milliers: string | null
+          symbole_devise: string | null
+          taux_tva_normal: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          code_pays: string
+          created_at?: string
+          exercice_fiscal_debut?: string | null
+          exercice_fiscal_fin?: string | null
+          format_date?: string | null
+          format_nombre?: string | null
+          id?: string
+          labels?: Json | null
+          nombre_decimales?: number | null
+          pays: string
+          periodicite_tva?: string | null
+          plan_comptable?: string | null
+          separateur_decimales?: string | null
+          separateur_milliers?: string | null
+          symbole_devise?: string | null
+          taux_tva_normal?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          code_pays?: string
+          created_at?: string
+          exercice_fiscal_debut?: string | null
+          exercice_fiscal_fin?: string | null
+          format_date?: string | null
+          format_nombre?: string | null
+          id?: string
+          labels?: Json | null
+          nombre_decimales?: number | null
+          pays?: string
+          periodicite_tva?: string | null
+          plan_comptable?: string | null
+          separateur_decimales?: string | null
+          separateur_milliers?: string | null
+          symbole_devise?: string | null
+          taux_tva_normal?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parametres_rapports_regionaux_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parametres_regionaux_bancaires: {
         Row: {
           banque_centrale: string
