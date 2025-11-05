@@ -30,11 +30,11 @@ const CashMovementForm = ({ sessionId, onClose, onSubmit, loading }: CashMovemen
   });
 
   const movementTypes = [
-    { value: 'entree', label: 'Entrée d\'argent', icon: ArrowDownLeft, color: 'text-green-600', description: 'Ajout d\'argent en caisse' },
-    { value: 'sortie', label: 'Sortie d\'argent', icon: ArrowUpRight, color: 'text-red-600', description: 'Retrait d\'argent de la caisse' },
-    { value: 'vente', label: 'Vente', icon: ShoppingCart, color: 'text-blue-600', description: 'Encaissement d\'une vente' },
-    { value: 'remboursement', label: 'Remboursement', icon: CreditCard, color: 'text-orange-600', description: 'Remboursement client' },
-    { value: 'depense', label: 'Dépense', icon: Receipt, color: 'text-purple-600', description: 'Dépense opérationnelle' }
+    { value: 'Entrée', label: 'Entrée d\'argent', icon: ArrowDownLeft, color: 'text-green-600', description: 'Ajout d\'argent en caisse' },
+    { value: 'Sortie', label: 'Sortie d\'argent', icon: ArrowUpRight, color: 'text-red-600', description: 'Retrait d\'argent de la caisse' },
+    { value: 'Vente', label: 'Vente', icon: ShoppingCart, color: 'text-blue-600', description: 'Encaissement d\'une vente' },
+    { value: 'Remboursement', label: 'Remboursement', icon: CreditCard, color: 'text-orange-600', description: 'Remboursement client' },
+    { value: 'Dépense', label: 'Dépense', icon: Receipt, color: 'text-purple-600', description: 'Dépense opérationnelle' }
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,9 +45,9 @@ const CashMovementForm = ({ sessionId, onClose, onSubmit, loading }: CashMovemen
     try {
       const amount = parseFloat(formData.amount);
       // Pour les sorties, remboursements et dépenses, on inverse le signe
-      const adjustedAmount = (['sortie', 'remboursement', 'depense'].includes(formData.type)) 
-        ? -Math.abs(amount) 
-        : Math.abs(amount);
+    const adjustedAmount = (['Sortie', 'Remboursement', 'Dépense'].includes(formData.type)) 
+      ? -Math.abs(amount) 
+      : Math.abs(amount);
 
       await onSubmit(
         sessionId,
@@ -131,7 +131,7 @@ const CashMovementForm = ({ sessionId, onClose, onSubmit, loading }: CashMovemen
                 FCFA
               </span>
             </div>
-            {selectedType && ['sortie', 'remboursement', 'depense'].includes(formData.type) && (
+            {selectedType && ['Sortie', 'Remboursement', 'Dépense'].includes(formData.type) && (
               <p className="text-xs text-orange-600">
                 Ce montant sera automatiquement déduit du solde de la caisse
               </p>
@@ -173,7 +173,7 @@ const CashMovementForm = ({ sessionId, onClose, onSubmit, loading }: CashMovemen
             <Button 
               type="submit" 
               disabled={loading || !formData.type || !formData.amount || !formData.description}
-              variant={selectedType && ['sortie', 'remboursement', 'depense'].includes(formData.type) ? "destructive" : "default"}
+              variant={selectedType && ['Sortie', 'Remboursement', 'Dépense'].includes(formData.type) ? "destructive" : "default"}
             >
               {loading ? 'Enregistrement...' : 'Enregistrer le Mouvement'}
             </Button>
