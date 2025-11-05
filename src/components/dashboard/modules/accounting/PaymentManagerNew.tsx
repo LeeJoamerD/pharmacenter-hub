@@ -655,7 +655,7 @@ const PaymentManagerNew = () => {
         onOpenChange={setMethodDialog}
         onSubmit={(data) => {
           if (data.id) {
-            updatePaymentMethod(data);
+            updatePaymentMethod({ ...data, id: data.id });
           } else {
             createPaymentMethod(data);
           }

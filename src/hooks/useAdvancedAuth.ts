@@ -40,7 +40,7 @@ export const useAdvancedAuth = () => {
       
       const { data, error } = await supabase.rpc('validate_password_strength', {
         password,
-        tenant_id: pharmacyId
+        p_tenant_id: pharmacyId
       });
 
       console.log('📊 Réponse validation:', { data, error });
@@ -110,8 +110,8 @@ export const useAdvancedAuth = () => {
 
     try {
       const { data, error } = await supabase.rpc('check_login_attempts', {
-        email,
-        tenant_id: pharmacyId
+        p_email: email,
+        p_tenant_id: pharmacyId
       });
 
       if (error) throw error;
@@ -175,9 +175,9 @@ export const useAdvancedAuth = () => {
 
       // Calculer le score de risque
       const { data: riskScore } = await supabase.rpc('calculate_session_risk_score', {
-        ip_address: '127.0.0.1',
-        user_agent: userAgent,
-        personnel_id: personnel.id
+        p_ip_address: '127.0.0.1',
+        p_user_agent: userAgent,
+        p_personnel_id: personnel.id
       });
 
       // Déterminer le niveau de sécurité requis

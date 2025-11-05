@@ -190,17 +190,21 @@ const useCashRegister = () => {
       // Enregistrer le mouvement initial
       await supabase
         .from('mouvements_caisse')
-        .insert({
+        .insert([{
           session_caisse_id: newSession.id,
           type_mouvement: 'Fond_initial',
           montant: fondCaisseOuverture,
           description: 'Fond de caisse initial',
           motif: 'Fond de caisse initial',
           agent_id: caissierId,
-          date_mouvement: new Date().toISOString()
-        });
+          date_mouvement: new Date().toISOString(),
+          tenant_id: tenantId
+        }]);
 
-      setCurrentSession(newSession as CashSession);
+      setCurrentSession({
+        ...newSession,
+        statut: newSession.statut as "Ouverte" | "Fermée"
+      } as CashSession);
       toast.success('Session ouverte avec succès');
       
       await loadAllSessions();
@@ -260,19 +264,23 @@ const useCashRegister = () => {
 
       if (error) throw error;
 
-      setCurrentSession(updatedSession as CashSession);
+      setCurrentSession({
+        ...updatedSession,
+        statut: updatedSession.statut as "Ouverte" | "Fermée"
+      } as CashSession);
       // Enregistrer le mouvement d'ajustement si nécessaire
       if (ecart !== 0) {
         await supabase
           .from('mouvements_caisse')
-          .insert({
+          .insert([{
             tenant_id: tenantId,
             session_caisse_id: sessionId,
-            type_mouvement: 'Ajustement' as const,
+            type_mouvement: 'Ajustement',
             montant: ecart,
             description: `Écart de fermeture: ${ecart > 0 ? 'excédent' : 'manquant'}`,
+            motif: 'Ajustement de fermeture',
             date_mouvement: new Date().toISOString()
-          });
+          }]);
       }
 
       setCurrentSession(null);
@@ -308,16 +316,17 @@ const useCashRegister = () => {
     try {
       const { data: movement, error } = await supabase
         .from('mouvements_caisse')
-        .insert({
+        .insert([{
           tenant_id: tenantId,
           session_caisse_id: sessionId,
           type_mouvement: typeMouvement,
           montant: montant,
           description: description,
+          motif: description,
           reference_id: referenceId,
           reference_type: referenceType,
           date_mouvement: new Date().toISOString()
-        })
+        }])
         .select()
         .single() as { data: CashMovement; error: any };
 

@@ -104,25 +104,7 @@ const PaymentMethodDialog: React.FC<PaymentMethodDialogProps> = ({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="montant_minimum">Montant minimum</Label>
-              <Input 
-                id="montant_minimum" 
-                type="number" 
-                step="0.01"
-                {...register('montant_minimum', { valueAsNumber: true })} 
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="montant_maximum">Montant maximum</Label>
-              <Input 
-                id="montant_maximum" 
-                type="number" 
-                step="0.01"
-                {...register('montant_maximum', { valueAsNumber: true })} 
-              />
-            </div>
+            {/* Montant minimum et maximum removed - not in DB schema */}
 
             <div className="space-y-2">
               <Label htmlFor="icone">Icône</Label>

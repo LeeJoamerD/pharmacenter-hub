@@ -225,7 +225,12 @@ export function useFinancialReports(selectedExerciceId?: string) {
         .order('annee', { ascending: false });
 
       if (error) throw error;
-      return data as Exercice[];
+      // Map libelle_exercice to libelle for compatibility
+      return (data || []).map(ex => ({
+        ...ex,
+        libelle: ex.libelle_exercice,
+        annee: parseInt(ex.libelle_exercice.split(' ')[1] || '2024')
+      })) as Exercice[];
     },
     enabled: !!tenantId,
   });
