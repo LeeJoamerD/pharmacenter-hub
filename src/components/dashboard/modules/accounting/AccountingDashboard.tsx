@@ -22,10 +22,8 @@ import {
   AreaChart
 } from 'recharts';
 import { 
-  TrendingUp, 
-  TrendingDown, 
   DollarSign, 
-  Receipt, 
+  TrendingUp, 
   CreditCard, 
   AlertTriangle,
   CheckCircle,
@@ -38,103 +36,37 @@ import {
   Target,
   Banknote,
   Building2,
-  Users,
-  Package,
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useAccountingDashboard } from '@/hooks/useAccountingDashboard';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const AccountingDashboard = () => {
-  const { toast } = useToast();
   const [selectedPeriod, setSelectedPeriod] = useState('month');
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const {
+    isLoading,
+    isRefreshing,
+    regionalParams,
+    formatAmount,
+    kpis,
+    monthlyEvolution,
+    expenseCategories,
+    treasuryEvolution,
+    balanceSheet,
+    incomeStatement,
+    financialRatios,
+    topClients,
+    quarterlyCA,
+    pendingTasks,
+    alerts,
+    upcomingDeadlines,
+    refresh
+  } = useAccountingDashboard(selectedPeriod);
 
-  // Données pour les graphiques
-  const monthlyRevenue = [
-    { month: 'Jan', recettes: 850000, depenses: 650000, resultat: 200000 },
-    { month: 'Fév', recettes: 920000, depenses: 680000, resultat: 240000 },
-    { month: 'Mar', recettes: 780000, depenses: 720000, resultat: 60000 },
-    { month: 'Avr', recettes: 1100000, depenses: 750000, resultat: 350000 },
-    { month: 'Mai', recettes: 950000, depenses: 700000, resultat: 250000 },
-    { month: 'Jun', recettes: 1050000, depenses: 780000, resultat: 270000 }
-  ];
-
-  const expenseCategories = [
-    { name: 'Achats Marchandises', value: 2500000, color: '#0088FE' },
-    { name: 'Charges Personnel', value: 800000, color: '#00C49F' },
-    { name: 'Charges Locatives', value: 350000, color: '#FFBB28' },
-    { name: 'Services Extérieurs', value: 280000, color: '#FF8042' },
-    { name: 'Autres Charges', value: 150000, color: '#8884D8' }
-  ];
-
-  const treasuryData = [
-    { date: '01/01', solde: 2500000 },
-    { date: '08/01', solde: 2200000 },
-    { date: '15/01', solde: 2800000 },
-    { date: '22/01', solde: 2600000 },
-    { date: '29/01', solde: 3100000 }
-  ];
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      toast({
-        title: "Données actualisées",
-        description: "Le tableau de bord a été mis à jour avec les dernières données",
-      });
-    }, 2000);
-  };
-
-  // Indicateurs clés
-  const kpis = [
-    {
-      title: 'Chiffre d\'Affaires',
-      value: '5 650 000',
-      unit: 'FCFA',
-      change: '+12.5%',
-      trend: 'up',
-      icon: DollarSign,
-      color: 'text-green-600'
-    },
-    {
-      title: 'Résultat Net',
-      value: '1 370 000',
-      unit: 'FCFA',
-      change: '+18.2%',
-      trend: 'up',
-      icon: TrendingUp,
-      color: 'text-green-600'
-    },
-    {
-      title: 'Charges Totales',
-      value: '4 280 000',
-      unit: 'FCFA',
-      change: '+8.1%',
-      trend: 'up',
-      icon: CreditCard,
-      color: 'text-orange-600'
-    },
-    {
-      title: 'Trésorerie',
-      value: '3 100 000',
-      unit: 'FCFA',
-      change: '+15.8%',
-      trend: 'up',
-      icon: Banknote,
-      color: 'text-blue-600'
-    }
-  ];
-
-  // Tâches en attente
-  const pendingTasks = [
-    { task: 'Lettrage automatique', count: 15, priority: 'high', icon: AlertTriangle },
-    { task: 'Validation écritures', count: 8, priority: 'medium', icon: CheckCircle },
-    { task: 'Rapprochement bancaire', count: 3, priority: 'high', icon: Building2 },
-    { task: 'Déclaration TVA', count: 1, priority: 'urgent', icon: FileText }
-  ];
+  const currency = (regionalParams as any)?.symbole_devise || 'FCFA';
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -153,6 +85,49 @@ const AccountingDashboard = () => {
       default: return 'Faible';
     }
   };
+
+  const getAlertIcon = (type: string) => {
+    switch (type) {
+      case 'error': return AlertTriangle;
+      case 'warning': return Clock;
+      case 'success': return CheckCircle;
+      default: return FileText;
+    }
+  };
+
+  const getAlertColor = (type: string) => {
+    switch (type) {
+      case 'error': return { bg: 'bg-red-50', border: 'border-l-red-500', text: 'text-red-700', textMuted: 'text-red-600' };
+      case 'warning': return { bg: 'bg-yellow-50', border: 'border-l-yellow-500', text: 'text-yellow-700', textMuted: 'text-yellow-600' };
+      case 'success': return { bg: 'bg-green-50', border: 'border-l-green-500', text: 'text-green-700', textMuted: 'text-green-600' };
+      default: return { bg: 'bg-blue-50', border: 'border-l-blue-500', text: 'text-blue-700', textMuted: 'text-blue-600' };
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Tableau de Bord Comptable</h2>
+            <p className="text-muted-foreground">Chargement des données...</p>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-4 w-32" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-40" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -176,7 +151,7 @@ const AccountingDashboard = () => {
             </SelectContent>
           </Select>
           <Button 
-            onClick={handleRefresh}
+            onClick={refresh}
             disabled={isRefreshing}
             variant="outline"
             className="animate-fade-in"
@@ -241,12 +216,12 @@ const AccountingDashboard = () => {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={monthlyRevenue}>
+                  <BarChart data={monthlyEvolution}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
                     <Tooltip 
-                      formatter={(value) => [`${value.toLocaleString()} FCFA`, '']}
+                      formatter={(value) => [`${formatAmount(Number(value))} ${regionalParams?.symbole_devise || 'FCFA'}`, '']}
                     />
                     <Bar dataKey="recettes" fill="#10b981" name="Recettes" />
                     <Bar dataKey="depenses" fill="#ef4444" name="Dépenses" />
@@ -283,7 +258,7 @@ const AccountingDashboard = () => {
                       ))}
                     </Pie>
                     <Tooltip 
-                      formatter={(value) => [`${value.toLocaleString()} FCFA`, '']}
+                      formatter={(value) => [`${formatAmount(Number(value))} ${regionalParams?.symbole_devise || 'FCFA'}`, '']}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -297,7 +272,7 @@ const AccountingDashboard = () => {
                         />
                         <span>{category.name}</span>
                       </div>
-                      <span className="font-medium">{category.value.toLocaleString()} FCFA</span>
+                      <span className="font-medium">{formatAmount(category.value)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                   ))}
                 </div>
@@ -318,12 +293,12 @@ const AccountingDashboard = () => {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={treasuryData}>
+                <AreaChart data={treasuryEvolution}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis />
                   <Tooltip 
-                    formatter={(value) => [`${value.toLocaleString()} FCFA`, 'Solde']}
+                    formatter={(value) => [`${formatAmount(Number(value))} ${regionalParams?.symbole_devise || 'FCFA'}`, 'Solde']}
                   />
                   <Area 
                     type="monotone" 
@@ -344,30 +319,30 @@ const AccountingDashboard = () => {
             <Card className="animate-fade-in">
               <CardHeader>
                 <CardTitle>Bilan Synthétique</CardTitle>
-                <CardDescription>Situation patrimoniale au 31/01/2024</CardDescription>
+                <CardDescription>Situation patrimoniale actuelle</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
                     <span className="font-medium">ACTIF</span>
-                    <span className="font-bold">15 250 000 FCFA</span>
+                    <span className="font-bold">{formatAmount(balanceSheet.actif.total)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                   </div>
                   <div className="space-y-2 pl-4">
                     <div className="flex justify-between">
                       <span>Immobilisations</span>
-                      <span>8 500 000 FCFA</span>
+                      <span>{formatAmount(balanceSheet.actif.immobilisations)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Stocks</span>
-                      <span>4 650 000 FCFA</span>
+                      <span>{formatAmount(balanceSheet.actif.stocks)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Créances</span>
-                      <span>1 200 000 FCFA</span>
+                      <span>{formatAmount(balanceSheet.actif.creances)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Disponibilités</span>
-                      <span>900 000 FCFA</span>
+                      <span>{formatAmount(balanceSheet.actif.disponibilites)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                   </div>
                 </div>
@@ -375,24 +350,24 @@ const AccountingDashboard = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
                     <span className="font-medium">PASSIF</span>
-                    <span className="font-bold">15 250 000 FCFA</span>
+                    <span className="font-bold">{formatAmount(balanceSheet.passif.total)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                   </div>
                   <div className="space-y-2 pl-4">
                     <div className="flex justify-between">
                       <span>Capitaux propres</span>
-                      <span>9 800 000 FCFA</span>
+                      <span>{formatAmount(balanceSheet.passif.capitaux_propres)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Emprunts</span>
-                      <span>3 200 000 FCFA</span>
+                      <span>{formatAmount(balanceSheet.passif.emprunts)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Dettes fournisseurs</span>
-                      <span>1 850 000 FCFA</span>
+                      <span>{formatAmount(balanceSheet.passif.dettes_fournisseurs)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Autres dettes</span>
-                      <span>400 000 FCFA</span>
+                      <span>{formatAmount(balanceSheet.passif.autres_dettes)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                   </div>
                 </div>
@@ -403,26 +378,26 @@ const AccountingDashboard = () => {
             <Card className="animate-fade-in">
               <CardHeader>
                 <CardTitle>Compte de Résultat</CardTitle>
-                <CardDescription>Résultats cumulés depuis le 01/01/2024</CardDescription>
+                <CardDescription>Résultats cumulés de l'exercice en cours</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex justify-between items-center p-2 bg-green-50 rounded">
                     <span className="font-medium text-green-700">Produits</span>
-                    <span className="font-bold text-green-700">5 650 000 FCFA</span>
+                    <span className="font-bold text-green-700">{formatAmount(incomeStatement.produits.total)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                   </div>
                   <div className="space-y-1 pl-4 text-sm">
                     <div className="flex justify-between">
                       <span>Ventes de marchandises</span>
-                      <span>5 200 000 FCFA</span>
+                      <span>{formatAmount(incomeStatement.produits.ventes_marchandises)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Prestations de services</span>
-                      <span>350 000 FCFA</span>
+                      <span>{formatAmount(incomeStatement.produits.prestations_services)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Autres produits</span>
-                      <span>100 000 FCFA</span>
+                      <span>{formatAmount(incomeStatement.produits.autres_produits)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                   </div>
                 </div>
@@ -430,27 +405,27 @@ const AccountingDashboard = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center p-2 bg-red-50 rounded">
                     <span className="font-medium text-red-700">Charges</span>
-                    <span className="font-bold text-red-700">4 280 000 FCFA</span>
+                    <span className="font-bold text-red-700">{formatAmount(incomeStatement.charges.total)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                   </div>
                   <div className="space-y-1 pl-4 text-sm">
                     <div className="flex justify-between">
                       <span>Achats de marchandises</span>
-                      <span>3 200 000 FCFA</span>
+                      <span>{formatAmount(incomeStatement.charges.achats_marchandises)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Charges de personnel</span>
-                      <span>680 000 FCFA</span>
+                      <span>{formatAmount(incomeStatement.charges.charges_personnel)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Autres charges</span>
-                      <span>400 000 FCFA</span>
+                      <span>{formatAmount(incomeStatement.charges.autres_charges)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
                   <span className="font-bold text-blue-700">Résultat Net</span>
-                  <span className="font-bold text-blue-700">1 370 000 FCFA</span>
+                  <span className="font-bold text-blue-700">{formatAmount(incomeStatement.resultat_net)} {regionalParams?.symbole_devise || 'FCFA'}</span>
                 </div>
               </CardContent>
             </Card>
@@ -472,23 +447,23 @@ const AccountingDashboard = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium">Marge Brute</span>
-                    <span className="text-sm font-bold text-green-600">38.5%</span>
+                    <span className="text-sm font-bold text-green-600">{financialRatios.marge_brute.toFixed(1)}%</span>
                   </div>
-                  <Progress value={38.5} className="h-2" />
+                  <Progress value={financialRatios.marge_brute} className="h-2" />
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium">Marge Nette</span>
-                    <span className="text-sm font-bold text-blue-600">24.2%</span>
+                    <span className="text-sm font-bold text-blue-600">{financialRatios.marge_nette.toFixed(1)}%</span>
                   </div>
-                  <Progress value={24.2} className="h-2" />
+                  <Progress value={financialRatios.marge_nette} className="h-2" />
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-sm font-medium">Ratio d'Endettement</span>
-                    <span className="text-sm font-bold text-orange-600">35.8%</span>
+                    <span className="text-sm font-bold text-orange-600">{financialRatios.ratio_endettement.toFixed(1)}%</span>
                   </div>
-                  <Progress value={35.8} className="h-2" />
+                  <Progress value={financialRatios.ratio_endettement} className="h-2" />
                 </div>
               </div>
             </CardContent>
@@ -503,17 +478,11 @@ const AccountingDashboard = () => {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={[
-                    { trimestre: 'T1 2023', ca: 3200000 },
-                    { trimestre: 'T2 2023', ca: 3800000 },
-                    { trimestre: 'T3 2023', ca: 3500000 },
-                    { trimestre: 'T4 2023', ca: 4200000 },
-                    { trimestre: 'T1 2024', ca: 5650000 }
-                  ]}>
+                  <LineChart data={quarterlyCA}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="trimestre" />
                     <YAxis />
-                    <Tooltip formatter={(value) => [`${value.toLocaleString()} FCFA`, 'CA']} />
+                    <Tooltip formatter={(value) => [`${formatAmount(Number(value))} ${regionalParams?.symbole_devise || 'FCFA'}`, 'CA']} />
                     <Line type="monotone" dataKey="ca" stroke="#3b82f6" strokeWidth={3} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -527,25 +496,23 @@ const AccountingDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[
-                    { name: 'Hôpital Général', amount: 850000, percentage: 15 },
-                    { name: 'Clinique du Plateau', amount: 650000, percentage: 12 },
-                    { name: 'Centre Médical Cocody', amount: 480000, percentage: 8 },
-                    { name: 'Cabinet Dr. Kouassi', amount: 320000, percentage: 6 },
-                    { name: 'Pharmacie Riviera', amount: 280000, percentage: 5 }
-                  ].map((client, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{client.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {client.amount.toLocaleString()} FCFA
-                        </p>
+                  {topClients.length > 0 ? (
+                    topClients.map((client, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{client.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatAmount(client.amount)} {regionalParams?.symbole_devise || 'FCFA'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant="secondary">{client.percentage}%</Badge>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <Badge variant="secondary">{client.percentage}%</Badge>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Aucune donnée de vente disponible</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -566,12 +533,11 @@ const AccountingDashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {pendingTasks.map((task, index) => {
-                  const IconComponent = task.icon;
-                  return (
+                {pendingTasks.length > 0 ? (
+                  pendingTasks.map((task, index) => (
                     <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
-                        <IconComponent className="h-5 w-5 text-muted-foreground" />
+                        <AlertTriangle className="h-5 w-5 text-muted-foreground" />
                         <div>
                           <p className="font-medium">{task.task}</p>
                           <p className="text-sm text-muted-foreground">
@@ -590,8 +556,10 @@ const AccountingDashboard = () => {
                         </Button>
                       </div>
                     </div>
-                  );
-                })}
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucune tâche en attente</p>
+                )}
               </CardContent>
             </Card>
 
@@ -608,45 +576,25 @@ const AccountingDashboard = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
-                  <div className="flex items-start gap-3 p-3 bg-red-50 border-l-4 border-l-red-500 rounded">
-                    <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-red-700">Déclaration TVA à échéance</p>
-                      <p className="text-sm text-red-600">
-                        La déclaration TVA de janvier doit être déposée avant le 15/02/2024
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3 p-3 bg-yellow-50 border-l-4 border-l-yellow-500 rounded">
-                    <Clock className="h-5 w-5 text-yellow-500 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-yellow-700">Rapprochement bancaire en retard</p>
-                      <p className="text-sm text-yellow-600">
-                        Le rapprochement du compte BQ1 n'a pas été effectué depuis 5 jours
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3 p-3 bg-blue-50 border-l-4 border-l-blue-500 rounded">
-                    <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-blue-700">Sauvegarde automatique effectuée</p>
-                      <p className="text-sm text-blue-600">
-                        Sauvegarde complète réalisée le 15/01/2024 à 02:00
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3 p-3 bg-green-50 border-l-4 border-l-green-500 rounded">
-                    <FileText className="h-5 w-5 text-green-500 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-green-700">Export FEC généré</p>
-                      <p className="text-sm text-green-600">
-                        Le fichier FEC 2023 a été généré et transmis à l'expert-comptable
-                      </p>
-                    </div>
-                  </div>
+                  {alerts.length > 0 ? (
+                    alerts.map((alert, index) => {
+                      const AlertIcon = getAlertIcon(alert.type);
+                      const colors = getAlertColor(alert.type);
+                      return (
+                        <div key={index} className={`flex items-start gap-3 p-3 ${colors.bg} border-l-4 ${colors.border} rounded`}>
+                          <AlertIcon className={`h-5 w-5 ${colors.text} mt-0.5`} />
+                          <div>
+                            <p className={`font-medium ${colors.text}`}>{alert.title}</p>
+                            <p className={`text-sm ${colors.textMuted}`}>
+                              {alert.message}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Aucune alerte pour le moment</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -665,13 +613,7 @@ const AccountingDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {[
-                  { date: '15/02/2024', task: 'Déclaration TVA Janvier', status: 'urgent' },
-                  { date: '28/02/2024', task: 'Clôture mensuelle Février', status: 'normal' },
-                  { date: '15/03/2024', task: 'Déclaration TVA Février', status: 'normal' },
-                  { date: '31/03/2024', task: 'Arrêté trimestriel Q1', status: 'important' },
-                  { date: '15/04/2024', task: 'Déclaration TVA Mars', status: 'normal' }
-                ].map((item, index) => (
+                {upcomingDeadlines.map((item, index) => (
                   <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-3">
                       <div className="text-center">
