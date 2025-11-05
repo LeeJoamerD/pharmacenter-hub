@@ -126,13 +126,13 @@ export class StockUpdateService {
     }
   ): Promise<void> {
     try {
-      const { data, error } = await supabase.rpc('rpc_stock_update_movement', {
+      const { data, error } = await supabase.rpc('rpc_stock_update_movement' as any, {
         p_movement_id: movementId,
-        p_new_quantite_mouvement: updates.quantite_mouvement,
-        p_new_motif: updates.motif,
-        p_new_reference_document: updates.reference_document,
-        p_new_metadata: updates.metadata,
-        p_new_quantite_reelle: updates.quantite_reelle
+        p_quantite_mouvement: updates.quantite_mouvement,
+        p_motif: updates.motif,
+        p_reference_document: updates.reference_document,
+        p_metadata: updates.metadata,
+        p_quantite_reelle: updates.quantite_reelle
       });
 
       if (error) {

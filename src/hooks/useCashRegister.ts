@@ -201,10 +201,13 @@ const useCashRegister = () => {
           tenant_id: tenantId
         }]);
 
-      setCurrentSession({
+      const validSession: CashSession = {
         ...newSession,
-        statut: newSession.statut as "Ouverte" | "Fermée"
-      } as CashSession);
+        statut: (newSession.statut === "Ouverte" || newSession.statut === "Fermée") 
+          ? newSession.statut 
+          : "Ouverte"
+      };
+      setCurrentSession(validSession);
       toast.success('Session ouverte avec succès');
       
       await loadAllSessions();

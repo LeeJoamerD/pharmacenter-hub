@@ -192,7 +192,7 @@ export const useInventoryReconciliation = (sessionId?: string) => {
           quantiteComptee: item.quantite_comptee,
           ecart,
           statut: (item.statut || 'en_attente') as 'en_attente' | 'valide' | 'rejete',
-          emplacement: item.emplacement_reel || item.lot?.emplacement || 'N/A',
+          emplacement: item.emplacement_reel || 'N/A',
           valeurUnitaire,
           valeurEcart: ecart * valeurUnitaire,
           unite: item.unite || 'unité',

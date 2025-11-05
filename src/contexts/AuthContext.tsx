@@ -187,7 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const sessionData = JSON.parse(savedPharmacySession);
         // Valider la session pharmacie
-        supabase.rpc('validate_pharmacy_session', {
+        supabase.rpc('validate_pharmacy_session' as any, {
           p_session_token: sessionData.sessionToken
         }).then(({ data, error }) => {
           if (data && typeof data === 'object' && 'valid' in data && data.valid && !error) {
@@ -391,7 +391,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const disconnectPharmacy = async () => {
     if (connectedPharmacy?.sessionToken) {
       // Déconnecter la session côté serveur
-      await supabase.rpc('disconnect_pharmacy_session', {
+      await supabase.rpc('disconnect_pharmacy_session' as any, {
         p_session_token: connectedPharmacy.sessionToken
       });
     }

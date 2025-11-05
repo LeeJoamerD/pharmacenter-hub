@@ -146,8 +146,14 @@ export const useSecuritySettings = () => {
       setSettings({
         passwordPolicy: passwordPolicy || defaultPasswordPolicy,
         securityConfig: securityConfig || defaultSecurityConfig,
-        securityLogs: auditLogs || [],
-        securityAlerts: alerts || []
+        securityLogs: (auditLogs || []).map(log => ({
+          ...log,
+          ip_address: String(log.ip_address || 'N/A')
+        })),
+        securityAlerts: (alerts || []).map(alert => ({
+          ...alert,
+          resolved: !!alert.resolved_at
+        }))
       });
 
     } catch (error) {

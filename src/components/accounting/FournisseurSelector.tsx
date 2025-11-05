@@ -37,10 +37,11 @@ export const FournisseurSelector: React.FC<FournisseurSelectorProps> = ({
         .from('fournisseurs')
         .select('id, nom, telephone_appel, email')
         .eq('statut', 'actif')
-        .order('nom');
+        .order('nom')
+        .limit(100);
       
       if (error) throw error;
-      return data as Array<{id: string; nom: string; telephone_appel: string | null; email: string | null}>;
+      return data || [];
     },
   });
 

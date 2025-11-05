@@ -158,7 +158,7 @@ const UserRegister = () => {
                 telephone: phone || "",
                 reference_agent: `AG-${Date.now()}`,
               };
-              const { data: created3, error: cpErr3 } = await supabase.rpc("create_personnel_for_user", {
+              const { data: created3, error: cpErr3 } = await supabase.rpc("create_personnel_for_user" as any, {
                 pharmacy_id: connectedPharmacy.id,
                 data: payload as any,
               });
@@ -208,7 +208,7 @@ const UserRegister = () => {
                 telephone: phone || "",
                 reference_agent: `AG-${Date.now()}`,
               };
-              const { data: created2, error: cpErr2 } = await supabase.rpc("create_personnel_for_user", {
+              const { data: created2, error: cpErr2 } = await supabase.rpc("create_personnel_for_user" as any, {
                 pharmacy_id: connectedPharmacy.id,
                 data: payload as any,
               });
@@ -240,7 +240,7 @@ const UserRegister = () => {
           telephone: phone || "",
           reference_agent: `AG-${Date.now()}`,
         };
-        const { data: created, error: cpErr } = await supabase.rpc("create_personnel_for_user", {
+        const { data: created, error: cpErr } = await supabase.rpc("create_personnel_for_user" as any, {
           pharmacy_id: connectedPharmacy.id,
           data: payload as any,
         });

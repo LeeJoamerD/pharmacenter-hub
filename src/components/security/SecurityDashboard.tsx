@@ -53,7 +53,8 @@ const SecurityDashboard = () => {
         .select('*')
         .eq('tenant_id', personnel.tenant_id)
         .eq('resolved', false)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       const { data: incidentsData } = await supabase
         .from('security_alerts')
@@ -61,7 +62,8 @@ const SecurityDashboard = () => {
         .eq('tenant_id', personnel.tenant_id)
         .in('severity', ['high', 'critical'])
         .eq('resolved', false)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(20);
 
       setAlerts(alertsData || []);
       setActiveIncidents(incidentsData || []);

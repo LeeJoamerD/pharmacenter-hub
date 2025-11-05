@@ -367,8 +367,8 @@ export class ReceptionValidationService {
       if (!lots || lots.length === 0) return 0;
 
       const avgDays = lots.reduce((sum, lot) => {
-        const expiry = new Date(lot.date_peremption!);
-        const reception = new Date(lot.date_reception!);
+        const expiry = new Date(lot.date_peremption);
+        const reception = new Date();
         const days = Math.ceil((expiry.getTime() - reception.getTime()) / (1000 * 3600 * 24));
         return sum + days;
       }, 0) / lots.length;
