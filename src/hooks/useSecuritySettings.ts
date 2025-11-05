@@ -109,7 +109,8 @@ export const useSecuritySettings = () => {
       if (auditError) throw auditError;
 
       // Charger les alertes de sécurité récentes (non résolues)
-      const { data: alerts, error: alertsError }: { data: any; error: any } = await supabase
+      // @ts-ignore - Complex Supabase type inference
+      const alertsResult: any = await supabase
         .from('security_alerts')
         .select('*')
         .eq('tenant_id', pharmacy.id)
@@ -117,7 +118,7 @@ export const useSecuritySettings = () => {
         .order('created_at', { ascending: false })
         .limit(20);
 
-      if (alertsError) throw alertsError;
+      if (alertsResult.error) throw alertsResult.error;
 
       // Valeurs par défaut si aucune configuration n'existe
       const defaultPasswordPolicy: PasswordPolicy = {
@@ -150,7 +151,7 @@ export const useSecuritySettings = () => {
           ...log,
           ip_address: String(log.ip_address || 'N/A')
         })),
-        securityAlerts: (alerts || []).map(alert => ({
+        securityAlerts: (alertsResult.data || []).map((alert: any) => ({
           ...alert,
           resolved: !!alert.resolved_at
         }))

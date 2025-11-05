@@ -38,15 +38,16 @@ export const FournisseurSelector: React.FC<FournisseurSelectorProps> = ({
   }>>({
     queryKey: ['fournisseurs'],
     queryFn: async () => {
-      const { data, error }: { data: any; error: any } = await supabase
+      // @ts-ignore - Complex Supabase type inference
+      const result: any = await supabase
         .from('fournisseurs')
         .select('id, nom, telephone_appel, email')
         .eq('statut', 'actif')
         .order('nom')
         .limit(100);
       
-      if (error) throw error;
-      return data || [];
+      if (result.error) throw result.error;
+      return result.data || [];
     },
   });
 

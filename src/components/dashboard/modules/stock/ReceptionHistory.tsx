@@ -65,7 +65,8 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
   const fetchReceptionLots = async (receptionId: string) => {
     setLoadingLots(true);
     try {
-      const { data, error }: { data: any; error: any } = await supabase
+      // @ts-ignore - Complex Supabase type inference
+      const result: any = await supabase
         .from('lots')
         .select(`
           *,
@@ -81,8 +82,8 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
         `)
         .eq('reception_id', receptionId);
 
-      if (error) throw error;
-      setReceptionLots(data || []);
+      if (result.error) throw result.error;
+      setReceptionLots(result.data || []);
     } catch (error) {
       console.error('Erreur lors du chargement des lots:', error);
     } finally {

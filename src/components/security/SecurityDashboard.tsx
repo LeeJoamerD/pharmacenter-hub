@@ -48,7 +48,8 @@ const SecurityDashboard = () => {
     if (!personnel) return;
 
     try {
-      const { data: alertsData }: { data: any } = await supabase
+      // @ts-ignore - Complex Supabase type inference
+      const alertsResult: any = await supabase
         .from('security_alerts')
         .select('*')
         .eq('tenant_id', personnel.tenant_id)
@@ -56,7 +57,8 @@ const SecurityDashboard = () => {
         .order('created_at', { ascending: false })
         .limit(50);
 
-      const { data: incidentsData } = await supabase
+      // @ts-ignore - Complex Supabase type inference
+      const incidentsResult: any = await supabase
         .from('security_alerts')
         .select('*')
         .eq('tenant_id', personnel.tenant_id)
@@ -65,8 +67,8 @@ const SecurityDashboard = () => {
         .order('created_at', { ascending: false })
         .limit(20);
 
-      setAlerts(alertsData || []);
-      setActiveIncidents(incidentsData || []);
+      setAlerts(alertsResult.data || []);
+      setActiveIncidents(incidentsResult.data || []);
     } catch (error) {
       console.error('Erreur chargement alertes:', error);
     } finally {
