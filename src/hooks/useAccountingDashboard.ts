@@ -170,7 +170,7 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
     queryKey: ['regional-params', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('parametres_rapports_regionaux')
+        .from('parametres_rapports_regionaux' as any)
         .select('*')
         .eq('tenant_id', tenantId)
         .maybeSingle();
@@ -191,19 +191,19 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
     enabled: !!tenantId
   });
 
-  // Exercice en cours
+  // Exercice en cours - utilise exercices_comptables
   const { data: currentExercice } = useQuery({
     queryKey: ['current-exercice', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('exercices')
+        .from('exercices_comptables')
         .select('*')
         .eq('tenant_id', tenantId)
         .eq('statut', 'En cours')
         .maybeSingle();
 
       if (error) throw error;
-      return data;
+      return data as any;
     },
     enabled: !!tenantId
   });
@@ -314,21 +314,21 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
     queryFn: async () => {
       // Écritures non validées
       const { count: nonValidees } = await supabase
-        .from('ecritures_comptables')
+        .from('ecritures_comptables' as any)
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
         .eq('statut_validation', 'Brouillon');
 
       // Écritures non lettrées (simplification: compter lignes sans lettrage)
       const { count: nonLettrees } = await supabase
-        .from('lignes_ecriture')
+        .from('lignes_ecriture' as any)
         .select('ecritures_comptables!inner(tenant_id)', { count: 'exact', head: true })
         .eq('ecritures_comptables.tenant_id', tenantId)
         .is('lettrage', null);
 
       // Rapprochements bancaires en attente (simplification)
       const { count: rapprochements } = await supabase
-        .from('ecritures_comptables')
+        .from('ecritures_comptables' as any)
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
         .eq('type_piece', 'BC')
@@ -348,7 +348,7 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
     queryKey: ['alertes-dashboard', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('alertes_tresorerie')
+        .from('alertes_tresorerie' as any)
         .select('*')
         .eq('tenant_id', tenantId)
         .eq('est_resolue', false)
@@ -356,7 +356,7 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
         .limit(5);
 
       if (error) throw error;
-      return data || [];
+      return data as any[] || [];
     },
     enabled: !!tenantId
   });
@@ -648,7 +648,7 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
         value: formatAmount(resultat),
         unit: symbole,
         change: resultatChange,
-        trend: (resultat >= 0 ? 'up' : 'down') as const,
+        trend: (resultat >= 0 ? 'up' : 'down'),
         icon: TrendingUp,
         color: resultat >= 0 ? 'text-green-600' : 'text-red-600'
       },
