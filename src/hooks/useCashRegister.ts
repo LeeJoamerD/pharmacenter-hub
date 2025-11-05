@@ -206,12 +206,12 @@ const useCashRegister = () => {
         statut: (newSession.statut === "Ouverte" || newSession.statut === "Fermée") 
           ? newSession.statut 
           : "Ouverte"
-      };
+      } as CashSession;
       setCurrentSession(validSession);
       toast.success('Session ouverte avec succès');
       
       await loadAllSessions();
-      return newSession;
+      return newSession as CashSession;
     } catch (err) {
       console.error('Erreur ouverture session:', err);
       const message = err instanceof Error ? err.message : 'Erreur lors de l\'ouverture de la session';

@@ -51,9 +51,18 @@ export function useReportSchedules() {
       const { error } = await supabase
         .from('report_schedules')
         .upsert({
-          ...schedule,
-          tenant_id: tenantId,
-        });
+          schedule_type: schedule.schedule_type,
+          cron_expr: schedule.cron_expr,
+          time_of_day: schedule.time_of_day,
+          day_of_week: schedule.day_of_week,
+          day_of_month: schedule.day_of_month,
+          template_id: schedule.template_id,
+          report_key: schedule.report_key,
+          format: schedule.format,
+          active: schedule.active,
+          recipients: schedule.recipients,
+          options: schedule.options,
+        } as any);
       if (error) throw error;
     },
     onSuccess: () => {

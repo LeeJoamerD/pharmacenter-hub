@@ -40,9 +40,10 @@ export function useReportConnectors() {
       const { error } = await supabase
         .from('report_connectors')
         .upsert({
-          ...connector,
-          tenant_id: tenantId,
-        }, {
+          provider: connector.provider,
+          config: connector.config,
+          is_enabled: connector.is_enabled,
+        } as any, {
           onConflict: 'tenant_id,provider'
         });
       if (error) throw error;

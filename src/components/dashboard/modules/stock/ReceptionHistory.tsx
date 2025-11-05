@@ -65,7 +65,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
   const fetchReceptionLots = async (receptionId: string) => {
     setLoadingLots(true);
     try {
-      const { data, error } = await supabase
+      const { data, error }: { data: any; error: any } = await supabase
         .from('lots')
         .select(`
           *,

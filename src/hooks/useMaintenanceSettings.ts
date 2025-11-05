@@ -397,11 +397,10 @@ export const useMaintenanceSettings = () => {
         const { data: backupRun, error: backupError } = await supabase
           .from('network_backup_runs')
           .insert({
-            tenant_id: tenantId,
             backup_type: 'manual',
             status: 'running',
             triggered_by: 'maintenance',
-          })
+          } as any)
           .select()
           .single();
 

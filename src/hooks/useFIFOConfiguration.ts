@@ -114,14 +114,14 @@ export const useFIFOConfiguration = () => {
         if (productConfig) return productConfig;
 
         // Sinon chercher une config par famille
-        const { data: product } = await supabase
+        const { data: product }: { data: any } = await supabase
           .from('produits')
           .select('famille_id')
           .eq('id', productId)
           .single();
 
         if (product?.famille_id) {
-          const { data: familyConfig } = await supabase
+          const { data: familyConfig }: { data: any } = await supabase
             .from('configurations_fifo')
             .select('*')
             .eq('tenant_id', tenantId!)

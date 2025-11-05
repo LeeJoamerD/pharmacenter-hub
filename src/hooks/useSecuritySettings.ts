@@ -109,7 +109,7 @@ export const useSecuritySettings = () => {
       if (auditError) throw auditError;
 
       // Charger les alertes de sécurité récentes (non résolues)
-      const { data: alerts, error: alertsError } = await supabase
+      const { data: alerts, error: alertsError }: { data: any; error: any } = await supabase
         .from('security_alerts')
         .select('*')
         .eq('tenant_id', pharmacy.id)

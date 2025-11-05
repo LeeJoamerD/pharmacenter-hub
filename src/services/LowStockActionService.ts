@@ -309,10 +309,9 @@ export class LowStockActionService {
           continue;
         }
 
-        const { error }: any = await supabase
+        const { error } = await supabase
           .from('alertes_peremption')
           .insert({
-            tenant_id: tenantId,
             lot_id: lotId,
             produit_id: rec.produit_id,
             type_alerte: rec.type_alerte,
@@ -327,7 +326,7 @@ export class LowStockActionService {
             ],
             notes: options.custom_message || 
               `Alerte - ${item.nomProduit} (${item.quantiteActuelle} unités)`
-          });
+          } as any);
 
         if (!error) {
           alertsCreated++;

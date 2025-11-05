@@ -30,10 +30,15 @@ export const FournisseurSelector: React.FC<FournisseurSelectorProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
 
-  const { data: fournisseurs = [], isLoading } = useQuery({
+  const { data: fournisseurs = [], isLoading } = useQuery<Array<{
+    id: string;
+    nom: string;
+    telephone_appel: string | null;
+    email: string | null;
+  }>>({
     queryKey: ['fournisseurs'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error }: { data: any; error: any } = await supabase
         .from('fournisseurs')
         .select('id, nom, telephone_appel, email')
         .eq('statut', 'actif')

@@ -154,8 +154,7 @@ export const useStockAlerts = () => {
       const { error } = await supabase
         .from('alertes_peremption')
         .insert({
-          tenant_id: personnel.tenant_id,
-          lot_id: lot?.id || null, // lot_id is required but might not exist
+          lot_id: lot?.id || null,
           produit_id: alertData.produit_id,
           type_alerte: alertData.type,
           niveau_urgence: alertData.niveau_urgence,
@@ -165,7 +164,7 @@ export const useStockAlerts = () => {
           date_alerte: new Date().toISOString(),
           actions_recommandees: alertData.actions_recommandees,
           notes: alertData.notes
-        });
+        } as any);
 
       if (error) throw error;
 

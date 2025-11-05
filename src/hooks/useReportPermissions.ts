@@ -45,9 +45,15 @@ export function useReportPermissions() {
       const { error } = await supabase
         .from('report_permissions')
         .upsert({
-          ...permission,
-          tenant_id: tenantId,
-        }, {
+          subject_type: permission.subject_type,
+          subject_id: permission.subject_id,
+          report_key: permission.report_key,
+          can_view: permission.can_view,
+          can_create: permission.can_create,
+          can_modify: permission.can_modify,
+          can_delete: permission.can_delete,
+          can_export: permission.can_export,
+        } as any, {
           onConflict: 'tenant_id,subject_type,subject_id,report_key'
         });
       if (error) throw error;

@@ -48,7 +48,7 @@ const SecurityDashboard = () => {
     if (!personnel) return;
 
     try {
-      const { data: alertsData } = await supabase
+      const { data: alertsData }: { data: any } = await supabase
         .from('security_alerts')
         .select('*')
         .eq('tenant_id', personnel.tenant_id)

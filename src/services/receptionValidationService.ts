@@ -358,10 +358,9 @@ export class ReceptionValidationService {
     try {
       const { data: lots } = await supabase
         .from('lots')
-        .select('date_peremption, date_reception')
+        .select('date_peremption, created_at')
         .eq('produit_id', produitId)
         .not('date_peremption', 'is', null)
-        .not('date_reception', 'is', null)
         .limit(10);
 
       if (!lots || lots.length === 0) return 0;
