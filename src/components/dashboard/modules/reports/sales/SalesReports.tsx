@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-// import { DatePicker } from '@/components/ui/calendar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   BarChart, 
   Bar, 
@@ -26,74 +26,103 @@ import {
   ShoppingCart, 
   Users, 
   Package,
-  Calendar,
   Download,
-  Filter,
   RefreshCw,
   BarChart3,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  AlertCircle
 } from 'lucide-react';
-// import { useSalesMetrics } from '@/hooks/useSalesMetrics';
 import { useToast } from '@/hooks/use-toast';
+import { useSalesReports } from '@/hooks/useSalesReports';
+import { useTenant } from '@/contexts/TenantContext';
+import { supabase } from '@/integrations/supabase/client';
+import { exportSalesReportToPDF } from '@/utils/salesReportExport';
+import type { SalesPeriod, SalesCategory } from '@/types/salesReports';
 
 const SalesReports = () => {
   const { toast } = useToast();
-  const [selectedPeriod, setSelectedPeriod] = useState('month');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  // const salesMetrics = useSalesMetrics();
+  const { tenantId } = useTenant();
+  const [selectedPeriod, setSelectedPeriod] = useState<SalesPeriod>('month');
+  const [selectedCategory, setSelectedCategory] = useState<SalesCategory>('all');
+  const [isExporting, setIsExporting] = useState(false);
 
-  // Données simulées pour les graphiques
-  const dailySalesData = [
-    { date: '01/02', ventes: 2850000, objectif: 3000000, transactions: 145 },
-    { date: '02/02', ventes: 3200000, objectif: 3000000, transactions: 167 },
-    { date: '03/02', ventes: 2950000, objectif: 3000000, transactions: 152 },
-    { date: '04/02', ventes: 3450000, objectif: 3000000, transactions: 189 },
-    { date: '05/02', ventes: 3100000, objectif: 3000000, transactions: 161 },
-    { date: '06/02', ventes: 3380000, objectif: 3000000, transactions: 175 },
-    { date: '07/02', ventes: 3650000, objectif: 3000000, transactions: 198 }
-  ];
-
-  const topProductsData = [
-    { produit: 'Doliprane 1000mg', ventes: 850000, quantite: 342, marge: 25.5 },
-    { produit: 'Efferalgan 500mg', ventes: 720000, quantite: 288, marge: 22.3 },
-    { produit: 'Spasfon Lyoc', ventes: 680000, quantite: 156, marge: 35.8 },
-    { produit: 'Smecta Sachet', ventes: 540000, quantite: 234, marge: 28.2 },
-    { produit: 'Dafalgan 500mg', ventes: 460000, quantite: 198, marge: 24.1 }
-  ];
-
-  const categoryData = [
-    { name: 'Médicaments', value: 12500000, color: '#0088FE', percentage: 65.8 },
-    { name: 'Parapharmacie', value: 4200000, color: '#00C49F', percentage: 22.1 },
-    { name: 'Matériel Médical', value: 1800000, color: '#FFBB28', percentage: 9.5 },
-    { name: 'Autres', value: 500000, color: '#FF8042', percentage: 2.6 }
-  ];
-
-  const staffPerformanceData = [
-    { nom: 'Marie KOUADIO', ventes: 2850000, transactions: 145, moyenne: 19655, performance: 112 },
-    { nom: 'Jean OUATTARA', ventes: 2640000, transactions: 132, moyenne: 20000, performance: 105 },
-    { nom: 'Fatou TRAORE', ventes: 2420000, transactions: 128, moyenne: 18906, performance: 98 },
-    { nom: 'Paul KONE', ventes: 2180000, transactions: 118, moyenne: 18475, performance: 87 }
-  ];
+  // Récupération des données de ventes en temps réel
+  const { data, isLoading, error, refetch } = useSalesReports(selectedPeriod, selectedCategory);
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
+    try {
+      await refetch();
       toast({
         title: "Données actualisées",
         description: "Les rapports de ventes ont été mis à jour",
       });
-    }, 2000);
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'actualiser les données",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleExport = (format: string) => {
-    toast({
-      title: `Export ${format}`,
-      description: "Le rapport est en cours de génération...",
-    });
+  const handleExport = async (format: string) => {
+    if (format !== 'PDF') return;
+    
+    setIsExporting(true);
+    try {
+      // Récupération des infos du tenant pour l'en-tête PDF
+      const { data: tenantInfo, error: tenantError } = await supabase
+        .from('pharmacies')
+        .select('name, logo')
+        .eq('id', tenantId)
+        .single();
+
+      if (tenantError) throw tenantError;
+
+      await exportSalesReportToPDF(
+        data,
+        selectedPeriod,
+        selectedCategory,
+        { nom_entreprise: tenantInfo?.name || 'Pharmacie' }
+      );
+
+      toast({
+        title: "Export réussi",
+        description: "Le rapport PDF a été téléchargé avec succès",
+      });
+    } catch (error) {
+      console.error('Erreur export PDF:', error);
+      toast({
+        title: "Erreur d'export",
+        description: "Impossible de générer le PDF",
+        variant: "destructive"
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
+
+  // Affichage de l'erreur si présente
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="flex items-center justify-center p-12">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Erreur de chargement</h3>
+              <p className="text-muted-foreground mb-4">
+                Impossible de charger les rapports de ventes
+              </p>
+              <Button onClick={() => refetch()} variant="outline">
+                Réessayer
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -105,7 +134,7 @@ const SalesReports = () => {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as SalesCategory)}>
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
@@ -116,7 +145,7 @@ const SalesReports = () => {
               <SelectItem value="medical">Matériel médical</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+          <Select value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as SalesPeriod)}>
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
@@ -129,18 +158,22 @@ const SalesReports = () => {
           </Select>
           <Button 
             onClick={handleRefresh}
-            disabled={isRefreshing}
+            disabled={isLoading}
             variant="outline"
           >
-            {isRefreshing ? (
+            {isLoading ? (
               <RefreshCw className="h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
           </Button>
-          <Button onClick={() => handleExport('PDF')} variant="outline">
+          <Button 
+            onClick={() => handleExport('PDF')} 
+            disabled={isExporting || isLoading}
+            variant="outline"
+          >
             <Download className="h-4 w-4 mr-2" />
-            Export PDF
+            {isExporting ? 'Export en cours...' : 'Export PDF'}
           </Button>
         </div>
       </div>
@@ -153,11 +186,23 @@ const SalesReports = () => {
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3 650 000 <span className="text-sm font-normal text-muted-foreground">FCFA</span></div>
-            <p className="text-xs text-muted-foreground">
-              <TrendingUp className="h-3 w-3 text-green-500 inline mr-1" />
-              +21.7% vs hier
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-32" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {data.kpis.caAujourdhui.toLocaleString('fr-FR')} <span className="text-sm font-normal text-muted-foreground">FCFA</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {data.kpis.caVariation >= 0 ? (
+                    <TrendingUp className="h-3 w-3 text-green-500 inline mr-1" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 text-red-500 inline mr-1" />
+                  )}
+                  {data.kpis.caVariation >= 0 ? '+' : ''}{data.kpis.caVariation.toFixed(1)}% vs période précédente
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -167,11 +212,21 @@ const SalesReports = () => {
             <ShoppingCart className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">198</div>
-            <p className="text-xs text-muted-foreground">
-              <TrendingUp className="h-3 w-3 text-green-500 inline mr-1" />
-              +13.2% vs hier
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{data.kpis.transactions}</div>
+                <p className="text-xs text-muted-foreground">
+                  {data.kpis.transactionsVariation >= 0 ? (
+                    <TrendingUp className="h-3 w-3 text-green-500 inline mr-1" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 text-red-500 inline mr-1" />
+                  )}
+                  {data.kpis.transactionsVariation >= 0 ? '+' : ''}{data.kpis.transactionsVariation.toFixed(1)}% vs période précédente
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -181,11 +236,23 @@ const SalesReports = () => {
             <Package className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">18 434 <span className="text-sm font-normal text-muted-foreground">FCFA</span></div>
-            <p className="text-xs text-muted-foreground">
-              <TrendingUp className="h-3 w-3 text-green-500 inline mr-1" />
-              +7.5% vs hier
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-32" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {Math.floor(data.kpis.panierMoyen).toLocaleString('fr-FR')} <span className="text-sm font-normal text-muted-foreground">FCFA</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {data.kpis.panierMoyenVariation >= 0 ? (
+                    <TrendingUp className="h-3 w-3 text-green-500 inline mr-1" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 text-red-500 inline mr-1" />
+                  )}
+                  {data.kpis.panierMoyenVariation >= 0 ? '+' : ''}{data.kpis.panierMoyenVariation.toFixed(1)}% vs période précédente
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -195,11 +262,21 @@ const SalesReports = () => {
             <Users className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">156</div>
-            <p className="text-xs text-muted-foreground">
-              <TrendingUp className="h-3 w-3 text-green-500 inline mr-1" />
-              +9.8% vs hier
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{data.kpis.clientsUniques}</div>
+                <p className="text-xs text-muted-foreground">
+                  {data.kpis.clientsUniquesVariation >= 0 ? (
+                    <TrendingUp className="h-3 w-3 text-green-500 inline mr-1" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 text-red-500 inline mr-1" />
+                  )}
+                  {data.kpis.clientsUniquesVariation >= 0 ? '+' : ''}{data.kpis.clientsUniquesVariation.toFixed(1)}% vs période précédente
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -224,21 +301,31 @@ const SalesReports = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={dailySalesData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip 
-                    formatter={(value, name) => [
-                      `${value.toLocaleString()} FCFA`, 
-                      name === 'ventes' ? 'Ventes' : 'Objectif'
-                    ]}
-                  />
-                  <Bar dataKey="ventes" fill="#10b981" name="ventes" />
-                  <Bar dataKey="objectif" fill="#f59e0b" name="objectif" />
-                </BarChart>
-              </ResponsiveContainer>
+              {isLoading ? (
+                <div className="flex items-center justify-center h-[400px]">
+                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : data.evolutionData.length === 0 ? (
+                <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+                  Aucune donnée disponible pour cette période
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={data.evolutionData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value, name) => [
+                        `${Number(value).toLocaleString()} FCFA`, 
+                        name === 'ventes' ? 'Ventes' : 'Objectif'
+                      ]}
+                    />
+                    <Bar dataKey="ventes" fill="#10b981" name="ventes" />
+                    <Bar dataKey="objectif" fill="#f59e0b" name="objectif" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
 
@@ -248,21 +335,31 @@ const SalesReports = () => {
               <CardDescription>Volume des transactions sur la période</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={dailySalesData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => [`${value} transactions`, 'Transactions']} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="transactions" 
-                    stroke="#3b82f6" 
-                    strokeWidth={3}
-                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {isLoading ? (
+                <div className="flex items-center justify-center h-[250px]">
+                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : data.evolutionData.length === 0 ? (
+                <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                  Aucune donnée disponible
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={data.evolutionData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`${value} transactions`, 'Transactions']} />
+                    <Line 
+                      type="monotone" 
+                      dataKey="transactions" 
+                      stroke="#3b82f6" 
+                      strokeWidth={3}
+                      dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -279,27 +376,39 @@ const SalesReports = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {topProductsData.map((product, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-8 h-8 bg-primary/10 rounded-full">
-                        <span className="text-sm font-bold text-primary">{index + 1}</span>
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Skeleton key={i} className="h-20 w-full" />
+                  ))}
+                </div>
+              ) : data.topProducts.length === 0 ? (
+                <div className="flex items-center justify-center h-40 text-muted-foreground">
+                  Aucun produit vendu pour cette période
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {data.topProducts.map((product, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-center w-8 h-8 bg-primary/10 rounded-full">
+                          <span className="text-sm font-bold text-primary">{index + 1}</span>
+                        </div>
+                        <div>
+                          <p className="font-medium">{product.produit}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {product.quantite} unités vendues
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{product.produit}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {product.quantite} unités vendues
-                        </p>
+                      <div className="text-right">
+                        <p className="font-bold">{product.ventes.toLocaleString('fr-FR')} FCFA</p>
+                        <p className="text-sm text-green-600">Marge: {product.marge.toFixed(1)}%</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold">{product.ventes.toLocaleString()} FCFA</p>
-                      <p className="text-sm text-green-600">Marge: {product.marge}%</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -316,35 +425,47 @@ const SalesReports = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {staffPerformanceData.map((staff, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center">
-                        <span className="text-white font-semibold text-sm">
-                          {staff.nom.split(' ')[0][0]}{staff.nom.split(' ')[1][0]}
-                        </span>
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-20 w-full" />
+                  ))}
+                </div>
+              ) : data.staffPerformance.length === 0 ? (
+                <div className="flex items-center justify-center h-40 text-muted-foreground">
+                  Aucune donnée de performance disponible
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {data.staffPerformance.map((staff, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center">
+                          <span className="text-white font-semibold text-sm">
+                            {staff.nom.split(' ')[0]?.[0]}{staff.nom.split(' ')[1]?.[0]}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium">{staff.nom}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {staff.transactions} transactions • Moy: {Math.floor(staff.moyenne).toLocaleString('fr-FR')} FCFA
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{staff.nom}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {staff.transactions} transactions • Moy: {staff.moyenne.toLocaleString()} FCFA
-                        </p>
+                      <div className="text-right flex items-center gap-4">
+                        <div>
+                          <p className="font-bold">{staff.ventes.toLocaleString('fr-FR')} FCFA</p>
+                          <Badge 
+                            variant={staff.performance >= 100 ? "default" : staff.performance >= 90 ? "secondary" : "destructive"}
+                          >
+                            {staff.performance.toFixed(0)}% objectif
+                          </Badge>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right flex items-center gap-4">
-                      <div>
-                        <p className="font-bold">{staff.ventes.toLocaleString()} FCFA</p>
-                        <Badge 
-                          variant={staff.performance >= 100 ? "default" : staff.performance >= 90 ? "secondary" : "destructive"}
-                        >
-                          {staff.performance}% objectif
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -362,25 +483,35 @@ const SalesReports = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={categoryData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={120}
-                      dataKey="value"
-                    >
-                      {categoryData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value) => [`${value.toLocaleString()} FCFA`, '']}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-[300px]">
+                    <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : data.categoryData.length === 0 ? (
+                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                    Aucune catégorie disponible
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={data.categoryData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={120}
+                        dataKey="value"
+                      >
+                        {data.categoryData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value) => [`${Number(value).toLocaleString('fr-FR')} FCFA`, '']}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
 
@@ -392,23 +523,35 @@ const SalesReports = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {categoryData.map((category, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div 
-                          className="w-4 h-4 rounded-full" 
-                          style={{ backgroundColor: category.color }}
-                        />
-                        <span className="font-medium">{category.name}</span>
+                {isLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4].map((i) => (
+                      <Skeleton key={i} className="h-12 w-full" />
+                    ))}
+                  </div>
+                ) : data.categoryData.length === 0 ? (
+                  <div className="flex items-center justify-center h-40 text-muted-foreground">
+                    Aucune catégorie disponible
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {data.categoryData.map((category, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div 
+                            className="w-4 h-4 rounded-full" 
+                            style={{ backgroundColor: category.color }}
+                          />
+                          <span className="font-medium">{category.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">{category.value.toLocaleString('fr-FR')} FCFA</p>
+                          <p className="text-sm text-muted-foreground">{category.percentage.toFixed(1)}%</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold">{category.value.toLocaleString()} FCFA</p>
-                        <p className="text-sm text-muted-foreground">{category.percentage}%</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
