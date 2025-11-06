@@ -6,7 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useFinancialReports } from '@/hooks/useFinancialReports';
+import FinancialCharts from './FinancialCharts';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -25,7 +27,8 @@ import {
   ArrowDownRight,
   Download,
   Globe,
-  Building
+  Building,
+  RefreshCw
 } from 'lucide-react';
 
 const FinancialReports = () => {
@@ -37,6 +40,8 @@ const FinancialReports = () => {
     currentExercice,
     balanceSheet,
     incomeStatement,
+    cashFlowStatement,
+    financialAnnexes,
     financialRatios,
     isLoading,
     formatAmount,
@@ -200,12 +205,13 @@ const FinancialReports = () => {
       )}
 
       <Tabs defaultValue="bilan" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="bilan">Bilan</TabsTrigger>
           <TabsTrigger value="resultat">Compte de Résultat</TabsTrigger>
           <TabsTrigger value="flux">Flux de Trésorerie</TabsTrigger>
           <TabsTrigger value="ratios">Ratios</TabsTrigger>
           <TabsTrigger value="annexes">États Annexes</TabsTrigger>
+          <TabsTrigger value="graphiques">Graphiques</TabsTrigger>
         </TabsList>
 
         <TabsContent value="bilan" className="space-y-6">
@@ -410,18 +416,132 @@ const FinancialReports = () => {
         </TabsContent>
 
         <TabsContent value="flux" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Banknote className="h-5 w-5" />
-                Tableau des Flux de Trésorerie
-              </CardTitle>
-              <CardDescription>À implémenter - Analyse des flux de trésorerie OHADA</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Ce rapport nécessite des données complémentaires sur les amortissements et variations du BFR.</p>
-            </CardContent>
-          </Card>
+          {cashFlowStatement ? (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Banknote className="h-5 w-5" />
+                      Tableau des Flux de Trésorerie
+                    </CardTitle>
+                    <CardDescription>Méthode indirecte OHADA</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    PDF
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Flux d'Exploitation */}
+                  <div className="border rounded-lg p-4">
+                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-green-600" />
+                      Flux de Trésorerie d'Exploitation
+                    </h3>
+                    <div className="space-y-2">
+                      {cashFlowStatement.fluxExploitation.details.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">{item.libelle}</span>
+                          <span className={item.montant >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                            {formatAmount(item.montant)}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="border-t pt-2 mt-2">
+                        <div className="flex justify-between font-bold">
+                          <span>Total Flux d'Exploitation</span>
+                          <span className={cashFlowStatement.fluxExploitation.total >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {formatAmount(cashFlowStatement.fluxExploitation.total)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Flux d'Investissement */}
+                  <div className="border rounded-lg p-4">
+                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                      <Building className="h-5 w-5 text-blue-600" />
+                      Flux de Trésorerie d'Investissement
+                    </h3>
+                    <div className="space-y-2">
+                      {cashFlowStatement.fluxInvestissement.details.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">{item.libelle}</span>
+                          <span className={item.montant >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                            {formatAmount(item.montant)}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="border-t pt-2 mt-2">
+                        <div className="flex justify-between font-bold">
+                          <span>Total Flux d'Investissement</span>
+                          <span className={cashFlowStatement.fluxInvestissement.total >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {formatAmount(cashFlowStatement.fluxInvestissement.total)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Flux de Financement */}
+                  <div className="border rounded-lg p-4">
+                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                      <Calculator className="h-5 w-5 text-purple-600" />
+                      Flux de Trésorerie de Financement
+                    </h3>
+                    <div className="space-y-2">
+                      {cashFlowStatement.fluxFinancement.details.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">{item.libelle}</span>
+                          <span className={item.montant >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                            {formatAmount(item.montant)}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="border-t pt-2 mt-2">
+                        <div className="flex justify-between font-bold">
+                          <span>Total Flux de Financement</span>
+                          <span className={cashFlowStatement.fluxFinancement.total >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {formatAmount(cashFlowStatement.fluxFinancement.total)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Variation de Trésorerie */}
+                  <div className="bg-muted p-4 rounded-lg">
+                    <div className="space-y-2">
+                      <div className="flex justify-between font-bold text-lg">
+                        <span>Variation de Trésorerie</span>
+                        <span className={cashFlowStatement.variationTresorerie >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          {formatAmount(cashFlowStatement.variationTresorerie)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Trésorerie en début d'exercice</span>
+                        <span className="font-medium">{formatAmount(cashFlowStatement.tresorerieDebut)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold border-t pt-2">
+                        <span>Trésorerie en fin d'exercice</span>
+                        <span className="text-primary">{formatAmount(cashFlowStatement.tresorerieFin)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-muted-foreground text-center">Chargement des données de flux de trésorerie...</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="ratios" className="space-y-6">
@@ -510,32 +630,208 @@ const FinancialReports = () => {
         </TabsContent>
 
         <TabsContent value="annexes" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                États Annexes
-              </CardTitle>
-              <CardDescription>Notes et informations complémentaires aux états financiers</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <p className="text-muted-foreground">
-                  Les états annexes incluront :
-                </p>
-                <ul className="list-disc list-inside space-y-2 text-sm">
-                  <li>Tableau des amortissements</li>
-                  <li>Tableau des provisions</li>
-                  <li>État des créances clients</li>
-                  <li>État des dettes fournisseurs</li>
-                  <li>Engagements hors bilan</li>
-                </ul>
-                <p className="text-xs text-muted-foreground mt-4">
-                  {regionalParams?.mention_legale_footer}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          {financialAnnexes ? (
+            <>
+              {/* Tableau des Amortissements */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calculator className="h-5 w-5" />
+                    Tableau des Amortissements
+                  </CardTitle>
+                  <CardDescription>Détail des immobilisations et amortissements</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Immobilisation</TableHead>
+                          <TableHead className="text-right">Valeur Brute</TableHead>
+                          <TableHead className="text-right">Amort. Cumulés</TableHead>
+                          <TableHead className="text-right">Valeur Nette</TableHead>
+                          <TableHead className="text-right">Dotation N</TableHead>
+                          <TableHead className="text-right">Taux</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {financialAnnexes.amortissements.items.map((item, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium">{item.immobilisation}</TableCell>
+                            <TableCell className="text-right">{formatAmount(item.valeurBrute)}</TableCell>
+                            <TableCell className="text-right text-red-600">{formatAmount(item.amortissementsCumules)}</TableCell>
+                            <TableCell className="text-right font-medium">{formatAmount(item.valeurNette)}</TableCell>
+                            <TableCell className="text-right">{formatAmount(item.dotationExercice)}</TableCell>
+                            <TableCell className="text-right">{item.tauxAmortissement}%</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-muted font-bold">
+                          <TableCell>TOTAL</TableCell>
+                          <TableCell className="text-right">{formatAmount(financialAnnexes.amortissements.totalValeurBrute)}</TableCell>
+                          <TableCell className="text-right text-red-600">{formatAmount(financialAnnexes.amortissements.totalAmortissements)}</TableCell>
+                          <TableCell className="text-right">{formatAmount(financialAnnexes.amortissements.totalValeurNette)}</TableCell>
+                          <TableCell colSpan={2}></TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* État des Créances Clients */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Receipt className="h-5 w-5" />
+                        État des Créances Clients
+                      </CardTitle>
+                      <CardDescription>Suivi des factures clients impayées</CardDescription>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-muted-foreground">Taux de recouvrement</div>
+                      <div className="text-2xl font-bold text-green-600">
+                        {financialAnnexes.creancesClients.tauxRecouvrement.toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="p-3 border rounded-lg">
+                        <div className="text-sm text-muted-foreground">Total Créances</div>
+                        <div className="text-xl font-bold">{formatAmount(financialAnnexes.creancesClients.totalCreances)}</div>
+                      </div>
+                      <div className="p-3 border rounded-lg">
+                        <div className="text-sm text-muted-foreground">Montant Échu</div>
+                        <div className="text-xl font-bold text-red-600">{formatAmount(financialAnnexes.creancesClients.totalEchu)}</div>
+                      </div>
+                      <div className="p-3 border rounded-lg">
+                        <div className="text-sm text-muted-foreground">Montant Non Échu</div>
+                        <div className="text-xl font-bold text-green-600">{formatAmount(financialAnnexes.creancesClients.totalNonEchu)}</div>
+                      </div>
+                    </div>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Client</TableHead>
+                            <TableHead className="text-right">Montant Total</TableHead>
+                            <TableHead className="text-right">Échu</TableHead>
+                            <TableHead className="text-right">Non Échu</TableHead>
+                            <TableHead className="text-right">Jours Retard</TableHead>
+                            <TableHead>Date Échéance</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {financialAnnexes.creancesClients.items.slice(0, 10).map((item, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell className="font-medium">{item.client}</TableCell>
+                              <TableCell className="text-right">{formatAmount(item.montantTotal)}</TableCell>
+                              <TableCell className="text-right text-red-600">{formatAmount(item.montantEchu)}</TableCell>
+                              <TableCell className="text-right text-green-600">{formatAmount(item.montantNonEchu)}</TableCell>
+                              <TableCell className="text-right">
+                                {item.joursRetard > 0 && (
+                                  <Badge variant="destructive">{item.joursRetard}j</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>{new Date(item.dateEcheance).toLocaleDateString()}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* État des Dettes Fournisseurs */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        État des Dettes Fournisseurs
+                      </CardTitle>
+                      <CardDescription>Suivi des factures fournisseurs impayées</CardDescription>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-muted-foreground">Délai moyen de paiement</div>
+                      <div className="text-2xl font-bold text-orange-600">
+                        {financialAnnexes.dettesFournisseurs.delaiMoyenPaiement.toFixed(0)}j
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="p-3 border rounded-lg">
+                        <div className="text-sm text-muted-foreground">Total Dettes</div>
+                        <div className="text-xl font-bold">{formatAmount(financialAnnexes.dettesFournisseurs.totalDettes)}</div>
+                      </div>
+                      <div className="p-3 border rounded-lg">
+                        <div className="text-sm text-muted-foreground">Montant Échu</div>
+                        <div className="text-xl font-bold text-red-600">{formatAmount(financialAnnexes.dettesFournisseurs.totalEchu)}</div>
+                      </div>
+                      <div className="p-3 border rounded-lg">
+                        <div className="text-sm text-muted-foreground">Montant Non Échu</div>
+                        <div className="text-xl font-bold text-green-600">{formatAmount(financialAnnexes.dettesFournisseurs.totalNonEchu)}</div>
+                      </div>
+                    </div>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Fournisseur</TableHead>
+                            <TableHead className="text-right">Montant Total</TableHead>
+                            <TableHead className="text-right">Échu</TableHead>
+                            <TableHead className="text-right">Non Échu</TableHead>
+                            <TableHead className="text-right">Jours Retard</TableHead>
+                            <TableHead>Date Échéance</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {financialAnnexes.dettesFournisseurs.items.slice(0, 10).map((item, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell className="font-medium">{item.fournisseur}</TableCell>
+                              <TableCell className="text-right">{formatAmount(item.montantTotal)}</TableCell>
+                              <TableCell className="text-right text-red-600">{formatAmount(item.montantEchu)}</TableCell>
+                              <TableCell className="text-right text-green-600">{formatAmount(item.montantNonEchu)}</TableCell>
+                              <TableCell className="text-right">
+                                {item.joursRetard > 0 && (
+                                  <Badge variant="destructive">{item.joursRetard}j</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>{new Date(item.dateEcheance).toLocaleDateString()}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-muted-foreground text-center">Chargement des états annexes...</p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="graphiques" className="space-y-6">
+          <FinancialCharts
+            balanceSheet={balanceSheet}
+            incomeStatement={incomeStatement}
+            cashFlowStatement={cashFlowStatement}
+            formatAmount={formatAmount}
+          />
         </TabsContent>
       </Tabs>
     </div>

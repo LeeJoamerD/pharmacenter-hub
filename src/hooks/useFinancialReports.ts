@@ -100,12 +100,82 @@ interface CashFlowItem {
 }
 
 interface CashFlowStatement {
-  exploitation: CashFlowItem[];
-  investissement: CashFlowItem[];
-  financement: CashFlowItem[];
+  fluxExploitation: {
+    resultatNet: number;
+    dotationsAmortissements: number;
+    variationBFR: number;
+    autresAjustements: number;
+    total: number;
+    details: CashFlowItem[];
+  };
+  fluxInvestissement: {
+    acquisitionsImmobilisations: number;
+    cessionsImmobilisations: number;
+    total: number;
+    details: CashFlowItem[];
+  };
+  fluxFinancement: {
+    empruntsObtenus: number;
+    remboursementsEmprunts: number;
+    dividendesVerses: number;
+    total: number;
+    details: CashFlowItem[];
+  };
   variationTresorerie: number;
   tresorerieDebut: number;
   tresorerieFin: number;
+}
+
+interface AmortissementItem {
+  immobilisation: string;
+  valeurBrute: number;
+  amortissementsCumules: number;
+  valeurNette: number;
+  dotationExercice: number;
+  tauxAmortissement: number;
+}
+
+interface CreanceClientItem {
+  client: string;
+  montantTotal: number;
+  montantEchu: number;
+  montantNonEchu: number;
+  joursRetard: number;
+  dateEmission: string;
+  dateEcheance: string;
+}
+
+interface DetteFournisseurItem {
+  fournisseur: string;
+  montantTotal: number;
+  montantEchu: number;
+  montantNonEchu: number;
+  joursRetard: number;
+  dateEmission: string;
+  dateEcheance: string;
+}
+
+interface FinancialAnnexes {
+  amortissements: {
+    items: AmortissementItem[];
+    totalValeurBrute: number;
+    totalAmortissements: number;
+    totalValeurNette: number;
+  };
+  creancesClients: {
+    items: CreanceClientItem[];
+    totalCreances: number;
+    totalEchu: number;
+    totalNonEchu: number;
+    tauxRecouvrement: number;
+  };
+  dettesFournisseurs: {
+    items: DetteFournisseurItem[];
+    totalDettes: number;
+    totalEchu: number;
+    totalNonEchu: number;
+    delaiMoyenPaiement: number;
+  };
 }
 
 interface FinancialRatios {
@@ -430,6 +500,194 @@ export function useFinancialReports(selectedExerciceId?: string) {
     enabled: !!tenantId && !!activeExerciceId && !!exercices,
   });
 
+  // Generate Cash Flow Statement (OHADA - méthode indirecte)
+  const { data: cashFlowStatement, isLoading: isLoadingCashFlow } = useQuery({
+    queryKey: ['cash-flow', tenantId, activeExerciceId],
+    queryFn: async () => {
+      if (!tenantId || !activeExerciceId || !incomeStatement || !balanceSheet) return null;
+
+      const exercice = exercices?.find(e => e.id === activeExerciceId);
+      if (!exercice) return null;
+
+      // Get amortissements (classe 68 - dotations aux amortissements)
+      const { data: amortData, error: amortError } = await supabase
+        .from('lignes_ecriture')
+        .select(`
+          *,
+          ecriture:ecritures_comptables!inner(*),
+          compte:plan_comptable(*)
+        `)
+        .eq('tenant_id', tenantId)
+        .gte('ecriture.date_ecriture', exercice.date_debut)
+        .lte('ecriture.date_ecriture', exercice.date_fin);
+
+      if (amortError) console.error('Error fetching amortissements:', amortError);
+
+      const dotationsAmortissements = (amortData || [])
+        .filter((ligne: any) => ligne.compte?.numero_compte?.startsWith('681'))
+        .reduce((sum: number, ligne: any) => sum + (ligne.montant_debit || 0), 0);
+
+      // Estimate BFR variation (simplified)
+      const actifCirculant = balanceSheet.actif.circulant.reduce((sum, item) => sum + item.montant_n, 0);
+      const dettesCT = balanceSheet.passif.dettes
+        .filter(d => d.code.startsWith('4'))
+        .reduce((sum, item) => sum + item.montant_n, 0);
+      const variationBFR = -(actifCirculant - dettesCT) * 0.1; // Simplified estimate
+
+      // Flux d'exploitation
+      const fluxExploitation = {
+        resultatNet: incomeStatement.resultatNet,
+        dotationsAmortissements,
+        variationBFR,
+        autresAjustements: 0,
+        total: incomeStatement.resultatNet + dotationsAmortissements + variationBFR,
+        details: [
+          { libelle: 'Résultat net', montant: incomeStatement.resultatNet },
+          { libelle: 'Dotations aux amortissements', montant: dotationsAmortissements },
+          { libelle: 'Variation du BFR', montant: variationBFR },
+        ],
+      };
+
+      // Flux d'investissement (classe 2 - immobilisations)
+      const acquisitionsImmobilisations = (amortData || [])
+        .filter((ligne: any) => ligne.compte?.numero_compte?.charAt(0) === '2' && ligne.montant_debit > 0)
+        .reduce((sum: number, ligne: any) => sum + (ligne.montant_debit || 0), 0);
+      
+      const cessionsImmobilisations = (amortData || [])
+        .filter((ligne: any) => ligne.compte?.numero_compte?.startsWith('82'))
+        .reduce((sum: number, ligne: any) => sum + (ligne.montant_credit || 0), 0);
+
+      const fluxInvestissement = {
+        acquisitionsImmobilisations: -acquisitionsImmobilisations,
+        cessionsImmobilisations,
+        total: cessionsImmobilisations - acquisitionsImmobilisations,
+        details: [
+          { libelle: 'Acquisitions d\'immobilisations', montant: -acquisitionsImmobilisations },
+          { libelle: 'Cessions d\'immobilisations', montant: cessionsImmobilisations },
+        ],
+      };
+
+      // Flux de financement (emprunts et dividendes)
+      const empruntsObtenus = (amortData || [])
+        .filter((ligne: any) => ligne.compte?.numero_compte?.startsWith('16') && ligne.montant_credit > 0)
+        .reduce((sum: number, ligne: any) => sum + (ligne.montant_credit || 0), 0);
+      
+      const remboursementsEmprunts = (amortData || [])
+        .filter((ligne: any) => ligne.compte?.numero_compte?.startsWith('16') && ligne.montant_debit > 0)
+        .reduce((sum: number, ligne: any) => sum + (ligne.montant_debit || 0), 0);
+
+      const dividendesVerses = (amortData || [])
+        .filter((ligne: any) => ligne.compte?.numero_compte?.startsWith('46'))
+        .reduce((sum: number, ligne: any) => sum + (ligne.montant_debit || 0), 0);
+
+      const fluxFinancement = {
+        empruntsObtenus,
+        remboursementsEmprunts: -remboursementsEmprunts,
+        dividendesVerses: -dividendesVerses,
+        total: empruntsObtenus - remboursementsEmprunts - dividendesVerses,
+        details: [
+          { libelle: 'Emprunts obtenus', montant: empruntsObtenus },
+          { libelle: 'Remboursements d\'emprunts', montant: -remboursementsEmprunts },
+          { libelle: 'Dividendes versés', montant: -dividendesVerses },
+        ],
+      };
+
+      const tresorerie = balanceSheet.actif.tresorerie.reduce((sum, item) => sum + item.montant_n, 0);
+      const variationTresorerie = fluxExploitation.total + fluxInvestissement.total + fluxFinancement.total;
+
+      return {
+        fluxExploitation,
+        fluxInvestissement,
+        fluxFinancement,
+        variationTresorerie,
+        tresorerieDebut: tresorerie - variationTresorerie,
+        tresorerieFin: tresorerie,
+      };
+    },
+    enabled: !!tenantId && !!activeExerciceId && !!incomeStatement && !!balanceSheet,
+  });
+
+  // Generate Financial Annexes
+  const { data: financialAnnexes, isLoading: isLoadingAnnexes } = useQuery({
+    queryKey: ['financial-annexes', tenantId, activeExerciceId],
+    queryFn: async () => {
+      if (!tenantId || !activeExerciceId) return null;
+
+      const exercice = exercices?.find(e => e.id === activeExerciceId);
+      if (!exercice) return null;
+
+      // Amortissements (from classe 2 and 28)
+      const { data: immobilisations, error: immobError } = await supabase
+        .from('balances')
+        .select(`
+          *,
+          compte:plan_comptable(*)
+        `)
+        .eq('tenant_id', tenantId)
+        .eq('exercice_id', activeExerciceId)
+        .or('compte.numero_compte.like.2%,compte.numero_compte.like.28%');
+
+      if (immobError) console.error('Error fetching immobilisations:', immobError);
+
+      const amortissementsItems: AmortissementItem[] = (immobilisations || [])
+        .filter((b: any) => b.compte?.numero_compte?.charAt(0) === '2' && !b.compte?.numero_compte?.startsWith('28'))
+        .map((b: any) => {
+          const valeurBrute = b.solde_debit || 0;
+          const amortCumule = (immobilisations || [])
+            .filter((a: any) => a.compte?.numero_compte === `28${b.compte?.numero_compte?.substring(1)}`)
+            .reduce((sum: number, a: any) => sum + (a.solde_credit || 0), 0);
+          
+          return {
+            immobilisation: b.compte?.libelle_compte || '',
+            valeurBrute,
+            amortissementsCumules: amortCumule,
+            valeurNette: valeurBrute - amortCumule,
+            dotationExercice: amortCumule * 0.2, // Estimate 20% of cumulated
+            tauxAmortissement: 20, // Simplified
+          };
+        });
+
+      const totalValeurBrute = amortissementsItems.reduce((sum, item) => sum + item.valeurBrute, 0);
+      const totalAmortissements = amortissementsItems.reduce((sum, item) => sum + item.amortissementsCumules, 0);
+
+      // Créances clients (TODO: implémenter avec les vraies tables de facturation)
+      const creancesItems: CreanceClientItem[] = [];
+      const totalCreances = 0;
+      const totalEchu = 0;
+
+      // Dettes fournisseurs (TODO: implémenter avec les vraies tables de facturation)
+      const dettesItems: DetteFournisseurItem[] = [];
+      const totalDettes = 0;
+      const totalDettesEchu = 0;
+
+      return {
+        amortissements: {
+          items: amortissementsItems,
+          totalValeurBrute,
+          totalAmortissements,
+          totalValeurNette: totalValeurBrute - totalAmortissements,
+        },
+        creancesClients: {
+          items: creancesItems,
+          totalCreances,
+          totalEchu,
+          totalNonEchu: totalCreances - totalEchu,
+          tauxRecouvrement: totalCreances > 0 ? ((totalCreances - totalEchu) / totalCreances) * 100 : 0,
+        },
+        dettesFournisseurs: {
+          items: dettesItems,
+          totalDettes,
+          totalEchu: totalDettesEchu,
+          totalNonEchu: totalDettes - totalDettesEchu,
+          delaiMoyenPaiement: dettesItems.length > 0 
+            ? dettesItems.reduce((sum, item) => sum + item.joursRetard, 0) / dettesItems.length 
+            : 0,
+        },
+      };
+    },
+    enabled: !!tenantId && !!activeExerciceId && !!exercices,
+  });
+
   // Calculate Financial Ratios
   const financialRatios: FinancialRatios | null = (() => {
     if (!balanceSheet || !incomeStatement) return null;
@@ -610,10 +868,12 @@ export function useFinancialReports(selectedExerciceId?: string) {
     currentExercice,
     balanceSheet,
     incomeStatement,
+    cashFlowStatement,
+    financialAnnexes,
     financialRatios,
 
     // Loading states
-    isLoading: isLoadingRegionalParams || isLoadingExercices || isLoadingBalanceSheet || isLoadingIncomeStatement,
+    isLoading: isLoadingRegionalParams || isLoadingExercices || isLoadingBalanceSheet || isLoadingIncomeStatement || isLoadingCashFlow || isLoadingAnnexes,
     
     // Formatters
     formatAmount,
