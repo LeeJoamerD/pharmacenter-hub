@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   BarChart, 
   Bar, 
@@ -21,7 +22,8 @@ import {
 import { 
   Package, 
   AlertTriangle, 
-  TrendingDown, 
+  TrendingDown,
+  TrendingUp, 
   Calendar, 
   Truck,
   BarChart3,
@@ -33,68 +35,70 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-import { useStockMetrics } from '@/hooks/useStockMetrics';
+import { useStockReports } from '@/hooks/useStockReports';
+import { exportStockReportToPDF } from '@/utils/stockReportExport';
+import { usePharmaciesQuery } from '@/hooks/useTenantQuery';
 import { useToast } from '@/hooks/use-toast';
+import type { StockReportPeriod, StockReportCategory } from '@/types/stockReports';
 
 const StockReports = () => {
   const { toast } = useToast();
-  const [selectedPeriod, setSelectedPeriod] = useState('month');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedPeriod, setSelectedPeriod] = useState<StockReportPeriod>('month');
+  const [selectedCategory, setSelectedCategory] = useState<StockReportCategory>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  const stockMetrics = useStockMetrics();
-
-  // Données simulées pour les analyses de stock
-  const stockLevelsData = [
-    { categorie: 'Médicaments Génériques', stock_actuel: 1250, stock_limite: 800, stock_alerte: 2000, valorisation: 8500000 },
-    { categorie: 'Médicaments Spécialisés', stock_actuel: 450, stock_limite: 300, stock_alerte: 800, valorisation: 12000000 },
-    { categorie: 'Parapharmacie', stock_actuel: 780, stock_limite: 500, stock_alerte: 1200, valorisation: 3200000 },
-    { categorie: 'Matériel Médical', stock_actuel: 320, stock_limite: 200, stock_alerte: 500, valorisation: 2800000 },
-    { categorie: 'Produits Cosmétiques', stock_actuel: 890, stock_limite: 600, stock_alerte: 1500, valorisation: 1900000 }
-  ];
-
-  const criticalStockData = [
-    { produit: 'Doliprane 1000mg', stock_actuel: 12, stock_limite: 50, statut: 'critique', expiration: '15/03/2024' },
-    { produit: 'Amoxicilline 500mg', stock_actuel: 8, stock_limite: 30, statut: 'critique', expiration: '22/04/2024' },
-    { produit: 'Spasfon Lyoc', stock_actuel: 25, stock_limite: 40, statut: 'attention', expiration: '10/05/2024' },
-    { produit: 'Efferalgan 500mg', stock_actuel: 35, stock_limite: 60, statut: 'attention', expiration: '28/03/2024' },
-    { produit: 'Dafalgan Codéine', stock_actuel: 5, stock_limite: 25, statut: 'critique', expiration: '05/04/2024' }
-  ];
-
-  const expiryAlertsData = [
-    { produit: 'Aspirine 100mg', lot: 'LOT2024-001', quantite: 48, expiration: '15/02/2024', jours_restants: 8, urgence: 'urgent' },
-    { produit: 'Ventoline Spray', lot: 'LOT2024-015', quantite: 12, expiration: '20/02/2024', jours_restants: 13, urgence: 'urgent' },
-    { produit: 'Smecta Sachet', lot: 'LOT2024-023', quantite: 156, expiration: '28/02/2024', jours_restants: 21, urgence: 'attention' },
-    { produit: 'Paracétamol 500mg', lot: 'LOT2024-034', quantite: 240, expiration: '10/03/2024', jours_restants: 32, urgence: 'attention' },
-    { produit: 'Ibuprofène 200mg', lot: 'LOT2024-041', quantite: 72, expiration: '15/03/2024', jours_restants: 37, urgence: 'normal' }
-  ];
-
-  const movementHistoryData = [
-    { date: '01/02', entrees: 2400, sorties: 1850, solde: 550, valorisation: 8500000 },
-    { date: '02/02', entrees: 1200, sorties: 2100, solde: -900, valorisation: 8200000 },
-    { date: '03/02', entrees: 3200, sorties: 1750, solde: 1450, valorisation: 8800000 },
-    { date: '04/02', entrees: 800, sorties: 2200, solde: -1400, valorisation: 8300000 },
-    { date: '05/02', entrees: 2800, sorties: 1650, solde: 1150, valorisation: 8650000 },
-    { date: '06/02', entrees: 1500, sorties: 1950, solde: -450, valorisation: 8450000 },
-    { date: '07/02', entrees: 2200, sorties: 1800, solde: 400, valorisation: 8550000 }
-  ];
+  const { data: pharmacyInfo } = usePharmaciesQuery();
+  const { 
+    kpis, 
+    stockLevels, 
+    criticalStock, 
+    expiryAlerts, 
+    movementHistory, 
+    isLoading, 
+    error, 
+    refetch 
+  } = useStockReports(selectedPeriod, selectedCategory);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
+    try {
+      await refetch();
       toast({
         title: "Données actualisées",
         description: "Les analyses de stock ont été mises à jour",
       });
-    }, 2000);
+    } catch (error) {
+      toast({
+        title: "Erreur d'actualisation",
+        description: "Impossible de rafraîchir les données",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
-  const handleExport = (format: string) => {
-    toast({
-      title: `Export ${format}`,
-      description: "Le rapport de stock est en cours de génération...",
-    });
+  const handleExport = async (format: string) => {
+    if (format === 'PDF') {
+      try {
+        await exportStockReportToPDF(
+          { kpis, stockLevels, criticalStock, expiryAlerts, movementHistory, isLoading, error, refetch },
+          selectedPeriod,
+          selectedCategory,
+          pharmacyInfo || { name: 'Pharmacie' }
+        );
+        toast({
+          title: "Export réussi",
+          description: "Le rapport PDF a été téléchargé",
+        });
+      } catch (error) {
+        toast({
+          title: "Erreur d'export",
+          description: "Impossible de générer le rapport PDF",
+          variant: "destructive"
+        });
+      }
+    }
   };
 
   const getStockStatus = (actuel: number, minimum: number, maximum: number) => {
@@ -169,11 +173,24 @@ const StockReports = () => {
             <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">28.4M <span className="text-sm font-normal text-muted-foreground">FCFA</span></div>
-            <p className="text-xs text-muted-foreground">
-              <TrendingDown className="h-3 w-3 text-red-500 inline mr-1" />
-              -2.3% vs mois dernier
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-32 mb-2" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {(kpis.valeurStockTotal / 1000000).toFixed(1)}M{' '}
+                  <span className="text-sm font-normal text-muted-foreground">FCFA</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {kpis.valeurStockVariation >= 0 ? (
+                    <TrendingUp className="h-3 w-3 text-green-500 inline mr-1" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 text-red-500 inline mr-1" />
+                  )}
+                  {kpis.valeurStockVariation >= 0 ? '+' : ''}{kpis.valeurStockVariation.toFixed(1)}% vs période précédente
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -183,10 +200,16 @@ const StockReports = () => {
             <Package className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3 690</div>
-            <p className="text-xs text-muted-foreground">
-              Dans 847 références actives
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24 mb-2" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{kpis.produitsEnStock.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">
+                  Dans {kpis.referencesActives} références actives
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -196,10 +219,16 @@ const StockReports = () => {
             <AlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">23</div>
-            <p className="text-xs text-muted-foreground">
-              15 ruptures + 8 péremptions
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16 mb-2" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{kpis.alertesCritiques}</div>
+                <p className="text-xs text-muted-foreground">
+                  {kpis.ruptures} ruptures + {kpis.peremptions} péremptions
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -209,10 +238,16 @@ const StockReports = () => {
             <BarChart3 className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">4.2</div>
-            <p className="text-xs text-muted-foreground">
-              Rotations par an (moyenne)
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-8 w-16 mb-2" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">{kpis.tauxRotation.toFixed(1)}</div>
+                <p className="text-xs text-muted-foreground">
+                  Rotations par an (moyenne)
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -237,38 +272,49 @@ const StockReports = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {stockLevelsData.map((item, index) => {
-                  const status = getStockStatus(item.stock_actuel, item.stock_limite, item.stock_alerte);
-                  const percentage = (item.stock_actuel / item.stock_alerte) * 100;
-                  
-                  return (
-                    <div key={index} className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{item.categorie}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Valorisation: {item.valorisation.toLocaleString()} FCFA
-                          </p>
+              {isLoading ? (
+                <div className="space-y-6">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-20 w-full" />
+                  ))}
+                </div>
+              ) : stockLevels.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Aucune donnée de stock disponible
+                </p>
+              ) : (
+                <div className="space-y-6">
+                  {stockLevels.map((item, index) => {
+                    const status = getStockStatus(item.stock_actuel, item.stock_limite, item.stock_alerte);
+                    
+                    return (
+                      <div key={index} className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{item.categorie}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Valorisation: {item.valorisation.toLocaleString()} FCFA
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold">{item.stock_actuel} unités</p>
+                            <Badge className={`${status.color} ${status.bg} border-0`}>
+                              {status.status}
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-bold">{item.stock_actuel} unités</p>
-                          <Badge className={`${status.color} ${status.bg} border-0`}>
-                            {status.status}
-                          </Badge>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Limite: {item.stock_limite}</span>
+                            <span>Alerte: {item.stock_alerte}</span>
+                          </div>
+                          <Progress value={item.pourcentage} className="h-2" />
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>Limite: {item.stock_limite}</span>
-                          <span>Alerte: {item.stock_alerte}</span>
-                        </div>
-                        <Progress value={percentage} className="h-2" />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -285,37 +331,51 @@ const StockReports = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {criticalStockData.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-50">
-                        {item.statut === 'critique' ? (
-                          <XCircle className="h-5 w-5 text-red-600" />
-                        ) : (
-                          <AlertCircle className="h-5 w-5 text-orange-600" />
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-20 w-full" />
+                  ))}
+                </div>
+              ) : criticalStock.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Aucune alerte critique
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {criticalStock.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-50">
+                          {item.statut === 'critique' ? (
+                            <XCircle className="h-5 w-5 text-red-600" />
+                          ) : (
+                            <AlertCircle className="h-5 w-5 text-orange-600" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium">{item.produit}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Stock: {item.stock_actuel} / Limite: {item.stock_limite}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge 
+                          variant={item.statut === 'critique' ? 'destructive' : 'secondary'}
+                        >
+                          {item.statut === 'critique' ? 'Critique' : 'Attention'}
+                        </Badge>
+                        {item.expiration && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Exp: {new Date(item.expiration).toLocaleDateString('fr-FR')}
+                          </p>
                         )}
                       </div>
-                      <div>
-                        <p className="font-medium">{item.produit}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Stock: {item.stock_actuel} / Limite: {item.stock_limite}
-                        </p>
-                      </div>
                     </div>
-                    <div className="text-right">
-                      <Badge 
-                        variant={item.statut === 'critique' ? 'destructive' : 'secondary'}
-                      >
-                        {item.statut === 'critique' ? 'Critique' : 'Attention'}
-                      </Badge>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Exp: {item.expiration}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -332,29 +392,41 @@ const StockReports = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {expiryAlertsData.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className={`flex items-center justify-center w-10 h-10 rounded-full ${getUrgencyColor(item.urgence)}`}>
-                        <Calendar className="h-5 w-5" />
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-20 w-full" />
+                  ))}
+                </div>
+              ) : expiryAlerts.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Aucune alerte de péremption
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {expiryAlerts.map((item, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className={`flex items-center justify-center w-10 h-10 rounded-full ${getUrgencyColor(item.urgence)}`}>
+                          <Calendar className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{item.produit}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Lot: {item.lot} • {item.quantite} unités
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">{item.produit}</p>
+                      <div className="text-right">
+                        <p className="font-bold text-red-600">{item.jours_restants} jours</p>
                         <p className="text-sm text-muted-foreground">
-                          Lot: {item.lot} • {item.quantite} unités
+                          Exp: {new Date(item.expiration).toLocaleDateString('fr-FR')}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-red-600">{item.jours_restants} jours</p>
-                      <p className="text-sm text-muted-foreground">
-                        Exp: {item.expiration}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -371,22 +443,26 @@ const StockReports = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={movementHistoryData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip 
-                    formatter={(value, name) => [
-                      `${value} unités`, 
-                      name === 'entrees' ? 'Entrées' : name === 'sorties' ? 'Sorties' : 'Solde'
-                    ]}
-                  />
-                  <Bar dataKey="entrees" fill="#10b981" name="entrees" />
-                  <Bar dataKey="sorties" fill="#ef4444" name="sorties" />
-                  <Bar dataKey="solde" fill="#3b82f6" name="solde" />
-                </BarChart>
-              </ResponsiveContainer>
+              {isLoading ? (
+                <Skeleton className="h-[400px] w-full" />
+              ) : (
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={movementHistory}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value, name) => [
+                        `${value} unités`, 
+                        name === 'entrees' ? 'Entrées' : name === 'sorties' ? 'Sorties' : 'Solde'
+                      ]}
+                    />
+                    <Bar dataKey="entrees" fill="#10b981" name="entrees" />
+                    <Bar dataKey="sorties" fill="#ef4444" name="sorties" />
+                    <Bar dataKey="solde" fill="#3b82f6" name="solde" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
 
@@ -396,15 +472,18 @@ const StockReports = () => {
               <CardDescription>Valeur totale du stock sur la période</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <AreaChart data={movementHistoryData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip 
-                    formatter={(value) => [`${value.toLocaleString()} FCFA`, 'Valorisation']}
-                  />
-                  <Area 
+              {isLoading ? (
+                <Skeleton className="h-[250px] w-full" />
+              ) : (
+                <ResponsiveContainer width="100%" height={250}>
+                  <AreaChart data={movementHistory}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value) => [`${Number(value).toLocaleString()} FCFA`, 'Valorisation']}
+                    />
+                    <Area
                     type="monotone" 
                     dataKey="valorisation" 
                     stroke="#8b5cf6" 
