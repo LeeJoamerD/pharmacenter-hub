@@ -284,23 +284,40 @@ export const useDashboardData = () => {
     queryFn: async () => {
       if (!tenantId) return [];
 
+      // Récupérer les sessions sans la relation personnel
       const { data: sessions, error } = await supabase
         .from('sessions_caisse')
-        .select(`
-          id,
-          solde_ouverture,
-          statut,
-          created_at,
-          personnel(noms, prenoms)
-        `)
+        .select('id, fond_caisse_ouverture, statut, created_at, agent_id, caissier_id')
         .eq('tenant_id', tenantId)
         .eq('statut', 'ouverte');
 
       if (error) throw error;
+      if (!sessions || sessions.length === 0) return [];
+
+      // Récupérer tous les IDs de personnel uniques
+      const personnelIds = [
+        ...new Set(
+          sessions
+            .map(s => s.agent_id || s.caissier_id)
+            .filter(id => id != null)
+        )
+      ];
+
+      // Récupérer les données du personnel en une seule requête
+      const { data: personnelData } = await supabase
+        .from('personnel')
+        .select('id, noms, prenoms')
+        .in('id', personnelIds)
+        .eq('tenant_id', tenantId);
+
+      // Créer un Map pour accès rapide
+      const personnelMap = new Map(
+        (personnelData || []).map(p => [p.id, p])
+      );
 
       // Calculer montant actuel pour chaque session
       const sessionsWithAmount = await Promise.all(
-        (sessions || []).map(async (session: any) => {
+        sessions.map(async (session: any) => {
           const { data: ventes } = await supabase
             .from('ventes')
             .select('montant_net')
@@ -309,9 +326,20 @@ export const useDashboardData = () => {
 
           const ventesTotal = ventes?.reduce((sum, v) => sum + (v.montant_net || 0), 0) || 0;
           
+          // Récupérer le personnel (agent ou caissier)
+          const personnelId = session.agent_id || session.caissier_id;
+          const personnel = personnelId ? personnelMap.get(personnelId) : null;
+          
           return {
-            ...session,
-            currentAmount: (session.solde_ouverture || 0) + ventesTotal,
+            id: session.id,
+            solde_ouverture: session.fond_caisse_ouverture,
+            statut: session.statut,
+            created_at: session.created_at,
+            personnel: personnel ? {
+              noms: personnel.noms,
+              prenoms: personnel.prenoms
+            } : null,
+            currentAmount: (session.fond_caisse_ouverture || 0) + ventesTotal,
             salesCount: ventes?.length || 0,
           };
         })
