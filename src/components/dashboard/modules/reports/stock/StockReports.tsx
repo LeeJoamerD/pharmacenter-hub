@@ -126,7 +126,7 @@ const StockReports = () => {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value as StockReportCategory)}>
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
@@ -137,7 +137,7 @@ const StockReports = () => {
               <SelectItem value="medical">Matériel médical</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+          <Select value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as StockReportPeriod)}>
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
@@ -484,14 +484,15 @@ const StockReports = () => {
                       formatter={(value) => [`${Number(value).toLocaleString()} FCFA`, 'Valorisation']}
                     />
                     <Area
-                    type="monotone" 
-                    dataKey="valorisation" 
-                    stroke="#8b5cf6" 
-                    fill="#8b5cf6" 
-                    fillOpacity={0.2}
-                  />
+                      type="monotone" 
+                      dataKey="valorisation" 
+                      stroke="#8b5cf6" 
+                      fill="#8b5cf6" 
+                      fillOpacity={0.2}
+                    />
                 </AreaChart>
               </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
