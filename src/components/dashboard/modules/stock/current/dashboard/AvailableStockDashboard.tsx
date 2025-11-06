@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Package, AlertTriangle, Zap } from 'lucide-react';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import QuickStockSearch from './QuickStockSearch';
 import StockLevels from './StockLevels';
 import CriticalStock from './CriticalStock';
@@ -37,6 +38,7 @@ const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, rup
   const criticalAlerts = metrics.criticalStockProducts;
   const warningAlerts = metrics.lowStockProducts;
   const fastMovingCount = metrics.fastMovingProducts || 0;
+  const { formatPrice } = useCurrency();
 
   return (
     <div className="space-y-6">
@@ -87,12 +89,7 @@ const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, rup
               <span className="text-sm font-medium">Valorisation</span>
             </div>
             <div className="text-xl font-bold text-primary">
-              {new Intl.NumberFormat('fr-FR', { 
-                style: 'currency', 
-                currency: 'XAF',
-                notation: 'compact',
-                minimumFractionDigits: 0 
-              }).format(metrics.totalValue)}
+              {formatPrice(metrics.totalValue)}
             </div>
             <p className="text-xs text-muted-foreground">Stock total</p>
           </CardContent>

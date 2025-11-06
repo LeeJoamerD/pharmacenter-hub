@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp } from 'lucide-react';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface TopProduct {
   produit_id: string;
@@ -16,16 +17,8 @@ interface TopProductsListProps {
   loading?: boolean;
 }
 
-const formatPrice = (amount: number) => {
-  return new Intl.NumberFormat('fr-CG', {
-    style: 'currency',
-    currency: 'XAF',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount).replace('XAF', 'FCFA');
-};
-
 export const TopProductsList = ({ products, loading }: TopProductsListProps) => {
+  const { formatPrice } = useCurrency();
   if (loading) {
     return (
       <Card>

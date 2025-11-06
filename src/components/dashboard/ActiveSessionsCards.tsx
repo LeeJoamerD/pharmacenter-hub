@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { CreditCard, User, ShoppingCart } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface ActiveSession {
   id: string;
@@ -22,16 +23,8 @@ interface ActiveSessionsCardsProps {
   loading?: boolean;
 }
 
-const formatPrice = (amount: number) => {
-  return new Intl.NumberFormat('fr-CG', {
-    style: 'currency',
-    currency: 'XAF',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount).replace('XAF', 'FCFA');
-};
-
 export const ActiveSessionsCards = ({ sessions, loading }: ActiveSessionsCardsProps) => {
+  const { formatPrice } = useCurrency();
   if (loading) {
     return (
       <Card>

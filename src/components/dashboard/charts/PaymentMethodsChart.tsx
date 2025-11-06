@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface PaymentMethodData {
   name: string;
@@ -20,16 +21,8 @@ const COLORS = [
   'hsl(var(--warning))',
 ];
 
-const formatPrice = (value: number) => {
-  return new Intl.NumberFormat('fr-CG', {
-    style: 'currency',
-    currency: 'XAF',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value).replace('XAF', 'FCFA');
-};
-
 export const PaymentMethodsChart = ({ data, loading }: PaymentMethodsChartProps) => {
+  const { formatPrice } = useCurrency();
   if (loading) {
     return (
       <Card>

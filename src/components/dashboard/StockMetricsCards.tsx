@@ -1,6 +1,7 @@
 import { DashboardKPICard } from './DashboardKPICard';
 import { Package, PackageCheck, AlertTriangle, PackageX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface StockMetrics {
   totalValue: number;
@@ -14,17 +15,9 @@ interface StockMetricsCardsProps {
   loading?: boolean;
 }
 
-const formatPrice = (amount: number) => {
-  return new Intl.NumberFormat('fr-CG', {
-    style: 'currency',
-    currency: 'XAF',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount).replace('XAF', 'FCFA');
-};
-
 export const StockMetricsCards = ({ metrics, loading }: StockMetricsCardsProps) => {
   const navigate = useNavigate();
+  const { formatPrice } = useCurrency();
 
   return (
     <>

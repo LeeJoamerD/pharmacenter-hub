@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CreditCard, TrendingDown, AlertCircle, Percent, Tag, Trophy } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface CreditMetrics {
   totalCredit: number;
@@ -22,20 +23,12 @@ interface CreditPromotionsSummaryProps {
   loading?: boolean;
 }
 
-const formatPrice = (amount: number) => {
-  return new Intl.NumberFormat('fr-CG', {
-    style: 'currency',
-    currency: 'XAF',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount).replace('XAF', 'FCFA');
-};
-
 export const CreditPromotionsSummary = ({
   creditMetrics,
   promotionMetrics,
   loading,
 }: CreditPromotionsSummaryProps) => {
+  const { formatPrice } = useCurrency();
   if (loading) {
     return (
       <>

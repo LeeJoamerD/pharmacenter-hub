@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Eye, Package, AlertTriangle, XCircle, DollarSign, Search, RefreshCw } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import AvailableProducts from './tabs/AvailableProducts';
 import LowStockProducts from './tabs/LowStockProducts';
 import OutOfStockProducts from './tabs/OutOfStockProducts';
@@ -17,6 +18,7 @@ const CurrentStockTab = () => {
   const { metrics, isLoading, error } = useCurrentStockPaginated();
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { formatPrice } = useCurrency();
 
   const handleForceRefresh = async () => {
     setIsRefreshing(true);
@@ -123,11 +125,7 @@ const CurrentStockTab = () => {
               <span className="text-sm font-medium">Valorisation</span>
             </div>
             <div className="text-2xl font-bold text-blue-600">
-              {new Intl.NumberFormat('fr-FR', { 
-                style: 'currency', 
-                currency: 'XAF',
-                minimumFractionDigits: 0 
-              }).format(metrics.totalValue)}
+              {formatPrice(metrics.totalValue)}
             </div>
           </CardContent>
         </Card>

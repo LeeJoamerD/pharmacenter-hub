@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface SalesTrendData {
   date: string;
@@ -15,16 +16,8 @@ interface SalesTrendChartProps {
   loading?: boolean;
 }
 
-const formatPrice = (value: number) => {
-  return new Intl.NumberFormat('fr-CG', {
-    style: 'currency',
-    currency: 'XAF',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value).replace('XAF', 'FCFA');
-};
-
 export const SalesTrendChart = ({ data, loading }: SalesTrendChartProps) => {
+  const { formatPrice } = useCurrency();
   if (loading) {
     return (
       <Card>

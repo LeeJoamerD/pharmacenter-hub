@@ -1,6 +1,7 @@
 import { DashboardKPICard } from './DashboardKPICard';
 import { TrendingUp, ShoppingCart, DollarSign, ShoppingBag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface SalesMetrics {
   todayTotal: number;
@@ -15,17 +16,9 @@ interface SalesMetricsCardsProps {
   loading?: boolean;
 }
 
-const formatPrice = (amount: number) => {
-  return new Intl.NumberFormat('fr-CG', {
-    style: 'currency',
-    currency: 'XAF',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount).replace('XAF', 'FCFA');
-};
-
 export const SalesMetricsCards = ({ metrics, loading }: SalesMetricsCardsProps) => {
   const navigate = useNavigate();
+  const { formatPrice } = useCurrency();
 
   return (
     <>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { Package, Clock, TrendingUp, AlertCircle } from 'lucide-react';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface ProductDetailsModalProps {
   productId: string | null;
@@ -14,6 +15,7 @@ interface ProductDetailsModalProps {
 
 const ProductDetailsModal = ({ productId, isOpen, onClose }: ProductDetailsModalProps) => {
   const { useTenantQueryWithCache } = useTenantQuery();
+  const { formatPrice } = useCurrency();
 
   // Fetch product details
   const { data: product, isLoading: productLoading } = useTenantQueryWithCache(
@@ -119,7 +121,7 @@ const ProductDetailsModal = ({ productId, isOpen, onClose }: ProductDetailsModal
                   <div>
                     <span className="text-xs text-muted-foreground">Valorisation:</span>
                     <p className="text-xl font-semibold">
-                      {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XAF' }).format(totalValue)}
+                      {formatPrice(totalValue)}
                     </p>
                   </div>
                   <div>
@@ -142,13 +144,13 @@ const ProductDetailsModal = ({ productId, isOpen, onClose }: ProductDetailsModal
                 <div>
                   <span className="text-xs text-muted-foreground">Prix d'Achat:</span>
                   <p className="font-medium">
-                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XAF' }).format(currentProduct?.prix_achat || 0)}
+                    {formatPrice(currentProduct?.prix_achat || 0)}
                   </p>
                 </div>
                 <div>
                   <span className="text-xs text-muted-foreground">Prix de Vente TTC:</span>
                   <p className="font-medium">
-                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XAF' }).format(currentProduct?.prix_vente_ttc || 0)}
+                    {formatPrice(currentProduct?.prix_vente_ttc || 0)}
                   </p>
                 </div>
               </CardContent>
@@ -196,7 +198,7 @@ const ProductDetailsModal = ({ productId, isOpen, onClose }: ProductDetailsModal
                         <div>
                           <span className="text-muted-foreground">Prix Unitaire:</span>
                           <p className="font-medium">
-                            {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XAF' }).format(lot.prix_achat_unitaire || 0)}
+                            {formatPrice(lot.prix_achat_unitaire || 0)}
                           </p>
                         </div>
                       </div>

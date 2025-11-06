@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 const StockValuation = () => {
   const { toast } = useToast();
+  const { formatPrice } = useCurrency();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [rotationFilter, setRotationFilter] = useState('all');
@@ -46,14 +48,6 @@ const StockValuation = () => {
   const totalStockValue = metrics.totalStockValue;
   const availableStockValue = metrics.availableStockValue;
   const lowStockValue = metrics.lowStockValue;
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XAF',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
 
   const getValueCategory = (value: number) => {
     const totalValue = totalStockValue;
@@ -212,7 +206,7 @@ const StockValuation = () => {
               <span className="text-sm font-medium">Valorisation Totale</span>
             </div>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(totalStockValue)}
+              {formatPrice(totalStockValue)}
             </div>
             <p className="text-xs text-muted-foreground">Stock complet</p>
           </CardContent>
@@ -225,7 +219,7 @@ const StockValuation = () => {
               <span className="text-sm font-medium">Stock Disponible</span>
             </div>
             <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(availableStockValue)}
+              {formatPrice(availableStockValue)}
             </div>
             <p className="text-xs text-muted-foreground">
               {((availableStockValue / totalStockValue) * 100).toFixed(1)}% du total
@@ -253,7 +247,7 @@ const StockValuation = () => {
               <span className="text-sm font-medium">Valeur Moyenne</span>
             </div>
             <div className="text-2xl font-bold text-purple-600">
-              {formatCurrency(allItemsCount > 0 ? totalStockValue / allItemsCount : 0)}
+              {formatPrice(allItemsCount > 0 ? totalStockValue / allItemsCount : 0)}
             </div>
             <p className="text-xs text-muted-foreground">Par produit</p>
           </CardContent>
@@ -288,7 +282,7 @@ const StockValuation = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{family.name}</span>
                     <div className="text-right">
-                      <div className="text-sm font-semibold">{formatCurrency(family.value)}</div>
+                      <div className="text-sm font-semibold">{formatPrice(family.value)}</div>
                       <div className="text-xs text-muted-foreground">{family.percentage.toFixed(1)}%</div>
                     </div>
                   </div>
@@ -332,7 +326,7 @@ const StockValuation = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{rayon.name}</span>
                     <div className="text-right">
-                      <div className="text-sm font-semibold">{formatCurrency(rayon.value)}</div>
+                      <div className="text-sm font-semibold">{formatPrice(rayon.value)}</div>
                       <div className="text-xs text-muted-foreground">{rayon.percentage.toFixed(1)}%</div>
                     </div>
                   </div>
@@ -403,7 +397,7 @@ const StockValuation = () => {
                       </TableCell>
                       <TableCell>
                         <div className="font-semibold text-lg">
-                          {formatCurrency(product.valeur_stock)}
+                          {formatPrice(product.valeur_stock)}
                         </div>
                       </TableCell>
                       <TableCell>

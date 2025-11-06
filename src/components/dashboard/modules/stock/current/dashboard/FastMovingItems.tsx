@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Zap, TrendingUp, Eye, ShoppingCart, Info } from 'lucide-react';
 import ProductDetailsModal from '../modals/ProductDetailsModal';
 import { OrderLowStockModal } from '../modals/OrderLowStockModal';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface FastMovingItemsProps {
   products: any[];
@@ -15,6 +16,7 @@ const FastMovingItems = React.memo(({ products }: FastMovingItemsProps) => {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const { formatPrice } = useCurrency();
 
   const handleMonitor = useCallback((product: any) => {
     setSelectedProduct(product);
@@ -55,15 +57,6 @@ const FastMovingItems = React.memo(({ products }: FastMovingItemsProps) => {
       case 'critique': return 'bg-destructive/10 text-destructive border-destructive/20';
       default: return 'bg-muted text-muted-foreground';
     }
-  }, []);
-
-  const formatCurrency = useCallback((amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XAF',
-      notation: 'compact',
-      minimumFractionDigits: 0
-    }).format(amount);
   }, []);
 
   return (
@@ -152,7 +145,7 @@ const FastMovingItems = React.memo(({ products }: FastMovingItemsProps) => {
                         {product.stock_actuel}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {formatCurrency(product.valeur_stock)}
+                        {formatPrice(product.valeur_stock)}
                       </div>
                     </div>
                   </div>
