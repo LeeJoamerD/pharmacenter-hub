@@ -4,13 +4,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ShoppingCart, User, CreditCard, AlertCircle, Search } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ShoppingCart, User, CreditCard, AlertCircle, Search, Gift, PackageX, FileText, TrendingUp } from 'lucide-react';
 import ProductSearch from './pos/ProductSearch';
 import ShoppingCartComponent from './pos/ShoppingCartComponent';
 import CustomerSelection from './pos/CustomerSelection';
 import PaymentModal from './pos/PaymentModal';
+import { ReturnExchangeModal } from '../pos/ReturnExchangeModal';
+import { LoyaltyPanel } from '../pos/LoyaltyPanel';
+import { PrescriptionModal } from '../pos/PrescriptionModal';
+import { SplitPaymentDialog } from '../pos/SplitPaymentDialog';
+import { POSAnalyticsDashboard } from '../pos/POSAnalyticsDashboard';
 import { usePOSData } from '@/hooks/usePOSData';
 import { useCashSession } from '@/hooks/useCashSession';
+import { useLoyaltyProgram } from '@/hooks/useLoyaltyProgram';
+import { usePOSAnalytics } from '@/hooks/usePOSAnalytics';
 import { useRegionalSettings } from '@/hooks/useRegionalSettings';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
@@ -55,12 +63,21 @@ const POSInterface = () => {
     isLoading: sessionLoading 
   } = useCashSession();
 
+  // Hooks avancés
+  const { calculatePoints, addPoints } = useLoyaltyProgram();
+  const { recordTransaction } = usePOSAnalytics();
+
   // États locaux
+  const [activeTab, setActiveTab] = useState('vente');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<Customer>({ type: 'ordinaire' });
   const [showPayment, setShowPayment] = useState(false);
+  const [showSplitPayment, setShowSplitPayment] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [currentTransaction, setCurrentTransaction] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [loyaltyRewardApplied, setLoyaltyRewardApplied] = useState<{ id: string; discount: number } | null>(null);
 
   // Vérifier session caisse au montage
   useEffect(() => {
@@ -159,8 +176,15 @@ const POSInterface = () => {
 
   const calculateDiscount = useCallback(() => {
     const subtotal = calculateSubtotal();
-    return customer.discountRate ? (subtotal * customer.discountRate) / 100 : 0;
-  }, [calculateSubtotal, customer.discountRate]);
+    let discount = customer.discountRate ? (subtotal * customer.discountRate) / 100 : 0;
+    
+    // Ajouter réduction fidélité si appliquée
+    if (loyaltyRewardApplied) {
+      discount += loyaltyRewardApplied.discount;
+    }
+    
+    return discount;
+  }, [calculateSubtotal, customer.discountRate, loyaltyRewardApplied]);
 
   const calculateTotal = useCallback(() => {
     return calculateSubtotal() - calculateDiscount();
@@ -179,6 +203,21 @@ const POSInterface = () => {
     });
     
     setShowPayment(true);
+  }, [cart, customer, calculateSubtotal, calculateDiscount, calculateTotal]);
+
+  const handleProcessSplitPayment = useCallback(() => {
+    if (cart.length === 0) return;
+    
+    setCurrentTransaction({
+      items: cart,
+      customer,
+      subtotal: calculateSubtotal(),
+      discount: calculateDiscount(),
+      total: calculateTotal(),
+      timestamp: new Date()
+    });
+    
+    setShowSplitPayment(true);
   }, [cart, customer, calculateSubtotal, calculateDiscount, calculateTotal]);
 
   // Finaliser le paiement avec sauvegarde
@@ -227,6 +266,45 @@ const POSInterface = () => {
       const result = await saveTransaction(transactionData);
 
       if (result.success) {
+        // Enregistrer points fidélité si client a un ID
+        if (customer.id && customer.type !== 'ordinaire') {
+          const pointsGagnes = calculatePoints(calculateTotal());
+          try {
+            await addPoints({
+              clientId: customer.id,
+              points: pointsGagnes,
+              reason: `Achat - Facture ${result.numero_facture}`,
+              agentId: currentUser?.id,
+              referenceId: result.vente_id
+            });
+          } catch (error) {
+            console.error('Erreur ajout points:', error);
+          }
+        }
+
+        // Enregistrer analytiques POS
+        if (activeSession) {
+          try {
+            const caisseId = typeof activeSession.caisse === 'string' 
+              ? activeSession.caisse 
+              : activeSession.id;
+            
+            await recordTransaction({
+              caisse_id: caisseId,
+              agent_id: currentUser?.id || '',
+              montant: calculateTotal(),
+              mode_paiement: paymentData.method === 'cash' ? 'especes' : 
+                            paymentData.method === 'card' ? 'carte' :
+                            paymentData.method === 'mobile' ? 'mobile' : 'assurance',
+              nombre_articles: cart.reduce((sum, item) => sum + item.quantity, 0),
+              client_fidelite: !!customer.id,
+              points_distribues: customer.id ? calculatePoints(calculateTotal()) : 0
+            });
+          } catch (error) {
+            console.error('Erreur analytiques:', error);
+          }
+        }
+
         toast({
           title: "Vente enregistrée",
           description: `Facture N° ${result.numero_facture}`,
@@ -235,7 +313,9 @@ const POSInterface = () => {
         await refreshProducts();
         clearCart();
         setCustomer({ type: 'ordinaire' });
+        setLoyaltyRewardApplied(null);
         setShowPayment(false);
+        setShowSplitPayment(false);
         setCurrentTransaction(null);
       } else {
         throw new Error(result.error || 'Erreur lors de la sauvegarde');
@@ -298,24 +378,49 @@ const POSInterface = () => {
   }
 
   return (
-    <div className="h-full flex flex-col lg:flex-row gap-6">
-      {/* Section Gauche - Recherche Produits */}
-      <div className="flex-1 space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Search className="h-5 w-5" />
-              Recherche de Produits
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ProductSearch 
-              products={products}
-              onAddToCart={addToCart}
-            />
-          </CardContent>
-        </Card>
-      </div>
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
+      <TabsList className="grid w-full grid-cols-5 mb-4">
+        <TabsTrigger value="vente">
+          <ShoppingCart className="h-4 w-4 mr-2" />
+          Vente
+        </TabsTrigger>
+        <TabsTrigger value="retours">
+          <PackageX className="h-4 w-4 mr-2" />
+          Retours
+        </TabsTrigger>
+        <TabsTrigger value="fidelite">
+          <Gift className="h-4 w-4 mr-2" />
+          Fidélité
+        </TabsTrigger>
+        <TabsTrigger value="ordonnances">
+          <FileText className="h-4 w-4 mr-2" />
+          Ordonnances
+        </TabsTrigger>
+        <TabsTrigger value="analytiques">
+          <TrendingUp className="h-4 w-4 mr-2" />
+          Analytiques
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="vente" className="h-full">
+        <div className="h-full flex flex-col lg:flex-row gap-6">
+          {/* Section Gauche - Recherche Produits */}
+          <div className="flex-1 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Search className="h-5 w-5" />
+                  Recherche de Produits
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProductSearch 
+                  products={products}
+                  onAddToCart={addToCart}
+                />
+              </CardContent>
+            </Card>
+          </div>
 
       {/* Section Droite - Panier & Client */}
       <div className="w-full lg:w-96 space-y-6">
@@ -385,21 +490,55 @@ const POSInterface = () => {
               </div>
             </div>
             
-            {/* Bouton Paiement */}
-            <Button 
-              size="lg" 
-              className="w-full"
-              onClick={handleProcessPayment}
-              disabled={cart.length === 0 || isSaving || !hasActiveSession}
-            >
-              <CreditCard className="h-5 w-5 mr-2" />
-              {isSaving ? 'Enregistrement...' : 'Procéder au Paiement'}
-            </Button>
+            {/* Boutons Paiement */}
+            <div className="space-y-2">
+              <Button 
+                size="lg" 
+                className="w-full"
+                onClick={handleProcessPayment}
+                disabled={cart.length === 0 || isSaving || !hasActiveSession}
+              >
+                <CreditCard className="h-5 w-5 mr-2" />
+                {isSaving ? 'Enregistrement...' : 'Paiement Simple'}
+              </Button>
+              
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="w-full"
+                onClick={handleProcessSplitPayment}
+                disabled={cart.length === 0 || isSaving || !hasActiveSession}
+              >
+                <CreditCard className="h-5 w-5 mr-2" />
+                Paiement Fractionné
+              </Button>
+
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => setShowPrescriptionModal(true)}
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  Ordonnance
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => setShowReturnModal(true)}
+                >
+                  <PackageX className="h-4 w-4 mr-1" />
+                  Retour
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Modal de Paiement */}
+      {/* Modals */}
       {showPayment && currentTransaction && (
         <PaymentModal
           transaction={currentTransaction}
@@ -408,7 +547,87 @@ const POSInterface = () => {
           isSaving={isSaving}
         />
       )}
-    </div>
+
+      {showSplitPayment && currentTransaction && (
+        <SplitPaymentDialog
+          open={showSplitPayment}
+          onOpenChange={setShowSplitPayment}
+          totalAmount={currentTransaction.total}
+          onPaymentComplete={(payments) => {
+            handlePaymentComplete({ 
+              method: 'split',
+              payments,
+              amountReceived: currentTransaction.total,
+              change: 0
+            });
+          }}
+        />
+      )}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="retours">
+        <Card>
+          <CardHeader>
+            <CardTitle>Gestion des Retours et Échanges</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => setShowReturnModal(true)}>
+              <PackageX className="h-4 w-4 mr-2" />
+              Nouveau Retour
+            </Button>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="fidelite">
+        <LoyaltyPanel 
+          clientId={customer.id || null}
+          onApplyReward={(rewardId, discount) => {
+            setLoyaltyRewardApplied({ id: rewardId, discount });
+            toast({
+              title: 'Récompense appliquée',
+              description: `Réduction de ${discount} FCFA appliquée`
+            });
+          }}
+        />
+      </TabsContent>
+
+      <TabsContent value="ordonnances">
+        <Card>
+          <CardHeader>
+            <CardTitle>Gestion des Ordonnances</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => setShowPrescriptionModal(true)}>
+              <FileText className="h-4 w-4 mr-2" />
+              Enregistrer une Ordonnance
+            </Button>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="analytiques">
+        <POSAnalyticsDashboard />
+      </TabsContent>
+
+      {/* Modals globaux */}
+      <ReturnExchangeModal
+        open={showReturnModal}
+        onOpenChange={setShowReturnModal}
+      />
+
+      <PrescriptionModal
+        open={showPrescriptionModal}
+        onOpenChange={setShowPrescriptionModal}
+        onPrescriptionSaved={(id) => {
+          toast({
+            title: 'Ordonnance enregistrée',
+            description: `ID: ${id}`
+          });
+        }}
+      />
+    </Tabs>
   );
 };
 
