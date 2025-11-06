@@ -127,7 +127,7 @@ export const useSalesAnalytics = (
       // Ventes période courante
       let currentQuery = supabase
         .from('ventes')
-        .select('total_ttc, client_id', { count: 'exact' })
+        .select('montant_total_ttc, client_id', { count: 'exact' })
         .eq('tenant_id', tenantId!)
         .eq('statut', 'Validée')
         .gte('date_vente', dateRange.current.start.toISOString())
@@ -138,7 +138,7 @@ export const useSalesAnalytics = (
         currentQuery = currentQuery.in('agent_id', filters.agents);
       }
       if (filters?.saleTypes && filters.saleTypes.length > 0) {
-        currentQuery = currentQuery.in('type_vente', filters.saleTypes);
+        currentQuery = currentQuery.in('type_vente', filters.saleTypes as Array<'Comptant' | 'Crédit' | 'Assurance'>);
       }
 
       const { data: currentSales, count: currentCount } = await currentQuery;
@@ -146,7 +146,7 @@ export const useSalesAnalytics = (
       // Ventes période précédente
       let previousQuery = supabase
         .from('ventes')
-        .select('total_ttc, client_id', { count: 'exact' })
+        .select('montant_total_ttc, client_id', { count: 'exact' })
         .eq('tenant_id', tenantId!)
         .eq('statut', 'Validée')
         .gte('date_vente', dateRange.previous.start.toISOString())
@@ -156,14 +156,14 @@ export const useSalesAnalytics = (
         previousQuery = previousQuery.in('agent_id', filters.agents);
       }
       if (filters?.saleTypes && filters.saleTypes.length > 0) {
-        previousQuery = previousQuery.in('type_vente', filters.saleTypes);
+        previousQuery = previousQuery.in('type_vente', filters.saleTypes as Array<'Comptant' | 'Crédit' | 'Assurance'>);
       }
 
       const { data: previousSales, count: previousCount } = await previousQuery;
 
       // Calculs
-      const caTotal = currentSales?.reduce((sum, v) => sum + (v.total_ttc || 0), 0) || 0;
-      const caPrevious = previousSales?.reduce((sum, v) => sum + (v.total_ttc || 0), 0) || 0;
+      const caTotal = currentSales?.reduce((sum, v) => sum + (v.montant_total_ttc || 0), 0) || 0;
+      const caPrevious = previousSales?.reduce((sum, v) => sum + (v.montant_total_ttc || 0), 0) || 0;
       const caVariation = caPrevious > 0 ? ((caTotal - caPrevious) / caPrevious) * 100 : 0;
 
       const transactions = currentCount || 0;
@@ -198,7 +198,7 @@ export const useSalesAnalytics = (
     queryFn: async (): Promise<RevenueEvolution[]> => {
       let query = supabase
         .from('ventes')
-        .select('created_at, total_ttc')
+        .select('created_at, montant_total_ttc')
         .eq('tenant_id', tenantId!)
         .eq('statut', 'Validée')
         .gte('created_at', dateRange.current.start.toISOString())
@@ -218,10 +218,10 @@ export const useSalesAnalytics = (
         const dateKey = format(new Date(sale.created_at), period === 'day' ? 'HH:00' : 'dd/MM/yyyy', { locale: fr });
         const existing = grouped.get(dateKey);
         if (existing) {
-          existing.ventes += sale.total_ttc || 0;
+          existing.ventes += sale.montant_total_ttc || 0;
           existing.transactions += 1;
         } else {
-          grouped.set(dateKey, { ventes: sale.total_ttc || 0, transactions: 1 });
+          grouped.set(dateKey, { ventes: sale.montant_total_ttc || 0, transactions: 1 });
         }
       });
 
@@ -302,7 +302,7 @@ export const useSalesAnalytics = (
     queryFn: async (): Promise<PaymentMethodBreakdown[]> => {
       let query = supabase
         .from('ventes')
-        .select('mode_paiement, total_ttc')
+        .select('mode_paiement, montant_total_ttc')
         .eq('tenant_id', tenantId!)
         .eq('statut', 'Validée')
         .gte('created_at', dateRange.current.start.toISOString())
@@ -320,13 +320,13 @@ export const useSalesAnalytics = (
       data?.forEach(sale => {
         const method = sale.mode_paiement || 'Espèces';
         const existing = methods.get(method);
-        total += sale.total_ttc || 0;
+        total += sale.montant_total_ttc || 0;
 
         if (existing) {
-          existing.montant += sale.total_ttc || 0;
+          existing.montant += sale.montant_total_ttc || 0;
           existing.transactions += 1;
         } else {
-          methods.set(method, { montant: sale.total_ttc || 0, transactions: 1 });
+          methods.set(method, { montant: sale.montant_total_ttc || 0, transactions: 1 });
         }
       });
 
@@ -356,7 +356,7 @@ export const useSalesAnalytics = (
         .from('ventes')
         .select(`
           agent_id,
-          total_ttc,
+          montant_total_ttc,
           agent:agent_id(noms, prenoms)
         `)
         .eq('tenant_id', tenantId!)
@@ -377,13 +377,13 @@ export const useSalesAnalytics = (
 
         const existing = agents.get(sale.agent_id);
         if (existing) {
-          existing.ca += sale.total_ttc || 0;
+          existing.ca += sale.montant_total_ttc || 0;
           existing.transactions += 1;
         } else {
           agents.set(sale.agent_id, {
             agent_id: sale.agent_id,
             nom: sale.agent ? `${sale.agent.noms} ${sale.agent.prenoms}` : 'Inconnu',
-            ca: sale.total_ttc || 0,
+            ca: sale.montant_total_ttc || 0,
             transactions: 1,
             panier_moyen: 0,
             performance: 0,

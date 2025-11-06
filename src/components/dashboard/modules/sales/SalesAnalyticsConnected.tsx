@@ -37,7 +37,7 @@ import { useToast } from '@/hooks/use-toast';
 const SalesAnalyticsConnected = () => {
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
-  const { currentPharmacy } = useTenant();
+  const { currentTenant } = useTenant();
   const [selectedPeriod, setSelectedPeriod] = useState<AnalyticsPeriod>('month');
   const [filters, setFilters] = useState<AnalyticsFilters>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -65,7 +65,7 @@ const SalesAnalyticsConnected = () => {
   };
 
   const handleExport = async () => {
-    if (!kpis || !currentPharmacy) {
+    if (!kpis || !currentTenant) {
       toast({
         title: 'Erreur',
         description: 'Données insuffisantes pour l\'export.',
@@ -108,7 +108,7 @@ const SalesAnalyticsConnected = () => {
         selectedPeriod,
         'all',
         {
-          nom_entreprise: currentPharmacy.name || 'Pharmacie',
+          nom_entreprise: currentTenant.name || 'Pharmacie',
           logo_url: undefined,
         }
       );
