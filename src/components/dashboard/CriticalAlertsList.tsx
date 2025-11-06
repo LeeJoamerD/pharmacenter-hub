@@ -1,0 +1,96 @@
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { AlertTriangle, Calendar } from 'lucide-react';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+
+interface ExpirationAlert {
+  id: string;
+  niveau_alerte: string;
+  message_alerte: string;
+  date_peremption: string;
+  lots?: {
+    produits?: {
+      libelle_produit: string;
+      code_cip: string;
+    };
+    quantite_restante: number;
+  };
+}
+
+interface CriticalAlertsListProps {
+  alerts: ExpirationAlert[];
+  loading?: boolean;
+}
+
+export const CriticalAlertsList = ({ alerts, loading }: CriticalAlertsListProps) => {
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-48" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {[1, 2, 3, 4].map(i => (
+            <Skeleton key={i} className="h-20 w-full" />
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="h-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-destructive">
+          <AlertTriangle className="h-5 w-5" />
+          Alertes Critiques
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {!alerts || alerts.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">
+            Aucune alerte critique
+          </p>
+        ) : (
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            {alerts.map((alert) => (
+              <div
+                key={alert.id}
+                className="p-3 border rounded-lg space-y-2 hover:bg-accent/50 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 space-y-1">
+                    <p className="font-medium text-sm line-clamp-2">
+                      {alert.lots?.produits?.libelle_produit || 'Produit inconnu'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {alert.lots?.produits?.code_cip}
+                    </p>
+                  </div>
+                  <Badge
+                    variant={alert.niveau_alerte === 'critique' ? 'destructive' : 'secondary'}
+                    className="shrink-0"
+                  >
+                    {alert.niveau_alerte}
+                  </Badge>
+                </div>
+                
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Calendar className="h-3 w-3" />
+                    {format(new Date(alert.date_peremption), 'dd MMM yyyy', { locale: fr })}
+                  </div>
+                  <span className="text-muted-foreground">
+                    {alert.lots?.quantite_restante} unités
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
