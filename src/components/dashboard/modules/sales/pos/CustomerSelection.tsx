@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { User, Users, Building2, Percent } from 'lucide-react';
+import { User, UserCheck, Star, Building2, Percent, Users } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
 import { Customer } from '../POSInterface';
 
 interface CustomerSelectionProps {
@@ -14,7 +17,24 @@ interface CustomerSelectionProps {
 }
 
 const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProps) => {
+  const { tenantId } = useTenant();
   const [showDetails, setShowDetails] = useState(customer.type !== 'ordinaire');
+
+  // Récupérer les assureurs depuis la DB
+  const { data: insuranceCompaniesData } = useQuery({
+    queryKey: ['assureurs', tenantId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('assureurs')
+        .select('nom')
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        .order('nom');
+      
+      return data?.map(a => a.nom) || [];
+    },
+    enabled: !!tenantId
+  });
 
   const customerTypes = [
     {
@@ -40,14 +60,18 @@ const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProp
     }
   ];
 
-  const insuranceCompanies = [
-    'NSIA Assurance',
-    'SUNU Assurance',
-    'SONAR',
-    'ATLANTIQUE Assurance',
-    'ALLIANZ',
-    'AXA Assurance'
-  ];
+  // Utiliser les assureurs de la DB ou fallback
+  const insuranceCompanies = insuranceCompaniesData && insuranceCompaniesData.length > 0
+    ? insuranceCompaniesData
+    : [
+        'NSIA Assurance',
+        'SUNU Assurance',
+        'SONAR',
+        'ATLANTIQUE Assurance',
+        'AXA Assurance',
+        'ALLIANZ',
+        'GAN Assurances'
+      ];
 
   const handleTypeChange = (type: Customer['type']) => {
     const selectedType = customerTypes.find(t => t.id === type);

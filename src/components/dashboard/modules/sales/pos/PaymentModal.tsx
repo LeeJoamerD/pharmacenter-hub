@@ -25,13 +25,14 @@ interface PaymentModalProps {
     total: number;
     timestamp: Date;
   };
-  onPaymentComplete: (paymentData: any) => void;
+  onPaymentComplete: (paymentData: any) => Promise<void>;
   onClose: () => void;
+  isSaving?: boolean;
 }
 
 type PaymentMethod = 'cash' | 'card' | 'mobile' | 'insurance';
 
-const PaymentModal = ({ transaction, onPaymentComplete, onClose }: PaymentModalProps) => {
+const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = false }: PaymentModalProps) => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [amountReceived, setAmountReceived] = useState<string>(transaction.total.toString());
   const [processing, setProcessing] = useState(false);
@@ -71,9 +72,6 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose }: PaymentModalP
     
     setProcessing(true);
     
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
     const paymentData = {
       method: paymentMethod,
       amount: transaction.total,
@@ -83,7 +81,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose }: PaymentModalP
       reference: `PAY-${Date.now()}`
     };
 
-    onPaymentComplete(paymentData);
+    await onPaymentComplete(paymentData);
     setProcessing(false);
   };
 
@@ -213,13 +211,13 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose }: PaymentModalP
             </Button>
             <Button 
               onClick={handlePayment}
-              disabled={!isValidPayment || processing}
+              disabled={!isValidPayment || processing || isSaving}
               className="flex-1"
             >
-              {processing ? (
+              {(processing || isSaving) ? (
                 <>
                   <Calculator className="h-4 w-4 mr-2 animate-spin" />
-                  Traitement...
+                  {isSaving ? 'Enregistrement...' : 'Traitement...'}
                 </>
               ) : (
                 <>
