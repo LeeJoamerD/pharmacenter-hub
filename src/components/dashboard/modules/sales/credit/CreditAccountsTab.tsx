@@ -39,7 +39,7 @@ interface CreditAccount {
   limite_credit: number;
   credit_actuel: number;
   credit_disponible: number;
-  statut: string;
+  statut: string | null;
   created_at: string;
   updated_at: string;
 }

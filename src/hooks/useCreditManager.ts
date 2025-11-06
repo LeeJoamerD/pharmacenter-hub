@@ -13,7 +13,7 @@ interface CreditAccount {
   limite_credit: number;
   credit_actuel: number;
   credit_disponible: number;
-  statut: string;
+  statut: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -95,7 +95,7 @@ export const useCreditManager = (filters: Filters = {}) => {
         .from('clients')
         .select(`
           id,
-          nom:raison_sociale,
+          nom_complet,
           telephone,
           email,
           type_client,
@@ -108,9 +108,11 @@ export const useCreditManager = (filters: Filters = {}) => {
         .eq('tenant_id', tenantId)
         .not('limite_credit', 'is', null);
 
-      if (filters.statut) query = query.eq('statut', filters.statut);
+      if (filters.statut && filters.statut !== 'all') {
+        query = query.eq('statut', filters.statut as any);
+      }
       if (filters.search) {
-        query = query.or(`raison_sociale.ilike.%${filters.search}%,telephone.ilike.%${filters.search}%`);
+        query = query.or(`nom_complet.ilike.%${filters.search}%,telephone.ilike.%${filters.search}%`);
       }
 
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -120,7 +122,7 @@ export const useCreditManager = (filters: Filters = {}) => {
       return data?.map(account => ({
         ...account,
         credit_disponible: (account.limite_credit || 0) - (account.credit_actuel || 0)
-      })) as CreditAccount[];
+      })) || [];
     },
     enabled: !!tenantId
   });
@@ -393,13 +395,13 @@ export const useCreditManager = (filters: Filters = {}) => {
       const { data, error } = await supabase
         .from('clients')
         .insert({
-          raison_sociale: accountData.nom_complet,
+          nom_complet: accountData.nom_complet,
           telephone: accountData.telephone,
           email: accountData.email,
           limite_credit: accountData.limite_credit,
           credit_actuel: 0,
-          type_client: accountData.type_client || 'particulier',
-          statut: 'Actif',
+          type_client: (accountData.type_client || 'Particulier') as any,
+          statut: 'Actif' as any,
           tenant_id: tenantId
         })
         .select()
@@ -458,33 +460,67 @@ export const useCreditManager = (filters: Filters = {}) => {
         if (paymentError) throw paymentError;
         paiement_id = payment.id;
 
-        await supabase
+        // Récupérer les montants actuels de la facture
+        const { data: facture } = await supabase
           .from('factures')
-          .update({
-            montant_paye: supabase.sql`montant_paye + ${paymentData.montant}`,
-            montant_restant: supabase.sql`montant_restant - ${paymentData.montant}`
-          })
-          .eq('id', paymentData.facture_id);
+          .select('montant_paye, montant_restant, montant_ttc')
+          .eq('id', paymentData.facture_id)
+          .single();
+
+        if (facture) {
+          const nouveau_montant_paye = (facture.montant_paye || 0) + paymentData.montant;
+          const nouveau_montant_restant = Math.max(0, (facture.montant_restant || facture.montant_ttc) - paymentData.montant);
+          
+          await supabase
+            .from('factures')
+            .update({
+              montant_paye: nouveau_montant_paye,
+              montant_restant: nouveau_montant_restant,
+              statut_paiement: nouveau_montant_restant <= 0 ? 'payee' : (nouveau_montant_paye > 0 ? 'partielle' : 'impayee')
+            })
+            .eq('id', paymentData.facture_id);
+        }
       }
 
-      await supabase
+      // Récupérer le crédit actuel du client
+      const { data: client } = await supabase
         .from('clients')
-        .update({
-          credit_actuel: supabase.sql`GREATEST(0, credit_actuel - ${paymentData.montant})`
-        })
+        .select('credit_actuel')
         .eq('id', paymentData.client_id)
-        .eq('tenant_id', tenantId);
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (client) {
+        const nouveau_credit = Math.max(0, (client.credit_actuel || 0) - paymentData.montant);
+        await supabase
+          .from('clients')
+          .update({ credit_actuel: nouveau_credit })
+          .eq('id', paymentData.client_id)
+          .eq('tenant_id', tenantId);
+      }
 
       if (paymentData.echeancier_ligne_id && paiement_id) {
-        await supabase
+        const { data: ligne } = await supabase
           .from('lignes_echeancier')
-          .update({
-            montant_paye: supabase.sql`montant_paye + ${paymentData.montant}`,
-            montant_restant: supabase.sql`montant_restant - ${paymentData.montant}`,
-            date_paiement: new Date().toISOString(),
-            paiement_facture_id: paiement_id
-          })
-          .eq('id', paymentData.echeancier_ligne_id);
+          .select('montant_paye, montant_restant, montant_echeance')
+          .eq('id', paymentData.echeancier_ligne_id)
+          .single();
+
+        if (ligne) {
+          const nouveau_montant_paye = (ligne.montant_paye || 0) + paymentData.montant;
+          const nouveau_montant_restant = Math.max(0, (ligne.montant_restant || ligne.montant_echeance) - paymentData.montant);
+
+          await supabase
+            .from('lignes_echeancier')
+            .update({
+              montant_paye: nouveau_montant_paye,
+              montant_restant: nouveau_montant_restant,
+              statut: nouveau_montant_restant <= 0 ? 'payee' : 'partielle',
+              date_paiement: new Date().toISOString(),
+              paiement_facture_id: paiement_id
+            })
+            .eq('id', paymentData.echeancier_ligne_id);
+        }
       }
 
       return { success: true, paiement_id };
@@ -670,13 +706,22 @@ export const useCreditManager = (filters: Filters = {}) => {
 
       if (error) throw error;
 
-      await supabase
+      // Incrémenter les relances
+      const { data: facture } = await supabase
         .from('factures')
-        .update({
-          relances_effectuees: supabase.sql`relances_effectuees + 1`,
-          derniere_relance: new Date().toISOString()
-        })
-        .eq('id', reminderData.facture_id);
+        .select('relances_effectuees')
+        .eq('id', reminderData.facture_id)
+        .single();
+
+      if (facture) {
+        await supabase
+          .from('factures')
+          .update({
+            relances_effectuees: (facture.relances_effectuees || 0) + 1,
+            derniere_relance: new Date().toISOString()
+          })
+          .eq('id', reminderData.facture_id);
+      }
 
       return data;
     },
