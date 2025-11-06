@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Search, Plus, Package, AlertTriangle } from 'lucide-react';
-import { POSProduct } from '../POSInterface';
+import { POSProduct } from '@/types/pos';
 
 interface ProductSearchProps {
   products: POSProduct[];
@@ -24,8 +24,8 @@ const ProductSearch = ({ products, onAddToCart }: ProductSearchProps) => {
     return products.filter(product => {
       const matchesSearch = 
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.dci.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.barcode?.includes(searchTerm);
+        product.dci?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.code_cip?.includes(searchTerm);
       
       const matchesCategory = selectedCategory === '' || product.category === selectedCategory;
       

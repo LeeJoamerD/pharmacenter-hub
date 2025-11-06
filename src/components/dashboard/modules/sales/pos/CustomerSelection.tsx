@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,35 +6,44 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { User, UserCheck, Star, Building2, Percent, Users } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
-import { Customer } from '../POSInterface';
+
+type CustomerType = 'ordinaire' | 'assure' | 'particulier';
 
 interface CustomerSelectionProps {
-  customer: Customer;
-  onCustomerChange: (customer: Customer) => void;
+  customer: any;
+  onCustomerChange: (customer: any) => void;
 }
 
 const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProps) => {
   const { tenantId } = useTenant();
   const [showDetails, setShowDetails] = useState(customer.type !== 'ordinaire');
+  const [insuranceCompaniesData, setInsuranceCompaniesData] = useState<string[]>([]);
 
   // Récupérer les assureurs depuis la DB
-  const { data: insuranceCompaniesData } = useQuery({
-    queryKey: ['assureurs', tenantId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('assureurs')
-        .select('nom')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .order('nom');
+  useEffect(() => {
+    const fetchInsurers = async () => {
+      if (!tenantId) return;
       
-      return data?.map(a => a.nom) || [];
-    },
-    enabled: !!tenantId
-  });
+      try {
+        const result = await (supabase as any)
+          .from('assureurs')
+          .select('libelle_assureur')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .order('libelle_assureur');
+        
+        if (result.data) {
+          setInsuranceCompaniesData(result.data.map((a: any) => a.libelle_assureur));
+        }
+      } catch (error) {
+        console.error('Error fetching insurers:', error);
+      }
+    };
+
+    fetchInsurers();
+  }, [tenantId]);
 
   const customerTypes = [
     {
@@ -73,10 +82,10 @@ const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProp
         'GAN Assurances'
       ];
 
-  const handleTypeChange = (type: Customer['type']) => {
+  const handleTypeChange = (type: CustomerType) => {
     const selectedType = customerTypes.find(t => t.id === type);
     
-    const newCustomer: Customer = {
+    const newCustomer: any = {
       type,
       discountRate: selectedType?.discountRate || 0
     };
@@ -90,7 +99,7 @@ const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProp
     onCustomerChange(newCustomer);
   };
 
-  const handleDetailChange = (field: keyof Customer, value: string) => {
+  const handleDetailChange = (field: string, value: string) => {
     onCustomerChange({
       ...customer,
       [field]: value
