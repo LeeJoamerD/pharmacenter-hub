@@ -675,6 +675,116 @@ export type Database = {
           },
         ]
       }
+      analytiques_pos: {
+        Row: {
+          agent_id: string | null
+          articles_vendus: number | null
+          caisse_id: string | null
+          clients_fidelite: number | null
+          created_at: string | null
+          date: string
+          heure: number | null
+          id: string
+          metadata: Json | null
+          montant_moyen_transaction: number | null
+          montant_total_ventes: number | null
+          nombre_transactions: number | null
+          nouveaux_clients: number | null
+          panier_moyen_articles: number | null
+          points_distribues: number | null
+          retours: number | null
+          temps_attente_moyen: unknown
+          temps_moyen_transaction: unknown
+          tenant_id: string
+          updated_at: string | null
+          ventes_assurance: number | null
+          ventes_carte: number | null
+          ventes_especes: number | null
+          ventes_mobile: number | null
+        }
+        Insert: {
+          agent_id?: string | null
+          articles_vendus?: number | null
+          caisse_id?: string | null
+          clients_fidelite?: number | null
+          created_at?: string | null
+          date?: string
+          heure?: number | null
+          id?: string
+          metadata?: Json | null
+          montant_moyen_transaction?: number | null
+          montant_total_ventes?: number | null
+          nombre_transactions?: number | null
+          nouveaux_clients?: number | null
+          panier_moyen_articles?: number | null
+          points_distribues?: number | null
+          retours?: number | null
+          temps_attente_moyen?: unknown
+          temps_moyen_transaction?: unknown
+          tenant_id: string
+          updated_at?: string | null
+          ventes_assurance?: number | null
+          ventes_carte?: number | null
+          ventes_especes?: number | null
+          ventes_mobile?: number | null
+        }
+        Update: {
+          agent_id?: string | null
+          articles_vendus?: number | null
+          caisse_id?: string | null
+          clients_fidelite?: number | null
+          created_at?: string | null
+          date?: string
+          heure?: number | null
+          id?: string
+          metadata?: Json | null
+          montant_moyen_transaction?: number | null
+          montant_total_ventes?: number | null
+          nombre_transactions?: number | null
+          nouveaux_clients?: number | null
+          panier_moyen_articles?: number | null
+          points_distribues?: number | null
+          retours?: number | null
+          temps_attente_moyen?: unknown
+          temps_moyen_transaction?: unknown
+          tenant_id?: string
+          updated_at?: string | null
+          ventes_assurance?: number | null
+          ventes_carte?: number | null
+          ventes_especes?: number | null
+          ventes_mobile?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytiques_pos_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytiques_pos_caisse_id_fkey"
+            columns: ["caisse_id"]
+            isOneToOne: false
+            referencedRelation: "caisses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytiques_pos_caisse_id_fkey"
+            columns: ["caisse_id"]
+            isOneToOne: false
+            referencedRelation: "v_rapport_par_caisse_type"
+            referencedColumns: ["caisse_id"]
+          },
+          {
+            foreignKeyName: "analytiques_pos_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_scheduled_tasks: {
         Row: {
           config: Json | null
@@ -4676,6 +4786,80 @@ export type Database = {
           },
         ]
       }
+      lignes_prescriptions: {
+        Row: {
+          created_at: string | null
+          dosage: string | null
+          duree_traitement: string | null
+          id: string
+          nom_medicament: string
+          notes: string | null
+          posologie: string | null
+          prescription_id: string
+          produit_id: string | null
+          quantite_prescrite: number
+          quantite_servie: number | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dosage?: string | null
+          duree_traitement?: string | null
+          id?: string
+          nom_medicament: string
+          notes?: string | null
+          posologie?: string | null
+          prescription_id: string
+          produit_id?: string | null
+          quantite_prescrite: number
+          quantite_servie?: number | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          dosage?: string | null
+          duree_traitement?: string | null
+          id?: string
+          nom_medicament?: string
+          notes?: string | null
+          posologie?: string | null
+          prescription_id?: string
+          produit_id?: string | null
+          quantite_prescrite?: number
+          quantite_servie?: number | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lignes_prescriptions_prescription_id_fkey"
+            columns: ["prescription_id"]
+            isOneToOne: false
+            referencedRelation: "prescriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_prescriptions_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_prescriptions_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "lignes_prescriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lignes_reception_fournisseur: {
         Row: {
           created_at: string
@@ -4825,6 +5009,90 @@ export type Database = {
             columns: ["repartition_id"]
             isOneToOne: false
             referencedRelation: "repartitions_charges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lignes_retours: {
+        Row: {
+          created_at: string | null
+          etat_produit: string | null
+          id: string
+          lot_id: string | null
+          montant_ligne: number
+          motif_ligne: string | null
+          prix_unitaire: number
+          produit_id: string | null
+          quantite_retournee: number
+          remis_en_stock: boolean | null
+          retour_id: string
+          taux_remboursement: number | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          etat_produit?: string | null
+          id?: string
+          lot_id?: string | null
+          montant_ligne: number
+          motif_ligne?: string | null
+          prix_unitaire: number
+          produit_id?: string | null
+          quantite_retournee: number
+          remis_en_stock?: boolean | null
+          retour_id: string
+          taux_remboursement?: number | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          etat_produit?: string | null
+          id?: string
+          lot_id?: string | null
+          montant_ligne?: number
+          motif_ligne?: string | null
+          prix_unitaire?: number
+          produit_id?: string | null
+          quantite_retournee?: number
+          remis_en_stock?: boolean | null
+          retour_id?: string
+          taux_remboursement?: number | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lignes_retours_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_retours_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_retours_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "lignes_retours_retour_id_fkey"
+            columns: ["retour_id"]
+            isOneToOne: false
+            referencedRelation: "retours"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_retours_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
         ]
@@ -5773,6 +6041,79 @@ export type Database = {
             columns: ["lot_id"]
             isOneToOne: false
             referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mouvements_points: {
+        Row: {
+          agent_id: string | null
+          created_at: string | null
+          date_expiration: string | null
+          date_mouvement: string | null
+          description: string | null
+          id: string
+          montant_points: number
+          points_apres: number
+          points_avant: number
+          programme_id: string
+          reference_id: string | null
+          reference_type: string | null
+          tenant_id: string
+          type_mouvement: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string | null
+          date_expiration?: string | null
+          date_mouvement?: string | null
+          description?: string | null
+          id?: string
+          montant_points: number
+          points_apres: number
+          points_avant: number
+          programme_id: string
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id: string
+          type_mouvement: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string | null
+          date_expiration?: string | null
+          date_mouvement?: string | null
+          description?: string | null
+          id?: string
+          montant_points?: number
+          points_apres?: number
+          points_avant?: number
+          programme_id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          tenant_id?: string
+          type_mouvement?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mouvements_points_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_points_programme_id_fkey"
+            columns: ["programme_id"]
+            isOneToOne: false
+            referencedRelation: "programme_fidelite"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_points_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
         ]
@@ -8234,6 +8575,110 @@ export type Database = {
           },
         ]
       }
+      prescriptions: {
+        Row: {
+          client_id: string | null
+          created_at: string | null
+          date_expiration: string | null
+          date_prescription: string
+          date_validation: string | null
+          diagnostic: string | null
+          est_validee: boolean | null
+          fichier_url: string | null
+          id: string
+          instructions: string | null
+          medecin_nom: string | null
+          medecin_specialite: string | null
+          medecin_telephone: string | null
+          metadata: Json | null
+          notes: string | null
+          numero_prescription: string
+          statut: string | null
+          tenant_id: string
+          type_prescription: string | null
+          updated_at: string | null
+          validateur_id: string | null
+          vente_id: string | null
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string | null
+          date_expiration?: string | null
+          date_prescription: string
+          date_validation?: string | null
+          diagnostic?: string | null
+          est_validee?: boolean | null
+          fichier_url?: string | null
+          id?: string
+          instructions?: string | null
+          medecin_nom?: string | null
+          medecin_specialite?: string | null
+          medecin_telephone?: string | null
+          metadata?: Json | null
+          notes?: string | null
+          numero_prescription: string
+          statut?: string | null
+          tenant_id: string
+          type_prescription?: string | null
+          updated_at?: string | null
+          validateur_id?: string | null
+          vente_id?: string | null
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string | null
+          date_expiration?: string | null
+          date_prescription?: string
+          date_validation?: string | null
+          diagnostic?: string | null
+          est_validee?: boolean | null
+          fichier_url?: string | null
+          id?: string
+          instructions?: string | null
+          medecin_nom?: string | null
+          medecin_specialite?: string | null
+          medecin_telephone?: string | null
+          metadata?: Json | null
+          notes?: string | null
+          numero_prescription?: string
+          statut?: string | null
+          tenant_id?: string
+          type_prescription?: string | null
+          updated_at?: string | null
+          validateur_id?: string | null
+          vente_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_validateur_id_fkey"
+            columns: ["validateur_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_vente_id_fkey"
+            columns: ["vente_id"]
+            isOneToOne: false
+            referencedRelation: "ventes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       previsions_tresorerie: {
         Row: {
           coefficient_ajustement: number
@@ -8398,6 +8843,7 @@ export type Database = {
           categorie_tarification_id: string | null
           centime_additionnel: number | null
           classe_therapeutique_id: string | null
+          code_barre_externe: string | null
           code_cip: string | null
           created_at: string
           dci_id: string | null
@@ -8409,6 +8855,7 @@ export type Database = {
           laboratoires_id: string | null
           libelle_produit: string
           niveau_detail: number | null
+          prescription_requise: boolean | null
           prix_achat: number | null
           prix_vente_ht: number | null
           prix_vente_ttc: number | null
@@ -8417,6 +8864,7 @@ export type Database = {
           rayon_produit_id: string | null
           reference_agent_enregistrement_id: string | null
           reference_agent_modification_id: string | null
+          scanner_config: Json | null
           stock_actuel: number | null
           stock_alerte: number | null
           stock_limite: number | null
@@ -8430,6 +8878,7 @@ export type Database = {
           categorie_tarification_id?: string | null
           centime_additionnel?: number | null
           classe_therapeutique_id?: string | null
+          code_barre_externe?: string | null
           code_cip?: string | null
           created_at?: string
           dci_id?: string | null
@@ -8441,6 +8890,7 @@ export type Database = {
           laboratoires_id?: string | null
           libelle_produit: string
           niveau_detail?: number | null
+          prescription_requise?: boolean | null
           prix_achat?: number | null
           prix_vente_ht?: number | null
           prix_vente_ttc?: number | null
@@ -8449,6 +8899,7 @@ export type Database = {
           rayon_produit_id?: string | null
           reference_agent_enregistrement_id?: string | null
           reference_agent_modification_id?: string | null
+          scanner_config?: Json | null
           stock_actuel?: number | null
           stock_alerte?: number | null
           stock_limite?: number | null
@@ -8462,6 +8913,7 @@ export type Database = {
           categorie_tarification_id?: string | null
           centime_additionnel?: number | null
           classe_therapeutique_id?: string | null
+          code_barre_externe?: string | null
           code_cip?: string | null
           created_at?: string
           dci_id?: string | null
@@ -8473,6 +8925,7 @@ export type Database = {
           laboratoires_id?: string | null
           libelle_produit?: string
           niveau_detail?: number | null
+          prescription_requise?: boolean | null
           prix_achat?: number | null
           prix_vente_ht?: number | null
           prix_vente_ttc?: number | null
@@ -8481,6 +8934,7 @@ export type Database = {
           rayon_produit_id?: string | null
           reference_agent_enregistrement_id?: string | null
           reference_agent_modification_id?: string | null
+          scanner_config?: Json | null
           stock_actuel?: number | null
           stock_alerte?: number | null
           stock_limite?: number | null
@@ -8630,6 +9084,84 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "produits_substituts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      programme_fidelite: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          date_adhesion: string | null
+          date_derniere_activite: string | null
+          id: string
+          metadata: Json | null
+          montant_total_achats: number | null
+          niveau_fidelite: string | null
+          nombre_achats: number | null
+          numero_carte: string | null
+          points_actuels: number | null
+          points_cumules: number | null
+          points_utilises: number | null
+          recompenses_gagnees: number | null
+          recompenses_utilisees: number | null
+          statut: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          date_adhesion?: string | null
+          date_derniere_activite?: string | null
+          id?: string
+          metadata?: Json | null
+          montant_total_achats?: number | null
+          niveau_fidelite?: string | null
+          nombre_achats?: number | null
+          numero_carte?: string | null
+          points_actuels?: number | null
+          points_cumules?: number | null
+          points_utilises?: number | null
+          recompenses_gagnees?: number | null
+          recompenses_utilisees?: number | null
+          statut?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          date_adhesion?: string | null
+          date_derniere_activite?: string | null
+          id?: string
+          metadata?: Json | null
+          montant_total_achats?: number | null
+          niveau_fidelite?: string | null
+          nombre_achats?: number | null
+          numero_carte?: string | null
+          points_actuels?: number | null
+          points_cumules?: number | null
+          points_utilises?: number | null
+          recompenses_gagnees?: number | null
+          recompenses_utilisees?: number | null
+          statut?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "programme_fidelite_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "programme_fidelite_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -8914,6 +9446,88 @@ export type Database = {
           },
           {
             foreignKeyName: "receptions_fournisseurs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recompenses_fidelite: {
+        Row: {
+          cout_points: number
+          created_at: string | null
+          description: string | null
+          duree_validite_jours: number | null
+          est_actif: boolean | null
+          id: string
+          image_url: string | null
+          metadata: Json | null
+          niveau_requis: string | null
+          nom: string
+          produit_id: string | null
+          stock_disponible: number | null
+          tenant_id: string
+          type_recompense: string
+          updated_at: string | null
+          utilisations: number | null
+          valeur: number | null
+        }
+        Insert: {
+          cout_points: number
+          created_at?: string | null
+          description?: string | null
+          duree_validite_jours?: number | null
+          est_actif?: boolean | null
+          id?: string
+          image_url?: string | null
+          metadata?: Json | null
+          niveau_requis?: string | null
+          nom: string
+          produit_id?: string | null
+          stock_disponible?: number | null
+          tenant_id: string
+          type_recompense: string
+          updated_at?: string | null
+          utilisations?: number | null
+          valeur?: number | null
+        }
+        Update: {
+          cout_points?: number
+          created_at?: string | null
+          description?: string | null
+          duree_validite_jours?: number | null
+          est_actif?: boolean | null
+          id?: string
+          image_url?: string | null
+          metadata?: Json | null
+          niveau_requis?: string | null
+          nom?: string
+          produit_id?: string | null
+          stock_disponible?: number | null
+          tenant_id?: string
+          type_recompense?: string
+          updated_at?: string | null
+          utilisations?: number | null
+          valeur?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recompenses_fidelite_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recompenses_fidelite_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "recompenses_fidelite_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -9558,6 +10172,114 @@ export type Database = {
           version?: number | null
         }
         Relationships: []
+      }
+      retours: {
+        Row: {
+          agent_id: string | null
+          client_id: string | null
+          created_at: string | null
+          date_retour: string | null
+          date_validation: string | null
+          id: string
+          metadata: Json | null
+          mode_remboursement: string | null
+          montant_avoir: number | null
+          montant_rembourse: number | null
+          montant_total_retour: number | null
+          motif_retour: string
+          notes: string | null
+          numero_retour: string
+          numero_vente_origine: string | null
+          statut: string | null
+          tenant_id: string
+          type_operation: string | null
+          updated_at: string | null
+          validateur_id: string | null
+          vente_origine_id: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          date_retour?: string | null
+          date_validation?: string | null
+          id?: string
+          metadata?: Json | null
+          mode_remboursement?: string | null
+          montant_avoir?: number | null
+          montant_rembourse?: number | null
+          montant_total_retour?: number | null
+          motif_retour: string
+          notes?: string | null
+          numero_retour: string
+          numero_vente_origine?: string | null
+          statut?: string | null
+          tenant_id: string
+          type_operation?: string | null
+          updated_at?: string | null
+          validateur_id?: string | null
+          vente_origine_id?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          date_retour?: string | null
+          date_validation?: string | null
+          id?: string
+          metadata?: Json | null
+          mode_remboursement?: string | null
+          montant_avoir?: number | null
+          montant_rembourse?: number | null
+          montant_total_retour?: number | null
+          motif_retour?: string
+          notes?: string | null
+          numero_retour?: string
+          numero_vente_origine?: string | null
+          statut?: string | null
+          tenant_id?: string
+          type_operation?: string | null
+          updated_at?: string | null
+          validateur_id?: string | null
+          vente_origine_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retours_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retours_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retours_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retours_validateur_id_fkey"
+            columns: ["validateur_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retours_vente_origine_id_fkey"
+            columns: ["vente_origine_id"]
+            isOneToOne: false
+            referencedRelation: "ventes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       roles: {
         Row: {
@@ -10831,7 +11553,9 @@ export type Database = {
           id: string
           metadata: Json | null
           mode_paiement: Database["public"]["Enums"]["mode_paiement"] | null
+          mode_paiement_secondaire: string | null
           montant_net: number
+          montant_paiement_secondaire: number | null
           montant_part_assurance: number | null
           montant_part_patient: number | null
           montant_paye: number | null
@@ -10841,11 +11565,18 @@ export type Database = {
           montant_tva: number | null
           notes: string | null
           numero_vente: string
+          points_gagnes: number | null
+          points_utilises: number | null
+          prescription_id: string | null
+          recompense_appliquee_id: string | null
+          reference_paiement: string | null
+          reference_paiement_secondaire: string | null
           remise_globale: number | null
           session_caisse_id: string | null
           statut: Database["public"]["Enums"]["statut_vente"] | null
           taux_couverture_assurance: number | null
           tenant_id: string
+          terminal_id: string | null
           type_vente: Database["public"]["Enums"]["type_vente"] | null
           updated_at: string
         }
@@ -10858,7 +11589,9 @@ export type Database = {
           id?: string
           metadata?: Json | null
           mode_paiement?: Database["public"]["Enums"]["mode_paiement"] | null
+          mode_paiement_secondaire?: string | null
           montant_net?: number
+          montant_paiement_secondaire?: number | null
           montant_part_assurance?: number | null
           montant_part_patient?: number | null
           montant_paye?: number | null
@@ -10868,11 +11601,18 @@ export type Database = {
           montant_tva?: number | null
           notes?: string | null
           numero_vente: string
+          points_gagnes?: number | null
+          points_utilises?: number | null
+          prescription_id?: string | null
+          recompense_appliquee_id?: string | null
+          reference_paiement?: string | null
+          reference_paiement_secondaire?: string | null
           remise_globale?: number | null
           session_caisse_id?: string | null
           statut?: Database["public"]["Enums"]["statut_vente"] | null
           taux_couverture_assurance?: number | null
           tenant_id: string
+          terminal_id?: string | null
           type_vente?: Database["public"]["Enums"]["type_vente"] | null
           updated_at?: string
         }
@@ -10885,7 +11625,9 @@ export type Database = {
           id?: string
           metadata?: Json | null
           mode_paiement?: Database["public"]["Enums"]["mode_paiement"] | null
+          mode_paiement_secondaire?: string | null
           montant_net?: number
+          montant_paiement_secondaire?: number | null
           montant_part_assurance?: number | null
           montant_part_patient?: number | null
           montant_paye?: number | null
@@ -10895,11 +11637,18 @@ export type Database = {
           montant_tva?: number | null
           notes?: string | null
           numero_vente?: string
+          points_gagnes?: number | null
+          points_utilises?: number | null
+          prescription_id?: string | null
+          recompense_appliquee_id?: string | null
+          reference_paiement?: string | null
+          reference_paiement_secondaire?: string | null
           remise_globale?: number | null
           session_caisse_id?: string | null
           statut?: Database["public"]["Enums"]["statut_vente"] | null
           taux_couverture_assurance?: number | null
           tenant_id?: string
+          terminal_id?: string | null
           type_vente?: Database["public"]["Enums"]["type_vente"] | null
           updated_at?: string
         }
@@ -10930,6 +11679,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_prescription_id_fkey"
+            columns: ["prescription_id"]
+            isOneToOne: false
+            referencedRelation: "prescriptions"
             referencedColumns: ["id"]
           },
           {
