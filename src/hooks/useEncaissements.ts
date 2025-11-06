@@ -291,19 +291,19 @@ export const useEncaissements = () => {
       }
 
       if (filters.paymentMethod && filters.paymentMethod !== 'all') {
-        const methodMap: Record<string, string> = {
+        const methodMap: Record<string, any> = {
           cash: 'Espèces',
           card: 'Carte Bancaire',
           mobile: 'Mobile Money',
         };
         const method = methodMap[filters.paymentMethod];
         if (method) {
-          query = query.eq('mode_paiement', method);
+          query = query.eq('mode_paiement', method as any);
         }
       }
 
       if (filters.status && filters.status !== 'all') {
-        const statusMap: Record<string, string> = {
+        const statusMap: Record<string, any> = {
           completed: 'Finalisée',
           pending: 'En cours',
           cancelled: 'Annulée',
@@ -311,7 +311,7 @@ export const useEncaissements = () => {
         };
         const status = statusMap[filters.status];
         if (status) {
-          query = query.eq('statut', status);
+          query = query.eq('statut', status as any);
         }
       }
 
@@ -343,7 +343,7 @@ export const useEncaissements = () => {
           montant_total_ttc: vente.montant_total_ttc || 0,
           montant_total_ht: vente.montant_total_ht || 0,
           montant_tva: vente.montant_tva || 0,
-          montant_remise: vente.remise_montant || 0,
+          montant_remise: 0,
           mode_paiement: vente.mode_paiement,
           statut: vente.statut,
           agent: vente.agent,
@@ -405,7 +405,7 @@ export const useEncaissements = () => {
       montant_total_ttc: data.montant_total_ttc || 0,
       montant_total_ht: data.montant_total_ht || 0,
       montant_tva: data.montant_tva || 0,
-      montant_remise: data.remise_montant || 0,
+      montant_remise: 0,
       mode_paiement: data.mode_paiement,
       statut: data.statut,
       agent: data.agent,
