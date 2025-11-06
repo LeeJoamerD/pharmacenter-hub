@@ -9038,6 +9038,72 @@ export type Database = {
           },
         ]
       }
+      produits_eligibles_promotion: {
+        Row: {
+          categorie_id: string | null
+          classe_therapeutique_id: string | null
+          created_at: string
+          id: string
+          produit_id: string
+          promotion_id: string
+          tenant_id: string
+        }
+        Insert: {
+          categorie_id?: string | null
+          classe_therapeutique_id?: string | null
+          created_at?: string
+          id?: string
+          produit_id: string
+          promotion_id: string
+          tenant_id: string
+        }
+        Update: {
+          categorie_id?: string | null
+          classe_therapeutique_id?: string | null
+          created_at?: string
+          id?: string
+          produit_id?: string
+          promotion_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produits_eligibles_promotion_categorie_id_fkey"
+            columns: ["categorie_id"]
+            isOneToOne: false
+            referencedRelation: "categorie_tarification"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_eligibles_promotion_classe_therapeutique_id_fkey"
+            columns: ["classe_therapeutique_id"]
+            isOneToOne: false
+            referencedRelation: "classes_therapeutiques"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_eligibles_promotion_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_eligibles_promotion_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "produits_eligibles_promotion_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "promotions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       produits_substituts: {
         Row: {
           created_at: string | null
@@ -9168,6 +9234,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      promotions: {
+        Row: {
+          cible_clients: string
+          code_promo: string | null
+          combinable: boolean | null
+          conditions: Json | null
+          created_at: string
+          created_by: string | null
+          date_debut: string
+          date_fin: string
+          description: string | null
+          est_actif: boolean
+          heure_debut: string | null
+          heure_fin: string | null
+          id: string
+          limite_par_client: number | null
+          limite_utilisations: number | null
+          montant_minimum: number | null
+          nom: string
+          nombre_utilisations: number
+          priorite: number | null
+          tenant_id: string
+          type_promotion: string
+          updated_at: string
+          valeur_promotion: number
+        }
+        Insert: {
+          cible_clients?: string
+          code_promo?: string | null
+          combinable?: boolean | null
+          conditions?: Json | null
+          created_at?: string
+          created_by?: string | null
+          date_debut: string
+          date_fin: string
+          description?: string | null
+          est_actif?: boolean
+          heure_debut?: string | null
+          heure_fin?: string | null
+          id?: string
+          limite_par_client?: number | null
+          limite_utilisations?: number | null
+          montant_minimum?: number | null
+          nom: string
+          nombre_utilisations?: number
+          priorite?: number | null
+          tenant_id: string
+          type_promotion: string
+          updated_at?: string
+          valeur_promotion: number
+        }
+        Update: {
+          cible_clients?: string
+          code_promo?: string | null
+          combinable?: boolean | null
+          conditions?: Json | null
+          created_at?: string
+          created_by?: string | null
+          date_debut?: string
+          date_fin?: string
+          description?: string | null
+          est_actif?: boolean
+          heure_debut?: string | null
+          heure_fin?: string | null
+          id?: string
+          limite_par_client?: number | null
+          limite_utilisations?: number | null
+          montant_minimum?: number | null
+          nom?: string
+          nombre_utilisations?: number
+          priorite?: number | null
+          tenant_id?: string
+          type_promotion?: string
+          updated_at?: string
+          valeur_promotion?: number
+        }
+        Relationships: []
       }
       rapports_comptables: {
         Row: {
@@ -11543,6 +11687,64 @@ export type Database = {
           },
         ]
       }
+      utilisations_promotion: {
+        Row: {
+          agent_id: string | null
+          client_id: string | null
+          date_utilisation: string
+          id: string
+          metadata: Json | null
+          montant_remise: number
+          promotion_id: string
+          tenant_id: string
+          vente_id: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          client_id?: string | null
+          date_utilisation?: string
+          id?: string
+          metadata?: Json | null
+          montant_remise: number
+          promotion_id: string
+          tenant_id: string
+          vente_id?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          client_id?: string | null
+          date_utilisation?: string
+          id?: string
+          metadata?: Json | null
+          montant_remise?: number
+          promotion_id?: string
+          tenant_id?: string
+          vente_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "utilisations_promotion_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "utilisations_promotion_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "promotions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "utilisations_promotion_vente_id_fkey"
+            columns: ["vente_id"]
+            isOneToOne: false
+            referencedRelation: "ventes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ventes: {
         Row: {
           agent_id: string | null
@@ -12565,6 +12767,18 @@ export type Database = {
       check_pharmacy_email_exists: {
         Args: { email_to_check: string }
         Returns: Json
+      }
+      check_promotion_validity: {
+        Args: {
+          p_client_id?: string
+          p_montant?: number
+          p_promotion_id: string
+        }
+        Returns: {
+          est_valide: boolean
+          message: string
+          valeur_remise: number
+        }[]
       }
       cleanup_expired_pharmacy_sessions: { Args: never; Returns: number }
       create_pharmacy_session: {
