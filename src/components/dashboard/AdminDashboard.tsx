@@ -1,26 +1,52 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Shield, Package, FileText, AlertTriangle, Activity, Briefcase, Settings } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { 
+  Users, Briefcase, Package, AlertTriangle, Activity, FileText, RefreshCw
+} from 'lucide-react';
 import QuickActions from './admin/QuickActions';
 import AlertsWidget from './admin/AlertsWidget';
 import RecentActivity from './admin/RecentActivity';
+import { useAdminDashboardData } from '@/hooks/useAdminDashboardData';
+import { useSystemAlerts } from '@/hooks/useSystemAlerts';
+import { useAdminApprovals } from '@/hooks/useAdminApprovals';
 
 const AdminDashboard = () => {
-  // Données fictives pour les métriques d'administration
-  const adminMetrics = {
-    totalPersonnel: 12,
-    activeUsers: 8,
-    pendingApprovals: 3,
-    totalPartners: 25,
-    totalProducts: 1234,
-    pendingDocuments: 7,
-    systemAlerts: 2,
-    activeWorkflows: 15
-  };
+  const { personnel, partenaires, referentiel, systeme, isLoading, refetch } = useAdminDashboardData();
+  const { getAlertStats } = useSystemAlerts();
+  const { approvals, total: approvalsTotal } = useAdminApprovals();
+  
+  const alertStats = getAlertStats();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader><Skeleton className="h-4 w-32" /></CardHeader>
+              <CardContent><Skeleton className="h-8 w-20 mb-2" /><Skeleton className="h-3 w-full" /></CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Métriques principales */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Tableau de Bord Administration</h2>
+          <p className="text-muted-foreground">Vue d'ensemble temps réel</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={refetch}>
+          <RefreshCw className="h-4 w-4 mr-2" />Actualiser
+        </Button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -28,10 +54,9 @@ const AdminDashboard = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{adminMetrics.totalPersonnel}</div>
-            <p className="text-xs text-green-500">
-              {adminMetrics.activeUsers} actifs aujourd'hui
-            </p>
+            <div className="text-2xl font-bold">{personnel?.total || 0}</div>
+            <p className="text-xs text-muted-foreground">{personnel?.actifs || 0} actifs</p>
+            {personnel?.nouveaux_ce_mois ? <Badge variant="outline" className="mt-1">+{personnel.nouveaux_ce_mois} ce mois</Badge> : null}
           </CardContent>
         </Card>
 
@@ -41,10 +66,8 @@ const AdminDashboard = () => {
             <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{adminMetrics.totalPartners}</div>
-            <p className="text-xs text-muted-foreground">
-              Assureurs, fournisseurs, laboratoires
-            </p>
+            <div className="text-2xl font-bold">{partenaires?.total || 0}</div>
+            <p className="text-xs text-muted-foreground">{partenaires?.fournisseurs || 0} fournisseurs · {partenaires?.laboratoires || 0} labos</p>
           </CardContent>
         </Card>
 
@@ -54,111 +77,85 @@ const AdminDashboard = () => {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{adminMetrics.totalProducts}</div>
-            <p className="text-xs text-muted-foreground">
-              Produits catalogués
-            </p>
+            <div className="text-2xl font-bold">{referentiel?.total_produits || 0}</div>
+            <p className="text-xs text-muted-foreground">{referentiel?.produits_actifs || 0} actifs</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Alertes Système</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertTriangle className={`h-4 w-4 ${alertStats.critical > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{adminMetrics.systemAlerts}</div>
-            <p className="text-xs text-amber-500">
-              Nécessitent votre attention
-            </p>
+            <div className="text-2xl font-bold">{alertStats.total}</div>
+            <p className="text-xs text-muted-foreground">{alertStats.critical > 0 ? `${alertStats.critical} critiques` : 'Stable'}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Widgets d'administration */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Actions rapides */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <QuickActions />
-        
-        {/* Alertes importantes */}
         <AlertsWidget />
       </div>
 
-      {/* Activité récente et approbations */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <RecentActivity />
-        </div>
-        
+      <div className="grid gap-4 md:grid-cols-2">
+        <RecentActivity />
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Approbations en attente
+            <CardTitle className="flex items-center justify-between">
+              <span>Approbations</span>
+              {approvalsTotal > 0 && <Badge variant="secondary">{approvalsTotal}</Badge>}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Nouveau personnel</p>
-                  <p className="text-xs text-muted-foreground">Dr. Marie Dupont</p>
-                </div>
-                <div className="text-amber-500 text-sm">En attente</div>
+            {approvalsTotal === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">Aucune approbation en attente</p>
+            ) : (
+              <div className="space-y-3">
+                {approvals.slice(0, 5).map((item) => (
+                  <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex-1"><p className="text-sm font-medium">{item.title}</p><p className="text-xs text-muted-foreground">{item.description}</p></div>
+                    <Badge variant="outline">{item.type === 'personnel' ? 'Personnel' : 'Document'}</Badge>
+                  </div>
+                ))}
               </div>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Modification tarif</p>
-                  <p className="text-xs text-muted-foreground">Produit #1245</p>
-                </div>
-                <div className="text-amber-500 text-sm">En attente</div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Nouveau partenaire</p>
-                  <p className="text-xs text-muted-foreground">Laboratoire XYZ</p>
-                </div>
-                <div className="text-amber-500 text-sm">En attente</div>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Statistiques des workflows */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Workflows Actifs</CardTitle>
+            <CardTitle className="text-sm font-medium">Workflows (7j)</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{adminMetrics.activeWorkflows}</div>
-            <p className="text-xs text-muted-foreground">Processus en cours</p>
+            <div className="text-2xl font-bold">{systeme?.workflows_actifs || 0}</div>
+            <p className="text-xs text-muted-foreground">Opérations récentes</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Documents Pendants</CardTitle>
+            <CardTitle className="text-sm font-medium">Documents</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{adminMetrics.pendingDocuments}</div>
-            <p className="text-xs text-amber-500">À traiter</p>
+            <div className="text-2xl font-bold">{systeme?.documents_total || 0}</div>
+            <p className="text-xs text-muted-foreground">{systeme?.documents_en_attente || 0} en attente</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Configuration</CardTitle>
-            <Settings className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Clients</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">98%</div>
-            <p className="text-xs text-green-500">Système configuré</p>
+            <div className="text-2xl font-bold">{systeme?.clients_total || 0}</div>
+            <p className="text-xs text-muted-foreground">{systeme?.clients_actifs || 0} actifs</p>
           </CardContent>
         </Card>
       </div>
