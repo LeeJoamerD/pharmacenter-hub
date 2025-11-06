@@ -15,6 +15,7 @@ import { LoyaltyPanel } from '../pos/LoyaltyPanel';
 import { PrescriptionModal } from '../pos/PrescriptionModal';
 import { SplitPaymentDialog } from '../pos/SplitPaymentDialog';
 import { POSAnalyticsDashboard } from '../pos/POSAnalyticsDashboard';
+import POSBarcodeActions from './pos/POSBarcodeActions';
 import { usePOSData } from '@/hooks/usePOSData';
 import { useCashSession } from '@/hooks/useCashSession';
 import { useLoyaltyProgram } from '@/hooks/useLoyaltyProgram';
@@ -23,6 +24,8 @@ import { useRegionalSettings } from '@/hooks/useRegionalSettings';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionData, CartItemWithLot } from '@/types/pos';
+import { setupBarcodeScanner } from '@/utils/barcodeScanner';
+import { toast } from 'sonner';
 
 export interface CartItem {
   product: any;
@@ -142,6 +145,35 @@ const POSInterface = () => {
       description: `${product.name} x${quantity}`,
     });
   }, [checkStock, toast]);
+
+  // Scanner de codes-barres clavier
+  useEffect(() => {
+    const cleanup = setupBarcodeScanner((barcode) => {
+      // Rechercher le produit par code CIP
+      const product = products.find(
+        p => p.code_cip === barcode || p.id === barcode
+      );
+      if (product) {
+        addToCart(product);
+        toast({
+          title: "Produit scanné",
+          description: product.name
+        });
+      } else {
+        toast({
+          title: "Produit non trouvé",
+          description: barcode,
+          variant: "destructive"
+        });
+      }
+    }, {
+      minLength: 8,
+      maxLength: 20,
+      timeout: 100
+    });
+
+    return cleanup;
+  }, [products, addToCart, toast]);
 
   const updateCartItem = useCallback((productId: number, quantity: number) => {
     if (quantity <= 0) {
@@ -408,10 +440,16 @@ const POSInterface = () => {
           <div className="flex-1 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Search className="h-5 w-5" />
-                  Recherche de Produits
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Search className="h-5 w-5" />
+                    Recherche de Produits
+                  </CardTitle>
+                  <POSBarcodeActions 
+                    products={products}
+                    onProductScanned={addToCart}
+                  />
+                </div>
               </CardHeader>
               <CardContent>
                 <ProductSearch 
