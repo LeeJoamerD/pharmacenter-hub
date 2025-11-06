@@ -2,6 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
+import { useState, useCallback } from 'react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export interface Return {
   id: string;
@@ -44,6 +48,23 @@ export interface CreateReturnData {
   lignes: Omit<ReturnLine, 'id'>[];
 }
 
+export interface ReturnFilters {
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+  statut?: string[];
+  minAmount?: number;
+  maxAmount?: number;
+  clientId?: string;
+  typeOperation?: string[];
+}
+
+export interface Pagination {
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
 /**
  * Hook pour gérer les retours et échanges de produits
  * Fonctionnalités: création, validation, traitement, statistiques
@@ -53,27 +74,85 @@ export const useReturnsExchanges = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Récupérer tous les retours avec filtres
-  const { data: returns, isLoading: returnsLoading } = useQuery({
-    queryKey: ['returns', tenantId],
+  // États pour filtres et pagination
+  const [filters, setFilters] = useState<ReturnFilters>({});
+  const [pagination, setPagination] = useState<Pagination>({
+    page: 1,
+    pageSize: 20,
+    total: 0
+  });
+
+  // Récupérer tous les retours avec filtres et pagination
+  const { data: returnsData, isLoading: returnsLoading } = useQuery({
+    queryKey: ['returns', tenantId, filters, pagination.page, pagination.pageSize],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('retours')
         .select(`
           *,
-          client:client_id(nom_complet, telephone),
+          client:client_id(nom_complet, telephone, email),
           agent:agent_id(noms, prenoms),
           validateur:validateur_id(noms, prenoms),
-          lignes_retours(*)
-        `)
-        .eq('tenant_id', tenantId)
-        .order('date_retour', { ascending: false });
+          lignes_retours(
+            *,
+            produit:produit_id(libelle_produit)
+          )
+        `, { count: 'exact' })
+        .eq('tenant_id', tenantId!);
+
+      // Appliquer filtres
+      if (filters.search) {
+        query = query.or(`numero_retour.ilike.%${filters.search}%,numero_vente_origine.ilike.%${filters.search}%,motif_retour.ilike.%${filters.search}%`);
+      }
+      
+      if (filters.startDate) {
+        query = query.gte('date_retour', filters.startDate);
+      }
+      
+      if (filters.endDate) {
+        query = query.lte('date_retour', filters.endDate);
+      }
+      
+      if (filters.statut && filters.statut.length > 0) {
+        query = query.in('statut', filters.statut);
+      }
+      
+      if (filters.minAmount !== undefined) {
+        query = query.gte('montant_total_retour', filters.minAmount);
+      }
+      
+      if (filters.maxAmount !== undefined) {
+        query = query.lte('montant_total_retour', filters.maxAmount);
+      }
+      
+      if (filters.clientId) {
+        query = query.eq('client_id', filters.clientId);
+      }
+      
+      if (filters.typeOperation && filters.typeOperation.length > 0) {
+        query = query.in('type_operation', filters.typeOperation);
+      }
+
+      // Pagination
+      const from = (pagination.page - 1) * pagination.pageSize;
+      const to = from + pagination.pageSize - 1;
+      
+      const { data, error, count } = await query
+        .order('date_retour', { ascending: false })
+        .range(from, to);
 
       if (error) throw error;
-      return data as Return[];
+      
+      return { 
+        returns: data as Return[], 
+        total: count || 0 
+      };
     },
     enabled: !!tenantId,
   });
+
+  const returns = returnsData?.returns || [];
+  const totalReturns = returnsData?.total || 0;
 
   // Récupérer un retour par ID
   const getReturnById = async (id: string): Promise<Return | null> => {
@@ -105,17 +184,21 @@ export const useReturnsExchanges = () => {
       .from('ventes')
       .select(`
         id,
-        numero_facture,
+        numero_vente,
         date_vente,
         montant_net,
+        client_id,
         client:client_id(nom_complet),
         lignes_ventes(
-          *,
-          produit:produit_id(libelle_produit, code_cip)
+          id,
+          quantite,
+          prix_unitaire_ttc,
+          produit_id,
+          produit:produits!lignes_ventes_produit_id_fkey(libelle_produit, code_cip)
         )
       `)
-      .eq('tenant_id', tenantId)
-      .or(`numero_facture.ilike.%${reference}%,id.eq.${reference}`)
+      .eq('tenant_id', tenantId!)
+      .or(`numero_vente.ilike.%${reference}%,id.eq.${reference}`)
       .order('date_vente', { ascending: false })
       .limit(10);
 
@@ -302,25 +385,53 @@ export const useReturnsExchanges = () => {
     },
   });
 
-  // Statistiques des retours
+  // Statistiques des retours avec périodes
   const { data: statistics } = useQuery({
     queryKey: ['return-statistics', tenantId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const today = new Date();
+      const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
+      const startOfWeek = new Date(today.setDate(today.getDate() - 7)).toISOString();
+      const yesterday = new Date(today.setDate(today.getDate() - 1)).toISOString();
+
+      // Tous les retours
+      const { data: allReturns, error } = await supabase
         .from('retours')
-        .select('montant_total_retour, montant_rembourse, statut')
+        .select('montant_total_retour, montant_rembourse, statut, date_retour, created_at')
         .eq('tenant_id', tenantId);
 
       if (error) throw error;
 
-      const total = data.length;
-      const enAttente = data.filter(r => r.statut === 'En attente').length;
-      const approuves = data.filter(r => r.statut === 'Approuvé').length;
-      const rejetes = data.filter(r => r.statut === 'Rejeté').length;
-      const termines = data.filter(r => r.statut === 'Terminé').length;
-      const montantTotal = data.reduce((sum, r) => sum + (r.montant_total_retour || 0), 0);
-      const montantRembourse = data.reduce((sum, r) => sum + (r.montant_rembourse || 0), 0);
-      const tauxRetour = total > 0 ? (total / 100) : 0; // À calculer par rapport aux ventes
+      // Retours du jour
+      const returnsToday = allReturns?.filter(r => 
+        new Date(r.created_at) >= new Date(startOfDay)
+      ) || [];
+
+      // Retours hier
+      const returnsYesterday = allReturns?.filter(r => 
+        new Date(r.created_at) >= new Date(yesterday) && 
+        new Date(r.created_at) < new Date(startOfDay)
+      ) || [];
+
+      // Ventes de la semaine pour calculer taux
+      const { data: ventesWeek } = await supabase
+        .from('ventes')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .gte('created_at', startOfWeek);
+
+      const returnsWeek = allReturns?.filter(r => 
+        new Date(r.created_at) >= new Date(startOfWeek)
+      ) || [];
+
+      const total = allReturns?.length || 0;
+      const enAttente = allReturns?.filter(r => r.statut === 'En attente').length || 0;
+      const approuves = allReturns?.filter(r => r.statut === 'Approuvé').length || 0;
+      const rejetes = allReturns?.filter(r => r.statut === 'Rejeté').length || 0;
+      const termines = allReturns?.filter(r => r.statut === 'Terminé').length || 0;
+      const montantTotal = allReturns?.reduce((sum, r) => sum + (r.montant_total_retour || 0), 0) || 0;
+      const montantRembourseTodaySum = returnsToday.reduce((sum, r) => sum + (r.montant_rembourse || 0), 0);
+      const tauxRetour = (ventesWeek?.length || 0) > 0 ? (returnsWeek.length / ventesWeek.length) * 100 : 0;
 
       return {
         total,
@@ -329,16 +440,149 @@ export const useReturnsExchanges = () => {
         rejetes,
         termines,
         montantTotal,
-        montantRembourse,
+        montantRembourse: montantRembourseTodaySum,
         tauxRetour,
+        returnsToday: returnsToday.length,
+        returnsYesterday: returnsYesterday.length,
+        trendToday: returnsToday.length - returnsYesterday.length,
       };
     },
     enabled: !!tenantId,
   });
 
+  // Fonction pour mettre à jour les filtres
+  const updateFilters = useCallback((newFilters: Partial<ReturnFilters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters }));
+    setPagination(prev => ({ ...prev, page: 1 })); // Reset à page 1
+  }, []);
+
+  // Fonction pour changer de page
+  const changePage = useCallback((newPage: number) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+  }, []);
+
+  // Export vers Excel
+  const exportToExcel = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('retours')
+        .select(`
+          numero_retour,
+          date_retour,
+          numero_vente_origine,
+          type_operation,
+          montant_total_retour,
+          montant_rembourse,
+          statut,
+          motif_retour,
+          client:client_id(nom_complet, telephone)
+        `)
+        .eq('tenant_id', tenantId!);
+
+      if (error) throw error;
+
+      const exportData = data.map((r: any) => ({
+        'N° Retour': r.numero_retour,
+        'Date': new Date(r.date_retour).toLocaleDateString('fr-FR'),
+        'Transaction Origine': r.numero_vente_origine,
+        'Client': r.client?.nom_complet || '-',
+        'Téléphone': r.client?.telephone || '-',
+        'Type': r.type_operation,
+        'Montant Total': r.montant_total_retour,
+        'Montant Remboursé': r.montant_rembourse,
+        'Statut': r.statut,
+        'Motif': r.motif_retour
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Retours');
+      XLSX.writeFile(wb, `retours_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+      toast({
+        title: 'Export réussi',
+        description: 'Le fichier Excel a été téléchargé',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erreur d\'export',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  }, [tenantId, toast]);
+
+  // Export vers PDF
+  const exportToPDF = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('retours')
+        .select(`
+          numero_retour,
+          date_retour,
+          numero_vente_origine,
+          type_operation,
+          montant_total_retour,
+          montant_rembourse,
+          statut,
+          motif_retour,
+          client:client_id(nom_complet)
+        `)
+        .eq('tenant_id', tenantId!)
+        .order('date_retour', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+
+      const doc = new jsPDF();
+      
+      // En-tête
+      doc.setFontSize(18);
+      doc.text('Rapport des Retours', 14, 22);
+      doc.setFontSize(11);
+      doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, 14, 30);
+
+      // Tableau
+      const tableData = data.map((r: any) => [
+        r.numero_retour,
+        new Date(r.date_retour).toLocaleDateString('fr-FR'),
+        r.client?.nom_complet || '-',
+        r.type_operation,
+        `${r.montant_rembourse.toLocaleString()} FCFA`,
+        r.statut
+      ]);
+
+      autoTable(doc, {
+        head: [['N° Retour', 'Date', 'Client', 'Type', 'Montant', 'Statut']],
+        body: tableData,
+        startY: 35,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [59, 130, 246] },
+      });
+
+      doc.save(`retours_${new Date().toISOString().split('T')[0]}.pdf`);
+
+      toast({
+        title: 'Export réussi',
+        description: 'Le fichier PDF a été téléchargé',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erreur d\'export',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  }, [tenantId, toast]);
+
   return {
     returns,
     returnsLoading,
+    totalReturns,
+    filters,
+    updateFilters,
+    pagination: { ...pagination, total: totalReturns },
+    changePage,
     getReturnById,
     searchOriginalTransaction,
     calculateRefundAmount,
@@ -346,5 +590,7 @@ export const useReturnsExchanges = () => {
     validateReturn: validateReturnMutation.mutateAsync,
     processReturn: processReturnMutation.mutateAsync,
     statistics,
+    exportToExcel,
+    exportToPDF,
   };
 };
