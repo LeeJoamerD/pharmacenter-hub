@@ -7,7 +7,7 @@ import TransactionHistory from './sales/TransactionHistory';
 import TransactionHistoryConnected from './sales/TransactionHistoryConnected';
 import ReturnsExchanges from './sales/ReturnsExchanges';
 import ReturnsExchangesConnected from './sales/ReturnsExchangesConnected';
-import InvoiceModule from './sales/InvoiceModule';
+import InvoiceModuleConnected from './sales/InvoiceModuleConnected';
 import SalesAnalytics from './sales/SalesAnalytics';
 import CreditManager from './sales/CreditManager';
 import PromotionsManager from './sales/PromotionsManager';
@@ -31,7 +31,7 @@ const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
       case 'retours':
         return <ReturnsExchangesConnected />;
       case 'facturation':
-        return <InvoiceModule />;
+        return <InvoiceModuleConnected />;
       case 'analytics':
         return <SalesAnalytics />;
       case 'crédit':
