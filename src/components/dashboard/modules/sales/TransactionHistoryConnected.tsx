@@ -93,7 +93,7 @@ const TransactionHistoryConnected = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from('caisses')
-        .select('id, nom')
+        .select('id, nom_caisse')
         .eq('tenant_id', tenantId!);
       return data || [];
     },

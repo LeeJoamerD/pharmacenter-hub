@@ -31,7 +31,7 @@ export interface Transaction {
   statut: string | null;
   client?: { nom_complet: string; telephone: string; email: string } | null;
   agent?: { noms: string; prenoms: string } | null;
-  caisse?: { nom: string } | null;
+  caisse?: { nom_caisse: string } | null;
   session_caisse?: { numero_session: string } | null;
   lignes_ventes?: Array<{
     produit: { libelle_produit: string };
@@ -72,13 +72,13 @@ export const useTransactionHistory = (filters: TransactionFilters, currentPage: 
           *,
           client:client_id(nom_complet, telephone, email),
           agent:agent_id(noms, prenoms),
-          caisse:caisse_id(nom),
+          caisse:caisse_id(nom_caisse),
           session_caisse:session_caisse_id(numero_session),
           lignes_ventes(
             quantite,
             prix_unitaire_ttc,
             montant_ligne_ttc,
-            produit:produit_id(libelle_produit)
+            produit:produits!lignes_ventes_produit_id_fkey(libelle_produit)
           )
         `, { count: 'exact' })
         .eq('tenant_id', tenantId!)
@@ -268,7 +268,7 @@ export const useTransactionHistory = (filters: TransactionFilters, currentPage: 
         .select(`
           caisse_id,
           montant_net,
-          caisse:caisse_id(nom)
+          caisse:caisse_id(nom_caisse)
         `)
         .eq('tenant_id', tenantId!)
         .not('caisse_id', 'is', null);
@@ -284,7 +284,7 @@ export const useTransactionHistory = (filters: TransactionFilters, currentPage: 
         const caisseId = t.caisse_id;
         if (!performance[caisseId]) {
           performance[caisseId] = {
-            name: t.caisse?.nom || 'Inconnu',
+            name: t.caisse?.nom_caisse || 'Inconnu',
             sales: 0,
             count: 0
           };
@@ -415,7 +415,7 @@ export const useTransactionHistory = (filters: TransactionFilters, currentPage: 
           statut,
           client:client_id(nom_complet, telephone),
           agent:agent_id(noms, prenoms),
-          caisse:caisse_id(nom)
+          caisse:caisse_id(nom_caisse)
         `)
         .eq('tenant_id', tenantId!);
 
@@ -433,7 +433,7 @@ export const useTransactionHistory = (filters: TransactionFilters, currentPage: 
         'Mode Paiement': t.mode_paiement,
         'Statut': t.statut,
         'Caissier': t.agent ? `${t.agent.noms} ${t.agent.prenoms}` : '-',
-        'Caisse': t.caisse?.nom || '-'
+        'Caisse': t.caisse?.nom_caisse || '-'
       })) || [];
 
       const ws = XLSX.utils.json_to_sheet(exportData);

@@ -19,7 +19,7 @@ interface TransactionFiltersPanelProps {
   };
   onFilterChange: (filters: any) => void;
   cashiers?: Array<{ id: string; noms: string; prenoms: string }>;
-  registers?: Array<{ id: string; nom: string }>;
+  registers?: Array<{ id: string; nom_caisse: string }>;
 }
 
 const TransactionFiltersPanel = ({ filters, onFilterChange, cashiers = [], registers = [] }: TransactionFiltersPanelProps) => {
@@ -130,7 +130,7 @@ const TransactionFiltersPanel = ({ filters, onFilterChange, cashiers = [], regis
                 <SelectItem value="all">Tous</SelectItem>
                 {registers.map((register) => (
                   <SelectItem key={register.id} value={register.id}>
-                    {register.nom}
+                    {register.nom_caisse}
                   </SelectItem>
                 ))}
               </SelectContent>

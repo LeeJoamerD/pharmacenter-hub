@@ -132,7 +132,7 @@ const TransactionDetailsModal = ({ transaction, open, onOpenChange, onCancel }: 
               {transaction.caisse && (
                 <div>
                   <Label className="text-muted-foreground">Caisse</Label>
-                  <p className="font-medium">{transaction.caisse.nom}</p>
+                  <p className="font-medium">{transaction.caisse.nom_caisse}</p>
                 </div>
               )}
             </div>
