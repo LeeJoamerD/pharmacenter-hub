@@ -294,10 +294,18 @@ export const useLoyaltyProgram = () => {
       if (movementError) throw movementError;
 
       // Mettre à jour les utilisations de la récompense
-      await supabase
+      const { data: reward } = await supabase
         .from('recompenses_fidelite')
-        .update({ utilisations: supabase.raw('utilisations + 1') })
-        .eq('id', rewardId);
+        .select('utilisations')
+        .eq('id', rewardId)
+        .single();
+      
+      if (reward) {
+        await supabase
+          .from('recompenses_fidelite')
+          .update({ utilisations: (reward.utilisations || 0) + 1 })
+          .eq('id', rewardId);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['loyalty-programs', tenantId] });

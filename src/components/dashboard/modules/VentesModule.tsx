@@ -4,6 +4,7 @@ import CashManagement from './sales/CashManagement';
 import POSInterface from './sales/POSInterface';
 import EncaissementDashboard from './sales/EncaissementDashboard';
 import TransactionHistory from './sales/TransactionHistory';
+import TransactionHistoryConnected from './sales/TransactionHistoryConnected';
 import ReturnsExchanges from './sales/ReturnsExchanges';
 import InvoiceModule from './sales/InvoiceModule';
 import SalesAnalytics from './sales/SalesAnalytics';
@@ -25,7 +26,7 @@ const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
       case 'encaissements':
         return <EncaissementDashboard />;
       case 'historique':
-        return <TransactionHistory />;
+        return <TransactionHistoryConnected />;
       case 'retours':
         return <ReturnsExchanges />;
       case 'facturation':
