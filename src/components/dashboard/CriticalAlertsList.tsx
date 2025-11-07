@@ -7,15 +7,19 @@ import { fr } from 'date-fns/locale';
 
 interface ExpirationAlert {
   id: string;
-  niveau_alerte: string;
-  message_alerte: string;
-  date_peremption: string;
-  lots?: {
-    produits?: {
+  niveau_urgence: string;
+  type_alerte: string;
+  jours_restants: number;
+  quantite_concernee: number;
+  lots: {
+    id: string;
+    date_peremption: string;
+    quantite_restante: number;
+    produits: {
+      id: string;
       libelle_produit: string;
       code_cip: string;
     };
-    quantite_restante: number;
   };
 }
 
@@ -63,27 +67,32 @@ export const CriticalAlertsList = ({ alerts, loading }: CriticalAlertsListProps)
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 space-y-1">
                     <p className="font-medium text-sm line-clamp-2">
-                      {alert.lots?.produits?.libelle_produit || 'Produit inconnu'}
+                      {alert.lots.produits.libelle_produit}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {alert.lots?.produits?.code_cip}
+                      {alert.lots.produits.code_cip}
                     </p>
                   </div>
                   <Badge
-                    variant={alert.niveau_alerte === 'critique' ? 'destructive' : 'secondary'}
+                    variant={alert.niveau_urgence === 'critique' || alert.niveau_urgence === 'urgent' 
+                      ? 'destructive' 
+                      : 'secondary'}
                     className="shrink-0"
                   >
-                    {alert.niveau_alerte}
+                    {alert.niveau_urgence}
                   </Badge>
                 </div>
                 
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <Calendar className="h-3 w-3" />
-                    {format(new Date(alert.date_peremption), 'dd MMM yyyy', { locale: fr })}
+                    {alert.lots?.date_peremption 
+                      ? format(new Date(alert.lots.date_peremption), 'dd MMM yyyy', { locale: fr })
+                      : 'Date inconnue'
+                    }
                   </div>
                   <span className="text-muted-foreground">
-                    {alert.lots?.quantite_restante} unités
+                    {alert.lots.quantite_restante} unités
                   </span>
                 </div>
               </div>

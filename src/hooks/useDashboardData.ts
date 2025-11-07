@@ -273,10 +273,28 @@ export const useDashboardData = () => {
       try {
         const { data, error } = await supabase
           .from('alertes_peremption')
-          .select('*')
+          .select(`
+            id,
+            niveau_urgence,
+            type_alerte,
+            jours_restants,
+            quantite_concernee,
+            statut,
+            created_at,
+            lots!inner (
+              id,
+              date_peremption,
+              quantite_restante,
+              produits (
+                id,
+                libelle_produit,
+                code_cip
+              )
+            )
+          `)
           .eq('tenant_id', tenantId)
           .in('statut', ['active', 'en_cours'])
-          .order('created_at', { ascending: false })
+          .order('jours_restants', { ascending: true })
           .limit(10);
 
         if (error) {

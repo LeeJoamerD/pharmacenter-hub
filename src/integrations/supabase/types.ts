@@ -12936,18 +12936,30 @@ export type Database = {
         Args: { tenant_filter: string }
         Returns: Json
       }
-      get_fast_moving_products: {
-        Args: { p_days?: number; p_limit?: number; p_tenant_id: string }
-        Returns: {
-          code_cip: string
-          libelle_produit: string
-          produit_id: string
-          quantite_vendue: number
-          rotation_jours: number
-          stock_actuel: number
-          valeur_vendue: number
-        }[]
-      }
+      get_fast_moving_products:
+        | {
+            Args: { p_limit?: number }
+            Returns: {
+              code_cip: string
+              derniere_vente: string
+              libelle_produit: string
+              produit_id: string
+              quantite_vendue: number
+              valeur_vendue: number
+            }[]
+          }
+        | {
+            Args: { p_days?: number; p_limit?: number; p_tenant_id: string }
+            Returns: {
+              code_cip: string
+              libelle_produit: string
+              produit_id: string
+              quantite_vendue: number
+              rotation_jours: number
+              stock_actuel: number
+              valeur_vendue: number
+            }[]
+          }
       get_next_accounting_number: {
         Args: {
           p_journal_code?: string
