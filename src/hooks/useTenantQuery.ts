@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
+// ✅ Limite par défaut pour éviter la pagination Supabase à 1000 lignes
+const DEFAULT_LIMIT = 5000;
+
 // Hook pour les requêtes automatiquement filtrées par tenant
 export const useTenantQuery = () => {
   const { tenantId } = useTenant();
@@ -107,6 +110,23 @@ export const useTenantQuery = () => {
     const shouldScopeTenant = options?.tenantScoped ?? true;
     const effectiveQueryKey = shouldScopeTenant ? [tenantId, ...queryKey] : queryKey;
     
+    // ✅ SPRINT 2: Appliquer limite par défaut si non spécifiée
+    const hasExplicitLimit = options?.limit !== undefined || 
+                             options?.range !== undefined || 
+                             options?.single === true ||
+                             options?.count !== undefined;
+    
+    const effectiveLimit = options?.limit ?? (hasExplicitLimit ? undefined : DEFAULT_LIMIT);
+    
+    // ✅ SPRINT 2: Warning en développement si pas de limite
+    if (import.meta.env.DEV && !hasExplicitLimit) {
+      console.warn(
+        `⚠️ [useTenantQuery] Table "${tableName}" sans limite explicite. ` +
+        `Limite par défaut appliquée: ${DEFAULT_LIMIT}. ` +
+        `Pour optimiser, spécifiez options.limit, options.range, ou options.single.`
+      );
+    }
+    
     return useQuery({
       queryKey: effectiveQueryKey,
       queryFn: async () => {
@@ -114,7 +134,10 @@ export const useTenantQuery = () => {
           tableName,
           selectQuery,
           additionalFilters,
-          options
+          {
+            ...options,
+            limit: effectiveLimit
+          }
         );
         
         const { data, error } = await query;
@@ -261,7 +284,10 @@ export const usePersonnelQuery = (filters?: Record<string, any>) => {
     'personnel',
     '*',
     filters,
-    { orderBy: { column: 'noms', ascending: true } }
+    { 
+      orderBy: { column: 'noms', ascending: true },
+      limit: 1000 // ✅ Limite explicite pour personnel
+    }
   );
 };
 
@@ -285,7 +311,10 @@ export const useNetworkChannelsQuery = () => {
     'network_channels',
     '*',
     undefined,
-    { orderBy: { column: 'name', ascending: true } }
+    { 
+      orderBy: { column: 'name', ascending: true },
+      limit: 100 // ✅ Limite explicite pour canaux réseau
+    }
   );
 };
 
@@ -314,7 +343,10 @@ export const useDocumentsQuery = (filters?: Record<string, any>) => {
     'documents',
     '*, author:personnel!author_id(id, noms, prenoms)',
     filters,
-    { orderBy: { column: 'created_at', ascending: false } }
+    { 
+      orderBy: { column: 'created_at', ascending: false },
+      limit: 1000 // ✅ Limite explicite pour documents
+    }
   );
 };
 
@@ -326,7 +358,10 @@ export const useDocumentCategoriesQuery = () => {
     'document_categories',
     '*',
     undefined,
-    { orderBy: { column: 'name', ascending: true } }
+    { 
+      orderBy: { column: 'name', ascending: true },
+      limit: 200 // ✅ Limite explicite pour catégories
+    }
   );
 };
 
@@ -355,7 +390,10 @@ export const useWorkflowsQuery = (filters?: Record<string, any>) => {
     'workflows',
     '*',
     filters,
-    { orderBy: { column: 'created_at', ascending: false } }
+    { 
+      orderBy: { column: 'created_at', ascending: false },
+      limit: 500 // ✅ Limite explicite pour workflows
+    }
   );
 };
 
@@ -367,7 +405,10 @@ export const useWorkflowTemplatesQuery = (filters?: Record<string, any>) => {
     'workflow_templates',
     '*',
     filters,
-    { orderBy: { column: 'created_at', ascending: false } }
+    { 
+      orderBy: { column: 'created_at', ascending: false },
+      limit: 200 // ✅ Limite explicite pour templates
+    }
   );
 };
 
@@ -379,7 +420,10 @@ export const useWorkflowExecutionsQuery = (workflowId?: string) => {
     'workflow_executions',
     '*',
     workflowId ? { workflow_id: workflowId } : undefined,
-    { orderBy: { column: 'started_at', ascending: false } }
+    { 
+      orderBy: { column: 'started_at', ascending: false },
+      limit: 1000 // ✅ Limite explicite pour exécutions
+    }
   );
 };
 
@@ -391,7 +435,10 @@ export const useWorkflowSettingsQuery = () => {
     'workflow_settings',
     '*',
     undefined,
-    { orderBy: { column: 'setting_type', ascending: true } }
+    { 
+      orderBy: { column: 'setting_type', ascending: true },
+      limit: 100 // ✅ Limite explicite pour settings
+    }
   );
 };
 
@@ -403,7 +450,10 @@ export const useWorkflowTriggersQuery = (workflowId?: string) => {
     'workflow_triggers',
     '*, workflow:workflows!workflow_id(id, name)',
     workflowId ? { workflow_id: workflowId } : undefined,
-    { orderBy: { column: 'created_at', ascending: false } }
+    { 
+      orderBy: { column: 'created_at', ascending: false },
+      limit: 500 // ✅ Limite explicite pour triggers
+    }
   );
 };
 
@@ -415,7 +465,10 @@ export const useWorkflowActionsQuery = (workflowId?: string) => {
     'workflow_actions',
     '*, workflow:workflows!workflow_id(id, name)',
     workflowId ? { workflow_id: workflowId } : undefined,
-    { orderBy: { column: 'execution_order', ascending: true } }
+    { 
+      orderBy: { column: 'execution_order', ascending: true },
+      limit: 500 // ✅ Limite explicite pour actions
+    }
   );
 };
 

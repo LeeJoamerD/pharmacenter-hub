@@ -476,7 +476,7 @@ export const useDashboardData = () => {
     staleTime: 180000,
   });
 
-  // 10. Activités Récentes
+  // 10. Activités Récentes - ✅ Déjà optimisé avec limit(10)
   const recentActivitiesQuery = useQuery({
     queryKey: ['dashboard-recent-activities', tenantId],
     queryFn: async () => {
@@ -489,7 +489,7 @@ export const useDashboardData = () => {
         .in('action', ['INSERT', 'UPDATE', 'DELETE'])
         .in('table_name', ['ventes', 'receptions_fournisseurs', 'inventaires', 'sessions_caisse'])
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(10); // ✅ Limite explicite OK
 
       if (error) throw error;
       return data || [];
