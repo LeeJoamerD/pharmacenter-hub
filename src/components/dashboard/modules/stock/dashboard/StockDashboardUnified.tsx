@@ -524,7 +524,8 @@ const StockDashboardUnified = () => {
         {/* Graphiques Valorisation et Mouvements */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ValorizationByFamilyChart data={valorisationByFamily} />
-        <MovementsEvolutionChart data={movementsEvolution} />
+          <MovementsEvolutionChart data={movementsEvolution} />
+        </div>
 
         {/* Graphique de rotation et insights */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -555,7 +556,6 @@ const StockDashboardUnified = () => {
           </Card>
         </div>
       </div>
-    </div>
     </div>
   );
 };
