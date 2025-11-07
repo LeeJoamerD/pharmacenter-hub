@@ -12931,6 +12931,10 @@ export type Database = {
         }
         Returns: string
       }
+      get_stock_threshold: {
+        Args: { p_stock_limite: number; p_threshold_type: string }
+        Returns: number
+      }
       has_open_session:
         | { Args: never; Returns: boolean }
         | {
@@ -12966,6 +12970,7 @@ export type Database = {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: string
       }
+      init_product_lots: { Args: { p_tenant_id: string }; Returns: Json }
       init_regional_params_for_tenant: {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: string
