@@ -12778,6 +12778,14 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      calculate_low_stock_metrics_v2: {
+        Args: {
+          p_critical_threshold?: number
+          p_low_threshold?: number
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       calculate_out_of_stock_metrics: {
         Args: { p_tenant_id: string }
         Returns: Json
@@ -12907,30 +12915,7 @@ export type Database = {
           stock_actuel: number
         }[]
       }
-      get_current_tenant_alert_settings: {
-        Args: never
-        Returns: {
-          alert_end_time: string
-          alert_frequency: string
-          alert_start_time: string
-          business_days_only: boolean
-          created_at: string
-          critical_stock_threshold: number
-          dashboard_notifications: boolean
-          email_notifications: boolean
-          expiration_alert_days: number
-          id: string
-          low_stock_enabled: boolean
-          low_stock_threshold: number
-          maximum_stock_threshold: number
-          near_expiration_days: number
-          overdue_inventory_days: number
-          slow_moving_days: number
-          sms_notifications: boolean
-          tenant_id: string
-          updated_at: string
-        }[]
-      }
+      get_current_tenant_alert_settings: { Args: never; Returns: Json }
       get_current_user_tenant_id: { Args: never; Returns: string }
       get_dashboard_stock_metrics: {
         Args: { tenant_filter: string }
@@ -12960,6 +12945,17 @@ export type Database = {
               valeur_vendue: number
             }[]
           }
+      get_low_stock_products: {
+        Args: {
+          p_category?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       get_next_accounting_number: {
         Args: {
           p_journal_code?: string
