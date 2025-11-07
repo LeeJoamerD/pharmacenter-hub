@@ -55,11 +55,17 @@ export const useStockAlerts = () => {
     { statut: 'active' }
   );
 
-  // Récupérer les produits pour enrichir les alertes
+  // ✅ CORRECTION CRITIQUE: Récupérer uniquement les produits concernés par les alertes
+  const productIds = Array.from(new Set(alerts.map(a => a.produit_id))).filter(Boolean);
   const { data: products = [] } = useTenantQueryWithCache(
-    ['products-for-alerts'],
+    ['products-for-alerts', productIds.join(',')],
     'produits',
-    'id, libelle_produit, code_cip'
+    'id, libelle_produit, code_cip',
+    productIds.length > 0 ? { id: productIds } : undefined,
+    { 
+      limit: 1000,
+      enabled: productIds.length > 0
+    }
   );
 
   // Transform alerts to match interface

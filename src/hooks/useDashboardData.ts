@@ -98,7 +98,8 @@ export const useDashboardData = () => {
         .from('ventes')
         .select('montant_net')
         .eq('tenant_id', tenantId)
-        .gte('created_at', firstDayOfMonth.toISOString());
+        .gte('created_at', firstDayOfMonth.toISOString())
+        .limit(10000); // ✅ Limite pour ventes du mois
 
       const todayTotal = todaySales?.reduce((sum, v) => sum + (v.montant_net || 0), 0) || 0;
       const yesterdayTotal = yesterdaySales?.reduce((sum, v) => sum + (v.montant_net || 0), 0) || 0;
@@ -133,7 +134,8 @@ export const useDashboardData = () => {
         .from('ventes')
         .select('created_at, montant_net')
         .eq('tenant_id', tenantId)
-        .gte('created_at', startOfDay(subDays(new Date(), 6)).toISOString());
+        .gte('created_at', startOfDay(subDays(new Date(), 6)).toISOString())
+        .limit(5000); // ✅ Limite pour 7 jours de ventes
 
       if (error) throw error;
 
@@ -168,7 +170,8 @@ export const useDashboardData = () => {
         `)
         .eq('tenant_id', tenantId)
         .gte('created_at', startOfDay(today).toISOString())
-        .lte('created_at', endOfDay(today).toISOString());
+        .lte('created_at', endOfDay(today).toISOString())
+        .limit(2000); // ✅ Limite pour lignes de ventes du jour
 
       if (error) throw error;
 
@@ -197,49 +200,63 @@ export const useDashboardData = () => {
     staleTime: 120000,
   });
 
-  // 4. Métriques Stock
-  const stockMetricsQuery = useQuery({
+  // 4. Métriques Stock - CORRECTION CRITIQUE (6522 produits)
+  const stockMetricsQuery = useQuery<StockMetrics | null>({
     queryKey: ['dashboard-stock-metrics', tenantId],
     queryFn: async () => {
       if (!tenantId) return null;
 
-      const { data: products, error } = await supabase
-        .from('produits')
-        .select(`
-          id,
-          stock_actuel,
-          prix_achat,
-          lots(quantite_restante, prix_achat_unitaire)
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true);
+      // ✅ SOLUTION 1: Essayer d'utiliser la fonction RPC optimisée
+      try {
+        const { data: stockData, error: rpcError } = await supabase
+          .rpc('get_dashboard_stock_metrics' as any, { tenant_filter: tenantId });
 
-      if (error) throw error;
+        if (!rpcError && stockData && typeof stockData === 'object' && 'totalValue' in stockData) {
+          return stockData as StockMetrics;
+        }
+      } catch (rpcErr) {
+        console.log('RPC non disponible, utilisation du fallback');
+      }
 
+      // ✅ SOLUTION 2: Fallback avec comptages sans transfert de données
       let totalValue = 0;
-      let available = 0;
-      let lowStock = 0;
-      let outOfStock = 0;
+      try {
+        const totalValueResult = await supabase.rpc('calculate_total_stock_value' as any, { tenant_filter: tenantId });
+        totalValue = (totalValueResult.data as number) || 0;
+      } catch {
+        // Si RPC échoue, on laisse à 0
+      }
 
-      (products || []).forEach((product: any) => {
-        const stock = product.stock_actuel || 0;
-        const lots = product.lots || [];
-        const value = lots.reduce((sum: number, lot: any) => 
-          sum + (lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0), 0
-        );
+      const [availableResult, lowStockResult, outOfStockResult] = await Promise.all([
+        // Comptages sans récupérer les données (head: true)
+        supabase
+          .from('produits')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .gt('stock_actuel', 10),
         
-        totalValue += value;
-
-        if (stock === 0) outOfStock++;
-        else if (stock <= 10) lowStock++;
-        else available++;
-      });
+        supabase
+          .from('produits')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .gt('stock_actuel', 0)
+          .lte('stock_actuel', 10),
+        
+        supabase
+          .from('produits')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .eq('stock_actuel', 0)
+      ]);
 
       return {
-        totalValue,
-        availableProducts: available,
-        lowStockProducts: lowStock,
-        outOfStockProducts: outOfStock,
+        totalValue: totalValue,
+        availableProducts: availableResult.count || 0,
+        lowStockProducts: lowStockResult.count || 0,
+        outOfStockProducts: outOfStockResult.count || 0,
       };
     },
     enabled: !!tenantId,
@@ -289,7 +306,8 @@ export const useDashboardData = () => {
         .from('sessions_caisse')
         .select('id, fond_caisse_ouverture, statut, created_at, agent_id, caissier_id')
         .eq('tenant_id', tenantId)
-        .eq('statut', 'ouverte');
+        .eq('statut', 'ouverte')
+        .limit(50); // ✅ Max 50 sessions actives simultanées
 
       if (error) throw error;
       if (!sessions || sessions.length === 0) return [];
@@ -308,7 +326,8 @@ export const useDashboardData = () => {
         .from('personnel')
         .select('id, noms, prenoms')
         .in('id', personnelIds)
-        .eq('tenant_id', tenantId);
+        .eq('tenant_id', tenantId)
+        .limit(50); // ✅ Max 50 agents
 
       // Créer un Map pour accès rapide
       const personnelMap = new Map(
@@ -322,7 +341,8 @@ export const useDashboardData = () => {
             .from('ventes')
             .select('montant_net')
             .eq('session_caisse_id', session.id)
-            .eq('tenant_id', tenantId);
+            .eq('tenant_id', tenantId)
+            .limit(1000); // ✅ Limite par session
 
           const ventesTotal = ventes?.reduce((sum, v) => sum + (v.montant_net || 0), 0) || 0;
           
@@ -358,15 +378,15 @@ export const useDashboardData = () => {
     queryFn: async () => {
       if (!tenantId) return null;
 
-      const { data: clients, error } = await supabase
+      const { count, error } = await supabase
         .from('clients')
-        .select('id')
+        .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId);
 
       if (error) throw error;
 
       const totalCredit = 0;
-      const activeAccounts = clients?.length || 0;
+      const activeAccounts = count || 0;
       const totalLimit = 0;
       const utilizationRate = 0;
       const overdueAmount = 0;
@@ -397,7 +417,8 @@ export const useDashboardData = () => {
         .eq('tenant_id', tenantId)
         .eq('est_actif', true)
         .lte('date_debut', today)
-        .gte('date_fin', today);
+        .gte('date_fin', today)
+        .limit(100); // ✅ Max 100 promotions actives
 
       if (error) throw error;
 
@@ -405,7 +426,8 @@ export const useDashboardData = () => {
         .from('utilisations_promotion')
         .select('montant_remise')
         .eq('tenant_id', tenantId)
-        .gte('date_utilisation', startOfDay(new Date()).toISOString());
+        .gte('date_utilisation', startOfDay(new Date()).toISOString())
+        .limit(1000); // ✅ Limite utilisations du jour
 
       const savingsToday = usagesToday?.reduce((sum, u) => sum + (u.montant_remise || 0), 0) || 0;
 
@@ -432,7 +454,8 @@ export const useDashboardData = () => {
         .select('mode_paiement, montant_net')
         .eq('tenant_id', tenantId)
         .gte('created_at', startOfDay(today).toISOString())
-        .lte('created_at', endOfDay(today).toISOString());
+        .lte('created_at', endOfDay(today).toISOString())
+        .limit(2000); // ✅ Limite ventes du jour
 
       if (error) throw error;
 
