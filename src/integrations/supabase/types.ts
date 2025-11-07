@@ -7036,48 +7036,57 @@ export type Database = {
       }
       parametres_expiration: {
         Row: {
-          action_automatique: string | null
+          action_auto_alerte: boolean | null
+          action_auto_blocage: boolean | null
           created_at: string | null
-          famille_produit_id: string | null
+          delai_alerte_jours: number
+          delai_bloquant_jours: number
+          delai_critique_jours: number
+          famille_id: string | null
           id: string
-          jours_alerte: number
-          jours_blocage: number
-          jours_critique: number
-          priorite: number | null
+          notifications_dashboard: boolean | null
+          notifications_email: boolean | null
           produit_id: string | null
           tenant_id: string
+          type_parametre: string | null
           updated_at: string | null
         }
         Insert: {
-          action_automatique?: string | null
+          action_auto_alerte?: boolean | null
+          action_auto_blocage?: boolean | null
           created_at?: string | null
-          famille_produit_id?: string | null
+          delai_alerte_jours?: number
+          delai_bloquant_jours?: number
+          delai_critique_jours?: number
+          famille_id?: string | null
           id?: string
-          jours_alerte?: number
-          jours_blocage?: number
-          jours_critique?: number
-          priorite?: number | null
+          notifications_dashboard?: boolean | null
+          notifications_email?: boolean | null
           produit_id?: string | null
           tenant_id: string
+          type_parametre?: string | null
           updated_at?: string | null
         }
         Update: {
-          action_automatique?: string | null
+          action_auto_alerte?: boolean | null
+          action_auto_blocage?: boolean | null
           created_at?: string | null
-          famille_produit_id?: string | null
+          delai_alerte_jours?: number
+          delai_bloquant_jours?: number
+          delai_critique_jours?: number
+          famille_id?: string | null
           id?: string
-          jours_alerte?: number
-          jours_blocage?: number
-          jours_critique?: number
-          priorite?: number | null
+          notifications_dashboard?: boolean | null
+          notifications_email?: boolean | null
           produit_id?: string | null
           tenant_id?: string
+          type_parametre?: string | null
           updated_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "parametres_expiration_famille_produit_id_fkey"
-            columns: ["famille_produit_id"]
+            columns: ["famille_id"]
             isOneToOne: false
             referencedRelation: "famille_produit"
             referencedColumns: ["id"]
