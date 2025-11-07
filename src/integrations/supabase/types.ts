@@ -529,9 +529,10 @@ export type Database = {
       }
       alertes_peremption: {
         Row: {
-          action_recommandee: string | null
+          actions_recommandees: string[] | null
           created_at: string | null
-          date_expiration: string
+          date_alerte: string | null
+          date_peremption: string
           date_traitement: string | null
           id: string
           jours_restants: number | null
@@ -547,9 +548,10 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          action_recommandee?: string | null
+          actions_recommandees?: string[] | null
           created_at?: string | null
-          date_expiration: string
+          date_alerte?: string | null
+          date_peremption: string
           date_traitement?: string | null
           id?: string
           jours_restants?: number | null
@@ -565,9 +567,10 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          action_recommandee?: string | null
+          actions_recommandees?: string[] | null
           created_at?: string | null
-          date_expiration?: string
+          date_alerte?: string | null
+          date_peremption?: string
           date_traitement?: string | null
           id?: string
           jours_restants?: number | null
