@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -10,7 +10,8 @@ import {
   FileBarChart,
   PackageX,
   Clock,
-  DollarSign
+  DollarSign,
+  Lightbulb
 } from 'lucide-react';
 import { useStockDashboardUnified } from '@/hooks/useStockDashboardUnified';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +21,11 @@ import { Progress } from '@/components/ui/progress';
 import StockDistributionChart from './charts/StockDistributionChart';
 import ValorizationByFamilyChart from './charts/ValorizationByFamilyChart';
 import MovementsEvolutionChart from './charts/MovementsEvolutionChart';
+import StockRotationChart from './charts/StockRotationChart';
+import AnalyticsDateFilter from './filters/AnalyticsDateFilter';
+import AnalyticsExportButton from './AnalyticsExportButton';
+import { StockRotationService } from '@/services/StockRotationService';
+import { subDays, subMonths, subYears } from 'date-fns';
 
 /**
  * Dashboard Stock Unifié - Version Moderne et Complète
@@ -28,6 +34,18 @@ import MovementsEvolutionChart from './charts/MovementsEvolutionChart';
 const StockDashboardUnified = () => {
   const navigate = useNavigate();
   const { settings } = useSystemSettings();
+
+  // État pour le filtre de date
+  const [dateFilter, setDateFilter] = useState<{
+    period: '7d' | '30d' | '90d' | '6m' | '1y' | 'custom';
+    start: Date;
+    end: Date;
+  }>({
+    period: '30d',
+    start: subDays(new Date(), 30),
+    end: new Date()
+  });
+
   const {
     metrics,
     criticalProducts,
@@ -36,10 +54,48 @@ const StockDashboardUnified = () => {
     activeAlerts,
     valorisationByFamily,
     movementsEvolution,
+    rotationByFamily,
     isLoading,
     error,
     refetchAll
-  } = useStockDashboardUnified();
+  } = useStockDashboardUnified(dateFilter);
+
+  // Gestionnaire de changement de filtre
+  const handleDateFilterChange = (
+    period: '7d' | '30d' | '90d' | '6m' | '1y' | 'custom',
+    customRange?: { start: Date; end: Date }
+  ) => {
+    let start: Date, end: Date = new Date();
+
+    if (period === 'custom' && customRange) {
+      start = customRange.start;
+      end = customRange.end;
+    } else {
+      switch (period) {
+        case '7d':
+          start = subDays(new Date(), 7);
+          break;
+        case '90d':
+          start = subDays(new Date(), 90);
+          break;
+        case '6m':
+          start = subMonths(new Date(), 6);
+          break;
+        case '1y':
+          start = subYears(new Date(), 1);
+          break;
+        default: // '30d'
+          start = subDays(new Date(), 30);
+      }
+    }
+
+    setDateFilter({ period, start, end });
+  };
+
+  // Générer les insights de rotation
+  const rotationInsights = rotationByFamily.length > 0 
+    ? StockRotationService.generateRotationInsights(rotationByFamily)
+    : [];
 
   // Format prix selon paramètres système
   const formatPrice = (amount: number): string => {
@@ -111,6 +167,17 @@ const StockDashboardUnified = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          <AnalyticsExportButton
+            dashboardData={{
+              metrics,
+              statusDistribution: metrics.statusDistribution,
+              valorisationByFamily,
+              movementsEvolution,
+              rotationByFamily
+            }}
+            dateFilter={dateFilter}
+            disabled={isLoading}
+          />
           <Button variant="outline" size="sm" onClick={() => refetchAll()}>
             <RefreshCcw className="mr-2 h-4 w-4" />
             Actualiser
@@ -457,9 +524,38 @@ const StockDashboardUnified = () => {
         {/* Graphiques Valorisation et Mouvements */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ValorizationByFamilyChart data={valorisationByFamily} />
-          <MovementsEvolutionChart data={movementsEvolution} />
+        <MovementsEvolutionChart data={movementsEvolution} />
+
+        {/* Graphique de rotation et insights */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <StockRotationChart data={rotationByFamily} />
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lightbulb className="h-5 w-5 text-amber-500" />
+                Insights Rotation
+              </CardTitle>
+              <CardDescription>Recommandations basées sur les données</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {rotationInsights.map((insight, idx) => (
+                <div key={idx} className={`p-3 rounded-lg border ${
+                  insight.type === 'success' ? 'bg-green-50 border-green-200' :
+                  insight.type === 'error' ? 'bg-red-50 border-red-200' :
+                  insight.type === 'warning' ? 'bg-amber-50 border-amber-200' :
+                  'bg-blue-50 border-blue-200'
+                }`}>
+                  <p className="font-semibold text-sm">{insight.title}</p>
+                  <p className="text-xs mt-1 text-muted-foreground">{insight.message}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
       </div>
+    </div>
     </div>
   );
 };

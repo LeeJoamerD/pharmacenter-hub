@@ -73,12 +73,30 @@ export interface MovementData {
   solde: number;
 }
 
+export interface RotationByFamilyData {
+  categorie: string;
+  tauxRotation: number;
+  dureeEcoulement: number;
+  valeurStock: number;
+  statut: 'excellent' | 'bon' | 'moyen' | 'faible' | 'critique';
+}
+
 /**
  * Hook central unifié pour le dashboard Stock
  * Agrège toutes les données nécessaires avec cache partagé
  */
-export const useStockDashboardUnified = () => {
+export const useStockDashboardUnified = (
+  dateFilter?: { start: Date; end: Date }
+) => {
   const { tenantId } = useTenant();
+
+  // Par défaut, 30 derniers jours
+  const defaultEnd = new Date();
+  const defaultStart = new Date();
+  defaultStart.setDate(defaultStart.getDate() - 30);
+
+  const filterStart = dateFilter?.start || defaultStart;
+  const filterEnd = dateFilter?.end || defaultEnd;
 
   // 1. MÉTRIQUES GLOBALES (via RPC optimisée existante)
   const metricsQuery = useQuery({
@@ -217,14 +235,16 @@ export const useStockDashboardUnified = () => {
 
   // 5. PRODUITS À ROTATION RAPIDE (via nouvelle RPC)
   const fastMovingQuery = useQuery({
-    queryKey: ['stock-fast-moving', tenantId],
+    queryKey: ['stock-fast-moving', tenantId, filterStart, filterEnd],
     queryFn: async () => {
       if (!tenantId) throw new Error('Tenant ID requis');
+
+      const daysDiff = Math.ceil((filterEnd.getTime() - filterStart.getTime()) / (1000 * 60 * 60 * 24));
 
       const { data, error } = await supabase
         .rpc('get_fast_moving_products', { 
           p_tenant_id: tenantId,
-          p_days: 30,
+          p_days: daysDiff,
           p_limit: 10 
         });
 
@@ -273,20 +293,18 @@ export const useStockDashboardUnified = () => {
     enabled: !!tenantId
   });
 
-  // 8. ÉVOLUTION DES MOUVEMENTS (30 derniers jours)
+  // 8. ÉVOLUTION DES MOUVEMENTS (selon filtre de date)
   const movementsEvolutionQuery = useQuery({
-    queryKey: ['stock-movements-evolution', tenantId],
+    queryKey: ['stock-movements-evolution', tenantId, filterStart, filterEnd],
     queryFn: async () => {
       if (!tenantId) throw new Error('Tenant ID requis');
-
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const { data, error } = await supabase
         .from('stock_mouvements')
         .select('date_mouvement, type_mouvement, quantite')
         .eq('tenant_id', tenantId)
-        .gte('date_mouvement', thirtyDaysAgo.toISOString())
+        .gte('date_mouvement', filterStart.toISOString())
+        .lte('date_mouvement', filterEnd.toISOString())
         .order('date_mouvement');
 
       if (error) throw error;
@@ -329,6 +347,54 @@ export const useStockDashboardUnified = () => {
     enabled: !!tenantId
   });
 
+  // 9. ROTATION DES STOCKS PAR FAMILLE
+  const rotationByFamilyQuery = useQuery({
+    queryKey: ['stock-rotation-by-family', tenantId, filterStart, filterEnd],
+    queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant ID requis');
+
+      // Récupérer produits avec stock et ventes
+      const [productsResult, salesResult] = await Promise.all([
+        supabase
+          .from('produits')
+          .select(`
+            id,
+            libelle_produit,
+            famille_id,
+            famille_produit:famille_id(libelle_famille),
+            stock_actuel,
+            prix_achat
+          `)
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true),
+        
+        supabase
+          .from('lignes_ventes')
+          .select('produit_id, quantite')
+          .eq('tenant_id', tenantId)
+          .gte('created_at', filterStart.toISOString())
+          .lte('created_at', filterEnd.toISOString())
+      ]);
+
+      if (productsResult.error) throw productsResult.error;
+      if (salesResult.error) throw salesResult.error;
+
+      // Import dynamic pour éviter les cycles de dépendances
+      const { StockRotationService } = await import('@/services/StockRotationService');
+
+      // Calculer rotation par famille
+      const rotationData = StockRotationService.calculateByFamily(
+        productsResult.data || [],
+        salesResult.data || [],
+        { start: filterStart, end: filterEnd }
+      );
+
+      return rotationData;
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!tenantId
+  });
+
   // État de chargement global
   const isLoading = 
     metricsQuery.isLoading || 
@@ -338,7 +404,8 @@ export const useStockDashboardUnified = () => {
     fastMovingQuery.isLoading ||
     activeAlertsQuery.isLoading ||
     valorisationByFamilyQuery.isLoading ||
-    movementsEvolutionQuery.isLoading;
+    movementsEvolutionQuery.isLoading ||
+    rotationByFamilyQuery.isLoading;
 
   // Première erreur rencontrée
   const error = 
@@ -349,7 +416,8 @@ export const useStockDashboardUnified = () => {
     fastMovingQuery.error ||
     activeAlertsQuery.error ||
     valorisationByFamilyQuery.error ||
-    movementsEvolutionQuery.error;
+    movementsEvolutionQuery.error ||
+    rotationByFamilyQuery.error;
 
   // Fonction de rafraîchissement global
   const refetchAll = async () => {
@@ -361,7 +429,8 @@ export const useStockDashboardUnified = () => {
       fastMovingQuery.refetch(),
       activeAlertsQuery.refetch(),
       valorisationByFamilyQuery.refetch(),
-      movementsEvolutionQuery.refetch()
+      movementsEvolutionQuery.refetch(),
+      rotationByFamilyQuery.refetch()
     ]);
   };
 
@@ -377,6 +446,7 @@ export const useStockDashboardUnified = () => {
     activeAlerts: activeAlertsQuery.data || [],
     valorisationByFamily: valorisationByFamilyQuery.data || [],
     movementsEvolution: movementsEvolutionQuery.data || [],
+    rotationByFamily: rotationByFamilyQuery.data || [],
     
     // États
     isLoading,
