@@ -2447,6 +2447,7 @@ export type Database = {
       }
       configurations_fifo: {
         Row: {
+          actif: boolean | null
           action_automatique: string | null
           created_at: string | null
           delai_alerte_jours: number | null
@@ -2459,6 +2460,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          actif?: boolean | null
           action_automatique?: string | null
           created_at?: string | null
           delai_alerte_jours?: number | null
@@ -2471,6 +2473,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          actif?: boolean | null
           action_automatique?: string | null
           created_at?: string | null
           delai_alerte_jours?: number | null
@@ -5419,40 +5422,61 @@ export type Database = {
       lots: {
         Row: {
           created_at: string
+          date_fabrication: string | null
           date_peremption: string | null
+          date_reception: string | null
+          emplacement: string | null
           fournisseur_id: string | null
           id: string
+          notes: string | null
           numero_lot: string
           prix_achat_unitaire: number | null
+          prix_vente_suggere: number | null
           produit_id: string
           quantite_initiale: number
           quantite_restante: number
+          reception_id: string | null
+          statut: string | null
           tenant_id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          date_fabrication?: string | null
           date_peremption?: string | null
+          date_reception?: string | null
+          emplacement?: string | null
           fournisseur_id?: string | null
           id?: string
+          notes?: string | null
           numero_lot: string
           prix_achat_unitaire?: number | null
+          prix_vente_suggere?: number | null
           produit_id: string
           quantite_initiale: number
           quantite_restante: number
+          reception_id?: string | null
+          statut?: string | null
           tenant_id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          date_fabrication?: string | null
           date_peremption?: string | null
+          date_reception?: string | null
+          emplacement?: string | null
           fournisseur_id?: string | null
           id?: string
+          notes?: string | null
           numero_lot?: string
           prix_achat_unitaire?: number | null
+          prix_vente_suggere?: number | null
           produit_id?: string
           quantite_initiale?: number
           quantite_restante?: number
+          reception_id?: string | null
+          statut?: string | null
           tenant_id?: string
           updated_at?: string
         }
@@ -5477,6 +5501,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_rentabilite_produits"
             referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "lots_reception_id_fkey"
+            columns: ["reception_id"]
+            isOneToOne: false
+            referencedRelation: "receptions_fournisseurs"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "lots_tenant_id_fkey"
@@ -12760,6 +12791,10 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      calculer_jours_restants_expiration: {
+        Args: { date_peremption: string }
+        Returns: number
+      }
       can_delete_account: {
         Args: { p_account_id: string; p_tenant_id: string }
         Returns: Json
@@ -12795,6 +12830,10 @@ export type Database = {
       }
       debug_user_connection_state: { Args: never; Returns: Json }
       detect_suspicious_patterns: { Args: never; Returns: undefined }
+      determiner_niveau_urgence: {
+        Args: { jours_restants: number }
+        Returns: string
+      }
       generate_avoir_number: { Args: { p_tenant_id: string }; Returns: string }
       generate_cost_center_code: {
         Args: { p_tenant_id: string }
