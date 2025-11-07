@@ -532,7 +532,6 @@ export type Database = {
           actions_recommandees: string[] | null
           created_at: string | null
           date_alerte: string | null
-          date_peremption: string
           date_traitement: string | null
           id: string
           jours_restants: number | null
@@ -543,7 +542,7 @@ export type Database = {
           quantite_concernee: number
           statut: string | null
           tenant_id: string
-          traitee_par: string | null
+          traite_par_id: string | null
           type_alerte: string
           updated_at: string | null
         }
@@ -551,18 +550,17 @@ export type Database = {
           actions_recommandees?: string[] | null
           created_at?: string | null
           date_alerte?: string | null
-          date_peremption: string
           date_traitement?: string | null
           id?: string
           jours_restants?: number | null
           lot_id: string
-          niveau_urgence: string
+          niveau_urgence?: string
           notes?: string | null
           produit_id: string
           quantite_concernee: number
           statut?: string | null
           tenant_id: string
-          traitee_par?: string | null
+          traite_par_id?: string | null
           type_alerte: string
           updated_at?: string | null
         }
@@ -570,7 +568,6 @@ export type Database = {
           actions_recommandees?: string[] | null
           created_at?: string | null
           date_alerte?: string | null
-          date_peremption?: string
           date_traitement?: string | null
           id?: string
           jours_restants?: number | null
@@ -581,7 +578,7 @@ export type Database = {
           quantite_concernee?: number
           statut?: string | null
           tenant_id?: string
-          traitee_par?: string | null
+          traite_par_id?: string | null
           type_alerte?: string
           updated_at?: string | null
         }
@@ -608,8 +605,15 @@ export type Database = {
             referencedColumns: ["produit_id"]
           },
           {
+            foreignKeyName: "alertes_peremption_traite_par_id_fkey"
+            columns: ["traite_par_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "alertes_peremption_traitee_par_fkey"
-            columns: ["traitee_par"]
+            columns: ["traite_par_id"]
             isOneToOne: false
             referencedRelation: "personnel"
             referencedColumns: ["id"]
