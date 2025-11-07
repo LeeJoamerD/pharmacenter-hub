@@ -1,5 +1,5 @@
 import React from 'react';
-import StockDashboard from './stock/StockDashboard';
+import StockDashboardUnified from './stock/dashboard/StockDashboardUnified';
 import CurrentStockTab from './stock/current/CurrentStockTab';
 import { StockLotsTab } from './stock/tabs/StockLotsTab';
 import StockApprovisionnementTab from './stock/tabs/StockApprovisionnementTab';
@@ -37,7 +37,7 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
       case 'integration-demo':
         return <StockIntegrationDemo />;
       default:
-        return <StockDashboard />;
+        return <StockDashboardUnified />;
     }
   };
 

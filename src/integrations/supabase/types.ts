@@ -12894,6 +12894,19 @@ export type Database = {
           type: string
         }[]
       }
+      get_active_stock_alerts: {
+        Args: { p_limit?: number; p_tenant_id: string }
+        Returns: {
+          alert_id: string
+          alert_level: string
+          alert_type: string
+          created_at: string
+          message: string
+          produit_id: string
+          produit_nom: string
+          stock_actuel: number
+        }[]
+      }
       get_current_tenant_alert_settings: {
         Args: never
         Returns: {
@@ -12923,6 +12936,18 @@ export type Database = {
         Args: { tenant_filter: string }
         Returns: Json
       }
+      get_fast_moving_products: {
+        Args: { p_days?: number; p_limit?: number; p_tenant_id: string }
+        Returns: {
+          code_cip: string
+          libelle_produit: string
+          produit_id: string
+          quantite_vendue: number
+          rotation_jours: number
+          stock_actuel: number
+          valeur_vendue: number
+        }[]
+      }
       get_next_accounting_number: {
         Args: {
           p_journal_code?: string
@@ -12931,9 +12956,26 @@ export type Database = {
         }
         Returns: string
       }
+      get_stock_status_distribution: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       get_stock_threshold: {
         Args: { p_stock_limite: number; p_threshold_type: string }
         Returns: number
+      }
+      get_top_critical_products: {
+        Args: { p_limit?: number; p_tenant_id: string }
+        Returns: {
+          code_cip: string
+          famille_libelle: string
+          libelle_produit: string
+          produit_id: string
+          statut_stock: string
+          stock_actuel: number
+          stock_limite: number
+          valeur_stock: number
+        }[]
       }
       has_open_session:
         | { Args: never; Returns: boolean }
