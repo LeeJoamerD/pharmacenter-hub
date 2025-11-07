@@ -12744,6 +12744,10 @@ export type Database = {
         Returns: number
       }
       calculate_stock_metrics: { Args: { p_tenant_id: string }; Returns: Json }
+      calculate_total_stock_value: {
+        Args: { tenant_filter: string }
+        Returns: number
+      }
       calculate_valuation_by_family: {
         Args: { p_tenant_id: string }
         Returns: Json
@@ -12860,6 +12864,10 @@ export type Database = {
         }[]
       }
       get_current_user_tenant_id: { Args: never; Returns: string }
+      get_dashboard_stock_metrics: {
+        Args: { tenant_filter: string }
+        Returns: Json
+      }
       get_next_accounting_number: {
         Args: {
           p_journal_code?: string
