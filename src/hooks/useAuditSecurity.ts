@@ -236,7 +236,8 @@ export function useAuditSecurity(selectedTimeRange: TimeRange = '30d') {
         .select('*')
         .eq('tenant_id', tenantId)
         .gte('created_at', startDate)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(5000); // ✅ Limite explicite pour éviter la pagination Supabase
 
       if (error) throw error;
       return data as SecurityAlert[];
@@ -257,7 +258,8 @@ export function useAuditSecurity(selectedTimeRange: TimeRange = '30d') {
         .from('security_controls')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('control_name');
+        .order('control_name')
+        .limit(2000); // ✅ Limite explicite pour éviter la pagination Supabase
 
       if (error) throw error;
       return data as SecurityControl[];
@@ -278,7 +280,8 @@ export function useAuditSecurity(selectedTimeRange: TimeRange = '30d') {
         .from('compliance_checks')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('requirement_name');
+        .order('requirement_name')
+        .limit(2000); // ✅ Limite explicite pour éviter la pagination Supabase
 
       if (error) throw error;
       return data as ComplianceCheck[];
@@ -361,7 +364,8 @@ export function useAuditSecurity(selectedTimeRange: TimeRange = '30d') {
         .select('*')
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
-        .order('last_activity', { ascending: false });
+        .order('last_activity', { ascending: false })
+        .limit(1000); // ✅ Limite explicite pour éviter la pagination Supabase
 
       if (error) throw error;
       return data as UserSession[];

@@ -258,7 +258,8 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
         .eq('tenant_id', tenantId)
         .gte('date_ecriture', startOfMonth(subMonths(new Date(), 5)).toISOString())
         .lte('date_ecriture', endDate)
-        .order('date_ecriture', { ascending: true });
+        .order('date_ecriture', { ascending: true })
+        .limit(10000); // ✅ Limite explicite pour éviter la pagination Supabase
 
       if (error) throw error;
       return data || [];
@@ -282,7 +283,8 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
         .eq('tenant_id', tenantId)
         .gte('date_vente', startOfYear(new Date()).toISOString())
         .lte('date_vente', endDate)
-        .order('date_vente', { ascending: true });
+        .order('date_vente', { ascending: true })
+        .limit(20000); // ✅ Limite explicite pour éviter la pagination Supabase
 
       if (error) throw error;
       return data || [];
@@ -300,7 +302,8 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
         .eq('tenant_id', tenantId)
         .gte('date_mouvement', subDays(new Date(), 30).toISOString())
         .lte('date_mouvement', endDate)
-        .order('date_mouvement', { ascending: true });
+        .order('date_mouvement', { ascending: true })
+        .limit(5000); // ✅ Limite explicite pour éviter la pagination Supabase
 
       if (error) throw error;
       return data || [];

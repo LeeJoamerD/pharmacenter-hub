@@ -190,7 +190,8 @@ export const useAnalyticalAccounting = () => {
           responsable:personnel(id, noms, prenoms)
         `)
         .eq('tenant_id', tenantId)
-        .order('code');
+        .order('code')
+        .limit(5000); // ✅ Limite explicite pour éviter la pagination Supabase
 
       if (error) throw error;
       setCostCenters(data as any || []);
@@ -213,7 +214,8 @@ export const useAnalyticalAccounting = () => {
           centre:centres_couts(id, code, nom)
         `)
         .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(10000); // ✅ Limite explicite pour éviter la pagination Supabase
 
       if (error) throw error;
       setBudgets(data as any || []);
@@ -232,7 +234,8 @@ export const useAnalyticalAccounting = () => {
         .from('cles_repartition')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('code');
+        .order('code')
+        .limit(2000); // ✅ Limite explicite pour éviter la pagination Supabase
 
       if (error) throw error;
       setAllocationKeys(data as any || []);
@@ -252,7 +255,8 @@ export const useAnalyticalAccounting = () => {
           centre:centres_couts(id, code, nom)
         `)
         .eq('tenant_id', tenantId)
-        .order('date_debut', { ascending: false });
+        .order('date_debut', { ascending: false })
+        .limit(5000); // ✅ Limite explicite pour éviter la pagination Supabase
 
       if (error) throw error;
       setCoefficients(data as any || []);
@@ -272,7 +276,8 @@ export const useAnalyticalAccounting = () => {
           cle:cles_repartition(id, code, libelle)
         `)
         .eq('tenant_id', tenantId)
-        .order('date_repartition', { ascending: false });
+        .order('date_repartition', { ascending: false })
+        .limit(5000); // ✅ Limite explicite pour éviter la pagination Supabase
 
       if (error) throw error;
       setChargeAllocations(data as any || []);
@@ -292,7 +297,8 @@ export const useAnalyticalAccounting = () => {
         .from('v_rentabilite_produits')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('taux_marge', { ascending: false });
+        .order('taux_marge', { ascending: false })
+        .limit(10000); // ✅ Limite explicite pour éviter la pagination Supabase
 
       if (error) throw error;
       setProfitabilityData(data as any || []);
