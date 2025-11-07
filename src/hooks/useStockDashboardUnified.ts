@@ -58,6 +58,21 @@ export interface StockAlert {
   created_at: string;
 }
 
+export interface FamilyValorization {
+  famille: string;
+  valeur: number;
+  quantite: number;
+  pourcentage: number;
+  nb_produits: number;
+}
+
+export interface MovementData {
+  date: string;
+  entrees: number;
+  sorties: number;
+  solde: number;
+}
+
 /**
  * Hook central unifié pour le dashboard Stock
  * Agrège toutes les données nécessaires avec cache partagé
@@ -239,6 +254,81 @@ export const useStockDashboardUnified = () => {
     enabled: !!tenantId
   });
 
+  // 7. VALORISATION PAR FAMILLE
+  const valorisationByFamilyQuery = useQuery({
+    queryKey: ['stock-valorisation-by-family', tenantId],
+    queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant ID requis');
+
+      const { data, error } = await supabase
+        .rpc('calculate_valuation_by_family', { p_tenant_id: tenantId });
+
+      if (error) throw error;
+      
+      // Le résultat est un JSONB array, on le parse
+      const result = (data as any) || [];
+      return result.slice(0, 10) as FamilyValorization[]; // Top 10 familles
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!tenantId
+  });
+
+  // 8. ÉVOLUTION DES MOUVEMENTS (30 derniers jours)
+  const movementsEvolutionQuery = useQuery({
+    queryKey: ['stock-movements-evolution', tenantId],
+    queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant ID requis');
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data, error } = await supabase
+        .from('stock_mouvements')
+        .select('date_mouvement, type_mouvement, quantite')
+        .eq('tenant_id', tenantId)
+        .gte('date_mouvement', thirtyDaysAgo.toISOString())
+        .order('date_mouvement');
+
+      if (error) throw error;
+
+      // Agréger par jour
+      const movementsByDay = new Map<string, { entrees: number; sorties: number }>();
+      
+      (data || []).forEach(movement => {
+        const date = movement.date_mouvement.split('T')[0];
+        const current = movementsByDay.get(date) || { entrees: 0, sorties: 0 };
+        
+        if (movement.type_mouvement === 'ENTREE') {
+          current.entrees += movement.quantite;
+        } else if (movement.type_mouvement === 'SORTIE') {
+          current.sorties += movement.quantite;
+        }
+        
+        movementsByDay.set(date, current);
+      });
+
+      // Convertir en tableau et calculer le solde cumulé
+      const result: MovementData[] = [];
+      let solde = 0;
+      
+      Array.from(movementsByDay.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .forEach(([date, movements]) => {
+          solde += movements.entrees - movements.sorties;
+          result.push({
+            date,
+            entrees: movements.entrees,
+            sorties: movements.sorties,
+            solde
+          });
+        });
+
+      return result;
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!tenantId
+  });
+
   // État de chargement global
   const isLoading = 
     metricsQuery.isLoading || 
@@ -246,7 +336,9 @@ export const useStockDashboardUnified = () => {
     criticalProductsQuery.isLoading ||
     ruptureProductsQuery.isLoading ||
     fastMovingQuery.isLoading ||
-    activeAlertsQuery.isLoading;
+    activeAlertsQuery.isLoading ||
+    valorisationByFamilyQuery.isLoading ||
+    movementsEvolutionQuery.isLoading;
 
   // Première erreur rencontrée
   const error = 
@@ -255,7 +347,9 @@ export const useStockDashboardUnified = () => {
     criticalProductsQuery.error ||
     ruptureProductsQuery.error ||
     fastMovingQuery.error ||
-    activeAlertsQuery.error;
+    activeAlertsQuery.error ||
+    valorisationByFamilyQuery.error ||
+    movementsEvolutionQuery.error;
 
   // Fonction de rafraîchissement global
   const refetchAll = async () => {
@@ -265,7 +359,9 @@ export const useStockDashboardUnified = () => {
       criticalProductsQuery.refetch(),
       ruptureProductsQuery.refetch(),
       fastMovingQuery.refetch(),
-      activeAlertsQuery.refetch()
+      activeAlertsQuery.refetch(),
+      valorisationByFamilyQuery.refetch(),
+      movementsEvolutionQuery.refetch()
     ]);
   };
 
@@ -279,6 +375,8 @@ export const useStockDashboardUnified = () => {
     ruptureProducts: ruptureProductsQuery.data || [],
     fastMovingProducts: fastMovingQuery.data || [],
     activeAlerts: activeAlertsQuery.data || [],
+    valorisationByFamily: valorisationByFamilyQuery.data || [],
+    movementsEvolution: movementsEvolutionQuery.data || [],
     
     // États
     isLoading,

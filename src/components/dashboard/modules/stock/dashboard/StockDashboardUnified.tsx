@@ -17,6 +17,9 @@ import { useNavigate } from 'react-router-dom';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import StockDistributionChart from './charts/StockDistributionChart';
+import ValorizationByFamilyChart from './charts/ValorizationByFamilyChart';
+import MovementsEvolutionChart from './charts/MovementsEvolutionChart';
 
 /**
  * Dashboard Stock Unifié - Version Moderne et Complète
@@ -31,6 +34,8 @@ const StockDashboardUnified = () => {
     ruptureProducts,
     fastMovingProducts,
     activeAlerts,
+    valorisationByFamily,
+    movementsEvolution,
     isLoading,
     error,
     refetchAll
@@ -439,6 +444,22 @@ const StockDashboardUnified = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Section Analytics - Graphiques */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-2xl font-bold tracking-tight">Analytics Stock</h3>
+        </div>
+
+        {/* Graphique Distribution */}
+        <StockDistributionChart statusDistribution={metrics.statusDistribution} />
+
+        {/* Graphiques Valorisation et Mouvements */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ValorizationByFamilyChart data={valorisationByFamily} />
+          <MovementsEvolutionChart data={movementsEvolution} />
+        </div>
+      </div>
     </div>
   );
 };
