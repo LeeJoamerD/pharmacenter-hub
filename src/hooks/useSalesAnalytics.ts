@@ -6,6 +6,27 @@ import { fr } from 'date-fns/locale';
 
 export type AnalyticsPeriod = 'day' | 'week' | 'month' | 'year' | 'custom';
 
+/**
+ * ✅ SPRINT 3: Fonction utilitaire pour déterminer la limite adaptative
+ * Évite la pagination Supabase par défaut à 1000 lignes
+ */
+export const getLimitForPeriod = (period: AnalyticsPeriod): number => {
+  switch (period) {
+    case 'day': 
+      return 2000;   // ~200 ventes/heure max
+    case 'week': 
+      return 5000;   // ~700 ventes/jour max
+    case 'month': 
+      return 10000;  // ~300 ventes/jour max
+    case 'year': 
+      return 50000;  // ~150 ventes/jour max
+    case 'custom': 
+      return 20000;  // Valeur sécurisée pour périodes personnalisées
+    default: 
+      return 10000;
+  }
+};
+
 export interface AnalyticsKPI {
   caTotal: number;
   caVariation: number;
@@ -124,6 +145,9 @@ export const useSalesAnalytics = (
   const { data: kpis, isLoading: kpisLoading } = useQuery({
     queryKey: ['sales-analytics-kpis', tenantId, period, customDateRange, filters],
     queryFn: async (): Promise<AnalyticsKPI> => {
+      // ✅ SPRINT 3: Limite adaptative basée sur la période
+      const limit = getLimitForPeriod(period);
+
       // Ventes période courante
       let currentQuery = supabase
         .from('ventes')
@@ -131,7 +155,8 @@ export const useSalesAnalytics = (
         .eq('tenant_id', tenantId!)
         .eq('statut', 'Validée')
         .gte('date_vente', dateRange.current.start.toISOString())
-        .lte('date_vente', dateRange.current.end.toISOString());
+        .lte('date_vente', dateRange.current.end.toISOString())
+        .limit(limit); // ✅ AJOUTÉ
 
       // Appliquer les filtres
       if (filters?.agents && filters.agents.length > 0) {
@@ -150,7 +175,8 @@ export const useSalesAnalytics = (
         .eq('tenant_id', tenantId!)
         .eq('statut', 'Validée')
         .gte('date_vente', dateRange.previous.start.toISOString())
-        .lte('date_vente', dateRange.previous.end.toISOString());
+        .lte('date_vente', dateRange.previous.end.toISOString())
+        .limit(limit); // ✅ AJOUTÉ
 
       if (filters?.agents && filters.agents.length > 0) {
         previousQuery = previousQuery.in('agent_id', filters.agents);
@@ -196,6 +222,9 @@ export const useSalesAnalytics = (
   const { data: revenueEvolution, isLoading: revenueLoading } = useQuery({
     queryKey: ['sales-analytics-revenue-evolution', tenantId, period, customDateRange, filters],
     queryFn: async (): Promise<RevenueEvolution[]> => {
+      // ✅ SPRINT 3: Limite adaptative basée sur la période
+      const limit = getLimitForPeriod(period);
+
       let query = supabase
         .from('ventes')
         .select('created_at, montant_total_ttc')
@@ -203,7 +232,8 @@ export const useSalesAnalytics = (
         .eq('statut', 'Validée')
         .gte('created_at', dateRange.current.start.toISOString())
         .lte('created_at', dateRange.current.end.toISOString())
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(limit); // ✅ AJOUTÉ
 
       if (filters?.agents && filters.agents.length > 0) {
         query = query.in('agent_id', filters.agents);
@@ -238,6 +268,9 @@ export const useSalesAnalytics = (
   const { data: topProducts, isLoading: productsLoading } = useQuery({
     queryKey: ['sales-analytics-top-products', tenantId, period, customDateRange, filters],
     queryFn: async (): Promise<TopProductAnalytics[]> => {
+      // ✅ SPRINT 3: Limite x2 pour lignes_ventes (plusieurs lignes par vente)
+      const limit = getLimitForPeriod(period) * 2;
+
       let query = supabase
         .from('lignes_ventes')
         .select(`
@@ -250,7 +283,8 @@ export const useSalesAnalytics = (
         `)
         .eq('tenant_id', tenantId!)
         .gte('vente.created_at', dateRange.current.start.toISOString())
-        .lte('vente.created_at', dateRange.current.end.toISOString());
+        .lte('vente.created_at', dateRange.current.end.toISOString())
+        .limit(limit); // ✅ AJOUTÉ
 
       const { data } = await query;
 
@@ -300,13 +334,17 @@ export const useSalesAnalytics = (
   const { data: paymentMethods, isLoading: paymentsLoading } = useQuery({
     queryKey: ['sales-analytics-payment-methods', tenantId, period, customDateRange, filters],
     queryFn: async (): Promise<PaymentMethodBreakdown[]> => {
+      // ✅ SPRINT 3: Limite adaptative basée sur la période
+      const limit = getLimitForPeriod(period);
+
       let query = supabase
         .from('ventes')
         .select('mode_paiement, montant_total_ttc')
         .eq('tenant_id', tenantId!)
         .eq('statut', 'Validée')
         .gte('created_at', dateRange.current.start.toISOString())
-        .lte('created_at', dateRange.current.end.toISOString());
+        .lte('created_at', dateRange.current.end.toISOString())
+        .limit(limit); // ✅ AJOUTÉ
 
       if (filters?.agents && filters.agents.length > 0) {
         query = query.in('agent_id', filters.agents);
@@ -352,6 +390,9 @@ export const useSalesAnalytics = (
   const { data: staffPerformance, isLoading: staffLoading } = useQuery({
     queryKey: ['sales-analytics-staff-performance', tenantId, period, customDateRange, filters],
     queryFn: async (): Promise<StaffPerformanceData[]> => {
+      // ✅ SPRINT 3: Limite adaptative basée sur la période
+      const limit = getLimitForPeriod(period);
+
       let query = supabase
         .from('ventes')
         .select(`
@@ -362,7 +403,8 @@ export const useSalesAnalytics = (
         .eq('tenant_id', tenantId!)
         .eq('statut', 'Validée')
         .gte('created_at', dateRange.current.start.toISOString())
-        .lte('created_at', dateRange.current.end.toISOString());
+        .lte('created_at', dateRange.current.end.toISOString())
+        .limit(limit); // ✅ AJOUTÉ
 
       if (filters?.agents && filters.agents.length > 0) {
         query = query.in('agent_id', filters.agents);
@@ -409,6 +451,9 @@ export const useSalesAnalytics = (
   const { data: categoryBreakdown, isLoading: categoriesLoading } = useQuery({
     queryKey: ['sales-analytics-categories', tenantId, period, customDateRange, filters],
     queryFn: async (): Promise<CategoryBreakdown[]> => {
+      // ✅ SPRINT 3: Limite x2 pour lignes_ventes (plusieurs lignes par vente)
+      const limit = getLimitForPeriod(period) * 2;
+
       let query = supabase
         .from('lignes_ventes')
         .select(`
@@ -418,7 +463,8 @@ export const useSalesAnalytics = (
         `)
         .eq('tenant_id', tenantId!)
         .gte('vente.created_at', dateRange.current.start.toISOString())
-        .lte('vente.created_at', dateRange.current.end.toISOString());
+        .lte('vente.created_at', dateRange.current.end.toISOString())
+        .limit(limit); // ✅ AJOUTÉ
 
       const { data } = await query;
 
