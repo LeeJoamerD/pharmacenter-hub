@@ -16,7 +16,7 @@ export const useAdminDashboardData = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('personnel')
-        .select('id, role, is_active, created_at')
+        .select('role, is_active, created_at')
         .eq('tenant_id', tenantId);
       
       if (error) throw error;
@@ -31,7 +31,7 @@ export const useAdminDashboardData = () => {
       };
     },
     enabled: !!tenantId,
-    staleTime: 60000, // 1 minute
+    staleTime: 60000,
   });
 
   // Métriques Partenaires
@@ -39,18 +39,25 @@ export const useAdminDashboardData = () => {
     queryKey: ['admin-partenaires-metrics', tenantId],
     queryFn: async () => {
       const [fournisseurs, laboratoires] = await Promise.all([
-        supabase.from('fournisseurs').select('id').eq('tenant_id', tenantId),
-        supabase.from('laboratoires').select('id').eq('tenant_id', tenantId)
+        supabase
+          .from('fournisseurs')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId),
+        supabase
+          .from('laboratoires')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
       ]);
       
       if (fournisseurs.error) throw fournisseurs.error;
+      if (laboratoires.error) throw laboratoires.error;
 
       return {
-        total: (fournisseurs.data?.length || 0) + (laboratoires.data?.length || 0),
-        fournisseurs: fournisseurs.data?.length || 0,
-        fournisseurs_actifs: fournisseurs.data?.length || 0, // Tous les fournisseurs comptent comme actifs
-        laboratoires: laboratoires.data?.length || 0,
-        assureurs: 0, // Pas de table assureurs pour le moment
+        total: (fournisseurs.count || 0) + (laboratoires.count || 0),
+        fournisseurs: fournisseurs.count || 0,
+        fournisseurs_actifs: fournisseurs.count || 0,
+        laboratoires: laboratoires.count || 0,
+        assureurs: 0,
         assureurs_actifs: 0
       };
     },
@@ -62,21 +69,42 @@ export const useAdminDashboardData = () => {
   const referentielMetrics = useQuery({
     queryKey: ['admin-referentiel-metrics', tenantId],
     queryFn: async () => {
-      const [produits, dci, formes, classes] = await Promise.all([
-        supabase.from('produits').select('id, is_active').eq('tenant_id', tenantId),
-        supabase.from('dci').select('id').eq('tenant_id', tenantId),
-        supabase.from('formes_galeniques').select('id').eq('tenant_id', tenantId),
-        supabase.from('classes_therapeutiques').select('id').eq('tenant_id', tenantId)
+      const [produitsTotal, produitsActifs, dci, formes, classes] = await Promise.all([
+        supabase
+          .from('produits')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId),
+        supabase
+          .from('produits')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true),
+        supabase
+          .from('dci')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId),
+        supabase
+          .from('formes_galeniques')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId),
+        supabase
+          .from('classes_therapeutiques')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
       ]);
       
-      if (produits.error) throw produits.error;
+      if (produitsTotal.error) throw produitsTotal.error;
+      if (produitsActifs.error) throw produitsActifs.error;
+      if (dci.error) throw dci.error;
+      if (formes.error) throw formes.error;
+      if (classes.error) throw classes.error;
 
       return {
-        total_produits: produits.data?.length || 0,
-        produits_actifs: produits.data?.filter(p => p.is_active).length || 0,
-        total_dci: dci.data?.length || 0,
-        total_formes: formes.data?.length || 0,
-        total_classes: classes.data?.length || 0
+        total_produits: produitsTotal.count || 0,
+        produits_actifs: produitsActifs.count || 0,
+        total_dci: dci.count || 0,
+        total_formes: formes.count || 0,
+        total_classes: classes.count || 0
       };
     },
     enabled: !!tenantId,
@@ -87,24 +115,44 @@ export const useAdminDashboardData = () => {
   const systemeMetrics = useQuery({
     queryKey: ['admin-systeme-metrics', tenantId],
     queryFn: async () => {
-      const [documents, workflows, clients] = await Promise.all([
-        supabase.from('documents').select('id, status').eq('tenant_id', tenantId),
+      const [documentsTotal, documentsPending, workflows, clientsTotal, clientsActifs] = await Promise.all([
+        supabase
+          .from('documents')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId),
+        supabase
+          .from('documents')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .in('status', ['pending', 'draft']),
         supabase
           .from('security_alerts')
-          .select('id', { count: 'exact', head: true })
+          .select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantId)
           .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
-        supabase.from('clients').select('id, statut').eq('tenant_id', tenantId)
+        supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId),
+        supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .eq('statut', 'Actif')
       ]);
       
-      if (documents.error) throw documents.error;
+      if (documentsTotal.error) throw documentsTotal.error;
+      if (documentsPending.error) throw documentsPending.error;
+      if (workflows.error) throw workflows.error;
+      if (clientsTotal.error) throw clientsTotal.error;
+      if (clientsActifs.error) throw clientsActifs.error;
 
       return {
-        documents_total: documents.data?.length || 0,
-        documents_en_attente: documents.data?.filter(d => d.status === 'pending' || d.status === 'draft').length || 0,
+        documents_total: documentsTotal.count || 0,
+        documents_en_attente: documentsPending.count || 0,
         workflows_actifs: workflows.count || 0,
-        clients_total: clients.data?.length || 0,
-        clients_actifs: clients.data?.filter(c => c.statut === 'Actif').length || 0
+        clients_total: clientsTotal.count || 0,
+        clients_actifs: clientsActifs.count || 0
       };
     },
     enabled: !!tenantId,
