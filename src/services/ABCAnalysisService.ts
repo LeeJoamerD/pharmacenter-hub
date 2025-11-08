@@ -132,7 +132,7 @@ export class ABCAnalysisService {
             stock_actuel,
             famille_id,
             categorie_tarification_id,
-            famille_produit:famille_id(libelle_famille),
+            famille_produit!fk_produits_famille_id(libelle_famille),
             categorie_tarification!categorie_tarification_id(libelle_categorie)
           )
         `)

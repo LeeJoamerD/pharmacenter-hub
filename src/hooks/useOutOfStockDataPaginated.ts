@@ -120,7 +120,7 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
             id, code_cip, libelle_produit,
             prix_vente_ttc, prix_achat, stock_limite, stock_alerte,
             famille_id, rayon_id, updated_at,
-            famille_produit:famille_id(libelle_famille),
+            famille_produit!fk_produits_famille_id(libelle_famille),
             rayons_produits(libelle_rayon),
             lots(quantite_restante)
           `)

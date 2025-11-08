@@ -75,7 +75,7 @@ export class StockNotificationService {
       .from('produits')
       .select(`
         id, libelle_produit, famille_id, stock_limite, stock_alerte,
-        famille_produit:famille_id(libelle_famille)
+        famille_produit!fk_produits_famille_id(libelle_famille)
       `)
       .eq('tenant_id', tenantId)
       .eq('is_active', true);
@@ -168,7 +168,7 @@ export class StockNotificationService {
       .from('lots')
       .select(`
         id, numero_lot, quantite_restante, date_peremption, produit_id,
-        produits!inner(id, libelle_produit, famille_id, famille_produit:famille_id(libelle_famille))
+        produits!inner(id, libelle_produit, famille_id, famille_produit!fk_produits_famille_id(libelle_famille))
       `)
       .eq('tenant_id', tenantId)
       .gt('quantite_restante', 0)
@@ -225,7 +225,7 @@ export class StockNotificationService {
       .from('produits')
       .select(`
         id, libelle_produit, updated_at,
-        famille_produit:famille_id(libelle_famille)
+        famille_produit!fk_produits_famille_id(libelle_famille)
       `)
       .eq('tenant_id', tenantId)
       .eq('is_active', true);

@@ -208,7 +208,7 @@ export const useStockDashboardUnified = (
           code_cip,
           stock_actuel,
           prix_achat,
-          famille_produit:famille_id(libelle_famille)
+          famille_produit!fk_produits_famille_id(libelle_famille)
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
@@ -361,7 +361,7 @@ export const useStockDashboardUnified = (
             id,
             libelle_produit,
             famille_id,
-            famille_produit:famille_id(libelle_famille),
+            famille_produit!fk_produits_famille_id(libelle_famille),
             stock_actuel,
             prix_achat
           `)

@@ -228,7 +228,7 @@ export const useStockValuationPaginated = ({
               id, tenant_id, code_cip, libelle_produit,
               famille_id, rayon_id, prix_achat, prix_vente_ttc,
               stock_limite, stock_alerte,
-              famille_produit:famille_id(libelle_famille),
+              famille_produit!fk_produits_famille_id(libelle_famille),
               rayons_produits:rayon_id(libelle_rayon),
               lots(quantite_restante, prix_achat_unitaire)
             `)

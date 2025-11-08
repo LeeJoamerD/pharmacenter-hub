@@ -63,7 +63,7 @@ export const useOptimizedQueries = () => {
           .from('produits')
           .select(`
             *,
-            famille:famille_produit:famille_id(libelle_famille),
+            famille:famille_produit!fk_produits_famille_id(libelle_famille),
             dci:dci(nom_dci)
           `, { count: 'exact' })
           .eq('tenant_id', tenantId);
@@ -181,7 +181,7 @@ export const useOptimizedQueries = () => {
               nom_produit,
               reference_produit,
               seuil_minimal,
-              famille:famille_produit:famille_id(libelle_famille)
+              famille:famille_produit!fk_produits_famille_id(libelle_famille)
             )
           `, { count: 'exact' })
           .eq('tenant_id', tenantId)

@@ -70,7 +70,7 @@ export const useFIFOConfiguration = () => {
       `
         *,
         produit:produits(id, libelle_produit),
-        famille:famille_produit:famille_id(id, libelle_famille)
+        famille:famille_produit!fk_produits_famille_id(id, libelle_famille)
       `,
       {},
       {
@@ -88,7 +88,7 @@ export const useFIFOConfiguration = () => {
       `
         *,
         produit:produits(id, libelle_produit),
-        famille:famille_produit:famille_id(id, libelle_famille)
+        famille:famille_produit!fk_produits_famille_id(id, libelle_famille)
       `,
       { id: configId },
       {

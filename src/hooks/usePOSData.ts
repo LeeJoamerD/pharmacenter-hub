@@ -47,7 +47,7 @@ export const usePOSData = () => {
           prix_vente_ht,
           tva,
           stock_limite,
-          famille_produit:famille_id(libelle_famille),
+          famille_produit!fk_produits_famille_id(libelle_famille),
           dci:dci_id(nom_dci)
         `)
         .eq('tenant_id', tenantId)

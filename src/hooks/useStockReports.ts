@@ -202,7 +202,7 @@ export const useStockReports = (
           id,
           libelle_produit,
           stock_limite,
-          famille_produit:famille_id(libelle_famille),
+          famille_produit!fk_produits_famille_id(libelle_famille),
           lots!inner(quantite_restante, date_peremption)
         `)
         .eq('tenant_id', tenantId)
@@ -274,7 +274,7 @@ export const useStockReports = (
           numero_lot,
           quantite_restante,
           date_peremption,
-          produit:produits!inner(libelle_produit, famille_produit:famille_id(libelle_famille))
+          produit:produits!inner(libelle_produit, famille_produit!fk_produits_famille_id(libelle_famille))
         `)
         .eq('tenant_id', tenantId)
         .gt('quantite_restante', 0)
