@@ -48,7 +48,7 @@ export const usePricingSettings = () => {
       const { data, error } = await supabase
         .from('pricing_settings')
         .select('*')
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         throw error;
@@ -58,16 +58,22 @@ export const usePricingSettings = () => {
     },
   });
 
-  const createMutation = useMutation({
+  const upsertMutation = useMutation({
     mutationFn: async (settings: Partial<PricingSettings> & { tenant_id: string }) => {
       const { data, error } = await supabase
         .from('pricing_settings')
-        .insert({
-          ...DEFAULT_SETTINGS,
-          ...settings,
-        })
+        .upsert(
+          {
+            ...DEFAULT_SETTINGS,
+            ...settings,
+          },
+          {
+            onConflict: 'tenant_id',
+            ignoreDuplicates: false
+          }
+        )
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;
@@ -75,36 +81,7 @@ export const usePricingSettings = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pricing-settings'] });
       toast({
-        title: "Configuration créée",
-        description: "Les paramètres de tarification ont été créés avec succès.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Erreur",
-        description: "Impossible de créer la configuration de tarification.",
-        variant: "destructive",
-      });
-      console.error('Error creating pricing settings:', error);
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (settings: Partial<PricingSettings>) => {
-      const { data, error } = await supabase
-        .from('pricing_settings')
-        .update(settings)
-        .eq('tenant_id', settings.tenant_id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pricing-settings'] });
-      toast({
-        title: "Configuration mise à jour",
+        title: "Configuration sauvegardée",
         description: "Les paramètres de tarification ont été sauvegardés avec succès.",
       });
     },
@@ -114,16 +91,12 @@ export const usePricingSettings = () => {
         description: "Impossible de sauvegarder la configuration de tarification.",
         variant: "destructive",
       });
-      console.error('Error updating pricing settings:', error);
+      console.error('Error saving pricing settings:', error);
     },
   });
 
   const saveSettings = async (settings: Partial<PricingSettings> & { tenant_id: string }) => {
-    if (query.data) {
-      return updateMutation.mutateAsync({ ...settings, tenant_id: query.data.tenant_id });
-    } else {
-      return createMutation.mutateAsync(settings);
-    }
+    return upsertMutation.mutateAsync(settings);
   };
 
   return {
@@ -131,6 +104,6 @@ export const usePricingSettings = () => {
     loading: query.isLoading,
     error: query.error,
     saveSettings,
-    isUpdating: updateMutation.isPending || createMutation.isPending,
+    isUpdating: upsertMutation.isPending,
   };
 };
