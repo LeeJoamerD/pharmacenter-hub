@@ -61,16 +61,22 @@ export const useAlertSettings = () => {
     },
   });
 
-  const createMutation = useMutation({
+  const upsertMutation = useMutation({
     mutationFn: async (settings: Partial<AlertSettings> & { tenant_id: string }) => {
       const { data, error } = await supabase
         .from('alert_settings')
-        .insert({
-          ...DEFAULT_SETTINGS,
-          ...settings,
-        })
+        .upsert(
+          {
+            ...DEFAULT_SETTINGS,
+            ...settings,
+          },
+          {
+            onConflict: 'tenant_id',
+            ignoreDuplicates: false
+          }
+        )
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return data;
@@ -78,36 +84,7 @@ export const useAlertSettings = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alert-settings'] });
       toast({
-        title: "Configuration créée",
-        description: "Les paramètres d'alertes ont été créés avec succès.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Erreur",
-        description: "Impossible de créer la configuration d'alertes.",
-        variant: "destructive",
-      });
-      console.error('Error creating alert settings:', error);
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (settings: Partial<AlertSettings>) => {
-      const { data, error } = await supabase
-        .from('alert_settings')
-        .update(settings)
-        .eq('tenant_id', settings.tenant_id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['alert-settings'] });
-      toast({
-        title: "Configuration mise à jour",
+        title: "Configuration sauvegardée",
         description: "Les paramètres d'alertes ont été sauvegardés avec succès.",
       });
     },
@@ -117,16 +94,12 @@ export const useAlertSettings = () => {
         description: "Impossible de sauvegarder la configuration d'alertes.",
         variant: "destructive",
       });
-      console.error('Error updating alert settings:', error);
+      console.error('Error saving alert settings:', error);
     },
   });
 
   const saveSettings = async (settings: Partial<AlertSettings> & { tenant_id: string }) => {
-    if (query.data) {
-      return updateMutation.mutateAsync({ ...settings, tenant_id: query.data.tenant_id });
-    } else {
-      return createMutation.mutateAsync(settings);
-    }
+    return upsertMutation.mutateAsync(settings);
   };
 
   return {
@@ -134,6 +107,6 @@ export const useAlertSettings = () => {
     loading: query.isLoading,
     error: query.error,
     saveSettings,
-    isUpdating: updateMutation.isPending || createMutation.isPending,
+    isUpdating: upsertMutation.isPending,
   };
 };
