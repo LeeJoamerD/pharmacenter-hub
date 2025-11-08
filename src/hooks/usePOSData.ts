@@ -19,7 +19,7 @@ export const usePOSData = () => {
     isLoading: productsLoading,
     refetch: refreshProducts 
   } = useQuery({
-    queryKey: ['pos-products', tenantId],
+    queryKey: ['pos-products-v2', tenantId], // v2: forcer refresh du cache après optimisation
     queryFn: async () => {
       // ✅ ÉTAPE 1: Récupérer d'abord les lots disponibles
       const { data: lotsData, error: lotsError } = await supabase

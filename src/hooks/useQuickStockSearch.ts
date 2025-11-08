@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useMemo } from 'react';
 import { useDebounce } from '@/utils/supplyChainOptimizations';
+import { splitIntoBatches } from '@/utils/queryHelpers';
 
 // Validation et sécurité des entrées
 const validateSearchInput = (searchTerm: string): { isValid: boolean; sanitized: string; error?: string } => {
@@ -142,22 +143,28 @@ export const useQuickStockSearch = (searchTerm: string = '', pageSize: number = 
         throw error;
       }
 
-      // Optimisation: charger les lots en une seule requête groupée avec sécurité
+      // Optimisation: charger les lots en batches pour éviter les URLs trop longues
       const productIds = (products || []).map(p => p.id);
       let lotsData: any[] = [];
       
       if (productIds.length > 0) {
-        const { data: lots, error: lotsError } = await supabase
-          .from('lots')
-          .select('produit_id, quantite_restante')
-          .eq('tenant_id', tenantId) // Sécurité multi-tenant pour les lots
-          .in('produit_id', productIds)
-          .gt('quantite_restante', 0);
+        // ⚠️ LIMITER à 100 IDs maximum par requête pour éviter les erreurs 400
+        const batches = splitIntoBatches(productIds, 100);
         
-        if (lotsError) {
-          console.error('Erreur lors du chargement des lots:', lotsError);
-        } else {
-          lotsData = lots || [];
+        // Exécuter les requêtes par batch
+        for (const batch of batches) {
+          const { data: lots, error: lotsError } = await supabase
+            .from('lots')
+            .select('produit_id, quantite_restante')
+            .eq('tenant_id', tenantId) // Sécurité multi-tenant pour les lots
+            .in('produit_id', batch)
+            .gt('quantite_restante', 0);
+          
+          if (lotsError) {
+            console.error('Erreur lors du chargement des lots:', lotsError);
+          } else {
+            lotsData = [...lotsData, ...(lots || [])];
+          }
         }
       }
 
