@@ -117,6 +117,7 @@ export const useLowStockDataPaginated = (params: UseLowStockDataPaginatedParams 
       // ✅ Charger les métriques depuis la RPC corrigée
       const { data: metricsData, error: metricsError } = await supabase
         .rpc('calculate_low_stock_metrics_v2' as any, {
+          p_tenant_id: tenantId,
           p_critical_threshold: 5,
           p_low_threshold: 10
         });

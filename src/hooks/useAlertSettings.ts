@@ -46,7 +46,7 @@ export const useAlertSettings = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const query = useQuery({
+  const query = useQuery<AlertSettings | null>({
     queryKey: ['alert-settings'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -57,7 +57,7 @@ export const useAlertSettings = () => {
         throw error;
       }
 
-      return data || null;
+      return (data as unknown as AlertSettings | null) || null;
     },
   });
 
