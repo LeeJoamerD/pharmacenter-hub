@@ -134,7 +134,7 @@ export const useExpirationAlerts = () => {
       `
         *,
         produit:produits(id, libelle_produit),
-        famille:famille_produit(id, libelle_famille)
+        famille:famille_produit:famille_id(id, libelle_famille)
       `,
       {},
       {

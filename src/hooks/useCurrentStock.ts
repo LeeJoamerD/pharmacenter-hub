@@ -99,7 +99,7 @@ export const useCurrentStock = () => {
       id, tenant_id, libelle_produit, code_cip, famille_id, rayon_id,
       prix_achat, prix_vente_ttc, stock_limite, stock_alerte,
       created_at, updated_at, is_active,
-      famille_produit(id, libelle_famille),
+      famille_produit:famille_id(id, libelle_famille),
       rayons_produits(id, libelle_rayon)
     `,
     { is_active: true }

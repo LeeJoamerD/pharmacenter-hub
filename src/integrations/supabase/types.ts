@@ -9017,7 +9017,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_produits_dci_id"
+            columns: ["dci_id"]
+            isOneToOne: false
+            referencedRelation: "dci"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_produits_famille"
+            columns: ["famille_id"]
+            isOneToOne: false
+            referencedRelation: "famille_produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_produits_famille_id"
             columns: ["famille_id"]
             isOneToOne: false
             referencedRelation: "famille_produit"

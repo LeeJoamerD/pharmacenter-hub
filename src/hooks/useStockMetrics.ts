@@ -68,7 +68,7 @@ export const useStockMetrics = () => {
             id, stock_limite, stock_alerte, libelle_produit,
             famille_id, rayon_id,
             lots(quantite_restante),
-            famille_produit(libelle_famille)
+            famille_produit:famille_id(libelle_famille)
           `)
           .eq('tenant_id', tenantId)
           .eq('is_active', true),

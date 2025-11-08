@@ -34,7 +34,7 @@ export const usePOSData = () => {
           tva,
           stock_limite,
           famille_produit:famille_id(libelle_famille),
-          dci:dci_id(libelle_dci)
+          dci:dci_id(nom_dci)
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
@@ -73,7 +73,7 @@ export const usePOSData = () => {
             tenant_id: p.tenant_id,
             name: p.libelle_produit,
             libelle_produit: p.libelle_produit,
-            dci: p.dci?.libelle_dci,
+            dci: p.dci?.nom_dci,
             code_cip: p.code_cip,
             price: p.prix_vente_ttc || 0,
             price_ht: p.prix_vente_ht || 0,
