@@ -13,7 +13,7 @@ export const usePOSData = () => {
   const { tenantId, currentUser } = useTenant();
   const [error, setError] = useState<Error | null>(null);
 
-  // Récupération des produits avec stock
+  // Récupération des produits avec stock (approche en deux étapes pour éviter les erreurs PostgREST)
   const { 
     data: products = [], 
     isLoading: productsLoading,
@@ -21,7 +21,8 @@ export const usePOSData = () => {
   } = useQuery({
     queryKey: ['pos-products', tenantId],
     queryFn: async () => {
-      const { data: produitsData, error } = await supabase
+      // Étape 1: Récupérer les produits actifs
+      const { data: produitsData, error: produitsError } = await supabase
         .from('produits')
         .select(`
           id,
@@ -33,49 +34,66 @@ export const usePOSData = () => {
           tva,
           stock_limite,
           famille_produit:famille_id(libelle_famille),
-          dci:dci_id(libelle_dci),
-          lots!inner(
-            id,
-            numero_lot,
-            quantite_restante,
-            date_peremption,
-            prix_achat_unitaire
-          )
+          dci:dci_id(libelle_dci)
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
-        .gt('lots.quantite_restante', 0)
         .order('libelle_produit', { ascending: true });
 
-      if (error) throw error;
+      if (produitsError) throw produitsError;
+      if (!produitsData || produitsData.length === 0) return [];
 
-      // Transformation des données
-      return (produitsData || []).map((p: any) => ({
-        id: p.id,
-        tenant_id: p.tenant_id,
-        name: p.libelle_produit,
-        libelle_produit: p.libelle_produit,
-        dci: p.dci?.libelle_dci,
-        code_cip: p.code_cip,
-        price: p.prix_vente_ttc || 0,
-        price_ht: p.prix_vente_ht || 0,
-        tva_rate: p.tva || 0,
-        stock: (p.lots || []).reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0),
-        category: p.famille_produit?.libelle_famille || 'Autre',
-        requiresPrescription: false,
-        lots: (p.lots || [])
-          .filter((lot: any) => lot.quantite_restante > 0)
-          .sort((a: any, b: any) => 
-            new Date(a.date_peremption).getTime() - new Date(b.date_peremption).getTime()
-          )
-          .map((lot: any) => ({
-            id: lot.id,
-            numero_lot: lot.numero_lot,
-            quantite_restante: lot.quantite_restante,
-            date_peremption: new Date(lot.date_peremption),
-            prix_achat_unitaire: lot.prix_achat_unitaire || 0
-          }))
-      })) as POSProduct[];
+      // Étape 2: Récupérer tous les lots disponibles pour ces produits
+      const productIds = produitsData.map(p => p.id);
+      const { data: lotsData, error: lotsError } = await supabase
+        .from('lots')
+        .select('id, produit_id, numero_lot, quantite_restante, date_peremption, prix_achat_unitaire')
+        .eq('tenant_id', tenantId)
+        .in('produit_id', productIds)
+        .gt('quantite_restante', 0);
+
+      if (lotsError) throw lotsError;
+
+      // Étape 3: Grouper les lots par produit
+      const lotsByProduct: Record<string, any[]> = {};
+      (lotsData || []).forEach(lot => {
+        if (!lotsByProduct[lot.produit_id]) {
+          lotsByProduct[lot.produit_id] = [];
+        }
+        lotsByProduct[lot.produit_id].push(lot);
+      });
+
+      // Étape 4: Combiner les produits avec leurs lots
+      return produitsData
+        .filter(p => lotsByProduct[p.id]?.length > 0)
+        .map((p: any) => {
+          const productLots = lotsByProduct[p.id] || [];
+          return {
+            id: p.id,
+            tenant_id: p.tenant_id,
+            name: p.libelle_produit,
+            libelle_produit: p.libelle_produit,
+            dci: p.dci?.libelle_dci,
+            code_cip: p.code_cip,
+            price: p.prix_vente_ttc || 0,
+            price_ht: p.prix_vente_ht || 0,
+            tva_rate: p.tva || 0,
+            stock: productLots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0),
+            category: p.famille_produit?.libelle_famille || 'Autre',
+            requiresPrescription: false,
+            lots: productLots
+              .sort((a: any, b: any) => 
+                new Date(a.date_peremption).getTime() - new Date(b.date_peremption).getTime()
+              )
+              .map((lot: any) => ({
+                id: lot.id,
+                numero_lot: lot.numero_lot,
+                quantite_restante: lot.quantite_restante,
+                date_peremption: new Date(lot.date_peremption),
+                prix_achat_unitaire: lot.prix_achat_unitaire || 0
+              }))
+          };
+        }) as POSProduct[];
     },
     enabled: !!tenantId,
     staleTime: 5 * 60 * 1000 // 5 minutes

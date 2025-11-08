@@ -899,6 +899,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          is_active: boolean | null
           libelle_assureur: string
           limite_dette: number | null
           niu: string | null
@@ -912,6 +913,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_active?: boolean | null
           libelle_assureur: string
           limite_dette?: number | null
           niu?: string | null
@@ -925,6 +927,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          is_active?: boolean | null
           libelle_assureur?: string
           limite_dette?: number | null
           niu?: string | null
