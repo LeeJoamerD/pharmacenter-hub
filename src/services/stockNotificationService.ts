@@ -75,7 +75,7 @@ export class StockNotificationService {
       .from('produits')
       .select(`
         id, libelle_produit, famille_id, stock_limite, stock_alerte,
-        famille_produit:famille_id(id, libelle_famille)
+        famille_produit:famille_id(libelle_famille)
       `)
       .eq('tenant_id', tenantId)
       .eq('is_active', true);
