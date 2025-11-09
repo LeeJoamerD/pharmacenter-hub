@@ -77,13 +77,25 @@ export const useSupplierOrders = () => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error('Utilisateur non authentifié');
 
-      const { data: personnel } = await supabase
+      const { data: personnel, error: personnelError } = await supabase
         .from('personnel')
         .select('id, tenant_id')
         .eq('auth_user_id', user.user.id)
         .single();
 
-      if (!personnel?.tenant_id) throw new Error('Tenant non trouvé');
+      console.log('🔍 Personnel récupéré:', personnel);
+
+      if (personnelError) {
+        console.error('❌ Erreur récupération personnel:', personnelError);
+        throw new Error('Erreur lors de la récupération du personnel');
+      }
+
+      if (!personnel?.id || !personnel?.tenant_id) {
+        console.error('❌ Données personnel incomplètes:', personnel);
+        throw new Error('Données personnel incomplètes (id ou tenant_id manquant)');
+      }
+
+      console.log('📝 Création commande avec agent_id:', personnel.id);
 
       const { data: order, error: orderError } = await supabase
         .from('commandes_fournisseurs')
@@ -91,13 +103,18 @@ export const useSupplierOrders = () => {
           tenant_id: personnel.tenant_id,
           fournisseur_id: orderData.fournisseur_id,
           date_commande: orderData.date_commande || new Date().toISOString(),
-          agent_id: orderData.agent_id || personnel.id,
+          agent_id: personnel.id,
           statut: orderData.statut || 'En cours'
         })
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      console.log('✅ Commande créée:', order);
+
+      if (orderError) {
+        console.error('❌ Erreur création commande:', orderError);
+        throw orderError;
+      }
 
       // Ajouter les lignes de commande
       const lignesData = orderData.lignes.map(ligne => ({
@@ -134,9 +151,28 @@ export const useSupplierOrders = () => {
 
   const updateOrderStatus = async (id: string, statut: string) => {
     try {
+      // Récupérer le personnel si on passe en "Confirmé"
+      let updates: any = { statut };
+      
+      if (statut === 'Confirmé') {
+        const { data: user } = await supabase.auth.getUser();
+        if (user.user) {
+          const { data: personnel } = await supabase
+            .from('personnel')
+            .select('id')
+            .eq('auth_user_id', user.user.id)
+            .single();
+          
+          if (personnel?.id) {
+            updates.valide_par_id = personnel.id;
+            console.log('✅ Commande validée par:', personnel.id);
+          }
+        }
+      }
+      
       const { data, error } = await supabase
         .from('commandes_fournisseurs')
-        .update({ statut })
+        .update(updates)
         .eq('id', id)
         .select()
         .single();

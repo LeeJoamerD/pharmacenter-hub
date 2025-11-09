@@ -95,13 +95,25 @@ export const useReceptions = () => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error('Utilisateur non authentifié');
 
-      const { data: personnel } = await supabase
+      const { data: personnel, error: personnelError } = await supabase
         .from('personnel')
         .select('id, tenant_id')
         .eq('auth_user_id', user.user.id)
         .single();
 
-      if (!personnel?.tenant_id) throw new Error('Tenant non trouvé');
+      console.log('🔍 Personnel récupéré pour réception:', personnel);
+
+      if (personnelError) {
+        console.error('❌ Erreur récupération personnel:', personnelError);
+        throw new Error('Erreur lors de la récupération du personnel');
+      }
+
+      if (!personnel?.id || !personnel?.tenant_id) {
+        console.error('❌ Données personnel incomplètes:', personnel);
+        throw new Error('Données personnel incomplètes (id ou tenant_id manquant)');
+      }
+
+      console.log('📝 Création réception avec agent_id:', personnel.id);
 
       const { data: reception, error: receptionError } = await supabase
         .from('receptions_fournisseurs')
@@ -110,14 +122,20 @@ export const useReceptions = () => {
           commande_id: receptionData.commande_id,
           fournisseur_id: receptionData.fournisseur_id,
           date_reception: receptionData.date_reception || new Date().toISOString(),
-          agent_id: receptionData.agent_id || personnel.id,
+          agent_id: personnel.id,
           reference_facture: receptionData.reference_facture,
-          statut: receptionData.isValidated ? 'Validé' : 'En cours'
+          statut: receptionData.isValidated ? 'Validé' : 'En cours',
+          valide_par_id: receptionData.isValidated ? personnel.id : null
         })
         .select()
         .single();
 
-      if (receptionError) throw receptionError;
+      console.log('✅ Réception créée:', reception);
+
+      if (receptionError) {
+        console.error('❌ Erreur création réception:', receptionError);
+        throw receptionError;
+      }
 
       // Gérer les lots et créer les lignes de réception
       const dateReception = receptionData.date_reception ? new Date(receptionData.date_reception).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
@@ -285,6 +303,53 @@ export const useReceptions = () => {
     }
   };
 
+  const validateReception = async (id: string) => {
+    try {
+      // Récupérer le personnel actuel
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) throw new Error('Utilisateur non authentifié');
+
+      const { data: personnel } = await supabase
+        .from('personnel')
+        .select('id')
+        .eq('auth_user_id', user.user.id)
+        .single();
+
+      if (!personnel?.id) throw new Error('Personnel non trouvé');
+
+      const { data, error } = await supabase
+        .from('receptions_fournisseurs')
+        .update({ 
+          statut: 'Validé',
+          valide_par_id: personnel.id
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setReceptions(prev => prev.map(reception => 
+        reception.id === id ? { ...reception, ...data } : reception
+      ));
+      
+      toast({
+        title: "Succès",
+        description: "Réception validée avec succès",
+      });
+      
+      return data;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la validation de la réception';
+      toast({
+        title: "Erreur",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      throw err;
+    }
+  };
+
   const deleteReception = async (id: string) => {
     try {
       const { error } = await supabase
@@ -320,6 +385,7 @@ export const useReceptions = () => {
     error,
     createReception,
     updateReception,
+    validateReception,
     deleteReception,
     refetch: fetchReceptions,
   };
