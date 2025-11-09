@@ -97,7 +97,7 @@ export const useReceptions = () => {
 
       const { data: personnel } = await supabase
         .from('personnel')
-        .select('tenant_id')
+        .select('id, tenant_id')
         .eq('auth_user_id', user.user.id)
         .single();
 
@@ -110,7 +110,7 @@ export const useReceptions = () => {
           commande_id: receptionData.commande_id,
           fournisseur_id: receptionData.fournisseur_id,
           date_reception: receptionData.date_reception || new Date().toISOString(),
-          agent_id: receptionData.agent_id,
+          agent_id: receptionData.agent_id || personnel.id,
           reference_facture: receptionData.reference_facture,
           statut: receptionData.isValidated ? 'Validé' : 'En cours'
         })

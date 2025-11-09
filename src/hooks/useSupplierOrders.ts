@@ -79,7 +79,7 @@ export const useSupplierOrders = () => {
 
       const { data: personnel } = await supabase
         .from('personnel')
-        .select('tenant_id')
+        .select('id, tenant_id')
         .eq('auth_user_id', user.user.id)
         .single();
 
@@ -91,7 +91,7 @@ export const useSupplierOrders = () => {
           tenant_id: personnel.tenant_id,
           fournisseur_id: orderData.fournisseur_id,
           date_commande: orderData.date_commande || new Date().toISOString(),
-          agent_id: orderData.agent_id,
+          agent_id: orderData.agent_id || personnel.id,
           statut: orderData.statut || 'En cours'
         })
         .select()

@@ -1943,6 +1943,7 @@ export type Database = {
           statut: string | null
           tenant_id: string
           updated_at: string
+          valide_par_id: string | null
         }
         Insert: {
           agent_id?: string | null
@@ -1953,6 +1954,7 @@ export type Database = {
           statut?: string | null
           tenant_id: string
           updated_at?: string
+          valide_par_id?: string | null
         }
         Update: {
           agent_id?: string | null
@@ -1963,6 +1965,7 @@ export type Database = {
           statut?: string | null
           tenant_id?: string
           updated_at?: string
+          valide_par_id?: string | null
         }
         Relationships: [
           {
@@ -1984,6 +1987,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commandes_fournisseurs_valide_par_id_fkey"
+            columns: ["valide_par_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
         ]
@@ -9699,6 +9709,7 @@ export type Database = {
           statut: string | null
           tenant_id: string
           updated_at: string
+          valide_par_id: string | null
         }
         Insert: {
           agent_id?: string | null
@@ -9713,6 +9724,7 @@ export type Database = {
           statut?: string | null
           tenant_id: string
           updated_at?: string
+          valide_par_id?: string | null
         }
         Update: {
           agent_id?: string | null
@@ -9727,6 +9739,7 @@ export type Database = {
           statut?: string | null
           tenant_id?: string
           updated_at?: string
+          valide_par_id?: string | null
         }
         Relationships: [
           {
@@ -9755,6 +9768,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receptions_fournisseurs_valide_par_id_fkey"
+            columns: ["valide_par_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
         ]
