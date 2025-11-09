@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLots } from "@/hooks/useLots";
+import { useAlertSettings } from "@/hooks/useAlertSettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ export const LotTracker = () => {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
   const { useLotsQuery, calculateDaysToExpiration, determineUrgencyLevel } = useLots();
+  const { settings: alertSettings } = useAlertSettings();
   
   // Récupération de tous les lots sans filtrage côté serveur
   const { data: lots, isLoading, error } = useLotsQuery({});
@@ -166,11 +168,34 @@ export const LotTracker = () => {
             <div className="flex items-center">
               <AlertTriangle className="h-8 w-8 text-red-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-muted-foreground">Stock Critique</p>
+                <p className="text-sm font-medium text-muted-foreground">Produits en Stock Critique</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {filteredLots.filter(lot => 
-                    (lot.quantite_restante / lot.quantite_initiale) * 100 <= 10
-                  ).length}
+                  {(() => {
+                    // Récupérer le seuil critique depuis les paramètres (par défaut 5)
+                    const criticalThreshold = alertSettings?.critical_stock_threshold || 5;
+                    
+                    // Grouper les lots par produit et calculer le stock total
+                    const productStocks = new Map<string, number>();
+                    
+                    lots?.forEach(lot => {
+                      const productId = lot.produit?.id;
+                      if (!productId) return;
+                      
+                      const currentStock = productStocks.get(productId) || 0;
+                      productStocks.set(productId, currentStock + lot.quantite_restante);
+                    });
+                    
+                    // Compter les produits en stock critique
+                    // Logique : 0 < stock <= criticalThreshold
+                    let criticalCount = 0;
+                    productStocks.forEach(totalStock => {
+                      if (totalStock > 0 && totalStock <= criticalThreshold) {
+                        criticalCount++;
+                      }
+                    });
+                    
+                    return criticalCount;
+                  })()}
                 </p>
               </div>
             </div>
