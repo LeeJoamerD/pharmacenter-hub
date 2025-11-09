@@ -11,8 +11,21 @@ import {
   PackageX,
   Clock,
   DollarSign,
-  Lightbulb
+  Lightbulb,
+  MoreVertical
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useStockDashboardUnified } from '@/hooks/useStockDashboardUnified';
 import { useNavigate } from 'react-router-dom';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
@@ -26,6 +39,9 @@ import AnalyticsDateFilter from './filters/AnalyticsDateFilter';
 import AnalyticsExportButton from './AnalyticsExportButton';
 import { StockRotationService } from '@/services/StockRotationService';
 import { subDays, subMonths, subYears } from 'date-fns';
+import { QuickSupplyDialog } from './dialogs/QuickSupplyDialog';
+import { QuickInventoryDialog } from './dialogs/QuickInventoryDialog';
+import { QuickAdjustmentDialog } from './dialogs/QuickAdjustmentDialog';
 
 /**
  * Dashboard Stock Unifié - Version Moderne et Complète
@@ -34,6 +50,12 @@ import { subDays, subMonths, subYears } from 'date-fns';
 const StockDashboardUnified = () => {
   const navigate = useNavigate();
   const { settings } = useSystemSettings();
+
+  // États pour les dialogues
+  const [supplyDialogOpen, setSupplyDialogOpen] = useState(false);
+  const [inventoryDialogOpen, setInventoryDialogOpen] = useState(false);
+  const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<string | undefined>();
 
   // État pour le filtre de date
   const [dateFilter, setDateFilter] = useState<{
@@ -156,8 +178,20 @@ const StockDashboardUnified = () => {
     ? Math.round((((statusDist?.normal || 0) + (statusDist?.surstock || 0)) / totalProducts) * 100) 
     : 0;
 
+  // Gestionnaires d'actions
+  const handleQuickOrder = (productId: string) => {
+    setSelectedProductId(productId);
+    setSupplyDialogOpen(true);
+  };
+
+  const handleQuickAdjustment = (productId: string) => {
+    setSelectedProductId(productId);
+    setAdjustmentDialogOpen(true);
+  };
+
   return (
-    <div className="space-y-6">
+    <TooltipProvider>
+      <div className="space-y-6">
       {/* En-tête avec actions */}
       <div className="flex justify-between items-center">
         <div>
@@ -195,7 +229,14 @@ const StockDashboardUnified = () => {
         <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/stock/stock actuel')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Valeur Stock</CardTitle>
-            <DollarSign className="h-4 w-4 text-primary" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DollarSign className="h-4 w-4 text-primary cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Valeur totale du stock basée sur les prix d'achat</p>
+              </TooltipContent>
+            </Tooltip>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatPrice(metrics.valeurStock || 0)}</div>
@@ -319,10 +360,12 @@ const StockDashboardUnified = () => {
                 {activeAlerts.map((alert) => (
                   <div
                     key={alert.alert_id}
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/50 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/stock/produit/${alert.produit_id}`)}
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/50 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
+                    <div 
+                      className="flex items-center gap-3 flex-1 cursor-pointer"
+                      onClick={() => navigate(`/stock/produit/${alert.produit_id}`)}
+                    >
                       <Badge
                         variant={
                           alert.alert_level === 'error' ? 'destructive' : 
@@ -337,9 +380,32 @@ const StockDashboardUnified = () => {
                         <p className="text-sm text-muted-foreground">{alert.message}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold">{alert.stock_actuel}</p>
-                      <p className="text-xs text-muted-foreground">en stock</p>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-lg font-bold">{alert.stock_actuel}</p>
+                        <p className="text-xs text-muted-foreground">en stock</p>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleQuickOrder(alert.produit_id)}>
+                            <Package className="mr-2 h-4 w-4" />
+                            Commander
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate(`/stock/produit/${alert.produit_id}`)}>
+                            <FileBarChart className="mr-2 h-4 w-4" />
+                            Voir détails
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleQuickAdjustment(alert.produit_id)}>
+                            <TrendingUp className="mr-2 h-4 w-4" />
+                            Ajuster stock
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 ))}
@@ -361,7 +427,7 @@ const StockDashboardUnified = () => {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => navigate('/stock/approvisionnement')}
+              onClick={() => setSupplyDialogOpen(true)}
             >
               <Package className="mr-2 h-4 w-4" />
               Nouveau Réapprovisionnement
@@ -369,7 +435,7 @@ const StockDashboardUnified = () => {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => navigate('/stock/inventaires')}
+              onClick={() => setInventoryDialogOpen(true)}
             >
               <FileBarChart className="mr-2 h-4 w-4" />
               Lancer Inventaire
@@ -385,10 +451,10 @@ const StockDashboardUnified = () => {
             <Button 
               variant="outline" 
               className="w-full justify-start"
-              onClick={() => navigate('/stock/lots')}
+              onClick={() => navigate('/stock/alertes')}
             >
-              <Clock className="mr-2 h-4 w-4" />
-              Gérer Lots
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Voir Alertes
             </Button>
           </CardContent>
         </Card>
@@ -408,16 +474,27 @@ const StockDashboardUnified = () => {
                 {criticalProducts.slice(0, 5).map((product) => (
                   <div
                     key={product.produit_id}
-                    className="flex items-center justify-between p-2 rounded hover:bg-accent/50 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/stock/produit/${product.produit_id}`)}
+                    className="flex items-center justify-between p-2 rounded hover:bg-accent/50 transition-colors"
                   >
-                    <div>
+                    <div 
+                      className="flex-1 cursor-pointer"
+                      onClick={() => navigate(`/stock/produit/${product.produit_id}`)}
+                    >
                       <p className="font-medium text-sm">{product.libelle_produit}</p>
                       <p className="text-xs text-muted-foreground">{product.famille_libelle}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-red-600">{product.stock_actuel}</p>
-                      <p className="text-xs text-muted-foreground">/ {product.stock_limite}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="font-bold text-red-600">{product.stock_actuel}</p>
+                        <p className="text-xs text-muted-foreground">/ {product.stock_limite}</p>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleQuickOrder(product.produit_id)}
+                      >
+                        Commander
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -451,14 +528,25 @@ const StockDashboardUnified = () => {
                 {ruptureProducts.slice(0, 5).map((product) => (
                   <div
                     key={product.produit_id}
-                    className="flex items-center justify-between p-2 rounded hover:bg-accent/50 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/stock/produit/${product.produit_id}`)}
+                    className="flex items-center justify-between p-2 rounded hover:bg-accent/50 transition-colors"
                   >
-                    <div>
+                    <div 
+                      className="flex-1 cursor-pointer"
+                      onClick={() => navigate(`/stock/produit/${product.produit_id}`)}
+                    >
                       <p className="font-medium text-sm">{product.libelle_produit}</p>
                       <p className="text-xs text-muted-foreground">{product.famille_libelle}</p>
                     </div>
-                    <Badge variant="destructive">Rupture</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="destructive">Rupture</Badge>
+                      <Button 
+                        size="sm" 
+                        variant="destructive"
+                        onClick={() => handleQuickOrder(product.produit_id)}
+                      >
+                        Urgence
+                      </Button>
+                    </div>
                   </div>
                 ))}
                 {ruptureProducts.length > 5 && (
@@ -556,7 +644,24 @@ const StockDashboardUnified = () => {
           </Card>
         </div>
       </div>
+
+      {/* Dialogues d'actions rapides */}
+      <QuickSupplyDialog
+        open={supplyDialogOpen}
+        onOpenChange={setSupplyDialogOpen}
+        productId={selectedProductId}
+      />
+      <QuickInventoryDialog
+        open={inventoryDialogOpen}
+        onOpenChange={setInventoryDialogOpen}
+      />
+      <QuickAdjustmentDialog
+        open={adjustmentDialogOpen}
+        onOpenChange={setAdjustmentDialogOpen}
+        productId={selectedProductId}
+      />
     </div>
+    </TooltipProvider>
   );
 };
 
