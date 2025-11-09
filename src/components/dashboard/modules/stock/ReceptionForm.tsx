@@ -71,6 +71,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   const [transporteur, setTransporteur] = useState('');
   const [observations, setObservations] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isStockProcessed, setIsStockProcessed] = useState(false);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [pendingValidation, setPendingValidation] = useState<{ isValidated: boolean; warnings: string[] } | null>(null);
   const [showCameraDialog, setShowCameraDialog] = useState(false);
@@ -347,6 +348,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     setTransporteur('');
     setObservations('');
     setPendingValidation(null);
+    setIsStockProcessed(false);
   };
 
   // Fonction helper pour la mise à jour du statut
@@ -467,7 +469,10 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   };
 
   const handleSaveReception = async (isValidated: boolean) => {
-    if (isProcessing) return;
+    if (isProcessing || isStockProcessed) {
+      console.warn('⚠️ Reception already processing or processed');
+      return;
+    }
     
     try {
       setIsProcessing(true);
@@ -560,12 +565,17 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         return;
       }
 
+      // Marquer comme traité immédiatement après création
+      setIsStockProcessed(true);
+      console.log('✅ Reception created:', createdReception.id);
+      console.log('📊 Stock already processed by useReceptions.createReception hook');
+
       // Log reception activity
       logReceptionActivity(receptionData, isValidated);
       
-      // Update order status and process stock
+      // Update order status
+      console.log('✅ Order status will be updated to:', isValidated ? 'Réceptionné' : currentOrderStatus);
       await updateOrderStatus(selectedOrderData, isValidated, createdReception, selectedOrder);
-      await processStockReception(createdReception, selectedOrderData);
 
       // Reset form
       resetForm();
@@ -589,6 +599,11 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
 
   const handleConfirmWithWarnings = async () => {
     if (!pendingValidation) return;
+    
+    if (isStockProcessed) {
+      console.warn('⚠️ Reception already processed');
+      return;
+    }
     
     setShowWarningDialog(false);
     const isValidated = true;
@@ -635,12 +650,17 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         return;
       }
       
+      // Marquer comme traité immédiatement après création
+      setIsStockProcessed(true);
+      console.log('✅ Reception with warnings created:', createdReception.id);
+      console.log('📊 Stock already processed by useReceptions.createReception hook');
+      
       // Log reception activity
       logReceptionActivity(receptionData, isValidated);
       
-      // Update order status and process stock
+      // Update order status
+      console.log('✅ Order status will be updated to: Réceptionné');
       await updateOrderStatus(selectedOrderData, isValidated, createdReception, selectedOrder);
-      await processStockReception(createdReception, selectedOrderData);
 
       // Reset form
       resetForm();
