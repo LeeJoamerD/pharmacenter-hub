@@ -214,49 +214,35 @@ export const useStockValuationPaginated = ({
       let valuationByFamily: ValuationByCategory[] = [];
       let valuationByRayon: ValuationByCategory[] = [];
 
-      // 4. Charger les produits avec pagination optimisée (500 par batch au lieu de 1000)
-      let allProducts: any[] = [];
-      let page = 0;
-      const pageSize = 500; // Réduit pour améliorer les performances
-      let hasMore = true;
-      
-      while (hasMore && allProducts.length < 5000) { // Limite à 5000 produits max
-        try {
-          const { data: products, error } = await supabase
-            .from('produits')
-            .select(`
-              id, tenant_id, code_cip, libelle_produit,
-              famille_id, rayon_id, prix_achat, prix_vente_ttc,
-              stock_limite, stock_alerte,
-              famille_produit!fk_produits_famille_id(libelle_famille),
-              rayons_produits:rayon_id(libelle_rayon),
-              lots(quantite_restante, prix_achat_unitaire)
-            `)
-            .eq('tenant_id', tenantId)
-            .eq('is_active', true)
-            .range(page * pageSize, (page + 1) * pageSize - 1);
-          
-          if (error) throw error;
-          
-          if (products && products.length > 0) {
-            allProducts = [...allProducts, ...products];
-            hasMore = products.length === pageSize;
-            page++;
-          } else {
-            hasMore = false;
-          }
-        } catch (error) {
-          console.warn('Erreur lors du chargement des produits, page:', page, error);
-          hasMore = false;
-        }
+      // 4. Charger les produits avec recherche côté serveur et optimisation
+      let productsQuery = supabase
+        .from('produits')
+        .select(`
+          id, tenant_id, code_cip, libelle_produit,
+          famille_id, rayon_id, prix_achat, prix_vente_ttc,
+          stock_limite, stock_alerte,
+          famille_produit!fk_produits_famille_id(libelle_famille),
+          rayons_produits!rayon_id(libelle_rayon),
+          lots!inner(quantite_restante, prix_achat_unitaire)
+        `, { count: 'exact' })
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        .gt('lots.quantite_restante', 0); // Ne charger QUE les produits avec stock
+
+      // ✅ Ajouter la recherche AVANT le limit (côté serveur)
+      if (debouncedSearchTerm) {
+        productsQuery = productsQuery.or(
+          `libelle_produit.ilike.%${debouncedSearchTerm}%,code_cip.ilike.%${debouncedSearchTerm}%`
+        );
       }
 
-      // 5. Appliquer la recherche côté client
-      if (debouncedSearchTerm) {
-        allProducts = allProducts.filter(product => 
-          product.libelle_produit?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-          product.code_cip?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-        );
+      // Charger SEULEMENT 500 produits pour analyse et Top 20
+      const { data: allProducts, error: productsError, count: totalProductsCount } = await productsQuery
+        .limit(500);
+
+      if (productsError) {
+        console.warn('Erreur lors du chargement des produits:', productsError);
+        throw productsError;
       }
 
       // 6. Calculer la rotation pour tous les produits (avec limite)
@@ -401,8 +387,9 @@ export const useStockValuationPaginated = ({
         productCount: data.productCount
       })).sort((a, b) => b.value - a.value);
 
-      // 13. Top 20 produits par valorisation
-      const topValueProducts = filteredItems
+      // 13. Top 20 produits par valorisation (AVANT filtrage, uniquement produits avec stock)
+      const topValueProducts = processedItems
+        .filter(p => p.stock_actuel > 0)  // ✅ Exclure les ruptures
         .slice()
         .sort((a, b) => b.valeur_stock - a.valeur_stock)
         .slice(0, 20);
