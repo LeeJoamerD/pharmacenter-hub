@@ -258,8 +258,8 @@ export const useStockValuationPaginated = ({
         );
 
         // Utiliser la logique en cascade pour les seuils
-        const criticalThreshold = getStockThreshold('critical', product.stock_alerte, alertSettings?.critical_stock_threshold);
-        const lowThreshold = getStockThreshold('low', product.stock_limite, alertSettings?.low_stock_threshold);
+        const criticalThreshold = getStockThreshold('critical', product.stock_limite, alertSettings?.critical_stock_threshold);
+        const lowThreshold = getStockThreshold('low', product.stock_alerte, alertSettings?.low_stock_threshold);
 
         const statut: 'disponible' | 'faible' | 'critique' | 'rupture' = 
           stock_actuel === 0 ? 'rupture' :
