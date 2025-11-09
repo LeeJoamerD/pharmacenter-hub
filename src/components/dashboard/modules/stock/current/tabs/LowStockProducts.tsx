@@ -33,7 +33,8 @@ export const LowStockProducts = () => {
   const [sortField, setSortField] = useState<SortField>('statut');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50); // ✅ Ajout du choix de pagination
+  const [pageSize, setPageSize] = useState(50);
+  const [initialLoad, setInitialLoad] = useState(true);
   
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
   
@@ -52,8 +53,15 @@ export const LowStockProducts = () => {
     sortBy: sortField,
     sortOrder: sortDirection,
     page: currentPage,
-    limit: pageSize // ✅ Utilisation du pageSize dynamique
+    limit: pageSize
   });
+
+  // Gérer le state de chargement initial
+  useEffect(() => {
+    if (!isLoading && initialLoad) {
+      setInitialLoad(false);
+    }
+  }, [isLoading, initialLoad]);
 
   // Selection state
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -112,7 +120,7 @@ export const LowStockProducts = () => {
     setSortField('statut');
     setSortDirection('desc');
     setCurrentPage(1);
-    setPageSize(50); // ✅ Reset du pageSize
+    setPageSize(50);
     handleClearSelection();
     
     toast({
@@ -252,7 +260,8 @@ export const LowStockProducts = () => {
       <ArrowDown className="h-3 w-3 ml-1" />;
   };
 
-  if (isLoading) {
+  // Afficher le skeleton seulement au premier chargement
+  if (isLoading && initialLoad) {
     return <LowStockTableSkeleton />;
   }
 
@@ -336,6 +345,11 @@ export const LowStockProducts = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
+              {isLoading && searchTerm && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              )}
             </div>
             
             <Select
@@ -477,7 +491,7 @@ export const LowStockProducts = () => {
 
       {/* Products Table */}
       <FadeIn delay={0.5}>
-        <Card className="p-4 md:p-6">
+        <Card className={`p-4 md:p-6 transition-opacity ${isLoading && !initialLoad ? 'opacity-50' : 'opacity-100'}`}>
           <div className="overflow-x-auto -mx-4 md:mx-0">
             <div className="inline-block min-w-full align-middle">
               <table className="w-full">
@@ -678,7 +692,6 @@ export const LowStockProducts = () => {
                       <SelectItem value="25">25</SelectItem>
                       <SelectItem value="50">50</SelectItem>
                       <SelectItem value="100">100</SelectItem>
-                      <SelectItem value="200">200</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
