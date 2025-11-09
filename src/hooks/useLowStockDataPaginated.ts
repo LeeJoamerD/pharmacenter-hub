@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useTenantQuery } from './useTenantQuery';
 import { useAlertThresholds } from './useAlertThresholds';
+import { useAlertSettings } from './useAlertSettings';
 import { StockUpdateService } from '@/services/stockUpdateService';
 import { StockValuationService } from '@/services/stockValuationService';
 import { useStockSettings } from './useStockSettings';
@@ -66,6 +67,7 @@ export const useLowStockDataPaginated = (params: UseLowStockDataPaginatedParams 
   const { useTenantQueryWithCache } = useTenantQuery();
   const { thresholds } = useAlertThresholds();
   const { settings: stockSettings } = useStockSettings();
+  const { settings: alertSettings } = useAlertSettings();
   
   const [allLowStockItems, setAllLowStockItems] = useState<LowStockItem[]>([]);
   const [metrics, setMetrics] = useState<LowStockMetrics>({
@@ -114,12 +116,10 @@ export const useLowStockDataPaginated = (params: UseLowStockDataPaginatedParams 
   // Process products to determine low stock status et charger les métriques
   useEffect(() => {
     const processLowStockData = async () => {
-      // ✅ Charger les métriques depuis la RPC corrigée
+      // ✅ Utiliser la même RPC que le module Stock Actuel
       const { data: metricsData, error: metricsError } = await supabase
-        .rpc('calculate_low_stock_metrics_v2' as any, {
-          p_tenant_id: tenantId,
-          p_critical_threshold: 5,
-          p_low_threshold: 10
+        .rpc('calculate_stock_metrics', {
+          p_tenant_id: tenantId
         });
       
       if (metricsError) {
@@ -129,13 +129,14 @@ export const useLowStockDataPaginated = (params: UseLowStockDataPaginatedParams 
       const metricsJson = metricsData as any;
       if (metricsJson && typeof metricsJson === 'object') {
         setMetrics({
-          totalItems: Number(metricsJson.totalItems) || 0,
-          criticalItems: Number(metricsJson.criticalItems) || 0,
-          lowItems: Number(metricsJson.lowItems) || 0,
-          attentionItems: 0, // Pas utilisé dans la nouvelle logique
+          // ✅ Mapper vers les champs attendus par LowStockMetrics
+          totalItems: Number(metricsJson.criticalStockProducts || 0) + Number(metricsJson.lowStockProducts || 0),
+          criticalItems: Number(metricsJson.criticalStockProducts || 0),
+          lowItems: Number(metricsJson.lowStockProducts || 0),
+          attentionItems: 0, // Non utilisé
           totalValue: parseFloat(String(metricsJson.totalValue)) || 0,
           averageRotation: 0,
-          urgentActions: Number(metricsJson.urgentActions) || 0
+          urgentActions: Number(metricsJson.criticalStockProducts || 0) // Produits critiques = urgents
         });
       }
 
