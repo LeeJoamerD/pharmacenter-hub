@@ -332,9 +332,9 @@ export const useStockValuationPaginated = ({
         metrics.averageValuePerProduct = metrics.totalProducts > 0 ? metrics.totalStockValue / metrics.totalProducts : 0;
       }
 
-      // 11. Calculer la valorisation par famille côté client
+      // 11. Calculer la valorisation par famille côté client (depuis filteredItems)
       const familyMap = new Map<string, { name: string; value: number; quantity: number; productCount: number }>();
-      processedItems.forEach(product => {
+      filteredItems.forEach(product => {
         if (product.famille_libelle) {
           const key = product.famille_id || 'unknown';
           const existing = familyMap.get(key) || { 
@@ -350,7 +350,7 @@ export const useStockValuationPaginated = ({
         }
       });
 
-      const totalValue = processedItems.reduce((sum, p) => sum + p.valeur_stock, 0);
+      const totalValue = filteredItems.reduce((sum, p) => sum + p.valeur_stock, 0);
       valuationByFamily = Array.from(familyMap.entries()).map(([id, data]) => ({
         id,
         name: data.name,
@@ -360,9 +360,9 @@ export const useStockValuationPaginated = ({
         productCount: data.productCount
       })).sort((a, b) => b.value - a.value);
 
-      // 12. Calculer la valorisation par rayon côté client
+      // 12. Calculer la valorisation par rayon côté client (depuis filteredItems)
       const rayonMap = new Map<string, { name: string; value: number; quantity: number; productCount: number }>();
-      processedItems.forEach(product => {
+      filteredItems.forEach(product => {
         if (product.rayon_libelle) {
           const key = product.rayon_id || 'unknown';
           const existing = rayonMap.get(key) || { 
@@ -387,8 +387,8 @@ export const useStockValuationPaginated = ({
         productCount: data.productCount
       })).sort((a, b) => b.value - a.value);
 
-      // 13. Top 20 produits par valorisation (AVANT filtrage, uniquement produits avec stock)
-      const topValueProducts = processedItems
+      // 13. Top 20 produits par valorisation (depuis filteredItems, uniquement produits avec stock)
+      const topValueProducts = filteredItems
         .filter(p => p.stock_actuel > 0)  // ✅ Exclure les ruptures
         .slice()
         .sort((a, b) => b.valeur_stock - a.valeur_stock)
@@ -407,7 +407,7 @@ export const useStockValuationPaginated = ({
         metrics: {
           totalStockValue: globalMetrics.totalValue,
           availableStockValue: globalMetrics.totalValue,
-          lowStockValue: processedItems
+          lowStockValue: filteredItems
              .filter(p => p.statut_stock === 'faible')
              .reduce((sum, p) => sum + (p.valeur_stock || 0), 0),
           averageValuePerProduct: globalMetrics.totalProducts > 0 
