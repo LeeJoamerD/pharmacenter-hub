@@ -55,8 +55,9 @@ interface Product {
   taux_tva?: number;
   centime_additionnel?: number;
   taux_centime_additionnel?: number;
+  stock_critique?: number;
+  stock_faible?: number;
   stock_limite?: number;
-  stock_alerte?: number;
   is_active?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -222,8 +223,9 @@ const ProductCatalogNew = () => {
       prix_achat: 0,
       prix_vente_ht: 0,
       prix_vente_ttc: 0,
+      stock_critique: 0,
+      stock_faible: 0,
       stock_limite: 0,
-      stock_alerte: 0,
       is_active: true,
     });
     setIsDialogOpen(true);
@@ -580,10 +582,13 @@ const ProductCatalogNew = () => {
                     <TableCell>
                       <div className="flex flex-col">
                         <span className="text-xs text-muted-foreground">
-                          Limite: {product.stock_limite || 0}
+                          Critique: {product.stock_critique || 0}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          Alerte: {product.stock_alerte || 0}
+                          Faible: {product.stock_faible || 0}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          Max: {product.stock_limite || 0}
                         </span>
                       </div>
                     </TableCell>
@@ -749,11 +754,21 @@ const ProductCatalogNew = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="stock_alerte">Alerte boursière</Label>
+                    <Label htmlFor="stock_critique">Seuil Critique</Label>
                     <Input
-                      id="stock_alerte"
+                      id="stock_critique"
                       type="number"
-                      {...register("stock_alerte", { valueAsNumber: true })}
+                      {...register("stock_critique", { valueAsNumber: true })}
+                      placeholder="0"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="stock_faible">Seuil Faible</Label>
+                    <Input
+                      id="stock_faible"
+                      type="number"
+                      {...register("stock_faible", { valueAsNumber: true })}
                       placeholder="0"
                     />
                   </div>

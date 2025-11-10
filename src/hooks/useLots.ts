@@ -127,7 +127,7 @@ export const useLots = () => {
           .from('lots')
           .select(`
             *,
-            produit:produits!inner(id, libelle_produit, stock_limite, stock_alerte)
+            produit:produits!inner(id, libelle_produit, stock_critique, stock_faible, stock_limite)
           `)
           .eq('tenant_id', tenantId!)
           .gt('quantite_restante', 0)

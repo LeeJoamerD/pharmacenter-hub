@@ -45,8 +45,9 @@ export interface QuickSearchProduct {
   code_cip: string;
   code_produit?: string;
   stock_actuel: number;
+  stock_critique: number;
+  stock_faible: number;
   stock_limite: number;
-  stock_alerte: number;
   stock_minimum?: number;
   prix_vente_ttc: number;
   prix_vente?: number;
@@ -108,8 +109,9 @@ export const useQuickStockSearch = (searchTerm: string = '', pageSize: number = 
           code_cip,
           prix_achat,
           prix_vente_ttc,
+          stock_critique,
+          stock_faible,
           stock_limite,
-          stock_alerte,
           is_active,
           famille_id,
           rayon_id
@@ -181,9 +183,9 @@ export const useQuickStockSearch = (searchTerm: string = '', pageSize: number = 
         let statut_stock = 'normal';
         if (stock_actuel === 0) {
           statut_stock = 'rupture';
-        } else if (item.stock_limite && stock_actuel <= item.stock_limite) {
+        } else if (item.stock_critique && stock_actuel <= item.stock_critique) {
           statut_stock = 'critique';
-        } else if (item.stock_alerte && stock_actuel <= item.stock_alerte) {
+        } else if (item.stock_faible && stock_actuel <= item.stock_faible) {
           statut_stock = 'faible';
         }
 
@@ -195,8 +197,9 @@ export const useQuickStockSearch = (searchTerm: string = '', pageSize: number = 
           libelle_produit: item.libelle_produit || '',
           code_cip: item.code_cip || '',
           stock_actuel,
+          stock_critique: item.stock_critique || 0,
+          stock_faible: item.stock_faible || 0,
           stock_limite: item.stock_limite || 0,
-          stock_alerte: item.stock_alerte || 0,
           prix_vente_ttc: item.prix_vente_ttc || 0,
           statut_stock,
           famille_libelle: null, // À implémenter avec une jointure si nécessaire

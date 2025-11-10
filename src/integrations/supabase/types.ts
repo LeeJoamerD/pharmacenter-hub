@@ -9024,7 +9024,8 @@ export type Database = {
           reference_agent_modification_id: string | null
           scanner_config: Json | null
           stock_actuel: number | null
-          stock_alerte: number | null
+          stock_critique: number | null
+          stock_faible: number | null
           stock_limite: number | null
           taux_centime_additionnel: number | null
           taux_tva: number | null
@@ -9059,7 +9060,8 @@ export type Database = {
           reference_agent_modification_id?: string | null
           scanner_config?: Json | null
           stock_actuel?: number | null
-          stock_alerte?: number | null
+          stock_critique?: number | null
+          stock_faible?: number | null
           stock_limite?: number | null
           taux_centime_additionnel?: number | null
           taux_tva?: number | null
@@ -9094,7 +9096,8 @@ export type Database = {
           reference_agent_modification_id?: string | null
           scanner_config?: Json | null
           stock_actuel?: number | null
-          stock_alerte?: number | null
+          stock_critique?: number | null
+          stock_faible?: number | null
           stock_limite?: number | null
           taux_centime_additionnel?: number | null
           taux_tva?: number | null

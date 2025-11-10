@@ -15,8 +15,9 @@ export interface CurrentStockItem {
   prix_achat: number;
   prix_vente_ttc: number;
   stock_actuel: number;
+  stock_critique: number;
+  stock_faible: number;
   stock_limite: number;
-  stock_alerte: number;
   date_derniere_entree?: string;
   date_derniere_sortie?: string;
   valeur_stock: number;
@@ -79,7 +80,7 @@ export const useCurrentStockDirect = () => {
         .from('produits')
         .select(`
           id, tenant_id, libelle_produit, code_cip, famille_id, rayon_id,
-          prix_achat, prix_vente_ttc, stock_limite, stock_alerte,
+          prix_achat, prix_vente_ttc, stock_critique, stock_faible, stock_limite,
           famille_produit!famille_id(id, libelle_famille),
           rayons_produits!rayon_id(id, libelle_rayon)
         `)
@@ -217,16 +218,18 @@ export const useCurrentStockDirect = () => {
             stockStatus = 'critique';
           } else if (currentStock <= categoryThreshold) {
             stockStatus = 'faible';
-          } else if (currentStock >= (product.stock_alerte || 100)) {
+          } else if (currentStock >= (product.stock_limite || 100)) {
             stockStatus = 'surstock';
           } else {
             stockStatus = 'normal';
           }
         } else {
           // Logique par défaut si aucun seuil n'est configuré
-          if (currentStock <= (product.stock_limite || 0)) {
-            stockStatus = currentStock <= (product.stock_limite || 0) * 0.5 ? 'critique' : 'faible';
-          } else if (currentStock >= (product.stock_alerte || 100)) {
+          if (currentStock <= (product.stock_critique || 0)) {
+            stockStatus = 'critique';
+          } else if (currentStock <= (product.stock_faible || 0)) {
+            stockStatus = 'faible';
+          } else if (currentStock >= (product.stock_limite || 100)) {
             stockStatus = 'surstock';
           } else {
             stockStatus = 'normal';
@@ -392,7 +395,7 @@ export const useCurrentStockDirect = () => {
           niveau_alerte: 'info',
           message: `Surstock détecté: ${product.stock_actuel} unités`,
           stock_actuel: product.stock_actuel,
-          stock_maximum: product.stock_alerte
+          stock_maximum: product.stock_limite
         });
       }
     });

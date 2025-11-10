@@ -19,7 +19,8 @@ export interface StockValuationItem {
   prix_vente_ttc: number;
   stock_actuel: number;
   stock_limite: number;
-  stock_alerte: number;
+  stock_faible: number;
+  stock_critique: number;
   valeur_stock: number;
   statut_stock: 'disponible' | 'faible' | 'critique' | 'rupture';
   rotation: 'rapide' | 'normale' | 'lente';
@@ -220,7 +221,7 @@ export const useStockValuationPaginated = ({
         .select(`
           id, tenant_id, code_cip, libelle_produit,
           famille_id, rayon_id, prix_achat, prix_vente_ttc,
-          stock_limite, stock_alerte,
+          stock_critique, stock_faible, stock_limite,
           famille_produit!fk_produits_famille_id(libelle_famille),
           rayons_produits!rayon_id(libelle_rayon),
           lots!inner(quantite_restante, prix_achat_unitaire)
@@ -258,8 +259,9 @@ export const useStockValuationPaginated = ({
         );
 
         // Utiliser la logique en cascade pour les seuils
-        const criticalThreshold = getStockThreshold('critical', product.stock_limite, alertSettings?.critical_stock_threshold);
-        const lowThreshold = getStockThreshold('low', product.stock_alerte, alertSettings?.low_stock_threshold);
+        const criticalThreshold = getStockThreshold('critical', product.stock_critique, alertSettings?.critical_stock_threshold);
+        const lowThreshold = getStockThreshold('low', product.stock_faible, alertSettings?.low_stock_threshold);
+        const maximumThreshold = getStockThreshold('maximum', product.stock_limite, alertSettings?.maximum_stock_threshold);
 
         const statut: 'disponible' | 'faible' | 'critique' | 'rupture' = 
           stock_actuel === 0 ? 'rupture' :
@@ -280,8 +282,9 @@ export const useStockValuationPaginated = ({
           prix_achat: product.prix_achat || 0,
           prix_vente_ttc: product.prix_vente_ttc || 0,
           stock_actuel,
+          stock_critique: product.stock_critique || 0,
+          stock_faible: product.stock_faible || 0,
           stock_limite: product.stock_limite || 0,
-          stock_alerte: product.stock_alerte || 0,
           valeur_stock,
           statut_stock: statut,
           rotation

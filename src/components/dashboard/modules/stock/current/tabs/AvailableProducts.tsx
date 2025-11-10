@@ -152,7 +152,7 @@ const AvailableProducts = () => {
       id: product.id, 
       name: product.libelle_produit,
       stockLimit: product.stock_limite,
-      stockAlert: product.stock_alerte
+      stockAlert: product.stock_faible
     });
     setIsDetailsModalOpen(true);
   };
@@ -162,7 +162,7 @@ const AvailableProducts = () => {
       id: product.id, 
       name: product.libelle_produit,
       stockLimit: product.stock_limite,
-      stockAlert: product.stock_alerte
+      stockAlert: product.stock_faible
     });
     setIsCartModalOpen(true);
   };
@@ -172,7 +172,7 @@ const AvailableProducts = () => {
       id: product.id, 
       name: product.libelle_produit,
       stockLimit: product.stock_limite,
-      stockAlert: product.stock_alerte
+      stockAlert: product.stock_faible
     });
     setIsOrderModalOpen(true);
   };
@@ -182,7 +182,7 @@ const AvailableProducts = () => {
       id: product.id, 
       name: product.libelle_produit,
       stockLimit: product.stock_limite,
-      stockAlert: product.stock_alerte
+      stockAlert: product.stock_faible
     });
     setIsQuickLotModalOpen(true);
   };
@@ -192,7 +192,7 @@ const AvailableProducts = () => {
       id: product.id, 
       name: product.libelle_produit,
       stockLimit: product.stock_limite,
-      stockAlert: product.stock_alerte
+      stockAlert: product.stock_faible
     });
     setIsEditThresholdsModalOpen(true);
   };

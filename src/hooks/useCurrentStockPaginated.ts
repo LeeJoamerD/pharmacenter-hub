@@ -26,8 +26,9 @@ export interface CurrentStockProduct {
   taux_tva: number | null;
   centime_additionnel: number | null;
   taux_centime_additionnel: number | null;
+  stock_critique: number | null;
+  stock_faible: number | null;
   stock_limite: number | null;
-  stock_alerte: number | null;
   is_active: boolean;
   created_at: string;
   tenant_id: string;
@@ -148,7 +149,7 @@ export const useCurrentStockPaginated = (
           id, libelle_produit, code_cip, famille_id, rayon_id, forme_id,
           laboratoires_id, dci_id, classe_therapeutique_id, categorie_tarification_id,
           prix_achat, prix_vente_ht, prix_vente_ttc, tva, taux_tva,
-          centime_additionnel, taux_centime_additionnel, stock_limite, stock_alerte,
+          centime_additionnel, taux_centime_additionnel, stock_critique, stock_faible, stock_limite,
           is_active, created_at, tenant_id,
           lots(quantite_restante, prix_achat_unitaire)
         `, { count: 'exact' })
@@ -230,8 +231,8 @@ export const useCurrentStockPaginated = (
         }, 0);
 
         // Appliquer la logique de cascade pour les seuils
-        const seuil_critique = getStockThreshold('critical', null, settings?.critical_stock_threshold);
-        const seuil_faible = getStockThreshold('low', product.stock_alerte, settings?.low_stock_threshold);
+        const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
+        const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
         const seuil_maximum = getStockThreshold('maximum', product.stock_limite, settings?.maximum_stock_threshold);
 
         // Déterminer le statut avec la logique de cascade

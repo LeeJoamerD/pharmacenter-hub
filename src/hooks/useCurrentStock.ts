@@ -22,8 +22,9 @@ export interface CurrentStockItem {
   prix_achat: number;
   prix_vente_ttc: number;
   stock_actuel: number;
+  stock_critique: number;
+  stock_faible: number;
   stock_limite: number;
-  stock_alerte: number;
   date_derniere_entree?: string;
   date_derniere_sortie?: string;
   valeur_stock: number;
@@ -97,7 +98,7 @@ export const useCurrentStock = () => {
     'produits',
     `
       id, tenant_id, libelle_produit, code_cip, famille_id, rayon_id,
-      prix_achat, prix_vente_ttc, stock_limite, stock_alerte,
+      prix_achat, prix_vente_ttc, stock_critique, stock_faible, stock_limite,
       created_at, updated_at, is_active,
       famille_produit!fk_produits_famille_id(id, libelle_famille),
       rayons_produits(id, libelle_rayon)
@@ -229,8 +230,9 @@ export const useCurrentStock = () => {
           prix_achat: product.prix_achat || 0,
           prix_vente_ttc: product.prix_vente_ttc || 0,
           stock_actuel: currentStock,
+          stock_critique: product.stock_critique || 0,
+          stock_faible: product.stock_faible || 0,
           stock_limite: effectiveThreshold,
-          stock_alerte: product.stock_alerte || 100,
           date_derniere_entree: lastEntryByProduct[product.id],
           date_derniere_sortie: lastExitByProduct[product.id],
           valeur_stock: stockValue,
@@ -360,7 +362,7 @@ export const useCurrentStock = () => {
           niveau_alerte: 'info',
           message: `Surstock détecté: ${product.stock_actuel} unités`,
           stock_actuel: product.stock_actuel,
-          stock_maximum: product.stock_alerte
+          stock_maximum: product.stock_limite
         });
       }
     });

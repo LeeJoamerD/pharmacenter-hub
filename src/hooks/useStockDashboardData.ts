@@ -26,7 +26,7 @@ export const useStockDashboardData = () => {
         .from('produits')
         .select(`
           id, libelle_produit, code_cip, prix_achat,
-          stock_alerte, stock_limite,
+          stock_critique, stock_faible, stock_limite,
           lots(quantite_restante, prix_achat_unitaire)
         `)
         .eq('tenant_id', tenantId)
@@ -70,16 +70,13 @@ export const useStockDashboardData = () => {
         .from('produits')
         .select(`
           id, libelle_produit, code_cip, prix_achat,
-          stock_alerte, stock_limite,
+          stock_critique, stock_faible, stock_limite,
           lots(quantite_restante, prix_achat_unitaire)
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true);
 
       if (error) throw error;
-
-      const seuil_critique = getStockThreshold('critical', null, settings?.critical_stock_threshold);
-      const seuil_faible = getStockThreshold('low', null, settings?.low_stock_threshold);
 
       const productsWithStock = (products || []).map((product) => {
         const lots = (product as any).lots || [];
@@ -90,6 +87,9 @@ export const useStockDashboardData = () => {
         const valeur_stock = lots.reduce((sum: number, lot: any) => {
           return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
         }, 0);
+
+        const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
+        const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
 
         let statut_stock: 'critique' | 'faible' | 'normal' | 'rupture' | 'surstock' = 'normal';
         if (stock_actuel === 0) {
@@ -137,15 +137,13 @@ export const useStockDashboardData = () => {
         .from('produits')
         .select(`
           id, libelle_produit, code_cip, prix_achat, prix_vente_ttc,
-          stock_alerte, stock_limite,
+          stock_critique, stock_faible, stock_limite,
           lots(quantite_restante, prix_achat_unitaire)
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true);
 
       if (error) throw error;
-
-      const seuil_faible = getStockThreshold('low', null, settings?.low_stock_threshold);
 
       const productsWithStock = (products || []).map((product) => {
         const lots = (product as any).lots || [];
@@ -157,9 +155,11 @@ export const useStockDashboardData = () => {
           return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
         }, 0);
 
-        let statut_stock: 'critique' | 'faible' | 'normal' | 'rupture' | 'surstock' = 'normal';
-        const seuil_critique = getStockThreshold('critical', null, settings?.critical_stock_threshold);
+        const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
+        const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
         const seuil_maximum = getStockThreshold('maximum', product.stock_limite, settings?.maximum_stock_threshold);
+        
+        let statut_stock: 'critique' | 'faible' | 'normal' | 'rupture' | 'surstock' = 'normal';
         
         if (stock_actuel === 0) {
           statut_stock = 'rupture';
@@ -211,7 +211,7 @@ export const useStockDashboardData = () => {
         const { data: products, error } = await supabase
           .from('produits')
           .select(`
-            id, stock_alerte, stock_limite,
+            id, stock_critique, stock_faible, stock_limite,
             lots(quantite_restante)
           `)
           .eq('tenant_id', tenantId)
@@ -240,15 +240,14 @@ export const useStockDashboardData = () => {
         surstock: 0,
       };
 
-      const seuil_critique = getStockThreshold('critical', null, settings?.critical_stock_threshold);
-      const seuil_faible = getStockThreshold('low', null, settings?.low_stock_threshold);
-
       (products || []).forEach((product) => {
         const lots = (product as any).lots || [];
         const stock_actuel = lots.reduce((sum: number, lot: any) => 
           sum + (lot.quantite_restante || 0), 0
         );
 
+        const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
+        const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
         const seuil_maximum = getStockThreshold('maximum', product.stock_limite, settings?.maximum_stock_threshold);
 
         if (stock_actuel === 0) {
