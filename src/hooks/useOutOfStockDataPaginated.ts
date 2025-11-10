@@ -14,8 +14,9 @@ export interface OutOfStockItem {
   date_derniere_sortie?: string;
   prix_vente_ttc: number;
   prix_achat: number;
+  stock_critique: number;
+  stock_faible: number;
   stock_limite: number;
-  stock_alerte: number;
   stock_actuel: number;
   statut_stock: 'normal' | 'faible' | 'critique' | 'rupture' | 'surstock';
   valeur_stock: number;
@@ -118,7 +119,7 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
           .from('produits')
           .select(`
             id, code_cip, libelle_produit,
-            prix_vente_ttc, prix_achat, stock_limite, stock_alerte,
+            prix_vente_ttc, prix_achat, stock_critique, stock_faible, stock_limite,
             famille_id, rayon_id, updated_at,
             famille_produit!fk_produits_famille_id(libelle_famille),
             rayons_produits(libelle_rayon),
@@ -163,8 +164,9 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
           date_derniere_sortie: product.updated_at,
           prix_vente_ttc: product.prix_vente_ttc || 0,
           prix_achat: product.prix_achat || 0,
+          stock_critique: product.stock_critique || 0,
+          stock_faible: product.stock_faible || 0,
           stock_limite: product.stock_limite || 0,
-          stock_alerte: product.stock_alerte || 0,
           stock_actuel: 0,
           statut_stock: 'rupture' as const,
           valeur_stock: 0

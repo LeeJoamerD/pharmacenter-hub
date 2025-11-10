@@ -55,8 +55,9 @@ export class LowStockTesting {
           .select(`
             id,
             libelle_produit,
-            stock_limite,
-            stock_alerte
+            stock_critique,
+            stock_faible,
+            stock_limite
           `)
           .eq('tenant_id', tenantId)
           .not('stock_limite', 'is', null)
@@ -102,7 +103,7 @@ export class LowStockTesting {
       const test3Start = performance.now();
       const { data: productsWithStatus } = await supabase
         .from('produits')
-        .select('id, libelle_produit, stock_limite, stock_alerte')
+        .select('id, libelle_produit, stock_critique, stock_faible, stock_limite')
         .eq('tenant_id', tenantId)
         .not('stock_limite', 'is', null)
         .limit(5);
@@ -112,8 +113,9 @@ export class LowStockTesting {
           productId: p.id,
           product: p.libelle_produit,
           hasThresholds: p.stock_limite != null,
-          stock_limite: p.stock_limite,
-          stock_alerte: p.stock_alerte
+          stock_critique: p.stock_critique,
+          stock_faible: p.stock_faible,
+          stock_limite: p.stock_limite
         }));
 
         results.push({

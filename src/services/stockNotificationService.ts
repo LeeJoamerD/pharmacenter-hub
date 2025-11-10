@@ -74,7 +74,7 @@ export class StockNotificationService {
     const { data: products, error } = await supabase
       .from('produits')
       .select(`
-        id, libelle_produit, famille_id, stock_limite, stock_alerte,
+        id, libelle_produit, famille_id, stock_critique, stock_faible, stock_limite,
         famille_produit!fk_produits_famille_id(libelle_famille)
       `)
       .eq('tenant_id', tenantId)
@@ -134,16 +134,16 @@ export class StockNotificationService {
           metadata: { familleId: product.famille_id },
           createdAt: new Date().toISOString()
         });
-      } else if (currentStock >= (product.stock_alerte || 100)) {
+      } else if (currentStock >= (product.stock_limite || 100)) {
         notifications.push({
           id: `overstock-${product.id}`,
           type: 'overstock',
           priority: 'medium',
           productId: product.id,
           productName: product.libelle_produit,
-          message: `Surstock détecté: ${currentStock} unités (alerte: ${product.stock_alerte})`,
+          message: `Surstock détecté: ${currentStock} unités (limite: ${product.stock_limite})`,
           currentStock,
-          threshold: product.stock_alerte,
+          threshold: product.stock_limite,
           category: product.famille_produit?.libelle_famille,
           metadata: { familleId: product.famille_id },
           createdAt: new Date().toISOString()

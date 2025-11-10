@@ -106,8 +106,8 @@ export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStoc
               <span className="text-sm font-medium">{product.stock_actuel}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Stock alerte:</span>
-              <span className="text-sm font-medium">{product.stock_alerte}</span>
+              <span className="text-sm text-muted-foreground">Stock faible:</span>
+              <span className="text-sm font-medium">{product.stock_faible}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Quantité suggérée:</span>
@@ -165,9 +165,9 @@ export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStoc
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setQuantity(product.stock_alerte * 2)}
+                onClick={() => setQuantity(product.stock_faible * 2)}
               >
-                Stock optimal ({product.stock_alerte * 2})
+                Stock optimal ({product.stock_faible * 2})
               </Button>
             </div>
           </div>

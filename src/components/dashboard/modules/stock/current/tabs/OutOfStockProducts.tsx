@@ -401,7 +401,7 @@ const OutOfStockProducts = () => {
                             <div>
                               <div className="font-medium">{product.libelle_produit}</div>
                               <div className="text-sm text-muted-foreground">
-                                Limite: {product.stock_limite} • Alerte: {product.stock_alerte}
+                                Critique: {product.stock_critique} • Faible: {product.stock_faible} • Max: {product.stock_limite}
                               </div>
                             </div>
                           </TableCell>
