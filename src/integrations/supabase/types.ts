@@ -13128,21 +13128,19 @@ export type Database = {
           type: string
         }[]
       }
-      get_active_stock_alerts:
-        | { Args: { p_tenant_id: string }; Returns: Json }
-        | {
-            Args: { p_limit?: number; p_tenant_id: string }
-            Returns: {
-              alert_id: string
-              alert_level: string
-              alert_type: string
-              created_at: string
-              message: string
-              produit_id: string
-              produit_nom: string
-              stock_actuel: number
-            }[]
-          }
+      get_active_stock_alerts: {
+        Args: { p_limit?: number; p_tenant_id: string }
+        Returns: {
+          alert_id: string
+          alert_level: string
+          alert_type: string
+          created_at: string
+          message: string
+          produit_id: string
+          produit_nom: string
+          stock_actuel: number
+        }[]
+      }
       get_current_tenant_alert_settings: { Args: never; Returns: Json }
       get_current_user_tenant_id: { Args: never; Returns: string }
       get_dashboard_stock_metrics: {
@@ -13206,14 +13204,13 @@ export type Database = {
       get_top_critical_products: {
         Args: { p_limit?: number; p_tenant_id: string }
         Returns: {
-          days_until_out: number
+          jours_rupture_estimee: number
           libelle_produit: string
-          priority_score: number
+          pourcentage_critique: number
           produit_id: string
           stock_actuel: number
           stock_critique: number
           stock_faible: number
-          stock_limite: number
         }[]
       }
       has_open_session:
