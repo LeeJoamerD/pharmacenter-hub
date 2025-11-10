@@ -13131,14 +13131,14 @@ export type Database = {
       get_active_stock_alerts: {
         Args: { p_limit?: number; p_tenant_id: string }
         Returns: {
-          alerte_id: string
-          code_cip: string
-          date_creation: string
-          libelle_produit: string
+          alert_id: string
+          alert_level: string
+          alert_type: string
+          created_at: string
           message: string
-          niveau_urgence: string
           produit_id: string
-          type_alerte: string
+          produit_nom: string
+          stock_actuel: number
         }[]
       }
       get_current_tenant_alert_settings: { Args: never; Returns: Json }
