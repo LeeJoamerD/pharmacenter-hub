@@ -74,7 +74,7 @@ const CriticalStock = React.memo(({ products }: CriticalStockProps) => {
       {selectedProduct && (
         <>
           <ProductDetailsModal
-            productId={selectedProduct.id}
+            productId={selectedProduct.produit_id}
             isOpen={isDetailsModalOpen}
             onClose={() => {
               setIsDetailsModalOpen(false);
@@ -124,7 +124,7 @@ const CriticalStock = React.memo(({ products }: CriticalStockProps) => {
           ) : (
             <div className="space-y-3">
               {criticalProducts.map((product) => (
-                <div key={product.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-all duration-200 animate-fade-in">
+                <div key={product.produit_id} className="p-3 border rounded-lg hover:bg-muted/50 transition-all duration-200 animate-fade-in">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm truncate" title={product.libelle_produit}>

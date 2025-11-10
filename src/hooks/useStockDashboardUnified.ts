@@ -35,6 +35,7 @@ export interface CriticalProduct {
   statut_stock: string;
   famille_libelle: string;
   valeur_stock: number;
+  rotation: string;
 }
 
 export interface FastMovingProduct {
@@ -188,7 +189,7 @@ export const useStockDashboardUnified = (
         });
 
       if (error) throw error;
-      return (data as CriticalProduct[]) || [];
+      return data || [];
     },
     staleTime: 2 * 60 * 1000,
     enabled: !!tenantId
