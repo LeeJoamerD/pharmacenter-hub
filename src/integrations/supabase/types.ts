@@ -13214,6 +13214,7 @@ export type Database = {
       get_top_critical_products: {
         Args: { p_limit?: number; p_tenant_id: string }
         Returns: {
+          famille_libelle: string
           jours_rupture_estimee: number
           libelle_produit: string
           pourcentage_critique: number
@@ -13221,6 +13222,7 @@ export type Database = {
           stock_actuel: number
           stock_critique: number
           stock_faible: number
+          stock_limite: number
         }[]
       }
       has_open_session:
