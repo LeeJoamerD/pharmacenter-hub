@@ -13214,15 +13214,13 @@ export type Database = {
       get_top_critical_products: {
         Args: { p_limit?: number; p_tenant_id: string }
         Returns: {
-          code_cip: string
-          famille_libelle: string
+          jours_rupture_estimee: number
           libelle_produit: string
+          pourcentage_critique: number
           produit_id: string
-          rotation: number
-          statut_stock: string
           stock_actuel: number
-          stock_limite: number
-          valeur_stock: number
+          stock_critique: number
+          stock_faible: number
         }[]
       }
       has_open_session:
