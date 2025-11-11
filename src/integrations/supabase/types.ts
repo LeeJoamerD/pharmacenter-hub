@@ -13201,6 +13201,16 @@ export type Database = {
         Args: { p_stock_limite: number; p_threshold_type: string }
         Returns: number
       }
+      get_stock_threshold_cascade: {
+        Args: {
+          p_product_critical: number
+          p_product_low: number
+          p_product_max: number
+          p_tenant_id: string
+          p_threshold_type: string
+        }
+        Returns: number
+      }
       get_top_critical_products: {
         Args: { p_limit?: number; p_tenant_id: string }
         Returns: {
@@ -13208,7 +13218,7 @@ export type Database = {
           famille_libelle: string
           libelle_produit: string
           produit_id: string
-          rotation: string
+          rotation: number
           statut_stock: string
           stock_actuel: number
           stock_limite: number
