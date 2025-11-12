@@ -66,63 +66,74 @@ export const useStockDashboardData = () => {
     queryFn: async () => {
       if (!tenantId) return [];
 
-      // Charger tous les produits actifs
-      const { data: products, error } = await supabase
+      // ÉTAPE 1 : Charger les produits (sans les lots)
+      const { data: productsData, error: productsError } = await supabase
         .from('produits')
-        .select(`
-          id, libelle_produit, code_cip, prix_achat,
-          stock_critique, stock_faible, stock_limite,
-          lots(quantite_restante, prix_achat_unitaire)
-        `)
+        .select('id, libelle_produit, code_cip, prix_achat, stock_critique, stock_faible, stock_limite')
         .eq('tenant_id', tenantId)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .limit(1000);
 
-      if (error) throw error;
+      if (productsError) throw productsError;
 
-      const productsWithStock = (products || []).map((product) => {
-        const lots = (product as any).lots || [];
-        const stock_actuel = lots.reduce((sum: number, lot: any) => 
-          sum + (lot.quantite_restante || 0), 0
-        );
+      // ÉTAPE 2 : Charger les lots pour chaque produit en parallèle
+      const productsWithStock = await Promise.all(
+        (productsData || []).map(async (product) => {
+          const { data: lots } = await supabase
+            .from('lots')
+            .select('quantite_restante, prix_achat_unitaire')
+            .eq('produit_id', product.id)
+            .gt('quantite_restante', 0);
 
-        const valeur_stock = lots.reduce((sum: number, lot: any) => {
-          return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
-        }, 0);
+          // Calculer stock_actuel
+          const stock_actuel = (lots || []).reduce(
+            (sum, lot) => sum + (lot.quantite_restante || 0),
+            0
+          );
 
-        // Utiliser la même logique de cascade que useCurrentStockPaginated
-        const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
-        const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
+          // Calculer valeur_stock
+          const valeur_stock = (lots || []).reduce(
+            (sum, lot) => sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0)),
+            0
+          );
 
-        let statut_stock: 'critique' | 'faible' | 'normal' | 'rupture' | 'surstock' = 'normal';
-        
-        // Logique strictement identique à useCurrentStockPaginated
-        if (stock_actuel === 0) {
-          statut_stock = 'rupture';
-        } else if (stock_actuel > 0 && stock_actuel <= seuil_critique) {
-          statut_stock = 'critique';
-        } else if (stock_actuel <= seuil_faible) {
-          statut_stock = 'faible';
-        }
+          // Logique de cascade pour les seuils
+          const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
+          const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
 
-        const rotation: 'rapide' | 'normale' | 'lente' = 
-          stock_actuel > 0 && stock_actuel <= seuil_faible ? 'rapide' : 'normale';
+          // Déterminer le statut
+          let statut_stock: 'critique' | 'faible' | 'normal' | 'rupture' | 'surstock' = 'normal';
+          
+          if (stock_actuel === 0) {
+            statut_stock = 'rupture';
+          } else if (stock_actuel > 0 && stock_actuel <= seuil_critique) {
+            statut_stock = 'critique';
+          } else if (stock_actuel <= seuil_faible) {
+            statut_stock = 'faible';
+          }
 
-        return {
-          ...product,
-          produit_id: product.id,
-          stock_actuel,
-          valeur_stock,
-          statut_stock,
-          rotation,
-          stock_limite: product.stock_limite,
-        };
-      });
+          const rotation: 'rapide' | 'normale' | 'lente' = 
+            stock_actuel > 0 && stock_actuel <= seuil_faible ? 'rapide' : 'normale';
 
-      // Filtrer les produits critiques (stock > 0 ET stock <= seuil_critique)
-      const criticalProducts = productsWithStock.filter(p => p.statut_stock === 'critique' && p.stock_actuel > 0);
+          return {
+            ...product,
+            produit_id: product.id,
+            stock_actuel,
+            valeur_stock,
+            statut_stock,
+            rotation,
+            stock_limite: product.stock_limite,
+          };
+        })
+      );
+
+      // ÉTAPE 3 : Filtrer les produits critiques
+      const criticalProducts = productsWithStock.filter(
+        p => p.statut_stock === 'critique' && p.stock_actuel > 0
+      );
       
       console.log('[useStockDashboardData] Critical products debug:', {
-        total_products: products?.length || 0,
+        total_products: productsData?.length || 0,
         products_with_stock: productsWithStock.filter(p => p.stock_actuel > 0).length,
         critical_products_found: criticalProducts.length,
         settings_critical_threshold: settings?.critical_stock_threshold,
@@ -136,13 +147,14 @@ export const useStockDashboardData = () => {
         }))
       });
 
+      // ÉTAPE 4 : Trier et limiter à 20 résultats
       return criticalProducts
         .sort((a, b) => {
           if (a.rotation === 'rapide' && b.rotation !== 'rapide') return -1;
           if (a.rotation !== 'rapide' && b.rotation === 'rapide') return 1;
           return a.stock_actuel - b.stock_actuel;
         })
-        .slice(0, 20); // Augmenter à 20 au lieu de 10
+        .slice(0, 20);
     },
     enabled: !!tenantId,
     staleTime: 30000,
