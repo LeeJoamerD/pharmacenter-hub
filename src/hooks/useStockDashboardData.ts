@@ -60,12 +60,13 @@ export const useStockDashboardData = () => {
     staleTime: 30000,
   });
 
-  // Requête pour les produits critiques (top 10)
+  // Query pour les produits critiques (top 20 pour couvrir plus de cas)
   const criticalProductsQuery = useQuery({
-    queryKey: ['stock-critical-products', tenantId],
+    queryKey: ['stock-critical-products', tenantId, settings?.critical_stock_threshold],
     queryFn: async () => {
       if (!tenantId) return [];
 
+      // Charger tous les produits actifs
       const { data: products, error } = await supabase
         .from('produits')
         .select(`
@@ -88,40 +89,57 @@ export const useStockDashboardData = () => {
           return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
         }, 0);
 
+        // Utiliser la même logique de cascade que useCurrentStockPaginated
         const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
         const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
 
         let statut_stock: 'critique' | 'faible' | 'normal' | 'rupture' | 'surstock' = 'normal';
+        
+        // Logique strictement identique à useCurrentStockPaginated
         if (stock_actuel === 0) {
           statut_stock = 'rupture';
-        } else if (stock_actuel <= seuil_critique) {
+        } else if (stock_actuel > 0 && stock_actuel <= seuil_critique) {
           statut_stock = 'critique';
         } else if (stock_actuel <= seuil_faible) {
           statut_stock = 'faible';
         }
 
         const rotation: 'rapide' | 'normale' | 'lente' = 
-          stock_actuel > 0 && stock_actuel <= seuil_faible ? 'rapide' : 
-          stock_actuel === 0 ? 'normale' : 
-          'normale';
+          stock_actuel > 0 && stock_actuel <= seuil_faible ? 'rapide' : 'normale';
 
         return {
           ...product,
+          produit_id: product.id,
           stock_actuel,
           valeur_stock,
           statut_stock,
           rotation,
+          stock_limite: product.stock_limite,
         };
       });
 
-      return productsWithStock
-        .filter(p => p.statut_stock === 'critique')
+      // Filtrer les produits critiques (stock > 0 ET stock <= seuil_critique)
+      const criticalProducts = productsWithStock.filter(p => p.statut_stock === 'critique' && p.stock_actuel > 0);
+      
+      console.log('[useStockDashboardData] Critical products debug:', {
+        total_products: products?.length || 0,
+        products_with_stock: productsWithStock.filter(p => p.stock_actuel > 0).length,
+        critical_products_found: criticalProducts.length,
+        sample_critical: criticalProducts.slice(0, 3).map(p => ({
+          name: p.libelle_produit,
+          stock: p.stock_actuel,
+          seuil: getStockThreshold('critical', p.stock_critique, settings?.critical_stock_threshold),
+          statut: p.statut_stock,
+        }))
+      });
+
+      return criticalProducts
         .sort((a, b) => {
           if (a.rotation === 'rapide' && b.rotation !== 'rapide') return -1;
           if (a.rotation !== 'rapide' && b.rotation === 'rapide') return 1;
           return a.stock_actuel - b.stock_actuel;
         })
-        .slice(0, 10);
+        .slice(0, 20); // Augmenter à 20 au lieu de 10
     },
     enabled: !!tenantId,
     staleTime: 30000,

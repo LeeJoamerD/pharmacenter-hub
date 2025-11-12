@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -51,6 +51,21 @@ const CriticalStock = React.memo(({ products }: CriticalStockProps) => {
     products.filter(p => p.statut_stock === 'critique').length,
     [products]
   );
+
+  // Debug: Afficher les informations de produits critiques
+  useEffect(() => {
+    console.log('[CriticalStock Component Debug]', {
+      total_products_received: products.length,
+      products_with_critique_status: products.filter(p => p.statut_stock === 'critique').length,
+      displayed_critical_products: criticalProducts.length,
+      all_statuses: [...new Set(products.map(p => p.statut_stock))],
+      sample_products: products.slice(0, 3).map(p => ({
+        name: p.libelle_produit,
+        stock: p.stock_actuel,
+        statut: p.statut_stock,
+      }))
+    });
+  }, [products, criticalProducts]);
 
   const getSeverityColor = useCallback((status: string) => {
     switch (status) {

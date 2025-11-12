@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Package, Search, Filter, ShoppingCart, Eye, ArrowUpDown, ChevronLeft, ChevronRight, Download, FileSpreadsheet, FileText, CheckSquare, AlertCircle, RefreshCw, PackagePlus, Edit } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrentStockPaginated } from '@/hooks/useCurrentStockPaginated';
@@ -29,6 +31,7 @@ const AvailableProducts = () => {
   const [sortBy, setSortBy] = useState('libelle_produit');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [pageSize, setPageSize] = useState(100);
+  const [showOnlyAvailable, setShowOnlyAvailable] = useState(true);
   
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
   
@@ -83,6 +86,19 @@ const AvailableProducts = () => {
   const [showCriticalAlert, setShowCriticalAlert] = useState(false);
   const { toast } = useToast();
 
+  // Filtrer les produits affichés selon le toggle
+  const displayedProducts = useMemo(() => {
+    if (showOnlyAvailable) {
+      return products.filter(p => p.stock_actuel > 0);
+    }
+    return products;
+  }, [products, showOnlyAvailable]);
+
+  const availableCount = useMemo(() => 
+    products.filter(p => p.stock_actuel > 0).length,
+    [products]
+  );
+
   // Vérifier les alertes critiques
   useEffect(() => {
     if (metrics.criticalStockProducts > 0 && !showCriticalAlert) {
@@ -96,10 +112,10 @@ const AvailableProducts = () => {
   }, [metrics.criticalStockProducts]);
 
   const handleSelectAll = () => {
-    if (selectedProducts.length === products.length) {
+    if (selectedProducts.length === displayedProducts.length) {
       setSelectedProducts([]);
     } else {
-      setSelectedProducts(products.map(p => p.id));
+      setSelectedProducts(displayedProducts.map(p => p.id));
     }
   };
 
@@ -113,8 +129,8 @@ const AvailableProducts = () => {
 
   const handleExportExcel = () => {
     const selectedData = selectedProducts.length > 0
-      ? products.filter(p => selectedProducts.includes(p.id))
-      : products;
+      ? displayedProducts.filter(p => selectedProducts.includes(p.id))
+      : displayedProducts;
     
     exportToExcel(selectedData);
     toast({
@@ -125,8 +141,8 @@ const AvailableProducts = () => {
 
   const handleExportPDF = () => {
     const selectedData = selectedProducts.length > 0
-      ? products.filter(p => selectedProducts.includes(p.id))
-      : products;
+      ? displayedProducts.filter(p => selectedProducts.includes(p.id))
+      : displayedProducts;
     
     exportToPDF(selectedData);
     toast({
@@ -146,6 +162,11 @@ const AvailableProducts = () => {
     }
     setIsBulkActionsModalOpen(true);
   };
+
+  // Réinitialiser la sélection quand on change le filtre
+  useEffect(() => {
+    setSelectedProducts([]);
+  }, [showOnlyAvailable]);
 
   const handleViewDetails = (product: any) => {
     setSelectedProduct({ 
@@ -275,10 +296,10 @@ const AvailableProducts = () => {
         }}
         onSuccess={handleRefresh}
       />
-      <BulkActionsModal
+        <BulkActionsModal
         open={isBulkActionsModalOpen}
         onOpenChange={setIsBulkActionsModalOpen}
-        selectedProducts={products.filter(p => selectedProducts.includes(p.id))}
+        selectedProducts={displayedProducts.filter(p => selectedProducts.includes(p.id))}
         onActionComplete={() => {
           setSelectedProducts([]);
           toast({
@@ -454,9 +475,19 @@ const AvailableProducts = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              Produits Disponibles ({allProductsCount})
+              Produits Disponibles ({showOnlyAvailable ? availableCount : allProductsCount})
             </CardTitle>
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mr-4">
+                <Switch
+                  id="show-available-only"
+                  checked={showOnlyAvailable}
+                  onCheckedChange={setShowOnlyAvailable}
+                />
+                <Label htmlFor="show-available-only" className="text-sm cursor-pointer">
+                  Disponibles uniquement ({availableCount})
+                </Label>
+              </div>
               {selectedProducts.length > 0 && (
                 <Badge variant="secondary" className="mr-2">
                   {selectedProducts.length} sélectionné(s)
@@ -511,10 +542,10 @@ const AvailableProducts = () => {
                 </div>
               ))}
             </div>
-          ) : products.length === 0 ? (
+          ) : displayedProducts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Package className="h-16 w-16 mx-auto mb-4" />
-              <p>Aucun produit disponible trouvé avec les filtres sélectionnés</p>
+              <p>{showOnlyAvailable ? 'Aucun produit disponible (stock > 0) trouvé' : 'Aucun produit trouvé avec les filtres sélectionnés'}</p>
             </div>
           ) : (
             <div className="rounded-md border">
@@ -523,7 +554,7 @@ const AvailableProducts = () => {
                   <TableRow>
                     <TableHead className="w-[50px]">
                       <Checkbox
-                        checked={selectedProducts.length === products.length && products.length > 0}
+                        checked={selectedProducts.length === displayedProducts.length && displayedProducts.length > 0}
                         onCheckedChange={handleSelectAll}
                       />
                     </TableHead>
@@ -539,7 +570,7 @@ const AvailableProducts = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products.map((product) => (
+                  {displayedProducts.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell>
                         <Checkbox

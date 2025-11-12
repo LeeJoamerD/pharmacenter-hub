@@ -1,9 +1,15 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Search, Package, Clock, Info } from 'lucide-react';
+import { Search, Package, Clock, Info, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
+import { useAlertSettings } from '@/hooks/useAlertSettings';
+import { getStockThreshold } from '@/lib/utils';
+import { useDebouncedValue } from '@/hooks/use-debounce';
 
 interface QuickStockSearchProps {
   products: any[];
@@ -11,18 +17,53 @@ interface QuickStockSearchProps {
 
 const QuickStockSearch = React.memo(({ products }: QuickStockSearchProps) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const { tenantId } = useTenant();
+  const { settings } = useAlertSettings();
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
 
-  // Optimisation avec useMemo pour la recherche
-  const quickResults = useMemo(() => {
-    if (!searchTerm.trim()) return [];
-    
-    return products
-      .filter(product => 
-        product.libelle_produit?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.code_cip?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      .slice(0, 5);
-  }, [searchTerm, products]);
+  // Recherche dynamique dans la base de données
+  const { data: searchResults = [], isLoading: isSearching } = useQuery({
+    queryKey: ['quick-stock-search', debouncedSearchTerm, tenantId],
+    queryFn: async () => {
+      if (!debouncedSearchTerm.trim() || !tenantId) return [];
+      
+      const { data: productsData, error } = await supabase
+        .from('produits')
+        .select(`
+          id, libelle_produit, code_cip, prix_achat,
+          stock_critique, stock_faible, stock_limite,
+          lots(quantite_restante, prix_achat_unitaire)
+        `)
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        .or(`libelle_produit.ilike.%${debouncedSearchTerm.trim()}%,code_cip.ilike.%${debouncedSearchTerm.trim()}%`)
+        .limit(50);
+
+      if (error) throw error;
+
+      // Calculer le stock et filtrer ceux avec stock > 0
+      const productsWithStock = (productsData || [])
+        .map(product => {
+          const lots = (product as any).lots || [];
+          const stock_actuel = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
+          
+          const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
+          const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
+          
+          let statut_stock = 'normal';
+          if (stock_actuel === 0) statut_stock = 'rupture';
+          else if (stock_actuel > 0 && stock_actuel <= seuil_critique) statut_stock = 'critique';
+          else if (stock_actuel <= seuil_faible) statut_stock = 'faible';
+          
+          return { ...product, stock_actuel, statut_stock };
+        })
+        .filter(p => p.stock_actuel > 0);
+
+      return productsWithStock.slice(0, 5);
+    },
+    enabled: debouncedSearchTerm.trim().length > 0,
+    staleTime: 10000,
+  });
 
   // Optimisation avec useCallback
   const handleQuickSearch = useCallback((value: string) => {
@@ -68,9 +109,16 @@ const QuickStockSearch = React.memo(({ products }: QuickStockSearchProps) => {
           />
         </div>
 
-        {quickResults.length > 0 && (
+        {isSearching && (
+          <div className="flex items-center justify-center py-4 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+            <p className="text-sm">Recherche en cours...</p>
+          </div>
+        )}
+
+        {!isSearching && searchResults.length > 0 && (
           <div className="space-y-2 max-h-60 overflow-y-auto">
-            {quickResults.map((product) => (
+            {searchResults.map((product) => (
               <div key={product.id} className="p-3 border rounded-lg hover:bg-muted/50 transition-colors animate-fade-in">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
@@ -89,7 +137,7 @@ const QuickStockSearch = React.memo(({ products }: QuickStockSearchProps) => {
           </div>
         )}
 
-        {searchTerm && quickResults.length === 0 && (
+        {!isSearching && searchTerm && searchResults.length === 0 && (
           <div className="text-center py-4 text-muted-foreground animate-fade-in">
             <Package className="h-8 w-8 mx-auto mb-2" />
             <p className="text-sm">Aucun produit trouvé</p>
