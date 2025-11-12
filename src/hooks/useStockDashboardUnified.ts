@@ -144,10 +144,10 @@ export const useStockDashboardUnified = (
       const metrics: StockMetricsUnified = {
         totalProduits: metricsData?.totalProducts || 0,
         disponibles: metricsData?.availableProducts || 0,
-        critiques: metricsData?.lowStockProducts || 0,
+        critiques: metricsData?.criticalStockProducts || 0,
         ruptures: metricsData?.outOfStockProducts || 0,
         faibles: metricsData?.lowStockProducts || 0,
-        surstock: 0,
+        surstock: metricsData?.overstockProducts || 0,
         expirationProche: expiringResult.count || 0,
         commandesEnCours: ordersResult.count || 0,
         mouvementsRecents: movementsResult.count || 0,

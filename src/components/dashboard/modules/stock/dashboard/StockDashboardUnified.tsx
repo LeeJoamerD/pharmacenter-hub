@@ -299,6 +299,22 @@ const StockDashboardUnified = () => {
             </p>
           </CardContent>
         </Card>
+
+        {/* Surstock */}
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer border-blue-200" onClick={() => navigate('/stock/alertes')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Surstock</CardTitle>
+            <TrendingUp className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {statusDist?.surstock || 0}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Stock excédentaire
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Métriques secondaires - 3 cartes */}
