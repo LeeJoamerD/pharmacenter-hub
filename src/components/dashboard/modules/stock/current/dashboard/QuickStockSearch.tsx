@@ -22,48 +22,74 @@ const QuickStockSearch = React.memo(({ products }: QuickStockSearchProps) => {
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
 
   // Recherche dynamique dans la base de données
-  const { data: searchResults = [], isLoading: isSearching } = useQuery({
+  const { data: searchResults = [], isLoading: isSearching, error: searchError } = useQuery({
     queryKey: ['quick-stock-search', debouncedSearchTerm, tenantId],
     queryFn: async () => {
+      console.log('[QuickStockSearch] Starting search:', debouncedSearchTerm);
+      
       if (!debouncedSearchTerm.trim() || !tenantId) return [];
       
-      const { data: productsData, error } = await supabase
-        .from('produits')
-        .select(`
-          id, libelle_produit, code_cip, prix_achat,
-          stock_critique, stock_faible, stock_limite,
-          lots(quantite_restante, prix_achat_unitaire)
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .or(`libelle_produit.ilike.%${debouncedSearchTerm.trim()}%,code_cip.ilike.%${debouncedSearchTerm.trim()}%`)
-        .limit(50);
+      try {
+        // Charger les produits avec une requête plus simple
+        const { data: productsData, error: productsError } = await supabase
+          .from('produits')
+          .select('id, libelle_produit, code_cip, prix_achat, stock_critique, stock_faible, stock_limite')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .or(`libelle_produit.ilike.%${debouncedSearchTerm.trim()}%,code_cip.ilike.%${debouncedSearchTerm.trim()}%`)
+          .limit(50);
 
-      if (error) throw error;
+        if (productsError) {
+          console.error('[QuickStockSearch] Error loading products:', productsError);
+          throw productsError;
+        }
 
-      // Calculer le stock et filtrer ceux avec stock > 0
-      const productsWithStock = (productsData || [])
-        .map(product => {
-          const lots = (product as any).lots || [];
-          const stock_actuel = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
-          
-          const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
-          const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
-          
-          let statut_stock = 'normal';
-          if (stock_actuel === 0) statut_stock = 'rupture';
-          else if (stock_actuel > 0 && stock_actuel <= seuil_critique) statut_stock = 'critique';
-          else if (stock_actuel <= seuil_faible) statut_stock = 'faible';
-          
-          return { ...product, stock_actuel, statut_stock };
-        })
-        .filter(p => p.stock_actuel > 0);
+        console.log('[QuickStockSearch] Products found:', productsData?.length || 0);
 
-      return productsWithStock.slice(0, 5);
+        // Charger les lots séparément pour chaque produit
+        const productsWithStock = await Promise.all(
+          (productsData || []).map(async (product) => {
+            const { data: lots } = await supabase
+              .from('lots')
+              .select('quantite_restante, prix_achat_unitaire')
+              .eq('produit_id', product.id)
+              .gt('quantite_restante', 0);
+
+            const stock_actuel = (lots || []).reduce((sum, lot) => sum + (lot.quantite_restante || 0), 0);
+
+            if (stock_actuel === 0) return null; // Exclure produits sans stock
+
+            const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
+            const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
+
+            let statut_stock = 'normal';
+            if (stock_actuel === 0) statut_stock = 'rupture';
+            else if (stock_actuel > 0 && stock_actuel <= seuil_critique) statut_stock = 'critique';
+            else if (stock_actuel <= seuil_faible) statut_stock = 'faible';
+
+            return { ...product, stock_actuel, statut_stock };
+          })
+        );
+
+        const filtered = productsWithStock.filter(p => p !== null);
+        console.log('[QuickStockSearch] Products with stock:', filtered.length);
+
+        return filtered.slice(0, 5);
+      } catch (error) {
+        console.error('[QuickStockSearch] Search error:', error);
+        throw error;
+      }
     },
     enabled: debouncedSearchTerm.trim().length > 0,
     staleTime: 10000,
   });
+
+  // Afficher l'erreur si présente
+  React.useEffect(() => {
+    if (searchError) {
+      console.error('[QuickStockSearch] Query error:', searchError);
+    }
+  }, [searchError]);
 
   // Optimisation avec useCallback
   const handleQuickSearch = useCallback((value: string) => {

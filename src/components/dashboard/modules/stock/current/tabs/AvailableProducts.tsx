@@ -58,7 +58,8 @@ const AvailableProducts = () => {
              sortBy === 'stock_actuel' ? 'stock' : 
              sortBy === 'valorisation' ? 'value' : 'rotation',
       order: sortOrder
-    }
+    },
+    showOnlyAvailable
   );
 
   const { 
@@ -87,12 +88,8 @@ const AvailableProducts = () => {
   const { toast } = useToast();
 
   // Filtrer les produits affichés selon le toggle
-  const displayedProducts = useMemo(() => {
-    if (showOnlyAvailable) {
-      return products.filter(p => p.stock_actuel > 0);
-    }
-    return products;
-  }, [products, showOnlyAvailable]);
+  // Les produits sont maintenant filtrés côté serveur, plus besoin de filtre client
+  const displayedProducts = products;
 
   const availableCount = useMemo(() => 
     products.filter(p => p.stock_actuel > 0).length,
@@ -485,7 +482,7 @@ const AvailableProducts = () => {
                   onCheckedChange={setShowOnlyAvailable}
                 />
                 <Label htmlFor="show-available-only" className="text-sm cursor-pointer">
-                  Disponibles uniquement ({availableCount})
+                  Disponibles uniquement ({showOnlyAvailable ? products.length : availableCount})
                 </Label>
               </div>
               {selectedProducts.length > 0 && (

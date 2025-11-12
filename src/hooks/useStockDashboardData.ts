@@ -125,11 +125,14 @@ export const useStockDashboardData = () => {
         total_products: products?.length || 0,
         products_with_stock: productsWithStock.filter(p => p.stock_actuel > 0).length,
         critical_products_found: criticalProducts.length,
-        sample_critical: criticalProducts.slice(0, 3).map(p => ({
+        settings_critical_threshold: settings?.critical_stock_threshold,
+        sample_products: productsWithStock.slice(0, 5).map(p => ({
           name: p.libelle_produit,
           stock: p.stock_actuel,
-          seuil: getStockThreshold('critical', p.stock_critique, settings?.critical_stock_threshold),
+          seuil_critique: getStockThreshold('critical', p.stock_critique, settings?.critical_stock_threshold),
+          seuil_faible: getStockThreshold('low', p.stock_faible, settings?.low_stock_threshold),
           statut: p.statut_stock,
+          is_critical: p.statut_stock === 'critique' && p.stock_actuel > 0
         }))
       });
 

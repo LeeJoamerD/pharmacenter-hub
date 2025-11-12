@@ -86,7 +86,8 @@ export const useCurrentStockPaginated = (
   searchTerm: string = '',
   pageSize: number = 50,
   filters: StockFilters = {},
-  sort: StockSort = { field: 'name', order: 'asc' }
+  sort: StockSort = { field: 'name', order: 'asc' },
+  showOnlyAvailable: boolean = false
 ) => {
   const { tenantId } = useTenant();
   const [currentPage, setCurrentPage] = useState(1);
@@ -118,7 +119,8 @@ export const useCurrentStockPaginated = (
       pageSize,
       debouncedSearchTerm,
       filters,
-      sort
+      sort,
+      showOnlyAvailable
     ],
     queryFn: async (): Promise<CurrentStockPaginatedResult> => {
       if (!tenantId) {
@@ -151,10 +153,15 @@ export const useCurrentStockPaginated = (
           prix_achat, prix_vente_ht, prix_vente_ttc, tva, taux_tva,
           centime_additionnel, taux_centime_additionnel, stock_critique, stock_faible, stock_limite,
           is_active, created_at, tenant_id,
-          lots(quantite_restante, prix_achat_unitaire)
+          lots${showOnlyAvailable ? '!inner' : ''}(quantite_restante, prix_achat_unitaire)
         `, { count: 'exact' })
         .eq('tenant_id', tenantId)
         .eq('is_active', true);
+
+      // Filtrer côté serveur si showOnlyAvailable
+      if (showOnlyAvailable) {
+        queryBuilder = queryBuilder.gt('lots.quantite_restante', 0);
+      }
 
       // Recherche serveur optimisée
       if (debouncedSearchTerm && debouncedSearchTerm.trim().length > 0) {
