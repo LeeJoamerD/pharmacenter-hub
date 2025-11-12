@@ -174,8 +174,10 @@ const StockDashboardUnified = () => {
 
   const statusDist = metrics.statusDistribution;
   const totalProducts = statusDist?.total || metrics.totalProduits || 0;
+  // ✅ Utiliser la valeur correcte de la base de données (tous produits avec stock > 0)
+  const availableCount = metrics.disponibles || 0;
   const availablePercent = totalProducts > 0 
-    ? Math.round((((statusDist?.normal || 0) + (statusDist?.surstock || 0)) / totalProducts) * 100) 
+    ? Math.round((availableCount / totalProducts) * 100) 
     : 0;
 
   // Gestionnaires d'actions
@@ -250,7 +252,14 @@ const StockDashboardUnified = () => {
         <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/stock/stock actuel')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Disponibles</CardTitle>
-            <Package className="h-4 w-4 text-green-500" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Package className="h-4 w-4 text-green-500 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Tous les produits avec stock {">"} 0 (incluant critiques et faibles)</p>
+              </TooltipContent>
+            </Tooltip>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
@@ -258,7 +267,7 @@ const StockDashboardUnified = () => {
             </div>
             <Progress value={availablePercent} className="mt-2 h-2" />
             <p className="text-xs text-muted-foreground mt-1">
-              {((statusDist?.normal || 0) + (statusDist?.surstock || 0)).toLocaleString()} produits OK
+              {availableCount.toLocaleString()} disponibles
             </p>
           </CardContent>
         </Card>
