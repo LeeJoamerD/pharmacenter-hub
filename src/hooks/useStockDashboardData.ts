@@ -62,92 +62,121 @@ export const useStockDashboardData = () => {
 
   // Query pour les produits critiques (top 20 pour couvrir plus de cas)
   const criticalProductsQuery = useQuery({
-    queryKey: ['stock-critical-products', tenantId, settings?.critical_stock_threshold],
+    queryKey: ['stock-critical-products', tenantId, settings?.critical_stock_threshold, settings?.low_stock_threshold],
     queryFn: async () => {
       if (!tenantId) return [];
 
-      // ÉTAPE 1 : Charger les produits (sans les lots)
+      console.log('[criticalProductsQuery] Starting query...');
+
+      // ÉTAPE 1 : Charger les produits (sans limite pour avoir tous les produits)
       const { data: productsData, error: productsError } = await supabase
         .from('produits')
         .select('id, libelle_produit, code_cip, prix_achat, stock_critique, stock_faible, stock_limite')
         .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .limit(1000);
+        .eq('is_active', true);
 
-      if (productsError) throw productsError;
+      if (productsError) {
+        console.error('[criticalProductsQuery] Error loading products:', productsError);
+        throw productsError;
+      }
 
-      // ÉTAPE 2 : Charger les lots pour chaque produit en parallèle
-      const productsWithStock = await Promise.all(
-        (productsData || []).map(async (product) => {
-          const { data: lots } = await supabase
-            .from('lots')
-            .select('quantite_restante, prix_achat_unitaire')
-            .eq('produit_id', product.id)
-            .gt('quantite_restante', 0);
+      console.log('[criticalProductsQuery] Products loaded:', productsData?.length);
 
-          // Calculer stock_actuel
-          const stock_actuel = (lots || []).reduce(
-            (sum, lot) => sum + (lot.quantite_restante || 0),
-            0
-          );
+      // ÉTAPE 2 : Charger TOUS les lots avec stock > 0 EN UNE SEULE REQUÊTE
+      const { data: allLots, error: lotsError } = await supabase
+        .from('lots')
+        .select('produit_id, quantite_restante, prix_achat_unitaire')
+        .eq('tenant_id', tenantId)
+        .gt('quantite_restante', 0);
 
-          // Calculer valeur_stock
-          const valeur_stock = (lots || []).reduce(
-            (sum, lot) => sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0)),
-            0
-          );
+      if (lotsError) {
+        console.error('[criticalProductsQuery] Error loading lots:', lotsError);
+        throw lotsError;
+      }
 
-          // Logique de cascade pour les seuils
-          const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
-          const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
+      console.log('[criticalProductsQuery] Lots loaded:', allLots?.length);
 
-          // Déterminer le statut
-          let statut_stock: 'critique' | 'faible' | 'normal' | 'rupture' | 'surstock' = 'normal';
-          
-          if (stock_actuel === 0) {
-            statut_stock = 'rupture';
-          } else if (stock_actuel > 0 && stock_actuel <= seuil_critique) {
-            statut_stock = 'critique';
-          } else if (stock_actuel <= seuil_faible) {
-            statut_stock = 'faible';
-          }
+      // ÉTAPE 3 : Grouper les lots par produit_id
+      const lotsByProduct = (allLots || []).reduce((acc, lot) => {
+        if (!acc[lot.produit_id]) {
+          acc[lot.produit_id] = [];
+        }
+        acc[lot.produit_id].push(lot);
+        return acc;
+      }, {} as Record<string, any[]>);
 
-          const rotation: 'rapide' | 'normale' | 'lente' = 
-            stock_actuel > 0 && stock_actuel <= seuil_faible ? 'rapide' : 'normale';
+      console.log('[criticalProductsQuery] Products with lots:', Object.keys(lotsByProduct).length);
 
-          return {
-            ...product,
-            produit_id: product.id,
-            stock_actuel,
-            valeur_stock,
-            statut_stock,
-            rotation,
-            stock_limite: product.stock_limite,
-          };
-        })
-      );
+      // ÉTAPE 4 : Calculer le stock pour chaque produit
+      const productsWithStock = (productsData || []).map((product) => {
+        const lots = lotsByProduct[product.id] || [];
+        
+        const stock_actuel = lots.reduce(
+          (sum, lot) => sum + (lot.quantite_restante || 0),
+          0
+        );
 
-      // ÉTAPE 3 : Filtrer les produits critiques
+        const valeur_stock = lots.reduce(
+          (sum, lot) => sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0)),
+          0
+        );
+
+        // Logique de cascade pour les seuils
+        const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
+        const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
+
+        // Déterminer le statut
+        let statut_stock: 'critique' | 'faible' | 'normal' | 'rupture' | 'surstock' = 'normal';
+        
+        if (stock_actuel === 0) {
+          statut_stock = 'rupture';
+        } else if (stock_actuel > 0 && stock_actuel <= seuil_critique) {
+          statut_stock = 'critique';
+        } else if (stock_actuel <= seuil_faible) {
+          statut_stock = 'faible';
+        }
+
+        const rotation: 'rapide' | 'normale' | 'lente' = 
+          stock_actuel > 0 && stock_actuel <= seuil_faible ? 'rapide' : 'normale';
+
+        return {
+          ...product,
+          produit_id: product.id,
+          stock_actuel,
+          valeur_stock,
+          statut_stock,
+          rotation,
+          stock_limite: product.stock_limite,
+        };
+      });
+
+      // ÉTAPE 5 : Filtrer les produits critiques
       const criticalProducts = productsWithStock.filter(
         p => p.statut_stock === 'critique' && p.stock_actuel > 0
       );
       
-      console.log('[useStockDashboardData] Critical products debug:', {
+      console.log('[criticalProductsQuery] Critical products debug:', {
         total_products: productsData?.length || 0,
         products_with_stock: productsWithStock.filter(p => p.stock_actuel > 0).length,
         critical_products_found: criticalProducts.length,
         settings_critical_threshold: settings?.critical_stock_threshold,
-        sample_products: productsWithStock.slice(0, 5).map(p => ({
+        settings_low_threshold: settings?.low_stock_threshold,
+        sample_critical_products: criticalProducts.slice(0, 5).map(p => ({
           name: p.libelle_produit,
           stock: p.stock_actuel,
+          stock_critique_produit: p.stock_critique,
           seuil_critique: getStockThreshold('critical', p.stock_critique, settings?.critical_stock_threshold),
           seuil_faible: getStockThreshold('low', p.stock_faible, settings?.low_stock_threshold),
           statut: p.statut_stock,
-          is_critical: p.statut_stock === 'critique' && p.stock_actuel > 0
+        })),
+        sample_all_products: productsWithStock.slice(0, 5).map(p => ({
+          name: p.libelle_produit,
+          stock: p.stock_actuel,
+          statut: p.statut_stock,
         }))
       });
 
-      // ÉTAPE 4 : Trier et limiter à 20 résultats
+      // ÉTAPE 6 : Trier et limiter à 20 résultats
       return criticalProducts
         .sort((a, b) => {
           if (a.rotation === 'rapide' && b.rotation !== 'rapide') return -1;
@@ -156,7 +185,7 @@ export const useStockDashboardData = () => {
         })
         .slice(0, 20);
     },
-    enabled: !!tenantId,
+    enabled: !!tenantId && !!settings,
     staleTime: 30000,
   });
 
