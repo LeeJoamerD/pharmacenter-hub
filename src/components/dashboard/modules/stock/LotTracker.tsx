@@ -247,7 +247,11 @@ export const LotTracker = () => {
                   const daysToExpiration = lot.date_peremption ? calculateDaysToExpiration(lot.date_peremption) : null;
                   const urgencyLevel = daysToExpiration !== null ? determineUrgencyLevel(daysToExpiration) : 'faible';
                   const stockLevel = getStockLevel(lot.quantite_initiale, lot.quantite_restante);
-                  const isDetailable = lot.produit?.quantite_unites_details_source && lot.produit.quantite_unites_details_source > 0;
+                  const isDetailable = lot.produit?.niveau_detail === 1 && 
+                                       lot.produit?.produit_detail && 
+                                       Array.isArray(lot.produit.produit_detail) && 
+                                       lot.produit.produit_detail.length > 0 &&
+                                       lot.produit.produit_detail[0]?.quantite_unites_details_source > 0;
 
                   return (
                     <TableRow key={lot.id}>

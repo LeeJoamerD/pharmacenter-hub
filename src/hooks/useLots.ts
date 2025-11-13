@@ -35,6 +35,11 @@ export interface LotWithDetails extends Lot {
     libelle_produit: string;
     code_cip: string;
     quantite_unites_details_source?: number;
+    niveau_detail?: number;
+    produit_detail?: Array<{
+      id: string;
+      quantite_unites_details_source: number;
+    }>;
   };
   fournisseur?: {
     id: string;
@@ -86,7 +91,7 @@ export const useLots = () => {
       'lots',
       `
         *,
-        produit:produits!inner(id, libelle_produit, code_cip, quantite_unites_details_source),
+        produit:produits!inner(id, libelle_produit, code_cip, quantite_unites_details_source, niveau_detail, produit_detail:produits!id_produit_source(id, quantite_unites_details_source)),
         fournisseur:fournisseurs(id, nom)
       `,
       {
