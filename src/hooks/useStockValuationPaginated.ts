@@ -215,7 +215,7 @@ export const useStockValuationPaginated = ({
       let valuationByFamily: ValuationByCategory[] = [];
       let valuationByRayon: ValuationByCategory[] = [];
 
-      // 4. Charger les produits avec recherche côté serveur et optimisation
+      // 4. Charger TOUS les produits actifs (sans limite, sans jointure lots)
       let productsQuery = supabase
         .from('produits')
         .select(`
@@ -223,55 +223,69 @@ export const useStockValuationPaginated = ({
           famille_id, rayon_id, prix_achat, prix_vente_ttc,
           stock_critique, stock_faible, stock_limite,
           famille_produit!fk_produits_famille_id(libelle_famille),
-          rayons_produits!rayon_id(libelle_rayon),
-          lots(quantite_restante, prix_achat_unitaire)
-        `, { count: 'exact' })
+          rayons_produits!rayon_id(libelle_rayon)
+        `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true);
 
-      // ✅ Ajouter la recherche AVANT le limit (côté serveur)
+      // Ajouter la recherche côté serveur
       if (debouncedSearchTerm) {
         productsQuery = productsQuery.or(
           `libelle_produit.ilike.%${debouncedSearchTerm}%,code_cip.ilike.%${debouncedSearchTerm}%`
         );
       }
 
-      // ✅ Appliquer le tri côté serveur pour les champs non calculés AVANT limit
-      if (sortField === 'libelle_produit') {
-        productsQuery = productsQuery.order('libelle_produit', { ascending: sortDirection === 'asc' });
-      } else if (sortField === 'code_cip') {
-        productsQuery = productsQuery.order('code_cip', { ascending: sortDirection === 'asc' });
-      } else {
-        // Pour stock_actuel et valeur_stock (calculés dynamiquement), tri par défaut puis tri client
-        productsQuery = productsQuery.order('libelle_produit', { ascending: true });
-      }
-
-      // Charger SEULEMENT 500 produits pour analyse et Top 20
-      const { data: allProducts, error: productsError, count: totalProductsCount } = await productsQuery
-        .limit(500);
+      // Charger TOUS les produits (pas de .limit())
+      const { data: allProducts, error: productsError } = await productsQuery;
 
       if (productsError) {
-        console.warn('Erreur lors du chargement des produits:', productsError);
+        console.error('[useStockValuationPaginated] Error loading products:', productsError);
         throw productsError;
       }
 
-      console.log('[useStockValuationPaginated] Products loaded:', {
-        total: allProducts?.length || 0,
-        statusFilter,
-        sortField,
-        sortDirection
-      });
+      console.log('[useStockValuationPaginated] Products loaded:', allProducts?.length || 0);
 
-      // 6. Calculer la rotation pour tous les produits (avec limite)
-      const productIds = allProducts.slice(0, 1000).map(p => p.id); // Limite à 1000 pour la rotation
+      // 5. Charger TOUS les lots en stock EN UNE SEULE REQUÊTE
+      const { data: allLots, error: lotsError } = await supabase
+        .from('lots')
+        .select('produit_id, quantite_restante, prix_achat_unitaire')
+        .eq('tenant_id', tenantId)
+        .gt('quantite_restante', 0);
+
+      if (lotsError) {
+        console.error('[useStockValuationPaginated] Error loading lots:', lotsError);
+        throw lotsError;
+      }
+
+      console.log('[useStockValuationPaginated] Lots loaded:', allLots?.length || 0);
+
+      // 6. Grouper les lots par produit_id
+      const lotsByProduct = (allLots || []).reduce((acc, lot) => {
+        if (!acc[lot.produit_id]) {
+          acc[lot.produit_id] = [];
+        }
+        acc[lot.produit_id].push(lot);
+        return acc;
+      }, {} as Record<string, any[]>);
+
+      console.log('[useStockValuationPaginated] Products with lots:', Object.keys(lotsByProduct).length);
+
+      // 7. Calculer la rotation pour tous les produits
+      const productIds = (allProducts || []).map(p => p.id);
       const rotationMap = await calculateProductRotationsBatch(productIds);
 
-      // 7. Traiter les produits avec rotation dynamique
-      const processedItems: StockValuationItem[] = allProducts.map((product: any) => {
-        const lots = Array.isArray(product.lots) ? product.lots : [];
-        const stock_actuel = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
-        const valeur_stock = lots.reduce((sum: number, lot: any) => 
-          sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0)), 0
+      // 8. Traiter TOUS les produits
+      const processedItems: StockValuationItem[] = (allProducts || []).map((product: any) => {
+        const lots = lotsByProduct[product.id] || [];
+        
+        const stock_actuel = lots.reduce(
+          (sum: number, lot: any) => sum + (lot.quantite_restante || 0),
+          0
+        );
+        
+        const valeur_stock = lots.reduce(
+          (sum: number, lot: any) => sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0)),
+          0
         );
 
         // Utiliser la logique en cascade pour les seuils
@@ -316,7 +330,7 @@ export const useStockValuationPaginated = ({
         critique: processedItems.filter(p => p.statut_stock === 'critique').length,
       });
 
-      // 8. Filtrer par statut et rotation
+      // 9. Filtrer par statut et rotation
       let filteredItems = processedItems.filter(item => {
         // ✅ Filtre spécial pour "disponible" : tous les produits avec stock > 0
         if (statusFilter === 'disponible') {
@@ -337,7 +351,7 @@ export const useStockValuationPaginated = ({
         rotationFilter
       });
 
-      // 9. Trier côté client pour les champs calculés
+      // 10. Trier tous les produits filtrés
       filteredItems.sort((a, b) => {
         let comparison = 0;
         switch (sortField) {
