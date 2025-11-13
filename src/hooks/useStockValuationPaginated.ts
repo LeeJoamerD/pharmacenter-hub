@@ -82,6 +82,16 @@ interface UseStockValuationPaginatedReturn {
   refetch: () => void;
 }
 
+// Interface pour le résultat de la RPC
+interface RPCValuationResult {
+  items: any[];
+  totalCount: number;
+  totalValue: number;
+  page: number;
+  pageSize: number;
+  error?: string;
+}
+
 export const useStockValuationPaginated = ({
   searchTerm,
   statusFilter,
@@ -159,6 +169,172 @@ export const useStockValuationPaginated = ({
     ],
     queryFn: async () => {
       if (!tenantId) throw new Error('Tenant ID manquant');
+
+      console.log('[useStockValuationPaginated] 🚀 Tentative d\'utilisation de la RPC optimisée...');
+
+      // ========================================
+      // PRIORITÉ 1: Essayer la RPC optimisée
+      // ========================================
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc(
+          'calculate_stock_valuation_paginated',
+          {
+            p_tenant_id: tenantId,
+            p_page: currentPage,
+            p_page_size: itemsPerPage,
+            p_status_filter: statusFilter && statusFilter !== 'all' ? statusFilter : null,
+            p_rotation_filter: rotationFilter && rotationFilter !== 'all' ? rotationFilter : null,
+            p_search_term: debouncedSearchTerm || null,
+            p_famille_filter: null,
+            p_rayon_filter: null,
+          }
+        );
+
+        // Type assertion pour le résultat de la RPC
+        const rpcResult = rpcData as unknown as RPCValuationResult | null;
+
+        if (!rpcError && rpcResult && !rpcResult.error) {
+          console.log('[useStockValuationPaginated] ✅ RPC réussie:', {
+            itemsCount: rpcResult.items?.length || 0,
+            totalCount: rpcResult.totalCount,
+            totalValue: rpcResult.totalValue,
+          });
+
+          // Enrichir les items avec les libellés famille/rayon
+          const enrichedItems: StockValuationItem[] = await Promise.all(
+            (rpcResult.items || []).map(async (item: any) => {
+              // Récupérer les libellés si nécessaire
+              let famille_libelle: string | undefined;
+              let rayon_libelle: string | undefined;
+
+              if (item.famille_id) {
+                const { data: famille } = await supabase
+                  .from('famille_produit')
+                  .select('libelle_famille')
+                  .eq('id', item.famille_id)
+                  .single();
+                famille_libelle = famille?.libelle_famille;
+              }
+
+              if (item.rayon_id) {
+                const { data: rayon } = await supabase
+                  .from('rayons_produits')
+                  .select('libelle_rayon')
+                  .eq('id', item.rayon_id)
+                  .single();
+                rayon_libelle = rayon?.libelle_rayon;
+              }
+
+              return {
+                ...item,
+                famille_libelle,
+                rayon_libelle,
+              } as StockValuationItem;
+            })
+          );
+
+          // Calculer les métriques complètes
+          const metrics: StockValuationMetrics = {
+            totalStockValue: parseFloat(rpcResult.totalValue?.toString() || '0') || 0,
+            availableStockValue: enrichedItems
+              .filter(p => p.statut_stock === 'disponible')
+              .reduce((sum, p) => sum + (p.valeur_stock || 0), 0),
+            lowStockValue: enrichedItems
+              .filter(p => p.statut_stock === 'faible' || p.statut_stock === 'critique')
+              .reduce((sum, p) => sum + (p.valeur_stock || 0), 0),
+            averageValuePerProduct: rpcResult.totalCount > 0
+              ? parseFloat(rpcResult.totalValue?.toString() || '0') / rpcResult.totalCount
+              : 0,
+            totalProducts: rpcResult.totalCount || 0,
+            availableProducts: enrichedItems.filter(p => p.statut_stock === 'disponible').length,
+            lowStockProducts: enrichedItems.filter(p => p.statut_stock === 'faible' || p.statut_stock === 'critique').length,
+            outOfStockProducts: enrichedItems.filter(p => p.statut_stock === 'rupture').length,
+          };
+
+          // Calculer valorisation par famille (depuis enrichedItems)
+          const familyMap = new Map<string, { name: string; value: number; quantity: number; productCount: number }>();
+          enrichedItems.forEach(product => {
+            if (product.famille_libelle) {
+              const key = product.famille_id || 'unknown';
+              const existing = familyMap.get(key) || { 
+                name: product.famille_libelle, 
+                value: 0, 
+                quantity: 0, 
+                productCount: 0 
+              };
+              existing.value += product.valeur_stock;
+              existing.quantity += product.stock_actuel;
+              existing.productCount += 1;
+              familyMap.set(key, existing);
+            }
+          });
+
+          const totalValue = enrichedItems.reduce((sum, p) => sum + p.valeur_stock, 0);
+          const valuationByFamily = Array.from(familyMap.entries()).map(([id, data]) => ({
+            id,
+            name: data.name,
+            value: data.value,
+            quantity: data.quantity,
+            percentage: totalValue > 0 ? (data.value / totalValue) * 100 : 0,
+            productCount: data.productCount
+          })).sort((a, b) => b.value - a.value);
+
+          // Calculer valorisation par rayon (depuis enrichedItems)
+          const rayonMap = new Map<string, { name: string; value: number; quantity: number; productCount: number }>();
+          enrichedItems.forEach(product => {
+            if (product.rayon_libelle) {
+              const key = product.rayon_id || 'unknown';
+              const existing = rayonMap.get(key) || { 
+                name: product.rayon_libelle, 
+                value: 0, 
+                quantity: 0, 
+                productCount: 0 
+              };
+              existing.value += product.valeur_stock;
+              existing.quantity += product.stock_actuel;
+              existing.productCount += 1;
+              rayonMap.set(key, existing);
+            }
+          });
+
+          const valuationByRayon = Array.from(rayonMap.entries()).map(([id, data]) => ({
+            id,
+            name: data.name,
+            value: data.value,
+            quantity: data.quantity,
+            percentage: totalValue > 0 ? (data.value / totalValue) * 100 : 0,
+            productCount: data.productCount
+          })).sort((a, b) => b.value - a.value);
+
+          // Top 20 produits par valorisation
+          const topValueProducts = enrichedItems
+            .filter(p => p.stock_actuel > 0)
+            .slice()
+            .sort((a, b) => b.valeur_stock - a.valeur_stock)
+            .slice(0, 20);
+
+          const totalPages = Math.ceil(rpcResult.totalCount / itemsPerPage);
+
+          return {
+            valuationItems: enrichedItems,
+            allItemsCount: rpcResult.totalCount || 0,
+            totalPages,
+            metrics,
+            valuationByFamily,
+            valuationByRayon,
+            topValueProducts,
+          };
+        } else {
+          console.warn('[useStockValuationPaginated] ⚠️ RPC échouée, fallback vers calcul client:', rpcError || rpcResult?.error);
+        }
+      } catch (rpcError) {
+        console.warn('[useStockValuationPaginated] ⚠️ Exception RPC, fallback vers calcul client:', rpcError);
+      }
+
+      // ========================================
+      // FALLBACK: Calcul client-side (logique existante)
+      // ========================================
+      console.log('[useStockValuationPaginated] 🔄 Utilisation du calcul client-side...');
 
       // 1. Récupérer les métriques globales via RPC avec gestion d'erreur
       let globalMetrics = {
