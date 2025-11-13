@@ -13025,19 +13025,35 @@ export type Database = {
         Returns: number
       }
       calculate_stock_metrics: { Args: { p_tenant_id: string }; Returns: Json }
-      calculate_stock_valuation_paginated: {
-        Args: {
-          p_famille_filter?: string
-          p_page?: number
-          p_page_size?: number
-          p_rayon_filter?: string
-          p_rotation_filter?: string
-          p_search_term?: string
-          p_status_filter?: string
-          p_tenant_id: string
-        }
-        Returns: Json
-      }
+      calculate_stock_valuation_paginated:
+        | {
+            Args: {
+              p_famille_filter?: string
+              p_page?: number
+              p_page_size?: number
+              p_rayon_filter?: string
+              p_rotation_filter?: string
+              p_search_term?: string
+              p_sort_direction?: string
+              p_sort_field?: string
+              p_status_filter?: string
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_famille_filter?: string
+              p_page?: number
+              p_page_size?: number
+              p_rayon_filter?: string
+              p_rotation_filter?: string
+              p_search_term?: string
+              p_status_filter?: string
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
       calculate_total_stock_value: {
         Args: { tenant_filter: string }
         Returns: number

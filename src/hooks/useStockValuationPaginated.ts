@@ -203,7 +203,7 @@ export const useStockValuationPaginated = ({
             p_rayon_filter: null,
             p_sort_field: sortField,
             p_sort_direction: sortDirection,
-          }
+          } as any
         );
 
         // Type assertion pour le résultat de la RPC
@@ -458,10 +458,11 @@ export const useStockValuationPaginated = ({
         const lowThreshold = getStockThreshold('low', product.stock_faible, alertSettings?.low_stock_threshold);
         const maximumThreshold = getStockThreshold('maximum', product.stock_limite, alertSettings?.maximum_stock_threshold);
 
-        const statut: 'disponible' | 'faible' | 'critique' | 'rupture' = 
+        const statut: 'normal' | 'faible' | 'critique' | 'rupture' | 'surstock' = 
           stock_actuel === 0 ? 'rupture' :
           stock_actuel <= criticalThreshold ? 'critique' :
-          stock_actuel <= lowThreshold ? 'faible' : 'disponible';
+          stock_actuel <= lowThreshold ? 'faible' :
+          stock_actuel > maximumThreshold ? 'surstock' : 'normal';
 
         const rotation = rotationMap.get(product.id) || 'normale';
 
@@ -490,7 +491,8 @@ export const useStockValuationPaginated = ({
         total: processedItems.length,
         with_stock: processedItems.filter(p => p.stock_actuel > 0).length,
         rupture: processedItems.filter(p => p.stock_actuel === 0).length,
-        disponible: processedItems.filter(p => p.statut_stock === 'disponible').length,
+        normal: processedItems.filter(p => p.statut_stock === 'normal').length,
+        surstock: processedItems.filter(p => p.statut_stock === 'surstock').length,
         faible: processedItems.filter(p => p.statut_stock === 'faible').length,
         critique: processedItems.filter(p => p.statut_stock === 'critique').length,
       });
@@ -526,7 +528,7 @@ export const useStockValuationPaginated = ({
           case 'prix_achat': comparison = a.prix_achat - b.prix_achat; break;
           case 'valeur_stock': comparison = a.valeur_stock - b.valeur_stock; break;
           case 'statut_stock':
-            const statusOrder = { 'rupture': 0, 'critique': 1, 'faible': 2, 'disponible': 3 };
+            const statusOrder = { 'rupture': 0, 'critique': 1, 'faible': 2, 'normal': 3, 'surstock': 4 };
             comparison = statusOrder[a.statut_stock] - statusOrder[b.statut_stock];
             break;
           case 'rotation':
@@ -541,13 +543,13 @@ export const useStockValuationPaginated = ({
       if (metrics.totalStockValue === 0 && processedItems.length > 0) {
         metrics.totalStockValue = processedItems.reduce((sum, item) => sum + item.valeur_stock, 0);
         metrics.availableStockValue = processedItems
-          .filter(item => item.statut_stock === 'disponible')
+          .filter(item => item.stock_actuel > 0)
           .reduce((sum, item) => sum + item.valeur_stock, 0);
         metrics.lowStockValue = processedItems
           .filter(item => item.statut_stock === 'faible' || item.statut_stock === 'critique')
           .reduce((sum, item) => sum + item.valeur_stock, 0);
         metrics.totalProducts = processedItems.length;
-        metrics.availableProducts = processedItems.filter(item => item.statut_stock === 'disponible').length;
+        metrics.availableProducts = processedItems.filter(item => item.stock_actuel > 0).length;
         metrics.lowStockProducts = processedItems.filter(item => item.statut_stock === 'faible' || item.statut_stock === 'critique').length;
         metrics.outOfStockProducts = processedItems.filter(item => item.statut_stock === 'rupture').length;
         metrics.averageValuePerProduct = metrics.totalProducts > 0 ? metrics.totalStockValue / metrics.totalProducts : 0;
