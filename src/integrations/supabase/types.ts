@@ -601,6 +601,13 @@ export type Database = {
             foreignKeyName: "alertes_peremption_produit_id_fkey"
             columns: ["produit_id"]
             isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alertes_peremption_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
             referencedRelation: "v_produits_with_famille"
             referencedColumns: ["id"]
           },
@@ -2288,6 +2295,13 @@ export type Database = {
             foreignKeyName: "compliance_product_requirements_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_product_requirements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "v_produits_with_famille"
             referencedColumns: ["id"]
           },
@@ -2532,6 +2546,13 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "configurations_fifo_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
             referencedColumns: ["id"]
           },
           {
@@ -4257,6 +4278,13 @@ export type Database = {
             foreignKeyName: "inventaire_items_produit_id_fkey"
             columns: ["produit_id"]
             isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventaire_items_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
             referencedRelation: "v_produits_with_famille"
             referencedColumns: ["id"]
           },
@@ -4610,6 +4638,13 @@ export type Database = {
             foreignKeyName: "lignes_commande_fournisseur_produit_id_fkey"
             columns: ["produit_id"]
             isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_commande_fournisseur_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
             referencedRelation: "v_produits_with_famille"
             referencedColumns: ["id"]
           },
@@ -4906,6 +4941,13 @@ export type Database = {
             foreignKeyName: "lignes_prescriptions_produit_id_fkey"
             columns: ["produit_id"]
             isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_prescriptions_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
             referencedRelation: "v_produits_with_famille"
             referencedColumns: ["id"]
           },
@@ -4978,6 +5020,13 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_reception_fournisseur_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
             referencedColumns: ["id"]
           },
           {
@@ -5150,6 +5199,13 @@ export type Database = {
             foreignKeyName: "lignes_retours_produit_id_fkey"
             columns: ["produit_id"]
             isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_retours_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
             referencedRelation: "v_produits_with_famille"
             referencedColumns: ["id"]
           },
@@ -5234,6 +5290,13 @@ export type Database = {
             foreignKeyName: "fk_lignes_ventes_produit"
             columns: ["produit_id"]
             isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_lignes_ventes_produit"
+            columns: ["produit_id"]
+            isOneToOne: false
             referencedRelation: "v_produits_with_famille"
             referencedColumns: ["id"]
           },
@@ -5263,6 +5326,13 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_ventes_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
             referencedColumns: ["id"]
           },
           {
@@ -5504,6 +5574,13 @@ export type Database = {
             foreignKeyName: "lot_optimization_suggestions_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lot_optimization_suggestions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
             referencedRelation: "v_produits_with_famille"
             referencedColumns: ["id"]
           },
@@ -5596,6 +5673,13 @@ export type Database = {
             foreignKeyName: "lots_produit_id_fkey"
             columns: ["produit_id"]
             isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lots_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
             referencedRelation: "v_produits_with_famille"
             referencedColumns: ["id"]
           },
@@ -5672,6 +5756,13 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "low_stock_actions_log_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
             referencedColumns: ["id"]
           },
           {
@@ -7204,6 +7295,13 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parametres_expiration_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
             referencedColumns: ["id"]
           },
           {
@@ -9166,6 +9264,13 @@ export type Database = {
             foreignKeyName: "produits_id_produit_source_fkey"
             columns: ["id_produit_source"]
             isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_id_produit_source_fkey"
+            columns: ["id_produit_source"]
+            isOneToOne: false
             referencedRelation: "v_produits_with_famille"
             referencedColumns: ["id"]
           },
@@ -9254,6 +9359,13 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_eligibles_promotion_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
             referencedColumns: ["id"]
           },
           {
@@ -9846,6 +9958,13 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recompenses_fidelite_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
             referencedColumns: ["id"]
           },
           {
@@ -11257,6 +11376,13 @@ export type Database = {
             foreignKeyName: "stock_mouvements_produit_id_fkey"
             columns: ["produit_id"]
             isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_mouvements_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
             referencedRelation: "v_produits_with_famille"
             referencedColumns: ["id"]
           },
@@ -11389,6 +11515,13 @@ export type Database = {
             columns: ["produit_id"]
             isOneToOne: false
             referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suggestions_vente_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
             referencedColumns: ["id"]
           },
           {
@@ -12551,6 +12684,124 @@ export type Database = {
       }
     }
     Views: {
+      produits_with_stock: {
+        Row: {
+          categorie_tarification_id: string | null
+          centime_additionnel: number | null
+          classe_therapeutique_id: string | null
+          code_cip: string | null
+          created_at: string | null
+          dci_id: string | null
+          famille_id: string | null
+          forme_id: string | null
+          id: string | null
+          id_produit_source: string | null
+          is_active: boolean | null
+          laboratoires_id: string | null
+          libelle_produit: string | null
+          niveau_detail: number | null
+          prix_achat: number | null
+          prix_vente_ht: number | null
+          prix_vente_ttc: number | null
+          quantite_unites_details_source: number | null
+          rayon_id: string | null
+          stock_actuel: number | null
+          stock_critique: number | null
+          stock_faible: number | null
+          stock_limite: number | null
+          taux_centime_additionnel: number | null
+          taux_tva: number | null
+          tenant_id: string | null
+          tva: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_produits_categorie_tarification"
+            columns: ["categorie_tarification_id"]
+            isOneToOne: false
+            referencedRelation: "categorie_tarification"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_produits_classe_therapeutique"
+            columns: ["classe_therapeutique_id"]
+            isOneToOne: false
+            referencedRelation: "classes_therapeutiques"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_produits_dci_id"
+            columns: ["dci_id"]
+            isOneToOne: false
+            referencedRelation: "dci"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_produits_famille_id"
+            columns: ["famille_id"]
+            isOneToOne: false
+            referencedRelation: "famille_produit"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_produits_forme"
+            columns: ["forme_id"]
+            isOneToOne: false
+            referencedRelation: "formes_galeniques"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_produits_rayon"
+            columns: ["rayon_id"]
+            isOneToOne: false
+            referencedRelation: "rayons_produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_categorie_tarification_id_fkey"
+            columns: ["categorie_tarification_id"]
+            isOneToOne: false
+            referencedRelation: "categorie_tarification"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_id_produit_source_fkey"
+            columns: ["id_produit_source"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_id_produit_source_fkey"
+            columns: ["id_produit_source"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_id_produit_source_fkey"
+            columns: ["id_produit_source"]
+            isOneToOne: false
+            referencedRelation: "v_produits_with_famille"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_id_produit_source_fkey"
+            columns: ["id_produit_source"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "produits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_comptes_avec_soldes: {
         Row: {
           actif: boolean | null
