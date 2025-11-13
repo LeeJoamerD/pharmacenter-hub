@@ -116,14 +116,13 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
       // Charger tous les produits par batch de 1000
       while (hasMore) {
         const { data: products, error } = await supabase
-          .from('produits')
+          .from('produits_with_stock')
           .select(`
-            id, code_cip, libelle_produit,
+            id, code_cip, libelle_produit, stock_actuel,
             prix_vente_ttc, prix_achat, stock_critique, stock_faible, stock_limite,
             famille_id, rayon_id, updated_at,
             famille_produit!fk_produits_famille_id(libelle_famille),
-            rayons_produits(libelle_rayon),
-            lots(quantite_restante)
+            rayons_produits(libelle_rayon)
           `)
           .eq('tenant_id', tenantId)
           .eq('is_active', true)
@@ -142,9 +141,7 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
 
       // Filtrer uniquement les produits en rupture (stock = 0)
       const outOfStockProductsData = allProducts.filter((product: any) => {
-        const lots = product.lots || [];
-        const stock_actuel = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
-        return stock_actuel === 0;
+        return (product.stock_actuel || 0) === 0;
       });
 
       // Calculer la rotation en batch (1 seule série de requêtes au lieu de N requêtes)
@@ -167,9 +164,9 @@ export const useOutOfStockDataPaginated = (params: UseOutOfStockDataPaginatedPar
           stock_critique: product.stock_critique || 0,
           stock_faible: product.stock_faible || 0,
           stock_limite: product.stock_limite || 0,
-          stock_actuel: 0,
+          stock_actuel: product.stock_actuel || 0,
           statut_stock: 'rupture' as const,
-          valeur_stock: 0
+          valeur_stock: (product.stock_actuel || 0) * (product.prix_achat || 0)
         } as OutOfStockItem;
       });
 
