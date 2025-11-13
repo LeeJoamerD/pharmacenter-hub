@@ -224,15 +224,11 @@ export const useCurrentStockPaginated = (
       const productsWithStock = (products || []).map((product) => {
         const lots = (product as any).lots || [];
         
-        // Filtrer les lots avec stock positif
+        // Utiliser stock_actuel de la vue (calculé automatiquement)
+        const stock_actuel = product.stock_actuel || 0;
+
+        // Calculer la valeur du stock à partir des lots actifs
         const activeLots = lots.filter((lot: any) => (lot.quantite_restante || 0) > 0);
-
-        // Calculer le stock actuel
-        const stock_actuel = activeLots.reduce((sum: number, lot: any) => 
-          sum + (lot.quantite_restante || 0), 0
-        );
-
-        // Calculer la valeur du stock
         const valeur_stock = activeLots.reduce((sum: number, lot: any) => {
           return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
         }, 0);

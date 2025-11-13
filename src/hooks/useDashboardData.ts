@@ -230,14 +230,14 @@ export const useDashboardData = () => {
       const [availableResult, lowStockResult, outOfStockResult] = await Promise.all([
         // Comptages sans récupérer les données (head: true)
         supabase
-          .from('produits')
+          .from('produits_with_stock')
           .select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantId)
           .eq('is_active', true)
           .gt('stock_actuel', 10),
         
         supabase
-          .from('produits')
+          .from('produits_with_stock')
           .select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantId)
           .eq('is_active', true)
@@ -245,7 +245,7 @@ export const useDashboardData = () => {
           .lte('stock_actuel', 10),
         
         supabase
-          .from('produits')
+          .from('produits_with_stock')
           .select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantId)
           .eq('is_active', true)

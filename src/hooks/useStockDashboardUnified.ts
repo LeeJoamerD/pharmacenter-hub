@@ -202,7 +202,7 @@ export const useStockDashboardUnified = (
       if (!tenantId) throw new Error('Tenant ID requis');
 
       const { data, error } = await supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select(`
           id,
           libelle_produit,
@@ -357,7 +357,7 @@ export const useStockDashboardUnified = (
       // Récupérer produits avec stock et ventes
       const [productsResult, salesResult] = await Promise.all([
         supabase
-          .from('produits')
+          .from('produits_with_stock')
           .select(`
             id,
             libelle_produit,
