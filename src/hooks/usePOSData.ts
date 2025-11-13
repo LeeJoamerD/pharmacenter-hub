@@ -248,7 +248,7 @@ export const usePOSData = () => {
       const mouvementsStock = transactionData.cart.map(item => ({
         tenant_id: tenantId,
         produit_id: item.product.id,
-        type_mouvement: 'Vente',
+        type_mouvement: 'vente',
         quantite: -item.quantity,
         date_mouvement: new Date().toISOString(),
         agent_id: transactionData.agent_id,

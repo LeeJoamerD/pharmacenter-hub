@@ -69,7 +69,7 @@ export const usePOSAnalytics = () => {
         .eq('date', date)
         .eq('heure', heure)
         .eq('caisse_id', transaction.caisse_id)
-        .single();
+        .maybeSingle();
 
       const modeField = `ventes_${transaction.mode_paiement.toLowerCase().replace(' ', '_')}` as keyof POSMetrics;
 
