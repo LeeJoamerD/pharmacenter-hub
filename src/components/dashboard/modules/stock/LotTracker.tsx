@@ -290,16 +290,30 @@ export const LotTracker = () => {
                       </TableCell>
                       <TableCell>{lot.emplacement || 'Non défini'}</TableCell>
                       <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedLot(lot.id);
-                            setIsDetailsDialogOpen(true);
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedLot(lot.id);
+                              setIsDetailsDialogOpen(true);
+                            }}
+                            title="Voir les détails"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedLotForBreakdown(lot.id);
+                              setIsDetailBreakdownDialogOpen(true);
+                            }}
+                            title="Mise en détail"
+                          >
+                            <Layers className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
