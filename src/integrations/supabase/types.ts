@@ -13043,6 +13043,19 @@ export type Database = {
           }
         | {
             Args: {
+              p_page?: number
+              p_page_size?: number
+              p_rotation_filter?: string
+              p_search_query?: string
+              p_sort_direction?: string
+              p_sort_field?: string
+              p_status_filter?: string
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
               p_famille_filter?: string
               p_page?: number
               p_page_size?: number
