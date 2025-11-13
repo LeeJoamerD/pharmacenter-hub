@@ -74,6 +74,7 @@ export interface VenteResult {
 export interface CashSession {
   id: string;
   tenant_id: string;
+  caisse_id: string;
   numero_session: string;
   date_ouverture: string;
   date_fermeture: string | null;
