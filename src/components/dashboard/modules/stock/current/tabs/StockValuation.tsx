@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const StockValuation = () => {
   const { toast } = useToast();
@@ -49,6 +50,11 @@ const StockValuation = () => {
   const availableStockValue = metrics.availableStockValue;
   const lowStockValue = metrics.lowStockValue;
 
+  // Optimisation: Mémoriser les calculs d'agrégation pour éviter les recalculs inutiles
+  const memoizedValuationByFamily = useMemo(() => valuationByFamily, [valuationByFamily]);
+  const memoizedValuationByRayon = useMemo(() => valuationByRayon, [valuationByRayon]);
+  const memoizedTopProducts = useMemo(() => topValueProducts, [topValueProducts]);
+
   const getValueCategory = (value: number) => {
     const totalValue = totalStockValue;
     const percentage = (value / totalValue) * 100;
@@ -70,6 +76,21 @@ const StockValuation = () => {
 
   return (
     <div className="space-y-6">
+      {/* Indicateur de chargement global */}
+      {isLoading && valuationItems.length === 0 && (
+        <div className="fixed top-20 right-4 z-50 bg-primary/10 border border-primary/20 rounded-lg p-4 shadow-lg animate-in slide-in-from-top">
+          <div className="flex items-center gap-3">
+            <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+            <div>
+              <p className="font-medium text-foreground">Chargement des données...</p>
+              <p className="text-sm text-muted-foreground">
+                Traitement de {metrics.totalProducts || allItemsCount || '6523'} produits
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filtres et recherche */}
       <Card>
         <CardHeader>
@@ -82,10 +103,11 @@ const StockValuation = () => {
                 placeholder="Rechercher un produit..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                disabled={isLoading}
               />
             </div>
             <div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={setStatusFilter} disabled={isLoading}>
                 <SelectTrigger>
                   <SelectValue placeholder="Statut du stock" />
                 </SelectTrigger>
@@ -99,7 +121,7 @@ const StockValuation = () => {
               </Select>
             </div>
             <div>
-              <Select value={rotationFilter} onValueChange={setRotationFilter}>
+              <Select value={rotationFilter} onValueChange={setRotationFilter} disabled={isLoading}>
                 <SelectTrigger>
                   <SelectValue placeholder="Rotation" />
                 </SelectTrigger>
@@ -112,11 +134,15 @@ const StockValuation = () => {
               </Select>
             </div>
             <div>
-              <Select value={`${sortField}-${sortDirection}`} onValueChange={(value) => {
-                const [field, direction] = value.split('-');
-                setSortField(field as 'valeur_stock' | 'stock_actuel' | 'libelle_produit');
-                setSortDirection(direction as 'asc' | 'desc');
-              }}>
+              <Select 
+                value={`${sortField}-${sortDirection}`} 
+                onValueChange={(value) => {
+                  const [field, direction] = value.split('-');
+                  setSortField(field as 'valeur_stock' | 'stock_actuel' | 'libelle_produit');
+                  setSortDirection(direction as 'asc' | 'desc');
+                }}
+                disabled={isLoading}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Trier par" />
                 </SelectTrigger>
@@ -164,14 +190,16 @@ const StockValuation = () => {
                 onClick={() => {
                   refetch();
                   toast({
-                    title: "Données actualisées",
-                    description: "Les données de valorisation ont été rechargées."
+                    title: isLoading ? "Actualisation en cours..." : "Données actualisées",
+                    description: isLoading 
+                      ? "Veuillez patientez pendant le chargement des données." 
+                      : "Les données de valorisation ont été rechargées."
                   });
                 }}
                 disabled={isLoading}
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                Actualiser
+                {isLoading ? 'Actualisation...' : 'Actualiser'}
               </Button>
               <Button
                 variant="outline"
@@ -277,7 +305,7 @@ const StockValuation = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {valuationByFamily.slice(0, 10).map((family) => (
+              {memoizedValuationByFamily.slice(0, 10).map((family) => (
                 <div key={family.id} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{family.name}</span>
@@ -321,7 +349,7 @@ const StockValuation = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {valuationByRayon.slice(0, 8).map((rayon) => (
+              {memoizedValuationByRayon.slice(0, 8).map((rayon) => (
                 <div key={rayon.id} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{rayon.name}</span>
@@ -366,7 +394,25 @@ const StockValuation = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {topValueProducts.map((product, index) => {
+                {isLoading && valuationItems.length === 0 ? (
+                  // Skeleton loader pour le tableau principal
+                  [...Array(10)].map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-48 mb-2" />
+                        <Skeleton className="h-3 w-32" />
+                      </TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  memoizedTopProducts.map((product, index) => {
                   const percentage = (product.valeur_stock / totalStockValue) * 100;
                   const category = getValueCategory(product.valeur_stock);
                   
@@ -410,7 +456,8 @@ const StockValuation = () => {
                       </TableCell>
                     </TableRow>
                   );
-                })}
+                  })
+                )}
               </TableBody>
             </Table>
           </div>
