@@ -148,7 +148,7 @@ export class OrderValidationService {
     try {
       // Validation du produit
       const { data: product, error } = await supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select('*')
         .eq('id', ligne.produit_id)
         .single();
@@ -169,7 +169,7 @@ export class OrderValidationService {
       }
 
       // Vérifier les seuils de stock
-      const currentStock = await this.getCurrentStock(ligne.produit_id);
+      const currentStock = (product as any).stock_actuel || 0;
       const stockLimite = (product as any).stock_limite || 0;
       const stockAlerte = (product as any).stock_alerte || 0;
 
@@ -266,25 +266,6 @@ export class OrderValidationService {
   }
 
   /**
-   * Récupère le stock actuel d'un produit
-   */
-  private static async getCurrentStock(produitId: string): Promise<number> {
-    try {
-      const { data: lots, error } = await supabase
-        .from('lots')
-        .select('quantite_restante')
-        .eq('produit_id', produitId)
-        .gt('quantite_restante', 0);
-
-      if (error) return 0;
-      
-      return lots?.reduce((total, lot) => total + lot.quantite_restante, 0) || 0;
-    } catch (error) {
-      return 0;
-    }
-  }
-
-  /**
    * Valide la possibilité de modification d'une commande
    */
   static async canModifyOrder(commandeId: string): Promise<{ canModify: boolean; reason?: string }> {
@@ -358,7 +339,7 @@ export class OrderValidationService {
   private static async getProductFamilies(productIds: string[]): Promise<Set<string>> {
     try {
       const { data: products } = await supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select('famille_id')
         .in('id', productIds);
 

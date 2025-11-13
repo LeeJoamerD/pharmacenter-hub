@@ -173,7 +173,7 @@ export class ReceptionValidationService {
     try {
       // Validation du produit
       const { data: product, error } = await supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select('*')
         .eq('id', ligne.produit_id)
         .single();

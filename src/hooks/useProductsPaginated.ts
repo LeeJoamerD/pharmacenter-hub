@@ -32,13 +32,13 @@ export const useProductsPaginated = (
       if (!tenantId) return { data: [], count: 0, totalPages: 1, currentPage: 1 };
 
       let queryBuilder = supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select(`
           id, libelle_produit, code_cip, famille_id, rayon_id, forme_id, 
           laboratoires_id, dci_id, classe_therapeutique_id, categorie_tarification_id, 
           prix_achat, prix_vente_ht, prix_vente_ttc, tva, taux_tva, 
           centime_additionnel, taux_centime_additionnel, stock_critique, stock_faible, stock_limite, 
-          is_active, created_at, id_produit_source, quantite_unites_details_source, 
+          stock_actuel, is_active, created_at, id_produit_source, quantite_unites_details_source, 
           niveau_detail
         `, { count: 'exact' })
         .eq('tenant_id', tenantId)

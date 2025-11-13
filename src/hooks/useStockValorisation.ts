@@ -170,10 +170,11 @@ export const useStockValorisation = () => {
 
       // Récupérer les produits basiques
       const { data: productsData, error: fetchError } = await supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select(`
           id,
-          libelle_produit
+          libelle_produit,
+          stock_actuel
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
@@ -188,7 +189,7 @@ export const useStockValorisation = () => {
 
       // Générer des données de valorisation réalistes basées sur les vrais produits
       const valorizedProducts: ValorizedProduct[] = productsData.map((product, index) => {
-        const baseQuantity = Math.floor(Math.random() * 5000) + 100;
+        const baseQuantity = product.stock_actuel || Math.floor(Math.random() * 5000) + 100;
         const basePrice = Math.random() * 10 + 0.5;
         const evolution = (Math.random() - 0.5) * 20;
         const categories = ['Médicaments', 'Parapharmacie', 'Matériels médicaux'];

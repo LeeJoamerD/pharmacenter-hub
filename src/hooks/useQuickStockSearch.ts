@@ -102,13 +102,14 @@ export const useQuickStockSearch = (searchTerm: string = '', pageSize: number = 
 
       // Construction sécurisée de la requête avec protection multi-tenant
       const queryBuilder = supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select(`
           id,
           libelle_produit,
           code_cip,
           prix_achat,
           prix_vente_ttc,
+          stock_actuel,
           stock_critique,
           stock_faible,
           stock_limite,
@@ -145,40 +146,9 @@ export const useQuickStockSearch = (searchTerm: string = '', pageSize: number = 
         throw error;
       }
 
-      // Optimisation: charger les lots en batches pour éviter les URLs trop longues
-      const productIds = (products || []).map(p => p.id);
-      let lotsData: any[] = [];
-      
-      if (productIds.length > 0) {
-        // ⚠️ LIMITER à 100 IDs maximum par requête pour éviter les erreurs 400
-        const batches = splitIntoBatches(productIds, 100);
-        
-        // Exécuter les requêtes par batch
-        for (const batch of batches) {
-          const { data: lots, error: lotsError } = await supabase
-            .from('lots')
-            .select('produit_id, quantite_restante')
-            .eq('tenant_id', tenantId) // Sécurité multi-tenant pour les lots
-            .in('produit_id', batch)
-            .gt('quantite_restante', 0);
-          
-          if (lotsError) {
-            console.error('Erreur lors du chargement des lots:', lotsError);
-          } else {
-            lotsData = [...lotsData, ...(lots || [])];
-          }
-        }
-      }
-
-      // Grouper les lots par produit avec optimisation mémoire
-      const lotsByProduct = lotsData.reduce((acc: Record<string, number>, lot) => {
-        acc[lot.produit_id] = (acc[lot.produit_id] || 0) + (lot.quantite_restante || 0);
-        return acc;
-      }, {});
-
-      // Calculer le stock pour chaque produit avec validation des données
+      // Les produits ont déjà stock_actuel de la vue
       const productsWithStock = (products || []).map((item) => {
-        const stock_actuel = Math.max(0, lotsByProduct[item.id] || 0); // Éviter les valeurs négatives
+        const stock_actuel = item.stock_actuel || 0;
         
         let statut_stock = 'normal';
         if (stock_actuel === 0) {

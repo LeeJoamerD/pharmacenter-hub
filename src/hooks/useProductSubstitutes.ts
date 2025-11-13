@@ -72,20 +72,10 @@ export const useProductSubstitutes = () => {
         (data || []).map(async (sub) => {
           // Récupérer les infos du produit substitut
           const { data: produitData } = await supabase
-            .from('produits')
-            .select('libelle_produit, code_cip, prix_vente_ttc')
+            .from('produits_with_stock')
+            .select('libelle_produit, code_cip, prix_vente_ttc, stock_actuel')
             .eq('id', sub.produit_substitut_id)
             .single();
-
-          // Calculer le stock actuel
-          const { data: lots } = await supabase
-            .from('lots')
-            .select('quantite_restante')
-            .eq('tenant_id', personnel.tenant_id)
-            .eq('produit_id', sub.produit_substitut_id)
-            .gt('quantite_restante', 0);
-
-          const stockActuel = (lots || []).reduce((sum, lot) => sum + lot.quantite_restante, 0);
 
           return {
             ...sub,
@@ -94,7 +84,7 @@ export const useProductSubstitutes = () => {
                   libelle_produit: produitData.libelle_produit,
                   code_cip: produitData.code_cip || '',
                   prix_vente_ttc: produitData.prix_vente_ttc || 0,
-                  stock_actuel: stockActuel,
+                  stock_actuel: produitData.stock_actuel || 0,
                 }
               : undefined,
           };
@@ -128,8 +118,8 @@ export const useProductSubstitutes = () => {
 
       // Construire la requête de base
       let query = supabase
-        .from('produits')
-        .select('id, libelle_produit, code_cip, famille_id, classe_therapeutique_id, prix_vente_ttc')
+        .from('produits_with_stock')
+        .select('id, libelle_produit, code_cip, famille_id, classe_therapeutique_id, prix_vente_ttc, stock_actuel')
         .eq('tenant_id', personnel.tenant_id)
         .eq('is_active', true)
         .neq('id', productId);
@@ -148,14 +138,7 @@ export const useProductSubstitutes = () => {
       // Calculer le stock pour chaque produit et son score de similarité
       const suggestions = await Promise.all(
         (products || []).map(async (product) => {
-          const { data: lots } = await supabase
-            .from('lots')
-            .select('quantite_restante')
-            .eq('tenant_id', personnel.tenant_id)
-            .eq('produit_id', product.id)
-            .gt('quantite_restante', 0);
-
-          const stockActuel = (lots || []).reduce((sum, lot) => sum + lot.quantite_restante, 0);
+          const stockActuel = product.stock_actuel || 0;
 
           // Calculer un score de similarité simple (basé sur famille et classe)
           let similarityScore = 0;

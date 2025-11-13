@@ -77,9 +77,9 @@ export const useCurrentStockDirect = () => {
 
       // Fetch products with stock using correct column names - optimized select
       const { data: productsData, error: productsError } = await supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select(`
-          id, tenant_id, libelle_produit, code_cip, famille_id, rayon_id,
+          id, tenant_id, libelle_produit, code_cip, famille_id, rayon_id, stock_actuel,
           prix_achat, prix_vente_ttc, stock_critique, stock_faible, stock_limite,
           famille_produit!famille_id(id, libelle_famille),
           rayons_produits!rayon_id(id, libelle_rayon)
@@ -180,7 +180,7 @@ export const useCurrentStockDirect = () => {
 
       // Process products data with real stock
       const processedProducts: CurrentStockItem[] = (productsData || []).map((product: any) => {
-        const currentStock = stockByProduct[product.id] || 0;
+        const currentStock = product.stock_actuel || 0;
         const stockValue = currentStock * (product.prix_achat || 0);
         
         // Calcul de la rotation basé sur les vrais mouvements de stock

@@ -59,14 +59,14 @@ export const useOptimizedQueries = () => {
         const tenantId = await getCurrentTenantId();
         if (!tenantId) return { data: [], count: 0 };
 
-        let query = supabase
-          .from('produits')
-          .select(`
-            *,
-            famille:famille_produit!fk_produits_famille_id(libelle_famille),
-            dci:dci(nom_dci)
-          `, { count: 'exact' })
-          .eq('tenant_id', tenantId);
+      let query = supabase
+        .from('produits_with_stock')
+        .select(`
+          *,
+          famille:famille_produit!fk_produits_famille_id(libelle_famille),
+          dci:dci(nom_dci)
+        `, { count: 'exact' })
+        .eq('tenant_id', tenantId);
 
         if (searchTerm) {
           query = query.or(`nom_produit.ilike.%${searchTerm}%,reference_produit.ilike.%${searchTerm}%`);

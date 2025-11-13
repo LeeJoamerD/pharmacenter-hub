@@ -111,18 +111,18 @@ export const useStockReports = (
     queryKey: ['stock-reports-levels', tenantId, category],
     queryFn: async () => {
       const { data: produits, error: produitsError } = await supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select(`
           id,
+          stock_actuel,
           stock_limite,
           stock_alerte,
           prix_achat,
-          famille_produit!inner(libelle_famille),
-          lots!inner(quantite_restante, prix_achat_unitaire)
+          famille_produit!inner(libelle_famille)
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
-        .gt('lots.quantite_restante', 0);
+        .gt('stock_actuel', 0);
 
       if (produitsError) throw produitsError;
 
@@ -155,10 +155,9 @@ export const useStockReports = (
         grouped[famille].stock_alerte_sum += p.stock_alerte || 20;
 
         // Calculer stock actuel et valorisation
-        p.lots?.forEach((lot: any) => {
-          grouped[famille].stock_actuel += lot.quantite_restante || 0;
-          grouped[famille].valorisation += (lot.quantite_restante || 0) * (lot.prix_achat_unitaire || p.prix_achat || 0);
-        });
+        const stock_actuel = p.stock_actuel || 0;
+        grouped[famille].stock_actuel += stock_actuel;
+        grouped[famille].valorisation += stock_actuel * (p.prix_achat || 0);
       });
 
       // Fonction pour déterminer le statut
@@ -197,13 +196,13 @@ export const useStockReports = (
     queryKey: ['stock-reports-critical', tenantId, category],
     queryFn: async () => {
       const { data: produits, error } = await supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select(`
           id,
           libelle_produit,
+          stock_actuel,
           stock_limite,
-          famille_produit!fk_produits_famille_id(libelle_famille),
-          lots!inner(quantite_restante, date_peremption)
+          famille_produit!fk_produits_famille_id(libelle_famille)
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
@@ -222,7 +221,7 @@ export const useStockReports = (
           return;
         }
 
-        const stock_actuel = p.lots?.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0) || 0;
+        const stock_actuel = p.stock_actuel || 0;
         const stock_limite = p.stock_limite || 10;
         
         let statut: 'critique' | 'attention' = 'normal' as any;
@@ -233,17 +232,13 @@ export const useStockReports = (
         }
 
         if (statut === 'critique' || statut === 'attention') {
-          const prochaine_expiration = p.lots
-            ?.filter((l: any) => l.date_peremption)
-            .sort((a: any, b: any) => new Date(a.date_peremption).getTime() - new Date(b.date_peremption).getTime())[0]?.date_peremption || null;
-
           critical.push({
             produit_id: p.id,
             produit: p.libelle_produit,
             stock_actuel,
             stock_limite,
             statut,
-            expiration: prochaine_expiration,
+            expiration: null, // Pas de jointure lots pour expiration ici
             famille
           });
         }

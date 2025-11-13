@@ -23,11 +23,10 @@ export const useStockDashboardData = () => {
       if (!tenantId) return [];
 
       const { data: products, error } = await supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select(`
-          id, libelle_produit, code_cip, prix_achat,
-          stock_critique, stock_faible, stock_limite,
-          lots(quantite_restante, prix_achat_unitaire)
+          id, libelle_produit, code_cip, prix_achat, stock_actuel,
+          stock_critique, stock_faible, stock_limite
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true);
@@ -35,14 +34,8 @@ export const useStockDashboardData = () => {
       if (error) throw error;
 
       const productsWithStock = (products || []).map((product) => {
-        const lots = (product as any).lots || [];
-        const stock_actuel = lots.reduce((sum: number, lot: any) => 
-          sum + (lot.quantite_restante || 0), 0
-        );
-
-        const valeur_stock = lots.reduce((sum: number, lot: any) => {
-          return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
-        }, 0);
+        const stock_actuel = product.stock_actuel || 0;
+        const valeur_stock = stock_actuel * (product.prix_achat || 0);
 
         return {
           ...product,
@@ -68,10 +61,10 @@ export const useStockDashboardData = () => {
 
       console.log('[criticalProductsQuery] Starting query...');
 
-      // ÉTAPE 1 : Charger les produits (sans limite pour avoir tous les produits)
+      // ÉTAPE 1 : Charger les produits avec stock_actuel de la vue
       const { data: productsData, error: productsError } = await supabase
-        .from('produits')
-        .select('id, libelle_produit, code_cip, prix_achat, stock_critique, stock_faible, stock_limite')
+        .from('produits_with_stock')
+        .select('id, libelle_produit, code_cip, prix_achat, stock_actuel, stock_critique, stock_faible, stock_limite')
         .eq('tenant_id', tenantId)
         .eq('is_active', true);
 
@@ -82,44 +75,10 @@ export const useStockDashboardData = () => {
 
       console.log('[criticalProductsQuery] Products loaded:', productsData?.length);
 
-      // ÉTAPE 2 : Charger TOUS les lots avec stock > 0 EN UNE SEULE REQUÊTE
-      const { data: allLots, error: lotsError } = await supabase
-        .from('lots')
-        .select('produit_id, quantite_restante, prix_achat_unitaire')
-        .eq('tenant_id', tenantId)
-        .gt('quantite_restante', 0);
-
-      if (lotsError) {
-        console.error('[criticalProductsQuery] Error loading lots:', lotsError);
-        throw lotsError;
-      }
-
-      console.log('[criticalProductsQuery] Lots loaded:', allLots?.length);
-
-      // ÉTAPE 3 : Grouper les lots par produit_id
-      const lotsByProduct = (allLots || []).reduce((acc, lot) => {
-        if (!acc[lot.produit_id]) {
-          acc[lot.produit_id] = [];
-        }
-        acc[lot.produit_id].push(lot);
-        return acc;
-      }, {} as Record<string, any[]>);
-
-      console.log('[criticalProductsQuery] Products with lots:', Object.keys(lotsByProduct).length);
-
-      // ÉTAPE 4 : Calculer le stock pour chaque produit
+      // ÉTAPE 2 : Utiliser stock_actuel de la vue (pas besoin de charger les lots)
       const productsWithStock = (productsData || []).map((product) => {
-        const lots = lotsByProduct[product.id] || [];
-        
-        const stock_actuel = lots.reduce(
-          (sum, lot) => sum + (lot.quantite_restante || 0),
-          0
-        );
-
-        const valeur_stock = lots.reduce(
-          (sum, lot) => sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0)),
-          0
-        );
+        const stock_actuel = product.stock_actuel || 0;
+        const valeur_stock = stock_actuel * (product.prix_achat || 0);
 
         // Logique de cascade pour les seuils
         const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
@@ -196,11 +155,10 @@ export const useStockDashboardData = () => {
       if (!tenantId) return [];
 
       const { data: products, error } = await supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select(`
-          id, libelle_produit, code_cip, prix_achat, prix_vente_ttc,
-          stock_critique, stock_faible, stock_limite,
-          lots(quantite_restante, prix_achat_unitaire)
+          id, libelle_produit, code_cip, prix_achat, prix_vente_ttc, stock_actuel,
+          stock_critique, stock_faible, stock_limite
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true);
@@ -208,14 +166,8 @@ export const useStockDashboardData = () => {
       if (error) throw error;
 
       const productsWithStock = (products || []).map((product) => {
-        const lots = (product as any).lots || [];
-        const stock_actuel = lots.reduce((sum: number, lot: any) => 
-          sum + (lot.quantite_restante || 0), 0
-        );
-
-        const valeur_stock = lots.reduce((sum: number, lot: any) => {
-          return sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0));
-        }, 0);
+        const stock_actuel = product.stock_actuel || 0;
+        const valeur_stock = stock_actuel * (product.prix_achat || 0);
 
         const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
         const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
@@ -271,10 +223,9 @@ export const useStockDashboardData = () => {
 
       while (hasMore) {
         const { data: products, error } = await supabase
-          .from('produits')
+          .from('produits_with_stock')
           .select(`
-            id, stock_critique, stock_faible, stock_limite,
-            lots(quantite_restante)
+            id, stock_actuel, stock_critique, stock_faible, stock_limite
           `)
           .eq('tenant_id', tenantId)
           .eq('is_active', true)
@@ -303,10 +254,7 @@ export const useStockDashboardData = () => {
       };
 
       (products || []).forEach((product) => {
-        const lots = (product as any).lots || [];
-        const stock_actuel = lots.reduce((sum: number, lot: any) => 
-          sum + (lot.quantite_restante || 0), 0
-        );
+        const stock_actuel = product.stock_actuel || 0;
 
         const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
         const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);

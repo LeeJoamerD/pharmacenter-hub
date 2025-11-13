@@ -71,11 +71,11 @@ export const useAdminDashboardData = () => {
     queryFn: async () => {
       const [produitsTotal, produitsActifs, dci, formes, classes] = await Promise.all([
         supabase
-          .from('produits')
+          .from('produits_with_stock')
           .select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantId),
         supabase
-          .from('produits')
+          .from('produits_with_stock')
           .select('*', { count: 'exact', head: true })
           .eq('tenant_id', tenantId)
           .eq('is_active', true),

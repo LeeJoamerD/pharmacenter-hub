@@ -72,9 +72,9 @@ export class StockNotificationService {
 
     // Get products with their current stock levels
     const { data: products, error } = await supabase
-      .from('produits')
+      .from('produits_with_stock')
       .select(`
-        id, libelle_produit, famille_id, stock_critique, stock_faible, stock_limite,
+        id, libelle_produit, famille_id, stock_actuel, stock_critique, stock_faible, stock_limite,
         famille_produit!fk_produits_famille_id(libelle_famille)
       `)
       .eq('tenant_id', tenantId)
@@ -83,7 +83,7 @@ export class StockNotificationService {
     if (error || !products) return notifications;
 
     for (const product of products) {
-      const currentStock = await this.calculateCurrentStock(product.id);
+      const currentStock = product.stock_actuel || 0;
       const categoryThreshold = this.getCategoryThreshold(
         product.famille_produit?.libelle_famille || 'default',
         thresholds
@@ -222,9 +222,9 @@ export class StockNotificationService {
     const slowMovingDays = 90; // Default from settings
 
     const { data: products, error } = await supabase
-      .from('produits')
+      .from('produits_with_stock')
       .select(`
-        id, libelle_produit, updated_at,
+        id, libelle_produit, updated_at, stock_actuel,
         famille_produit!fk_produits_famille_id(libelle_famille)
       `)
       .eq('tenant_id', tenantId)
@@ -233,7 +233,7 @@ export class StockNotificationService {
     if (error || !products) return notifications;
 
     for (const product of products) {
-      const currentStock = await this.calculateCurrentStock(product.id);
+      const currentStock = product.stock_actuel || 0;
       if (currentStock === 0) continue;
 
       // Check last movement date

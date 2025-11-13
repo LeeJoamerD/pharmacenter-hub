@@ -57,17 +57,16 @@ export const useStockMetrics = () => {
       ] = await Promise.allSettled([
         // Total produits
         supabase
-          .from('produits')
+          .from('produits_with_stock')
           .select('id')
           .eq('tenant_id', tenantId),
         
         // Stock faible (produits avec stock < stock_limite)
         supabase
-          .from('produits')
+          .from('produits_with_stock')
           .select(`
-            id, stock_limite, stock_alerte, libelle_produit,
+            id, stock_limite, stock_alerte, libelle_produit, stock_actuel,
             famille_id, rayon_id,
-            lots(quantite_restante),
             famille_produit!fk_produits_famille_id(libelle_famille)
           `)
           .eq('tenant_id', tenantId)
@@ -112,7 +111,7 @@ export const useStockMetrics = () => {
       
       if (lowStockResult.status === 'fulfilled' && lowStockResult.value.data) {
         lowStockResult.value.data.forEach((product: any) => {
-          const totalStock = product.lots?.reduce((sum: number, lot: any) => sum + lot.quantite_restante, 0) || 0;
+          const totalStock = product.stock_actuel || 0;
           const effectiveThreshold = product.stock_limite || 10;
           
           // Classification selon le modèle métier
