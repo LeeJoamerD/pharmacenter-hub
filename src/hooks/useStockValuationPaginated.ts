@@ -380,46 +380,77 @@ export const useStockValuationPaginated = ({
       let valuationByFamily: ValuationByCategory[] = [];
       let valuationByRayon: ValuationByCategory[] = [];
 
-      // 4. Charger TOUS les produits actifs (sans limite, sans jointure lots)
-      let productsQuery = supabase
-        .from('produits')
-        .select(`
-          id, tenant_id, code_cip, libelle_produit,
-          famille_id, rayon_id, prix_achat, prix_vente_ttc,
-          stock_critique, stock_faible, stock_limite,
-          famille_produit!fk_produits_famille_id(libelle_famille),
-          rayons_produits!rayon_id(libelle_rayon)
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true);
+      // 4. Charger TOUS les produits actifs avec pagination interne (contourner la limite 1000)
+      let allProducts: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      // Ajouter la recherche côté serveur
-      if (debouncedSearchTerm) {
-        productsQuery = productsQuery.or(
-          `libelle_produit.ilike.%${debouncedSearchTerm}%,code_cip.ilike.%${debouncedSearchTerm}%`
-        );
-      }
+      while (hasMore) {
+        let productsQuery = supabase
+          .from('produits')
+          .select(`
+            id, tenant_id, code_cip, libelle_produit,
+            famille_id, rayon_id, prix_achat, prix_vente_ttc,
+            stock_critique, stock_faible, stock_limite,
+            famille_produit!fk_produits_famille_id(libelle_famille),
+            rayons_produits!rayon_id(libelle_rayon)
+          `)
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true);
 
-      // Charger TOUS les produits (pas de .limit())
-      const { data: allProducts, error: productsError } = await productsQuery;
+        // Ajouter la recherche côté serveur
+        if (debouncedSearchTerm) {
+          productsQuery = productsQuery.or(
+            `libelle_produit.ilike.%${debouncedSearchTerm}%,code_cip.ilike.%${debouncedSearchTerm}%`
+          );
+        }
 
-      if (productsError) {
-        console.error('[useStockValuationPaginated] Error loading products:', productsError);
-        throw productsError;
+        // Appliquer la pagination
+        const { data: batch, error: productsError } = await productsQuery.range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (productsError) {
+          console.error('[useStockValuationPaginated] Error loading products batch:', productsError);
+          throw productsError;
+        }
+
+        if (batch && batch.length > 0) {
+          allProducts = [...allProducts, ...batch];
+          page++;
+          hasMore = batch.length === pageSize;
+        } else {
+          hasMore = false;
+        }
       }
 
       console.log('[useStockValuationPaginated] Products loaded:', allProducts?.length || 0);
 
-      // 5. Charger TOUS les lots en stock EN UNE SEULE REQUÊTE
-      const { data: allLots, error: lotsError } = await supabase
-        .from('lots')
-        .select('produit_id, quantite_restante, prix_achat_unitaire')
-        .eq('tenant_id', tenantId)
-        .gt('quantite_restante', 0);
+      // 5. Charger TOUS les lots en stock avec pagination interne (contourner la limite 1000)
+      let allLots: any[] = [];
+      let lotPage = 0;
+      const lotPageSize = 1000;
+      let hasMoreLots = true;
 
-      if (lotsError) {
-        console.error('[useStockValuationPaginated] Error loading lots:', lotsError);
-        throw lotsError;
+      while (hasMoreLots) {
+        const { data: lotBatch, error: lotsError } = await supabase
+          .from('lots')
+          .select('produit_id, quantite_restante, prix_achat_unitaire')
+          .eq('tenant_id', tenantId)
+          .gt('quantite_restante', 0)
+          .range(lotPage * lotPageSize, (lotPage + 1) * lotPageSize - 1);
+
+        if (lotsError) {
+          console.error('[useStockValuationPaginated] Error loading lots batch:', lotsError);
+          throw lotsError;
+        }
+
+        if (lotBatch && lotBatch.length > 0) {
+          allLots = [...allLots, ...lotBatch];
+          lotPage++;
+          hasMoreLots = lotBatch.length === lotPageSize;
+        } else {
+          hasMoreLots = false;
+        }
       }
 
       console.log('[useStockValuationPaginated] Lots loaded:', allLots?.length || 0);

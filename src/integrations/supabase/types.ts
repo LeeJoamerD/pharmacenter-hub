@@ -13025,48 +13025,35 @@ export type Database = {
         Returns: number
       }
       calculate_stock_metrics: { Args: { p_tenant_id: string }; Returns: Json }
-      calculate_stock_valuation_paginated:
-        | {
-            Args: {
-              p_famille_filter?: string
-              p_page?: number
-              p_page_size?: number
-              p_rayon_filter?: string
-              p_rotation_filter?: string
-              p_search_term?: string
-              p_sort_direction?: string
-              p_sort_field?: string
-              p_status_filter?: string
-              p_tenant_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_page?: number
-              p_page_size?: number
-              p_rotation_filter?: string
-              p_search_query?: string
-              p_sort_direction?: string
-              p_sort_field?: string
-              p_status_filter?: string
-              p_tenant_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_famille_filter?: string
-              p_page?: number
-              p_page_size?: number
-              p_rayon_filter?: string
-              p_rotation_filter?: string
-              p_search_term?: string
-              p_status_filter?: string
-              p_tenant_id: string
-            }
-            Returns: Json
-          }
+      calculate_stock_valuation_paginated: {
+        Args: {
+          p_evolution_period?: string
+          p_famille_id?: string
+          p_page_offset?: number
+          p_page_size?: number
+          p_rayon_id?: string
+          p_rotation_filter?: string
+          p_search?: string
+          p_sort_by?: string
+          p_status_filter?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          code_produit: string
+          evolution_prix: number
+          famille_nom: string
+          id: string
+          nom_produit: string
+          prix_achat_moyen: number
+          prix_vente_ht: number
+          rayon_nom: string
+          statut_stock: string
+          stock_actuel: number
+          taux_rotation: number
+          total_count: number
+          valeur_stock: number
+        }[]
+      }
       calculate_total_stock_value: {
         Args: { tenant_filter: string }
         Returns: number
