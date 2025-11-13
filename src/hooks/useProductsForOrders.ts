@@ -30,8 +30,8 @@ export const useProductsForOrders = (
           id, libelle_produit, code_cip, famille_id, rayon_id, forme_id, 
           laboratoires_id, dci_id, classe_therapeutique_id, categorie_tarification_id, 
           prix_achat, prix_vente_ht, prix_vente_ttc, tva, taux_tva, 
-          centime_additionnel, taux_centime_additionnel, stock_limite, stock_alerte, 
-          is_active, created_at, id_produit_source, quantite_unites_details_source, 
+          centime_additionnel, taux_centime_additionnel, stock_limite, stock_faible, stock_critique, stock_actuel,
+          is_active, created_at, id_produit_source, quantite_unites_details_source,
           niveau_detail
         `, { count: 'exact' })
         .eq('tenant_id', tenantId)
