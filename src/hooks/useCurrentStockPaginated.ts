@@ -146,13 +146,13 @@ export const useCurrentStockPaginated = (
 
       // Construire la requête avec jointure agrégée pour les lots
       let queryBuilder = supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select(`
           id, libelle_produit, code_cip, famille_id, rayon_id, forme_id,
           laboratoires_id, dci_id, classe_therapeutique_id, categorie_tarification_id,
           prix_achat, prix_vente_ht, prix_vente_ttc, tva, taux_tva,
           centime_additionnel, taux_centime_additionnel, stock_critique, stock_faible, stock_limite,
-          is_active, created_at, tenant_id,
+          is_active, created_at, tenant_id, stock_actuel,
           lots${showOnlyAvailable ? '!inner' : ''}(quantite_restante, prix_achat_unitaire)
         `, { count: 'exact' })
         .eq('tenant_id', tenantId)

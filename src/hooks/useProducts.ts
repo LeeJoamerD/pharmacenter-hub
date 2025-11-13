@@ -48,7 +48,7 @@ export const useProducts = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select(`
           *
         `)

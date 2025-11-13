@@ -25,7 +25,7 @@ export const useProductsForOrders = (
       if (!tenantId) return { data: [], count: 0, totalPages: 1, currentPage: 1, hasMore: false };
 
       let queryBuilder = supabase
-        .from('produits')
+        .from('produits_with_stock')
         .select(`
           id, libelle_produit, code_cip, famille_id, rayon_id, forme_id, 
           laboratoires_id, dci_id, classe_therapeutique_id, categorie_tarification_id, 
