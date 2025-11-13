@@ -93,8 +93,8 @@ export const FIFOConfig = () => {
 
       const matchesType = selectedType === "all" || 
         (selectedType === "product" && config.produit_id) ||
-        (selectedType === "family" && config.famille_id && !config.produit_id) ||
-        (selectedType === "global" && !config.produit_id && !config.famille_id);
+        (selectedType === "family" && config.famille_produit_id && !config.produit_id) ||
+        (selectedType === "global" && !config.produit_id && !config.famille_produit_id);
 
       const matchesStatus = selectedStatus === "all" || 
         (selectedStatus === "active" && config.actif) ||
@@ -105,7 +105,7 @@ export const FIFOConfig = () => {
         matchesType,
         matchesStatus,
         produit_id: config.produit_id,
-        famille_id: config.famille_id,
+        famille_produit_id: config.famille_produit_id,
         actif: config.actif
       });
 
@@ -465,7 +465,7 @@ const CreateConfigModal = ({
     seuil_alerte_rotation: 30,
     action_automatique: false,
     produit_id: undefined,
-    famille_id: undefined,
+    famille_produit_id: undefined,
   });
   const [configType, setConfigType] = useState<"product" | "family" | "global">("product");
 
@@ -476,20 +476,20 @@ const CreateConfigModal = ({
       configType,
       formData,
       produit_id: formData.produit_id,
-      famille_id: formData.famille_id
+      famille_produit_id: formData.famille_produit_id
     });
     
     const submitData: CreateFIFOConfigInput = {
       ...formData,
       produit_id: configType === "product" ? formData.produit_id : undefined,
-      famille_id: configType === "family" ? formData.famille_id : undefined,
+      famille_produit_id: configType === "family" ? formData.famille_produit_id : undefined,
     };
 
     console.log('🔍 Submit Data Debug:', {
       configType,
       submitData,
       produit_id: submitData.produit_id,
-      famille_id: submitData.famille_id
+      famille_produit_id: submitData.famille_produit_id
     });
 
     onSubmit(submitData);
@@ -548,10 +548,10 @@ const CreateConfigModal = ({
             <div>
               <Label>Famille</Label>
               <Select 
-                value={formData.famille_id || ""} 
+                value={formData.famille_produit_id || ""} 
                 onValueChange={(value) => {
                   console.log('🔍 Family Selection Debug:', { value, configType });
-                  setFormData(prev => ({ ...prev, famille_id: value }));
+                  setFormData(prev => ({ ...prev, famille_produit_id: value }));
                 }}
               >
                 <SelectTrigger>

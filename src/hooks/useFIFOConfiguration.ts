@@ -8,7 +8,7 @@ export interface FIFOConfiguration {
   id: string;
   tenant_id: string;
   produit_id?: string;
-  famille_id?: string;
+  famille_produit_id?: string;
   actif: boolean;
   priorite?: number;
   delai_alerte_jours?: number;
@@ -38,7 +38,7 @@ export interface FIFOConfigurationWithDetails extends FIFOConfiguration {
 
 export interface CreateFIFOConfigInput {
   produit_id?: string;
-  famille_id?: string;
+  famille_produit_id?: string;
   actif?: boolean;
   priorite?: number;
   delai_alerte_jours?: number;
@@ -69,8 +69,8 @@ export const useFIFOConfiguration = () => {
       'configurations_fifo',
       `
         *,
-        produit:produits(id, libelle_produit),
-        famille:famille_produit!fk_produits_famille_id(id, libelle_famille)
+        produit:produits!produit_id(id, libelle_produit),
+        famille:famille_produit!famille_produit_id(id, libelle_famille)
       `,
       {},
       {
@@ -87,8 +87,8 @@ export const useFIFOConfiguration = () => {
       'configurations_fifo',
       `
         *,
-        produit:produits(id, libelle_produit),
-        famille:famille_produit!fk_produits_famille_id(id, libelle_famille)
+        produit:produits!produit_id(id, libelle_produit),
+        famille:famille_produit!famille_produit_id(id, libelle_famille)
       `,
       { id: configId },
       {
@@ -117,17 +117,17 @@ export const useFIFOConfiguration = () => {
         // @ts-ignore - Complex Supabase type inference
         const productResult: any = await supabase
           .from('produits')
-          .select('famille_id')
+          .select('famille_produit_id')
           .eq('id', productId)
           .single();
 
-        if (productResult.data?.famille_id) {
+        if (productResult.data?.famille_produit_id) {
           // @ts-ignore - Complex Supabase type inference
           const familyConfigResult: any = await supabase
             .from('configurations_fifo')
             .select('*')
             .eq('tenant_id', tenantId!)
-            .eq('famille_id', productResult.data.famille_id)
+            .eq('famille_produit_id', productResult.data.famille_produit_id)
             .single();
 
           if (familyConfigResult.data) return familyConfigResult.data;
@@ -152,7 +152,7 @@ export const useFIFOConfiguration = () => {
       ['fifo-configurations', 'family', familyId],
       'configurations_fifo',
       '*',
-      { famille_id: familyId },
+      { famille_produit_id: familyId },
       {
         enabled: !!tenantId && !!familyId,
       }
@@ -204,7 +204,7 @@ export const useFIFOConfiguration = () => {
     let type_regle = 'global'; // Default
     if (input.produit_id) {
       type_regle = 'produit';
-    } else if (input.famille_id) {
+    } else if (input.famille_produit_id) {
       type_regle = 'famille';
     }
     // Only use input.type_regle if no specific ID is provided
@@ -224,7 +224,7 @@ export const useFIFOConfiguration = () => {
 
     // Add optional fields only if they exist
     if (input.produit_id) dbData.produit_id = input.produit_id;
-    if (input.famille_id) dbData.famille_id = input.famille_id;
+    if (input.famille_produit_id) dbData.famille_produit_id = input.famille_produit_id;
     if ('id' in input && input.id) dbData.id = input.id;
 
     console.log('🔧 Transform to DB format:', {
