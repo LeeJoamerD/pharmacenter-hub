@@ -37,9 +37,9 @@ export const useGlobalAlertSettings = () => {
       const { data, error } = await supabase
         .from('global_alert_settings')
         .select('*')
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
+      if (error) {
         throw error;
       }
       return data;

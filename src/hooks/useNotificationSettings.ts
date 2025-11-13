@@ -45,9 +45,9 @@ export const useNotificationSettings = () => {
       const { data, error } = await supabase
         .from('notification_configurations')
         .select('*')
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
+      if (error) {
         throw error;
       }
       return data;
