@@ -101,12 +101,13 @@ export const exportStockReportToPDF = async (
 
     (doc as any).autoTable({
       startY: yPosition,
-      head: [['Catégorie', 'Stock Actuel', 'Limite', 'Alerte', 'Valorisation', 'Statut']],
+      head: [['Catégorie', 'Stock Actuel', 'Critique', 'Faible', 'Limite', 'Valorisation', 'Statut']],
       body: reportData.stockLevels.map(level => [
         level.categorie,
         level.stock_actuel.toString(),
+        level.stock_critique.toString(),
+        level.stock_faible.toString(),
         level.stock_limite.toString(),
-        level.stock_alerte.toString(),
         `${level.valorisation.toLocaleString()} FCFA`,
         level.statut.toUpperCase()
       ]),

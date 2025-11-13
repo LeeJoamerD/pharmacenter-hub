@@ -3,7 +3,8 @@ import { useTenantQuery } from './useTenantQuery';
 import { useAlertThresholds } from './useAlertThresholds';
 import { StockUpdateService } from '@/services/stockUpdateService';
 import { StockValuationService } from '@/services/stockValuationService';
-import { useStockSettings } from './useStockSettings';
+import { useAlertSettings } from './useAlertSettings';
+import { getStockThresholds, calculateStockStatus } from '@/utils/stockThresholds';
 
 export interface LowStockItem {
   id: string;
@@ -40,7 +41,7 @@ export interface LowStockMetrics {
 export const useLowStockData = () => {
   const { useTenantQueryWithCache } = useTenantQuery();
   const { thresholds } = useAlertThresholds();
-  const { settings: stockSettings } = useStockSettings();
+  const { settings: alertSettings } = useAlertSettings();
   const [lowStockItems, setLowStockItems] = useState<LowStockItem[]>([]);
   const [metrics, setMetrics] = useState<LowStockMetrics>({
     totalItems: 0,
@@ -61,7 +62,7 @@ export const useLowStockData = () => {
     'produits',
     `
       id, tenant_id, libelle_produit, code_cip,
-      prix_achat, prix_vente_ttc, stock_limite, stock_alerte,
+      prix_achat, prix_vente_ttc, stock_critique, stock_faible, stock_limite,
       famille_id, rayon_id, created_at, updated_at, is_active,
         famille_produit!fk_produits_famille_id(id, libelle_famille),
         rayons_produits(id, libelle_rayon)
@@ -112,50 +113,45 @@ export const useLowStockData = () => {
         // Utiliser le mapping au lieu d'appeler le service (1 requête au lieu de 310)
         const currentStock = stockByProduct[product.id] || 0;
         
-        // Get category-specific threshold
-        const categoryThreshold = thresholds?.find(t => 
-          t.category === product.famille_produit?.libelle_famille && t.enabled
+        // Utiliser la logique de cascade pour obtenir les seuils
+        const thresholdsForProduct = getStockThresholds(
+          {
+            stock_critique: product.stock_critique,
+            stock_faible: product.stock_faible,
+            stock_limite: product.stock_limite,
+          },
+          {
+            critical_stock_threshold: alertSettings?.critical_stock_threshold,
+            low_stock_threshold: alertSettings?.low_stock_threshold,
+            maximum_stock_threshold: alertSettings?.maximum_stock_threshold,
+          }
         );
-        const effectiveThreshold = categoryThreshold?.threshold || product.stock_limite || 10;
-        const optimalThreshold = product.stock_alerte || effectiveThreshold * 3;
         
-        console.log(`🔍 [LOW STOCK] Produit ${product.libelle_produit}: stock=${currentStock}, seuilMin=${effectiveThreshold}, seuilOptimal=${optimalThreshold}, id=${product.id}`);
+        console.log(`🔍 [LOW STOCK] Produit ${product.libelle_produit}: stock=${currentStock}, critique=${thresholdsForProduct.critique}, faible=${thresholdsForProduct.faible}, limite=${thresholdsForProduct.limite}`);
 
-        // Determine if this is a low stock item
-        let stockStatus: 'critique' | 'faible' | 'attention' | null = null;
+        // Ne garder que les produits en alerte de stock (faible ou critique)
+        const status = calculateStockStatus(currentStock, thresholdsForProduct);
+        if (status !== 'critique' && status !== 'faible') continue;
         
-        if (currentStock === 0) {
+        // Déterminer le statut d'alerte  
+        let stockStatus: 'critique' | 'faible' | 'attention' = 'attention';
+        if (status === 'critique' || currentStock === 0) {
           stockStatus = 'critique';
-        } else if (currentStock <= Math.floor(effectiveThreshold * 0.3)) {
-          stockStatus = 'critique';
-        } else if (currentStock <= effectiveThreshold) {
+        } else if (status === 'faible') {
           stockStatus = 'faible';
-        } else if (currentStock <= Math.floor(effectiveThreshold * 1.5)) {
-          stockStatus = 'attention';
         }
-
-        // Only include items that are actually low in stock
-        if (!stockStatus) continue;
 
         // Calculate stock value
         let stockValue = currentStock * (product.prix_achat || 0);
-        if (stockSettings && currentStock > 0) {
-          try {
-            const valuation = await StockValuationService.calculateValuation(product.id, stockSettings);
-            stockValue = valuation.totalValue;
-          } catch (error) {
-            console.warn('Valuation calculation failed:', error);
-          }
-        }
 
         // Calculate rotation and days without movement
         const daysSinceUpdate = product.updated_at 
           ? Math.floor((Date.now() - new Date(product.updated_at).getTime()) / (1000 * 60 * 60 * 24))
           : 999;
         
-        let rotation: 'rapide' | 'normale' | 'lente' = 'normale';
-        if (daysSinceUpdate < 7) rotation = 'rapide';
-        else if (daysSinceUpdate > 30) rotation = 'lente';
+        let rotation: 'rapide' | 'normale' | 'lente' = 
+          currentStock <= thresholdsForProduct.faible ? 'rapide' : 
+          currentStock <= thresholdsForProduct.limite ? 'normale' : 'lente';
 
         // Find principal supplier (simplified - could be enhanced)
         const principalSupplier = 'Non défini';
@@ -167,8 +163,8 @@ export const useLowStockData = () => {
           nomProduit: product.libelle_produit,
           dci: '',
           quantiteActuelle: currentStock,
-          seuilMinimum: effectiveThreshold,
-          seuilOptimal: optimalThreshold,
+          seuilMinimum: thresholdsForProduct.critique,
+          seuilOptimal: thresholdsForProduct.faible,
           unite: 'unités', // Could be enhanced from product data
           categorie: product.famille_produit?.libelle_famille || 'Non catégorisé',
           fournisseurPrincipal: principalSupplier,
@@ -189,7 +185,7 @@ export const useLowStockData = () => {
     };
 
     processLowStockData();
-  }, [products, lots, thresholds, stockSettings]);
+  }, [products, lots, thresholds, alertSettings]);
 
   // Calculate metrics
   useEffect(() => {

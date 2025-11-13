@@ -19,7 +19,7 @@ export class SupplyReportsService {
       const { data: stockLevels } = await supabase
         .from('produits')
         .select(`
-          id, libelle_produit, stock_limite, stock_alerte,
+          id, libelle_produit, stock_critique, stock_faible, stock_limite,
           lots(quantite_restante, prix_achat_unitaire)
         `)
         .eq('is_active', true);
