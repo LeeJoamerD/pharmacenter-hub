@@ -7,22 +7,25 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Eye, Calendar, Package, MapPin, AlertTriangle } from "lucide-react";
+import { Search, Filter, Eye, Calendar, Package, MapPin, AlertTriangle, Layers } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { LotDetailsDialog } from "./LotDetailsDialog";
+import { DetailBreakdownDialog } from "./dialogs/DetailBreakdownDialog";
 
 export const LotTracker = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isDetailBreakdownDialogOpen, setIsDetailBreakdownDialogOpen] = useState(false);
+  const [selectedLotForBreakdown, setSelectedLotForBreakdown] = useState<string | null>(null);
 
   const { useLotsQuery, calculateDaysToExpiration, determineUrgencyLevel } = useLots();
   const { settings: alertSettings } = useAlertSettings();
   
   // Récupération de tous les lots sans filtrage côté serveur
-  const { data: lots, isLoading, error } = useLotsQuery({});
+  const { data: lots, isLoading, error, refetch } = useLotsQuery({});
 
   // Filtrage côté client basé sur les données réelles
   const getFilteredLotsByStatus = (allLots: any[], filter: string) => {
@@ -314,6 +317,20 @@ export const LotTracker = () => {
         onClose={() => {
           setIsDetailsDialogOpen(false);
           setSelectedLot(null);
+        }}
+      />
+
+      {/* Dialog de mise en détail */}
+      <DetailBreakdownDialog
+        lotId={selectedLotForBreakdown}
+        isOpen={isDetailBreakdownDialogOpen}
+        onClose={() => {
+          setIsDetailBreakdownDialogOpen(false);
+          setSelectedLotForBreakdown(null);
+        }}
+        onSuccess={() => {
+          // Rafraîchir les données après succès
+          refetch();
         }}
       />
     </div>
