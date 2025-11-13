@@ -253,12 +253,18 @@ export const usePOSData = () => {
         date_mouvement: new Date().toISOString(),
         agent_id: transactionData.agent_id,
         reference_type: 'vente',
-        reference_id: vente.id
+        reference_id: vente.id,
+        lot_id: item.lot?.id || null
       }));
 
-      await supabase
+      const { error: mouvementError } = await supabase
         .from('stock_mouvements')
         .insert(mouvementsStock);
+
+      if (mouvementError) {
+        console.error('Erreur mouvements stock:', mouvementError);
+        // Ne pas bloquer la vente, juste logger
+      }
 
       return {
         vente_id: vente.id,

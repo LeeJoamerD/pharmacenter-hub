@@ -321,12 +321,8 @@ const POSInterface = () => {
         // Enregistrer analytiques POS
         if (activeSession) {
           try {
-            const caisseId = typeof activeSession.caisse === 'string' 
-              ? activeSession.caisse 
-              : activeSession.id;
-            
             await recordTransaction({
-              caisse_id: caisseId,
+              caisse_id: activeSession.caisse_id,
               agent_id: currentUser?.id || '',
               montant: calculateTotal(),
               mode_paiement: paymentData.method === 'cash' ? 'especes' : 
