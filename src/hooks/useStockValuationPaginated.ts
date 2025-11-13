@@ -200,38 +200,41 @@ export const useStockValuationPaginated = ({
             totalValue: rpcResult.totalValue,
           });
 
-          // Enrichir les items avec les libellés famille/rayon
-          const enrichedItems: StockValuationItem[] = await Promise.all(
-            (rpcResult.items || []).map(async (item: any) => {
-              // Récupérer les libellés si nécessaire
-              let famille_libelle: string | undefined;
-              let rayon_libelle: string | undefined;
+          // Enrichir les items avec les libellés famille/rayon (optimisé avec requêtes groupées)
+          const rpcFamilleIds = [...new Set(rpcResult.items.map((item: any) => item.famille_id).filter(Boolean))];
+          const rpcRayonIds = [...new Set(rpcResult.items.map((item: any) => item.rayon_id).filter(Boolean))];
 
-              if (item.famille_id) {
-                const { data: famille } = await supabase
+          // Charger tous les libellés en 2 requêtes au lieu de N requêtes
+          const [rpcFamillesData, rpcRayonsData] = await Promise.all([
+            rpcFamilleIds.length > 0
+              ? supabase
                   .from('famille_produit')
-                  .select('libelle_famille')
-                  .eq('id', item.famille_id)
-                  .single();
-                famille_libelle = famille?.libelle_famille;
-              }
-
-              if (item.rayon_id) {
-                const { data: rayon } = await supabase
+                  .select('id, libelle_famille')
+                  .in('id', rpcFamilleIds)
+              : Promise.resolve({ data: [] }),
+            rpcRayonIds.length > 0
+              ? supabase
                   .from('rayons_produits')
-                  .select('libelle_rayon')
-                  .eq('id', item.rayon_id)
-                  .single();
-                rayon_libelle = rayon?.libelle_rayon;
-              }
+                  .select('id, libelle_rayon')
+                  .in('id', rpcRayonIds)
+              : Promise.resolve({ data: [] }),
+          ]);
 
-              return {
-                ...item,
-                famille_libelle,
-                rayon_libelle,
-              } as StockValuationItem;
-            })
+          // Créer des maps pour lookup rapide
+          const rpcFamilleMap = new Map(
+            (rpcFamillesData.data || []).map((f: any) => [f.id, f.libelle_famille])
           );
+          const rpcRayonMap = new Map(
+            (rpcRayonsData.data || []).map((r: any) => [r.id, r.libelle_rayon])
+          );
+
+          // Enrichir les items
+          const enrichedItems: StockValuationItem[] = rpcResult.items.map((item: any) => ({
+            ...item,
+            famille_libelle: item.famille_id ? rpcFamilleMap.get(item.famille_id) : undefined,
+            rayon_libelle: item.rayon_id ? rpcRayonMap.get(item.rayon_id) : undefined,
+            rotation: item.rotation > 5 ? 'rapide' : item.rotation > 1 ? 'normale' : 'lente',
+          }));
 
           // Calculer les métriques complètes
           const metrics: StockValuationMetrics = {
