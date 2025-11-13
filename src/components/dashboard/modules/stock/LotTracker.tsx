@@ -247,10 +247,21 @@ export const LotTracker = () => {
                   const daysToExpiration = lot.date_peremption ? calculateDaysToExpiration(lot.date_peremption) : null;
                   const urgencyLevel = daysToExpiration !== null ? determineUrgencyLevel(daysToExpiration) : 'faible';
                   const stockLevel = getStockLevel(lot.quantite_initiale, lot.quantite_restante);
+                  const isDetailable = lot.produit?.quantite_unites_details_source && lot.produit.quantite_unites_details_source > 0;
 
                   return (
                     <TableRow key={lot.id}>
-                      <TableCell className="font-medium">{lot.numero_lot}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {lot.numero_lot}
+                          {isDetailable && (
+                            <Badge variant="secondary" className="text-xs">
+                              <Layers className="h-3 w-3 mr-1" />
+                              Détaillable
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div>
                           <div className="font-medium">{lot.produit?.libelle_produit}</div>
@@ -309,7 +320,8 @@ export const LotTracker = () => {
                               setSelectedLotForBreakdown(lot.id);
                               setIsDetailBreakdownDialogOpen(true);
                             }}
-                            title="Mise en détail"
+                            title={isDetailable ? "Mise en détail" : "Produit non détaillable"}
+                            disabled={!isDetailable || lot.quantite_restante < 1}
                           >
                             <Layers className="h-4 w-4" />
                           </Button>
