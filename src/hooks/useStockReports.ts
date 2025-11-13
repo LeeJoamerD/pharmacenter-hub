@@ -161,26 +161,28 @@ export const useStockReports = (
       });
 
       // Fonction pour déterminer le statut
-      const getStockStatus = (actuel: number, minimum: number, maximum: number): 'critique' | 'attention' | 'normal' | 'surstock' => {
-        if (actuel === 0 || actuel < minimum) return 'critique';
-        if (actuel < minimum * 1.2) return 'attention';
-        if (actuel > maximum) return 'surstock';
+      const getStockStatus = (actuel: number, critique: number, faible: number, limite: number): 'critique' | 'attention' | 'normal' | 'surstock' => {
+        if (actuel === 0 || actuel <= critique) return 'critique';
+        if (actuel <= faible) return 'attention';
+        if (actuel > limite) return 'surstock';
         return 'normal';
       };
 
       const levels: StockLevel[] = Object.values(grouped).map((g: any) => {
+        const stock_critique = g.count > 0 ? g.stock_critique_sum / g.count : 2;
+        const stock_faible = g.count > 0 ? g.stock_faible_sum / g.count : 5;
         const stock_limite = g.count > 0 ? g.stock_limite_sum / g.count : 10;
-        const stock_alerte = g.count > 0 ? g.stock_alerte_sum / g.count : 20;
-        const pourcentage = stock_alerte > 0 ? (g.stock_actuel / stock_alerte) * 100 : 0;
+        const pourcentage = stock_limite > 0 ? (g.stock_actuel / stock_limite) * 100 : 0;
 
         return {
           categorie: g.categorie,
           nb_produits: g.nb_produits,
           stock_actuel: Math.round(g.stock_actuel),
+          stock_critique: Math.round(stock_critique),
+          stock_faible: Math.round(stock_faible),
           stock_limite: Math.round(stock_limite),
-          stock_alerte: Math.round(stock_alerte),
           valorisation: Math.round(g.valorisation),
-          statut: getStockStatus(g.stock_actuel, stock_limite, stock_alerte),
+          statut: getStockStatus(g.stock_actuel, stock_critique, stock_faible, stock_limite),
           pourcentage: Math.round(pourcentage)
         };
       });

@@ -14,8 +14,9 @@ export interface StockLevel {
   categorie: string;
   nb_produits: number;
   stock_actuel: number;
+  stock_critique: number;
+  stock_faible: number;
   stock_limite: number;
-  stock_alerte: number;
   valorisation: number;
   statut: 'critique' | 'attention' | 'normal' | 'surstock';
   pourcentage: number;

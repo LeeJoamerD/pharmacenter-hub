@@ -36,43 +36,52 @@ export class SupplyIntelligenceService {
         {
           id: '1',
           libelle_produit: 'Paracétamol 500mg',
+          stock_critique: 2,
+          stock_faible: 5,
           stock_limite: 100,
-          stock_alerte: 500,
           stock_actuel: 50
         },
         {
           id: '2',
           libelle_produit: 'Amoxicilline 250mg',
+          stock_critique: 2,
+          stock_faible: 5,
           stock_limite: 50,
-          stock_alerte: 200,
           stock_actuel: 0
         },
         {
           id: '3',
           libelle_produit: 'Vitamine C 500mg',
+          stock_critique: 2,
+          stock_faible: 5,
           stock_limite: 200,
-          stock_alerte: 1000,
           stock_actuel: 150
         }
       ];
 
       for (const product of mockProducts) {
         const stockActuel = product.stock_actuel;
-        const stockLimite = product.stock_limite || 0;
-        const stockAlerte = product.stock_alerte || stockLimite * 2;
+        const stockCritique = product.stock_critique || 2;
+        const stockFaible = product.stock_faible || 5;
+        const stockLimite = product.stock_limite || 10;
 
-        if (stockActuel <= stockLimite) {
-          const quantiteSuggeree = Math.max(stockAlerte - stockActuel, stockLimite);
+        if (stockActuel <= stockFaible) {
+          const quantiteSuggeree = Math.max(stockLimite - stockActuel, stockFaible);
           
           let urgence: 'low' | 'medium' | 'high' | 'critical' = 'medium';
-          if (stockActuel === 0) urgence = 'critical';
-          else if (stockActuel < stockLimite * 0.5) urgence = 'high';
+          if (stockActuel === 0) {
+            urgence = 'critical';
+          } else if (stockActuel <= stockCritique) {
+            urgence = 'high';
+          } else if (stockActuel <= stockFaible) {
+            urgence = 'medium';
+          }
 
           recommendations.push({
             produit_id: product.id,
             nom_produit: product.libelle_produit,
             stock_actuel: stockActuel,
-            stock_minimum: stockLimite,
+            stock_minimum: stockCritique,
             quantite_suggere: quantiteSuggeree,
             urgence,
             raison: stockActuel === 0 ? 'Stock épuisé' : 'Stock sous le seuil critique'

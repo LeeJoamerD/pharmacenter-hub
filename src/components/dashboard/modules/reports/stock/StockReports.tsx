@@ -285,7 +285,7 @@ const StockReports = () => {
               ) : (
                 <div className="space-y-6">
                   {stockLevels.map((item, index) => {
-                    const status = getStockStatus(item.stock_actuel, item.stock_limite, item.stock_alerte);
+                    const status = getStockStatus(item.stock_actuel, item.stock_critique, item.stock_faible);
                     
                     return (
                       <div key={index} className="space-y-3">
@@ -305,8 +305,9 @@ const StockReports = () => {
                         </div>
                         <div className="space-y-2">
                           <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Critique: {item.stock_critique}</span>
+                            <span>Faible: {item.stock_faible}</span>
                             <span>Limite: {item.stock_limite}</span>
-                            <span>Alerte: {item.stock_alerte}</span>
                           </div>
                           <Progress value={item.pourcentage} className="h-2" />
                         </div>

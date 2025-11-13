@@ -65,7 +65,7 @@ export const useStockMetrics = () => {
         supabase
           .from('produits_with_stock')
           .select(`
-            id, stock_limite, stock_alerte, libelle_produit, stock_actuel,
+            id, stock_critique, stock_faible, stock_limite, libelle_produit, stock_actuel,
             famille_id, rayon_id,
             famille_produit!fk_produits_famille_id(libelle_famille)
           `)
