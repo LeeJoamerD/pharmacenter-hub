@@ -66,7 +66,7 @@ export const useStockAlertsWithProducts = (params: UseStockAlertsWithProductsPar
     totalValue: 0
   });
 
-  // Utiliser la RPC pour charger les alertes avec pagination
+  // Utiliser la RPC pour charger les alertes avec pagination et métriques globales
   const { data: alertsResponse, isLoading, refetch } = useQuery({
     queryKey: ['stock-alerts-with-products', tenantId, page, limit, debouncedSearch, category, status, sortBy, sortOrder],
     queryFn: async () => {
@@ -94,13 +94,12 @@ export const useStockAlertsWithProducts = (params: UseStockAlertsWithProductsPar
     refetchOnWindowFocus: false,
   });
 
-  // Extraire les données de la réponse (nouvelle structure JSONB)
+  // Extraire les données de la réponse (nouvelle structure avec métriques)
   const alertProducts: StockAlertProduct[] = (alertsResponse as any)?.data || [];
   const totalCount: number = (alertsResponse as any)?.total || 0;
   const totalPages = Math.ceil(totalCount / limit);
 
-  // Extraire les métriques globales retournées par la RPC
-  // Ces métriques sont calculées sur TOUTES les données (pas seulement la page courante)
+  // Utiliser les métriques GLOBALES calculées côté serveur (pas uniquement la page courante)
   const globalMetrics: StockAlertMetrics = {
     totalItems: (alertsResponse as any)?.metrics?.total_alerts || 0,
     ruptureItems: (alertsResponse as any)?.metrics?.ruptures || 0,
