@@ -184,11 +184,24 @@ export const useStockValuationPaginated = ({
     queryFn: async () => {
       if (!tenantId) throw new Error('Tenant ID manquant');
 
+      // ========================================
+      // ⚠️ APPEL RPC TEMPORAIREMENT DÉSACTIVÉ (2025-11-13)
+      // ========================================
+      // RAISON: Désaccord entre paramètres TypeScript et SQL
+      //   - p_page (TS) vs p_page_offset (SQL)
+      //   - p_search_term (TS) vs p_search (SQL)
+      //   - p_famille_filter (TS) vs p_famille_id (SQL)
+      //   - p_rayon_filter (TS) vs p_rayon_id (SQL)
+      //   - p_sort_field + p_sort_direction (TS) vs p_sort_by (SQL)
+      //   - Manque p_evolution_period dans l'appel TS
+      //
+      // TODO: Corriger la signature SQL pour correspondre aux paramètres TypeScript
+      //   OU ajuster l'appel TypeScript pour correspondre à la signature SQL
+      //
+      // CODE COMMENTÉ (à réactiver après correction):
+      /*
       console.log('[useStockValuationPaginated] 🚀 Tentative d\'utilisation de la RPC optimisée...');
 
-      // ========================================
-      // PRIORITÉ 1: Essayer la RPC optimisée
-      // ========================================
       try {
         const { data: rpcData, error: rpcError } = await supabase.rpc(
           'calculate_stock_valuation_paginated',
@@ -206,7 +219,6 @@ export const useStockValuationPaginated = ({
           } as any
         );
 
-        // Type assertion pour le résultat de la RPC
         const rpcResult = rpcData as unknown as RPCValuationResult | null;
 
         if (!rpcError && rpcResult && !rpcResult.error) {
@@ -216,11 +228,9 @@ export const useStockValuationPaginated = ({
             totalValue: rpcResult.totalValue,
           });
 
-          // Enrichir les items avec les libellés famille/rayon (optimisé avec requêtes groupées)
           const rpcFamilleIds = [...new Set(rpcResult.items.map((item: any) => item.famille_id).filter(Boolean))];
           const rpcRayonIds = [...new Set(rpcResult.items.map((item: any) => item.rayon_id).filter(Boolean))];
 
-          // Charger tous les libellés en 2 requêtes au lieu de N requêtes
           const [rpcFamillesData, rpcRayonsData] = await Promise.all([
             rpcFamilleIds.length > 0
               ? supabase
@@ -236,7 +246,6 @@ export const useStockValuationPaginated = ({
               : Promise.resolve({ data: [] }),
           ]);
 
-          // Créer des maps pour lookup rapide
           const rpcFamilleMap = new Map(
             (rpcFamillesData.data || []).map((f: any) => [f.id, f.libelle_famille])
           );
@@ -244,7 +253,6 @@ export const useStockValuationPaginated = ({
             (rpcRayonsData.data || []).map((r: any) => [r.id, r.libelle_rayon])
           );
 
-          // Enrichir les items
           const enrichedItems: StockValuationItem[] = rpcResult.items.map((item: any) => ({
             ...item,
             famille_libelle: item.famille_id ? rpcFamilleMap.get(item.famille_id) : undefined,
@@ -252,7 +260,6 @@ export const useStockValuationPaginated = ({
             rotation: item.rotation > 5 ? 'rapide' : item.rotation > 1 ? 'normale' : 'lente',
           }));
 
-          // Calculer les métriques complètes
           const metrics: StockValuationMetrics = {
             totalStockValue: parseFloat(rpcResult.totalValue?.toString() || '0') || 0,
             availableStockValue: enrichedItems
@@ -270,7 +277,6 @@ export const useStockValuationPaginated = ({
             outOfStockProducts: enrichedItems.filter(p => p.statut_stock === 'rupture').length,
           };
 
-          // ✅ Use aggregations from RPC (includes ALL filtered items, even rupture products)
           const totalValueForPercentage = parseFloat(rpcResult.totalValue?.toString() || '0') || 0;
           
           const valuationByFamily: ValuationByCategory[] = (rpcResult.familyAggregations || []).map(agg => ({
@@ -295,7 +301,6 @@ export const useStockValuationPaginated = ({
             productCount: agg.product_count
           })).sort((a, b) => b.value - a.value);
 
-          // Top 20 produits par valorisation
           const topValueProducts = enrichedItems
             .filter(p => p.stock_actuel > 0)
             .slice()
@@ -319,6 +324,7 @@ export const useStockValuationPaginated = ({
       } catch (rpcError) {
         console.warn('[useStockValuationPaginated] ⚠️ Exception RPC, fallback vers calcul client:', rpcError);
       }
+      */
 
       // ========================================
       // FALLBACK: Calcul client-side (logique existante)
@@ -678,7 +684,7 @@ export const useStockValuationPaginated = ({
       };
     },
     enabled: !!tenantId,
-    staleTime: 60 * 1000, // 1 minute au lieu de 30 secondes
+    staleTime: 5 * 60 * 1000, // 5 minutes - optimisation cache client-side
     refetchOnMount: 'always',
     refetchOnWindowFocus: false, // Désactivé pour améliorer les performances
     placeholderData: (previousData) => previousData,
