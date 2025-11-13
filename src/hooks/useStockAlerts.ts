@@ -55,18 +55,46 @@ export const useStockAlerts = () => {
     { statut: 'active' }
   );
 
-  // ✅ CORRECTION CRITIQUE: Récupérer uniquement les produits concernés par les alertes
-  const productIds = Array.from(new Set(alerts.map(a => a.produit_id))).filter(Boolean);
-  const { data: products = [] } = useTenantQueryWithCache(
-    ['products-for-alerts', productIds.join(',')],
-    'produits',
-    'id, libelle_produit, code_cip',
-    productIds.length > 0 ? { id: productIds } : undefined,
-    { 
-      limit: 1000,
-      enabled: productIds.length > 0
-    }
-  );
+  // ✅ OPTIMISATION: Utiliser batchQuery pour charger les produits par lots de 100
+  const productIds = Array.from(new Set(alerts.map(a => a.produit_id).filter(Boolean))) as string[];
+  const [products, setProducts] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      if (productIds.length === 0) {
+        setProducts([]);
+        return;
+      }
+
+      try {
+        // Importer la fonction batchQuery
+        const { batchQuery } = await import('@/utils/queryHelpers');
+        
+        const allProducts = await batchQuery(
+          productIds,
+          async (batch: string[]) => {
+            const { data, error } = await supabase
+              .from('produits')
+              .select('id, libelle_produit, code_cip')
+              .in('id', batch);
+            
+            if (error) throw error;
+            return data || [];
+          },
+          100 // Charger par lots de 100
+        );
+
+        setProducts(allProducts);
+      } catch (error) {
+        console.error('❌ Erreur chargement produits par lots:', error);
+        setProducts([]);
+      }
+    };
+
+    loadProducts();
+  }, [productIds.join(',')]);
+
+  // Note: On ne peut plus utiliser useTenantQueryWithCache ici car on utilise batchQuery
 
   // Transform alerts to match interface
   useEffect(() => {
