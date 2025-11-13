@@ -94,19 +94,19 @@ export const useStockAlertsWithProducts = (params: UseStockAlertsWithProductsPar
     refetchOnWindowFocus: false,
   });
 
-  // Extraire les données de la réponse
+  // Extraire les données de la réponse (nouvelle structure JSONB)
   const alertProducts: StockAlertProduct[] = (alertsResponse as any)?.data || [];
   const totalCount: number = (alertsResponse as any)?.total || 0;
   const totalPages = Math.ceil(totalCount / limit);
 
-  // Calculer les métriques à partir des données paginées actuelles
-  // Note: Pour des métriques précises sur TOUTES les données, il faudrait une RPC séparée
-  const currentPageMetrics: StockAlertMetrics = {
-    totalItems: totalCount,
-    ruptureItems: alertProducts.filter(p => p.stock_status === 'rupture').length,
-    criticalItems: alertProducts.filter(p => p.stock_status === 'critique').length,
-    lowItems: alertProducts.filter(p => p.stock_status === 'faible').length,
-    totalValue: alertProducts.reduce((sum, p) => sum + (p.valeur_stock || 0), 0)
+  // Extraire les métriques globales retournées par la RPC
+  // Ces métriques sont calculées sur TOUTES les données (pas seulement la page courante)
+  const globalMetrics: StockAlertMetrics = {
+    totalItems: (alertsResponse as any)?.metrics?.total_alerts || 0,
+    ruptureItems: (alertsResponse as any)?.metrics?.ruptures || 0,
+    criticalItems: (alertsResponse as any)?.metrics?.critiques || 0,
+    lowItems: (alertsResponse as any)?.metrics?.faibles || 0,
+    totalValue: (alertsResponse as any)?.metrics?.total_value || 0
   };
 
   return {
@@ -114,7 +114,7 @@ export const useStockAlertsWithProducts = (params: UseStockAlertsWithProductsPar
     totalCount,
     totalPages,
     currentPage: page,
-    metrics: currentPageMetrics,
+    metrics: globalMetrics,
     isLoading,
     refetch
   };
