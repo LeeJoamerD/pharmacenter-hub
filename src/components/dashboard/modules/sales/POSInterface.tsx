@@ -21,10 +21,13 @@ import { useCashSession } from '@/hooks/useCashSession';
 import { useLoyaltyProgram } from '@/hooks/useLoyaltyProgram';
 import { usePOSAnalytics } from '@/hooks/usePOSAnalytics';
 import { useRegionalSettings } from '@/hooks/useRegionalSettings';
+import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionData, CartItemWithLot } from '@/types/pos';
 import { setupBarcodeScanner } from '@/utils/barcodeScanner';
+import { printReceipt } from '@/utils/receiptPrinter';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export interface CartItem {
@@ -48,7 +51,8 @@ export interface Customer {
 const POSInterface = () => {
   const { tenantId, currentUser } = useTenant();
   const { toast } = useToast();
-  const { currency } = useRegionalSettings();
+  const { currency, autoPrint } = useRegionalSettings();
+  const { settings, getPharmacyInfo } = useGlobalSystemSettings();
   
   // Hook principal POS
   const { 
@@ -341,6 +345,75 @@ const POSInterface = () => {
           title: "Vente enregistrée",
           description: `Facture N° ${result.numero_facture}`,
         });
+
+        // Impression automatique du reçu
+        if (autoPrint) {
+          try {
+            // Récupérer les détails de la vente pour l'impression
+            const { data: venteDetails, error: venteError } = await supabase
+              .from('ventes')
+              .select(`
+                *,
+                lignes_ventes!lignes_ventes_vente_id_fkey(
+                  *,
+                  produit:produits!lignes_ventes_produit_id_fkey(libelle_produit)
+                )
+              `)
+              .eq('id', result.vente_id)
+              .single();
+
+            if (!venteError && venteDetails) {
+              // Récupérer infos pharmacie depuis les paramètres système
+              const pharmacyInfo = getPharmacyInfo();
+
+              // Préparer les données du reçu
+              const receiptData = {
+                vente: {
+                  numero_vente: venteDetails.numero_vente,
+                  date_vente: venteDetails.date_vente,
+                  montant_total_ttc: venteDetails.montant_total_ttc,
+                  montant_net: venteDetails.montant_net,
+                  remise_globale: venteDetails.remise_globale,
+                  montant_paye: venteDetails.montant_paye,
+                  montant_rendu: venteDetails.montant_rendu,
+                  mode_paiement: venteDetails.mode_paiement,
+                },
+                lignes: venteDetails.lignes_ventes || [],
+                pharmacyInfo: {
+                  name: pharmacyInfo.name,
+                  adresse: pharmacyInfo.address,
+                  telephone: pharmacyInfo.telephone_appel || pharmacyInfo.telephone_whatsapp,
+                },
+                agentName: currentUser?.prenoms && currentUser?.noms 
+                  ? `${currentUser.prenoms} ${currentUser.noms}` 
+                  : 'Agent'
+              };
+
+              // Imprimer le reçu
+              const pdfUrl = await printReceipt(receiptData);
+              
+              // Ouvrir le reçu dans une nouvelle fenêtre pour impression
+              const printWindow = window.open(pdfUrl, '_blank');
+              if (printWindow) {
+                printWindow.onload = () => {
+                  printWindow.print();
+                };
+              }
+
+              toast({
+                title: "Reçu généré",
+                description: "Le reçu a été envoyé à l'imprimante",
+              });
+            }
+          } catch (printError) {
+            console.error('Erreur impression reçu:', printError);
+            toast({
+              title: "Avertissement",
+              description: "Vente enregistrée mais impossible d'imprimer le reçu",
+              variant: "default"
+            });
+          }
+        }
 
         await refreshProducts();
         clearCart();

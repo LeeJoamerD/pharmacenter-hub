@@ -183,6 +183,7 @@ export const usePOSData = () => {
 
       // 5. Insérer la vente
       const venteData: any = {
+        tenant_id: tenantId,
         numero_vente: numeroFacture,
         date_vente: new Date().toISOString(),
         montant_total_ht: montantHT,
