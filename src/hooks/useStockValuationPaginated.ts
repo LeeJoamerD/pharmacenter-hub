@@ -224,17 +224,26 @@ export const useStockValuationPaginated = ({
           stock_critique, stock_faible, stock_limite,
           famille_produit!fk_produits_famille_id(libelle_famille),
           rayons_produits!rayon_id(libelle_rayon),
-          lots!inner(quantite_restante, prix_achat_unitaire)
+          lots(quantite_restante, prix_achat_unitaire)
         `, { count: 'exact' })
         .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .gt('lots.quantite_restante', 0); // Ne charger QUE les produits avec stock
+        .eq('is_active', true);
 
       // ✅ Ajouter la recherche AVANT le limit (côté serveur)
       if (debouncedSearchTerm) {
         productsQuery = productsQuery.or(
           `libelle_produit.ilike.%${debouncedSearchTerm}%,code_cip.ilike.%${debouncedSearchTerm}%`
         );
+      }
+
+      // ✅ Appliquer le tri côté serveur pour les champs non calculés AVANT limit
+      if (sortField === 'libelle_produit') {
+        productsQuery = productsQuery.order('libelle_produit', { ascending: sortDirection === 'asc' });
+      } else if (sortField === 'code_cip') {
+        productsQuery = productsQuery.order('code_cip', { ascending: sortDirection === 'asc' });
+      } else {
+        // Pour stock_actuel et valeur_stock (calculés dynamiquement), tri par défaut puis tri client
+        productsQuery = productsQuery.order('libelle_produit', { ascending: true });
       }
 
       // Charger SEULEMENT 500 produits pour analyse et Top 20
@@ -246,13 +255,20 @@ export const useStockValuationPaginated = ({
         throw productsError;
       }
 
+      console.log('[useStockValuationPaginated] Products loaded:', {
+        total: allProducts?.length || 0,
+        statusFilter,
+        sortField,
+        sortDirection
+      });
+
       // 6. Calculer la rotation pour tous les produits (avec limite)
       const productIds = allProducts.slice(0, 1000).map(p => p.id); // Limite à 1000 pour la rotation
       const rotationMap = await calculateProductRotationsBatch(productIds);
 
       // 7. Traiter les produits avec rotation dynamique
       const processedItems: StockValuationItem[] = allProducts.map((product: any) => {
-        const lots = product.lots || [];
+        const lots = Array.isArray(product.lots) ? product.lots : [];
         const stock_actuel = lots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0);
         const valeur_stock = lots.reduce((sum: number, lot: any) => 
           sum + ((lot.quantite_restante || 0) * (lot.prix_achat_unitaire || product.prix_achat || 0)), 0
@@ -291,14 +307,37 @@ export const useStockValuationPaginated = ({
         };
       });
 
+      console.log('[useStockValuationPaginated] Processed items:', {
+        total: processedItems.length,
+        with_stock: processedItems.filter(p => p.stock_actuel > 0).length,
+        rupture: processedItems.filter(p => p.stock_actuel === 0).length,
+        disponible: processedItems.filter(p => p.statut_stock === 'disponible').length,
+        faible: processedItems.filter(p => p.statut_stock === 'faible').length,
+        critique: processedItems.filter(p => p.statut_stock === 'critique').length,
+      });
+
       // 8. Filtrer par statut et rotation
       let filteredItems = processedItems.filter(item => {
-        if (statusFilter && statusFilter !== 'all' && item.statut_stock !== statusFilter) return false;
+        // ✅ Filtre spécial pour "disponible" : tous les produits avec stock > 0
+        if (statusFilter === 'disponible') {
+          if (item.stock_actuel === 0) return false;
+        } 
+        // ✅ Filtre pour les autres statuts : correspondance exacte
+        else if (statusFilter && statusFilter !== 'all' && item.statut_stock !== statusFilter) {
+          return false;
+        }
+        
         if (rotationFilter && rotationFilter !== 'all' && item.rotation !== rotationFilter) return false;
         return true;
       });
 
-      // 9. Trier
+      console.log('[useStockValuationPaginated] Filtered items:', {
+        total: filteredItems.length,
+        statusFilter,
+        rotationFilter
+      });
+
+      // 9. Trier côté client pour les champs calculés
       filteredItems.sort((a, b) => {
         let comparison = 0;
         switch (sortField) {
