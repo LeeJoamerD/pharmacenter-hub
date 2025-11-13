@@ -22,7 +22,7 @@ export interface StockValuationItem {
   stock_faible: number;
   stock_critique: number;
   valeur_stock: number;
-  statut_stock: 'disponible' | 'faible' | 'critique' | 'rupture';
+  statut_stock: 'normal' | 'faible' | 'critique' | 'rupture' | 'surstock';
   rotation: 'rapide' | 'normale' | 'lente';
   date_derniere_entree?: string;
   date_derniere_sortie?: string;
@@ -87,6 +87,20 @@ interface RPCValuationResult {
   items: any[];
   totalCount: number;
   totalValue: number;
+  familyAggregations?: Array<{
+    famille_id: string;
+    famille_libelle: string;
+    product_count: number;
+    total_quantity: number;
+    total_value: number;
+  }>;
+  rayonAggregations?: Array<{
+    rayon_id: string;
+    rayon_libelle: string;
+    product_count: number;
+    total_quantity: number;
+    total_value: number;
+  }>;
   page: number;
   pageSize: number;
   error?: string;
@@ -187,6 +201,8 @@ export const useStockValuationPaginated = ({
             p_search_term: debouncedSearchTerm || null,
             p_famille_filter: null,
             p_rayon_filter: null,
+            p_sort_field: sortField,
+            p_sort_direction: sortDirection,
           }
         );
 
@@ -240,7 +256,7 @@ export const useStockValuationPaginated = ({
           const metrics: StockValuationMetrics = {
             totalStockValue: parseFloat(rpcResult.totalValue?.toString() || '0') || 0,
             availableStockValue: enrichedItems
-              .filter(p => p.statut_stock === 'disponible')
+              .filter(p => p.statut_stock === 'normal')
               .reduce((sum, p) => sum + (p.valeur_stock || 0), 0),
             lowStockValue: enrichedItems
               .filter(p => p.statut_stock === 'faible' || p.statut_stock === 'critique')
@@ -249,64 +265,34 @@ export const useStockValuationPaginated = ({
               ? parseFloat(rpcResult.totalValue?.toString() || '0') / rpcResult.totalCount
               : 0,
             totalProducts: rpcResult.totalCount || 0,
-            availableProducts: enrichedItems.filter(p => p.statut_stock === 'disponible').length,
+            availableProducts: enrichedItems.filter(p => p.stock_actuel > 0).length,
             lowStockProducts: enrichedItems.filter(p => p.statut_stock === 'faible' || p.statut_stock === 'critique').length,
             outOfStockProducts: enrichedItems.filter(p => p.statut_stock === 'rupture').length,
           };
 
-          // Calculer valorisation par famille (depuis enrichedItems)
-          const familyMap = new Map<string, { name: string; value: number; quantity: number; productCount: number }>();
-          enrichedItems.forEach(product => {
-            if (product.famille_libelle) {
-              const key = product.famille_id || 'unknown';
-              const existing = familyMap.get(key) || { 
-                name: product.famille_libelle, 
-                value: 0, 
-                quantity: 0, 
-                productCount: 0 
-              };
-              existing.value += product.valeur_stock;
-              existing.quantity += product.stock_actuel;
-              existing.productCount += 1;
-              familyMap.set(key, existing);
-            }
-          });
-
-          const totalValue = enrichedItems.reduce((sum, p) => sum + p.valeur_stock, 0);
-          const valuationByFamily = Array.from(familyMap.entries()).map(([id, data]) => ({
-            id,
-            name: data.name,
-            value: data.value,
-            quantity: data.quantity,
-            percentage: totalValue > 0 ? (data.value / totalValue) * 100 : 0,
-            productCount: data.productCount
+          // ✅ Use aggregations from RPC (includes ALL filtered items, even rupture products)
+          const totalValueForPercentage = parseFloat(rpcResult.totalValue?.toString() || '0') || 0;
+          
+          const valuationByFamily: ValuationByCategory[] = (rpcResult.familyAggregations || []).map(agg => ({
+            id: agg.famille_id,
+            name: agg.famille_libelle,
+            value: parseFloat(agg.total_value?.toString() || '0'),
+            quantity: agg.total_quantity,
+            percentage: totalValueForPercentage > 0 
+              ? (parseFloat(agg.total_value?.toString() || '0') / totalValueForPercentage) * 100 
+              : 0,
+            productCount: agg.product_count
           })).sort((a, b) => b.value - a.value);
 
-          // Calculer valorisation par rayon (depuis enrichedItems)
-          const rayonMap = new Map<string, { name: string; value: number; quantity: number; productCount: number }>();
-          enrichedItems.forEach(product => {
-            if (product.rayon_libelle) {
-              const key = product.rayon_id || 'unknown';
-              const existing = rayonMap.get(key) || { 
-                name: product.rayon_libelle, 
-                value: 0, 
-                quantity: 0, 
-                productCount: 0 
-              };
-              existing.value += product.valeur_stock;
-              existing.quantity += product.stock_actuel;
-              existing.productCount += 1;
-              rayonMap.set(key, existing);
-            }
-          });
-
-          const valuationByRayon = Array.from(rayonMap.entries()).map(([id, data]) => ({
-            id,
-            name: data.name,
-            value: data.value,
-            quantity: data.quantity,
-            percentage: totalValue > 0 ? (data.value / totalValue) * 100 : 0,
-            productCount: data.productCount
+          const valuationByRayon: ValuationByCategory[] = (rpcResult.rayonAggregations || []).map(agg => ({
+            id: agg.rayon_id,
+            name: agg.rayon_libelle,
+            value: parseFloat(agg.total_value?.toString() || '0'),
+            quantity: agg.total_quantity,
+            percentage: totalValueForPercentage > 0 
+              ? (parseFloat(agg.total_value?.toString() || '0') / totalValueForPercentage) * 100 
+              : 0,
+            productCount: agg.product_count
           })).sort((a, b) => b.value - a.value);
 
           // Top 20 produits par valorisation
