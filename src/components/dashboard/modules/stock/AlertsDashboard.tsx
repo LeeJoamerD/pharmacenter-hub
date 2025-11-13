@@ -16,8 +16,8 @@ import { toast } from 'sonner';
 const AlertsDashboard = () => {
   // États pour les filtres et pagination
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAlert, setSelectedAlert] = useState(null);
   const [selectedActionAlert, setSelectedActionAlert] = useState(null);
@@ -34,8 +34,8 @@ const AlertsDashboard = () => {
     refetch 
   } = useStockAlertsWithProducts({
     search: searchTerm,
-    category: filterCategory,
-    status: filterStatus,
+    category: filterCategory === 'all' ? '' : filterCategory,
+    status: filterStatus === 'all' ? '' : filterStatus,
     page: currentPage,
     limit: 50
   });
@@ -247,7 +247,7 @@ const AlertsDashboard = () => {
                   <SelectValue placeholder="Tous les statuts" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous les statuts</SelectItem>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
                   <SelectItem value="rupture">Rupture</SelectItem>
                   <SelectItem value="critique">Critique</SelectItem>
                   <SelectItem value="faible">Stock Faible</SelectItem>
@@ -265,7 +265,7 @@ const AlertsDashboard = () => {
                   <SelectValue placeholder="Toutes les catégories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Toutes les catégories</SelectItem>
+                  <SelectItem value="all">Toutes les catégories</SelectItem>
                 </SelectContent>
               </Select>
             </div>

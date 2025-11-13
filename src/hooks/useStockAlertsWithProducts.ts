@@ -70,7 +70,7 @@ export const useStockAlertsWithProducts = (params: UseStockAlertsWithProductsPar
   const { data: alertsResponse, isLoading, refetch } = useQuery({
     queryKey: ['stock-alerts-with-products', tenantId, page, limit, debouncedSearch, category, status, sortBy, sortOrder],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_stock_alerts_with_products', {
+      const { data, error } = await supabase.rpc('get_stock_alerts_with_products' as any, {
         p_tenant_id: tenantId,
         p_search: debouncedSearch || null,
         p_category: category || null,
