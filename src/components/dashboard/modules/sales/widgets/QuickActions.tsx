@@ -9,12 +9,15 @@ import {
   Clock,
   Plus,
   AlertTriangle,
-  TrendingUp
+  TrendingUp,
+  AlertCircle
 } from 'lucide-react';
-import useSalesMetrics from '@/hooks/useSalesMetrics';
+import { useNavigate } from 'react-router-dom';
+import { useSalesMetricsDB } from '@/hooks/useSalesMetricsDB';
 
 const QuickActions = () => {
-  const { metrics } = useSalesMetrics();
+  const { metrics } = useSalesMetricsDB();
+  const navigate = useNavigate();
 
   const actions = [
     {
@@ -23,7 +26,7 @@ const QuickActions = () => {
       description: 'Ouvrir POS',
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
-      action: () => console.log('Nouvelle vente')
+      action: () => navigate('/ventes?sub=pos')
     },
     {
       icon: Receipt,
@@ -31,7 +34,7 @@ const QuickActions = () => {
       description: 'Valider paiement',
       color: 'text-green-600',
       bgColor: 'bg-green-50',
-      action: () => console.log('Encaissement')
+      action: () => navigate('/ventes?sub=encaissements')
     },
     {
       icon: RotateCcw,
@@ -39,7 +42,7 @@ const QuickActions = () => {
       description: 'Gérer retour',
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
-      action: () => console.log('Retour')
+      action: () => navigate('/ventes?sub=retours')
     },
     {
       icon: Calculator,
@@ -47,26 +50,32 @@ const QuickActions = () => {
       description: 'Voir rapports',
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
-      action: () => console.log('Rapports')
+      action: () => navigate('/ventes?sub=rapports')
     }
   ];
 
   const alerts = [
-    {
-      icon: Clock,
-      message: `${metrics.pendingInvoices} factures en attente`,
-      type: 'warning' as const
-    },
-    {
-      icon: TrendingUp,
-      message: 'Ventes en hausse (+15%)',
-      type: 'success' as const
-    },
-    {
-      icon: AlertTriangle,
-      message: 'Réconciliation à faire',
-      type: 'error' as const
-    }
+    ...(metrics?.pendingInvoices ? [
+      { 
+        icon: Clock, 
+        message: `${metrics.pendingInvoices} facture(s) en attente`, 
+        type: 'warning' as const 
+      }
+    ] : []),
+    ...(metrics?.activeCashRegisters === 0 ? [
+      { 
+        icon: AlertCircle, 
+        message: 'Aucune caisse ouverte', 
+        type: 'error' as const 
+      }
+    ] : []),
+    ...(metrics && metrics.dailyVariation > 15 ? [
+      {
+        icon: TrendingUp,
+        message: `Ventes en hausse (+${metrics.dailyVariation.toFixed(1)}%)`,
+        type: 'success' as const
+      }
+    ] : [])
   ];
 
   const getAlertColor = (type: 'success' | 'warning' | 'error') => {
@@ -115,35 +124,23 @@ const QuickActions = () => {
         </div>
 
         {/* Alertes & notifications */}
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-muted-foreground">Alertes</h4>
-          {alerts.map((alert, index) => {
-            const IconComponent = alert.icon;
-            return (
-              <div 
-                key={index}
-                className="flex items-center gap-3 p-2 rounded-lg bg-accent/50 hover:bg-accent transition-colors cursor-pointer"
-              >
-                <IconComponent className={`h-4 w-4 ${getAlertColor(alert.type)}`} />
-                <span className="text-sm">{alert.message}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Informations rapides */}
-        <div className="pt-3 border-t">
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-primary">{metrics.activeCashRegisters}</p>
-              <p className="text-xs text-muted-foreground">Caisses ouvertes</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-primary">{metrics.totalCashAmount.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Total caisses</p>
-            </div>
+        {alerts.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium text-muted-foreground">Alertes</h4>
+            {alerts.map((alert, index) => {
+              const IconComponent = alert.icon;
+              return (
+                <div 
+                  key={index}
+                  className="flex items-center gap-3 p-2 rounded-lg bg-accent/50 hover:bg-accent transition-colors cursor-pointer"
+                >
+                  <IconComponent className={`h-4 w-4 ${getAlertColor(alert.type)}`} />
+                  <span className="text-sm">{alert.message}</span>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

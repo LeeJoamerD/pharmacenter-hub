@@ -6993,6 +6993,57 @@ export type Database = {
         }
         Relationships: []
       }
+      objectifs_ventes: {
+        Row: {
+          annee: number
+          created_at: string
+          created_by_id: string | null
+          id: string
+          mois: number
+          montant_cible: number
+          tenant_id: string
+          type_objectif: string
+          updated_at: string
+        }
+        Insert: {
+          annee: number
+          created_at?: string
+          created_by_id?: string | null
+          id?: string
+          mois: number
+          montant_cible?: number
+          tenant_id: string
+          type_objectif?: string
+          updated_at?: string
+        }
+        Update: {
+          annee?: number
+          created_at?: string
+          created_by_id?: string | null
+          id?: string
+          mois?: number
+          montant_cible?: number
+          tenant_id?: string
+          type_objectif?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "objectifs_ventes_created_by_id_fkey"
+            columns: ["created_by_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "objectifs_ventes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       obligations_fiscales: {
         Row: {
           created_at: string
@@ -13477,6 +13528,10 @@ export type Database = {
           stock_actuel: number
         }[]
       }
+      get_cash_registers_status: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       get_current_tenant_alert_settings: { Args: never; Returns: Json }
       get_current_user_tenant_id: { Args: never; Returns: string }
       get_dashboard_stock_metrics: {
@@ -13516,6 +13571,23 @@ export type Database = {
           p_tenant_id: string
         }
         Returns: string
+      }
+      get_recent_sales_transactions: {
+        Args: {
+          p_agent_id?: string
+          p_caisse_id?: string
+          p_date_debut?: string
+          p_date_fin?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
+      get_sales_dashboard_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
       }
       get_stock_alerts_with_products: {
         Args: {
