@@ -6256,24 +6256,52 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "mouvements_lots_agent_id_fkey"
-            columns: ["agent_id"]
-            isOneToOne: false
-            referencedRelation: "personnel"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mouvements_lots_lot_destination_id_fkey"
+            foreignKeyName: "fk_mouvements_lots_lot_destination_id"
             columns: ["lot_destination_id"]
             isOneToOne: false
             referencedRelation: "lots"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "mouvements_lots_lot_id_fkey"
+            foreignKeyName: "fk_mouvements_lots_lot_id"
             columns: ["lot_id"]
             isOneToOne: false
             referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_mouvements_lots_produit_id"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_mouvements_lots_produit_id"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_mouvements_lots_produit_id"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_produits_with_famille"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_mouvements_lots_produit_id"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "mouvements_lots_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
         ]
@@ -9241,13 +9269,6 @@ export type Database = {
             columns: ["rayon_id"]
             isOneToOne: false
             referencedRelation: "rayons_produits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "produits_categorie_tarification_id_fkey"
-            columns: ["categorie_tarification_id"]
-            isOneToOne: false
-            referencedRelation: "categorie_tarification"
             referencedColumns: ["id"]
           },
           {
@@ -12756,13 +12777,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "produits_categorie_tarification_id_fkey"
-            columns: ["categorie_tarification_id"]
-            isOneToOne: false
-            referencedRelation: "categorie_tarification"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "produits_id_produit_source_fkey"
             columns: ["id_produit_source"]
             isOneToOne: false
@@ -13098,13 +13112,6 @@ export type Database = {
             columns: ["rayon_id"]
             isOneToOne: false
             referencedRelation: "rayons_produits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "produits_categorie_tarification_id_fkey"
-            columns: ["categorie_tarification_id"]
-            isOneToOne: false
-            referencedRelation: "categorie_tarification"
             referencedColumns: ["id"]
           },
           {
@@ -13522,6 +13529,19 @@ export type Database = {
         }
         Returns: string
       }
+      get_stock_alerts_with_products: {
+        Args: {
+          p_category?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_sort_by?: string
+          p_sort_order?: string
+          p_status?: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       get_stock_status_distribution: {
         Args: { p_tenant_id: string }
         Returns: Json
@@ -13688,45 +13708,26 @@ export type Database = {
         Args: { p_movement_id: string }
         Returns: Json
       }
-      rpc_stock_record_movement:
-        | {
-            Args: {
-              p_agent_id?: string
-              p_emplacement_destination?: string
-              p_emplacement_source?: string
-              p_lot_destination_id?: string
-              p_lot_id: string
-              p_metadata?: Json
-              p_motif?: string
-              p_produit_id: string
-              p_quantite_mouvement: number
-              p_quantite_reelle?: number
-              p_reference_document?: string
-              p_reference_id?: string
-              p_reference_type?: string
-              p_type_mouvement: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_agent_id?: string
-              p_emplacement_destination?: string
-              p_emplacement_source?: string
-              p_lot_destination_id?: string
-              p_lot_id: string
-              p_metadata?: Json
-              p_motif?: string
-              p_prix_unitaire?: number
-              p_produit_id: string
-              p_quantite_mouvement: number
-              p_reference_document?: string
-              p_reference_id?: string
-              p_reference_type?: string
-              p_type_mouvement: string
-            }
-            Returns: Json
-          }
+      rpc_stock_record_movement: {
+        Args: {
+          p_agent_id?: string
+          p_emplacement_destination?: string
+          p_emplacement_source?: string
+          p_lot_destination_id?: string
+          p_lot_id: string
+          p_metadata?: Json
+          p_motif?: string
+          p_prix_unitaire?: number
+          p_produit_id: string
+          p_quantite_mouvement: number
+          p_quantite_reelle?: number
+          p_reference_document?: string
+          p_reference_id?: string
+          p_reference_type?: string
+          p_type_mouvement: string
+        }
+        Returns: Json
+      }
       rpc_stock_update_movement:
         | {
             Args: {
