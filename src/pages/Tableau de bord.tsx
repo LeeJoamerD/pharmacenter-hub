@@ -29,6 +29,7 @@ import RapportsModule from '@/components/dashboard/modules/RapportsModule';
 import AssistantIAModule from '@/components/dashboard/modules/AssistantIAModule';
 import { useAuth } from '@/contexts/AuthContext';
 import ChatNetworkModule from '@/components/dashboard/modules/ChatNetworkModule';
+import { NavigationProvider } from '@/contexts/NavigationContext';
 
 // Fonction pour extraire les initiales
 const getUserInitials = (personnel: any, user: any) => {
@@ -228,68 +229,75 @@ const Dashboard = () => {
   };
 
   return (
-    <SidebarProvider>
-      <SystemSettingsSync />
-      <CurrencyProvider>
-        <div className="min-h-screen flex w-full">
-          <AppSidebar 
-            activeModule={activeModule} 
-            setActiveModule={setActiveModule} 
-            activeSubModule={activeSubModule} 
-            setActiveSubModule={setActiveSubModule} 
-          />
-          <main className="flex-1 overflow-y-auto">
-            <div className="flex items-center justify-between border-b p-4">
-              <div className="flex items-center gap-2">
-                <SidebarTrigger />
-                <h1 className="text-xl font-bold">
-                  {getModuleTitle()}
-                </h1>
+    <NavigationProvider
+      activeModule={activeModule}
+      activeSubModule={activeSubModule}
+      setActiveModule={setActiveModule}
+      setActiveSubModule={setActiveSubModule}
+    >
+      <SidebarProvider>
+        <SystemSettingsSync />
+        <CurrencyProvider>
+          <div className="min-h-screen flex w-full">
+            <AppSidebar 
+              activeModule={activeModule} 
+              setActiveModule={setActiveModule} 
+              activeSubModule={activeSubModule} 
+              setActiveSubModule={setActiveSubModule} 
+            />
+            <main className="flex-1 overflow-y-auto">
+              <div className="flex items-center justify-between border-b p-4">
+                <div className="flex items-center gap-2">
+                  <SidebarTrigger />
+                  <h1 className="text-xl font-bold">
+                    {getModuleTitle()}
+                  </h1>
+                </div>
+                <div className="flex items-center gap-4">
+                  {personnel && (
+                    <span className="text-sm text-muted-foreground">
+                      {personnel.prenoms} {personnel.noms} - {pharmacy?.name}
+                    </span>
+                  )}
+                  <Button variant="outline" size="sm">Aide</Button>
+                  {user && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-foreground hover:bg-muted/50 h-8 gap-2"
+                        >
+                          <UserAvatar initials={userInitials} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border shadow-lg">
+                        <DropdownMenuLabel className="pb-1">
+                          <div className="flex flex-col space-y-1">
+                            <span className="font-medium">{fullUserName}</span>
+                            <span className="text-sm text-muted-foreground font-normal">
+                              {user.email}
+                            </span>
+                          </div>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={signOut}>
+                          <LogOut className="mr-2 h-4 w-4" />
+                          Se déconnecter
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-4">
-                {personnel && (
-                  <span className="text-sm text-muted-foreground">
-                    {personnel.prenoms} {personnel.noms} - {pharmacy?.name}
-                  </span>
-                )}
-                <Button variant="outline" size="sm">Aide</Button>
-                {user && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-foreground hover:bg-muted/50 h-8 gap-2"
-                      >
-                        <UserAvatar initials={userInitials} />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border shadow-lg">
-                      <DropdownMenuLabel className="pb-1">
-                        <div className="flex flex-col space-y-1">
-                          <span className="font-medium">{fullUserName}</span>
-                          <span className="text-sm text-muted-foreground font-normal">
-                            {user.email}
-                          </span>
-                        </div>
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={signOut}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Se déconnecter
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+              <div className="p-6">
+                {renderActiveModule()}
               </div>
-            </div>
-            <div className="p-6">
-              {renderActiveModule()}
-            </div>
-          </main>
-        </div>
-      </CurrencyProvider>
-    </SidebarProvider>
+            </main>
+          </div>
+        </CurrencyProvider>
+      </SidebarProvider>
+    </NavigationProvider>
   );
 };
 

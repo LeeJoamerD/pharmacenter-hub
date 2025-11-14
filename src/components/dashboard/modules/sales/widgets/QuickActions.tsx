@@ -12,12 +12,12 @@ import {
   TrendingUp,
   AlertCircle
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useSalesMetricsDB } from '@/hooks/useSalesMetricsDB';
+import { useNavigation } from '@/contexts/NavigationContext';
 
 const QuickActions = () => {
   const { metrics } = useSalesMetricsDB();
-  const navigate = useNavigate();
+  const { navigateToModule } = useNavigation();
 
   const actions = [
     {
@@ -26,7 +26,7 @@ const QuickActions = () => {
       description: 'Ouvrir POS',
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
-      action: () => navigate('/ventes?sub=pos')
+      action: () => navigateToModule('ventes', 'point de vente')
     },
     {
       icon: Receipt,
@@ -34,7 +34,7 @@ const QuickActions = () => {
       description: 'Valider paiement',
       color: 'text-green-600',
       bgColor: 'bg-green-50',
-      action: () => navigate('/ventes?sub=encaissements')
+      action: () => navigateToModule('ventes', 'encaissements')
     },
     {
       icon: RotateCcw,
@@ -42,7 +42,7 @@ const QuickActions = () => {
       description: 'Gérer retour',
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
-      action: () => navigate('/ventes?sub=retours')
+      action: () => navigateToModule('ventes', 'retours')
     },
     {
       icon: Calculator,
@@ -50,7 +50,7 @@ const QuickActions = () => {
       description: 'Voir rapports',
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
-      action: () => navigate('/ventes?sub=rapports')
+      action: () => navigateToModule('ventes', 'analytics')
     }
   ];
 
