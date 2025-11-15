@@ -15,7 +15,7 @@ serve(async (req) => {
   try {
     const { email, password, noms, prenoms, role, telephone_appel, tenant_id } = await req.json()
 
-    console.log('Creating user with personnel:', { email, noms, prenoms, role, tenant_id })
+    console.log('Creating user with personnel:', { email, noms, prenoms, role, tenant_id, has_telephone: !!telephone_appel })
 
     // Validation
     if (!email || !password || !noms || !prenoms || !role || !tenant_id) {
@@ -74,8 +74,7 @@ serve(async (req) => {
         email,
         role,
         telephone_appel: telephone_appel || null,
-        is_active: true,
-        google_verified: false
+        is_active: true
       })
       .select()
       .single()
