@@ -48,6 +48,13 @@ const CashManagement = () => {
   const totalBalance = dashboardMetrics?.totalCashAmount || 0;
   const totalMovements = dashboardMetrics?.totalMovements || 0;
 
+  // LOG DE DÉBOGAGE TEMPORAIRE
+  console.log('🔍 CashManagement Debug:', {
+    dashboardMetrics,
+    totalBalance,
+    totalMovements
+  });
+
   // Charger les mouvements de la session active
   useEffect(() => {
     if (currentSession) {
