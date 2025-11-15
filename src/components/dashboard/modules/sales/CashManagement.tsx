@@ -15,17 +15,18 @@ import { useSessionWithType, type TypeSession } from '@/hooks/useSessionWithType
 import { useCaisses } from '@/hooks/useCaisses';
 import useCashRegister, { CashSession } from '@/hooks/useCashRegister';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useSalesMetricsDB } from '@/hooks/useSalesMetricsDB';
 
 const CashManagement = () => {
   const { getDailySessions } = useSessionWithType();
   const { caisses } = useCaisses();
   const { currentSession, allSessions, movements, recordMovement, getSessionBalance, loadMovements, loading } = useCashRegister();
   const { formatPrice } = useCurrency();
+  const { metrics: dashboardMetrics } = useSalesMetricsDB();
   
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showMovementForm, setShowMovementForm] = useState(false);
-  const [totalBalance, setTotalBalance] = useState(0);
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -43,16 +44,13 @@ const CashManagement = () => {
     loadActiveSessions();
   }, [getDailySessions, refreshKey]);
 
-  // Calculer le solde actuel
-  useEffect(() => {
-    if (currentSession) {
-      getSessionBalance(currentSession.id).then(balance => {
-        setTotalBalance(balance);
-      });
-    } else {
-      setTotalBalance(0);
-    }
-  }, [currentSession, getSessionBalance]);
+  // Calculer le solde total de TOUTES les sessions actives
+  const totalBalance = dashboardMetrics?.totalCashAmount || 0;
+
+  // Compter tous les mouvements de toutes les sessions actives
+  const totalMovements = activeSessions.reduce((count, session) => {
+    return count + movements.filter(m => m.session_caisse_id === session.id).length;
+  }, 0);
 
   // Charger les mouvements de la session active
   useEffect(() => {
@@ -172,10 +170,10 @@ const CashManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {currentSession ? movements.filter(m => m.session_caisse_id === currentSession.id).length : 0}
+              {totalMovements}
             </div>
             <p className="text-xs text-muted-foreground">
-              Session en cours
+              Toutes sessions actives
             </p>
           </CardContent>
         </Card>
