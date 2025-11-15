@@ -216,7 +216,30 @@ export const usePOSData = () => {
 
       if (venteError) throw venteError;
 
-      // 6. Insérer les lignes de vente
+      // 6. Créer le mouvement de caisse pour l'encaissement
+      if (transactionData.session_caisse_id) {
+        const { error: mouvementCaisseError } = await supabase
+          .from('mouvements_caisse')
+          .insert([{
+            tenant_id: tenantId,
+            session_caisse_id: transactionData.session_caisse_id,
+            type_mouvement: 'Encaissement',
+            montant: transactionData.payment.amount_received,
+            description: `Vente ${numeroFacture} - ${transactionData.payment.method}`,
+            motif: `Paiement vente ${numeroFacture}`,
+            reference_id: vente.id,
+            reference_type: 'vente',
+            agent_id: transactionData.agent_id,
+            date_mouvement: new Date().toISOString()
+          }]);
+
+        if (mouvementCaisseError) {
+          console.error('Erreur création mouvement caisse:', mouvementCaisseError);
+          // Ne pas bloquer la vente, juste logger
+        }
+      }
+
+      // 7. Insérer les lignes de vente
       const lignesVente = transactionData.cart.map(item => {
         const htUnitaire = item.unitPrice / (1 + (item.product.tva_rate / 100));
         
@@ -240,12 +263,12 @@ export const usePOSData = () => {
 
       if (lignesError) throw lignesError;
 
-      // 7. Mettre à jour le stock (FIFO)
+      // 8. Mettre à jour le stock (FIFO)
       for (const item of transactionData.cart) {
         await updateStockAfterSale(item.product.id, item.quantity, tenantId);
       }
 
-      // 8. Créer mouvements de stock
+      // 9. Créer mouvements de stock
       const mouvementsStock = transactionData.cart.map(item => ({
         tenant_id: tenantId,
         produit_id: item.product.id,
