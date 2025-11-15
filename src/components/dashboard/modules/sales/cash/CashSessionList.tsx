@@ -25,6 +25,14 @@ interface CashSessionListProps {
 const CashSessionList = ({ sessions, onSelectSession, onViewReport }: CashSessionListProps) => {
   const { formatPrice } = useCurrency();
 
+  // Fonction utilitaire pour obtenir le nom complet de l'agent
+  const getAgentFullName = (session: CashSession): string => {
+    if (session.caissier) {
+      return `${session.caissier.prenoms} ${session.caissier.noms}`;
+    }
+    return session.caissier_id || 'Agent non défini';
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'ouverte':
@@ -166,7 +174,7 @@ const CashSessionList = ({ sessions, onSelectSession, onViewReport }: CashSessio
                         <User className="h-3 w-3" />
                         Agent
                       </p>
-                      <p className="font-semibold">{session.caissier_id}</p>
+                      <p className="font-semibold">{getAgentFullName(session)}</p>
                       <p className="text-xs text-muted-foreground">
                         Durée: {session.date_fermeture ? Math.round((new Date(session.date_fermeture).getTime() - new Date(session.date_ouverture).getTime()) / (1000 * 60 * 60)) : 0}h
                       </p>

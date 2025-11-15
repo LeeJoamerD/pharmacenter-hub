@@ -9,9 +9,11 @@ import CashRegisterManagement from './cash/CashRegisterManagement';
 import SessionReports from './cash/SessionReports';
 import CashSessionList from './cash/CashSessionList';
 import CashMovementForm from './cash/CashMovementForm';
+import CloseSessionModal from './cash/CloseSessionModal';
+import SessionReportModal from './cash/SessionReportModal';
 import { useSessionWithType, type TypeSession } from '@/hooks/useSessionWithType';
 import { useCaisses } from '@/hooks/useCaisses';
-import useCashRegister from '@/hooks/useCashRegister';
+import useCashRegister, { CashSession } from '@/hooks/useCashRegister';
 import { useCurrency } from '@/contexts/CurrencyContext';
 
 const CashManagement = () => {
@@ -25,6 +27,10 @@ const CashManagement = () => {
   const [showMovementForm, setShowMovementForm] = useState(false);
   const [totalBalance, setTotalBalance] = useState(0);
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedSessionForClose, setSelectedSessionForClose] = useState<CashSession | null>(null);
+  const [selectedSessionIdForReport, setSelectedSessionIdForReport] = useState<string | null>(null);
 
   // Charger les sessions actives
   useEffect(() => {
@@ -56,6 +62,23 @@ const CashManagement = () => {
   }, [currentSession, loadMovements]);
 
   const handleSessionOpened = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
+  const handleSelectSession = (sessionId: string) => {
+    const session = allSessions.find(s => s.id === sessionId);
+    if (session && session.statut === 'Ouverte') {
+      setSelectedSessionForClose(session);
+      setShowCloseModal(true);
+    }
+  };
+
+  const handleViewReport = (sessionId: string) => {
+    setSelectedSessionIdForReport(sessionId);
+    setShowReportModal(true);
+  };
+
+  const handleSessionClosed = () => {
     setRefreshKey(prev => prev + 1);
   };
 
@@ -190,10 +213,8 @@ const CashManagement = () => {
         <TabsContent value="historique" className="mt-6">
           <CashSessionList 
             sessions={allSessions} 
-            onSelectSession={setSelectedSession}
-            onViewReport={(sessionId) => {
-              setSelectedSession(sessionId);
-            }}
+            onSelectSession={handleSelectSession}
+            onViewReport={handleViewReport}
           />
         </TabsContent>
 
@@ -211,6 +232,21 @@ const CashManagement = () => {
           loading={loading}
         />
       )}
+
+      {/* Modal de fermeture de session */}
+      <CloseSessionModal
+        session={selectedSessionForClose}
+        open={showCloseModal}
+        onOpenChange={setShowCloseModal}
+        onSessionClosed={handleSessionClosed}
+      />
+
+      {/* Modal de rapport de session */}
+      <SessionReportModal
+        sessionId={selectedSessionIdForReport}
+        open={showReportModal}
+        onOpenChange={setShowReportModal}
+      />
     </div>
   );
 };
