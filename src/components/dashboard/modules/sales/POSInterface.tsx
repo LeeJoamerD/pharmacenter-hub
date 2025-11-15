@@ -296,6 +296,7 @@ const POSInterface = () => {
           reference: paymentData.reference
         },
         session_caisse_id: activeSession.id,
+        caisse_id: activeSession.caisse_id,
         agent_id: currentUser?.id || ''
       };
 
