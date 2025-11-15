@@ -13515,6 +13515,10 @@ export type Database = {
           type: string
         }[]
       }
+      get_active_sessions_totals: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       get_active_stock_alerts: {
         Args: { p_limit?: number; p_tenant_id: string }
         Returns: {
