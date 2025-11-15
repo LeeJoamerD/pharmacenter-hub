@@ -83,11 +83,13 @@ const UserSettings = () => {
       if (result?.error) throw new Error(result.error);
       return result;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['personnel'] });
+      queryClient.invalidateQueries({ queryKey: ['active-cash-session'] });
       toast({ title: 'Utilisateur créé avec succès' });
       setIsCreateDialogOpen(false);
       createForm.reset();
+      await queryClient.refetchQueries({ queryKey: ['auth-user'] });
     },
     onError: (error: any) => {
       console.error('Erreur lors de la création:', error);
