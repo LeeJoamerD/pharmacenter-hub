@@ -87,4 +87,10 @@ export interface CashSession {
     nom: string;
     description: string;
   };
+  caissier?: {
+    id: string;
+    noms: string;
+    prenoms: string;
+    role: string;
+  };
 }

@@ -105,7 +105,9 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
                 Informations
               </p>
               <p className="font-semibold">Session #{session.numero_session}</p>
-              <p className="text-sm">Agent: {session.agent_id}</p>
+              <p className="text-sm">
+                Agent: {session.caissier ? `${session.caissier.prenoms} ${session.caissier.noms}` : 'Non défini'}
+              </p>
               <Badge variant="outline" className={
                 session.statut === 'ouverte' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
               }>

@@ -17,6 +17,12 @@ export interface CashSession {
   statut: 'Ouverte' | 'Fermée';
   created_at?: string;
   updated_at?: string;
+  caissier?: {
+    id: string;
+    noms: string;
+    prenoms: string;
+    role: string;
+  };
 }
 
 export interface CashMovement {
@@ -68,7 +74,10 @@ const useCashRegister = () => {
     try {
       const { data, error } = await supabase
         .from('sessions_caisse')
-        .select('*')
+        .select(`
+          *,
+          caissier:personnel!sessions_caisse_caissier_id_fkey(id, noms, prenoms, role)
+        `)
         .eq('tenant_id', tenantId)
         .eq('statut', 'Ouverte')
         .maybeSingle();
@@ -77,7 +86,13 @@ const useCashRegister = () => {
         throw error;
       }
 
-      setCurrentSession(data as CashSession | null);
+      // Transform the array to single object if needed
+      const transformedData = data ? {
+        ...data,
+        caissier: Array.isArray(data.caissier) ? data.caissier[0] : data.caissier
+      } : null;
+
+      setCurrentSession(transformedData as CashSession | null);
     } catch (err) {
       console.error('Erreur chargement session active:', err);
       const errorMessage = 'Erreur lors du chargement de la session active';
@@ -95,13 +110,22 @@ const useCashRegister = () => {
     try {
       const { data, error } = await supabase
         .from('sessions_caisse')
-        .select('*')
+        .select(`
+          *,
+          caissier:personnel!sessions_caisse_caissier_id_fkey(id, noms, prenoms, role)
+        `)
         .eq('tenant_id', tenantId)
         .order('date_ouverture', { ascending: false });
 
       if (error) throw error;
 
-      setAllSessions((data || []) as CashSession[]);
+      // Transform the array to single object if needed
+      const transformedData = (data || []).map(session => ({
+        ...session,
+        caissier: Array.isArray(session.caissier) ? session.caissier[0] : session.caissier
+      }));
+
+      setAllSessions(transformedData as CashSession[]);
     } catch (err) {
       console.error('Erreur chargement sessions:', err);
       toast.error('Erreur lors du chargement des sessions');
@@ -182,10 +206,19 @@ const useCashRegister = () => {
       const { data: newSession, error } = await supabase
         .from('sessions_caisse')
         .insert(insertData)
-        .select()
+        .select(`
+          *,
+          caissier:personnel!sessions_caisse_caissier_id_fkey(id, noms, prenoms, role)
+        `)
         .single();
 
       if (error) throw error;
+
+      // Transform the array to single object if needed
+      const transformedNewSession = {
+        ...newSession,
+        caissier: Array.isArray(newSession.caissier) ? newSession.caissier[0] : newSession.caissier
+      };
 
       // Enregistrer le mouvement initial
       await supabase
@@ -202,16 +235,16 @@ const useCashRegister = () => {
         }]);
 
       const validSession: CashSession = {
-        ...newSession,
-        statut: (newSession.statut === "Ouverte" || newSession.statut === "Fermée") 
-          ? newSession.statut 
+        ...transformedNewSession,
+        statut: (transformedNewSession.statut === "Ouverte" || transformedNewSession.statut === "Fermée") 
+          ? transformedNewSession.statut 
           : "Ouverte"
       } as CashSession;
       setCurrentSession(validSession);
       toast.success('Session ouverte avec succès');
       
       await loadAllSessions();
-      return newSession as CashSession;
+      return validSession;
     } catch (err) {
       console.error('Erreur ouverture session:', err);
       const message = err instanceof Error ? err.message : 'Erreur lors de l\'ouverture de la session';
@@ -262,15 +295,22 @@ const useCashRegister = () => {
         })
         .eq('id', sessionId)
         .eq('tenant_id', tenantId)
-        .select()
-        .single() as { data: CashSession; error: any };
+        .select(`
+          *,
+          caissier:personnel!sessions_caisse_caissier_id_fkey(id, noms, prenoms, role)
+        `)
+        .single();
 
       if (error) throw error;
 
-      setCurrentSession({
+      // Transform the array to single object if needed
+      const transformedUpdatedSession = {
         ...updatedSession,
+        caissier: Array.isArray(updatedSession.caissier) ? updatedSession.caissier[0] : updatedSession.caissier,
         statut: updatedSession.statut as "Ouverte" | "Fermée"
-      } as CashSession);
+      } as CashSession;
+
+      setCurrentSession(transformedUpdatedSession);
       // Enregistrer le mouvement d'ajustement si nécessaire
       if (ecart !== 0) {
         await supabase
@@ -290,7 +330,7 @@ const useCashRegister = () => {
       toast.success('Session fermée avec succès');
       
       await loadAllSessions();
-      return updatedSession;
+      return transformedUpdatedSession;
     } catch (err) {
       console.error('Erreur fermeture session:', err);
       const message = err instanceof Error ? err.message : 'Erreur lors de la fermeture de la session';
@@ -395,12 +435,21 @@ const useCashRegister = () => {
     try {
       const { data: session, error: sessionError } = await supabase
         .from('sessions_caisse')
-        .select('*')
+        .select(`
+          *,
+          caissier:personnel!sessions_caisse_caissier_id_fkey(id, noms, prenoms, role)
+        `)
         .eq('id', sessionId)
         .eq('tenant_id', tenantId)
-        .single() as { data: CashSession; error: any };
+        .single();
 
       if (sessionError) throw sessionError;
+
+      // Transform the array to single object if needed
+      const transformedSession = {
+        ...session,
+        caissier: Array.isArray(session.caissier) ? session.caissier[0] : session.caissier
+      } as CashSession;
 
       const { data: movements, error: movementsError } = await supabase
         .from('mouvements_caisse')
@@ -424,19 +473,19 @@ const useCashRegister = () => {
         ?.filter(m => m.type_mouvement === 'Ajustement')
         .reduce((total, m) => total + m.montant, 0) || 0;
 
-      const montantTheorique = session.fond_caisse_ouverture + totalEncaissements - totalRetraits + totalAjustements;
+      const montantTheorique = transformedSession.fond_caisse_ouverture + totalEncaissements - totalRetraits + totalAjustements;
 
       return {
-        session,
+        session: transformedSession,
         movements: movements || [],
         summary: {
-          fondCaisseOuverture: session.fond_caisse_ouverture,
+          fondCaisseOuverture: transformedSession.fond_caisse_ouverture,
           totalEncaissements,
           totalRetraits,
           totalAjustements,
           montantTheorique,
-          montantReel: session.montant_reel_fermeture || 0,
-          ecart: session.ecart || 0
+          montantReel: transformedSession.montant_reel_fermeture || 0,
+          ecart: transformedSession.ecart || 0
         }
       };
     } catch (err) {
