@@ -29,7 +29,7 @@ export interface CashMovement {
   id: string;
   tenant_id: string;
   session_caisse_id: string;
-  type_mouvement: 'Encaissement' | 'Retrait' | 'Fond_initial' | 'Ajustement';
+  type_mouvement: 'Vente' | 'Entrée' | 'Sortie' | 'Dépense' | 'Remboursement' | 'Fond_initial' | 'Ajustement';
   montant: number;
   reference_id?: string;
   reference_type?: string;
@@ -44,13 +44,17 @@ export interface SessionReport {
   session: CashSession;
   movements: CashMovement[];
   summary: {
-    fondCaisseOuverture: number;
-    totalEncaissements: number;
-    totalRetraits: number;
-    totalAjustements: number;
-    montantTheorique: number;
-    montantReel: number;
-    ecart: number;
+    openingAmount: number;
+    totalSales: number;
+    totalEntries: number;
+    totalExits: number;
+    totalExpenses: number;
+    totalRefunds: number;
+    totalAdjustments: number;
+    theoreticalClosing: number;
+    actualClosing: number;
+    variance: number;
+    variancePercentage: number;
   };
 }
 
@@ -460,32 +464,58 @@ const useCashRegister = () => {
 
       if (movementsError) throw movementsError;
 
-      // Calculer les totaux par type de mouvement
-      const totalEncaissements = movements
-        ?.filter(m => m.type_mouvement === 'Encaissement')
+      // Calculer les totaux par type de mouvement (utiliser les VRAIS types)
+      const totalVentes = movements
+        ?.filter(m => m.type_mouvement === 'Vente')
         .reduce((total, m) => total + m.montant, 0) || 0;
 
-      const totalRetraits = movements
-        ?.filter(m => m.type_mouvement === 'Retrait')
+      const totalEntrees = movements
+        ?.filter(m => m.type_mouvement === 'Entrée')
+        .reduce((total, m) => total + m.montant, 0) || 0;
+
+      const totalSorties = movements
+        ?.filter(m => m.type_mouvement === 'Sortie')
+        .reduce((total, m) => total + m.montant, 0) || 0;
+
+      const totalDepenses = movements
+        ?.filter(m => m.type_mouvement === 'Dépense')
+        .reduce((total, m) => total + m.montant, 0) || 0;
+
+      const totalRemboursements = movements
+        ?.filter(m => m.type_mouvement === 'Remboursement')
         .reduce((total, m) => total + m.montant, 0) || 0;
 
       const totalAjustements = movements
         ?.filter(m => m.type_mouvement === 'Ajustement')
         .reduce((total, m) => total + m.montant, 0) || 0;
 
-      const montantTheorique = transformedSession.fond_caisse_ouverture + totalEncaissements - totalRetraits + totalAjustements;
+      // Calcul du montant théorique
+      const montantTheorique = transformedSession.fond_caisse_ouverture 
+        + totalVentes 
+        + totalEntrees 
+        + totalAjustements
+        - totalSorties 
+        - totalDepenses 
+        - totalRemboursements;
+
+      const montantReel = transformedSession.montant_reel_fermeture || 0;
+      const ecart = montantReel - montantTheorique;
 
       return {
         session: transformedSession,
         movements: movements || [],
         summary: {
-          fondCaisseOuverture: transformedSession.fond_caisse_ouverture,
-          totalEncaissements,
-          totalRetraits,
-          totalAjustements,
-          montantTheorique,
-          montantReel: transformedSession.montant_reel_fermeture || 0,
-          ecart: transformedSession.ecart || 0
+          openingAmount: transformedSession.fond_caisse_ouverture,
+          totalSales: totalVentes,
+          totalEntries: totalEntrees,
+          totalExits: totalSorties,
+          totalExpenses: totalDepenses,
+          totalRefunds: totalRemboursements,
+          totalAdjustments: totalAjustements,
+          theoreticalClosing: montantTheorique,
+          actualClosing: montantReel,
+          variance: ecart,
+          variancePercentage: montantTheorique !== 0 ? ((ecart / montantTheorique) * 100) : 0
         }
       };
     } catch (err) {
