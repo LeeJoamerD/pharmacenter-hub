@@ -79,7 +79,7 @@ export const useSessionReports = () => {
         .select('*')
         .eq('session_id', sessionId)
         .eq('tenant_id', tenantId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 
