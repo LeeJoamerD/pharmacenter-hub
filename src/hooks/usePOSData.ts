@@ -198,8 +198,9 @@ export const usePOSData = () => {
         montant_part_assurance: montantPartAssurance,
         montant_part_patient: montantPartPatient,
         statut: 'Validée',
+        session_caisse_id: transactionData.session_caisse_id,
+        caisse_id: transactionData.caisse_id,
         metadata: {
-          session_caisse_id: transactionData.session_caisse_id,
           payment_reference: transactionData.payment.reference
         }
       };

@@ -31,6 +31,7 @@ export interface TransactionData {
   customer: CustomerInfo;
   payment: PaymentInfo;
   session_caisse_id: string;
+  caisse_id?: string;
   agent_id: string;
 }
 

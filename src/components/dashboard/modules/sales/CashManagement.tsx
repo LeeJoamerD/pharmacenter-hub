@@ -17,7 +17,7 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 const CashManagement = () => {
   const { getDailySessions } = useSessionWithType();
   const { caisses } = useCaisses();
-  const { currentSession, allSessions, movements, recordMovement, getSessionBalance, loading } = useCashRegister();
+  const { currentSession, allSessions, movements, recordMovement, getSessionBalance, loadMovements, loading } = useCashRegister();
   const { formatPrice } = useCurrency();
   
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
@@ -47,6 +47,13 @@ const CashManagement = () => {
       setTotalBalance(0);
     }
   }, [currentSession, getSessionBalance]);
+
+  // Charger les mouvements de la session active
+  useEffect(() => {
+    if (currentSession) {
+      loadMovements(currentSession.id);
+    }
+  }, [currentSession, loadMovements]);
 
   const handleSessionOpened = () => {
     setRefreshKey(prev => prev + 1);
