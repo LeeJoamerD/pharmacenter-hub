@@ -53,7 +53,10 @@ const SessionReports = () => {
     setSelectedSession(report);
   };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | null | undefined) => {
+    if (amount === null || amount === undefined) {
+      return '0 FCFA';
+    }
     return `${amount.toLocaleString('fr-FR')} FCFA`;
   };
 
