@@ -76,7 +76,7 @@ const useCashRegister = () => {
         .from('sessions_caisse')
         .select(`
           *,
-          caissier:personnel!sessions_caisse_caissier_id_fkey(id, noms, prenoms, role)
+          caissier:personnel!sessions_caisse_agent_id_fkey(id, noms, prenoms, role)
         `)
         .eq('tenant_id', tenantId)
         .eq('statut', 'Ouverte')
@@ -112,7 +112,7 @@ const useCashRegister = () => {
         .from('sessions_caisse')
         .select(`
           *,
-          caissier:personnel!sessions_caisse_caissier_id_fkey(id, noms, prenoms, role)
+          caissier:personnel!sessions_caisse_agent_id_fkey(id, noms, prenoms, role)
         `)
         .eq('tenant_id', tenantId)
         .order('date_ouverture', { ascending: false });
@@ -208,7 +208,7 @@ const useCashRegister = () => {
         .insert(insertData)
         .select(`
           *,
-          caissier:personnel!sessions_caisse_caissier_id_fkey(id, noms, prenoms, role)
+          caissier:personnel!sessions_caisse_agent_id_fkey(id, noms, prenoms, role)
         `)
         .single();
 
@@ -297,7 +297,7 @@ const useCashRegister = () => {
         .eq('tenant_id', tenantId)
         .select(`
           *,
-          caissier:personnel!sessions_caisse_caissier_id_fkey(id, noms, prenoms, role)
+          caissier:personnel!sessions_caisse_agent_id_fkey(id, noms, prenoms, role)
         `)
         .single();
 
@@ -437,7 +437,7 @@ const useCashRegister = () => {
         .from('sessions_caisse')
         .select(`
           *,
-          caissier:personnel!sessions_caisse_caissier_id_fkey(id, noms, prenoms, role)
+          caissier:personnel!sessions_caisse_agent_id_fkey(id, noms, prenoms, role)
         `)
         .eq('id', sessionId)
         .eq('tenant_id', tenantId)
