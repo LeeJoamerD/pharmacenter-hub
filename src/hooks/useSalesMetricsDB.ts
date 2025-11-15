@@ -106,7 +106,32 @@ export const useSalesMetricsDB = (
     staleTime: 20000
   });
 
-  // Query 3: Transactions récentes (AVEC PAGINATION)
+  // Query 3: Totaux des sessions actives
+  const { 
+    data: sessionTotals, 
+    isLoading: totalsLoading 
+  } = useQuery<{
+    totalCashAmount: number;
+    activeSessions: number;
+    totalMovements: number;
+  }>({
+    queryKey: ['active-sessions-totals', tenantId],
+    queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant ID manquant');
+      
+      const { data, error } = await supabase.rpc('get_active_sessions_totals', {
+        p_tenant_id: tenantId
+      });
+      
+      if (error) throw error;
+      return data as any;
+    },
+    enabled: !!tenantId,
+    refetchInterval: 30000,
+    staleTime: 20000
+  });
+
+  // Query 4: Transactions récentes (AVEC PAGINATION)
   const { 
     data: transactionsResponse, 
     isLoading: transactionsLoading,
@@ -215,6 +240,7 @@ export const useSalesMetricsDB = (
       dailyVariation,
       activeCashRegisters,
       totalCashAmount,
+      totalMovements,
       cashRegisters
     } : null,
     
@@ -228,7 +254,7 @@ export const useSalesMetricsDB = (
     currentTransactionsPage: transactionsResponse?.page || 1,
     
     // États de chargement
-    loading: metricsLoading || registersLoading || transactionsLoading,
+    loading: metricsLoading || registersLoading || transactionsLoading || totalsLoading,
     error: metricsError || registersError || transactionsError,
     
     // Actions

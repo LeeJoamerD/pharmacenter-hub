@@ -44,13 +44,9 @@ const CashManagement = () => {
     loadActiveSessions();
   }, [getDailySessions, refreshKey]);
 
-  // Calculer le solde total de TOUTES les sessions actives
+  // Utiliser les données pré-calculées par le backend
   const totalBalance = dashboardMetrics?.totalCashAmount || 0;
-
-  // Compter tous les mouvements de toutes les sessions actives
-  const totalMovements = activeSessions.reduce((count, session) => {
-    return count + movements.filter(m => m.session_caisse_id === session.id).length;
-  }, 0);
+  const totalMovements = dashboardMetrics?.totalMovements || 0;
 
   // Charger les mouvements de la session active
   useEffect(() => {
