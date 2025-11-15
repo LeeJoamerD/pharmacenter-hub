@@ -17,6 +17,9 @@ import {
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { printCashReport, exportToPDF } from '@/services/reportPrintService';
+import { usePharmaciesQuery } from '@/hooks/useTenantQuery';
+import { usePrintSettings } from '@/hooks/usePrintSettings';
 
 interface CashReportProps {
   sessionId: string;
@@ -25,6 +28,30 @@ interface CashReportProps {
 
 const CashReport = ({ sessionId, report }: CashReportProps) => {
   const { formatPrice } = useCurrency();
+  const { data: pharmacy } = usePharmaciesQuery();
+  const { printSettings } = usePrintSettings();
+
+  const handlePrint = () => {
+    if (!report) return;
+    printCashReport({
+      session: report.session,
+      summary: report.summary,
+      movements: report.movements,
+      pharmacy: pharmacy,
+      printSettings
+    });
+  };
+
+  const handleExport = () => {
+    if (!report) return;
+    exportToPDF({
+      session: report.session,
+      summary: report.summary,
+      movements: report.movements,
+      pharmacy: pharmacy,
+      printSettings
+    });
+  };
 
   if (!report) {
     return (
@@ -86,11 +113,11 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
               Rapport de Caisse - Session #{session.numero_session}
             </CardTitle>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handlePrint}>
                 <Printer className="h-4 w-4 mr-2" />
                 Imprimer
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleExport}>
                 <Download className="h-4 w-4 mr-2" />
                 Exporter
               </Button>
@@ -132,13 +159,13 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
 
             <div>
               <p className="text-sm text-muted-foreground flex items-center gap-1">
-                {getVarianceIcon(summary.variance)}
+                {getVarianceIcon(summary?.variance || 0)}
                 Écart
               </p>
-              <p className={`font-semibold text-lg ${getVarianceColor(summary.variance)}`}>
-                {formatPrice(summary.variance)}
+              <p className={`font-semibold text-lg ${getVarianceColor(summary?.variance || 0)}`}>
+                {formatPrice(summary?.variance || 0)}
               </p>
-              {Math.abs(summary.variance) > 1000 && (
+              {Math.abs(summary?.variance || 0) > 1000 && (
                 <div className="flex items-center gap-1 text-orange-600">
                   <AlertTriangle className="h-3 w-3" />
                   <span className="text-xs">Écart significatif</span>
@@ -159,55 +186,69 @@ const CashReport = ({ sessionId, report }: CashReportProps) => {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm">Montant d'ouverture</span>
-                <span className="font-semibold">{formatPrice(summary.openingAmount)}</span>
+                <span className="font-semibold">{formatPrice(summary?.openingAmount || 0)}</span>
               </div>
               
               <Separator />
               
               <div className="flex justify-between items-center text-green-600">
                 <span className="text-sm">+ Ventes</span>
-                <span className="font-semibold">{formatPrice(summary.totalSales)}</span>
+                <span className="font-semibold">{formatPrice(summary?.totalSales || 0)}</span>
               </div>
               
               <div className="flex justify-between items-center text-green-600">
                 <span className="text-sm">+ Entrées</span>
-                <span className="font-semibold">{formatPrice(summary.totalEntries)}</span>
+                <span className="font-semibold">{formatPrice(summary?.totalEntries || 0)}</span>
               </div>
               
               <div className="flex justify-between items-center text-red-600">
                 <span className="text-sm">- Sorties</span>
-                <span className="font-semibold">{formatPrice(summary.totalExits)}</span>
+                <span className="font-semibold">{formatPrice(summary?.totalExits || 0)}</span>
               </div>
               
               <div className="flex justify-between items-center text-red-600">
                 <span className="text-sm">- Dépenses</span>
-                <span className="font-semibold">{formatPrice(summary.totalExpenses)}</span>
+                <span className="font-semibold">{formatPrice(summary?.totalExpenses || 0)}</span>
               </div>
+
+              {(summary?.totalRefunds || 0) > 0 && (
+                <div className="flex justify-between items-center text-red-600">
+                  <span className="text-sm">- Remboursements</span>
+                  <span className="font-semibold">{formatPrice(summary.totalRefunds)}</span>
+                </div>
+              )}
+
+              {(summary?.totalAdjustments || 0) !== 0 && (
+                <div className={`flex justify-between items-center ${(summary?.totalAdjustments || 0) > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className="text-sm">{(summary?.totalAdjustments || 0) > 0 ? '+' : '-'} Ajustements</span>
+                  <span className="font-semibold">{formatPrice(Math.abs(summary?.totalAdjustments || 0))}</span>
+                </div>
+              )}
               
               <Separator />
               
               <div className="flex justify-between items-center font-semibold">
                 <span>Solde théorique</span>
-                <span>{formatPrice(summary.theoreticalClosing)}</span>
+                <span>{formatPrice(summary?.theoreticalClosing || 0)}</span>
               </div>
             </div>
 
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm">Solde réel</span>
-                <span className="font-semibold">{formatPrice(summary.actualClosing)}</span>
+                <span className="font-semibold">{formatPrice(summary?.actualClosing || 0)}</span>
               </div>
               
               <Separator />
               
-              <div className={`flex justify-between items-center font-semibold text-lg ${getVarianceColor(summary.variance)}`}>
+              <div className={`flex justify-between items-center font-semibold text-lg ${getVarianceColor(summary?.variance || 0)}`}>
                 <span>Écart final</span>
-                <span>{formatPrice(summary.variance)}</span>
+                <span>{formatPrice(summary?.variance || 0)}</span>
               </div>
               
-              {summary.variance !== 0 && summary.theoreticalClosing !== 0 && (
+              {(summary?.variance || 0) !== 0 && (summary?.theoreticalClosing || 0) !== 0 && (
                 <div className="text-xs text-muted-foreground">
-                  {summary.variance > 0 ? 'Excédent' : 'Manquant'}: {Math.abs((summary.variance / summary.theoreticalClosing) * 100).toFixed(2)}%
+                  {(summary?.variance || 0) > 0 ? 'Excédent' : 'Manquant'}: {summary?.variancePercentage?.toFixed(2) || '0.00'}%
                 </div>
               )}
             </div>
