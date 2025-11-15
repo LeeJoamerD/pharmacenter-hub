@@ -12,7 +12,16 @@ export const useCashSession = () => {
   const { data: activeSession, isLoading, error, refetch } = useQuery({
     queryKey: ['active-cash-session', tenantId, currentUser?.id],
     queryFn: async () => {
-      if (!currentUser?.id) return null;
+      if (!currentUser?.id) {
+        console.log('❌ useCashSession: currentUser.id manquant');
+        return null;
+      }
+
+      console.log('🔍 Recherche session caisse:', {
+        tenantId,
+        currentUserId: currentUser.id,
+        query: `agent_id.eq.${currentUser.id},caissier_id.eq.${currentUser.id}`
+      });
 
       const { data, error } = await supabase
         .from('sessions_caisse')
@@ -25,10 +34,11 @@ export const useCashSession = () => {
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Erreur récupération session caisse:', error);
+        console.error('❌ Erreur récupération session caisse:', error);
         throw error;
       }
 
+      console.log('✅ Session trouvée:', data ? 'OUI' : 'NON', data);
       return data as CashSession | null;
     },
     enabled: !!tenantId && !!currentUser?.id,
