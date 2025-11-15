@@ -485,21 +485,31 @@ const useCashRegister = () => {
         ?.filter(m => m.type_mouvement === 'Remboursement')
         .reduce((total, m) => total + m.montant, 0) || 0;
 
+      // Exclure les ajustements d'écart de fermeture du calcul
       const totalAjustements = movements
-        ?.filter(m => m.type_mouvement === 'Ajustement')
+        ?.filter(m => 
+          m.type_mouvement === 'Ajustement' && 
+          !m.description?.includes('Écart de fermeture')
+        )
         .reduce((total, m) => total + m.montant, 0) || 0;
 
-      // Calcul du montant théorique
-      const montantTheorique = transformedSession.fond_caisse_ouverture 
-        + totalVentes 
-        + totalEntrees 
-        + totalAjustements
-        - totalSorties 
-        - totalDepenses 
-        - totalRemboursements;
+      // Pour les sessions fermées, utiliser les valeurs déjà calculées en base
+      const montantTheorique = transformedSession.statut === 'Fermée' 
+        ? (transformedSession.montant_theorique_fermeture || 0)
+        : (transformedSession.fond_caisse_ouverture 
+            + totalVentes 
+            + totalEntrees 
+            + totalAjustements
+            - totalSorties 
+            - totalDepenses 
+            - totalRemboursements);
 
       const montantReel = transformedSession.montant_reel_fermeture || 0;
-      const ecart = montantReel - montantTheorique;
+      
+      // Pour les sessions fermées, utiliser l'écart déjà calculé
+      const ecart = transformedSession.statut === 'Fermée'
+        ? (transformedSession.ecart || 0)
+        : (montantReel - montantTheorique);
 
       return {
         session: transformedSession,

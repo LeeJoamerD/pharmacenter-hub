@@ -82,6 +82,9 @@ export interface CashSession {
   fond_caisse_ouverture: number;
   fond_caisse_fermeture: number | null;
   montant_total_ventes: number;
+  montant_theorique_fermeture?: number;
+  montant_reel_fermeture?: number;
+  ecart?: number;
   statut: string;
   caisse?: {
     nom: string;
