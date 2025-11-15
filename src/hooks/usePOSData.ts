@@ -223,7 +223,7 @@ export const usePOSData = () => {
           .insert([{
             tenant_id: tenantId,
             session_caisse_id: transactionData.session_caisse_id,
-            type_mouvement: 'Encaissement',
+            type_mouvement: 'Vente',
             montant: transactionData.payment.amount_received,
             description: `Vente ${numeroFacture} - ${transactionData.payment.method}`,
             motif: `Paiement vente ${numeroFacture}`,
