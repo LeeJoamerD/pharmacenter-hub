@@ -236,7 +236,7 @@ export const useSalesMetricsDB = (
   const totalTransactionsPages = Math.ceil((transactionsResponse?.total || 0) / transactionsLimit);
 
   return {
-    // Métriques enrichies
+    // Métriques enrichies - toujours retourner un objet
     metrics: metrics ? {
       ...metrics,
       dailyVariation,
@@ -244,7 +244,22 @@ export const useSalesMetricsDB = (
       totalCashAmount,
       totalMovements,
       cashRegisters
-    } : null,
+    } : {
+      // Valeurs par défaut si metrics n'est pas chargé
+      dailyRevenue: 0,
+      yesterdayRevenue: 0,
+      dailyTransactions: 0,
+      averageBasket: 0,
+      monthlyRevenue: 0,
+      monthlyTarget: 0,
+      monthlyProgress: 0,
+      pendingInvoices: 0,
+      dailyVariation: 0,
+      activeCashRegisters,
+      totalCashAmount,
+      totalMovements,
+      cashRegisters
+    },
     
     // Caisses
     cashRegisters,
