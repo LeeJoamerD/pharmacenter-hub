@@ -18,6 +18,7 @@ import { useHasPermission } from '@/hooks/usePermissions';
 import { PERMISSIONS, ROLES } from '@/types/permissions';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface PersonnelFormData {
   noms: string;
@@ -32,6 +33,7 @@ interface PersonnelFormData {
 const UserSettings = () => {
   const { toast } = useToast();
   const { useTenantMutation, tenantId } = useTenantQuery();
+  const queryClient = useQueryClient();
   
   const canCreateUsers = useHasPermission(PERMISSIONS.USERS_CREATE);
   const canEditUsers = useHasPermission(PERMISSIONS.USERS_EDIT);
@@ -63,18 +65,35 @@ const UserSettings = () => {
   });
 
   // Mutations
-  const createPersonnelMutation = useTenantMutation('personnel', 'insert', {
-    invalidateQueries: ['personnel'],
+  const createPersonnelMutation = useMutation({
+    mutationFn: async (data: PersonnelFormData) => {
+      const { data: result, error } = await supabase.functions.invoke('create-user-with-personnel', {
+        body: {
+          email: data.email,
+          password: data.password,
+          noms: data.noms,
+          prenoms: data.prenoms,
+          role: data.role,
+          telephone_appel: data.telephone_appel,
+          tenant_id: tenantId
+        }
+      });
+
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+      return result;
+    },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['personnel'] });
       toast({ title: 'Utilisateur créé avec succès' });
       setIsCreateDialogOpen(false);
       createForm.reset();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Erreur lors de la création:', error);
       toast({
         title: 'Erreur lors de la création',
-        description: error.message,
+        description: error.message || 'Une erreur est survenue',
         variant: 'destructive'
       });
     }
@@ -133,18 +152,18 @@ const UserSettings = () => {
       });
       return;
     }
+
+    // Validation du mot de passe
+    if (!data.password || data.password.length < 8) {
+      toast({
+        title: 'Mot de passe invalide',
+        description: 'Le mot de passe doit contenir au moins 8 caractères',
+        variant: 'destructive'
+      });
+      return;
+    }
     
-    // Générer la référence agent automatiquement
-    const firstPrenom = data.prenoms.split(' ')[0];
-    const firstThreeLettersNom = data.noms.substring(0, 3).toLowerCase();
-    const reference_agent = `${firstPrenom}_${firstThreeLettersNom}`;
-    
-    const finalData = {
-      ...data,
-      reference_agent
-    };
-    
-    createPersonnelMutation.mutate(finalData);
+    createPersonnelMutation.mutate(data);
   };
 
   const onEditSubmit = async (data: PersonnelFormData) => {

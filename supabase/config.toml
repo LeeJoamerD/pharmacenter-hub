@@ -1,1 +1,4 @@
 project_id = "pzsoeapzuijhgemjzydo"
+
+[functions.create-user-with-personnel]
+verify_jwt = false
