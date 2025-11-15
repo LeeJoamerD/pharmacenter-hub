@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -93,6 +93,9 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
             <Receipt className="h-5 w-5" />
             Finaliser la Transaction
           </DialogTitle>
+          <DialogDescription>
+            Sélectionnez le mode de paiement et validez la transaction
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
