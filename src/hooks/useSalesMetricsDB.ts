@@ -210,11 +210,12 @@ export const useSalesMetricsDB = (
           table: 'sessions_caisse',
           filter: `tenant_id=eq.${tenantId}`
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['cash-registers-status'] });
-        }
-      )
-      .subscribe();
+      () => {
+        queryClient.invalidateQueries({ queryKey: ['cash-registers-status'] });
+        queryClient.invalidateQueries({ queryKey: ['active-sessions-totals'] });
+      }
+    )
+    .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
@@ -223,7 +224,8 @@ export const useSalesMetricsDB = (
 
   // Calculs dérivés pour les caisses
   const activeCashRegisters = cashRegisters.filter(r => r.status === 'open').length;
-  const totalCashAmount = cashRegisters.reduce((sum, r) => sum + (r.currentAmount || 0), 0);
+  const totalCashAmount = sessionTotals?.totalCashAmount || 0;
+  const totalMovements = sessionTotals?.totalMovements || 0;
 
   // Calcul de la variation journalière
   const dailyVariation = metrics?.yesterdayRevenue 
