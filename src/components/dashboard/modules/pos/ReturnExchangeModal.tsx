@@ -24,6 +24,7 @@ export const ReturnExchangeModal: React.FC<ReturnExchangeModalProps> = ({ open, 
     productName: string;
     quantityReturned: number;
     maxQuantity: number;
+    unitPrice: number;
     condition: 'Neuf' | 'Ouvert' | 'Défectueux';
     reason: string;
   }>>([]);
@@ -39,15 +40,24 @@ export const ReturnExchangeModal: React.FC<ReturnExchangeModalProps> = ({ open, 
     if (result && result.length > 0) {
       const transaction = result[0];
       setOriginalTransaction(transaction);
-      // Les lignes_ventes sont à récupérer séparément si nécessaire
-      setReturnItems([{
-        productId: '',
-        productName: 'Produit',
-        quantityReturned: 0,
-        maxQuantity: 1,
-        condition: 'Neuf' as const,
-        reason: ''
-      }]);
+      
+      // Transformer les lignes_ventes en returnItems
+      if (transaction.lignes_ventes && transaction.lignes_ventes.length > 0) {
+        const items = transaction.lignes_ventes.map((ligne: any) => ({
+          productId: ligne.produit_id || '',
+          productName: ligne.produit?.libelle_produit || 'Produit inconnu',
+          quantityReturned: 0,
+          maxQuantity: ligne.quantite || 0,
+          unitPrice: ligne.prix_unitaire_ttc || 0,
+          condition: 'Neuf' as const,
+          reason: ''
+        }));
+        setReturnItems(items);
+      } else {
+        toast.error('Cette transaction ne contient aucun article');
+        return;
+      }
+      
       setStep('details');
     } else {
       toast.error('Transaction introuvable');
@@ -71,21 +81,26 @@ export const ReturnExchangeModal: React.FC<ReturnExchangeModalProps> = ({ open, 
     try {
       await createReturn({
         vente_origine_id: originalTransaction.id,
-        numero_vente_origine: originalTransaction.numero_facture || '',
+        numero_vente_origine: originalTransaction.numero_vente || '',
         client_id: originalTransaction.client_id,
         type_operation: 'Retour',
         motif_retour: 'Retour client',
-        lignes: itemsToReturn.map(item => ({
-          produit_id: item.productId,
-          lot_id: undefined,
-          quantite_retournee: item.quantityReturned,
-          prix_unitaire: 0,
-          montant_ligne: 0,
-          etat_produit: item.condition === 'Neuf' ? 'Parfait' : item.condition === 'Ouvert' ? 'Endommagé' : 'Non conforme',
-          taux_remboursement: 100,
-          motif_ligne: item.reason,
-          remis_en_stock: false
-        }))
+        lignes: itemsToReturn.map(item => {
+          const prixUnitaire = item.unitPrice;
+          const montantLigne = prixUnitaire * item.quantityReturned;
+          
+          return {
+            produit_id: item.productId,
+            lot_id: undefined,
+            quantite_retournee: item.quantityReturned,
+            prix_unitaire: prixUnitaire,
+            montant_ligne: montantLigne,
+            etat_produit: item.condition === 'Neuf' ? 'Parfait' : item.condition === 'Ouvert' ? 'Endommagé' : 'Non conforme',
+            taux_remboursement: 100,
+            motif_ligne: item.reason,
+            remis_en_stock: false
+          };
+        })
       });
 
       toast.success('Retour enregistré avec succès');
@@ -158,13 +173,13 @@ export const ReturnExchangeModal: React.FC<ReturnExchangeModalProps> = ({ open, 
               <h3 className="font-semibold">Transaction Originale</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Numéro:</span> {originalTransaction.numero_facture}
+                  <span className="text-muted-foreground">Numéro:</span> {originalTransaction.numero_vente}
                 </div>
                 <div>
                   <span className="text-muted-foreground">Date:</span> {new Date(originalTransaction.date_vente).toLocaleDateString()}
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Montant:</span> {originalTransaction.montant_total} FCFA
+                  <span className="text-muted-foreground">Montant:</span> {originalTransaction.montant_net} FCFA
                 </div>
               </div>
             </div>
