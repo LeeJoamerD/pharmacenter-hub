@@ -198,7 +198,7 @@ export const useReturnsExchanges = () => {
         )
       `)
       .eq('tenant_id', tenantId!)
-      .or(`numero_vente.ilike.%${reference}%,id.eq.${reference}`)
+      .ilike('numero_vente', `%${reference}%`)
       .order('date_vente', { ascending: false })
       .limit(10);
 
