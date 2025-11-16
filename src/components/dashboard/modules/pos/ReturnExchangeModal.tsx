@@ -37,23 +37,39 @@ export const ReturnExchangeModal: React.FC<ReturnExchangeModalProps> = ({ open, 
     }
 
     const result = await searchOriginalTransaction(transactionRef);
+    console.log('🔍 Résultat de recherche:', result);
+    
     if (result && result.length > 0) {
       const transaction = result[0];
+      console.log('📦 Transaction trouvée:', transaction);
+      console.log('📦 Numero vente:', transaction.numero_vente);
+      console.log('📦 Montant net:', transaction.montant_net);
+      console.log('📦 Lignes ventes:', transaction.lignes_ventes);
+      
       setOriginalTransaction(transaction);
       
       // Transformer les lignes_ventes en returnItems
       if (transaction.lignes_ventes && transaction.lignes_ventes.length > 0) {
-        const items = transaction.lignes_ventes.map((ligne: any) => ({
-          productId: ligne.produit_id || '',
-          productName: ligne.produit?.libelle_produit || 'Produit inconnu',
-          quantityReturned: 0,
-          maxQuantity: ligne.quantite || 0,
-          unitPrice: ligne.prix_unitaire_ttc || 0,
-          condition: 'Neuf' as const,
-          reason: ''
-        }));
+        console.log('🔄 Transformation des lignes_ventes...');
+        
+        const items = transaction.lignes_ventes.map((ligne: any, idx: number) => {
+          console.log(`  Ligne ${idx}:`, ligne);
+          
+          return {
+            productId: ligne.produit_id || '',
+            productName: ligne.produit?.libelle_produit || 'Produit inconnu',
+            quantityReturned: 0,
+            maxQuantity: ligne.quantite || 0,
+            unitPrice: ligne.prix_unitaire_ttc || 0,
+            condition: 'Neuf' as const,
+            reason: ''
+          };
+        });
+        
+        console.log('✅ Items transformés:', items);
         setReturnItems(items);
       } else {
+        console.error('❌ Aucune ligne de vente trouvée dans:', transaction);
         toast.error('Cette transaction ne contient aucun article');
         return;
       }

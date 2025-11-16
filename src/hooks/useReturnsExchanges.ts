@@ -188,13 +188,13 @@ export const useReturnsExchanges = () => {
         date_vente,
         montant_net,
         client_id,
-        client:client_id(nom_complet),
-        lignes_ventes!lignes_ventes_vente_id_fkey(
+        client:clients(nom_complet),
+        lignes_ventes(
           id,
           quantite,
           prix_unitaire_ttc,
           produit_id,
-          produit:produits!lignes_ventes_produit_id_fkey(libelle_produit, code_cip)
+          produit:produits(libelle_produit, code_cip)
         )
       `)
       .eq('tenant_id', tenantId!)
@@ -202,7 +202,12 @@ export const useReturnsExchanges = () => {
       .order('date_vente', { ascending: false })
       .limit(10);
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erreur recherche transaction:', error);
+      throw error;
+    }
+    
+    console.log('✅ Data reçue de Supabase:', data);
     return data;
   };
 
