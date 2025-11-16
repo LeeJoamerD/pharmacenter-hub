@@ -5280,41 +5280,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fk_lignes_ventes_produit"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "produits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_lignes_ventes_produit"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "produits_with_stock"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_lignes_ventes_produit"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "v_produits_with_famille"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_lignes_ventes_produit"
-            columns: ["produit_id"]
-            isOneToOne: false
-            referencedRelation: "v_rentabilite_produits"
-            referencedColumns: ["produit_id"]
-          },
-          {
-            foreignKeyName: "fk_lignes_ventes_vente"
-            columns: ["vente_id"]
-            isOneToOne: false
-            referencedRelation: "ventes"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "lignes_ventes_lot_id_fkey"
             columns: ["lot_id"]
             isOneToOne: false
