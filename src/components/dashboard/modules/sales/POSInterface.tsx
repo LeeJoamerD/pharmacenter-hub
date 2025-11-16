@@ -691,6 +691,10 @@ const POSInterface = () => {
       <TabsContent value="fidelite">
         <LoyaltyPanel 
           clientId={customer.id || null}
+          onClientSelect={(clientId) => {
+            // Optionnel : synchroniser avec l'onglet vente
+            console.log('Client sélectionné:', clientId);
+          }}
           onApplyReward={(rewardId, discount) => {
             setLoyaltyRewardApplied({ id: rewardId, discount });
             toast({
