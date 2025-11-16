@@ -243,7 +243,11 @@ export const ReturnExchangeModal: React.FC<ReturnExchangeModalProps> = ({ open, 
                     <div className="space-y-2">
                       <Label>Remboursement</Label>
                       <Input
-                        value={calculateRefundAmount([{ quantite_retournee: item.quantityReturned, etat_produit: item.condition, prix_unitaire: 1000 }]) + ' FCFA'}
+                        value={calculateRefundAmount([{ 
+                          quantite_retournee: item.quantityReturned, 
+                          etat_produit: item.condition === 'Neuf' ? 'Parfait' : item.condition === 'Ouvert' ? 'Endommagé' : 'Non conforme',
+                          prix_unitaire: item.unitPrice
+                        }]) + ' FCFA'}
                         disabled
                         className="bg-muted"
                       />
