@@ -4,41 +4,55 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useLoyaltyProgram } from '@/hooks/useLoyaltyProgram';
-import { Gift, Star, Trophy, TrendingUp } from 'lucide-react';
+import { Gift, Star, Trophy, TrendingUp, User } from 'lucide-react';
 import { toast } from 'sonner';
+import { ClientSelectorPOS } from './ClientSelectorPOS';
 
 interface LoyaltyPanelProps {
   clientId: string | null;
   onApplyReward?: (rewardId: string, discount: number) => void;
+  onClientSelect?: (clientId: string) => void;
 }
 
-export const LoyaltyPanel: React.FC<LoyaltyPanelProps> = ({ clientId, onApplyReward }) => {
+export const LoyaltyPanel: React.FC<LoyaltyPanelProps> = ({ 
+  clientId, 
+  onApplyReward,
+  onClientSelect 
+}) => {
   const { getClientLoyalty, rewards, usePoints } = useLoyaltyProgram();
   const [clientProgram, setClientProgram] = React.useState<any>(null);
   const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(clientId);
 
   React.useEffect(() => {
-    if (clientId) {
-      getClientLoyalty(clientId).then(setClientProgram);
+    if (selectedClientId) {
+      getClientLoyalty(selectedClientId).then(setClientProgram);
+    } else if (clientId) {
+      setSelectedClientId(clientId);
     }
-  }, [clientId, getClientLoyalty]);
+  }, [selectedClientId, clientId, getClientLoyalty]);
+
+  const handleClientSelect = (clientId: string, clientData: any) => {
+    setSelectedClientId(clientId);
+    onClientSelect?.(clientId);
+  };
 
   const handleApplyReward = async () => {
-    if (!selectedRewardId || !clientId || !clientProgram) return;
+    if (!selectedRewardId || !selectedClientId || !clientProgram) return;
 
     const reward = rewards?.find(r => r.id === selectedRewardId);
     if (!reward) return;
 
     try {
       await usePoints({ 
-        clientId, 
+        clientId: selectedClientId, 
         points: reward.cout_points, 
         rewardId: selectedRewardId 
       });
       toast.success('Récompense appliquée !');
       onApplyReward?.(selectedRewardId, reward.valeur || 0);
       setSelectedRewardId(null);
-      getClientLoyalty(clientId).then(setClientProgram);
+      getClientLoyalty(selectedClientId).then(setClientProgram);
     } catch (error) {
       toast.error('Erreur lors de l\'application de la récompense');
     }
@@ -50,14 +64,23 @@ export const LoyaltyPanel: React.FC<LoyaltyPanelProps> = ({ clientId, onApplyRew
     (clientProgram && clientProgram.points_actuels >= r.cout_points)
   );
 
-  if (!clientId) {
+  if (!selectedClientId) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-          <Gift className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">
-            Sélectionnez un client pour voir ses points de fidélité
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Gift className="h-5 w-5 text-primary" />
+            Sélection du Client
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground mb-4">
+            Recherchez et sélectionnez un client pour voir ses points de fidélité et récompenses disponibles.
           </p>
+          <ClientSelectorPOS
+            value={selectedClientId}
+            onChange={handleClientSelect}
+          />
         </CardContent>
       </Card>
     );
@@ -65,6 +88,37 @@ export const LoyaltyPanel: React.FC<LoyaltyPanelProps> = ({ clientId, onApplyRew
 
   return (
     <div className="space-y-4">
+      {/* Info Client Sélectionné */}
+      <Card className="border-primary/20">
+        <CardContent className="pt-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium">{clientProgram?.client_nom || 'Client'}</p>
+                <p className="text-xs text-muted-foreground">
+                  Membre depuis {clientProgram?.date_inscription ? 
+                    new Date(clientProgram.date_inscription).toLocaleDateString('fr-FR') : 
+                    'N/A'}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSelectedClientId(null);
+                setClientProgram(null);
+              }}
+            >
+              Changer
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Points du client */}
       <Card className="bg-gradient-to-br from-primary/10 to-primary/5">
         <CardHeader>
