@@ -13485,6 +13485,10 @@ export type Database = {
         Returns: string
       }
       generate_piece_number: { Args: { p_journal_id: string }; Returns: string }
+      generate_pos_invoice_number: {
+        Args: { p_tenant_id: string }
+        Returns: string
+      }
       generate_sales_suggestions: {
         Args: { p_tenant_id: string }
         Returns: number
