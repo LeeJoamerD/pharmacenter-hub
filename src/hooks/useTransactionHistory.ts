@@ -74,7 +74,7 @@ export const useTransactionHistory = (filters: TransactionFilters, currentPage: 
           agent:agent_id(noms, prenoms),
           caisse:caisse_id(nom_caisse),
           session_caisse:session_caisse_id(numero_session),
-          lignes_ventes(
+          lignes_ventes!lignes_ventes_vente_id_fkey(
             quantite,
             prix_unitaire_ttc,
             montant_ligne_ttc,

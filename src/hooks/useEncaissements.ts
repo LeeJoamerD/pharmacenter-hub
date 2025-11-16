@@ -266,7 +266,7 @@ export const useEncaissements = () => {
           client:clients!ventes_client_id_fkey(id, nom_complet, telephone, type_client),
           agent:personnel!ventes_agent_id_fkey(id, noms, prenoms),
           session_caisse:sessions_caisse!ventes_session_caisse_id_fkey(id, numero_session),
-          lignes_ventes(id)
+          lignes_ventes!lignes_ventes_vente_id_fkey(id)
         `,
           { count: 'exact' }
         )
@@ -378,7 +378,7 @@ export const useEncaissements = () => {
         client:clients!ventes_client_id_fkey(id, nom_complet, telephone, type_client),
         agent:personnel!ventes_agent_id_fkey(id, noms, prenoms),
         session_caisse:sessions_caisse!ventes_session_caisse_id_fkey(id, numero_session),
-        lignes_ventes(
+        lignes_ventes!lignes_ventes_vente_id_fkey(
           id,
           quantite,
           prix_vente,

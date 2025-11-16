@@ -189,7 +189,7 @@ export const useReturnsExchanges = () => {
         montant_net,
         client_id,
         client:client_id(nom_complet),
-        lignes_ventes(
+        lignes_ventes!lignes_ventes_vente_id_fkey(
           id,
           quantite,
           prix_unitaire_ttc,
