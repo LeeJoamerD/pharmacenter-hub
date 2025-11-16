@@ -4,30 +4,28 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export async function generateInvoiceNumber(tenantId: string): Promise<string> {
-  const today = new Date();
-  const datePrefix = today.toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD
-  
-  // Définir le début et la fin de la journée
-  const startOfDay = new Date(today);
-  startOfDay.setHours(0, 0, 0, 0);
-  
-  const endOfDay = new Date(today);
-  endOfDay.setHours(23, 59, 59, 999);
-  
-  // Compter les ventes du jour
-  const { count, error } = await supabase
-    .from('ventes')
-    .select('id', { count: 'exact', head: true })
-    .eq('tenant_id', tenantId)
-    .gte('date_vente', startOfDay.toISOString())
-    .lte('date_vente', endOfDay.toISOString());
+  try {
+    // Appeler la fonction PostgreSQL atomique
+    const { data, error } = await supabase.rpc('generate_pos_invoice_number', {
+      p_tenant_id: tenantId
+    });
 
-  if (error) {
-    console.error('Erreur comptage ventes:', error);
-    // Fallback en cas d'erreur
-    return `POS-${datePrefix}-${String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0')}`;
+    if (error) {
+      console.error('Erreur génération numéro facture:', error);
+      throw error;
+    }
+
+    if (!data) {
+      throw new Error('Aucun numéro de facture généré');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Erreur critique génération facture:', error);
+    
+    // Fallback ultime : utiliser timestamp + random pour garantir unicité
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000);
+    return `POS-ERR-${timestamp}-${random}`;
   }
-
-  const sequence = String((count || 0) + 1).padStart(4, '0');
-  return `POS-${datePrefix}-${sequence}`;
 }
