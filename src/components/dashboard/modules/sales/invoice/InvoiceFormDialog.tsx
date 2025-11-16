@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Check, ChevronsUpDown } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { ClientSelector } from '@/components/accounting/ClientSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 interface InvoiceLine {
   id?: string;
@@ -18,8 +20,10 @@ interface InvoiceLine {
   quantite: number;
   prix_unitaire: number;
   taux_tva: number;
+  taux_centime_additionnel: number;
   montant_ht?: number;
   montant_tva?: number;
+  montant_centime_additionnel?: number;
   montant_ttc?: number;
 }
 
@@ -55,10 +59,12 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
     quantite: 1,
     prix_unitaire: 0,
     taux_tva: tvaRate,
+    taux_centime_additionnel: 0.175,
   });
 
   const [products, setProducts] = useState<any[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [isProductPopoverOpen, setIsProductPopoverOpen] = useState(false);
 
   useEffect(() => {
     if (open && user) {
@@ -85,7 +91,7 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
   const loadProducts = async (tenant_id: string) => {
     const { data, error } = await supabase
       .from('produits')
-      .select('id, libelle_produit, prix_vente')
+      .select('id, libelle_produit, prix_vente, code_cip, dci')
       .eq('tenant_id', tenant_id)
       .eq('is_active', true)
       .order('libelle_produit');
@@ -109,8 +115,16 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
 
   const calculateLineTotals = (line: Partial<InvoiceLine>): InvoiceLine => {
     const montant_ht = (line.quantite || 0) * (line.prix_unitaire || 0);
-    const montant_tva = montant_ht * ((line.taux_tva || 0) / 100);
-    const montant_ttc = montant_ht + montant_tva;
+    
+    // Calcul du centime additionnel sur le montant HT
+    const montant_centime_additionnel = montant_ht * ((line.taux_centime_additionnel || 0) / 100);
+    
+    // Calcul de la TVA sur (HT + Centime Additionnel)
+    const base_tva = montant_ht + montant_centime_additionnel;
+    const montant_tva = base_tva * ((line.taux_tva || 0) / 100);
+    
+    // Total TTC = HT + Centime Add. + TVA
+    const montant_ttc = montant_ht + montant_centime_additionnel + montant_tva;
 
     return {
       id: line.id || Date.now().toString(),
@@ -118,7 +132,9 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
       quantite: line.quantite || 0,
       prix_unitaire: line.prix_unitaire || 0,
       taux_tva: line.taux_tva || 0,
+      taux_centime_additionnel: line.taux_centime_additionnel || 0,
       montant_ht,
+      montant_centime_additionnel,
       montant_tva,
       montant_ttc,
     };
@@ -136,6 +152,7 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
       quantite: 1,
       prix_unitaire: 0,
       taux_tva: tvaRate,
+      taux_centime_additionnel: 0.175,
     });
     setSelectedProductId('');
   };
@@ -146,9 +163,10 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
 
   const calculateTotals = () => {
     const montant_ht = lines.reduce((sum, line) => sum + (line.montant_ht || 0), 0);
+    const montant_centime_additionnel = lines.reduce((sum, line) => sum + (line.montant_centime_additionnel || 0), 0);
     const montant_tva = lines.reduce((sum, line) => sum + (line.montant_tva || 0), 0);
     const montant_ttc = lines.reduce((sum, line) => sum + (line.montant_ttc || 0), 0);
-    return { montant_ht, montant_tva, montant_ttc };
+    return { montant_ht, montant_centime_additionnel, montant_tva, montant_ttc };
   };
 
   const handleSubmit = () => {
@@ -238,19 +256,56 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
           <div className="space-y-4">
             <h4 className="text-lg font-semibold">Articles</h4>
 
-            <div className="grid grid-cols-6 gap-2">
-              <Select value={selectedProductId} onValueChange={handleProductSelect}>
-                <SelectTrigger className="col-span-2">
-                  <SelectValue placeholder="Sélectionner un produit" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.libelle_produit}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-7 gap-2">
+              <Popover open={isProductPopoverOpen} onOpenChange={setIsProductPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={isProductPopoverOpen}
+                    className="col-span-2 justify-between"
+                  >
+                    {selectedProductId ? (
+                      products.find(p => p.id === selectedProductId)?.libelle_produit
+                    ) : (
+                      "Rechercher un produit..."
+                    )}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Rechercher par nom, CIP, DCI..." />
+                    <CommandEmpty>Aucun produit trouvé.</CommandEmpty>
+                    <CommandGroup className="max-h-64 overflow-auto">
+                      {products.map((product) => (
+                        <CommandItem
+                          key={product.id}
+                          value={`${product.libelle_produit} ${product.code_cip || ''} ${product.dci || ''}`}
+                          onSelect={() => {
+                            handleProductSelect(product.id);
+                            setIsProductPopoverOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedProductId === product.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{product.libelle_produit}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {product.code_cip && `CIP: ${product.code_cip}`}
+                              {product.dci && ` | DCI: ${product.dci}`}
+                            </span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               <Input
                 type="number"
                 placeholder="Qté"
@@ -266,9 +321,19 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
               />
               <Input
                 type="number"
+                step="0.01"
                 placeholder="TVA %"
                 value={newLine.taux_tva || tvaRate}
                 onChange={(e) => setNewLine(prev => ({ ...prev, taux_tva: parseFloat(e.target.value) || 0 }))}
+              />
+              <Input
+                type="number"
+                step="0.001"
+                placeholder="CA %"
+                title="Centime Additionnel %"
+                value={newLine.taux_centime_additionnel || ''}
+                onChange={(e) => setNewLine(prev => ({ ...prev, taux_centime_additionnel: parseFloat(e.target.value) || 0 }))}
+                className="text-sm"
               />
               <Button onClick={handleAddLine} type="button">
                 <Plus className="h-4 w-4" />
@@ -283,8 +348,10 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
                     <TableHead>Produit</TableHead>
                     <TableHead>Quantité</TableHead>
                     <TableHead>Prix unitaire</TableHead>
-                    <TableHead>TVA</TableHead>
-                    <TableHead>Total</TableHead>
+                    <TableHead>TVA %</TableHead>
+                    <TableHead>CA %</TableHead>
+                    <TableHead>Total HT</TableHead>
+                    <TableHead>Total TTC</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -295,6 +362,8 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
                       <TableCell>{line.quantite}</TableCell>
                       <TableCell>{formatPrice(line.prix_unitaire)}</TableCell>
                       <TableCell>{line.taux_tva}%</TableCell>
+                      <TableCell>{line.taux_centime_additionnel}%</TableCell>
+                      <TableCell>{formatPrice(line.montant_ht || 0)}</TableCell>
                       <TableCell>{formatPrice(line.montant_ttc || 0)}</TableCell>
                       <TableCell>
                         <Button
@@ -318,6 +387,10 @@ export const InvoiceFormDialog: React.FC<InvoiceFormDialogProps> = ({
                   <div className="flex justify-between">
                     <span>Sous-total HT:</span>
                     <span>{formatPrice(totals.montant_ht)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Centime Additionnel:</span>
+                    <span>{formatPrice(totals.montant_centime_additionnel)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>TVA:</span>
