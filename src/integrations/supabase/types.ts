@@ -13697,6 +13697,8 @@ export type Database = {
         Args: { settings: Json; target_tenant_id: string }
         Returns: Json
       }
+      recalculer_prix_lots: { Args: never; Returns: Json }
+      recalculer_prix_produits: { Args: never; Returns: Json }
       refresh_network_system_stats: {
         Args: { p_tenant_id: string }
         Returns: Json
