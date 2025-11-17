@@ -8,12 +8,14 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DollarSign, Percent, Plus, Edit, Trash2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { DollarSign, Percent, Plus, Edit, Trash2, RefreshCcw, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useMarginRules } from '@/hooks/useMarginRules';
 import { usePriceCategories } from '@/hooks/usePriceCategories';
 import { useTenant } from '@/contexts/TenantContext';
+import pricingCalculationService from '@/services/PricingCalculationService';
 
 const PricingConfig = () => {
   const { toast } = useToast();
@@ -21,6 +23,13 @@ const PricingConfig = () => {
   const { settings, loading: settingsLoading, saveSettings, isUpdating: settingsUpdating } = usePricingSettings();
   const { rules, loading: rulesLoading, createRule, updateRule, deleteRule, isUpdating: rulesUpdating } = useMarginRules();
   const { categories, loading: categoriesLoading, createCategory, updateCategory, deleteCategory, isUpdating: categoriesUpdating } = usePriceCategories();
+  
+  const [recalculating, setRecalculating] = useState(false);
+  const [recalculationResult, setRecalculationResult] = useState<{
+    productsUpdated?: number;
+    lotsUpdated?: number;
+    success?: boolean;
+  } | null>(null);
   
   const [pricingConfig, setPricingConfig] = useState({
     defaultMargin: 20,
@@ -158,6 +167,45 @@ const PricingConfig = () => {
       });
     } catch (error) {
       console.error('Error saving pricing settings:', error);
+    }
+  };
+
+  // ÉTAPE 6: Fonction de recalcul des prix
+  const handleRecalculateAll = async () => {
+    setRecalculating(true);
+    setRecalculationResult(null);
+    
+    try {
+      const result = await pricingCalculationService.recalculateAll();
+      
+      setRecalculationResult({
+        success: result.success,
+        productsUpdated: result.productResult.products_updated,
+        lotsUpdated: result.lotResult.lots_updated
+      });
+
+      if (result.success) {
+        toast({
+          title: "Recalcul terminé",
+          description: `${result.productResult.products_updated || 0} produits et ${result.lotResult.lots_updated || 0} lots recalculés avec succès`,
+        });
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Une erreur s'est produite lors du recalcul",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error during recalculation:', error);
+      setRecalculationResult({ success: false });
+      toast({
+        title: "Erreur",
+        description: "Une erreur s'est produite lors du recalcul",
+        variant: "destructive",
+      });
+    } finally {
+      setRecalculating(false);
     }
   };
 
@@ -491,6 +539,74 @@ const PricingConfig = () => {
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      {/* ÉTAPE 6: Interface Admin de Recalcul */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCcw className="h-5 w-5" />
+            Outils de Recalcul des Prix
+          </CardTitle>
+          <CardDescription>
+            Recalculer automatiquement tous les prix des produits et des lots en fonction de leurs catégories de tarification
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Important</AlertTitle>
+            <AlertDescription>
+              Cette opération va recalculer tous les prix des produits actifs ayant une catégorie de tarification assignée, 
+              puis mettre à jour les prix suggérés des lots. Les triggers automatiques s'appliqueront pour les futures créations.
+            </AlertDescription>
+          </Alert>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="font-medium">Recalcul complet</p>
+              <p className="text-sm text-muted-foreground">
+                Recalcule tous les prix des produits et lots existants
+              </p>
+            </div>
+            <Button 
+              onClick={handleRecalculateAll}
+              disabled={recalculating}
+              className="gap-2"
+            >
+              {recalculating ? (
+                <>
+                  <RefreshCcw className="h-4 w-4 animate-spin" />
+                  Recalcul en cours...
+                </>
+              ) : (
+                <>
+                  <RefreshCcw className="h-4 w-4" />
+                  Recalculer Maintenant
+                </>
+              )}
+            </Button>
+          </div>
+
+          {recalculationResult && (
+            <Alert variant={recalculationResult.success ? "default" : "destructive"}>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>
+                {recalculationResult.success ? 'Recalcul terminé' : 'Erreur lors du recalcul'}
+              </AlertTitle>
+              <AlertDescription>
+                {recalculationResult.success ? (
+                  <div className="space-y-1">
+                    <p>✓ {recalculationResult.productsUpdated || 0} produits recalculés</p>
+                    <p>✓ {recalculationResult.lotsUpdated || 0} lots mis à jour</p>
+                  </div>
+                ) : (
+                  <p>Une erreur s'est produite lors du recalcul</p>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
