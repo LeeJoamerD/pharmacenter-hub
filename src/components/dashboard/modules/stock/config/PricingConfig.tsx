@@ -15,6 +15,7 @@ import { usePricingSettings } from '@/hooks/usePricingSettings';
 import { useMarginRules } from '@/hooks/useMarginRules';
 import { usePriceCategories } from '@/hooks/usePriceCategories';
 import { useTenant } from '@/contexts/TenantContext';
+import { supabase } from '@/integrations/supabase/client';
 import pricingCalculationService from '@/services/PricingCalculationService';
 
 const PricingConfig = () => {
@@ -172,6 +173,18 @@ const PricingConfig = () => {
 
   // ÉTAPE 6: Fonction de recalcul des prix
   const handleRecalculateAll = async () => {
+    // Vérifier l'authentification avant l'appel
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      toast({
+        title: "Authentification requise",
+        description: "Vous devez être connecté pour effectuer cette action. Veuillez vous reconnecter.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setRecalculating(true);
     setRecalculationResult(null);
     
@@ -190,18 +203,20 @@ const PricingConfig = () => {
           description: `${result.productResult.products_updated || 0} produits et ${result.lotResult.lots_updated || 0} lots recalculés avec succès`,
         });
       } else {
+        const errorMsg = result.productResult.error || result.lotResult.error || "Une erreur s'est produite lors du recalcul";
         toast({
-          title: "Erreur",
-          description: "Une erreur s'est produite lors du recalcul",
+          title: "Erreur lors du recalcul",
+          description: errorMsg,
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error('Error during recalculation:', error);
       setRecalculationResult({ success: false });
+      const errorMessage = error instanceof Error ? error.message : "Une erreur s'est produite lors du recalcul";
       toast({
-        title: "Erreur",
-        description: "Une erreur s'est produite lors du recalcul",
+        title: "Erreur lors du recalcul",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
