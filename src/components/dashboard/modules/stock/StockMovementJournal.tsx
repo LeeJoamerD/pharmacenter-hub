@@ -609,9 +609,13 @@ const StockMovementJournal = () => {
                         <TableCell>{movement.quantite_avant || 0}</TableCell>
                         <TableCell>
                           <span className={
-                            movement.quantite_mouvement > 0 ? 'text-green-600' : 'text-red-600'
+                            movement.type_mouvement === 'sortie' || movement.type_mouvement === 'destruction' 
+                              ? 'text-red-600' 
+                              : 'text-green-600'
                           }>
-                            {movement.quantite_mouvement > 0 ? '+' : ''}{movement.quantite_mouvement || 0}
+                            {movement.type_mouvement === 'sortie' || movement.type_mouvement === 'destruction' 
+                              ? '-' 
+                              : '+'}{Math.abs(movement.quantite_mouvement || 0)}
                           </span>
                         </TableCell>
                         <TableCell>{movement.quantite_apres || 0}</TableCell>
