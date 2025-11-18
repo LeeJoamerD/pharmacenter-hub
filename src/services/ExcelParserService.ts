@@ -32,7 +32,7 @@ export class ExcelParserService {
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
         header: 1,
         defval: '',
-        raw: false
+        raw: true // Garde les types originaux (nombres, dates)
       }) as any[][];
 
       if (jsonData.length < 2) {
@@ -62,7 +62,7 @@ export class ExcelParserService {
 
         try {
           const line: ExcelReceptionLine = {
-            reference: this.cleanString(row[3]), // Colonne D (CIP/EAN13)
+            reference: this.convertScientificToString(this.cleanString(row[3])), // Colonne D (CIP/EAN13)
             produit: this.cleanString(row[4]), // Colonne E (Libellé du produit)
             quantiteCommandee: this.parseNumber(row[5], 0), // Colonne F
             quantiteRecue: this.parseNumber(row[7], 0), // Colonne H
@@ -274,30 +274,44 @@ export class ExcelParserService {
       const personnelQuery = (supabase as any)
         .from('personnel')
         .select('tenant_id')
-        .eq('user_id', user.user.id)
+        .eq('auth_user_id', user.user.id)
         .single();
       
       const { data: personnel } = await personnelQuery;
 
       if (!personnel) throw new Error('Personnel non trouvé');
 
-      // Rechercher les produits par référence (CIP ou code-barres externe)
-      const { data: produits, error } = await (supabase
+      // Rechercher les produits par code_cip
+      const { data: produitsByCip, error: errorCip } = await (supabase
         .from('produits')
         .select('id, libelle_produit, code_cip, code_barre_externe')
         .eq('tenant_id', personnel.tenant_id)
-        .or(`code_cip.in.(${references.join(',')}),code_barre_externe.in.(${references.join(',')})`) as any);
+        .in('code_cip', references) as any);
 
-      if (error) throw error;
+      if (errorCip) throw errorCip;
 
-      const matched = new Map<string, string>();
-      const notFound: string[] = [];
-      const ambiguous = new Map<string, string[]>();
+      // Rechercher les produits par code_barre_externe
+      const { data: produitsByBarcode, error: errorBarcode } = await (supabase
+        .from('produits')
+        .select('id, libelle_produit, code_cip, code_barre_externe')
+        .eq('tenant_id', personnel.tenant_id)
+        .in('code_barre_externe', references) as any);
+
+      if (errorBarcode) throw errorBarcode;
+
+      // Combiner les résultats
+      const produits = [...(produitsByCip || []), ...(produitsByBarcode || [])];
+
+      console.log('🔍 Recherche produits pour références:', references);
+      console.log('📦 Produits trouvés:', produits);
 
       for (const ref of references) {
+        console.log(`  Recherche "${ref}"...`);
         const matchingProducts = produits?.filter(p => 
           p.code_cip === ref || p.code_barre_externe === ref
         ) || [];
+        
+        console.log(`    → ${matchingProducts.length} produit(s) trouvé(s)`);
         
         if (matchingProducts.length === 0) {
           notFound.push(ref);
@@ -382,5 +396,25 @@ export class ExcelParserService {
   static cleanString(value: any): string {
     if (value === null || value === undefined) return '';
     return String(value).trim();
+  }
+
+  /**
+   * Convertit la notation scientifique d'Excel en chaîne de chiffres
+   * Ex: "4.0085E+12" → "4008500130452"
+   */
+  static convertScientificToString(value: string): string {
+    if (!value) return value;
+    
+    // Si c'est déjà un nombre normal (pas de notation scientifique), le retourner
+    if (!/[eE][+-]?\d+/.test(value)) {
+      return value;
+    }
+    
+    // Convertir en nombre puis en chaîne avec précision
+    const num = parseFloat(value);
+    if (isNaN(num)) return value;
+    
+    // Utiliser toFixed(0) pour éviter les décimales
+    return num.toFixed(0);
   }
 }
