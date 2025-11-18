@@ -271,75 +271,42 @@ export class ExcelParserService {
       const { data: user } = await supabase.auth.getUser();
       if (!user?.user) throw new Error('Utilisateur non authentifié');
 
-      const { data: personnel } = await supabase
+      const personnelQuery = (supabase as any)
         .from('personnel')
         .select('tenant_id')
         .eq('user_id', user.user.id)
         .single();
+      
+      const { data: personnel } = await personnelQuery;
 
       if (!personnel) throw new Error('Personnel non trouvé');
 
-      // Rechercher par code_barre ou reference_interne
-      const { data: produits, error } = await supabase
+      // Rechercher les produits par référence (CIP ou code-barres externe)
+      const { data: produits, error } = await (supabase
         .from('produits')
-        .select('id, code_barre, reference_interne, nom')
+        .select('id, libelle_produit, code_cip, code_barre_externe')
         .eq('tenant_id', personnel.tenant_id)
-        .in('code_barre', references);
+        .or(`code_cip.in.(${references.join(',')}),code_barre_externe.in.(${references.join(',')})`) as any);
 
       if (error) throw error;
 
-      // Si pas trouvé par code_barre, essayer par reference_interne
-      const foundBarcodes = produits?.map(p => p.code_barre) || [];
-      const notFoundByBarcode = references.filter(r => !foundBarcodes.includes(r));
+      const matched = new Map<string, string>();
+      const notFound: string[] = [];
+      const ambiguous = new Map<string, string[]>();
 
-      let produitsParRef: any[] = [];
-      if (notFoundByBarcode.length > 0) {
-        const { data, error: error2 } = await supabase
-          .from('produits')
-          .select('id, code_barre, reference_interne, nom')
-          .eq('tenant_id', personnel.tenant_id)
-          .in('reference_interne', notFoundByBarcode);
-
-        if (!error2 && data) {
-          produitsParRef = data;
+      for (const ref of references) {
+        const matchingProducts = produits?.filter(p => 
+          p.code_cip === ref || p.code_barre_externe === ref
+        ) || [];
+        
+        if (matchingProducts.length === 0) {
+          notFound.push(ref);
+        } else if (matchingProducts.length === 1) {
+          matched.set(ref, matchingProducts[0].id);
+        } else {
+          ambiguous.set(ref, matchingProducts.map(p => p.id));
         }
       }
-
-      // Combiner les résultats
-      const allProduits = [...(produits || []), ...produitsParRef];
-
-      // Créer un index de recherche
-      const refIndex = new Map<string, string[]>();
-      allProduits.forEach(p => {
-        // Indexer par code_barre
-        if (p.code_barre && references.includes(p.code_barre)) {
-          if (!refIndex.has(p.code_barre)) {
-            refIndex.set(p.code_barre, []);
-          }
-          refIndex.get(p.code_barre)!.push(p.id);
-        }
-        // Indexer par reference_interne
-        if (p.reference_interne && references.includes(p.reference_interne)) {
-          if (!refIndex.has(p.reference_interne)) {
-            refIndex.set(p.reference_interne, []);
-          }
-          refIndex.get(p.reference_interne)!.push(p.id);
-        }
-      });
-
-      // Analyser les correspondances
-      references.forEach(ref => {
-        const ids = refIndex.get(ref);
-        if (!ids || ids.length === 0) {
-          notFound.push(ref);
-        } else if (ids.length === 1) {
-          matched.set(ref, ids[0]);
-        } else {
-          ambiguous.set(ref, ids);
-          // Prendre le premier par défaut
-          matched.set(ref, ids[0]);
-        }
-      });
 
       return { matched, notFound, ambiguous };
     } catch (error) {

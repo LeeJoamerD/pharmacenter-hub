@@ -156,16 +156,16 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       }));
 
       // Créer la réception
-      const receptionData: Partial<Reception> = {
+      const receptionData = {
         fournisseur_id: selectedSupplierId,
         commande_id: orderId || undefined,
         date_reception: new Date().toISOString(),
         reference_facture: bonLivraison,
-        statut: 'Validé',
+        statut: 'Validé' as const,
         lignes
       };
 
-      await onCreateReception(receptionData);
+      await onCreateReception(receptionData as any);
 
       // Si une commande existante a été sélectionnée, mettre à jour son statut
       if (selectedOrderId) {
