@@ -339,7 +339,24 @@ export class ExcelParserService {
     try {
       // Si c'est déjà une date
       if (value instanceof Date) {
-        return format(value, 'yyyy-MM-dd');
+        let year = value.getFullYear();
+        
+        // Correction pour les années à 2 chiffres
+        if (year < 100) {
+          year += 2000;
+        }
+        
+        // Créer une nouvelle date avec l'année corrigée
+        const correctedDate = new Date(year, value.getMonth(), value.getDate());
+        
+        console.log(`📅 Parsing Date object:`, {
+          original: value,
+          yearOriginal: value.getFullYear(),
+          yearCorrected: year,
+          result: format(correctedDate, 'yyyy-MM-dd')
+        });
+        
+        return format(correctedDate, 'yyyy-MM-dd');
       }
 
       // Si c'est un nombre (date Excel)
