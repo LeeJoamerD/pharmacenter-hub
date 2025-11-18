@@ -345,7 +345,23 @@ export class ExcelParserService {
       // Si c'est un nombre (date Excel)
       if (typeof value === 'number') {
         const date = XLSX.SSF.parse_date_code(value);
-        return format(new Date(date.y, date.m - 1, date.d), 'yyyy-MM-dd');
+        
+        // Correction pour les années à 2 chiffres
+        // Si l'année est < 100, c'est probablement 20XX (ex: 26 → 2026)
+        let year = date.y;
+        if (year < 100) {
+          year += 2000;
+        }
+        
+        // Log pour debug
+        console.log(`📅 Parsing date Excel:`, {
+          value,
+          parsed: date,
+          yearCorrected: year,
+          result: format(new Date(year, date.m - 1, date.d), 'yyyy-MM-dd')
+        });
+        
+        return format(new Date(year, date.m - 1, date.d), 'yyyy-MM-dd');
       }
 
       // Si c'est une string
