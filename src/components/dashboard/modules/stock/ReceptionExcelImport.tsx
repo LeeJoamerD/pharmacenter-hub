@@ -130,6 +130,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
 
     try {
       let orderId = selectedOrderId;
+      let isAutoCreated = false;
 
       // Si aucune commande n'est sélectionnée, en créer une automatiquement
       if (!orderId) {
@@ -140,6 +141,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
           validationResult.productMatches
         );
         orderId = orderResult.orderId;
+        isAutoCreated = true;
         toast.success(`Commande ${orderResult.orderNumber} créée automatiquement`);
       }
 
@@ -161,15 +163,20 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         commande_id: orderId || undefined,
         date_reception: new Date().toISOString(),
         reference_facture: bonLivraison,
-        statut: 'Validé' as const,
+        isValidated: true,
         lignes
       };
 
       await onCreateReception(receptionData as any);
 
-      // Si une commande existante a été sélectionnée, mettre à jour son statut
-      if (selectedOrderId) {
-        await AutoOrderCreationService.updateOrderStatus(selectedOrderId, 'Réceptionné');
+      // Mettre à jour le statut de la commande (qu'elle soit créée automatiquement ou existante)
+      if (orderId) {
+        await AutoOrderCreationService.updateOrderStatus(orderId, 'Réceptionné');
+        toast.success(
+          isAutoCreated 
+            ? 'Commande créée et réceptionnée avec succès'
+            : 'Commande mise à jour avec le statut Réceptionné'
+        );
       }
 
       toast.success('Réception créée et validée avec succès');
