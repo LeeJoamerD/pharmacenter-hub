@@ -17,7 +17,7 @@ export class AutoOrderCreationService {
       const personnelQuery = (supabase as any)
         .from('personnel')
         .select('tenant_id, id')
-        .eq('user_id', user.user.id)
+        .eq('auth_user_id', user.user.id)
         .single();
       
       const { data: personnel } = await personnelQuery;
