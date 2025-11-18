@@ -226,7 +226,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                   <SelectContent>
                     {suppliers.map(supplier => (
                       <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.nom_fournisseur}
+                        {supplier.nom}
                       </SelectItem>
                     ))}
                   </SelectContent>
