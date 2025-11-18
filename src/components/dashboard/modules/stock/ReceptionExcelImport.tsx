@@ -17,7 +17,7 @@ import type { Reception } from '@/hooks/useReceptions';
 interface ReceptionExcelImportProps {
   suppliers: any[];
   orders: any[];
-  onCreateReception: (receptionData: Partial<Reception>) => Promise<void>;
+  onCreateReception: (receptionData: any) => Promise<any>;
   loading: boolean;
 }
 
