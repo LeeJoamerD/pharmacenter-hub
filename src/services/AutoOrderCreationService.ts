@@ -14,11 +14,13 @@ export class AutoOrderCreationService {
       const { data: user } = await supabase.auth.getUser();
       if (!user?.user) throw new Error('Utilisateur non authentifié');
 
-      const { data: personnel } = await supabase
+      const personnelQuery = (supabase as any)
         .from('personnel')
         .select('tenant_id, id')
         .eq('user_id', user.user.id)
         .single();
+      
+      const { data: personnel } = await personnelQuery;
 
       if (!personnel) throw new Error('Personnel non trouvé');
 
@@ -48,24 +50,20 @@ export class AutoOrderCreationService {
         .map(line => {
           const prixUnitaire = line.prixAchatReel || 0;
           const quantite = line.quantiteCommandee || line.quantiteRecue;
-          const sousTotal = prixUnitaire * quantite;
-          montantTotal += sousTotal;
 
           return {
             tenant_id: personnel.tenant_id,
             commande_id: commande.id,
             produit_id: line.produitId!,
-            quantite: quantite,
-            prix_unitaire: prixUnitaire,
-            sous_total: sousTotal,
-            statut: 'Validé'
+            quantite_commandee: quantite,
+            prix_achat_unitaire_attendu: prixUnitaire
           };
         });
 
       if (lignesCommande.length > 0) {
-        const { error: lignesError } = await supabase
-          .from('commandes_lignes')
-          .insert(lignesCommande);
+        const { error: lignesError } = await (supabase
+          .from('lignes_commande_fournisseur')
+          .insert(lignesCommande) as any);
 
         if (lignesError) throw lignesError;
       }

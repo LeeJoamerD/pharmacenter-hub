@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Clipboard, Plus, Package, ShoppingCart, Eye, Edit, FileText, Settings } from 'lucide-react';
+import { Clipboard, Plus, Package, ShoppingCart, Eye, Edit, FileText, Settings, FileUp } from 'lucide-react';
 import OrderList from '../OrderList';
 import OrderForm from '../OrderForm';
 import EditOrderTab from '../EditOrderTab';
@@ -10,6 +10,7 @@ import ReceptionHistory from '../ReceptionHistory';
 import SupplierManager from '../SupplierManager';
 import OrderTracking from '../OrderTracking';
 import StockSettingsDialog from '../StockSettingsDialog';
+import ReceptionExcelImport from '../ReceptionExcelImport';
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useSupplierOrders } from "@/hooks/useSupplierOrders";
 import { useReceptions } from "@/hooks/useReceptions";
@@ -53,6 +54,12 @@ const StockApprovisionnementTab = () => {
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4" />
             <span>Réceptions</span>
+          </div>
+        </TabsTrigger>
+        <TabsTrigger value="import-excel">
+          <div className="flex items-center gap-2">
+            <FileUp className="h-4 w-4" />
+            <span>Import Excel</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="historique">
