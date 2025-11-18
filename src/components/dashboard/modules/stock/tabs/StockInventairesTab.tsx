@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Clipboard, Package, ChartBar, TrendingUp } from 'lucide-react';
+import { Clipboard, Package, ChartBar, TrendingUp, FileUp } from 'lucide-react';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import InventorySessions from '../InventorySessions';
 import InventoryEntry from '../InventoryEntry';
 import InventoryReconciliation from '../InventoryReconciliation';
 import InventoryReports from '../InventoryReports';
+import { InventoryExcelImport } from '../InventoryExcelImport';
 
 const StockInventairesTab = () => {
   console.log('[StockInventairesTab] Rendering component');
@@ -36,6 +37,12 @@ const StockInventairesTab = () => {
             <span>Saisie</span>
           </div>
         </TabsTrigger>
+        <TabsTrigger value="import-excel">
+          <div className="flex items-center gap-2">
+            <FileUp className="h-4 w-4" />
+            <span>Import Excel</span>
+          </div>
+        </TabsTrigger>
         <TabsTrigger value="reconciliation">
           <div className="flex items-center gap-2">
             <ChartBar className="h-4 w-4" />
@@ -59,6 +66,12 @@ const StockInventairesTab = () => {
       {activeTab === 'saisie' && (
         <ErrorBoundary>
           <InventoryEntry selectedSessionId={selectedSessionId} />
+        </ErrorBoundary>
+      )}
+      
+      {activeTab === 'import-excel' && (
+        <ErrorBoundary>
+          <InventoryExcelImport />
         </ErrorBoundary>
       )}
       
