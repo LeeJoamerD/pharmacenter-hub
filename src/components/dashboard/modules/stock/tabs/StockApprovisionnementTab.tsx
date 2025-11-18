@@ -121,6 +121,15 @@ const StockApprovisionnementTab = () => {
         />
       </TabsContent>
       
+      <TabsContent value="import-excel">
+        <ReceptionExcelImport 
+          suppliers={suppliers.suppliers}
+          orders={orders.orders}
+          onCreateReception={receptions.createReception}
+          loading={receptions.loading}
+        />
+      </TabsContent>
+      
       <TabsContent value="historique">
         <ReceptionHistory />
       </TabsContent>
