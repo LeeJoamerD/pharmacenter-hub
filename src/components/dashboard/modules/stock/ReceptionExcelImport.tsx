@@ -36,9 +36,9 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [bonLivraison, setBonLivraison] = useState<string>('');
 
-  // Filtrer les commandes du fournisseur sélectionné avec statut "Livré"
+  // Filtrer les commandes avec statut "Livré" ou "Validé"
   const filteredOrders = orders.filter(
-    o => o.fournisseur_id === selectedSupplierId && (o.statut === 'Livré' || o.statut === 'Validé')
+    o => o.statut === 'Livré' || o.statut === 'Validé'
   );
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
