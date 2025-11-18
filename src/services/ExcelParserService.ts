@@ -336,6 +336,16 @@ export class ExcelParserService {
   static parseDate(value: any): string {
     if (!value) return '';
 
+    // 🔍 PHASE 1: Log de diagnostic au début
+    console.log(`🔍 parseDate appelé:`, {
+      value,
+      type: typeof value,
+      isDate: value instanceof Date,
+      isNull: value === null,
+      isUndefined: value === undefined,
+      isEmpty: value === ''
+    });
+
     try {
       // Si c'est déjà une date
       if (value instanceof Date) {
@@ -383,6 +393,9 @@ export class ExcelParserService {
 
       // Si c'est une string
       if (typeof value === 'string') {
+        // 📝 PHASE 2: Log de diagnostic pour strings
+        console.log(`📝 Parsing date string: "${value}"`);
+        
         // Essayer différents formats
         const formats = [
           'yyyy-MM-dd',
@@ -396,12 +409,18 @@ export class ExcelParserService {
           try {
             const parsed = parse(value, fmt, new Date());
             if (isValid(parsed)) {
+              console.log(`✅ Date string parsée avec format "${fmt}":`, {
+                input: value,
+                output: format(parsed, 'yyyy-MM-dd')
+              });
               return format(parsed, 'yyyy-MM-dd');
             }
           } catch {
             continue;
           }
         }
+        
+        console.log(`❌ Date string non parsable: "${value}"`);
       }
 
       return '';
