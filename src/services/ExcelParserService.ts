@@ -396,13 +396,16 @@ export class ExcelParserService {
         // 📝 PHASE 2: Log de diagnostic pour strings
         console.log(`📝 Parsing date string: "${value}"`);
         
-        // Essayer différents formats
+        // Essayer différents formats (commencer par les formats 2 chiffres)
         const formats = [
-          'yyyy-MM-dd',
-          'dd/MM/yyyy',
-          'MM/dd/yyyy',
-          'dd-MM-yyyy',
-          'yyyy/MM/dd'
+          'dd/MM/yy',      // Format Excel français (31/10/26)
+          'MM/dd/yy',      // Format Excel US (10/31/26)
+          'dd-MM/yy',      // Format avec tirets (31-10-26)
+          'yyyy-MM-dd',    // Format ISO
+          'dd/MM/yyyy',    // Format français 4 chiffres
+          'MM/dd/yyyy',    // Format US 4 chiffres
+          'dd-MM-yyyy',    // Format avec tirets 4 chiffres
+          'yyyy/MM/dd'     // Format ISO avec slashes
         ];
 
         for (const fmt of formats) {
