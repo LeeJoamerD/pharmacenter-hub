@@ -34,10 +34,10 @@ const AnalyticsFiltersPanel: React.FC<AnalyticsFiltersPanelProps> = ({
     queryFn: async () => {
       const { data } = await supabase
         .from('personnel')
-        .select('id, nom, prenom')
+        .select('id, noms, prenoms')
         .eq('tenant_id', tenantId!)
         .eq('is_active', true)
-        .order('nom');
+        .order('noms');
       return data || [];
     },
     enabled: !!tenantId,
@@ -142,7 +142,7 @@ const AnalyticsFiltersPanel: React.FC<AnalyticsFiltersPanelProps> = ({
                   <SelectTrigger><SelectValue placeholder="Tous les agents" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tous les agents</SelectItem>
-                    {agents?.map((agent) => (<SelectItem key={agent.id} value={agent.id}>{agent.nom} {agent.prenom}</SelectItem>))}
+                    {agents?.map((agent) => (<SelectItem key={agent.id} value={agent.id}>{agent.noms} {agent.prenoms}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
