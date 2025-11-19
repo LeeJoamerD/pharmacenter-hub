@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -24,23 +26,32 @@ import {
 import { 
   Download,
   RefreshCw,
+  CalendarIcon,
+  FileSpreadsheet,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useSalesAnalytics, type AnalyticsPeriod, type AnalyticsFilters } from '@/hooks/useSalesAnalytics';
 import AnalyticsKPICards from './analytics/AnalyticsKPICards';
 import AnalyticsFiltersPanel from './analytics/AnalyticsFiltersPanel';
 import InsightsPanel from './analytics/InsightsPanel';
 import { exportSalesReportToPDF } from '@/utils/salesReportExport';
+import { exportSalesReportToExcel } from '@/utils/salesReportExcelExport';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 const SalesAnalyticsConnected = () => {
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const { currentTenant } = useTenant();
+  const queryClient = useQueryClient();
   const [selectedPeriod, setSelectedPeriod] = useState<AnalyticsPeriod>('month');
   const [filters, setFilters] = useState<AnalyticsFilters>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [customDateRange, setCustomDateRange] = useState<{ start: Date; end: Date }>();
 
   const {
     kpis,
@@ -51,20 +62,30 @@ const SalesAnalyticsConnected = () => {
     staffPerformance,
     categoryBreakdown,
     isLoading,
-  } = useSalesAnalytics(selectedPeriod, undefined, filters);
+  } = useSalesAnalytics(selectedPeriod, customDateRange, filters);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    // Force refetch via query invalidation handled by the hook
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsRefreshing(false);
-    toast({
-      title: 'Données actualisées',
-      description: 'Les analytics ont été mis à jour avec succès.',
-    });
+    try {
+      await queryClient.invalidateQueries({ 
+        queryKey: ['sales-analytics']
+      });
+      toast({
+        title: 'Données actualisées',
+        description: 'Les analytics ont été mis à jour avec succès.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Erreur',
+        description: 'Impossible d\'actualiser les données.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
-  const handleExport = async () => {
+  const handleExportPDF = async () => {
     if (!kpis || !currentTenant) {
       toast({
         title: 'Erreur',
@@ -109,7 +130,7 @@ const SalesAnalyticsConnected = () => {
         'all',
         {
           nom_entreprise: currentTenant.name || 'Pharmacie',
-          logo_url: undefined,
+          logo_url: currentTenant.logo,
         }
       );
 
@@ -121,16 +142,65 @@ const SalesAnalyticsConnected = () => {
       console.error('Erreur export:', error);
       toast({
         title: 'Erreur d\'export',
-        description: 'Impossible de générer le rapport.',
+        description: 'Impossible de générer le rapport PDF.',
         variant: 'destructive',
       });
     }
   };
 
+  const handleExportExcel = async () => {
+    if (!kpis || !topProducts || !staffPerformance || !categoryBreakdown || !paymentMethods) {
+      toast({
+        title: 'Erreur',
+        description: 'Données insuffisantes pour l\'export Excel.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const reportData = {
+        kpis,
+        topProducts,
+        staffPerformance,
+        categoryData: categoryBreakdown,
+        paymentMethods,
+      };
+
+      await exportSalesReportToExcel(
+        reportData,
+        selectedPeriod,
+        'all',
+        {
+          companyName: currentTenant?.name || 'Pharmacie',
+          logoUrl: currentTenant?.logo,
+        }
+      );
+
+      toast({
+        title: 'Export réussi',
+        description: 'Le rapport Excel a été généré avec succès.',
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de générer le rapport Excel.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Get weekly data for performance chart (last 7 days)
+  const weeklyPerformance = React.useMemo(() => {
+    if (!revenueEvolution || revenueEvolution.length === 0) return [];
+    return revenueEvolution.slice(-7);
+  }, [revenueEvolution]);
+
   return (
     <div className="space-y-6">
       {/* En-tête avec contrôles */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Analytics & Statistiques</h2>
           <p className="text-muted-foreground">
@@ -138,24 +208,75 @@ const SalesAnalyticsConnected = () => {
           </p>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-wrap items-center gap-2">
           <Select 
             value={selectedPeriod} 
-            onValueChange={(value) => setSelectedPeriod(value as AnalyticsPeriod)}
+            onValueChange={(value) => {
+              setSelectedPeriod(value as AnalyticsPeriod);
+              if (value !== 'custom') {
+                setCustomDateRange(undefined);
+              }
+            }}
           >
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Sélectionner la période" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="day">Quotidien</SelectItem>
-              <SelectItem value="week">Hebdomadaire</SelectItem>
-              <SelectItem value="month">Mensuel</SelectItem>
-              <SelectItem value="year">Annuel</SelectItem>
+              <SelectItem value="day">Aujourd'hui</SelectItem>
+              <SelectItem value="week">Cette semaine</SelectItem>
+              <SelectItem value="month">Ce mois</SelectItem>
+              <SelectItem value="year">Cette année</SelectItem>
+              <SelectItem value="custom">Période personnalisée</SelectItem>
             </SelectContent>
           </Select>
+
+          {selectedPeriod === 'custom' && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[280px] justify-start text-left font-normal",
+                    !customDateRange && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {customDateRange?.start ? (
+                    customDateRange.end ? (
+                      <>
+                        {format(customDateRange.start, "dd MMM yyyy", { locale: fr })} -{" "}
+                        {format(customDateRange.end, "dd MMM yyyy", { locale: fr })}
+                      </>
+                    ) : (
+                      format(customDateRange.start, "dd MMM yyyy", { locale: fr })
+                    )
+                  ) : (
+                    <span>Choisir une période</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="range"
+                  selected={customDateRange ? {
+                    from: customDateRange.start,
+                    to: customDateRange.end,
+                  } : undefined}
+                  onSelect={(range) => {
+                    if (range?.from && range?.to) {
+                      setCustomDateRange({ start: range.from, end: range.to });
+                    }
+                  }}
+                  numberOfMonths={2}
+                  locale={fr}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
           
           <Button 
             variant="outline" 
+            size="sm"
             onClick={handleRefresh} 
             disabled={isRefreshing || isLoading}
           >
@@ -163,9 +284,14 @@ const SalesAnalyticsConnected = () => {
             Actualiser
           </Button>
           
-          <Button onClick={handleExport} disabled={isLoading}>
+          <Button onClick={handleExportPDF} disabled={isLoading} variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />
-            Exporter PDF
+            PDF
+          </Button>
+
+          <Button onClick={handleExportExcel} disabled={isLoading} variant="outline" size="sm">
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Excel
           </Button>
         </div>
       </div>
@@ -178,7 +304,7 @@ const SalesAnalyticsConnected = () => {
 
       {/* Graphiques et analyses */}
       <Tabs defaultValue="revenue" className="space-y-4">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="revenue">Revenus</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="products">Produits</TabsTrigger>
@@ -200,12 +326,13 @@ const SalesAnalyticsConnected = () => {
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
                     <AreaChart data={revenueEvolution || []}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`} />
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="date" className="text-xs" />
+                      <YAxis tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`} className="text-xs" />
                       <Tooltip 
                         formatter={(value: number) => [formatPrice(value), 'CA']}
                         labelFormatter={(label) => `Date: ${label}`}
+                        contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
                       />
                       <Area 
                         type="monotone" 
@@ -222,7 +349,7 @@ const SalesAnalyticsConnected = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Répartition par Catégorie</CardTitle>
+                <CardTitle>Performance Hebdomadaire</CardTitle>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
@@ -231,34 +358,70 @@ const SalesAnalyticsConnected = () => {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={categoryBreakdown || []}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percentage }) => `${name} ${percentage.toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {(categoryBreakdown || []).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => formatPrice(value)} />
-                    </PieChart>
+                    <LineChart data={weeklyPerformance}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="date" className="text-xs" />
+                      <YAxis tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`} className="text-xs" />
+                      <Tooltip 
+                        formatter={(value: number) => [formatPrice(value), 'CA']}
+                        labelFormatter={(label) => `Date: ${label}`}
+                        contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="ventes" 
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(var(--primary))' }}
+                      />
+                    </LineChart>
                   </ResponsiveContainer>
                 )}
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Répartition par Catégorie</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="h-[300px] flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={categoryBreakdown || []}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={(entry) => `${entry.name}: ${entry.percentage.toFixed(1)}%`}
+                      outerRadius={100}
+                      fill="hsl(var(--primary))"
+                      dataKey="value"
+                    >
+                      {(categoryBreakdown || []).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number) => [formatPrice(value), 'CA']}
+                      contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="transactions" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Volume des Transactions</CardTitle>
+              <CardTitle>Volume de Transactions</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -268,12 +431,15 @@ const SalesAnalyticsConnected = () => {
               ) : (
                 <ResponsiveContainer width="100%" height={400}>
                   <BarChart data={revenueEvolution || []}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="transactions" fill="hsl(var(--primary))" name="Transactions" />
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="date" className="text-xs" />
+                    <YAxis className="text-xs" />
+                    <Tooltip 
+                      formatter={(value: number) => [value, 'Transactions']}
+                      labelFormatter={(label) => `Date: ${label}`}
+                      contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                    />
+                    <Bar dataKey="transactions" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -288,32 +454,36 @@ const SalesAnalyticsConnected = () => {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />
-                  ))}
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>
               ) : (
                 <div className="space-y-4">
                   {(topProducts || []).map((product, index) => (
-                    <div key={product.produit_id} className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <Badge variant="outline">#{index + 1}</Badge>
-                        <div>
-                          <p className="font-medium">{product.libelle}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {product.quantite} unités • {product.categorie}
-                          </p>
+                    <div key={product.produit_id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center space-x-4 flex-1">
+                        <Badge variant="outline" className="w-8 h-8 flex items-center justify-center shrink-0">
+                          {index + 1}
+                        </Badge>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{product.libelle}</p>
+                          <p className="text-sm text-muted-foreground">{product.categorie || 'Non catégorisé'}</p>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right space-y-1 ml-4">
                         <p className="font-bold">{formatPrice(product.ca)}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {product.pourcentage_ca.toFixed(1)}% du CA • Marge: {product.marge.toFixed(1)}%
+                        <p className="text-sm text-muted-foreground">{product.quantite} unités</p>
+                        <p className="text-xs text-muted-foreground">
+                          Marge: {formatPrice(product.marge)} • {product.pourcentage_ca.toFixed(1)}% du CA
                         </p>
                       </div>
                     </div>
                   ))}
+                  {(!topProducts || topProducts.length === 0) && (
+                    <p className="text-center text-muted-foreground py-8">
+                      Aucune donnée de produit disponible pour cette période
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -339,16 +509,19 @@ const SalesAnalyticsConnected = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, pourcentage }) => `${name} ${pourcentage.toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
+                        label={(entry) => `${entry.name}: ${entry.pourcentage.toFixed(1)}%`}
+                        outerRadius={100}
+                        fill="hsl(var(--primary))"
                         dataKey="montant"
                       >
                         {(paymentMethods || []).map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: number) => formatPrice(value)} />
+                      <Tooltip 
+                        formatter={(value: number) => [formatPrice(value), 'Montant']}
+                        contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 )}
@@ -361,30 +534,38 @@ const SalesAnalyticsConnected = () => {
               </CardHeader>
               <CardContent>
                 {isLoading ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3, 4].map(i => (
-                      <div key={i} className="h-12 bg-muted animate-pulse rounded" />
-                    ))}
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {(paymentMethods || []).map((method) => (
-                      <div key={method.name} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
+                    {(paymentMethods || []).map((method, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center space-x-4">
                           <div 
-                            className="w-3 h-3 rounded-full" 
+                            className="w-4 h-4 rounded-full shrink-0"
                             style={{ backgroundColor: method.color }}
                           />
-                          <span>{method.name}</span>
+                          <div>
+                            <p className="font-medium">{method.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {method.transactions} transactions
+                            </p>
+                          </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-medium">{method.pourcentage.toFixed(1)}%</p>
+                          <p className="font-bold">{formatPrice(method.montant)}</p>
                           <p className="text-sm text-muted-foreground">
-                            {formatPrice(method.montant)} • {method.transactions} trans.
+                            {method.pourcentage.toFixed(1)}%
                           </p>
                         </div>
                       </div>
                     ))}
+                    {(!paymentMethods || paymentMethods.length === 0) && (
+                      <p className="text-center text-muted-foreground py-8">
+                        Aucune donnée de paiement disponible
+                      </p>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -395,7 +576,7 @@ const SalesAnalyticsConnected = () => {
         <TabsContent value="performance" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Performance de l'Équipe</CardTitle>
+              <CardTitle>Performance du Personnel</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -405,12 +586,14 @@ const SalesAnalyticsConnected = () => {
               ) : (
                 <ResponsiveContainer width="100%" height={400}>
                   <BarChart data={staffPerformance || []} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tickFormatter={(value) => formatPrice(value)} />
-                    <YAxis type="category" dataKey="nom" width={150} />
-                    <Tooltip formatter={(value: number) => formatPrice(value)} />
-                    <Legend />
-                    <Bar dataKey="ca" fill="hsl(var(--primary))" name="CA généré" />
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis type="number" tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`} className="text-xs" />
+                    <YAxis dataKey="nom" type="category" width={150} className="text-xs" />
+                    <Tooltip 
+                      formatter={(value: number) => [formatPrice(value), 'CA']}
+                      contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                    />
+                    <Bar dataKey="ca" fill="hsl(var(--primary))" radius={[0, 8, 8, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -421,9 +604,9 @@ const SalesAnalyticsConnected = () => {
 
       {/* Insights et recommandations */}
       <InsightsPanel 
-        kpis={kpis} 
-        topProducts={topProducts} 
-        staffPerformance={staffPerformance} 
+        kpis={kpis}
+        topProducts={topProducts}
+        staffPerformance={staffPerformance}
       />
     </div>
   );
