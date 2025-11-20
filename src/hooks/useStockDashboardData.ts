@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAlertSettings } from '@/hooks/useAlertSettings';
-import { getStockThreshold } from '@/lib/utils';
+import { getStockThresholds, calculateStockStatus, calculateRotation } from '@/utils/stockThresholds';
 
 interface StatusDistribution {
   normal: number;
@@ -80,23 +80,18 @@ export const useStockDashboardData = () => {
         const stock_actuel = product.stock_actuel || 0;
         const valeur_stock = stock_actuel * (product.prix_achat || 0);
 
-        // Logique de cascade pour les seuils
-        const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
-        const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
+        // ✅ Utiliser la logique centralisée de stockThresholds.ts
+        const thresholds = getStockThresholds(
+          {
+            stock_critique: product.stock_critique,
+            stock_faible: product.stock_faible,
+            stock_limite: product.stock_limite
+          },
+          settings
+        );
 
-        // Déterminer le statut
-        let statut_stock: 'critique' | 'faible' | 'normal' | 'rupture' | 'surstock' = 'normal';
-        
-        if (stock_actuel === 0) {
-          statut_stock = 'rupture';
-        } else if (stock_actuel > 0 && stock_actuel <= seuil_critique) {
-          statut_stock = 'critique';
-        } else if (stock_actuel <= seuil_faible) {
-          statut_stock = 'faible';
-        }
-
-        const rotation: 'rapide' | 'normale' | 'lente' = 
-          stock_actuel > 0 && stock_actuel <= seuil_faible ? 'rapide' : 'normale';
+        const statut_stock = calculateStockStatus(stock_actuel, thresholds);
+        const rotation = calculateRotation(stock_actuel, thresholds);
 
         return {
           ...product,
@@ -120,14 +115,24 @@ export const useStockDashboardData = () => {
         critical_products_found: criticalProducts.length,
         settings_critical_threshold: settings?.critical_stock_threshold,
         settings_low_threshold: settings?.low_stock_threshold,
-        sample_critical_products: criticalProducts.slice(0, 5).map(p => ({
-          name: p.libelle_produit,
-          stock: p.stock_actuel,
-          stock_critique_produit: p.stock_critique,
-          seuil_critique: getStockThreshold('critical', p.stock_critique, settings?.critical_stock_threshold),
-          seuil_faible: getStockThreshold('low', p.stock_faible, settings?.low_stock_threshold),
-          statut: p.statut_stock,
-        })),
+        sample_critical_products: criticalProducts.slice(0, 5).map(p => {
+          const thresholds = getStockThresholds(
+            {
+              stock_critique: p.stock_critique,
+              stock_faible: p.stock_faible,
+              stock_limite: p.stock_limite
+            },
+            settings
+          );
+          return {
+            name: p.libelle_produit,
+            stock: p.stock_actuel,
+            stock_critique_produit: p.stock_critique,
+            seuil_critique: thresholds.critique,
+            seuil_faible: thresholds.faible,
+            statut: p.statut_stock,
+          };
+        }),
         sample_all_products: productsWithStock.slice(0, 5).map(p => ({
           name: p.libelle_produit,
           stock: p.stock_actuel,
@@ -169,25 +174,18 @@ export const useStockDashboardData = () => {
         const stock_actuel = product.stock_actuel || 0;
         const valeur_stock = stock_actuel * (product.prix_achat || 0);
 
-        const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
-        const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
-        const seuil_maximum = getStockThreshold('maximum', product.stock_limite, settings?.maximum_stock_threshold);
-        
-        let statut_stock: 'critique' | 'faible' | 'normal' | 'rupture' | 'surstock' = 'normal';
-        
-        if (stock_actuel === 0) {
-          statut_stock = 'rupture';
-        } else if (stock_actuel <= seuil_critique) {
-          statut_stock = 'critique';
-        } else if (stock_actuel <= seuil_faible) {
-          statut_stock = 'faible';
-        } else if (stock_actuel > seuil_maximum) {
-          statut_stock = 'surstock';
-        }
+        // ✅ Utiliser la logique centralisée de stockThresholds.ts
+        const thresholds = getStockThresholds(
+          {
+            stock_critique: product.stock_critique,
+            stock_faible: product.stock_faible,
+            stock_limite: product.stock_limite
+          },
+          settings
+        );
 
-        const rotation: 'rapide' | 'normale' | 'lente' = 
-          stock_actuel > 0 && stock_actuel <= seuil_faible ? 'rapide' : 
-          stock_actuel > seuil_maximum ? 'lente' : 'normale';
+        const statut_stock = calculateStockStatus(stock_actuel, thresholds);
+        const rotation = calculateRotation(stock_actuel, thresholds);
 
         return {
           ...product,
@@ -253,24 +251,36 @@ export const useStockDashboardData = () => {
         surstock: 0,
       };
 
+      /**
+       * ✅ Logique de cascade pour les seuils de stock :
+       * 1. Priorité : Seuils définis au niveau du produit
+       * 2. Fallback : Paramètres globaux (alert_settings)
+       * 3. Par défaut : Valeurs système (critique=2, faible=5, limite=10)
+       * 
+       * Calcul des statuts (sans chevauchement) :
+       * - rupture : stock === 0
+       * - critique : 0 < stock <= seuil_critique
+       * - faible : seuil_critique < stock <= seuil_faible
+       * - normal : seuil_faible < stock <= seuil_limite
+       * - surstock : stock > seuil_limite
+       * 
+       * Source de vérité : src/utils/stockThresholds.ts
+       */
       (products || []).forEach((product) => {
         const stock_actuel = product.stock_actuel || 0;
 
-        const seuil_critique = getStockThreshold('critical', product.stock_critique, settings?.critical_stock_threshold);
-        const seuil_faible = getStockThreshold('low', product.stock_faible, settings?.low_stock_threshold);
-        const seuil_maximum = getStockThreshold('maximum', product.stock_limite, settings?.maximum_stock_threshold);
+        // ✅ Utiliser la logique centralisée de stockThresholds.ts
+        const thresholds = getStockThresholds(
+          {
+            stock_critique: product.stock_critique,
+            stock_faible: product.stock_faible,
+            stock_limite: product.stock_limite
+          },
+          settings
+        );
 
-        if (stock_actuel === 0) {
-          distribution.rupture++;
-        } else if (stock_actuel <= seuil_critique) {
-          distribution.critique++;
-        } else if (stock_actuel <= seuil_faible) {
-          distribution.faible++;
-        } else if (stock_actuel > seuil_maximum) {
-          distribution.surstock++;
-        } else {
-          distribution.normal++;
-        }
+        const statut = calculateStockStatus(stock_actuel, thresholds);
+        distribution[statut]++;
       });
 
       return distribution;
