@@ -49,7 +49,7 @@ export const useStockDashboardData = () => {
         .filter(p => p.statut_stock === 'rupture')
         .slice(0, 10);
     },
-    enabled: !!tenantId,
+    enabled: !!tenantId && !!settings,
     staleTime: 30000,
   });
 
@@ -201,7 +201,7 @@ export const useStockDashboardData = () => {
         .sort((a, b) => a.stock_actuel - b.stock_actuel)
         .slice(0, 10);
     },
-    enabled: !!tenantId,
+    enabled: !!tenantId && !!settings,
     staleTime: 30000,
   });
 
@@ -285,7 +285,7 @@ export const useStockDashboardData = () => {
 
       return distribution;
     },
-    enabled: !!tenantId,
+    enabled: !!tenantId && !!settings,
     staleTime: 30000,
   });
 
