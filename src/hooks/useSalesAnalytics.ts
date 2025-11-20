@@ -277,13 +277,16 @@ export const useSalesAnalytics = (
           produit_id,
           quantite,
           montant_ligne_ttc,
-          montant_ligne_ht,
-          vente:vente_id(created_at, agent_id),
-          produit:produit_id(libelle_produit, categorie)
+          prix_unitaire_ht,
+          ventes!vente_id(created_at, agent_id),
+          produits!produit_id(
+            libelle_produit,
+            categorie_tarification:categorie_tarification_id(libelle_categorie)
+          )
         `)
         .eq('tenant_id', tenantId!)
-        .gte('vente.created_at', dateRange.current.start.toISOString())
-        .lte('vente.created_at', dateRange.current.end.toISOString())
+        .gte('ventes.created_at', dateRange.current.start.toISOString())
+        .lte('ventes.created_at', dateRange.current.end.toISOString())
         .limit(limit); // ✅ AJOUTÉ
 
       const { data } = await query;
@@ -293,13 +296,14 @@ export const useSalesAnalytics = (
       let totalCA = 0;
 
       data?.forEach((ligne: any) => {
-        if (!ligne.vente || !ligne.produit) return;
+        if (!ligne.ventes || !ligne.produits) return;
 
+        const montant_ligne_ht = ligne.quantite * ligne.prix_unitaire_ht;
         totalCA += ligne.montant_ligne_ttc || 0;
 
         const existing = products.get(ligne.produit_id);
-        const marge = ligne.montant_ligne_ht > 0 
-          ? ((ligne.montant_ligne_ttc - ligne.montant_ligne_ht) / ligne.montant_ligne_ht) * 100 
+        const marge = montant_ligne_ht > 0 
+          ? ((ligne.montant_ligne_ttc - montant_ligne_ht) / montant_ligne_ht) * 100 
           : 0;
 
         if (existing) {
@@ -309,8 +313,8 @@ export const useSalesAnalytics = (
         } else {
           products.set(ligne.produit_id, {
             produit_id: ligne.produit_id,
-            libelle: ligne.produit?.libelle_produit || 'Inconnu',
-            categorie: ligne.produit?.categorie || 'Autre',
+            libelle: ligne.produits?.libelle_produit || 'Inconnu',
+            categorie: ligne.produits?.categorie_tarification?.libelle_categorie || 'Autre',
             quantite: ligne.quantite || 0,
             ca: ligne.montant_ligne_ttc || 0,
             marge,
@@ -458,12 +462,14 @@ export const useSalesAnalytics = (
         .from('lignes_ventes')
         .select(`
           montant_ligne_ttc,
-          produit:produit_id(categorie),
-          vente:vente_id(created_at)
+          produits!produit_id(
+            categorie_tarification:categorie_tarification_id(libelle_categorie)
+          ),
+          ventes!vente_id(created_at)
         `)
         .eq('tenant_id', tenantId!)
-        .gte('vente.created_at', dateRange.current.start.toISOString())
-        .lte('vente.created_at', dateRange.current.end.toISOString())
+        .gte('ventes.created_at', dateRange.current.start.toISOString())
+        .lte('ventes.created_at', dateRange.current.end.toISOString())
         .limit(limit); // ✅ AJOUTÉ
 
       const { data } = await query;
@@ -472,9 +478,9 @@ export const useSalesAnalytics = (
       let total = 0;
 
       data?.forEach((ligne: any) => {
-        if (!ligne.vente || !ligne.produit) return;
+        if (!ligne.ventes || !ligne.produits) return;
 
-        const category = ligne.produit.categorie || 'Autre';
+        const category = ligne.produits?.categorie_tarification?.libelle_categorie || 'Autre';
         const montant = ligne.montant_ligne_ttc || 0;
         
         categories.set(category, (categories.get(category) || 0) + montant);
