@@ -55,7 +55,7 @@ export const useStockDashboardData = () => {
 
   // Query pour les produits critiques (top 20 pour couvrir plus de cas)
   const criticalProductsQuery = useQuery({
-    queryKey: ['stock-critical-products-v2', tenantId, settings?.critical_stock_threshold, settings?.low_stock_threshold],
+    queryKey: ['stock-critical-products-v3', tenantId, settings?.critical_stock_threshold, settings?.low_stock_threshold],
     queryFn: async () => {
       if (!tenantId) return [];
 
@@ -174,7 +174,7 @@ export const useStockDashboardData = () => {
 
   // Requête pour les produits à rotation rapide (top 10)
   const fastMovingProductsQuery = useQuery({
-    queryKey: ['stock-fast-moving-v2', tenantId, settings?.low_stock_threshold, settings?.maximum_stock_threshold],
+    queryKey: ['stock-fast-moving-v3', tenantId, settings?.low_stock_threshold, settings?.maximum_stock_threshold],
     queryFn: async () => {
       if (!tenantId) return [];
 
@@ -248,7 +248,7 @@ export const useStockDashboardData = () => {
 
   // Requête pour la distribution des statuts (tous les produits avec pagination)
   const statusDistributionQuery = useQuery({
-    queryKey: ['stock-status-distribution-v2', tenantId, settings?.low_stock_threshold, settings?.critical_stock_threshold, settings?.maximum_stock_threshold],
+    queryKey: ['stock-status-distribution-v3', tenantId, settings?.low_stock_threshold, settings?.critical_stock_threshold, settings?.maximum_stock_threshold],
     queryFn: async (): Promise<StatusDistribution> => {
       if (!tenantId) {
         return { normal: 0, faible: 0, critique: 0, rupture: 0, surstock: 0 };
@@ -307,6 +307,9 @@ export const useStockDashboardData = () => {
        * 
        * Source de vérité : src/utils/stockThresholds.ts
        */
+      // Capturer les 20 premiers produits avec stock > 0 pour debug
+      let debugSamples: any[] = [];
+
       (products || []).forEach((product) => {
         const stock_actuel = product.stock_actuel || 0;
 
@@ -322,6 +325,30 @@ export const useStockDashboardData = () => {
 
         const statut = calculateStockStatus(stock_actuel, thresholds);
         distribution[statut]++;
+        
+        // Capturer les 20 premiers produits avec stock > 0 pour debug
+        if (stock_actuel > 0 && debugSamples.length < 20) {
+          debugSamples.push({
+            id: product.id,
+            stock: stock_actuel,
+            stock_critique_produit: product.stock_critique,
+            stock_faible_produit: product.stock_faible,
+            stock_limite_produit: product.stock_limite,
+            seuils_utilises: thresholds,
+            statut_calcule: statut
+          });
+        }
+      });
+
+      console.log('[statusDistributionQuery] Distribution calculée:', {
+        distribution,
+        total_calculated: Object.values(distribution).reduce((a, b) => a + b, 0),
+        settings_used: {
+          critique: settings?.critical_stock_threshold,
+          faible: settings?.low_stock_threshold,
+          limite: settings?.maximum_stock_threshold
+        },
+        sample_products: debugSamples
       });
 
       return distribution;
