@@ -55,23 +55,42 @@ export const useStockDashboardData = () => {
 
   // Query pour les produits critiques (top 20 pour couvrir plus de cas)
   const criticalProductsQuery = useQuery({
-    queryKey: ['stock-critical-products', tenantId, settings?.critical_stock_threshold, settings?.low_stock_threshold],
+    queryKey: ['stock-critical-products-v2', tenantId, settings?.critical_stock_threshold, settings?.low_stock_threshold],
     queryFn: async () => {
       if (!tenantId) return [];
 
       console.log('[criticalProductsQuery] Starting query...');
 
-      // ÉTAPE 1 : Charger les produits avec stock_actuel de la vue
-      const { data: productsData, error: productsError } = await supabase
-        .from('produits_with_stock')
-        .select('id, libelle_produit, code_cip, prix_achat, stock_actuel, stock_critique, stock_faible, stock_limite')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true);
+      // ÉTAPE 1 : Charger tous les produits avec pagination
+      let allProducts: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (productsError) {
-        console.error('[criticalProductsQuery] Error loading products:', productsError);
-        throw productsError;
+      while (hasMore) {
+        const { data: products, error } = await supabase
+          .from('produits_with_stock')
+          .select('id, libelle_produit, code_cip, prix_achat, stock_actuel, stock_critique, stock_faible, stock_limite')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) {
+          console.error('[criticalProductsQuery] Error loading products:', error);
+          throw error;
+        }
+
+        if (products && products.length > 0) {
+          allProducts = [...allProducts, ...products];
+          hasMore = products.length === pageSize;
+          page++;
+        } else {
+          hasMore = false;
+        }
       }
+
+      const productsData = allProducts;
+      if (!productsData) throw new Error('No products data');
 
       console.log('[criticalProductsQuery] Products loaded:', productsData?.length);
 
@@ -155,20 +174,42 @@ export const useStockDashboardData = () => {
 
   // Requête pour les produits à rotation rapide (top 10)
   const fastMovingProductsQuery = useQuery({
-    queryKey: ['stock-fast-moving-products', tenantId],
+    queryKey: ['stock-fast-moving-v2', tenantId, settings?.low_stock_threshold, settings?.maximum_stock_threshold],
     queryFn: async () => {
       if (!tenantId) return [];
 
-      const { data: products, error } = await supabase
-        .from('produits_with_stock')
-        .select(`
-          id, libelle_produit, code_cip, prix_achat, prix_vente_ttc, stock_actuel,
-          stock_critique, stock_faible, stock_limite
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true);
+      // Charger tous les produits avec pagination
+      let allProducts: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data: products, error } = await supabase
+          .from('produits_with_stock')
+          .select(`
+            id, libelle_produit, code_cip, prix_achat, prix_vente_ttc, stock_actuel,
+            stock_critique, stock_faible, stock_limite
+          `)
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) {
+          console.error('[fastMovingProductsQuery] Error loading products:', error);
+          throw error;
+        }
+
+        if (products && products.length > 0) {
+          allProducts = [...allProducts, ...products];
+          hasMore = products.length === pageSize;
+          page++;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      const products = allProducts;
 
       const productsWithStock = (products || []).map((product) => {
         const stock_actuel = product.stock_actuel || 0;
@@ -207,7 +248,7 @@ export const useStockDashboardData = () => {
 
   // Requête pour la distribution des statuts (tous les produits avec pagination)
   const statusDistributionQuery = useQuery({
-    queryKey: ['stock-status-distribution', tenantId, settings?.low_stock_threshold, settings?.critical_stock_threshold, settings?.maximum_stock_threshold],
+    queryKey: ['stock-status-distribution-v2', tenantId, settings?.low_stock_threshold, settings?.critical_stock_threshold, settings?.maximum_stock_threshold],
     queryFn: async (): Promise<StatusDistribution> => {
       if (!tenantId) {
         return { normal: 0, faible: 0, critique: 0, rupture: 0, surstock: 0 };
