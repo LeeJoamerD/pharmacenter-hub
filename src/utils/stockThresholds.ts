@@ -47,6 +47,12 @@ export function calculateStockStatus(
   currentStock: number,
   thresholds: StockThresholds
 ): 'rupture' | 'critique' | 'faible' | 'normal' | 'surstock' {
+  // Validation des seuils
+  if (!thresholds || typeof thresholds.critique !== 'number') {
+    console.error('[calculateStockStatus] Invalid thresholds:', thresholds);
+    throw new Error('Invalid thresholds provided to calculateStockStatus');
+  }
+
   if (currentStock === 0) {
     return 'rupture';
   }
