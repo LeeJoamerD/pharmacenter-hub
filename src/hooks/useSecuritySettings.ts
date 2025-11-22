@@ -53,7 +53,6 @@ export interface SecurityAlert {
   metadata?: any;
   ip_address?: string;
   user_agent?: string;
-  resolved: boolean;
   resolved_by?: string;
   resolved_at?: string;
   created_at: string;
@@ -114,7 +113,7 @@ export const useSecuritySettings = () => {
         .from('security_alerts')
         .select('*')
         .eq('tenant_id', pharmacy.id)
-        .eq('resolved', false)
+        .is('resolved_at', null)
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -151,10 +150,7 @@ export const useSecuritySettings = () => {
           ...log,
           ip_address: String(log.ip_address || 'N/A')
         })),
-        securityAlerts: (alertsResult.data || []).map((alert: any) => ({
-          ...alert,
-          resolved: !!alert.resolved_at
-        }))
+        securityAlerts: alertsResult.data || []
       });
 
     } catch (error) {
@@ -276,7 +272,6 @@ export const useSecuritySettings = () => {
       const { error } = await supabase
         .from('security_alerts')
         .update({ 
-          resolved: true, 
           resolved_at: new Date().toISOString(),
           resolved_by: pharmacy.id 
         })
