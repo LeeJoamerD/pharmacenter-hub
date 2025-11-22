@@ -233,7 +233,9 @@ const ProductCatalogNew = () => {
 
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
-    reset(product);
+    // Exclure stock_actuel car c'est une colonne calculée qui n'existe pas physiquement dans la table produits
+    const { stock_actuel, ...productWithoutStock } = product as any;
+    reset(productWithoutStock);
     setIsDialogOpen(true);
   };
 
@@ -366,8 +368,11 @@ const ProductCatalogNew = () => {
   };
 
   const onSubmit = async (data: Product) => {
+    // Exclure stock_actuel des données à soumettre (colonne calculée, pas physique)
+    const { stock_actuel, ...productData } = data as any;
+    
     // Vérifier les duplicates CIP avant soumission
-    const hasDuplicate = await checkForDuplicateCIP(data.code_cip!, editingProduct?.id);
+    const hasDuplicate = await checkForDuplicateCIP(productData.code_cip!, editingProduct?.id);
     
     if (hasDuplicate) {
       toast({ 
@@ -379,7 +384,7 @@ const ProductCatalogNew = () => {
     }
 
     if (editingProduct) {
-      updateMutation.mutate({ id: editingProduct.id, ...data }, {
+      updateMutation.mutate({ id: editingProduct.id, ...productData }, {
         onSuccess: () => {
           toast({ title: "Succès", description: "Produit modifié avec succès" });
           handleDialogClose();
@@ -394,7 +399,7 @@ const ProductCatalogNew = () => {
         },
       });
     } else {
-      createMutation.mutate(data, {
+      createMutation.mutate(productData, {
         onSuccess: () => {
           toast({ title: "Succès", description: "Produit ajouté avec succès" });
           handleDialogClose();
