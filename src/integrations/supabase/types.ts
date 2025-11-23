@@ -13629,7 +13629,9 @@ export type Database = {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: string
       }
-      init_inventaire_items: { Args: { p_session_id: string }; Returns: Json }
+      init_inventaire_items:
+        | { Args: { p_session_id: string; p_tenant_id: string }; Returns: Json }
+        | { Args: { p_session_id: string }; Returns: Json }
       init_invoice_params_for_tenant: {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: undefined

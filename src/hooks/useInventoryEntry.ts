@@ -59,16 +59,43 @@ export const useInventoryEntry = () => {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('inventaire_items')
-        .select('*')
-        .eq('session_id', sessionId)
-        .eq('tenant_id', personnelData.tenant_id)
-        .order('created_at', { ascending: false });
+      // Pagination pour gérer plus de 1000 items (limite Supabase)
+      let allItems: any[] = [];
+      let from = 0;
+      const batchSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('inventaire_items')
+          .select('*')
+          .eq('session_id', sessionId)
+          .eq('tenant_id', personnelData.tenant_id)
+          .order('created_at', { ascending: false })
+          .range(from, from + batchSize - 1);
 
-      const mappedItems: InventoryItem[] = data?.map(item => ({
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allItems = [...allItems, ...data];
+          from += batchSize;
+          
+          // Si on a moins d'items que batchSize, c'est le dernier batch
+          if (data.length < batchSize) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+        
+        // Sécurité : arrêter après 10000 items (10 batchs)
+        if (from >= 10000) {
+          console.warn('Limite de 10000 items atteinte');
+          hasMore = false;
+        }
+      }
+
+      const mappedItems: InventoryItem[] = allItems.map(item => ({
         id: item.id,
         codeBarre: item.code_barre,
         produit: item.produit_nom,
@@ -81,8 +108,9 @@ export const useInventoryEntry = () => {
         statut: item.statut as 'non_compte' | 'compte' | 'ecart' | 'valide',
         dateComptage: item.date_comptage ? new Date(item.date_comptage) : undefined,
         operateur: item.operateur_nom || ''
-      })) || [];
+      }));
 
+      console.log(`Chargé ${mappedItems.length} items d'inventaire`);
       setItems(mappedItems);
     } catch (error) {
       console.error('Erreur lors du chargement des articles:', error);
@@ -272,20 +300,45 @@ export const useInventoryEntry = () => {
     try {
       setLoading(true);
       
+      // Récupérer le tenant_id de l'utilisateur
+      const { data: userData } = await supabase.auth.getUser();
+      const { data: personnelData } = await supabase
+        .from('personnel')
+        .select('tenant_id')
+        .eq('auth_user_id', userData.user?.id)
+        .maybeSingle();
+
+      if (!personnelData?.tenant_id) {
+        toast.error('Utilisateur non authentifié ou sans tenant associé');
+        setLoading(false);
+        return;
+      }
+      
+      // Appeler la RPC avec le tenant_id
       const { data, error } = await supabase.rpc('init_inventaire_items', {
-        p_session_id: sessionId
+        p_session_id: sessionId,
+        p_tenant_id: personnelData.tenant_id
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('RPC Error:', error);
+        throw error;
+      }
 
       const result = data as { success: boolean; error?: string; message?: string; inserted_count?: number };
 
       if (!result?.success) {
         toast.error(result?.error || 'Erreur lors de l\'initialisation');
+        console.error('Init failed:', result);
         return;
       }
 
-      toast.success(result.message || 'Session initialisée avec succès');
+      if (result.inserted_count === 0) {
+        toast.warning('Aucun lot actif trouvé. Ajoutez des produits en stock avant de lancer un inventaire.');
+      } else {
+        toast.success(result.message || `${result.inserted_count} produit(s) chargé(s)`);
+      }
+      
       await fetchInventoryItems(sessionId);
     } catch (error) {
       console.error('Erreur lors de l\'initialisation:', error);
