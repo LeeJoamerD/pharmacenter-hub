@@ -393,11 +393,58 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
 
       {/* Message si aucun produit */}
       {selectedSession && !loading && items.length === 0 && hasAttemptedInit && (
-        <Alert>
-          <AlertDescription>
-            Aucun produit à inventorier dans cette session. Vérifiez que vous avez des lots actifs en stock.
-          </AlertDescription>
-        </Alert>
+        <>
+          <Alert>
+            <AlertDescription>
+              Aucun produit à inventorier dans cette session. Vérifiez que vous avez des lots actifs en stock.
+            </AlertDescription>
+          </Alert>
+          
+          <Card className="mt-4">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="font-medium">Session vide</p>
+                <p className="text-sm text-muted-foreground">
+                  Aucun produit chargé pour cette session
+                </p>
+              </div>
+              <Button 
+                onClick={() => {
+                  setHasAttemptedInit(false);
+                  initializeSessionItems(selectedSession);
+                }}
+                variant="outline"
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Initialiser la session
+              </Button>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* Bouton de réinitialisation manuelle */}
+      {selectedSession && items.length === 0 && !loading && (
+        <Card>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="font-medium">Session vide</p>
+              <p className="text-sm text-muted-foreground">
+                Aucun produit chargé pour cette session
+              </p>
+            </div>
+            <Button 
+              onClick={() => {
+                setHasAttemptedInit(false);
+                initializeSessionItems(selectedSession);
+              }}
+              variant="outline"
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Initialiser la session
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {/* Filtres et recherche */}
