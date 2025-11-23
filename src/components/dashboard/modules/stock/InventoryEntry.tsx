@@ -77,6 +77,7 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
     quantity?: string;
     location?: string;
   }>({});
+  const [hasAttemptedInit, setHasAttemptedInit] = useState(false);
 
   // États pour la saisie rapide
   const [quickEntryMode, setQuickEntryMode] = useState(false);
@@ -141,14 +142,16 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
   useEffect(() => {
     if (selectedSessionId && selectedSessionId !== selectedSession) {
       setSelectedSession(selectedSessionId);
+      setHasAttemptedInit(false); // Reset pour la nouvelle session
     }
   }, [selectedSessionId, selectedSession]);
 
   useEffect(() => {
-    if (selectedSession && items.length === 0 && !loading) {
+    if (selectedSession && items.length === 0 && !loading && !hasAttemptedInit) {
+      setHasAttemptedInit(true);
       initializeSessionItems(selectedSession);
     }
-  }, [selectedSession, items.length, loading, initializeSessionItems]);
+  }, [selectedSession, items.length, loading, hasAttemptedInit, initializeSessionItems]);
 
   const handleScan = (code: string) => {
     const item = itemsByBarcode.get(code);
@@ -321,7 +324,7 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
                 <SelectContent>
                   {sessions.map((session) => (
                     <SelectItem key={session.id} value={session.id}>
-                      {session.nom} - {new Date(session.dateDebut).toLocaleDateString()}
+                      {session.nom} - {new Date(session.date_debut).toLocaleDateString()}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -386,6 +389,15 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Message si aucun produit */}
+      {selectedSession && !loading && items.length === 0 && hasAttemptedInit && (
+        <Alert>
+          <AlertDescription>
+            Aucun produit à inventorier dans cette session. Vérifiez que vous avez des lots actifs en stock.
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Filtres et recherche */}
