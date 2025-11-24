@@ -71,11 +71,18 @@ const InventoryReconciliation = () => {
   // Charger les données au montage du composant
   useEffect(() => {
     if (selectedSession) {
+      console.log('📊 [Réconciliation Component] Session changée:', selectedSession);
+      // Forcer le rechargement des données avec la nouvelle session
       fetchReconciliationItems(selectedSession);
-      // Charger aussi les produits conformes
-      fetchConformItems(selectedSession).then(setConformItems);
+      fetchConformItems(selectedSession).then(items => {
+        console.log(`✅ Chargé ${items.length} produits conformes`);
+        setConformItems(items);
+      });
+    } else {
+      // Vider les données si pas de session
+      setConformItems([]);
     }
-  }, [selectedSession, fetchReconciliationItems, fetchConformItems]);
+  }, [selectedSession]);
 
   const getStatusIcon = (statut: string) => {
     switch (statut) {
@@ -236,7 +243,7 @@ const InventoryReconciliation = () => {
               <SelectContent>
                 {sessions.map((session) => (
                   <SelectItem key={session.id} value={session.id}>
-                    Session {session.id} - {new Date(session.date_creation).toLocaleDateString()}
+                    {session.nom} - {new Date(session.date_debut).toLocaleDateString()}
                   </SelectItem>
                 ))}
               </SelectContent>

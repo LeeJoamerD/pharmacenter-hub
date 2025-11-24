@@ -86,20 +86,44 @@ export const useInventoryReconciliation = (sessionId?: string) => {
     if (!activeSessionId) return [];
 
     try {
-      // Récupérer les items avec écarts depuis inventaire_items
-      const { data, error } = await supabase
-        .from('inventaire_items')
-        .select(`
-          *,
-          produit:produits(*),
-          lot:lots(*)
-        `)
-        .eq('session_id', activeSessionId)
-        .in('statut', ['ecart', 'compte']);
+      // Pagination pour gérer plus de 1000 items
+      let allItems: any[] = [];
+      let from = 0;
+      const batchSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('inventaire_items')
+          .select(`
+            *,
+            produit:produits(*),
+            lot:lots(*)
+          `)
+          .eq('session_id', activeSessionId)
+          .in('statut', ['ecart', 'compte'])
+          .range(from, from + batchSize - 1);
 
-      return (data || []).map(item => ({
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allItems = [...allItems, ...data];
+          from += batchSize;
+          
+          if (data.length < batchSize) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+        
+        if (from >= 10000) {
+          console.warn('Limite de 10000 items atteinte');
+          hasMore = false;
+        }
+      }
+
+      return (allItems || []).map(item => ({
         ...item,
         ecart: item.quantite_comptee - item.quantite_theorique,
         ecartValeur: (item.quantite_comptee - item.quantite_theorique) * (item.produit?.prix_vente_ttc || 0)
@@ -113,74 +137,72 @@ export const useInventoryReconciliation = (sessionId?: string) => {
   const fetchReconciliationData = useCallback(async (targetSessionId?: string) => {
     if (!tenantId) return;
     
-    console.log('[useInventoryReconciliation] fetchReconciliationData called', { 
-      targetSessionId, 
-      sessionId, 
-      tenantId,
-      hasPersonnel: !!currentPersonnel 
+    const activeSessionId = targetSessionId || sessionId;
+    
+    console.log('🔍 [Réconciliation] fetchReconciliationData appelé', {
+      targetSessionId,
+      sessionId,
+      activeSessionId,
+      tenantId
     });
     
     try {
       setIsLoading(true);
-      const activeSessionId = targetSessionId || sessionId;
       
       if (!activeSessionId) {
-        // Utiliser des données mockées si aucune session n'est sélectionnée
-        const mockItems: ReconciliationItem[] = [
-          {
-            id: '1',
-            produit: 'Paracétamol 1000mg',
-            lot: 'LOT2024001',
-            quantiteTheorique: 50,
-            quantiteComptee: 48,
-            ecart: -2,
-            statut: 'en_attente',
-            emplacement: 'A1-B2',
-            valeurUnitaire: 12.50,
-            valeurEcart: -25.00,
-            unite: 'boîte',
-            dateComptage: new Date(),
-            operateur: currentPersonnel ? `${currentPersonnel.prenoms} ${currentPersonnel.noms}` : 'N/A',
-            commentaires: 'Emballages endommagés'
-          }
-        ];
-        setReconciliationItems(mockItems);
-        
-        const totalProduits = mockItems.length;
-        const produitsEcart = mockItems.filter(item => item.ecart !== 0).length;
-        const ecartPositif = mockItems.filter(item => item.ecart > 0).length;
-        const ecartNegatif = mockItems.filter(item => item.ecart < 0).length;
-        const valeurEcartTotal = mockItems.reduce((sum, item) => sum + item.valeurEcart, 0);
-        const tauxPrecision = totalProduits > 0 ? ((totalProduits - produitsEcart) / totalProduits) * 100 : 0;
-
+        // Pas de mock, juste vider les données
+        setReconciliationItems([]);
         setSummary({
-          totalProduits,
-          produitsEcart,
-          ecartPositif,
-          ecartNegatif,
-          valeurEcartTotal,
-          tauxPrecision
+          totalProduits: 0,
+          produitsEcart: 0,
+          ecartPositif: 0,
+          ecartNegatif: 0,
+          valeurEcartTotal: 0,
+          tauxPrecision: 0
         });
-        
         setIsLoading(false);
         return;
       }
 
-      // Récupérer les items d'inventaire avec écarts
-      const { data: items, error } = await supabase
-        .from('inventaire_items')
-        .select(`
-          *,
-          produit:produits(*),
-          lot:lots(*)
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('session_id', activeSessionId)
-        .in('statut', ['ecart', 'compte', 'valide', 'rejete']);
+      // Pagination pour gérer plus de 1000 items
+      let allItems: any[] = [];
+      let from = 0;
+      const batchSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('inventaire_items')
+          .select(`
+            *,
+            produit:produits(*),
+            lot:lots(*)
+          `)
+          .eq('tenant_id', tenantId)
+          .eq('session_id', activeSessionId)
+          .in('statut', ['ecart', 'compte', 'valide', 'rejete'])
+          .range(from, from + batchSize - 1);
 
-      const transformedItems: ReconciliationItem[] = (items || []).map((item) => {
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allItems = [...allItems, ...data];
+          from += batchSize;
+          
+          if (data.length < batchSize) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+        
+        if (from >= 10000) {
+          console.warn('Limite de 10000 items atteinte');
+          hasMore = false;
+        }
+      }
+
+      const transformedItems: ReconciliationItem[] = (allItems || []).map((item) => {
         const ecart = item.quantite_comptee - item.quantite_theorique;
         const valeurUnitaire = item.produit?.prix_vente_ttc || 0;
         
@@ -335,31 +357,60 @@ export const useInventoryReconciliation = (sessionId?: string) => {
   };
 
   useEffect(() => {
-    console.log('[useInventoryReconciliation] useEffect triggered', { tenantId, sessionId });
+    console.log('[useInventoryReconciliation] useEffect triggered', { tenantId, sessionId, selectedSession });
     if (tenantId) {
       fetchSessions();
-      fetchReconciliationData();
+      // Utiliser selectedSession en priorité, sinon sessionId
+      const activeSession = selectedSession || sessionId;
+      if (activeSession) {
+        fetchReconciliationData(activeSession);
+      }
     }
-  }, [tenantId, sessionId, fetchSessions, fetchReconciliationData]);
+  }, [tenantId, sessionId, selectedSession]);
 
   // Récupérer les produits conformes (sans écarts)
   const fetchConformItems = useCallback(async (sessionId: string) => {
     if (!tenantId) return [];
     
     try {
-      const { data, error } = await supabase
-        .from('inventaire_items')
-        .select('*')
-        .eq('session_id', sessionId)
-        .eq('tenant_id', tenantId)
-        .eq('statut', 'compte');
+      // Pagination pour gérer plus de 1000 items
+      let allItems: any[] = [];
+      let from = 0;
+      const batchSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('inventaire_items')
+          .select('*')
+          .eq('session_id', sessionId)
+          .eq('tenant_id', tenantId)
+          .eq('statut', 'compte')
+          .range(from, from + batchSize - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allItems = [...allItems, ...data];
+          from += batchSize;
+          
+          if (data.length < batchSize) {
+            hasMore = false;
+          }
+        } else {
+          hasMore = false;
+        }
+        
+        if (from >= 10000) {
+          console.warn('Limite de 10000 items atteinte');
+          hasMore = false;
+        }
+      }
 
       // Filtrer côté client les produits où quantite_comptee = quantite_theorique
-      const conformItems = data?.filter(item => 
+      const conformItems = allItems.filter(item => 
         item.quantite_comptee === item.quantite_theorique
-      ) || [];
+      );
 
       return conformItems.map(item => ({
         id: item.id,
