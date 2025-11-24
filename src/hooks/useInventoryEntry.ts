@@ -39,10 +39,13 @@ export const useInventoryEntry = () => {
 
   const fetchInventoryItems = useCallback(async (sessionId?: string) => {
     try {
+      console.log('🔍 fetchInventoryItems appelé avec sessionId:', sessionId);
       setLoading(true);
       
       if (!sessionId) {
+        console.log('⚠️ Pas de sessionId, items vidés');
         setItems([]);
+        setLoading(false);
         return;
       }
 
@@ -56,8 +59,11 @@ export const useInventoryEntry = () => {
 
       if (!personnelData?.tenant_id) {
         toast.error('Session utilisateur non valide');
+        setLoading(false);
         return;
       }
+
+      console.log('👤 Tenant ID:', personnelData.tenant_id);
 
       // Pagination pour gérer plus de 1000 items (limite Supabase)
       let allItems: any[] = [];
@@ -80,7 +86,6 @@ export const useInventoryEntry = () => {
           allItems = [...allItems, ...data];
           from += batchSize;
           
-          // Si on a moins d'items que batchSize, c'est le dernier batch
           if (data.length < batchSize) {
             hasMore = false;
           }
@@ -88,7 +93,6 @@ export const useInventoryEntry = () => {
           hasMore = false;
         }
         
-        // Sécurité : arrêter après 10000 items (10 batchs)
         if (from >= 10000) {
           console.warn('Limite de 10000 items atteinte');
           hasMore = false;
@@ -110,10 +114,10 @@ export const useInventoryEntry = () => {
         operateur: item.operateur_nom || ''
       }));
 
-      console.log(`Chargé ${mappedItems.length} items d'inventaire`);
+      console.log(`✅ Chargé ${mappedItems.length} items d'inventaire`);
       setItems(mappedItems);
     } catch (error) {
-      console.error('Erreur lors du chargement des articles:', error);
+      console.error('❌ Erreur lors du chargement des articles:', error);
       toast.error('Erreur lors du chargement des articles');
     } finally {
       setLoading(false);

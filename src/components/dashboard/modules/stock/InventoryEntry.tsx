@@ -140,19 +140,30 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
     setCurrentPage(1);
   }, [filterStatus, searchTerm]);
 
+  // 1. Synchroniser selectedSession avec le prop
   useEffect(() => {
     if (selectedSessionId && selectedSessionId !== selectedSession) {
       setSelectedSession(selectedSessionId);
-      setHasAttemptedInit(false); // Reset pour la nouvelle session
+      setHasAttemptedInit(false);
     }
   }, [selectedSessionId, selectedSession]);
 
+  // 2. Charger les items quand la session change
   useEffect(() => {
-    if (selectedSession && items.length === 0 && !loading && !hasAttemptedInit) {
+    if (selectedSession) {
+      console.log('📦 Chargement des items pour session:', selectedSession);
+      refetch(selectedSession);
+    }
+  }, [selectedSession, refetch]);
+
+  // 3. Initialiser automatiquement si 0 items après le fetch
+  useEffect(() => {
+    if (selectedSession && !loading && items.length === 0 && !hasAttemptedInit) {
+      console.log('🔄 Auto-initialisation de la session (0 items détectés)');
       setHasAttemptedInit(true);
       initializeSessionItems(selectedSession);
     }
-  }, [selectedSession, items.length, loading, hasAttemptedInit, initializeSessionItems]);
+  }, [selectedSession, loading, items.length, hasAttemptedInit, initializeSessionItems]);
 
   const handleScan = (code: string) => {
     const item = itemsByBarcode.get(code);
