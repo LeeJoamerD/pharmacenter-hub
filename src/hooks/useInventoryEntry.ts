@@ -327,6 +327,13 @@ export const useInventoryEntry = () => {
 
       const result = data as { success: boolean; error?: string; message?: string; inserted_count?: number };
 
+      console.log('=== RÉSULTAT INIT INVENTAIRE ===');
+      console.log('Success:', result?.success);
+      console.log('Inserted count:', result?.inserted_count);
+      console.log('Message:', result?.message);
+      console.log('Error:', result?.error);
+      console.log('================================');
+
       if (!result?.success) {
         toast.error(result?.error || 'Erreur lors de l\'initialisation');
         console.error('Init failed:', result);

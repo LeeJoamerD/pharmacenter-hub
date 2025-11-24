@@ -30,7 +30,8 @@ import {
   Trash2,
   Camera,
   Keyboard,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { useInventoryEntry, InventoryItem } from '@/hooks/useInventoryEntry';
 import { toast } from 'sonner';
@@ -393,34 +394,34 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
 
       {/* Message si aucun produit */}
       {selectedSession && !loading && items.length === 0 && hasAttemptedInit && (
-        <>
-          <Alert>
-            <AlertDescription>
-              Aucun produit à inventorier dans cette session. Vérifiez que vous avez des lots actifs en stock.
-            </AlertDescription>
-          </Alert>
-          
-          <Card className="mt-4">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="font-medium">Session vide</p>
-                <p className="text-sm text-muted-foreground">
-                  Aucun produit chargé pour cette session
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="h-5 w-5 text-orange-500 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-orange-900 mb-2">
+                  Session vide - Aucun produit à inventorier
+                </h3>
+                <p className="text-sm text-orange-700 mb-4">
+                  La session a été initialisée mais aucun produit n'a été chargé. 
+                  Vérifiez que vous avez des lots avec un statut "actif" ou "Disponible" 
+                  et une quantité restante supérieure à 0.
                 </p>
+                <Button 
+                  onClick={() => {
+                    setHasAttemptedInit(false);
+                    initializeSessionItems(selectedSession);
+                  }}
+                  variant="outline"
+                  className="border-orange-300 hover:bg-orange-100"
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Réessayer l'initialisation
+                </Button>
               </div>
-              <Button 
-                onClick={() => {
-                  setHasAttemptedInit(false);
-                  initializeSessionItems(selectedSession);
-                }}
-                variant="outline"
-              >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Initialiser la session
-              </Button>
-            </CardContent>
-          </Card>
-        </>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Bouton de réinitialisation manuelle */}
