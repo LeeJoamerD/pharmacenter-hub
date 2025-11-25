@@ -48,7 +48,8 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
     saveCount: hookSaveCount, 
     resetCount: hookResetCount, 
     initializeSessionItems, 
-    refetch 
+    refetch,
+    finishSession
   } = useInventoryEntry();
   
   const [selectedSession, setSelectedSession] = useState<string>(selectedSessionId || '');
@@ -401,6 +402,44 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Bouton Terminer l'inventaire */}
+      {selectedSession && sessions.find(s => s.id === selectedSession)?.statut === 'en_cours' && (
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="font-medium text-green-900">Inventaire en cours</p>
+              <p className="text-sm text-green-700">
+                {stats.progress}% complété - {stats.remaining} produits restants
+              </p>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="default" className="bg-green-600 hover:bg-green-700">
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Terminer l'inventaire
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Terminer l'inventaire</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Êtes-vous sûr de vouloir clôturer cet inventaire ? 
+                    {stats.remaining > 0 && ` Il reste ${stats.remaining} produits non comptés.`}
+                    {' '}Cette action est définitive.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => finishSession(selectedSession)}>
+                    Confirmer la clôture
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
       )}
 
       {/* Message si aucun produit */}

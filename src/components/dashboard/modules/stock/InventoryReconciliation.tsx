@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useInventoryReconciliation, ReconciliationItem } from '@/hooks/useInventoryReconciliation';
+import { useInventoryEntry } from '@/hooks/useInventoryEntry';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { 
   Search,
   AlertTriangle,
@@ -67,6 +69,8 @@ const InventoryReconciliation = () => {
     validateEcart,
     rejectEcart
   } = useInventoryReconciliation();
+  
+  const { finishSession } = useInventoryEntry();
 
   // Charger les données au montage du composant
   useEffect(() => {
@@ -269,6 +273,44 @@ const InventoryReconciliation = () => {
         </Card>
       ) : (
         <>
+          {/* Bouton Terminer l'inventaire */}
+          {sessions.find(s => s.id === selectedSession)?.statut === 'en_cours' && (
+            <Card className="border-green-200 bg-green-50">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-green-900">Inventaire en cours</p>
+                  <p className="text-sm text-green-700">
+                    {summary.tauxPrecision.toFixed(1)}% de précision - {summary.produitsEcart} écarts détectés
+                  </p>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="default" className="bg-green-600 hover:bg-green-700">
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Terminer l'inventaire
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Terminer l'inventaire</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Êtes-vous sûr de vouloir clôturer cet inventaire ?
+                        {summary.produitsEcart > 0 && ` Il reste ${summary.produitsEcart} écarts à traiter.`}
+                        {' '}Cette action est définitive.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => finishSession(selectedSession)}>
+                        Confirmer la clôture
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Résumé de la réconciliation */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card>
