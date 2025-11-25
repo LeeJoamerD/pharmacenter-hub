@@ -206,12 +206,12 @@ export const useProducts = () => {
         // Pour niveau 3, récupérer le CIP racine (niveau 1)
         let rootCip = sourceProduct.code_cip;
         if (sourceLevel === 2) {
-          // Si source est niveau 2, enlever le suffixe " - 2" pour obtenir le CIP racine
-          rootCip = sourceProduct.code_cip.replace(/\s*-\s*\d+$/, '');
+          // Si source est niveau 2, enlever le suffixe "-2" pour obtenir le CIP racine
+          rootCip = sourceProduct.code_cip.replace(/-\d+$/, '');
         }
-        detailCip = rootCip + ' - 3';
+        detailCip = rootCip + '-3';
       } else {
-        detailCip = sourceProduct.code_cip + ` - ${newLevel}`;
+        detailCip = sourceProduct.code_cip + `-${newLevel}`;
       }
       
       const detailName = sourceProduct.libelle_produit + ' (D)';
