@@ -33,7 +33,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
 
 interface Product {
@@ -117,6 +118,7 @@ const ProductCatalogNew = () => {
   const [isReferencesDialogOpen, setIsReferencesDialogOpen] = useState(false);
   const [referencesData, setReferencesData] = useState<any[]>([]);
   const [referencesProduct, setReferencesProduct] = useState<Product | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const { toast } = useToast();
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
@@ -367,6 +369,142 @@ const ProductCatalogNew = () => {
     }
   };
 
+  const exportCatalogToExcel = async () => {
+    if (!personnel?.tenant_id) {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'exporter sans tenant",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsExporting(true);
+    
+    try {
+      toast({
+        title: "Export en cours",
+        description: "Récupération des produits...",
+      });
+
+      // Récupérer tous les produits avec pagination (limite Supabase = 1000 par requête)
+      let allProducts: any[] = [];
+      let hasMore = true;
+      let offset = 0;
+      const pageSize = 1000;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('produits_with_stock')
+          .select('*')
+          .eq('tenant_id', personnel.tenant_id)
+          .order('libelle_produit', { ascending: true })
+          .range(offset, offset + pageSize - 1);
+
+        if (error) {
+          throw error;
+        }
+
+        if (data && data.length > 0) {
+          allProducts = [...allProducts, ...data];
+          offset += pageSize;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      toast({
+        title: "Export en cours",
+        description: `${allProducts.length} produits récupérés, génération du fichier...`,
+      });
+
+      // Formater les données pour Excel
+      const exportData = allProducts.map(product => ({
+        'Code CIP': product.code_cip || '',
+        'Libellé Produit': product.libelle_produit || '',
+        'Famille': product.famille_libelle || '',
+        'Rayon': product.rayon_libelle || '',
+        'Forme Galénique': product.forme_libelle || '',
+        'DCI': product.dci_nom || '',
+        'Classe Thérapeutique': product.classe_therapeutique_libelle || '',
+        'Laboratoire': product.laboratoire_nom || '',
+        'Catégorie Tarification': product.categorie_tarification_libelle || '',
+        'Prix Achat (FCFA)': product.prix_achat || 0,
+        'Prix Vente HT (FCFA)': product.prix_vente_ht || 0,
+        'Prix Vente TTC (FCFA)': product.prix_vente_ttc || 0,
+        'Taux TVA (%)': product.taux_tva || 0,
+        'Centime Additionnel (FCFA)': product.centime_additionnel || 0,
+        'Taux Centime (%)': product.taux_centime_additionnel || 0,
+        'Stock Actuel': product.stock_actuel || 0,
+        'Stock Critique': product.stock_critique || 0,
+        'Stock Faible': product.stock_faible || 0,
+        'Stock Limite': product.stock_limite || 0,
+        'Statut Stock': product.statut_stock || '',
+        'Rotation': product.rotation || '',
+        'Valorisation Stock (FCFA)': product.valeur_stock || 0,
+        'Niveau Détail': product.niveau_detail || 0,
+        'Statut': product.is_active ? 'Actif' : 'Inactif',
+        'Date Création': product.created_at ? new Date(product.created_at).toLocaleDateString('fr-FR') : '',
+        'Date Modification': product.updated_at ? new Date(product.updated_at).toLocaleDateString('fr-FR') : '',
+      }));
+
+      // Créer le workbook et la feuille
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Catalogue Produits');
+
+      // Ajuster la largeur des colonnes
+      const colWidths = [
+        { wch: 15 }, // Code CIP
+        { wch: 40 }, // Libellé Produit
+        { wch: 20 }, // Famille
+        { wch: 20 }, // Rayon
+        { wch: 20 }, // Forme Galénique
+        { wch: 25 }, // DCI
+        { wch: 25 }, // Classe Thérapeutique
+        { wch: 25 }, // Laboratoire
+        { wch: 20 }, // Catégorie Tarification
+        { wch: 15 }, // Prix Achat
+        { wch: 15 }, // Prix Vente HT
+        { wch: 15 }, // Prix Vente TTC
+        { wch: 12 }, // Taux TVA
+        { wch: 20 }, // Centime Additionnel
+        { wch: 15 }, // Taux Centime
+        { wch: 12 }, // Stock Actuel
+        { wch: 12 }, // Stock Critique
+        { wch: 12 }, // Stock Faible
+        { wch: 12 }, // Stock Limite
+        { wch: 15 }, // Statut Stock
+        { wch: 12 }, // Rotation
+        { wch: 18 }, // Valorisation Stock
+        { wch: 12 }, // Niveau Détail
+        { wch: 10 }, // Statut
+        { wch: 15 }, // Date Création
+        { wch: 15 }, // Date Modification
+      ];
+      ws['!cols'] = colWidths;
+
+      // Générer le fichier Excel
+      const filename = `catalogue_produits_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, filename);
+
+      toast({
+        title: "Export réussi",
+        description: `${allProducts.length} produits exportés dans ${filename}`,
+      });
+    } catch (error) {
+      console.error('Erreur lors de l\'export:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de l'export",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const onSubmit = async (data: Product) => {
     // Exclure stock_actuel des données à soumettre (colonne calculée, pas physique)
     const { stock_actuel, ...productData } = data as any;
@@ -421,10 +559,20 @@ const ProductCatalogNew = () => {
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           Catalogue des Produits
-          <Button onClick={handleAddProduct}>
-            <Plus className="h-4 w-4 mr-2" />
-            Ajouter Produit
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={exportCatalogToExcel}
+              disabled={isExporting}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {isExporting ? 'Export en cours...' : 'Exporter Excel'}
+            </Button>
+            <Button onClick={handleAddProduct}>
+              <Plus className="h-4 w-4 mr-2" />
+              Ajouter Produit
+            </Button>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
