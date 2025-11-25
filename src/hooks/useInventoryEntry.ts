@@ -363,6 +363,40 @@ export const useInventoryEntry = () => {
     fetchSessions();
   }, [fetchSessions]);
 
+  const finishSession = useCallback(async (sessionId: string) => {
+    try {
+      // Get current user personnel
+      const { data: userData } = await supabase.auth.getUser();
+      const { data: personnelData } = await supabase
+        .from('personnel')
+        .select('tenant_id')
+        .eq('auth_user_id', userData.user?.id)
+        .maybeSingle();
+
+      if (!personnelData) {
+        toast.error('Personnel non trouvé');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('inventaire_sessions')
+        .update({
+          statut: 'terminee',
+          date_fin: new Date().toISOString()
+        })
+        .eq('id', sessionId)
+        .eq('tenant_id', personnelData.tenant_id);
+
+      if (error) throw error;
+      
+      toast.success('Inventaire clôturé avec succès');
+      await fetchSessions();
+    } catch (error) {
+      console.error('Erreur finishSession:', error);
+      toast.error('Erreur lors de la clôture de l\'inventaire');
+    }
+  }, [fetchSessions]);
+
   return {
     items,
     sessions,
@@ -371,6 +405,7 @@ export const useInventoryEntry = () => {
     saveCount,
     resetCount,
     initializeSessionItems,
-    refetch: fetchInventoryItems
+    refetch: fetchInventoryItems,
+    finishSession
   };
 };

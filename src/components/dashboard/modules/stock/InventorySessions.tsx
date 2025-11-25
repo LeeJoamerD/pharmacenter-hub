@@ -603,22 +603,22 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                         {(session.statut === "en_cours" || session.statut === "suspendue") && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm" title="Arrêter la session">
+                              <Button variant="ghost" size="sm" title="Terminer l'inventaire">
                                 <Square className="h-4 w-4 text-red-600" />
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Arrêter la session</AlertDialogTitle>
+                                <AlertDialogTitle>Terminer l'inventaire</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Êtes-vous sûr de vouloir arrêter cette session d'inventaire ? Cette action terminera
+                                  Êtes-vous sûr de vouloir terminer cette session d'inventaire ? Cette action clôturera
                                   définitivement la session.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Annuler</AlertDialogCancel>
                                 <AlertDialogAction onClick={() => handleStopSession(session.id)}>
-                                  Arrêter la session
+                                  Terminer l'inventaire
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
