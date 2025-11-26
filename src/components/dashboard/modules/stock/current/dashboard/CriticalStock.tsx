@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AlertTriangle, ShoppingCart, Eye, Info } from 'lucide-react';
 import ProductDetailsModal from '../modals/ProductDetailsModal';
 import { OrderLowStockModal } from '../modals/OrderLowStockModal';
+import { getStockThresholds, calculateStockStatus, calculateRotation } from '@/utils/stockThresholds';
 
 interface CriticalStockProps {
   products: any[];
@@ -35,22 +36,44 @@ const CriticalStock = React.memo(({ products }: CriticalStockProps) => {
     }, 100);
   }, []);
 
-  const criticalProducts = useMemo(() => 
-    products
+  // Recalculer le statut avec les bons seuils (2, 5, 10)
+  const criticalProducts = useMemo(() => {
+    const productsWithRecalculatedStatus = products.map(p => {
+      const thresholds = getStockThresholds({
+        stock_critique: p.stock_critique,
+        stock_faible: p.stock_faible,
+        stock_limite: p.stock_limite
+      });
+      const statut_stock = calculateStockStatus(p.stock_actuel || 0, thresholds);
+      const rotation = calculateRotation(p.stock_actuel || 0, thresholds);
+      
+      return { ...p, statut_stock, rotation };
+    });
+
+    return productsWithRecalculatedStatus
       .filter(p => p.statut_stock === 'critique')
       .sort((a, b) => {
         const rotationOrder = { rapide: 0, normale: 1, lente: 2 };
         return rotationOrder[a.rotation as keyof typeof rotationOrder] - 
                rotationOrder[b.rotation as keyof typeof rotationOrder];
       })
-      .slice(0, 8),
-    [products]
-  );
+      .slice(0, 8);
+  }, [products]);
 
-  const totalCriticalProducts = useMemo(() => 
-    products.filter(p => p.statut_stock === 'critique').length,
-    [products]
-  );
+  const totalCriticalProducts = useMemo(() => {
+    const productsWithRecalculatedStatus = products.map(p => {
+      const thresholds = getStockThresholds({
+        stock_critique: p.stock_critique,
+        stock_faible: p.stock_faible,
+        stock_limite: p.stock_limite
+      });
+      const statut_stock = calculateStockStatus(p.stock_actuel || 0, thresholds);
+      
+      return { ...p, statut_stock };
+    });
+
+    return productsWithRecalculatedStatus.filter(p => p.statut_stock === 'critique').length;
+  }, [products]);
 
   // Debug: Afficher les informations de produits critiques
   useEffect(() => {
