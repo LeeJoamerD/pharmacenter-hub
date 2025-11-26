@@ -129,7 +129,7 @@ const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, rup
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <CriticalStock products={criticalProducts} />
+        <CriticalStock />
         <StockRupture products={ruptureProducts} />
         <FastMovingItems products={fastMovingProducts} />
       </div>

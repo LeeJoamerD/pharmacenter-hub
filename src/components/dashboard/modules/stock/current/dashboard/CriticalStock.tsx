@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,15 +7,69 @@ import { AlertTriangle, ShoppingCart, Eye, Info } from 'lucide-react';
 import ProductDetailsModal from '../modals/ProductDetailsModal';
 import { OrderLowStockModal } from '../modals/OrderLowStockModal';
 import { getStockThresholds, calculateStockStatus, calculateRotation } from '@/utils/stockThresholds';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
 
-interface CriticalStockProps {
-  products: any[];
-}
-
-const CriticalStock = React.memo(({ products }: CriticalStockProps) => {
+const CriticalStock = React.memo(() => {
+  const { tenantId } = useTenant();
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+
+  // Requête autonome pour charger tous les produits avec stock > 0 et calculer le statut critique
+  const { data: allCriticalProducts = [], isLoading } = useQuery({
+    queryKey: ['critical-stock-component', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+
+      // Charger tous les produits avec stock > 0 (pagination pour > 1000 produits)
+      let allProducts: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('produits_with_stock')
+          .select('id, libelle_produit, code_cip, prix_achat, stock_actuel, stock_critique, stock_faible, stock_limite')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .gt('stock_actuel', 0)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allProducts = [...allProducts, ...data];
+          hasMore = data.length === pageSize;
+          page++;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      // Calculer le statut avec les bons seuils (2, 5, 10) depuis stockThresholds.ts
+      const productsWithStatus = allProducts.map(p => {
+        const thresholds = getStockThresholds({
+          stock_critique: p.stock_critique,
+          stock_faible: p.stock_faible,
+          stock_limite: p.stock_limite
+        });
+        return {
+          ...p,
+          produit_id: p.id,
+          statut_stock: calculateStockStatus(p.stock_actuel, thresholds),
+          rotation: calculateRotation(p.stock_actuel, thresholds),
+        };
+      });
+
+      // Filtrer uniquement les produits critiques
+      return productsWithStatus.filter(p => p.statut_stock === 'critique');
+    },
+    enabled: !!tenantId,
+    staleTime: 30000,
+  });
 
   const handleOrder = useCallback((product: any) => {
     setSelectedProduct(product);
@@ -36,59 +90,18 @@ const CriticalStock = React.memo(({ products }: CriticalStockProps) => {
     }, 100);
   }, []);
 
-  // Recalculer le statut avec les bons seuils (2, 5, 10)
-  const criticalProducts = useMemo(() => {
-    const productsWithRecalculatedStatus = products.map(p => {
-      const thresholds = getStockThresholds({
-        stock_critique: p.stock_critique,
-        stock_faible: p.stock_faible,
-        stock_limite: p.stock_limite
-      });
-      const statut_stock = calculateStockStatus(p.stock_actuel || 0, thresholds);
-      const rotation = calculateRotation(p.stock_actuel || 0, thresholds);
-      
-      return { ...p, statut_stock, rotation };
-    });
-
-    return productsWithRecalculatedStatus
-      .filter(p => p.statut_stock === 'critique')
+  const criticalProducts = useMemo(() => 
+    allCriticalProducts
       .sort((a, b) => {
         const rotationOrder = { rapide: 0, normale: 1, lente: 2 };
         return rotationOrder[a.rotation as keyof typeof rotationOrder] - 
                rotationOrder[b.rotation as keyof typeof rotationOrder];
       })
-      .slice(0, 8);
-  }, [products]);
+      .slice(0, 8),
+    [allCriticalProducts]
+  );
 
-  const totalCriticalProducts = useMemo(() => {
-    const productsWithRecalculatedStatus = products.map(p => {
-      const thresholds = getStockThresholds({
-        stock_critique: p.stock_critique,
-        stock_faible: p.stock_faible,
-        stock_limite: p.stock_limite
-      });
-      const statut_stock = calculateStockStatus(p.stock_actuel || 0, thresholds);
-      
-      return { ...p, statut_stock };
-    });
-
-    return productsWithRecalculatedStatus.filter(p => p.statut_stock === 'critique').length;
-  }, [products]);
-
-  // Debug: Afficher les informations de produits critiques
-  useEffect(() => {
-    console.log('[CriticalStock Component Debug]', {
-      total_products_received: products.length,
-      products_with_critique_status: products.filter(p => p.statut_stock === 'critique').length,
-      displayed_critical_products: criticalProducts.length,
-      all_statuses: [...new Set(products.map(p => p.statut_stock))],
-      sample_products: products.slice(0, 3).map(p => ({
-        name: p.libelle_produit,
-        stock: p.stock_actuel,
-        statut: p.statut_stock,
-      }))
-    });
-  }, [products, criticalProducts]);
+  const totalCriticalProducts = allCriticalProducts.length;
 
   const getSeverityColor = useCallback((status: string) => {
     switch (status) {
