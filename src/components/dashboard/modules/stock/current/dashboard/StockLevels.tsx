@@ -18,44 +18,44 @@ interface StockLevelsProps {
 
 const StockLevels = React.memo(({ statusDistribution, metrics, totalProducts }: StockLevelsProps) => {
 
-  // Optimisation avec useMemo pour le calcul des niveaux
+  // Optimisation avec useMemo pour le calcul des niveaux - utilise metrics avec les bons seuils
   const stockLevels = useMemo(() => [
     {
       label: 'Normal',
-      value: statusDistribution.normal,
+      value: metrics.normalStockProducts || 0,
       color: 'hsl(var(--success))',
       icon: TrendingUp,
       iconColor: 'text-success'
     },
     {
       label: 'Faible',
-      value: statusDistribution.faible,
+      value: metrics.lowStockProducts || 0,
       color: 'hsl(var(--warning))',
       icon: Minus,
       iconColor: 'text-warning'
     },
     {
       label: 'Critique',
-      value: statusDistribution.critique,
+      value: metrics.criticalStockProducts || 0,
       color: 'hsl(38 92% 50%)',
       icon: TrendingDown,
       iconColor: 'text-[hsl(38_92%_50%)]'
     },
     {
       label: 'Rupture',
-      value: statusDistribution.rupture,
+      value: metrics.outOfStockProducts || 0,
       color: 'hsl(var(--destructive))',
       icon: TrendingDown,
       iconColor: 'text-destructive'
     },
     {
       label: 'Surstock',
-      value: statusDistribution.surstock,
+      value: metrics.overstockProducts || 0,
       color: 'hsl(var(--info))',
       icon: TrendingUp,
       iconColor: 'text-info'
     }
-  ], [statusDistribution]);
+  ], [metrics]);
 
   const chartData = useMemo(() => 
     stockLevels.filter(level => level.value > 0), 
