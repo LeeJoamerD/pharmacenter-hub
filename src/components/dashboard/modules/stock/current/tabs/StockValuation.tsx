@@ -231,12 +231,12 @@ const StockValuation = () => {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <DollarSign className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium">Valorisation Totale</span>
+              <span className="text-sm font-medium">Stock Optimal</span>
             </div>
             <div className="text-2xl font-bold text-green-600">
               {formatPrice(totalStockValue)}
             </div>
-            <p className="text-xs text-muted-foreground">Stock complet</p>
+            <p className="text-xs text-muted-foreground">Valeur cible au niveau normal</p>
           </CardContent>
         </Card>
 
