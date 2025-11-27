@@ -38,8 +38,8 @@ export interface ValuationByCategory {
 }
 
 export interface StockValuationMetrics {
-  totalStockValue: number;
-  availableStockValue: number;
+  totalStockValue: number;        // Stock Optimal (seuil_maximum × prix_achat)
+  availableStockValue: number;    // Stock Disponible (stock_actuel × prix_achat)
   lowStockValue: number;
   averageValuePerProduct: number;
   totalProducts: number;
@@ -368,8 +368,8 @@ export const useStockValuationPaginated = ({
           
           // Mettre à jour les métriques complètes
           metrics = {
-            totalStockValue: parseFloat(data.totalValue?.toString() || '0') || 0,
-            availableStockValue: parseFloat(data.availableStockValue?.toString() || '0') || 0,
+            totalStockValue: parseFloat(data.optimalValue?.toString() || data.totalValue?.toString() || '0') || 0,  // Stock Optimal
+            availableStockValue: parseFloat(data.totalValue?.toString() || '0') || 0,  // Stock Disponible
             lowStockValue: parseFloat(data.lowStockValue?.toString() || '0') || 0,
             averageValuePerProduct: parseFloat(data.averageValuePerProduct?.toString() || '0') || 0,
             totalProducts: data.totalProducts || 0,
@@ -664,8 +664,8 @@ export const useStockValuationPaginated = ({
         valuationItems: paginatedItems,
         allItemsCount,
         totalPages,
-        metrics: {
-          totalStockValue: globalMetrics.totalValue,
+        metrics: metrics.totalStockValue > 0 ? metrics : {
+          totalStockValue: globalMetrics.totalValue,  // Fallback au totalValue si optimalValue n'est pas disponible
           availableStockValue: globalMetrics.totalValue,
           lowStockValue: filteredItems
              .filter(p => p.statut_stock === 'faible')
