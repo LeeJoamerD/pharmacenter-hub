@@ -283,7 +283,10 @@ export class InvoicePDFService {
   <div class="container">
     <div class="header">
       <div class="company-info">
-        <h1>${companyInfo.nom}</h1>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+          <img src="/images/logo-pharmasoft.png" alt="PharmaSoft" style="height: 50px; width: 50px; object-fit: contain;" onerror="this.style.display='none'" />
+          <h1 style="margin: 0;">${companyInfo.nom}</h1>
+        </div>
         ${companyInfo.adresse ? `<p>${companyInfo.adresse}</p>` : ''}
         ${companyInfo.rc ? `<p>RC: ${companyInfo.rc}</p>` : ''}
         ${companyInfo.tva ? `<p>${tvaLabel}: ${companyInfo.tva}</p>` : ''}

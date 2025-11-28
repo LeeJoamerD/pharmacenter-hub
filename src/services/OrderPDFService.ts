@@ -207,7 +207,10 @@ export class OrderPDFService {
 <body>
     <div class="container">
         <div class="header">
-            <h1>BON DE COMMANDE</h1>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <img src="/images/logo-pharmasoft.png" alt="PharmaSoft" style="height: 45px; width: 45px; object-fit: contain;" onerror="this.style.display='none'" />
+              <h1>BON DE COMMANDE</h1>
+            </div>
             <div style="text-align: right;">
                 <div style="font-size: 18px; font-weight: bold;">${order.numero}</div>
                 <div style="color: #64748b;">Généré le ${currentDate}</div>

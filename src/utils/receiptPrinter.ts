@@ -36,9 +36,13 @@ export async function printReceipt(data: ReceiptData): Promise<string> {
 
   let y = 10;
 
-  // En-tête
-  doc.setFontSize(12);
+  // En-tête avec PharmaSoft
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
+  doc.text('PharmaSoft', 40, y, { align: 'center' });
+  y += 4;
+  
+  doc.setFontSize(12);
   doc.text(data.pharmacyInfo.name, 40, y, { align: 'center' });
   y += 5;
   

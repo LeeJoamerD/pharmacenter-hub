@@ -175,8 +175,8 @@ const AppSidebar = ({
   return (
     <Sidebar>
       <SidebarHeader className="border-b px-4 py-6">
-        <a onClick={handleLogoClick} className="flex items-center gap-2 cursor-pointer">
-          <Pill className="h-6 w-6 text-primary" />
+        <a onClick={handleLogoClick} className="flex items-center gap-3 cursor-pointer">
+          <img src="/images/logo-pharmasoft.png" alt="PharmaSoft" className="h-8 w-8 object-contain" />
           <span className="text-xl font-display font-bold text-primary">PharmaSoft</span>
         </a>
       </SidebarHeader>

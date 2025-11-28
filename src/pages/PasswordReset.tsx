@@ -56,7 +56,10 @@ const PasswordReset = () => {
     <main className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <Card className="shadow-xl">
-          <CardHeader>
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4">
+              <img src="/images/logo-pharmasoft.png" alt="PharmaSoft" className="h-16 w-16 mx-auto object-contain" />
+            </div>
             <CardTitle className="text-2xl">Réinitialiser le mot de passe</CardTitle>
           </CardHeader>
           <CardContent>
