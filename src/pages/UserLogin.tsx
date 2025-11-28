@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, Shield, LogIn as LogInIcon, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Mail, Lock, LogIn as LogInIcon, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -111,11 +111,11 @@ const handleForgotPassword = async () => {
 
         <Card className="shadow-xl">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-2 inline-flex items-center justify-center rounded-full bg-primary/10 p-3">
-              <Shield className="h-6 w-6 text-primary" />
+            <div className="mx-auto mb-4">
+              <img src="/images/logo-pharmasoft.png" alt="PharmaSoft" className="h-16 w-16 mx-auto object-contain" />
             </div>
             <CardTitle className="text-2xl font-display">Connexion</CardTitle>
-            <p className="text-sm text-muted-foreground">Accédez à votre espace utilisateur</p>
+            <p className="text-sm text-muted-foreground">Accédez à votre espace PharmaSoft</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleEmailLogin} className="space-y-4">

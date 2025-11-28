@@ -23,7 +23,10 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           <FadeIn>
             <div>
-              <h3 className="text-xl font-display font-bold mb-6">PharmaSoft</h3>
+              <div className="flex items-center gap-3 mb-6">
+                <img src="/images/logo-pharmasoft.png" alt="PharmaSoft" className="h-10 w-10 object-contain" />
+                <h3 className="text-xl font-display font-bold">PharmaSoft</h3>
+              </div>
               <p className="text-slate-300 mb-6">
                 Une application complète de gestion d'officine pharmaceutique disponible en version web et mobile.
               </p>
