@@ -111,10 +111,10 @@ serve(async (req) => {
       throw new Error('No text generated from Gemini');
     }
 
-    // Get current user tenant
+    // Get current user tenant and personnel id
     const { data: personnel } = await supabase
       .from('personnel')
-      .select('tenant_id')
+      .select('id, tenant_id')
       .eq('auth_user_id', user.id)
       .single();
 
@@ -136,7 +136,7 @@ serve(async (req) => {
       description: `Document généré automatiquement via IA Gemini`,
       tags: ['IA', 'Gemini', 'Généré'],
       file_size: new TextEncoder().encode(generatedText).length,
-      author_id: user.id,
+      author_id: personnel.id,
       document_type: 'ai_generated',
       ai_generated: true,
       template_id: templateId || null

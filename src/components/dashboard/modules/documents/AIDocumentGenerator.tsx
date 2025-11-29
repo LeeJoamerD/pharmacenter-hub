@@ -182,23 +182,29 @@ const AIDocumentGenerator = () => {
               {/* Template Selection */}
               <div className="space-y-2">
                 <Label htmlFor="template">Template</Label>
-                <Select onValueChange={handleTemplateChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez un template" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {templates.map(template => (
-                      <SelectItem key={template.id} value={template.id}>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {template.category}
-                          </Badge>
-                          {template.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {templates.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-2">
+                    Aucun template actif disponible
+                  </p>
+                ) : (
+                  <Select value={selectedTemplate?.id || ''} onValueChange={handleTemplateChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionnez un template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map(template => (
+                        <SelectItem key={template.id} value={template.id}>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="text-xs">
+                              {template.category}
+                            </Badge>
+                            {template.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               {/* Variables */}
