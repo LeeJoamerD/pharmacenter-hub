@@ -71,8 +71,19 @@ serve(async (req) => {
       });
     }
 
+    // Enrichir le prompt avec les variables fournies par l'utilisateur
+    const variablesWithValues = Object.entries(variables)
+      .filter(([_, value]) => value && String(value).trim() !== '')
+      .map(([key, value]) => `- ${key.replace(/_/g, ' ')}: ${value}`)
+      .join('\n');
+
+    if (variablesWithValues) {
+      prompt = `${prompt}\n\nIMPORTANT - Utilise OBLIGATOIREMENT ces informations spécifiques dans le document généré:\n${variablesWithValues}\n\nNe génère pas de placeholders ou d'exemples, utilise exactement les valeurs fournies ci-dessus.`;
+    }
+
     console.log('Generating document with Gemini...');
-    console.log('Prompt:', prompt.substring(0, 200) + '...');
+    console.log('Variables received:', JSON.stringify(variables));
+    console.log('Final prompt:', prompt.substring(0, 500) + '...');
 
     // Call Gemini API
     const geminiResponse = await fetch(
