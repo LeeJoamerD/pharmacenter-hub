@@ -10,6 +10,8 @@ export interface ExcelReceptionLine {
   statut: 'conforme' | 'non_conforme' | 'refuse';
   produitId?: string;         // Récupéré après matching
   rowNumber: number;          // Numéro de ligne pour traçabilité
+  hasParsingError?: boolean;  // Indique si la ligne a une erreur de parsing
+  parsingErrorMessage?: string; // Message d'erreur de parsing
 }
 
 export interface ParseResult {

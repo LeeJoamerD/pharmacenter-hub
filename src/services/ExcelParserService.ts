@@ -82,7 +82,8 @@ export class ExcelParserService {
               message: 'Référence produit manquante',
               severity: 'error'
             });
-            continue;
+            line.hasParsingError = true;
+            line.parsingErrorMessage = 'Référence produit manquante';
           }
 
           if (line.quantiteRecue <= 0) {
@@ -92,9 +93,11 @@ export class ExcelParserService {
               message: 'Quantité livrée doit être supérieure à 0',
               severity: 'error'
             });
-            continue;
+            line.hasParsingError = true;
+            line.parsingErrorMessage = 'Quantité livrée doit être supérieure à 0';
           }
 
+          // Toujours ajouter la ligne, même avec erreurs
           lines.push(line);
         } catch (error) {
           errors.push({
