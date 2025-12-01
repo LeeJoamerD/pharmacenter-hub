@@ -40,6 +40,31 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const [selectedForCatalog, setSelectedForCatalog] = useState<Set<number>>(new Set());
   const [addingToCatalog, setAddingToCatalog] = useState(false);
 
+  // Liste des produits avec erreur "product_not_found"
+  const productNotFoundLines = React.useMemo(() => {
+    if (!validationResult || !parseResult) return [];
+    return parseResult.lines.filter(line => 
+      validationResult.errors.some(
+        e => e.rowNumber === line.rowNumber && e.type === 'product_not_found'
+      )
+    );
+  }, [validationResult, parseResult]);
+
+  // Fonction pour sélectionner/désélectionner tous les produits non trouvés
+  const handleSelectAll = () => {
+    if (selectedForCatalog.size === productNotFoundLines.length) {
+      // Tout désélectionner
+      setSelectedForCatalog(new Set());
+    } else {
+      // Tout sélectionner
+      const allRowNumbers = new Set(productNotFoundLines.map(l => l.rowNumber));
+      setSelectedForCatalog(allRowNumbers);
+    }
+  };
+
+  const allSelected = productNotFoundLines.length > 0 && 
+                      selectedForCatalog.size === productNotFoundLines.length;
+
   // Filtrer les commandes avec statut "Livré" ou "Validé"
   const filteredOrders = orders.filter(
     o => o.statut === 'Livré' || o.statut === 'Validé'
@@ -227,7 +252,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
           .insert({
             tenant_id: personnel.tenant_id,
             libelle_produit: line.produit,
-            code_cip: line.reference,
+            code_cip: String(line.reference).trim(), // Normaliser le code CIP
             prix_achat: line.prixAchatReel,
             categorie_tarification_id: '52e236fb-9bf7-4709-bcb0-d8abb4b44db6', // MEDICAMENTS
             is_active: true
@@ -452,33 +477,42 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
 
                   {/* Bloc d'ajout de produits au catalogue */}
                   {validationResult?.errors.some(e => e.type === 'product_not_found') && (
-                    <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
-                      <PlusCircle className="h-5 w-5 text-primary" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">
-                          {selectedForCatalog.size} produit(s) sélectionné(s) pour ajout au catalogue
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Catégorie : MEDICAMENTS
-                        </p>
+                    <div className="flex flex-col gap-3 p-4 bg-muted rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <PlusCircle className="h-5 w-5 text-primary" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">
+                            {selectedForCatalog.size} / {productNotFoundLines.length} produit(s) sélectionné(s) pour ajout
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Catégorie : MEDICAMENTS
+                          </p>
+                        </div>
+                        <Button
+                          onClick={handleSelectAll}
+                          variant="outline"
+                          size="sm"
+                        >
+                          {allSelected ? 'Tout désélectionner' : 'Tout sélectionner'}
+                        </Button>
+                        <Button
+                          onClick={handleAddProductsToCatalog}
+                          disabled={selectedForCatalog.size === 0 || addingToCatalog}
+                          size="sm"
+                        >
+                          {addingToCatalog ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Ajout en cours...
+                            </>
+                          ) : (
+                            <>
+                              <PlusCircle className="h-4 w-4 mr-2" />
+                              Ajouter au catalogue
+                            </>
+                          )}
+                        </Button>
                       </div>
-                      <Button
-                        onClick={handleAddProductsToCatalog}
-                        disabled={selectedForCatalog.size === 0 || addingToCatalog}
-                        size="sm"
-                      >
-                        {addingToCatalog ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Ajout en cours...
-                          </>
-                        ) : (
-                          <>
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Ajouter au catalogue
-                          </>
-                        )}
-                      </Button>
                     </div>
                   )}
                 </>
@@ -491,7 +525,15 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[50px]">Sélect.</TableHead>
+                <TableHead className="w-[50px]">
+                  {productNotFoundLines.length > 0 && (
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Sélectionner tous les produits non trouvés"
+                    />
+                  )}
+                </TableHead>
                           <TableHead className="w-[80px]">Statut</TableHead>
                           <TableHead>Référence</TableHead>
                           <TableHead>Produit</TableHead>

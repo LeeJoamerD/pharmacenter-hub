@@ -309,10 +309,15 @@ export class ExcelParserService {
       console.log('📦 Produits trouvés:', produits);
 
       for (const ref of references) {
-        console.log(`  Recherche "${ref}"...`);
-        const matchingProducts = produits?.filter(p => 
-          p.code_cip === ref || p.code_barre_externe === ref
-        ) || [];
+        const normalizedRef = String(ref).trim();
+        console.log(`  Recherche "${normalizedRef}"...`);
+        
+        // Chercher par code_cip ou code_barre_externe (EAN13) avec normalisation
+        const matchingProducts = produits?.filter(p => {
+          const normalizedCip = String(p.code_cip || '').trim();
+          const normalizedBarcode = String(p.code_barre_externe || '').trim();
+          return normalizedCip === normalizedRef || normalizedBarcode === normalizedRef;
+        }) || [];
         
         console.log(`    → ${matchingProducts.length} produit(s) trouvé(s)`);
         
