@@ -7,8 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { FileUp, Upload, CheckCircle2, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { FileUp, Upload, CheckCircle2, XCircle, AlertTriangle, Loader2, PlusCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { ExcelParserService } from '@/services/ExcelParserService';
 import { AutoOrderCreationService } from '@/services/AutoOrderCreationService';
 import type { ExcelReceptionLine, ParseResult, ValidationResult } from '@/types/excelImport';
@@ -35,6 +37,8 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [bonLivraison, setBonLivraison] = useState<string>('');
+  const [selectedForCatalog, setSelectedForCatalog] = useState<Set<number>>(new Set());
+  const [addingToCatalog, setAddingToCatalog] = useState(false);
 
   // Filtrer les commandes avec statut "Livré" ou "Validé"
   const filteredOrders = orders.filter(
@@ -187,9 +191,64 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       setValidationResult(null);
       setBonLivraison('');
       setSelectedOrderId('');
+      setSelectedForCatalog(new Set());
     } catch (error) {
       console.error('Erreur lors de la création de la réception:', error);
       toast.error('Erreur lors de la création de la réception');
+    }
+  };
+
+  const handleAddProductsToCatalog = async () => {
+    if (selectedForCatalog.size === 0) return;
+    
+    setAddingToCatalog(true);
+    try {
+      // Récupérer le tenant_id
+      const { data: user } = await supabase.auth.getUser();
+      const { data: personnel } = await supabase
+        .from('personnel')
+        .select('tenant_id')
+        .eq('auth_user_id', user.user?.id)
+        .single();
+
+      if (!personnel) {
+        toast.error('Personnel non trouvé');
+        return;
+      }
+
+      const linesToAdd = parseResult?.lines.filter(l => 
+        selectedForCatalog.has(l.rowNumber)
+      ) || [];
+
+      let created = 0;
+      for (const line of linesToAdd) {
+        const { error } = await supabase
+          .from('produits')
+          .insert({
+            tenant_id: personnel.tenant_id,
+            libelle_produit: line.produit,
+            code_cip: line.reference,
+            prix_achat: line.prixAchatReel,
+            categorie_tarification_id: '52e236fb-9bf7-4709-bcb0-d8abb4b44db6', // MEDICAMENTS
+            is_active: true
+          });
+
+        if (!error) created++;
+      }
+
+      toast.success(`${created} produit(s) ajouté(s) au catalogue`);
+      setSelectedForCatalog(new Set());
+
+      // Re-valider les données pour actualiser les statuts
+      if (parseResult?.lines) {
+        await validateData(parseResult.lines);
+      }
+
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout des produits:', error);
+      toast.error('Erreur lors de l\'ajout des produits au catalogue');
+    } finally {
+      setAddingToCatalog(false);
     }
   };
 
@@ -383,12 +442,44 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                     <Alert>
                       <CheckCircle2 className="h-4 w-4" />
                       <AlertTitle>
-                        ✅ {validationResult.validLines.length} ligne(s) validée(s)
+                        ✅ {validationResult.validLines.length} ligne(s) validée(s) sur {parseResult?.lines.length || 0} total
                       </AlertTitle>
                       <AlertDescription>
                         Les données sont prêtes à être importées
                       </AlertDescription>
                     </Alert>
+                  )}
+
+                  {/* Bloc d'ajout de produits au catalogue */}
+                  {validationResult?.errors.some(e => e.type === 'product_not_found') && (
+                    <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
+                      <PlusCircle className="h-5 w-5 text-primary" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">
+                          {selectedForCatalog.size} produit(s) sélectionné(s) pour ajout au catalogue
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Catégorie : MEDICAMENTS
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleAddProductsToCatalog}
+                        disabled={selectedForCatalog.size === 0 || addingToCatalog}
+                        size="sm"
+                      >
+                        {addingToCatalog ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Ajout en cours...
+                          </>
+                        ) : (
+                          <>
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            Ajouter au catalogue
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   )}
                 </>
               )}
@@ -400,6 +491,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-[50px]">Sélect.</TableHead>
                           <TableHead className="w-[80px]">Statut</TableHead>
                           <TableHead>Référence</TableHead>
                           <TableHead>Produit</TableHead>
@@ -412,19 +504,41 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {parseResult.lines.map((line, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell>{validationResult ? getStatusBadge(line) : '-'}</TableCell>
-                            <TableCell className="font-mono text-sm">{line.reference}</TableCell>
-                            <TableCell className="max-w-[200px] truncate">{line.produit}</TableCell>
-                            <TableCell className="text-right">{line.quantiteCommandee}</TableCell>
-                            <TableCell className="text-right">{line.quantiteRecue}</TableCell>
-                            <TableCell className="text-right">{line.quantiteAcceptee}</TableCell>
-                            <TableCell className="text-right">{line.prixAchatReel.toFixed(2)}</TableCell>
-                            <TableCell>{line.numeroLot}</TableCell>
-                            <TableCell>{line.dateExpiration}</TableCell>
-                          </TableRow>
-                        ))}
+                        {parseResult.lines.map((line, idx) => {
+                          const hasProductNotFoundError = validationResult?.errors.some(
+                            e => e.rowNumber === line.rowNumber && e.type === 'product_not_found'
+                          );
+                          
+                          return (
+                            <TableRow key={idx}>
+                              <TableCell>
+                                {hasProductNotFoundError ? (
+                                  <Checkbox
+                                    checked={selectedForCatalog.has(line.rowNumber)}
+                                    onCheckedChange={(checked) => {
+                                      const newSet = new Set(selectedForCatalog);
+                                      if (checked) {
+                                        newSet.add(line.rowNumber);
+                                      } else {
+                                        newSet.delete(line.rowNumber);
+                                      }
+                                      setSelectedForCatalog(newSet);
+                                    }}
+                                  />
+                                ) : null}
+                              </TableCell>
+                              <TableCell>{validationResult ? getStatusBadge(line) : '-'}</TableCell>
+                              <TableCell className="font-mono text-sm">{line.reference}</TableCell>
+                              <TableCell className="max-w-[200px] truncate">{line.produit}</TableCell>
+                              <TableCell className="text-right">{line.quantiteCommandee}</TableCell>
+                              <TableCell className="text-right">{line.quantiteRecue}</TableCell>
+                              <TableCell className="text-right">{line.quantiteAcceptee}</TableCell>
+                              <TableCell className="text-right">{line.prixAchatReel.toFixed(2)}</TableCell>
+                              <TableCell>{line.numeroLot}</TableCell>
+                              <TableCell>{line.dateExpiration}</TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
