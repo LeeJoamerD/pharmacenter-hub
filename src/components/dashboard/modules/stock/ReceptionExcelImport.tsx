@@ -39,6 +39,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const [bonLivraison, setBonLivraison] = useState<string>('');
   const [selectedForCatalog, setSelectedForCatalog] = useState<Set<number>>(new Set());
   const [addingToCatalog, setAddingToCatalog] = useState(false);
+  const [editedLines, setEditedLines] = useState<Map<number, Partial<ExcelReceptionLine>>>(new Map());
 
   // Liste des produits avec erreur "product_not_found"
   const productNotFoundLines = React.useMemo(() => {
@@ -174,17 +175,22 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         toast.success(`Commande ${orderResult.orderNumber} créée automatiquement`);
       }
 
-      // Préparer les lignes de réception
-      const lignes = validationResult.validLines.map(line => ({
-        produit_id: line.produitId!,
-        quantite_commandee: line.quantiteCommandee,
-        quantite_recue: line.quantiteRecue,
-        quantite_acceptee: line.quantiteAcceptee,
-        prix_achat_reel: line.prixAchatReel,
-        numero_lot: line.numeroLot,
-        date_expiration: line.dateExpiration,
-        statut: line.statut
-      }));
+      // Préparer les lignes de réception (avec les valeurs éditées)
+      const lignes = validationResult.validLines.map(line => {
+        const edited = editedLines.get(line.rowNumber);
+        const finalLine = { ...line, ...edited };
+        
+        return {
+          produit_id: finalLine.produitId!,
+          quantite_commandee: finalLine.quantiteCommandee,
+          quantite_recue: finalLine.quantiteRecue,
+          quantite_acceptee: finalLine.quantiteAcceptee,
+          prix_achat_reel: finalLine.prixAchatReel,
+          numero_lot: finalLine.numeroLot,
+          date_expiration: finalLine.dateExpiration,
+          statut: finalLine.statut
+        };
+      });
 
       // Créer la réception
       const receptionData = {
@@ -217,6 +223,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       setBonLivraison('');
       setSelectedOrderId('');
       setSelectedForCatalog(new Set());
+      setEditedLines(new Map());
     } catch (error) {
       console.error('Erreur lors de la création de la réception:', error);
       toast.error('Erreur lors de la création de la réception');
@@ -311,17 +318,66 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     }
   };
 
+  const getLineValue = (line: ExcelReceptionLine, field: keyof ExcelReceptionLine) => {
+    const edited = editedLines.get(line.rowNumber);
+    return edited?.[field] !== undefined ? edited[field] : line[field];
+  };
+
+  const updateLineValue = (rowNumber: number, field: keyof ExcelReceptionLine, value: any) => {
+    setEditedLines(prev => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(rowNumber) || {};
+      newMap.set(rowNumber, { ...existing, [field]: value });
+      return newMap;
+    });
+  };
+
   const getStatusBadge = (line: ExcelReceptionLine) => {
-    const hasError = validationResult?.errors.some(e => e.rowNumber === line.rowNumber);
+    const lineError = validationResult?.errors.find(e => e.rowNumber === line.rowNumber);
     const hasWarning = validationResult?.warnings.some(w => w.rowNumber === line.rowNumber);
 
-    if (hasError) {
-      return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Erreur</Badge>;
+    if (lineError) {
+      let errorLabel = 'Erreur';
+      switch (lineError.type) {
+        case 'product_not_found':
+          errorLabel = 'Produit non trouvé';
+          break;
+        case 'invalid_date':
+          errorLabel = 'Date expirée';
+          break;
+        case 'invalid_quantity':
+          errorLabel = 'Qté invalide';
+          break;
+        case 'invalid_price':
+          errorLabel = 'Prix invalide';
+          break;
+        case 'missing_field':
+          errorLabel = 'Champ manquant';
+          break;
+      }
+      return (
+        <Badge variant="destructive" title={lineError.message}>
+          <XCircle className="h-3 w-3 mr-1" />
+          {errorLabel}
+        </Badge>
+      );
     }
+    
     if (hasWarning) {
-      return <Badge variant="secondary"><AlertTriangle className="h-3 w-3 mr-1" />Attention</Badge>;
+      return (
+        <Badge variant="secondary">
+          <AlertTriangle className="h-3 w-3 mr-1" />
+          Attention
+        </Badge>
+      );
     }
-    return <Badge variant="default"><CheckCircle2 className="h-3 w-3 mr-1" />Valide</Badge>;
+    
+    return (
+      <Badge variant="default">
+        <CheckCircle2 className="h-3 w-3 mr-1" />
+        Valide
+      </Badge>
+    );
   };
 
   return (
@@ -606,12 +662,55 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                               <TableCell>{validationResult ? getStatusBadge(line) : '-'}</TableCell>
                               <TableCell className="font-mono text-sm">{line.reference}</TableCell>
                               <TableCell className="max-w-[200px] truncate">{line.produit}</TableCell>
-                              <TableCell className="text-right">{line.quantiteCommandee}</TableCell>
-                              <TableCell className="text-right">{line.quantiteRecue}</TableCell>
-                              <TableCell className="text-right">{line.quantiteAcceptee}</TableCell>
-                              <TableCell className="text-right">{line.prixAchatReel.toFixed(2)}</TableCell>
-                              <TableCell>{line.numeroLot}</TableCell>
-                              <TableCell>{line.dateExpiration}</TableCell>
+                              <TableCell className="text-right">
+                                <Input
+                                  type="number"
+                                  className="w-20 h-8 text-right"
+                                  value={Number(getLineValue(line, 'quantiteCommandee'))}
+                                  onChange={(e) => updateLineValue(line.rowNumber, 'quantiteCommandee', parseInt(e.target.value) || 0)}
+                                />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Input
+                                  type="number"
+                                  className="w-20 h-8 text-right"
+                                  value={Number(getLineValue(line, 'quantiteRecue'))}
+                                  onChange={(e) => updateLineValue(line.rowNumber, 'quantiteRecue', parseInt(e.target.value) || 0)}
+                                />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Input
+                                  type="number"
+                                  className="w-20 h-8 text-right"
+                                  value={Number(getLineValue(line, 'quantiteAcceptee'))}
+                                  onChange={(e) => updateLineValue(line.rowNumber, 'quantiteAcceptee', parseInt(e.target.value) || 0)}
+                                />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  className="w-24 h-8 text-right"
+                                  value={Number(getLineValue(line, 'prixAchatReel'))}
+                                  onChange={(e) => updateLineValue(line.rowNumber, 'prixAchatReel', parseFloat(e.target.value) || 0)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="text"
+                                  className="w-24 h-8"
+                                  value={String(getLineValue(line, 'numeroLot'))}
+                                  onChange={(e) => updateLineValue(line.rowNumber, 'numeroLot', e.target.value)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="date"
+                                  className="w-36 h-8"
+                                  value={String(getLineValue(line, 'dateExpiration'))}
+                                  onChange={(e) => updateLineValue(line.rowNumber, 'dateExpiration', e.target.value)}
+                                />
+                              </TableCell>
                             </TableRow>
                           );
                         })}

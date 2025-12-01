@@ -147,7 +147,7 @@ export class ExcelParserService {
 
     // Valider chaque ligne
     for (const line of lines) {
-      const produitId = productMatches.matched.get(line.reference);
+      const produitId = productMatches.matched.get(String(line.reference).trim());
       
       if (!produitId) {
         errors.push({
