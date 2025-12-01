@@ -139,8 +139,8 @@ export class ExcelParserService {
     const validLines: ExcelReceptionLine[] = [];
     const invalidLines: ExcelReceptionLine[] = [];
 
-    // Récupérer toutes les références uniques
-    const references = [...new Set(lines.map(l => l.reference))];
+    // Récupérer toutes les références uniques et les normaliser
+    const references = [...new Set(lines.map(l => String(l.reference).trim()))];
     
     // Matcher les produits
     const productMatches = await this.matchProductsByReference(references);
@@ -284,12 +284,15 @@ export class ExcelParserService {
 
       if (!personnel) throw new Error('Personnel non trouvé');
 
+      // Normaliser les références AVANT la requête
+      const normalizedReferences = references.map(ref => String(ref).trim());
+
       // Rechercher les produits par code_cip
       const { data: produitsByCip, error: errorCip } = await (supabase
         .from('produits')
         .select('id, libelle_produit, code_cip, code_barre_externe')
         .eq('tenant_id', personnel.tenant_id)
-        .in('code_cip', references) as any);
+        .in('code_cip', normalizedReferences) as any);
 
       if (errorCip) throw errorCip;
 
@@ -298,7 +301,7 @@ export class ExcelParserService {
         .from('produits')
         .select('id, libelle_produit, code_cip, code_barre_externe')
         .eq('tenant_id', personnel.tenant_id)
-        .in('code_barre_externe', references) as any);
+        .in('code_barre_externe', normalizedReferences) as any);
 
       if (errorBarcode) throw errorBarcode;
 

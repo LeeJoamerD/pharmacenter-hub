@@ -246,22 +246,56 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       ) || [];
 
       let created = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
       for (const line of linesToAdd) {
+        const normalizedCip = String(line.reference).trim();
+        const normalizedName = String(line.produit).trim();
+
+        // Vérifier si le produit existe déjà par code_cip
+        const { data: existing } = await supabase
+          .from('produits')
+          .select('id')
+          .eq('tenant_id', personnel.tenant_id)
+          .eq('code_cip', normalizedCip)
+          .maybeSingle();
+
+        if (existing) {
+          skipped++;
+          errors.push(`"${normalizedName}" (CIP: ${normalizedCip}) existe déjà`);
+          continue;
+        }
+
         const { error } = await supabase
           .from('produits')
           .insert({
             tenant_id: personnel.tenant_id,
-            libelle_produit: line.produit,
-            code_cip: String(line.reference).trim(), // Normaliser le code CIP
+            libelle_produit: normalizedName,
+            code_cip: normalizedCip,
             prix_achat: line.prixAchatReel,
-            categorie_tarification_id: '52e236fb-9bf7-4709-bcb0-d8abb4b44db6', // MEDICAMENTS
+            categorie_tarification_id: '52e236fb-9bf7-4709-bcb0-d8abb4b44db6',
             is_active: true
           });
 
-        if (!error) created++;
+        if (error) {
+          errors.push(`Erreur pour "${normalizedName}": ${error.message}`);
+        } else {
+          created++;
+        }
       }
 
-      toast.success(`${created} produit(s) ajouté(s) au catalogue`);
+      // Afficher les résultats
+      if (created > 0) {
+        toast.success(`${created} produit(s) ajouté(s) au catalogue`);
+      }
+      if (skipped > 0) {
+        toast.warning(`${skipped} produit(s) ignoré(s) (déjà existants)`);
+      }
+      if (errors.length > 0 && created === 0 && skipped === 0) {
+        toast.error(`Erreurs: ${errors.slice(0, 3).join(', ')}`);
+      }
+
       setSelectedForCatalog(new Set());
 
       // Re-valider les données pour actualiser les statuts
