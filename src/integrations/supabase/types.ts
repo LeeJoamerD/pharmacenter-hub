@@ -13546,6 +13546,39 @@ export type Database = {
         }
         Returns: string
       }
+      get_pos_products: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_search_term?: string
+          p_tenant_id: string
+        }
+        Returns: {
+          code_cip: string
+          dci_nom: string
+          famille_libelle: string
+          id: string
+          libelle_produit: string
+          prix_vente_ht: number
+          prix_vente_ttc: number
+          requires_prescription: boolean
+          stock_disponible: number
+          stock_limite: number
+          tenant_id: string
+          total_count: number
+          tva: number
+        }[]
+      }
+      get_product_lots: {
+        Args: { p_product_id: string; p_tenant_id: string }
+        Returns: {
+          date_peremption: string
+          id: string
+          numero_lot: string
+          prix_achat_unitaire: number
+          quantite_restante: number
+        }[]
+      }
       get_recent_sales_transactions: {
         Args: {
           p_agent_id?: string
