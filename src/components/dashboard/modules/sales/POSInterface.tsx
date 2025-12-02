@@ -523,7 +523,6 @@ const POSInterface = () => {
               </CardHeader>
               <CardContent>
                 <ProductSearch 
-                  products={products}
                   onAddToCart={addToCart}
                 />
               </CardContent>
