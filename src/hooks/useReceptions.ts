@@ -150,7 +150,7 @@ export const useReceptions = () => {
             produit_id: ligne.produit_id,
             quantite_recue: ligne.quantite_acceptee, // Utiliser quantite_acceptee comme quantite_recue
             prix_achat_unitaire_reel: ligne.prix_achat_reel || 0,
-            date_peremption: ligne.date_expiration,
+            date_peremption: ligne.date_expiration || null,
             lot_id: null // Sera mis à jour après création du lot
           });
 
@@ -217,7 +217,7 @@ export const useReceptions = () => {
                 tenant_id: personnel.tenant_id,
                 produit_id: ligne.produit_id,
                 numero_lot: ligne.numero_lot,
-                date_peremption: ligne.date_expiration,
+                date_peremption: ligne.date_expiration || null,
                 quantite_initiale: ligne.quantite_acceptee,
                 quantite_restante: ligne.quantite_acceptee,
                 prix_achat_unitaire: ligne.prix_achat_reel || 0,
