@@ -61,14 +61,12 @@ export const useLotsPaginated = (params: LotsPaginatedParams): LotsPaginatedResu
         .from('lots')
         .select(`
           *,
-          produit:produits (
+          produit:produits!produit_id (
             id,
             libelle_produit,
             code_cip,
             niveau_detail,
-            produit_detail (
-              quantite_unites_details_source
-            )
+            quantite_unites_details_source
           )
         `, { count: 'exact' })
         .eq('tenant_id', tenantId);
@@ -91,17 +89,14 @@ export const useLotsPaginated = (params: LotsPaginatedParams): LotsPaginatedResu
           .lte('date_peremption', in60Days.toISOString());
       }
 
-      // Apply search filter
+      // Apply search filter - search only on lot number
       if (searchTerm) {
-        query = query.or(
-          `numero_lot.ilike.%${searchTerm}%,produit.libelle_produit.ilike.%${searchTerm}%`
-        );
+        query = query.ilike('numero_lot', `%${searchTerm}%`);
       }
 
-      // Apply sorting
+      // Apply sorting - removed produit sort as it's not supported
       const orderColumn = sortBy === 'date_peremption' ? 'date_peremption' :
                          sortBy === 'numero_lot' ? 'numero_lot' :
-                         sortBy === 'produit' ? 'produit.libelle_produit' :
                          sortBy === 'stock' ? 'quantite_restante' :
                          'date_peremption';
 
