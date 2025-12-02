@@ -13323,6 +13323,7 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: number
       }
+      calculate_lot_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       calculate_low_stock_metrics: {
         Args: { p_tenant_id: string }
         Returns: Json
