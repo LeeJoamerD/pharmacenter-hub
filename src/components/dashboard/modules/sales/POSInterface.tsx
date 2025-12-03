@@ -54,13 +54,11 @@ const POSInterface = () => {
   const { currency, autoPrint } = useRegionalSettings();
   const { settings, getPharmacyInfo } = useGlobalSystemSettings();
   
-  // Hook principal POS
+  // Hook principal POS (version optimisée sans fetch massif)
   const { 
-    products, 
-    isLoading: productsLoading, 
+    searchByBarcode,
     saveTransaction,
-    checkStock,
-    refreshProducts
+    checkStock
   } = usePOSData();
   
   // Session caisse
@@ -150,13 +148,11 @@ const POSInterface = () => {
     });
   }, [checkStock, toast]);
 
-  // Scanner de codes-barres clavier
+  // Scanner de codes-barres clavier (recherche serveur-side)
   useEffect(() => {
-    const cleanup = setupBarcodeScanner((barcode) => {
-      // Rechercher le produit par code CIP
-      const product = products.find(
-        p => p.code_cip === barcode || p.id === barcode
-      );
+    const cleanup = setupBarcodeScanner(async (barcode) => {
+      // Rechercher le produit via RPC serveur
+      const product = await searchByBarcode(barcode);
       if (product) {
         addToCart(product);
         toast({
@@ -177,7 +173,7 @@ const POSInterface = () => {
     });
 
     return cleanup;
-  }, [products, addToCart, toast]);
+  }, [searchByBarcode, addToCart, toast]);
 
   const updateCartItem = useCallback((productId: number, quantity: number) => {
     if (quantity <= 0) {
@@ -412,7 +408,6 @@ const POSInterface = () => {
           }
         }
 
-        await refreshProducts();
         clearCart();
         setCustomer({ type: 'ordinaire' });
         setLoyaltyRewardApplied(null);
@@ -439,7 +434,6 @@ const POSInterface = () => {
     hasActiveSession, 
     currentUser, 
     saveTransaction, 
-    refreshProducts,
     toast
   ]);
 
@@ -468,7 +462,7 @@ const POSInterface = () => {
   }
 
   // Chargement initial
-  if (productsLoading || sessionLoading) {
+  if (sessionLoading) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -516,8 +510,22 @@ const POSInterface = () => {
                     Recherche de Produits
                   </CardTitle>
                   <POSBarcodeActions 
-                    products={products}
-                    onProductScanned={addToCart}
+                    onBarcodeScanned={async (barcode) => {
+                      const product = await searchByBarcode(barcode);
+                      if (product) {
+                        addToCart(product);
+                        toast({
+                          title: "Produit scanné",
+                          description: product.name
+                        });
+                      } else {
+                        toast({
+                          title: "Produit non trouvé",
+                          description: barcode,
+                          variant: "destructive"
+                        });
+                      }
+                    }}
                   />
                 </div>
               </CardHeader>

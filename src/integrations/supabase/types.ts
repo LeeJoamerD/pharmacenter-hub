@@ -13819,6 +13819,23 @@ export type Database = {
             }
             Returns: Json
           }
+      search_product_by_barcode: {
+        Args: { p_barcode: string; p_tenant_id: string }
+        Returns: {
+          category: string
+          code_cip: string
+          dci: string
+          id: string
+          libelle_produit: string
+          name: string
+          price: number
+          price_ht: number
+          requires_prescription: boolean
+          stock: number
+          tenant_id: string
+          tva_rate: number
+        }[]
+      }
       validate_password_strength: {
         Args: { p_tenant_id: string; password: string }
         Returns: Json
