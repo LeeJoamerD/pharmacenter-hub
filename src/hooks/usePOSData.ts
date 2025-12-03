@@ -1,8 +1,8 @@
 /**
  * Hook principal pour gérer les données du Point de Vente
+ * Version optimisée - suppression du fetch massif de produits
  */
-import { useState, useEffect, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { POSProduct, TransactionData, VenteResult } from '@/types/pos';
@@ -11,107 +11,40 @@ import { generateInvoiceNumber } from '@/utils/invoiceGenerator';
 
 export const usePOSData = () => {
   const { tenantId, currentUser } = useTenant();
-  const [error, setError] = useState<Error | null>(null);
 
-  // Récupération des produits avec stock (approche en deux étapes pour éviter les erreurs PostgREST)
-  const { 
-    data: products = [], 
-    isLoading: productsLoading,
-    refetch: refreshProducts 
-  } = useQuery({
-    queryKey: ['pos-products-v2', tenantId], // v2: forcer refresh du cache après optimisation
-    queryFn: async () => {
-      // ✅ ÉTAPE 1: Récupérer d'abord les lots disponibles
-      const { data: lotsData, error: lotsError } = await supabase
-        .from('lots')
-        .select('id, produit_id, numero_lot, quantite_restante, date_peremption, prix_achat_unitaire')
-        .eq('tenant_id', tenantId)
-        .gt('quantite_restante', 0)
-        .order('date_peremption', { ascending: true });
+  // Recherche produit par code-barres via RPC (serveur-side)
+  const searchByBarcode = useCallback(async (barcode: string): Promise<POSProduct | null> => {
+    if (!tenantId || !barcode) return null;
 
-      if (lotsError) throw lotsError;
-      if (!lotsData || lotsData.length === 0) return [];
+    const { data, error } = await supabase.rpc('search_product_by_barcode', {
+      p_tenant_id: tenantId,
+      p_barcode: barcode.trim()
+    });
 
-      // ✅ ÉTAPE 2: Extraire les IDs de produits uniques qui ont du stock
-      const productIdsWithStock = [...new Set(lotsData.map(lot => lot.produit_id))];
+    if (error) {
+      console.error('Erreur recherche code-barres:', error);
+      return null;
+    }
 
-      // ✅ ÉTAPE 3: Récupérer uniquement ces produits (beaucoup moins nombreux)
-      const { data: produitsData, error: produitsError } = await supabase
-        .from('produits')
-        .select(`
-          id,
-          tenant_id,
-          libelle_produit,
-          code_cip,
-          prix_vente_ttc,
-          prix_vente_ht,
-          tva,
-          stock_limite,
-          famille_produit!fk_produits_famille_id(libelle_famille),
-          dci:dci_id(nom_dci)
-        `)
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .in('id', productIdsWithStock)
-        .order('libelle_produit', { ascending: true });
+    if (!data || data.length === 0) return null;
 
-      if (produitsError) throw produitsError;
-      if (!produitsData || produitsData.length === 0) return [];
-
-      // ✅ ÉTAPE 4: Grouper les lots par produit
-      const lotsByProduct: Record<string, any[]> = {};
-      lotsData.forEach(lot => {
-        if (!lotsByProduct[lot.produit_id]) {
-          lotsByProduct[lot.produit_id] = [];
-        }
-        lotsByProduct[lot.produit_id].push(lot);
-      });
-
-      // ✅ ÉTAPE 5: Combiner les produits avec leurs lots
-      return produitsData.map((p: any) => {
-        const productLots = lotsByProduct[p.id] || [];
-        return {
-          id: p.id,
-          tenant_id: p.tenant_id,
-          name: p.libelle_produit,
-          libelle_produit: p.libelle_produit,
-          dci: p.dci?.nom_dci,
-          code_cip: p.code_cip,
-          price: p.prix_vente_ttc || 0,
-          price_ht: p.prix_vente_ht || 0,
-          tva_rate: p.tva || 0,
-          stock: productLots.reduce((sum: number, lot: any) => sum + (lot.quantite_restante || 0), 0),
-          category: p.famille_produit?.libelle_famille || 'Autre',
-          requiresPrescription: false,
-          lots: productLots
-            .sort((a: any, b: any) => 
-              new Date(a.date_peremption).getTime() - new Date(b.date_peremption).getTime()
-            )
-            .map((lot: any) => ({
-              id: lot.id,
-              numero_lot: lot.numero_lot,
-              quantite_restante: lot.quantite_restante,
-              date_peremption: new Date(lot.date_peremption),
-              prix_achat_unitaire: lot.prix_achat_unitaire || 0
-            }))
-        };
-      }) as POSProduct[];
-    },
-    enabled: !!tenantId,
-    staleTime: 5 * 60 * 1000 // 5 minutes
-  });
-
-  // Recherche de produits
-  const searchProducts = useCallback((term: string): POSProduct[] => {
-    if (!term || term.length < 2) return products;
-    
-    const searchLower = term.toLowerCase();
-    return products.filter(p =>
-      p.name.toLowerCase().includes(searchLower) ||
-      p.dci?.toLowerCase().includes(searchLower) ||
-      p.code_cip?.includes(term)
-    );
-  }, [products]);
+    const product = data[0];
+    return {
+      id: product.id,
+      tenant_id: product.tenant_id,
+      name: product.name,
+      libelle_produit: product.libelle_produit,
+      dci: product.dci,
+      code_cip: product.code_cip,
+      price: Number(product.price) || 0,
+      price_ht: Number(product.price_ht) || 0,
+      tva_rate: Number(product.tva_rate) || 0,
+      stock: Number(product.stock) || 0,
+      category: product.category || 'Autre',
+      requiresPrescription: product.requires_prescription || false,
+      lots: [] // Les lots seront chargés séparément si nécessaire
+    };
+  }, [tenantId]);
 
   // Vérification de stock
   const checkStock = useCallback(async (productId: string, quantity: number): Promise<boolean> => {
@@ -235,7 +168,6 @@ export const usePOSData = () => {
 
         if (mouvementCaisseError) {
           console.error('Erreur création mouvement caisse:', mouvementCaisseError);
-          // Ne pas bloquer la vente, juste logger
         }
       }
 
@@ -287,7 +219,6 @@ export const usePOSData = () => {
 
       if (mouvementError) {
         console.error('Erreur mouvements stock:', mouvementError);
-        // Ne pas bloquer la vente, juste logger
       }
 
       return {
@@ -308,11 +239,7 @@ export const usePOSData = () => {
   }, [tenantId]);
 
   return {
-    products,
-    isLoading: productsLoading,
-    error,
-    refreshProducts,
-    searchProducts,
+    searchByBarcode,
     checkStock,
     saveTransaction
   };

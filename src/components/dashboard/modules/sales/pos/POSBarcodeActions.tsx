@@ -6,36 +6,17 @@ import { POSProduct } from '@/types/pos';
 import { useToast } from '@/hooks/use-toast';
 
 interface POSBarcodeActionsProps {
-  products: POSProduct[];
-  onProductScanned: (product: POSProduct) => void;
+  onBarcodeScanned: (barcode: string) => void;
 }
 
 export default function POSBarcodeActions({
-  products,
-  onProductScanned
+  onBarcodeScanned
 }: POSBarcodeActionsProps) {
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const { toast } = useToast();
 
   const handleCameraScan = (barcode: string) => {
-    const product = products.find(
-      p => p.code_cip === barcode || p.id === barcode
-    );
-    
-    if (product) {
-      onProductScanned(product);
-      toast({
-        title: "Produit scanné",
-        description: product.name
-      });
-    } else {
-      toast({
-        title: "Produit non trouvé",
-        description: barcode,
-        variant: "destructive"
-      });
-    }
-    
+    onBarcodeScanned(barcode);
     setShowCameraScanner(false);
   };
 
