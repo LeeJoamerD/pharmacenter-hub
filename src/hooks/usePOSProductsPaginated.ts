@@ -22,6 +22,10 @@ export const usePOSProductsPaginated = (
   const { tenantId } = useTenant();
   const [currentPage, setCurrentPage] = useState(1);
 
+  // IMPORTANT: Ne charger que si l'utilisateur tape au moins 2 caractères
+  // Cela évite les requêtes massives qui causent les erreurs 400
+  const shouldFetch = !!tenantId && searchTerm.length >= 2;
+
   // Fetch paginated products using RPC
   const { data, isLoading, error } = useQuery({
     queryKey: ['pos-products-paginated', tenantId, searchTerm, pageSize, currentPage],
@@ -69,7 +73,7 @@ export const usePOSProductsPaginated = (
         totalPages: Math.ceil(totalCount / pageSize)
       };
     },
-    enabled: !!tenantId,
+    enabled: shouldFetch, // Ne charge que si recherche >= 2 caractères
     staleTime: 30000, // Cache 30 secondes
   });
 

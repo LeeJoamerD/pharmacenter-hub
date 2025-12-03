@@ -32,6 +32,9 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
     onAddToCart({ ...product, lots });
   };
 
+  // Afficher un message si pas assez de caractères
+  const showSearchPrompt = debouncedSearch.length < 2;
+
   return (
     <div className="space-y-4">
       {/* Search Input */}
@@ -50,7 +53,7 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
 
       {/* Product count */}
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>{totalCount} produits disponibles</span>
+        <span>{showSearchPrompt ? '0' : totalCount} produits disponibles</span>
         {totalPages > 1 && (
           <span>Page {currentPage} / {totalPages}</span>
         )}
@@ -58,7 +61,13 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
 
       {/* Products Grid */}
       <div className="grid gap-3 max-h-96 overflow-y-auto">
-        {products.length === 0 && !isLoading ? (
+        {showSearchPrompt ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Tapez au moins 2 caractères pour rechercher</p>
+            <p className="text-xs mt-1">ou scannez un code-barres</p>
+          </div>
+        ) : products.length === 0 && !isLoading ? (
           <div className="text-center py-8 text-muted-foreground">
             <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>Aucun produit trouvé</p>
@@ -114,8 +123,8 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
         )}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
+      {/* Pagination - seulement si recherche active et plusieurs pages */}
+      {!showSearchPrompt && totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
           <Button
             variant="outline"
