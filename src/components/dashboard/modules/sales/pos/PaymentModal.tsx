@@ -15,6 +15,7 @@ import {
   Calculator,
   CheckCircle
 } from 'lucide-react';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 interface PaymentModalProps {
   transaction: {
@@ -36,6 +37,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [amountReceived, setAmountReceived] = useState<string>(transaction.total.toString());
   const [processing, setProcessing] = useState(false);
+  const { formatAmount } = useCurrencyFormatting();
 
   const paymentMethods = [
     { 
@@ -105,13 +107,13 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Sous-total:</span>
-                  <span>{transaction.subtotal.toLocaleString()} FCFA</span>
+                  <span>{formatAmount(transaction.subtotal)}</span>
                 </div>
                 
                 {transaction.discount > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
                     <span>Remise:</span>
-                    <span>-{transaction.discount.toLocaleString()} FCFA</span>
+                    <span>-{formatAmount(transaction.discount)}</span>
                   </div>
                 )}
                 
@@ -119,7 +121,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
                 
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total à payer:</span>
-                  <span className="text-primary">{transaction.total.toLocaleString()} FCFA</span>
+                  <span className="text-primary">{formatAmount(transaction.total)}</span>
                 </div>
               </div>
             </CardContent>
@@ -167,7 +169,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
                   <div className="flex justify-between items-center">
                     <span className="text-green-800 font-medium">Monnaie à rendre:</span>
                     <span className="text-green-800 font-bold text-lg">
-                      {change.toLocaleString()} FCFA
+                      {formatAmount(change)}
                     </span>
                   </div>
                 </div>

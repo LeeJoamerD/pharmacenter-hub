@@ -22,6 +22,7 @@ import { useLoyaltyProgram } from '@/hooks/useLoyaltyProgram';
 import { usePOSAnalytics } from '@/hooks/usePOSAnalytics';
 import { useRegionalSettings } from '@/hooks/useRegionalSettings';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionData, CartItemWithLot } from '@/types/pos';
@@ -51,8 +52,9 @@ export interface Customer {
 const POSInterface = () => {
   const { tenantId, currentUser } = useTenant();
   const { toast } = useToast();
-  const { currency, autoPrint } = useRegionalSettings();
+  const { autoPrint } = useRegionalSettings();
   const { settings, getPharmacyInfo } = useGlobalSystemSettings();
+  const { formatAmount } = useCurrencyFormatting();
   
   // Hook principal POS (version optimisée sans fetch massif)
   const { 
@@ -587,13 +589,13 @@ const POSInterface = () => {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Sous-total:</span>
-                <span>{calculateSubtotal().toLocaleString()} {currency}</span>
+                <span>{formatAmount(calculateSubtotal())}</span>
               </div>
               
               {calculateDiscount() > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span>Remise ({customer.discountRate}%):</span>
-                  <span>-{calculateDiscount().toLocaleString()} {currency}</span>
+                  <span>-{formatAmount(calculateDiscount())}</span>
                 </div>
               )}
               
@@ -601,7 +603,7 @@ const POSInterface = () => {
               
               <div className="flex justify-between font-bold text-lg">
                 <span>Total:</span>
-                <span className="text-primary">{calculateTotal().toLocaleString()} {currency}</span>
+                <span className="text-primary">{formatAmount(calculateTotal())}</span>
               </div>
             </div>
             
@@ -706,7 +708,7 @@ const POSInterface = () => {
             setLoyaltyRewardApplied({ id: rewardId, discount });
             toast({
               title: 'Récompense appliquée',
-              description: `Réduction de ${discount} FCFA appliquée`
+              description: `Réduction de ${formatAmount(discount)} appliquée`
             });
           }}
         />
