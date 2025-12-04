@@ -13550,23 +13550,23 @@ export type Database = {
         Args: {
           p_page?: number
           p_page_size?: number
-          p_search_term?: string
+          p_search?: string
           p_tenant_id: string
         }
         Returns: {
+          category: string
           code_cip: string
-          dci_nom: string
-          famille_libelle: string
+          dci: string
           id: string
           libelle_produit: string
-          prix_vente_ht: number
-          prix_vente_ttc: number
+          name: string
+          price: number
+          price_ht: number
           requires_prescription: boolean
-          stock_disponible: number
-          stock_limite: number
+          stock: number
           tenant_id: string
           total_count: number
-          tva: number
+          tva_rate: number
         }[]
       }
       get_product_lots: {
