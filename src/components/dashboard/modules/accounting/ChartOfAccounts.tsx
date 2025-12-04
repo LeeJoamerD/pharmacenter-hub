@@ -224,9 +224,40 @@ const ChartOfAccounts = () => {
             <Settings className="mr-2 h-4 w-4" />
             Configuration Régionale
           </Button>
-          <Dialog open={showDialog} onOpenChange={setShowDialog}>
+          <Dialog open={showDialog} onOpenChange={(open) => {
+            setShowDialog(open);
+            if (!open) {
+              // Reset editing state when dialog closes
+              setEditingAccount(null);
+              setNewAccount({
+                code: '',
+                libelle: '',
+                classe: 1,
+                type: 'detail',
+                niveau: 1,
+                actif: true,
+                analytique: false,
+                rapprochement: false,
+                description: ''
+              });
+            }
+          }}>
           <DialogTrigger asChild>
-            <Button disabled={isSaving}>
+            <Button disabled={isSaving} onClick={() => {
+              // Reset editing state when opening via "Nouveau Compte" button
+              setEditingAccount(null);
+              setNewAccount({
+                code: '',
+                libelle: '',
+                classe: 1,
+                type: 'detail',
+                niveau: 1,
+                actif: true,
+                analytique: false,
+                rapprochement: false,
+                description: ''
+              });
+            }}>
               <Plus className="mr-2 h-4 w-4" />
               Nouveau Compte
             </Button>
