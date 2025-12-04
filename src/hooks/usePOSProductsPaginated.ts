@@ -34,7 +34,7 @@ export const usePOSProductsPaginated = (
 
       const { data, error } = await supabase.rpc('get_pos_products', {
         p_tenant_id: tenantId,
-        p_search_term: searchTerm,
+        p_search: searchTerm,
         p_page_size: pageSize,
         p_page: currentPage
       });
@@ -49,20 +49,20 @@ export const usePOSProductsPaginated = (
         };
       }
 
-      // Transform RPC result to POSProduct format
+      // Transform RPC result to POSProduct format (using new column names from types)
       const totalCount = data[0]?.total_count || 0;
       const products: POSProduct[] = data.map(row => ({
         id: row.id,
         tenant_id: row.tenant_id,
-        name: row.libelle_produit,
+        name: row.name || row.libelle_produit,
         libelle_produit: row.libelle_produit,
-        dci: row.dci_nom,
+        dci: row.dci,
         code_cip: row.code_cip,
-        price: Number(row.prix_vente_ttc),
-        price_ht: Number(row.prix_vente_ht),
-        tva_rate: Number(row.tva),
-        stock: Number(row.stock_disponible),
-        category: row.famille_libelle || 'Non catégorisé',
+        price: Number(row.price),
+        price_ht: Number(row.price_ht),
+        tva_rate: Number(row.tva_rate),
+        stock: Number(row.stock),
+        category: row.category || 'Non catégorisé',
         requiresPrescription: row.requires_prescription || false,
         lots: [] // Lots chargés à la demande
       }));
