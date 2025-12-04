@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Minus, Trash2, ShoppingCart } from 'lucide-react';
 import { CartItem } from '../POSInterface';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 interface ShoppingCartComponentProps {
   cart: CartItem[];
@@ -19,6 +20,8 @@ const ShoppingCartComponent = ({
   onRemoveItem, 
   onClearCart 
 }: ShoppingCartComponentProps) => {
+  const { formatAmount } = useCurrencyFormatting();
+
   if (cart.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -55,7 +58,7 @@ const ShoppingCartComponent = ({
                   {item.product.name}
                 </h5>
                 <p className="text-xs text-muted-foreground">
-                  {item.unitPrice.toLocaleString()} FCFA / unité
+                  {formatAmount(item.unitPrice)} / unité
                 </p>
               </div>
               
@@ -106,11 +109,11 @@ const ShoppingCartComponent = ({
               
               <div className="text-right">
                 <div className="font-medium text-sm">
-                  {item.total.toLocaleString()} FCFA
+                  {formatAmount(item.total)}
                 </div>
                 {item.discount && (
                   <div className="text-xs text-green-600">
-                    Remise: -{item.discount.toLocaleString()} FCFA
+                    Remise: -{formatAmount(item.discount)}
                   </div>
                 )}
               </div>

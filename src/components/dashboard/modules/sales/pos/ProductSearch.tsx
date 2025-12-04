@@ -7,7 +7,7 @@ import { Search, Plus, Package, AlertTriangle, Loader2, ChevronLeft, ChevronRigh
 import { POSProduct } from '@/types/pos';
 import { usePOSProductsPaginated } from '@/hooks/usePOSProductsPaginated';
 import { useDebouncedValue } from '@/hooks/use-debounce';
-
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 interface ProductSearchProps {
   onAddToCart: (product: POSProduct, quantity?: number) => void;
 }
@@ -15,6 +15,7 @@ interface ProductSearchProps {
 const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebouncedValue(searchInput, 300);
+  const { formatAmount } = useCurrencyFormatting();
   
   const { 
     products, 
@@ -95,7 +96,7 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <span className="font-bold text-primary">
-                          {product.price.toLocaleString()} FCFA
+                          {formatAmount(product.price)}
                         </span>
                         <Badge 
                           variant={product.stock > 10 ? 'default' : product.stock > 0 ? 'secondary' : 'destructive'}
