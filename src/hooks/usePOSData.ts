@@ -64,8 +64,11 @@ export const usePOSData = () => {
     return totalStock >= quantity;
   }, [tenantId]);
 
-  // Sauvegarde d'une transaction
-  const saveTransaction = useCallback(async (transactionData: TransactionData): Promise<VenteResult> => {
+  // Sauvegarde d'une transaction (avec option skipPayment pour le mode séparé)
+  const saveTransaction = useCallback(async (
+    transactionData: TransactionData, 
+    skipPayment: boolean = false
+  ): Promise<VenteResult> => {
     try {
       // 1. Générer numéro de facture
       const numeroFacture = await generateInvoiceNumber(tenantId);
@@ -114,7 +117,7 @@ export const usePOSData = () => {
         montantPartPatient = montantNet - montantPartAssurance;
       }
 
-      // 5. Insérer la vente
+      // 5. Insérer la vente - Statut "En cours" si skipPayment, sinon "Validée"
       const venteData: any = {
         tenant_id: tenantId,
         numero_vente: numeroFacture,
@@ -124,13 +127,13 @@ export const usePOSData = () => {
         montant_total_ttc: subtotal,
         remise_globale: remise,
         montant_net: montantNet,
-        montant_paye: transactionData.payment.amount_received,
-        montant_rendu: transactionData.payment.change,
-        mode_paiement: transactionData.payment.method,
+        montant_paye: skipPayment ? 0 : transactionData.payment.amount_received,
+        montant_rendu: skipPayment ? 0 : transactionData.payment.change,
+        mode_paiement: skipPayment ? null : transactionData.payment.method,
         taux_couverture_assurance: tauxCouverture,
         montant_part_assurance: montantPartAssurance,
         montant_part_patient: montantPartPatient,
-        statut: 'Validée',
+        statut: skipPayment ? 'En cours' : 'Validée',
         session_caisse_id: transactionData.session_caisse_id,
         caisse_id: transactionData.caisse_id,
         metadata: {
@@ -149,8 +152,8 @@ export const usePOSData = () => {
 
       if (venteError) throw venteError;
 
-      // 6. Créer le mouvement de caisse pour l'encaissement
-      if (transactionData.session_caisse_id) {
+      // 6. Créer le mouvement de caisse uniquement si paiement immédiat
+      if (!skipPayment && transactionData.session_caisse_id) {
         const { error: mouvementCaisseError } = await supabase
           .from('mouvements_caisse')
           .insert([{
@@ -195,7 +198,7 @@ export const usePOSData = () => {
 
       if (lignesError) throw lignesError;
 
-      // 8. Mettre à jour le stock (FIFO)
+      // 8. Mettre à jour le stock (FIFO) - Se fait immédiatement, même si pas de paiement
       for (const item of transactionData.cart) {
         await updateStockAfterSale(item.product.id, item.quantity, tenantId);
       }
@@ -238,9 +241,84 @@ export const usePOSData = () => {
     }
   }, [tenantId]);
 
+  // Encaisser une vente existante (mode séparé)
+  const processPayment = useCallback(async (
+    venteId: string,
+    paymentData: {
+      method: 'Espèces' | 'Carte Bancaire' | 'Mobile Money' | 'Chèque' | 'Virement';
+      amount_received: number;
+      change: number;
+      reference?: string;
+    },
+    sessionCaisseId: string,
+    agentId?: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // 1. Récupérer la vente
+      const { data: vente, error: venteError } = await supabase
+        .from('ventes')
+        .select('*')
+        .eq('id', venteId)
+        .single();
+
+      if (venteError || !vente) {
+        throw new Error('Vente introuvable');
+      }
+
+      if (vente.statut !== 'En cours') {
+        throw new Error('Cette vente a déjà été encaissée');
+      }
+
+      // 2. Mettre à jour la vente
+      const { error: updateError } = await supabase
+        .from('ventes')
+        .update({
+          statut: 'Validée',
+          montant_paye: paymentData.amount_received,
+          montant_rendu: paymentData.change,
+          mode_paiement: paymentData.method,
+          metadata: {
+            ...((vente.metadata as object) || {}),
+            payment_reference: paymentData.reference,
+            encaisse_le: new Date().toISOString()
+          }
+        })
+        .eq('id', venteId);
+
+      if (updateError) throw updateError;
+
+      // 3. Créer le mouvement de caisse
+      const { error: mouvementError } = await supabase
+        .from('mouvements_caisse')
+        .insert([{
+          tenant_id: tenantId,
+          session_caisse_id: sessionCaisseId,
+          type_mouvement: 'Vente',
+          montant: paymentData.amount_received,
+          description: `Encaissement ${vente.numero_vente} - ${paymentData.method}`,
+          motif: `Paiement vente ${vente.numero_vente}`,
+          reference_id: venteId,
+          reference_type: 'vente',
+          agent_id: agentId,
+          date_mouvement: new Date().toISOString()
+        }]);
+
+      if (mouvementError) {
+        console.error('Erreur création mouvement caisse:', mouvementError);
+      }
+
+      return { success: true };
+
+    } catch (error: any) {
+      console.error('Erreur encaissement:', error);
+      return { success: false, error: error.message };
+    }
+  }, [tenantId]);
+
   return {
     searchByBarcode,
     checkStock,
-    saveTransaction
+    saveTransaction,
+    processPayment
   };
 };

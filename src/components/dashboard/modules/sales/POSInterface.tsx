@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ShoppingCart, User, CreditCard, AlertCircle, Search, Gift, PackageX, FileText, TrendingUp } from 'lucide-react';
+import { ShoppingCart, User, CreditCard, AlertCircle, Search, Gift, PackageX, FileText, TrendingUp, Banknote, Loader2 } from 'lucide-react';
 import ProductSearch from './pos/ProductSearch';
 import ShoppingCartComponent from './pos/ShoppingCartComponent';
 import CustomerSelection from './pos/CustomerSelection';
 import PaymentModal from './pos/PaymentModal';
+import SalesOnlyInterface from './pos/SalesOnlyInterface';
+import CashRegisterInterface from './pos/CashRegisterInterface';
 import { ReturnExchangeModal } from '../pos/ReturnExchangeModal';
 import { LoyaltyPanel } from '../pos/LoyaltyPanel';
 import { PrescriptionModal } from '../pos/PrescriptionModal';
@@ -23,6 +25,7 @@ import { usePOSAnalytics } from '@/hooks/usePOSAnalytics';
 import { useRegionalSettings } from '@/hooks/useRegionalSettings';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { useSalesSettings } from '@/hooks/useSalesSettings';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionData, CartItemWithLot } from '@/types/pos';
@@ -53,8 +56,12 @@ const POSInterface = () => {
   const { tenantId, currentUser } = useTenant();
   const { toast } = useToast();
   const { autoPrint } = useRegionalSettings();
-  const { settings, getPharmacyInfo } = useGlobalSystemSettings();
+  const { settings: globalSettings, getPharmacyInfo } = useGlobalSystemSettings();
   const { formatAmount } = useCurrencyFormatting();
+  const { settings: salesSettings, loading: settingsLoading } = useSalesSettings();
+  
+  // Paramètre de séparation Vente/Caisse
+  const separateSaleAndCash = salesSettings.general.separateSaleAndCash;
   
   // Hook principal POS (version optimisée sans fetch massif)
   const { 
@@ -477,11 +484,24 @@ const POSInterface = () => {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-      <TabsList className="grid w-full grid-cols-5 mb-4">
-        <TabsTrigger value="vente">
-          <ShoppingCart className="h-4 w-4 mr-2" />
-          Vente
-        </TabsTrigger>
+      <TabsList className={`grid w-full mb-4 ${separateSaleAndCash ? 'grid-cols-6' : 'grid-cols-5'}`}>
+        {!separateSaleAndCash ? (
+          <TabsTrigger value="vente">
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Vente
+          </TabsTrigger>
+        ) : (
+          <>
+            <TabsTrigger value="vente-seule">
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              Vente
+            </TabsTrigger>
+            <TabsTrigger value="encaissement">
+              <Banknote className="h-4 w-4 mr-2" />
+              Encaissement
+            </TabsTrigger>
+          </>
+        )}
         <TabsTrigger value="retours">
           <PackageX className="h-4 w-4 mr-2" />
           Retours
@@ -500,6 +520,22 @@ const POSInterface = () => {
         </TabsTrigger>
       </TabsList>
 
+      {/* Mode Séparé - Vente seule */}
+      {separateSaleAndCash && (
+        <TabsContent value="vente-seule" className="h-full">
+          <SalesOnlyInterface />
+        </TabsContent>
+      )}
+
+      {/* Mode Séparé - Encaissement */}
+      {separateSaleAndCash && (
+        <TabsContent value="encaissement" className="h-full">
+          <CashRegisterInterface />
+        </TabsContent>
+      )}
+
+      {/* Mode Unifié - Vente classique */}
+      {!separateSaleAndCash && (
       <TabsContent value="vente" className="h-full">
         <div className="h-full flex flex-col lg:flex-row gap-6">
           {/* Section Gauche - Recherche Produits */}
@@ -682,6 +718,7 @@ const POSInterface = () => {
       )}
         </div>
       </TabsContent>
+      )}
 
       <TabsContent value="retours">
         <Card>

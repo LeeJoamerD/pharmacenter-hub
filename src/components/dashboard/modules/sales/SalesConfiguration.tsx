@@ -169,6 +169,26 @@ const SalesConfiguration = () => {
                       onCheckedChange={(checked) => updateSettings('general', 'enableNegativeStock', checked)}
                     />
                   </div>
+                  
+                  <Separator className="my-4" />
+                  
+                  <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="separateSaleAndCash" className="text-base font-medium">
+                          Séparer Vente et Caisse
+                        </Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Activer pour utiliser deux interfaces distinctes : une pour la vente (sans encaissement) et une pour l'encaissement.
+                        </p>
+                      </div>
+                      <Switch
+                        id="separateSaleAndCash"
+                        checked={settings.general.separateSaleAndCash}
+                        onCheckedChange={(checked) => updateSettings('general', 'separateSaleAndCash', checked)}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
