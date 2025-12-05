@@ -4,13 +4,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calculator, DollarSign, TrendingUp, TrendingDown, Loader2, AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Calculator, DollarSign, TrendingUp, TrendingDown, Loader2, AlertTriangle, AlertCircle, Receipt } from 'lucide-react';
 import { CashSession } from '@/hooks/useCashRegister';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import useCashRegister from '@/hooks/useCashRegister';
+import { useTenant } from '@/contexts/TenantContext';
+import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+
+interface PendingTransaction {
+  id: string;
+  numero_vente: string;
+  montant_net: number;
+}
 
 interface CloseSessionModalProps {
   session: CashSession | null;
@@ -21,29 +30,79 @@ interface CloseSessionModalProps {
 
 const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: CloseSessionModalProps) => {
   const { formatPrice } = useCurrency();
+  const { tenantId } = useTenant();
   const { closeSession, getSessionBalance, loading } = useCashRegister();
   
   const [montantReel, setMontantReel] = useState('');
   const [notes, setNotes] = useState('');
   const [montantTheorique, setMontantTheorique] = useState(0);
   const [isCalculating, setIsCalculating] = useState(false);
+  
+  // États pour les transactions en attente
+  const [pendingTransactions, setPendingTransactions] = useState<PendingTransaction[]>([]);
+  const [pendingTotal, setPendingTotal] = useState(0);
+  const [isCheckingPending, setIsCheckingPending] = useState(false);
+  const [showPendingWarning, setShowPendingWarning] = useState(false);
+  const [forceClose, setForceClose] = useState(false);
 
-  // Charger le montant théorique
+  // Charger le montant théorique et vérifier les transactions en attente
   useEffect(() => {
     if (session && open) {
+      // Charger le montant théorique
       setIsCalculating(true);
       getSessionBalance(session.id)
         .then(balance => {
           setMontantTheorique(balance);
         })
         .finally(() => setIsCalculating(false));
+
+      // Vérifier les transactions en attente
+      setIsCheckingPending(true);
+      checkPendingTransactions(session.id);
+    }
+    
+    // Reset states when closing
+    if (!open) {
+      setShowPendingWarning(false);
+      setForceClose(false);
     }
   }, [session, open, getSessionBalance]);
+
+  // Vérifier les transactions en attente
+  const checkPendingTransactions = async (sessionId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('ventes')
+        .select('id, numero_vente, montant_net')
+        .eq('tenant_id', tenantId)
+        .eq('session_caisse_id', sessionId)
+        .eq('statut', 'En cours');
+
+      if (error) throw error;
+
+      const transactions = data || [];
+      const total = transactions.reduce((sum, v) => sum + (v.montant_net || 0), 0);
+
+      setPendingTransactions(transactions);
+      setPendingTotal(total);
+      setShowPendingWarning(transactions.length > 0);
+    } catch (error) {
+      console.error('Erreur vérification transactions en attente:', error);
+    } finally {
+      setIsCheckingPending(false);
+    }
+  };
 
   const ecart = montantReel ? Number(montantReel) - montantTheorique : 0;
 
   const handleClose = async () => {
     if (!session || !montantReel) return;
+
+    // Si transactions en attente et pas de forceClose, montrer l'avertissement
+    if (pendingTransactions.length > 0 && !forceClose) {
+      setShowPendingWarning(true);
+      return;
+    }
 
     try {
       await closeSession(session.id, Number(montantReel), notes || undefined);
@@ -52,6 +111,9 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
       // Reset form
       setMontantReel('');
       setNotes('');
+      setPendingTransactions([]);
+      setShowPendingWarning(false);
+      setForceClose(false);
     } catch (error) {
       console.error('Erreur fermeture session:', error);
     }
@@ -67,7 +129,7 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calculator className="h-5 w-5" />
@@ -79,6 +141,40 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Alerte transactions en attente */}
+          {pendingTransactions.length > 0 && (
+            <Alert variant="destructive" className="border-orange-500 bg-orange-50 dark:bg-orange-950/20">
+              <AlertCircle className="h-4 w-4 text-orange-600" />
+              <AlertTitle className="text-orange-700 dark:text-orange-400">
+                Transactions non encaissées
+              </AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p className="text-orange-600 dark:text-orange-400">
+                  {pendingTransactions.length} transaction(s) en attente d'encaissement
+                  pour un total de <strong>{formatPrice(pendingTotal)}</strong>
+                </p>
+                
+                <ScrollArea className="h-[100px] rounded border border-orange-200 dark:border-orange-800 p-2 mt-2">
+                  <div className="space-y-1">
+                    {pendingTransactions.map(tx => (
+                      <div key={tx.id} className="flex justify-between text-sm">
+                        <span className="flex items-center gap-1">
+                          <Receipt className="h-3 w-3" />
+                          {tx.numero_vente}
+                        </span>
+                        <span className="font-medium">{formatPrice(tx.montant_net)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+                  Rendez-vous dans l'onglet "Encaissement" pour traiter ces ventes avant de fermer la session.
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Informations de la session */}
           <div className="bg-muted/50 rounded-lg p-4 space-y-2">
             <div className="flex justify-between">
@@ -181,23 +277,38 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Annuler
           </Button>
-          <Button 
-            onClick={handleClose} 
-            disabled={!montantReel || loading || isCalculating}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Fermeture...
-              </>
-            ) : (
-              'Fermer la Session'
-            )}
-          </Button>
+          
+          {pendingTransactions.length > 0 && !forceClose ? (
+            <Button 
+              variant="destructive"
+              onClick={() => setForceClose(true)}
+              disabled={!montantReel || loading || isCalculating || isCheckingPending}
+            >
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              Fermer malgré les ventes en attente
+            </Button>
+          ) : (
+            <Button 
+              onClick={handleClose} 
+              disabled={!montantReel || loading || isCalculating || isCheckingPending}
+              variant={forceClose ? "destructive" : "default"}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Fermeture...
+                </>
+              ) : forceClose ? (
+                'Confirmer la fermeture forcée'
+              ) : (
+                'Fermer la Session'
+              )}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

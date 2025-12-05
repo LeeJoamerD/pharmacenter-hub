@@ -69,8 +69,50 @@ export const useCashSession = () => {
     return data;
   };
 
-  const closeSession = async (fondCaisseFermeture: number) => {
+  // Vérifier s'il y a des transactions en attente avant clôture
+  const checkPendingTransactions = async (sessionId: string): Promise<{
+    hasPending: boolean;
+    count: number;
+    total: number;
+    transactions: Array<{ id: string; numero_vente: string; montant_net: number }>;
+  }> => {
+    const { data, error } = await supabase
+      .from('ventes')
+      .select('id, numero_vente, montant_net')
+      .eq('tenant_id', tenantId)
+      .eq('session_caisse_id', sessionId)
+      .eq('statut', 'En cours');
+
+    if (error) {
+      console.error('Erreur vérification transactions en attente:', error);
+      return { hasPending: false, count: 0, total: 0, transactions: [] };
+    }
+
+    const transactions = data || [];
+    const total = transactions.reduce((sum, v) => sum + (v.montant_net || 0), 0);
+
+    return {
+      hasPending: transactions.length > 0,
+      count: transactions.length,
+      total,
+      transactions
+    };
+  };
+
+  const closeSession = async (fondCaisseFermeture: number, forceClose: boolean = false) => {
     if (!activeSession) throw new Error('Aucune session active');
+
+    // Vérifier les transactions en attente sauf si forceClose
+    if (!forceClose) {
+      const pendingCheck = await checkPendingTransactions(activeSession.id);
+      if (pendingCheck.hasPending) {
+        return {
+          success: false,
+          pendingTransactions: pendingCheck,
+          message: `${pendingCheck.count} transaction(s) en attente d'encaissement pour un total de ${pendingCheck.total} FCFA`
+        };
+      }
+    }
 
     const { data, error } = await supabase
       .from('sessions_caisse')
@@ -86,7 +128,7 @@ export const useCashSession = () => {
     if (error) throw error;
 
     await refetch();
-    return data;
+    return { success: true, data };
   };
 
   return {
@@ -96,6 +138,7 @@ export const useCashSession = () => {
     hasActiveSession: !!activeSession,
     openSession,
     closeSession,
+    checkPendingTransactions,
     refetch
   };
 };
