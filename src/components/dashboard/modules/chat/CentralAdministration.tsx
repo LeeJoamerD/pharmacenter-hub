@@ -79,13 +79,16 @@ const CentralAdministration = () => {
   // Load chat configs into settings
   useEffect(() => {
     if (chatConfigs.length > 0) {
-      const config = chatConfigs[0];
+      const getConfig = (key: string, defaultVal: string) => {
+        const cfg = chatConfigs.find(c => c.key === key);
+        return cfg?.value || defaultVal;
+      };
       setSystemSettings({
-        maintenance_mode: config.maintenance_mode || false,
-        auto_backup: config.auto_backup_enabled || true,
-        real_time_sync: config.realtime_enabled || true,
-        message_retention: String(config.message_retention_days || 30),
-        max_file_size: String(config.max_file_size_mb || 10)
+        maintenance_mode: getConfig('maintenance_mode', 'false') === 'true',
+        auto_backup: getConfig('auto_backup_enabled', 'true') === 'true',
+        real_time_sync: getConfig('realtime_enabled', 'true') === 'true',
+        message_retention: getConfig('message_retention_days', '30'),
+        max_file_size: getConfig('max_file_size_mb', '10')
       });
     }
   }, [chatConfigs]);
@@ -137,12 +140,10 @@ const CentralAdministration = () => {
       description: data.description,
       type: data.type,
       category: data.category,
-      is_public: data.isPublic,
-      is_system: data.isSystem,
-      auto_archive_days: data.autoArchiveDays
+      is_system: data.isSystem
     });
 
-    await logAuditAction('channel_create', 'channel', undefined, { name: data.name, type: data.type });
+    await logAuditAction('channel_create', 'channel', 'channel', undefined, data.name, { type: data.type });
   };
 
   const handleDeleteChannel = async (channelId: string) => {
@@ -159,20 +160,18 @@ const CentralAdministration = () => {
     }
 
     await deleteChannel(channelId);
-    await logAuditAction('channel_delete', 'channel', channelId, { name: channel.name });
+    await logAuditAction('channel_delete', 'channel', 'channel', channelId, channel.name);
   };
 
   const handleSaveSettings = async () => {
     try {
-      await updateChatConfig({
-        maintenance_mode: systemSettings.maintenance_mode,
-        auto_backup_enabled: systemSettings.auto_backup,
-        realtime_enabled: systemSettings.real_time_sync,
-        message_retention_days: parseInt(systemSettings.message_retention),
-        max_file_size_mb: parseInt(systemSettings.max_file_size)
-      });
+      await updateChatConfig('maintenance_mode', String(systemSettings.maintenance_mode), 'system');
+      await updateChatConfig('auto_backup_enabled', String(systemSettings.auto_backup), 'system');
+      await updateChatConfig('realtime_enabled', String(systemSettings.real_time_sync), 'system');
+      await updateChatConfig('message_retention_days', systemSettings.message_retention, 'system');
+      await updateChatConfig('max_file_size_mb', systemSettings.max_file_size, 'system');
 
-      await logAuditAction('config_change', 'config', undefined, systemSettings);
+      await logAuditAction('config_change', 'configuration', 'config', undefined, 'system_settings', systemSettings);
 
       toast({
         title: "Paramètres sauvegardés",
@@ -540,16 +539,16 @@ const CentralAdministration = () => {
                       <span className="font-medium">{networkStats?.active_pharmacies || 0}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Canaux actifs:</span>
-                      <span className="font-medium">{networkStats?.active_channels || 0}</span>
+                      <span className="text-muted-foreground">Canaux totaux:</span>
+                      <span className="font-medium">{networkStats?.total_channels || 0}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Messages aujourd'hui:</span>
-                      <span className="font-medium">{networkStats?.messages_today || 0}</span>
+                      <span className="text-muted-foreground">Messages totaux:</span>
+                      <span className="font-medium">{networkStats?.total_messages || 0}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Utilisateurs en ligne:</span>
-                      <span className="font-medium">{networkStats?.online_users || 0}</span>
+                      <span className="text-muted-foreground">Partenaires actifs:</span>
+                      <span className="font-medium">{networkStats?.active_partners || 0}</span>
                     </div>
                   </div>
                 </div>
