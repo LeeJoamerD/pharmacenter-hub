@@ -348,8 +348,8 @@ const POSInterface = () => {
           description: `Facture N° ${result.numero_facture}`,
         });
 
-        // Impression automatique du reçu
-        if (autoPrint) {
+        // Impression automatique du reçu (utiliser le choix du PaymentModal)
+        if (paymentData.autoPrint) {
           try {
             // Récupérer les détails de la vente pour l'impression
             const { data: venteDetails, error: venteError } = await supabase

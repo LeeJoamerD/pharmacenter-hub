@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
 import { 
   CreditCard, 
   DollarSign, 
@@ -13,7 +14,8 @@ import {
   Building2, 
   Receipt,
   Calculator,
-  CheckCircle
+  CheckCircle,
+  Printer
 } from 'lucide-react';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
@@ -37,6 +39,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [amountReceived, setAmountReceived] = useState<string>(transaction.total.toString());
   const [processing, setProcessing] = useState(false);
+  const [autoPrintTicket, setAutoPrintTicket] = useState(true);
   const { formatAmount } = useCurrencyFormatting();
 
   const paymentMethods = [
@@ -80,7 +83,8 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
       amountReceived: parseFloat(amountReceived),
       change: change > 0 ? change : 0,
       timestamp: new Date(),
-      reference: `PAY-${Date.now()}`
+      reference: `PAY-${Date.now()}`,
+      autoPrint: autoPrintTicket
     };
 
     await onPaymentComplete(paymentData);
@@ -208,6 +212,19 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
               </p>
             </div>
           )}
+
+          {/* Switch impression automatique */}
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-md">
+            <Label htmlFor="autoPrintTicket" className="flex items-center gap-2 cursor-pointer">
+              <Printer className="h-4 w-4" />
+              Impression automatique du ticket
+            </Label>
+            <Switch
+              id="autoPrintTicket"
+              checked={autoPrintTicket}
+              onCheckedChange={setAutoPrintTicket}
+            />
+          </div>
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
