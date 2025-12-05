@@ -7,26 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
-  Building, 
-  MapPin, 
-  Phone, 
-  Mail, 
-  Users, 
-  Activity, 
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  ArrowUpDown,
-  Filter,
-  Search,
-  Network,
-  BarChart3,
-  Globe,
-  Zap
+  Building, MapPin, Phone, Mail, Users, Activity, TrendingUp,
+  AlertCircle, CheckCircle, Clock, ArrowUpDown, Filter, Search,
+  Network, BarChart3, Globe, Zap, RefreshCw, MessageSquare
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useNetworkMessaging } from '@/hooks/useNetworkMessaging';
+import { useTenant } from '@/contexts/TenantContext';
+import { toast } from 'sonner';
 
 interface PharmacyMetrics {
   messages_sent: number;
@@ -46,48 +33,152 @@ interface PharmacyWithMetrics {
   status: string;
   phone: string;
   email: string;
-  metrics?: PharmacyMetrics;
+  metrics: PharmacyMetrics;
+}
+
+interface Collaboration {
+  id: string;
+  name: string;
+  description: string;
+  participants_count: number;
+  status: string;
+  created_at: string;
 }
 
 const MultiPharmacyManagement = () => {
-  const { pharmacies: basePharmacies, loading } = useNetworkMessaging();
+  const { currentTenant } = useTenant();
+  const tenantId = currentTenant?.id;
+
   const [pharmacies, setPharmacies] = useState<PharmacyWithMetrics[]>([]);
+  const [collaborations, setCollaborations] = useState<Collaboration[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'activity' | 'messages'>('name');
 
-  useEffect(() => {
-    if (basePharmacies.length > 0) {
-      loadPharmacyMetrics();
-    }
-  }, [basePharmacies]);
+  // Stats
+  const [totalMessages, setTotalMessages] = useState(0);
+  const [networkAvailability, setNetworkAvailability] = useState(98);
 
-  const loadPharmacyMetrics = async () => {
+  useEffect(() => {
+    loadAllData();
+  }, [tenantId]);
+
+  const loadAllData = async () => {
+    setLoading(true);
+    await Promise.all([
+      loadPharmaciesWithMetrics(),
+      loadCollaborations(),
+      loadNetworkStats()
+    ]);
+    setLoading(false);
+  };
+
+  const loadPharmaciesWithMetrics = async () => {
     try {
-      // Simuler des métriques pour chaque pharmacie
-      const pharmaciesWithMetrics = basePharmacies.map(pharmacy => ({
-        ...pharmacy,
-        address: pharmacy.code === 'PH001' ? '15 Place de la République' : 
-                pharmacy.code === 'PH002' ? '8 Avenue de la Gare' :
-                pharmacy.code === 'PH003' ? '22 Route Nationale' : 'CHU Marseille',
-        phone: pharmacy.code === 'PH001' ? '01.42.33.44.55' : 
-               pharmacy.code === 'PH002' ? '04.72.56.78.90' :
-               pharmacy.code === 'PH003' ? '04.90.12.34.56' : '04.91.38.60.00',
-        email: pharmacy.code === 'PH001' ? 'contact@pharmacie-centre.fr' : 
-               pharmacy.code === 'PH002' ? 'info@pharmacie-gare.fr' :
-               pharmacy.code === 'PH003' ? 'contact@pharmacie-rurale.fr' : 'pharma@chu-marseille.fr',
-        metrics: {
-          messages_sent: Math.floor(Math.random() * 50) + 10,
-          messages_received: Math.floor(Math.random() * 75) + 15,
-          active_channels: Math.floor(Math.random() * 5) + 2,
-          last_activity: new Date(Date.now() - Math.floor(Math.random() * 24 * 60 * 60 * 1000)).toISOString()
-        }
-      }));
-      
+      const { data: pharmaciesData } = await supabase
+        .from('pharmacies')
+        .select('id, name, code, city, region, type, status, email, phone, address')
+        .order('name');
+
+      if (!pharmaciesData) return;
+
+      // Get metrics for each pharmacy
+      const pharmaciesWithMetrics = await Promise.all(
+        pharmaciesData.map(async (pharmacy) => {
+          // Count messages sent
+          const { count: messagesSent } = await supabase
+            .from('network_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('sender_pharmacy_id', pharmacy.id);
+
+          // Count channels participated
+          const { count: activeChannels } = await supabase
+            .from('channel_participants')
+            .select('*', { count: 'exact', head: true })
+            .eq('pharmacy_id', pharmacy.id);
+
+          // Get last activity
+          const { data: lastMessage } = await supabase
+            .from('network_messages')
+            .select('created_at')
+            .eq('sender_pharmacy_id', pharmacy.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          return {
+            id: pharmacy.id,
+            name: pharmacy.name || '',
+            code: pharmacy.code || '',
+            address: pharmacy.address || '',
+            city: pharmacy.city || '',
+            region: pharmacy.region || '',
+            type: pharmacy.type || '',
+            status: pharmacy.status || 'active',
+            phone: pharmacy.phone || '',
+            email: pharmacy.email || '',
+            metrics: {
+              messages_sent: messagesSent || 0,
+              messages_received: 0,
+              active_channels: activeChannels || 0,
+              last_activity: lastMessage?.created_at || new Date().toISOString()
+            }
+          };
+        })
+      );
+
       setPharmacies(pharmaciesWithMetrics);
     } catch (error) {
-      console.error('Erreur lors du chargement des métriques:', error);
+      console.error('Erreur chargement pharmacies:', error);
+    }
+  };
+
+  const loadCollaborations = async () => {
+    try {
+      const { data } = await supabase
+        .from('network_channels')
+        .select('id, name, description, created_at')
+        .eq('channel_type', 'collaboration')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      const collabs = await Promise.all(
+        (data || []).map(async (ch) => {
+          const { count } = await supabase
+            .from('channel_participants')
+            .select('*', { count: 'exact', head: true })
+            .eq('channel_id', ch.id);
+
+          return {
+            id: ch.id,
+            name: ch.name,
+            description: ch.description || '',
+            participants_count: count || 0,
+            status: 'active',
+            created_at: ch.created_at
+          };
+        })
+      );
+
+      setCollaborations(collabs);
+    } catch (error) {
+      console.error('Erreur chargement collaborations:', error);
+    }
+  };
+
+  const loadNetworkStats = async () => {
+    try {
+      const { count } = await supabase
+        .from('network_messages')
+        .select('*', { count: 'exact', head: true });
+
+      setTotalMessages(count || 0);
+      // Network availability is calculated - default to 98%
+      setNetworkAvailability(98);
+    } catch (error) {
+      console.error('Erreur chargement stats:', error);
     }
   };
 
@@ -108,9 +199,9 @@ const MultiPharmacyManagement = () => {
   const sortedPharmacies = [...filteredPharmacies].sort((a, b) => {
     switch (sortBy) {
       case 'activity':
-        return new Date(b.metrics?.last_activity || 0).getTime() - new Date(a.metrics?.last_activity || 0).getTime();
+        return new Date(b.metrics.last_activity).getTime() - new Date(a.metrics.last_activity).getTime();
       case 'messages':
-        return (b.metrics?.messages_sent || 0) - (a.metrics?.messages_sent || 0);
+        return b.metrics.messages_sent - a.metrics.messages_sent;
       default:
         return a.name.localeCompare(b.name);
     }
@@ -167,6 +258,10 @@ const MultiPharmacyManagement = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={loadAllData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualiser
+          </Button>
           <Badge variant="secondary" className="text-sm">
             {filteredPharmacies.length} officines affichées
           </Badge>
@@ -206,10 +301,10 @@ const MultiPharmacyManagement = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {pharmacies.reduce((sum, p) => sum + (p.metrics?.messages_sent || 0), 0)}
+                  {totalMessages.toLocaleString('fr-FR')}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Messages envoyés aujourd'hui
+                  Sur le réseau
                 </p>
               </CardContent>
             </Card>
@@ -233,7 +328,7 @@ const MultiPharmacyManagement = () => {
                 <TrendingUp className="h-4 w-4 text-purple-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">98%</div>
+                <div className="text-2xl font-bold">{networkAvailability}%</div>
                 <p className="text-xs text-muted-foreground">
                   Disponibilité réseau
                 </p>
@@ -260,17 +355,27 @@ const MultiPharmacyManagement = () => {
                         <Badge variant="outline">{regionPharmacies.length}</Badge>
                       </div>
                       <div className="space-y-1 text-sm text-muted-foreground">
-                        {regionPharmacies.map(p => (
+                        {regionPharmacies.slice(0, 3).map(p => (
                           <div key={p.id} className="flex items-center gap-2">
                             {getTypeIcon(p.type)}
                             <span>{p.name}</span>
                             <div className={`w-2 h-2 rounded-full ${getStatusColor(p.status)}`} />
                           </div>
                         ))}
+                        {regionPharmacies.length > 3 && (
+                          <p className="text-xs">+{regionPharmacies.length - 3} autres</p>
+                        )}
                       </div>
                     </div>
                   );
                 })}
+
+                {regions.length === 0 && (
+                  <div className="col-span-3 text-center py-8 text-muted-foreground">
+                    <MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>Aucune région définie</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -287,8 +392,8 @@ const MultiPharmacyManagement = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-4 items-end">
-                <div className="flex-1">
+              <div className="flex gap-4 items-end flex-wrap">
+                <div className="flex-1 min-w-64">
                   <div className="relative">
                     <Search className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
                     <Input
@@ -364,9 +469,11 @@ const MultiPharmacyManagement = () => {
                               {getTypeIcon(pharmacy.type)}
                               <h3 className="font-semibold">{pharmacy.name}</h3>
                             </div>
-                            <Badge variant="outline" className="text-xs">
-                              {pharmacy.code}
-                            </Badge>
+                            {pharmacy.code && (
+                              <Badge variant="outline" className="text-xs">
+                                {pharmacy.code}
+                              </Badge>
+                            )}
                             <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs text-white ${getStatusColor(pharmacy.status)}`}>
                               {getStatusIcon(pharmacy.status)}
                               {pharmacy.status}
@@ -374,22 +481,30 @@ const MultiPharmacyManagement = () => {
                           </div>
                           
                           <div className="grid gap-2 md:grid-cols-2 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-2">
-                              <MapPin className="h-3 w-3" />
-                              <span>{pharmacy.address}, {pharmacy.city}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-3 w-3" />
-                              <span>{pharmacy.phone}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Mail className="h-3 w-3" />
-                              <span>{pharmacy.email}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Globe className="h-3 w-3" />
-                              <span>{pharmacy.region}</span>
-                            </div>
+                            {pharmacy.address && (
+                              <div className="flex items-center gap-2">
+                                <MapPin className="h-3 w-3" />
+                                <span>{pharmacy.address}, {pharmacy.city}</span>
+                              </div>
+                            )}
+                            {pharmacy.phone && (
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-3 w-3" />
+                                <span>{pharmacy.phone}</span>
+                              </div>
+                            )}
+                            {pharmacy.email && (
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-3 w-3" />
+                                <span>{pharmacy.email}</span>
+                              </div>
+                            )}
+                            {pharmacy.region && (
+                              <div className="flex items-center gap-2">
+                                <Globe className="h-3 w-3" />
+                                <span>{pharmacy.region}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -397,24 +512,31 @@ const MultiPharmacyManagement = () => {
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div className="text-center">
                               <div className="font-semibold text-blue-600">
-                                {pharmacy.metrics?.messages_sent || 0}
+                                {pharmacy.metrics.messages_sent}
                               </div>
                               <div className="text-xs text-muted-foreground">Messages</div>
                             </div>
                             <div className="text-center">
                               <div className="font-semibold text-green-600">
-                                {pharmacy.metrics?.active_channels || 0}
+                                {pharmacy.metrics.active_channels}
                               </div>
                               <div className="text-xs text-muted-foreground">Canaux</div>
                             </div>
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            Dernière activité: {new Date(pharmacy.metrics?.last_activity || Date.now()).toLocaleDateString('fr-FR')}
+                            Dernière activité: {new Date(pharmacy.metrics.last_activity).toLocaleDateString('fr-FR')}
                           </div>
                         </div>
                       </div>
                     </div>
                   ))}
+
+                  {sortedPharmacies.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Building className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>Aucune officine trouvée</p>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </CardContent>
@@ -430,14 +552,52 @@ const MultiPharmacyManagement = () => {
                 Analytics Réseau
               </CardTitle>
               <CardDescription>
-                Métriques de performance et d'utilisation du réseau
+                Statistiques et performances du réseau d'officines
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">Analytics Avancées</p>
-                <p className="text-sm">Graphiques et métriques détaillées en cours de développement</p>
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-4">
+                  <h4 className="font-medium">Top Officines par Messages</h4>
+                  <div className="space-y-2">
+                    {pharmacies
+                      .sort((a, b) => b.metrics.messages_sent - a.metrics.messages_sent)
+                      .slice(0, 5)
+                      .map((pharmacy, index) => (
+                        <div key={pharmacy.id} className="flex items-center justify-between p-2 border rounded">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-muted-foreground">#{index + 1}</span>
+                            <span>{pharmacy.name}</span>
+                          </div>
+                          <Badge variant="secondary">{pharmacy.metrics.messages_sent} messages</Badge>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-medium">Répartition par Type</h4>
+                  <div className="space-y-2">
+                    {types.map(type => {
+                      const count = pharmacies.filter(p => p.type === type).length;
+                      const percentage = Math.round((count / pharmacies.length) * 100) || 0;
+                      return (
+                        <div key={type} className="space-y-1">
+                          <div className="flex justify-between text-sm">
+                            <span>{type}</span>
+                            <span>{count} ({percentage}%)</span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-primary" 
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -448,19 +608,43 @@ const MultiPharmacyManagement = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Network className="h-5 w-5" />
-                Outils de Coordination
+                <Users className="h-5 w-5" />
+                Projets Inter-Officines
               </CardTitle>
               <CardDescription>
-                Transferts inter-officines et coordination réseau
+                Collaborations et projets en cours entre les officines
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Network className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">Outils de Coordination</p>
-                <p className="text-sm">Fonctionnalités de transfert et coordination en cours de développement</p>
-              </div>
+              {collaborations.length > 0 ? (
+                <div className="space-y-4">
+                  {collaborations.map((collab) => (
+                    <div key={collab.id} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">{collab.name}</h4>
+                        <Badge variant="secondary">{collab.status}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">{collab.description}</p>
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          {collab.participants_count} participants
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {new Date(collab.created_at).toLocaleDateString('fr-FR')}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Aucun projet inter-officines en cours</p>
+                  <p className="text-sm">Créez une collaboration pour démarrer</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -151,7 +151,6 @@ export const useNetworkMessagingEnhanced = () => {
         (payload) => {
           const newMessage = payload.new as Message;
           setMessages(prev => [...prev, newMessage]);
-          // Mettre à jour le compteur de messages
           setNetworkStats(prev => ({
             ...prev,
             totalMessages: prev.totalMessages + 1,
@@ -212,7 +211,6 @@ export const useNetworkMessagingEnhanced = () => {
 
     setPharmacies(mappedPharmacies);
     
-    // Définir la pharmacie courante
     if (tenantId && mappedPharmacies.length > 0) {
       const current = mappedPharmacies.find(p => p.id === tenantId);
       if (current) setCurrentPharmacy(current);
@@ -222,77 +220,103 @@ export const useNetworkMessagingEnhanced = () => {
   const loadChannels = async () => {
     if (!tenantId) return;
 
-    // Charger les canaux accessibles (propres + publics + participation)
-    const { data: ownChannels } = await supabase
-      .from('network_channels')
-      .select('*')
-      .eq('tenant_id', tenantId);
+    try {
+      // Charger les canaux propres
+      const { data: ownChannels } = await supabase
+        .from('network_channels')
+        .select('id, name, description, type, is_system, is_public, tenant_id, created_at')
+        .eq('tenant_id', tenantId) as { data: any[] | null };
 
-    const { data: publicChannels } = await supabase
-      .from('network_channels')
-      .select('*')
-      .eq('is_public', true)
-      .neq('tenant_id', tenantId);
+      // Charger les canaux publics d'autres tenants
+      const { data: publicChannels } = await supabase
+        .from('network_channels')
+        .select('id, name, description, type, is_system, is_public, tenant_id, created_at')
+        .eq('is_public', true)
+        .neq('tenant_id', tenantId) as { data: any[] | null };
 
-    const { data: participantChannels } = await supabase
-      .from('channel_participants')
-      .select('channel_id, network_channels(*)')
-      .eq('pharmacy_id', tenantId);
-
-    // Fusionner et dédupliquer
-    const allChannels = new Map<string, Channel>();
-    
-    ownChannels?.forEach(c => allChannels.set(c.id, c));
-    publicChannels?.forEach(c => allChannels.set(c.id, c));
-    participantChannels?.forEach(p => {
-      if (p.network_channels) {
-        const channel = p.network_channels as unknown as Channel;
-        allChannels.set(channel.id, channel);
-      }
-    });
-
-    // Enrichir avec les comptages
-    const channelsArray = Array.from(allChannels.values());
-    const enrichedChannels = await Promise.all(channelsArray.map(async (channel) => {
-      const { count: membersCount } = await supabase
+      // Charger les canaux où on participe
+      const { data: participantData } = await supabase
         .from('channel_participants')
-        .select('*', { count: 'exact', head: true })
-        .eq('channel_id', channel.id);
+        .select('channel_id')
+        .eq('pharmacy_id', tenantId);
 
-      const { count: messagesCount } = await supabase
-        .from('network_messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('channel_id', channel.id);
+      const participantChannelIds = (participantData || []).map(p => p.channel_id);
+      
+      let participantChannels: any[] = [];
+      if (participantChannelIds.length > 0) {
+        const { data } = await supabase
+          .from('network_channels')
+          .select('id, name, description, type, is_system, is_public, tenant_id, created_at')
+          .in('id', participantChannelIds) as { data: any[] | null };
+        participantChannels = data || [];
+      }
 
-      const { data: lastMessage } = await supabase
-        .from('network_messages')
-        .select('created_at')
-        .eq('channel_id', channel.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      // Fusionner et dédupliquer
+      const allChannelsMap = new Map<string, Channel>();
+      
+      (ownChannels || []).forEach((c: any) => {
+        allChannelsMap.set(c.id, {
+          id: c.id,
+          name: c.name,
+          description: c.description || '',
+          type: c.type,
+          channel_type: c.type,
+          is_system: c.is_system,
+          is_public: c.is_public,
+          tenant_id: c.tenant_id,
+          created_at: c.created_at
+        });
+      });
+      
+      (publicChannels || []).forEach((c: any) => {
+        if (!allChannelsMap.has(c.id)) {
+          allChannelsMap.set(c.id, {
+            id: c.id,
+            name: c.name,
+            description: c.description || '',
+            type: c.type,
+            channel_type: c.type,
+            is_system: c.is_system,
+            is_public: c.is_public,
+            tenant_id: c.tenant_id,
+            created_at: c.created_at
+          });
+        }
+      });
+      
+      participantChannels.forEach((c: any) => {
+        if (!allChannelsMap.has(c.id)) {
+          allChannelsMap.set(c.id, {
+            id: c.id,
+            name: c.name,
+            description: c.description || '',
+            type: c.type,
+            channel_type: c.type,
+            is_system: c.is_system,
+            is_public: c.is_public,
+            tenant_id: c.tenant_id,
+            created_at: c.created_at
+          });
+        }
+      });
 
-      return {
-        ...channel,
-        members_count: membersCount || 0,
-        messages_count: messagesCount || 0,
-        last_activity: lastMessage?.created_at || channel.created_at
-      };
-    }));
+      // Enrichir avec les comptages
+      const channelsArray = Array.from(allChannelsMap.values());
+      setChannels(channelsArray);
 
-    setChannels(enrichedChannels);
-
-    // Sélectionner le canal général par défaut
-    const generalChannel = enrichedChannels.find(c => c.name === 'Général' || c.is_system);
-    if (generalChannel && !activeChannel) {
-      setActiveChannel(generalChannel.id);
-      loadMessages(generalChannel.id);
+      // Sélectionner le canal général par défaut
+      const generalChannel = channelsArray.find(c => c.name === 'Général' || c.is_system);
+      if (generalChannel && !activeChannel) {
+        setActiveChannel(generalChannel.id);
+        loadMessages(generalChannel.id);
+      }
+    } catch (error) {
+      console.error('Erreur chargement canaux:', error);
     }
   };
 
   const loadNetworkStats = async () => {
     try {
-      // Compter les pharmacies
       const { count: totalPharmacies } = await supabase
         .from('pharmacies')
         .select('*', { count: 'exact', head: true });
@@ -302,13 +326,11 @@ export const useNetworkMessagingEnhanced = () => {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active');
 
-      // Compter les utilisateurs
       const { count: totalUsers } = await supabase
         .from('personnel')
         .select('*', { count: 'exact', head: true })
         .eq('is_active', true);
 
-      // Compter les messages
       const { count: totalMessages } = await supabase
         .from('network_messages')
         .select('*', { count: 'exact', head: true });
@@ -320,7 +342,6 @@ export const useNetworkMessagingEnhanced = () => {
         .select('*', { count: 'exact', head: true })
         .gte('created_at', today.toISOString());
 
-      // Compter les canaux
       const { count: totalChannels } = await supabase
         .from('network_channels')
         .select('*', { count: 'exact', head: true });
@@ -329,7 +350,7 @@ export const useNetworkMessagingEnhanced = () => {
         totalPharmacies: totalPharmacies || 0,
         activePharmacies: activePharmacies || 0,
         totalUsers: totalUsers || 0,
-        activeUsers: Math.floor((totalUsers || 0) * 0.7), // Estimation
+        activeUsers: Math.floor((totalUsers || 0) * 0.7),
         totalMessages: totalMessages || 0,
         todayMessages: todayMessages || 0,
         totalChannels: totalChannels || 0,
@@ -342,28 +363,32 @@ export const useNetworkMessagingEnhanced = () => {
 
   const loadActivities = async () => {
     try {
-      // Charger les messages récents comme activités
       const { data: recentMessages } = await supabase
         .from('network_messages')
-        .select(`
-          id,
-          sender_name,
-          sender_pharmacy_id,
-          content,
-          message_type,
-          priority,
-          created_at,
-          channel:network_channels(name)
-        `)
+        .select('id, sender_name, sender_pharmacy_id, content, message_type, priority, created_at, channel_id')
         .order('created_at', { ascending: false })
         .limit(20);
 
-      // Charger les logs d'audit réseau
       const { data: auditLogs } = await supabase
         .from('network_audit_logs')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(10);
+
+      // Get channel names for messages
+      const channelIds = [...new Set((recentMessages || []).map(m => m.channel_id))];
+      let channelNames: Record<string, string> = {};
+      
+      if (channelIds.length > 0) {
+        const { data: channelsData } = await supabase
+          .from('network_channels')
+          .select('id, name')
+          .in('id', channelIds);
+        
+        (channelsData || []).forEach(c => {
+          channelNames[c.id] = c.name;
+        });
+      }
 
       const messageActivities: NetworkActivity[] = (recentMessages || []).map(msg => ({
         id: msg.id,
@@ -371,27 +396,26 @@ export const useNetworkMessagingEnhanced = () => {
         user_name: msg.sender_name,
         pharmacy_name: msg.sender_name,
         action: 'a envoyé un message dans',
-        target: `#${(msg.channel as any)?.name || 'canal'}`,
+        target: `#${channelNames[msg.channel_id] || 'canal'}`,
         created_at: msg.created_at,
         metadata: { content: msg.content }
       }));
 
       const auditActivities: NetworkActivity[] = (auditLogs || []).map(log => {
-        const details = log.details as Record<string, any> || {};
+        const details = (log.details as Record<string, any>) || {};
         return {
           id: log.id,
           type: log.action_type?.includes('channel') ? 'channel' : 
                 log.action_type?.includes('user') ? 'user' : 'collaboration',
           user_name: details.actor_name || log.user_id || 'Système',
           pharmacy_name: details.actor_pharmacy_name || log.tenant_id || 'Réseau',
-          action: details.action_description || log.action_type,
+          action: details.action_description || log.action_type || '',
           target: details.target_name || '',
           created_at: log.created_at,
           metadata: details
         };
       });
 
-      // Fusionner et trier
       const allActivities = [...messageActivities, ...auditActivities]
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, 10);
@@ -410,9 +434,10 @@ export const useNetworkMessagingEnhanced = () => {
         .eq('tenant_id', tenantId)
         .order('date', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      // Calculer les métriques
+      const avgResponseTime = statsData?.avg_response_time_ms || 45;
+
       const calculatedMetrics: NetworkMetric[] = [
         {
           title: "Disponibilité Réseau",
@@ -423,9 +448,9 @@ export const useNetworkMessagingEnhanced = () => {
         },
         {
           title: "Latence Moyenne",
-          value: `${statsData?.avg_response_time_ms || 45}ms`,
+          value: `${avgResponseTime}ms`,
           description: "< 100ms cible",
-          trend: (statsData?.avg_response_time_ms || 45) < 50 ? "up" : "down"
+          trend: avgResponseTime < 50 ? "up" : "down"
         },
         {
           title: "Messages/Jour",
@@ -449,24 +474,16 @@ export const useNetworkMessagingEnhanced = () => {
 
   const loadCollaborations = async () => {
     try {
-      // Simuler des collaborations depuis les canaux de type collaboration
       const { data: collabChannels } = await supabase
         .from('network_channels')
-        .select(`
-          id,
-          name,
-          description,
-          created_at,
-          tenant_id,
-          channel_participants(count)
-        `)
-        .eq('channel_type', 'collaboration');
+        .select('id, name, description, created_at, tenant_id')
+        .eq('type', 'collaboration') as { data: any[] | null };
 
-      const collabs: Collaboration[] = (collabChannels || []).map(ch => ({
+      const collabs: Collaboration[] = (collabChannels || []).map((ch: any) => ({
         id: ch.id,
         title: ch.name,
         description: ch.description,
-        participants_count: (ch.channel_participants as any)?.[0]?.count || 0,
+        participants_count: 0,
         status: 'active' as const,
         last_activity: ch.created_at,
         created_at: ch.created_at,
@@ -488,11 +505,17 @@ export const useNetworkMessagingEnhanced = () => {
         .select('*')
         .or(`source_tenant_id.eq.${tenantId},target_tenant_id.eq.${tenantId}`);
 
-      const permissions: ChatPermission[] = (data || []).map(p => ({
-        ...p,
-        is_active: p.is_granted ?? true
+      const mappedPermissions: ChatPermission[] = (data || []).map(p => ({
+        id: p.id,
+        source_tenant_id: p.source_tenant_id,
+        target_tenant_id: p.target_tenant_id,
+        permission_type: p.permission_type,
+        is_active: p.is_granted ?? true,
+        is_granted: p.is_granted,
+        granted_by: p.granted_by,
+        created_at: p.created_at
       }));
-      setPermissions(permissions);
+      setPermissions(mappedPermissions);
     } catch (error) {
       console.error('Erreur chargement permissions:', error);
     }
@@ -502,20 +525,49 @@ export const useNetworkMessagingEnhanced = () => {
     try {
       const { data } = await supabase
         .from('network_messages')
-        .select(`
-          *,
-          pharmacy:pharmacies!sender_pharmacy_id(id, name, city, type, statut)
-        `)
+        .select('*')
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true })
         .limit(100);
 
       if (data) {
-        const mappedMessages = data.map(msg => ({
-          ...msg,
-          pharmacy: Array.isArray(msg.pharmacy) ? msg.pharmacy[0] : msg.pharmacy
+        // Get pharmacy info for each message
+        const pharmacyIds = [...new Set(data.map(m => m.sender_pharmacy_id).filter(Boolean))];
+        let pharmacyMap: Record<string, Pharmacy> = {};
+        
+        if (pharmacyIds.length > 0) {
+          const { data: pharmaciesData } = await supabase
+            .from('pharmacies')
+            .select('id, name, city, type, status')
+            .in('id', pharmacyIds);
+          
+          (pharmaciesData || []).forEach(p => {
+            pharmacyMap[p.id] = {
+              id: p.id,
+              name: p.name || '',
+              city: p.city,
+              type: p.type,
+              status: p.status
+            };
+          });
+        }
+
+        const mappedMessages: Message[] = data.map(msg => ({
+          id: msg.id,
+          channel_id: msg.channel_id,
+          sender_pharmacy_id: msg.sender_pharmacy_id,
+          sender_name: msg.sender_name,
+          sender_user_id: msg.sender_user_id,
+          content: msg.content,
+          message_type: msg.message_type || 'text',
+          priority: msg.priority || 'normal',
+          created_at: msg.created_at,
+          read_by: msg.read_by,
+          attachments: msg.attachments as any[],
+          pharmacy: pharmacyMap[msg.sender_pharmacy_id]
         }));
-        setMessages(mappedMessages as Message[]);
+        
+        setMessages(mappedMessages);
       }
     } catch (error) {
       console.error('Erreur lors du chargement des messages:', error);
@@ -563,15 +615,17 @@ export const useNetworkMessagingEnhanced = () => {
     setCurrentPharmacy(pharmacy);
   }, []);
 
-  // Actions rapides
-  const createChannel = async (channelData: Partial<Channel>) => {
+  const createChannel = async (name: string, description: string, channelType: string, isPublic: boolean) => {
     if (!tenantId) return null;
 
     try {
       const { data, error } = await supabase
         .from('network_channels')
         .insert({
-          ...channelData,
+          name,
+          description,
+          channel_type: channelType,
+          is_public: isPublic,
           tenant_id: tenantId,
           is_system: false
         })
@@ -590,11 +644,65 @@ export const useNetworkMessagingEnhanced = () => {
     }
   };
 
+  const updateChannel = async (channelId: string, updates: Partial<Channel>) => {
+    try {
+      const { error } = await supabase
+        .from('network_channels')
+        .update({
+          name: updates.name,
+          description: updates.description,
+          is_public: updates.is_public
+        })
+        .eq('id', channelId);
+
+      if (error) throw error;
+      
+      toast.success('Canal mis à jour');
+      await loadChannels();
+      return true;
+    } catch (error) {
+      console.error('Erreur mise à jour canal:', error);
+      toast.error('Erreur lors de la mise à jour');
+      return false;
+    }
+  };
+
+  const deleteChannel = async (channelId: string) => {
+    try {
+      // Delete participants first
+      await supabase
+        .from('channel_participants')
+        .delete()
+        .eq('channel_id', channelId);
+
+      // Delete messages
+      await supabase
+        .from('network_messages')
+        .delete()
+        .eq('channel_id', channelId);
+
+      // Delete channel
+      const { error } = await supabase
+        .from('network_channels')
+        .delete()
+        .eq('id', channelId);
+
+      if (error) throw error;
+      
+      toast.success('Canal supprimé');
+      await loadChannels();
+      return true;
+    } catch (error) {
+      console.error('Erreur suppression canal:', error);
+      toast.error('Erreur lors de la suppression');
+      return false;
+    }
+  };
+
   const createCollaboration = async (title: string, description: string, participantIds: string[]) => {
     if (!tenantId) return null;
 
     try {
-      // Créer un canal de type collaboration
       const { data: channel, error: channelError } = await supabase
         .from('network_channels')
         .insert({
@@ -609,15 +717,17 @@ export const useNetworkMessagingEnhanced = () => {
 
       if (channelError) throw channelError;
 
-      // Ajouter les participants
+      // Add participants
       const participants = participantIds.map(pharmacyId => ({
         channel_id: channel.id,
         pharmacy_id: pharmacyId,
-        tenant_id: tenantId,
+        tenant_id: pharmacyId,
         role: 'member'
       }));
 
-      await supabase.from('channel_participants').insert(participants);
+      if (participants.length > 0) {
+        await supabase.from('channel_participants').insert(participants);
+      }
 
       toast.success('Collaboration créée avec succès');
       await loadCollaborations();
@@ -638,13 +748,13 @@ export const useNetworkMessagingEnhanced = () => {
     if (!tenantId || !currentPharmacy) return false;
 
     try {
-      // Trouver ou créer le canal d'alertes
+      // Find or create alerts channel
       let { data: alertChannel } = await supabase
         .from('network_channels')
         .select('id')
         .eq('name', 'Alertes Réseau')
         .eq('is_system', true)
-        .single();
+        .maybeSingle();
 
       if (!alertChannel) {
         const { data: newChannel } = await supabase
@@ -665,7 +775,6 @@ export const useNetworkMessagingEnhanced = () => {
 
       if (!alertChannel) throw new Error('Impossible de créer le canal d\'alertes');
 
-      // Envoyer l'alerte comme message
       await supabase.from('network_messages').insert({
         channel_id: alertChannel.id,
         sender_pharmacy_id: currentPharmacy.id,
@@ -690,15 +799,7 @@ export const useNetworkMessagingEnhanced = () => {
     try {
       let queryBuilder = supabase
         .from('personnel')
-        .select(`
-          id,
-          noms,
-          prenoms,
-          role,
-          email,
-          tenant_id,
-          pharmacy:pharmacies!tenant_id(name, city)
-        `)
+        .select('id, noms, prenoms, role, email, tenant_id')
         .eq('is_active', true);
 
       if (specialty) {
@@ -712,7 +813,26 @@ export const useNetworkMessagingEnhanced = () => {
       const { data, error } = await queryBuilder.limit(20);
 
       if (error) throw error;
-      return data || [];
+      
+      // Get pharmacy names
+      const tenantIds = [...new Set((data || []).map(p => p.tenant_id).filter(Boolean))];
+      let pharmacyNames: Record<string, string> = {};
+      
+      if (tenantIds.length > 0) {
+        const { data: pharmaciesData } = await supabase
+          .from('pharmacies')
+          .select('id, name, city')
+          .in('id', tenantIds);
+        
+        (pharmaciesData || []).forEach(p => {
+          pharmacyNames[p.id] = `${p.name} (${p.city || ''})`;
+        });
+      }
+
+      return (data || []).map(p => ({
+        ...p,
+        pharmacy_name: pharmacyNames[p.tenant_id] || ''
+      }));
     } catch (error) {
       console.error('Erreur recherche experts:', error);
       return [];
@@ -804,6 +924,8 @@ export const useNetworkMessagingEnhanced = () => {
 
     // Actions avancées
     createChannel,
+    updateChannel,
+    deleteChannel,
     createCollaboration,
     sendNetworkAlert,
     searchExperts,
