@@ -90,16 +90,19 @@ const GlobalActivity = () => {
         priority: msg.priority
       }));
 
-      const auditActivities: ActivityItem[] = (auditLogs || []).map(log => ({
-        id: log.id,
-        type: log.action_type?.includes('channel') ? 'channel' : 
-              log.action_type?.includes('collaboration') ? 'collaboration' : 'user',
-        user: log.actor_name || 'Système',
-        pharmacy: log.actor_pharmacy_name || 'Réseau',
-        action: log.action_description || log.action_type,
-        target: log.target_name || '',
-        time: log.created_at
-      }));
+      const auditActivities: ActivityItem[] = (auditLogs || []).map(log => {
+        const details = log.details as Record<string, any> || {};
+        return {
+          id: log.id,
+          type: log.action_type?.includes('channel') ? 'channel' : 
+                log.action_type?.includes('collaboration') ? 'collaboration' : 'user',
+          user: details.actor_name || log.user_id || 'Système',
+          pharmacy: details.actor_pharmacy_name || log.tenant_id || 'Réseau',
+          action: details.action_description || log.action_type,
+          target: details.target_name || '',
+          time: log.created_at
+        };
+      });
 
       // Fusionner et trier par date
       const allActivities = [...messageActivities, ...auditActivities]

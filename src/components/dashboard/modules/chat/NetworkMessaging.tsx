@@ -143,7 +143,7 @@ const NetworkMessaging = () => {
               <div>
                 <CardTitle>Messagerie Réseau</CardTitle>
                 <CardDescription>
-                  Connecté en tant que: {currentPharmacy?.nom_pharmacie || 'Non connecté'}
+                  Connecté en tant que: {currentPharmacy?.name || 'Non connecté'}
                 </CardDescription>
               </div>
             </div>
