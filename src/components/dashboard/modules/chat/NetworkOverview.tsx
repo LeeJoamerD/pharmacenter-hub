@@ -28,14 +28,12 @@ const NetworkOverview = () => {
     setLoading(true);
     try {
       // Compter les pharmacies
-      const { count: totalPharmacies } = await supabase
+      const { data: pharmaciesData } = await supabase
         .from('pharmacies')
-        .select('*', { count: 'exact', head: true });
-
-      const { count: activePharmacies } = await supabase
-        .from('pharmacies')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
+        .select('id, status');
+      
+      const totalPharmacies = pharmaciesData?.length || 0;
+      const activePharmacies = pharmaciesData?.filter(p => p.status === 'active').length || 0;
 
       // Compter les utilisateurs actifs
       const { count: totalUsers } = await supabase
@@ -57,16 +55,18 @@ const NetworkOverview = () => {
         .gte('created_at', yesterday.toISOString());
 
       // Compter les collaborations actives (canaux de type collaboration)
-      const { count: collaborations } = await supabase
+      const { data: collabData } = await supabase
         .from('network_channels')
-        .select('*', { count: 'exact', head: true })
-        .eq('channel_type', 'collaboration');
+        .select('id, type')
+        .eq('type', 'collaboration');
+      
+      const collaborations = collabData?.length || 0;
 
       setStats([
         {
           title: "Officines Connectées",
-          value: (activePharmacies || 0).toLocaleString('fr-FR'),
-          change: `+${Math.max(0, (totalPharmacies || 0) - (activePharmacies || 0))} en attente`,
+          value: activePharmacies.toLocaleString('fr-FR'),
+          change: `+${Math.max(0, totalPharmacies - activePharmacies)} en attente`,
           icon: Building,
           color: "bg-blue-500/10 text-blue-600"
         },
@@ -86,7 +86,7 @@ const NetworkOverview = () => {
         },
         {
           title: "Collaborations",
-          value: (collaborations || 0).toLocaleString('fr-FR'),
+          value: collaborations.toLocaleString('fr-FR'),
           change: "Projets actifs",
           icon: Activity,
           color: "bg-orange-500/10 text-orange-600"

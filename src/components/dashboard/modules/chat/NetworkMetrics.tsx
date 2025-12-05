@@ -72,7 +72,7 @@ const NetworkMetrics = () => {
         : 100;
 
       // Latence estimée (simulated mais réaliste)
-      const avgLatency = activityStats?.avg_response_time || Math.floor(Math.random() * 30) + 25;
+      const avgLatency = activityStats?.avg_response_time_ms || Math.floor(Math.random() * 30) + 25;
 
       setMetrics([
         {

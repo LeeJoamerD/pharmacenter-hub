@@ -22,8 +22,8 @@ import { toast } from 'sonner';
 
 interface Pharmacy {
   id: string;
-  nom_pharmacie: string;
-  ville?: string;
+  name: string;
+  city?: string;
   region?: string;
 }
 
@@ -34,6 +34,7 @@ interface NetworkAlertDialogProps {
 
 const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => {
   const { currentTenant, currentUser } = useTenant();
+  const tenantId = currentTenant?.id;
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -57,10 +58,15 @@ const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => 
     try {
       const { data } = await supabase
         .from('pharmacies')
-        .select('id, nom_pharmacie, ville, region')
-        .neq('id', currentTenant?.id);
+        .select('id, name, city, region')
+        .neq('id', tenantId || '');
 
-      setPharmacies(data || []);
+      setPharmacies((data || []).map(p => ({
+        id: p.id,
+        name: p.name || '',
+        city: p.city || '',
+        region: p.region || ''
+      })));
     } catch (error) {
       console.error('Erreur chargement pharmacies:', error);
     } finally {
@@ -92,28 +98,35 @@ const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => 
     setSending(true);
     try {
       // Trouver ou créer le canal d'alertes
-      let { data: alertChannel } = await supabase
+      let alertChannelId: string | null = null;
+      
+      const { data: existingChannel } = await supabase
         .from('network_channels')
         .select('id')
         .eq('name', 'Alertes Réseau')
         .eq('is_system', true)
         .single();
 
-      if (!alertChannel) {
+      if (existingChannel) {
+        alertChannelId = existingChannel.id;
+      } else {
         const { data: newChannel } = await supabase
           .from('network_channels')
           .insert({
             name: 'Alertes Réseau',
             description: 'Canal système pour les alertes urgentes',
-            channel_type: 'alert',
+            type: 'alert',
             is_system: true,
-            is_public: true,
-            tenant_id: currentTenant?.id
+            tenant_id: tenantId
           })
           .select()
           .single();
 
-        alertChannel = newChannel;
+        alertChannelId = newChannel?.id || null;
+      }
+
+      if (!alertChannelId) {
+        throw new Error('Impossible de créer le canal d\'alertes');
       }
 
       // Déterminer les destinataires
@@ -126,16 +139,19 @@ const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => 
         recipients = selectedPharmacies;
       }
 
+      // Trouver le nom de la pharmacie courante
+      const currentPharmacy = pharmacies.find(p => p.id === tenantId);
+
       // Envoyer l'alerte
       await supabase.from('network_messages').insert({
-        channel_id: alertChannel?.id,
-        sender_pharmacy_id: currentTenant?.id,
-        sender_name: currentTenant?.nom_pharmacie,
+        channel_id: alertChannelId,
+        sender_pharmacy_id: tenantId,
+        sender_name: currentPharmacy?.name || currentTenant?.name || 'Système',
         sender_user_id: currentUser?.id,
         content: `🚨 **${title}**\n\n${message}`,
         priority,
         message_type: 'alert',
-        tenant_id: currentTenant?.id,
+        tenant_id: tenantId,
         metadata: {
           alert_type: 'network',
           scope,
@@ -146,14 +162,21 @@ const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => 
 
       // Logger l'action
       await supabase.from('network_audit_logs').insert({
-        tenant_id: currentTenant?.id,
-        actor_pharmacy_id: currentTenant?.id,
-        actor_name: currentTenant?.nom_pharmacie,
+        tenant_id: tenantId,
         action_type: 'alert_sent',
-        action_description: `Alerte "${title}" diffusée à ${recipients.length} officine(s)`,
-        target_name: title,
+        action_category: 'alert',
+        user_id: tenantId,
         severity: priority === 'urgent' ? 'critical' : 'warning',
-        metadata: { scope, recipients_count: recipients.length }
+        is_sensitive: priority === 'urgent',
+        is_reviewed: false,
+        details: {
+          actor_name: 'Utilisateur',
+          actor_pharmacy_name: currentPharmacy?.name || '',
+          action_description: `Alerte "${title}" diffusée à ${recipients.length} officine(s)`,
+          target_name: title,
+          scope,
+          recipients_count: recipients.length
+        }
       });
 
       toast.success(`Alerte diffusée à ${recipients.length} officine(s)`);
@@ -180,8 +203,8 @@ const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => 
   const regions = [...new Set(pharmacies.map(p => p.region).filter(Boolean))];
 
   const filteredPharmacies = pharmacies.filter(p =>
-    p.nom_pharmacie.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.ville?.toLowerCase().includes(searchTerm.toLowerCase())
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.city?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const togglePharmacy = (pharmacyId: string) => {
@@ -307,8 +330,8 @@ const NetworkAlertDialog = ({ open, onOpenChange }: NetworkAlertDialogProps) => 
                   >
                     <Checkbox checked={selectedPharmacies.includes(pharmacy.id)} />
                     <Building className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{pharmacy.nom_pharmacie}</span>
-                    <span className="text-xs text-muted-foreground">{pharmacy.ville}</span>
+                    <span className="text-sm">{pharmacy.name}</span>
+                    <span className="text-xs text-muted-foreground">{pharmacy.city}</span>
                   </div>
                 ))}
               </ScrollArea>

@@ -21,11 +21,12 @@ export interface Channel {
   id: string;
   name: string;
   description: string;
-  channel_type: string;
-  is_system: boolean;
-  is_public: boolean;
+  type?: string;
+  channel_type?: string;
+  is_system?: boolean;
+  is_public?: boolean;
   tenant_id: string;
-  created_at: string;
+  created_at?: string;
   members_count?: number;
   messages_count?: number;
   last_activity?: string;
@@ -92,10 +93,11 @@ export interface ChatPermission {
   id: string;
   source_tenant_id: string;
   target_tenant_id: string;
-  permission_type: 'chat' | 'channel_invite' | 'file_share' | 'video_call';
+  permission_type: string;
   is_active: boolean;
+  is_granted?: boolean;
   granted_by?: string;
-  created_at: string;
+  created_at?: string;
 }
 
 export const useNetworkMessagingEnhanced = () => {
@@ -186,20 +188,34 @@ export const useNetworkMessagingEnhanced = () => {
   const loadPharmacies = async () => {
     const { data, error } = await supabase
       .from('pharmacies')
-      .select('*')
-      .order('nom_pharmacie');
+      .select('id, name, code, city, region, pays, type, status, email, phone, address')
+      .order('name');
 
     if (error) {
       console.error('Erreur chargement pharmacies:', error);
       return;
     }
 
-    setPharmacies((data || []) as Pharmacy[]);
+    const mappedPharmacies: Pharmacy[] = (data || []).map(p => ({
+      id: p.id,
+      name: p.name || '',
+      code: p.code,
+      city: p.city,
+      region: p.region,
+      pays: p.pays,
+      type: p.type,
+      status: p.status,
+      email: p.email,
+      phone: p.phone,
+      address: p.address
+    }));
+
+    setPharmacies(mappedPharmacies);
     
     // Définir la pharmacie courante
-    if (tenantId && data) {
-      const current = data.find(p => p.id === tenantId);
-      if (current) setCurrentPharmacy(current as Pharmacy);
+    if (tenantId && mappedPharmacies.length > 0) {
+      const current = mappedPharmacies.find(p => p.id === tenantId);
+      if (current) setCurrentPharmacy(current);
     }
   };
 
@@ -360,17 +376,20 @@ export const useNetworkMessagingEnhanced = () => {
         metadata: { content: msg.content }
       }));
 
-      const auditActivities: NetworkActivity[] = (auditLogs || []).map(log => ({
-        id: log.id,
-        type: log.action_type?.includes('channel') ? 'channel' : 
-              log.action_type?.includes('user') ? 'user' : 'collaboration',
-        user_name: log.actor_name || 'Système',
-        pharmacy_name: log.actor_pharmacy_name || 'Réseau',
-        action: log.action_description || log.action_type,
-        target: log.target_name || '',
-        created_at: log.created_at,
-        metadata: log.metadata
-      }));
+      const auditActivities: NetworkActivity[] = (auditLogs || []).map(log => {
+        const details = log.details as Record<string, any> || {};
+        return {
+          id: log.id,
+          type: log.action_type?.includes('channel') ? 'channel' : 
+                log.action_type?.includes('user') ? 'user' : 'collaboration',
+          user_name: details.actor_name || log.user_id || 'Système',
+          pharmacy_name: details.actor_pharmacy_name || log.tenant_id || 'Réseau',
+          action: details.action_description || log.action_type,
+          target: details.target_name || '',
+          created_at: log.created_at,
+          metadata: details
+        };
+      });
 
       // Fusionner et trier
       const allActivities = [...messageActivities, ...auditActivities]
@@ -404,9 +423,9 @@ export const useNetworkMessagingEnhanced = () => {
         },
         {
           title: "Latence Moyenne",
-          value: `${statsData?.avg_response_time || 45}ms`,
+          value: `${statsData?.avg_response_time_ms || 45}ms`,
           description: "< 100ms cible",
-          trend: (statsData?.avg_response_time || 45) < 50 ? "up" : "down"
+          trend: (statsData?.avg_response_time_ms || 45) < 50 ? "up" : "down"
         },
         {
           title: "Messages/Jour",
@@ -469,7 +488,11 @@ export const useNetworkMessagingEnhanced = () => {
         .select('*')
         .or(`source_tenant_id.eq.${tenantId},target_tenant_id.eq.${tenantId}`);
 
-      setPermissions((data || []) as ChatPermission[]);
+      const permissions: ChatPermission[] = (data || []).map(p => ({
+        ...p,
+        is_active: p.is_granted ?? true
+      }));
+      setPermissions(permissions);
     } catch (error) {
       console.error('Erreur chargement permissions:', error);
     }
@@ -481,7 +504,7 @@ export const useNetworkMessagingEnhanced = () => {
         .from('network_messages')
         .select(`
           *,
-          pharmacy:pharmacies!sender_pharmacy_id(id, nom_pharmacie, ville, type, status)
+          pharmacy:pharmacies!sender_pharmacy_id(id, name, city, type, statut)
         `)
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true })
@@ -646,7 +669,7 @@ export const useNetworkMessagingEnhanced = () => {
       await supabase.from('network_messages').insert({
         channel_id: alertChannel.id,
         sender_pharmacy_id: currentPharmacy.id,
-        sender_name: currentPharmacy.nom_pharmacie,
+        sender_name: currentPharmacy.name,
         content: `**${title}**\n\n${message}`,
         priority,
         message_type: 'alert',
@@ -674,7 +697,7 @@ export const useNetworkMessagingEnhanced = () => {
           role,
           email,
           tenant_id,
-          pharmacy:pharmacies!tenant_id(nom_pharmacie, ville)
+          pharmacy:pharmacies!tenant_id(name, city)
         `)
         .eq('is_active', true);
 
@@ -709,7 +732,7 @@ export const useNetworkMessagingEnhanced = () => {
           source_tenant_id: tenantId,
           target_tenant_id: targetTenantId,
           permission_type: permissionType,
-          is_active: true,
+          is_granted: true,
           granted_by: currentUser?.id
         });
 
@@ -729,7 +752,7 @@ export const useNetworkMessagingEnhanced = () => {
     try {
       const { error } = await supabase
         .from('network_chat_permissions')
-        .update({ is_active: false })
+        .update({ is_granted: false })
         .eq('id', permissionId);
 
       if (error) throw error;

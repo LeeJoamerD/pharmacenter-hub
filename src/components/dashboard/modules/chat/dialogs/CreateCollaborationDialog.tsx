@@ -21,8 +21,8 @@ import { toast } from 'sonner';
 
 interface Pharmacy {
   id: string;
-  nom_pharmacie: string;
-  ville?: string;
+  name: string;
+  city?: string;
   type?: string;
 }
 
@@ -34,6 +34,7 @@ interface CreateCollaborationDialogProps {
 
 const CreateCollaborationDialog = ({ open, onOpenChange, onSuccess }: CreateCollaborationDialogProps) => {
   const { currentTenant } = useTenant();
+  const tenantId = currentTenant?.id;
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -54,10 +55,15 @@ const CreateCollaborationDialog = ({ open, onOpenChange, onSuccess }: CreateColl
     try {
       const { data } = await supabase
         .from('pharmacies')
-        .select('id, nom_pharmacie, ville, type')
-        .neq('id', currentTenant?.id);
+        .select('id, name, city, type')
+        .neq('id', tenantId || '');
 
-      setPharmacies(data || []);
+      setPharmacies((data || []).map(p => ({
+        id: p.id,
+        name: p.name || '',
+        city: p.city || '',
+        type: p.type || ''
+      })));
     } catch (error) {
       console.error('Erreur chargement pharmacies:', error);
     } finally {
@@ -84,9 +90,8 @@ const CreateCollaborationDialog = ({ open, onOpenChange, onSuccess }: CreateColl
         .insert({
           name: title,
           description,
-          channel_type: 'collaboration',
-          is_public: false,
-          tenant_id: currentTenant?.id
+          type: 'collaboration',
+          tenant_id: tenantId
         })
         .select()
         .single();
@@ -94,25 +99,34 @@ const CreateCollaborationDialog = ({ open, onOpenChange, onSuccess }: CreateColl
       if (channelError) throw channelError;
 
       // Ajouter les participants (incluant l'officine créatrice)
-      const allParticipants = [currentTenant?.id, ...selectedPharmacies];
+      const allParticipants = [tenantId, ...selectedPharmacies].filter(Boolean);
       const participantsInsert = allParticipants.map(pharmacyId => ({
         channel_id: channel.id,
         pharmacy_id: pharmacyId,
-        tenant_id: currentTenant?.id,
-        role: pharmacyId === currentTenant?.id ? 'admin' : 'member'
+        tenant_id: tenantId,
+        role: pharmacyId === tenantId ? 'admin' : 'member'
       }));
 
       await supabase.from('channel_participants').insert(participantsInsert);
 
       // Logger l'action
+      const currentPharmacy = pharmacies.find(p => p.id === tenantId);
       await supabase.from('network_audit_logs').insert({
-        tenant_id: currentTenant?.id,
-        actor_pharmacy_id: currentTenant?.id,
-        actor_name: currentTenant?.nom_pharmacie,
+        tenant_id: tenantId,
         action_type: 'collaboration_created',
-        action_description: `Création de la collaboration "${title}"`,
-        target_name: title,
-        metadata: { channel_id: channel.id, participants: allParticipants.length }
+        action_category: 'collaboration',
+        user_id: tenantId,
+        severity: 'info',
+        is_sensitive: false,
+        is_reviewed: false,
+        details: {
+          actor_name: 'Utilisateur',
+          actor_pharmacy_name: currentPharmacy?.name || '',
+          action_description: `Création de la collaboration "${title}"`,
+          target_name: title,
+          channel_id: channel.id,
+          participants: allParticipants.length
+        }
       });
 
       toast.success('Collaboration créée avec succès');
@@ -135,8 +149,8 @@ const CreateCollaborationDialog = ({ open, onOpenChange, onSuccess }: CreateColl
   };
 
   const filteredPharmacies = pharmacies.filter(p =>
-    p.nom_pharmacie.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.ville?.toLowerCase().includes(searchTerm.toLowerCase())
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.city?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const togglePharmacy = (pharmacyId: string) => {
@@ -196,7 +210,7 @@ const CreateCollaborationDialog = ({ open, onOpenChange, onSuccess }: CreateColl
                   return (
                     <Badge key={id} variant="secondary" className="flex items-center gap-1">
                       <Building className="h-3 w-3" />
-                      {pharmacy?.nom_pharmacie}
+                      {pharmacy?.name}
                       <X
                         className="h-3 w-3 cursor-pointer hover:text-destructive"
                         onClick={() => removeParticipant(id)}
@@ -242,8 +256,8 @@ const CreateCollaborationDialog = ({ open, onOpenChange, onSuccess }: CreateColl
                     <Checkbox checked={selectedPharmacies.includes(pharmacy.id)} />
                     <Building className="h-4 w-4 text-muted-foreground" />
                     <div className="flex-1">
-                      <p className="text-sm font-medium">{pharmacy.nom_pharmacie}</p>
-                      <p className="text-xs text-muted-foreground">{pharmacy.ville}</p>
+                      <p className="text-sm font-medium">{pharmacy.name}</p>
+                      <p className="text-xs text-muted-foreground">{pharmacy.city}</p>
                     </div>
                     {pharmacy.type && (
                       <Badge variant="outline" className="text-xs">{pharmacy.type}</Badge>
