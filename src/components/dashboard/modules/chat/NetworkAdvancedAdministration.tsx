@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { 
   Settings,
@@ -20,41 +19,33 @@ import {
   Database,
   Network,
   Server,
-  Globe,
   Lock,
   Key,
   AlertTriangle,
   CheckCircle,
   XCircle,
   Activity,
-  BarChart,
   Clock,
-  Mail,
-  Bell,
   Archive,
-  Trash2,
   Download,
-  Upload,
   RefreshCw,
   Power,
-  Zap,
   Eye,
-  EyeOff,
   Search,
   Filter,
   Plus,
   Edit,
-  Save,
-  X,
   Cpu,
-  HardDrive,
-  Wifi,
-  Router,
-  Monitor
+  Monitor,
+  UserPlus
 } from 'lucide-react';
 import { useNetworkAdministration } from '@/hooks/useNetworkAdministration';
+import { useNetworkChatAdmin } from '@/hooks/useNetworkChatAdmin';
 import { SystemComponentDetailsDialog } from './dialogs/SystemComponentDetailsDialog';
 import { UserPermissionDialog } from './dialogs/UserPermissionDialog';
+import PartnerChatInvitationDialog from './dialogs/PartnerChatInvitationDialog';
+import InterTenantPermissionDialog from './dialogs/InterTenantPermissionDialog';
+import NetworkAuditViewerDialog from './dialogs/NetworkAuditViewerDialog';
 
 const NetworkAdvancedAdministration = () => {
   const { toast } = useToast();
@@ -65,7 +56,7 @@ const NetworkAdvancedAdministration = () => {
     backupJobs,
     backupRuns,
     systemStats,
-    loading,
+    loading: networkLoading,
     maintenanceMode,
     updateSystemComponent,
     updateAdminSetting,
@@ -78,34 +69,78 @@ const NetworkAdvancedAdministration = () => {
     getSetting
   } = useNetworkAdministration();
 
+  const {
+    pharmacies,
+    channels,
+    partnerAccounts,
+    chatPermissions,
+    auditLogs,
+    chatConfigs,
+    loading: chatLoading,
+    createPartnerAccount,
+    updateChatPermission,
+    logAuditAction,
+    getAvailablePartners
+  } = useNetworkChatAdmin();
+
+  const loading = networkLoading || chatLoading;
+
   const [selectedPharmacy, setSelectedPharmacy] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [pharmacyDetailsDialog, setPharmacyDetailsDialog] = useState<string | null>(null);
-  const [editPharmacyDialog, setEditPharmacyDialog] = useState<string | null>(null);
   const [componentDetailsDialog, setComponentDetailsDialog] = useState<string | null>(null);
+  const [partnerInviteDialog, setPartnerInviteDialog] = useState(false);
+  const [permissionsDialog, setPermissionsDialog] = useState(false);
+  const [auditViewerDialog, setAuditViewerDialog] = useState(false);
+  const [availablePartners, setAvailablePartners] = useState<any[]>([]);
 
-  // Handler functions for user management
-  const handleEditPharmacy = (pharmacyId: string) => {
-    setEditPharmacyDialog(pharmacyId);
-    toast({
-      title: "Modification de pharmacie",
-      description: `Configuration de la pharmacie ${pharmacyId} ouverte.`,
-    });
+  // Fetch available partners when opening dialog
+  const handleOpenPartnerDialog = async () => {
+    const partners = await getAvailablePartners();
+    setAvailablePartners(partners);
+    setPartnerInviteDialog(true);
   };
 
-  const handleViewPharmacyDetails = (pharmacyId: string) => {
-    setPharmacyDetailsDialog(pharmacyId);
-    const pharmacy = userPermissions.find(p => p.id === pharmacyId);
-    toast({
-      title: "Détails de la pharmacie",
-      description: `Affichage des détails pour ${pharmacy?.pharmacy_name || 'la pharmacie sélectionnée'}.`,
+  // Handle partner invitation
+  const handleInvitePartner = async (data: any) => {
+    await createPartnerAccount({
+      partner_type: data.partnerType,
+      partner_id: data.partnerId,
+      display_name: data.displayName,
+      email: data.email,
+      phone: data.phone,
+      chat_enabled: data.chatEnabled,
+      can_initiate_conversation: data.canInitiateConversation,
+      allowed_channels: data.allowedChannels
     });
+
+    await logAuditAction(
+      'partner_invite',
+      'partner',
+      data.partnerId,
+      { display_name: data.displayName, type: data.partnerType }
+    );
+  };
+
+  // Handle permission update
+  const handleUpdatePermission = async (data: {
+    targetTenantId: string;
+    permissionType: 'chat' | 'channel_invite' | 'file_share' | 'video_call';
+    isGranted: boolean;
+  }) => {
+    await updateChatPermission(data.targetTenantId, data.permissionType, data.isGranted);
+    await logAuditAction(
+      data.isGranted ? 'permission_grant' : 'permission_revoke',
+      'permission',
+      data.targetTenantId,
+      { permission_type: data.permissionType }
+    );
   };
 
   // Get pharmacy list for logs filtering
   const pharmacyList = [
     { id: 'all', name: 'Toutes les officines' },
-    ...userPermissions.map(p => ({ id: p.id, name: p.pharmacy_name }))
+    ...pharmacies.map(p => ({ id: p.id, name: p.name }))
   ];
 
   const getStatusColor = (status: string) => {
@@ -113,6 +148,7 @@ const NetworkAdvancedAdministration = () => {
       case 'online': return 'bg-green-500';
       case 'warning': return 'bg-yellow-500';
       case 'offline': return 'bg-red-500';
+      case 'active': return 'bg-green-500';
       default: return 'bg-gray-500';
     }
   };
@@ -122,6 +158,7 @@ const NetworkAdvancedAdministration = () => {
       case 'info': return 'text-blue-600';
       case 'warning': return 'text-yellow-600';
       case 'error': return 'text-red-600';
+      case 'critical': return 'text-red-800';
       default: return 'text-gray-600';
     }
   };
@@ -131,6 +168,9 @@ const NetworkAdvancedAdministration = () => {
     if (load < 80) return 'bg-yellow-500';
     return 'bg-red-500';
   };
+
+  // Get current tenant ID
+  const currentTenantId = pharmacies.length > 0 ? pharmacies[0]?.id : '';
 
   return (
     <div className="space-y-6">
@@ -145,6 +185,10 @@ const NetworkAdvancedAdministration = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleOpenPartnerDialog}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Inviter Partenaire
+          </Button>
           <Button variant="outline" onClick={refreshSystemStatus} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Actualiser
@@ -172,6 +216,52 @@ const NetworkAdvancedAdministration = () => {
         </Card>
       )}
 
+      {/* Stats overview */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Pharmacies</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{pharmacies.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {pharmacies.filter(p => p.status === 'active').length} actives
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Partenaires Chat</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{partnerAccounts.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {partnerAccounts.filter(p => p.chat_enabled).length} actifs
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Canaux</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{channels.length}</div>
+            <p className="text-xs text-muted-foreground">canaux de communication</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Événements Audit</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{auditLogs.length}</div>
+            <Button variant="link" className="p-0 h-auto text-xs" onClick={() => setAuditViewerDialog(true)}>
+              Voir les logs
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
       <Tabs defaultValue="system" className="space-y-4">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="system">Système</TabsTrigger>
@@ -198,9 +288,7 @@ const NetworkAdvancedAdministration = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="text-xs text-muted-foreground">
-                    Uptime: {system.uptime}
-                  </div>
+                  <div className="text-xs text-muted-foreground">Uptime: {system.uptime}</div>
                   
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs">
@@ -227,11 +315,7 @@ const NetworkAdvancedAdministration = () => {
                   </div>
 
                   <div className="flex gap-1 pt-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setComponentDetailsDialog(system.id)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => setComponentDetailsDialog(system.id)}>
                       <Monitor className="h-3 w-3 mr-1" />
                       Détails
                     </Button>
@@ -255,9 +339,7 @@ const NetworkAdvancedAdministration = () => {
                 <Network className="h-5 w-5" />
                 Configuration Réseau
               </CardTitle>
-              <CardDescription>
-                Paramètres de connectivité et performance réseau
-              </CardDescription>
+              <CardDescription>Paramètres de connectivité et performance réseau</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-6 md:grid-cols-2">
@@ -316,78 +398,115 @@ const NetworkAdvancedAdministration = () => {
 
         {/* Utilisateurs */}
         <TabsContent value="users" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-medium">Gestion des Permissions</h3>
+            <Button onClick={() => setPermissionsDialog(true)}>
+              <Shield className="h-4 w-4 mr-2" />
+              Permissions Inter-Pharmacies
+            </Button>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Gestion des Permissions par Officine
+                Pharmacies du Réseau
               </CardTitle>
-              <CardDescription>
-                Administration des droits d'accès et permissions utilisateurs
-              </CardDescription>
+              <CardDescription>Administration des droits d'accès et permissions</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {userPermissions.map((pharmacy) => (
+                {pharmacies.map((pharmacy) => (
                   <div key={pharmacy.id} className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <h4 className="font-medium">{pharmacy.pharmacy_name}</h4>
+                        <div className={`w-3 h-3 rounded-full ${getStatusColor(pharmacy.status)}`} />
+                        <h4 className="font-medium">{pharmacy.name}</h4>
                         <Badge variant={pharmacy.status === 'active' ? 'default' : 'secondary'}>
                           {pharmacy.status}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleEditPharmacy(pharmacy.id)}
-                          disabled={loading}
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Modifier
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleViewPharmacyDetails(pharmacy.id)}
-                          disabled={loading}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => setPharmacyDetailsDialog(pharmacy.id)}>
                           <Eye className="h-4 w-4 mr-2" />
                           Voir détails
                         </Button>
                       </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-3 mb-3">
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Utilisateurs: </span>
-                        <span className="font-medium">{pharmacy.user_count}</span>
+                    <div className="grid gap-4 md:grid-cols-3 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Code: </span>
+                        <span className="font-medium">{pharmacy.code || '-'}</span>
                       </div>
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Administrateurs: </span>
-                        <span className="font-medium">{pharmacy.admin_count}</span>
+                      <div>
+                        <span className="text-muted-foreground">Ville: </span>
+                        <span className="font-medium">{pharmacy.city || '-'}</span>
                       </div>
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Dernier accès: </span>
-                        <span className="font-medium">
-                          {new Date(pharmacy.last_access).toLocaleString('fr-FR')}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-sm">Permissions accordées:</Label>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {pharmacy.permissions.map((permission, index) => (
-                          <Badge key={index} variant="outline">
-                            {permission}
-                          </Badge>
-                        ))}
+                      <div>
+                        <span className="text-muted-foreground">Région: </span>
+                        <span className="font-medium">{pharmacy.region || '-'}</span>
                       </div>
                     </div>
                   </div>
                 ))}
+
+                {pharmacies.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Aucune pharmacie dans le réseau
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Partenaires Chat */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserPlus className="h-5 w-5" />
+                    Partenaires Chat
+                  </CardTitle>
+                  <CardDescription>Fournisseurs et laboratoires avec accès au chat</CardDescription>
+                </div>
+                <Button onClick={handleOpenPartnerDialog}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {partnerAccounts.map((partner) => (
+                  <div key={partner.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${partner.chat_enabled ? 'bg-green-500' : 'bg-gray-400'}`} />
+                      <div>
+                        <div className="font-medium">{partner.display_name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {partner.partner_type === 'fournisseur' ? 'Fournisseur' : 'Laboratoire'}
+                          {partner.email && ` • ${partner.email}`}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={partner.chat_enabled ? 'default' : 'secondary'}>
+                        {partner.chat_enabled ? 'Actif' : 'Inactif'}
+                      </Badge>
+                      <Badge variant="outline">
+                        {partner.allowed_channels?.length || 0} canaux
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+
+                {partnerAccounts.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Aucun partenaire configuré pour le chat
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -402,21 +521,19 @@ const NetworkAdvancedAdministration = () => {
                   <Shield className="h-5 w-5" />
                   Paramètres de Sécurité
                 </CardTitle>
-                <CardDescription>
-                  Configuration des règles de sécurité réseau
-                </CardDescription>
+                <CardDescription>Configuration des règles de sécurité réseau</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Authentification 2FA obligatoire</Label>
-                      <p className="text-sm text-muted-foreground">Exiger l'authentification à deux facteurs</p>
-                    </div>
-                    <Switch 
-                      checked={getSetting('security', 'require_2fa') === 'true'}
-                      onCheckedChange={(checked) => updateAdminSetting('security', 'require_2fa', checked.toString())}
-                    />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Authentification 2FA obligatoire</Label>
+                    <p className="text-sm text-muted-foreground">Exiger l'authentification à deux facteurs</p>
                   </div>
+                  <Switch 
+                    checked={getSetting('security', 'require_2fa') === 'true'}
+                    onCheckedChange={(checked) => updateAdminSetting('security', 'require_2fa', checked.toString())}
+                  />
+                </div>
 
                 <div className="flex items-center justify-between">
                   <div>
@@ -455,11 +572,7 @@ const NetworkAdvancedAdministration = () => {
 
                 <div>
                   <Label>Règles IP autorisées</Label>
-                  <Textarea
-                    placeholder="192.168.1.0/24&#10;10.0.0.0/8"
-                    className="mt-2"
-                    rows={3}
-                  />
+                  <Textarea placeholder="192.168.1.0/24&#10;10.0.0.0/8" className="mt-2" rows={3} />
                 </div>
               </CardContent>
             </Card>
@@ -470,9 +583,7 @@ const NetworkAdvancedAdministration = () => {
                   <Key className="h-5 w-5" />
                   Chiffrement et Certificats
                 </CardTitle>
-                <CardDescription>
-                  Gestion des clés et certificats de sécurité
-                </CardDescription>
+                <CardDescription>Gestion des clés et certificats de sécurité</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-3 border rounded-lg">
@@ -480,9 +591,7 @@ const NetworkAdvancedAdministration = () => {
                     <span className="text-sm font-medium">Certificat SSL</span>
                     <CheckCircle className="h-4 w-4 text-green-500" />
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    Expire le: 15/08/2025
-                  </div>
+                  <div className="text-xs text-muted-foreground">Expire le: 15/08/2025</div>
                 </div>
 
                 <div className="p-3 border rounded-lg">
@@ -490,9 +599,7 @@ const NetworkAdvancedAdministration = () => {
                     <span className="text-sm font-medium">Clé API</span>
                     <CheckCircle className="h-4 w-4 text-green-500" />
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    Dernière rotation: 01/07/2025
-                  </div>
+                  <div className="text-xs text-muted-foreground">Dernière rotation: 01/07/2025</div>
                 </div>
 
                 <div className="p-3 border rounded-lg">
@@ -500,16 +607,10 @@ const NetworkAdvancedAdministration = () => {
                     <span className="text-sm font-medium">Chiffrement base</span>
                     <CheckCircle className="h-4 w-4 text-green-500" />
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    AES-256 activé
-                  </div>
+                  <div className="text-xs text-muted-foreground">AES-256 activé</div>
                 </div>
 
-                <Button 
-                  className="w-full"
-                  onClick={renewCertificates}
-                  disabled={loading}
-                >
+                <Button className="w-full" onClick={renewCertificates} disabled={loading}>
                   <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                   Renouveler Certificats
                 </Button>
@@ -526,9 +627,7 @@ const NetworkAdvancedAdministration = () => {
                 <Archive className="h-5 w-5" />
                 Stratégie de Sauvegarde
               </CardTitle>
-              <CardDescription>
-                Configuration et gestion des sauvegardes automatiques
-              </CardDescription>
+              <CardDescription>Configuration et gestion des sauvegardes automatiques</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-6 md:grid-cols-2">
@@ -607,11 +706,7 @@ const NetworkAdvancedAdministration = () => {
                     </div>
                   </div>
 
-                  <Button 
-                    className="w-full"
-                    onClick={createManualBackup}
-                    disabled={loading}
-                  >
+                  <Button className="w-full" onClick={createManualBackup} disabled={loading}>
                     <Archive className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                     Créer Sauvegarde Manuelle
                   </Button>
@@ -629,12 +724,10 @@ const NetworkAdvancedAdministration = () => {
                 <Activity className="h-5 w-5" />
                 Logs de Sécurité et Activité
               </CardTitle>
-              <CardDescription>
-                Historique des événements système et sécurité
-              </CardDescription>
+              <CardDescription>Historique des événements système et sécurité</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-4 mb-4">
                 <div className="flex items-center gap-2">
                   <Search className="h-4 w-4" />
                   <Input 
@@ -656,46 +749,52 @@ const NetworkAdvancedAdministration = () => {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button variant="outline">
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filtres
+                <Button variant="outline" onClick={() => setAuditViewerDialog(true)}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Vue détaillée
                 </Button>
               </div>
 
               <ScrollArea className="h-96">
                 <div className="space-y-2">
-                  {securityLogs
+                  {auditLogs
                     .filter(log => 
                       searchTerm === '' || 
-                      log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                      log.user.toLowerCase().includes(searchTerm.toLowerCase())
+                      log.action_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      JSON.stringify(log.details || {}).toLowerCase().includes(searchTerm.toLowerCase())
                     )
+                    .slice(0, 50)
                     .map((log) => (
-                    <div key={log.id} className="p-3 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline" className={getSeverityColor(log.severity)}>
-                            {log.type}
-                          </Badge>
-                          <span className="text-sm font-medium">{log.user}</span>
-                          <span className="text-sm text-muted-foreground">• {log.pharmacy}</span>
+                      <div key={log.id} className="p-3 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <Badge variant="outline" className={getSeverityColor(log.severity)}>
+                              {log.action_type}
+                            </Badge>
+                            {log.target_type && (
+                              <span className="text-sm text-muted-foreground">• {log.target_type}</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(log.created_at).toLocaleString('fr-FR')}
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(log.timestamp).toLocaleString('fr-FR')}
-                        </div>
+                        {log.details && (
+                          <div className="text-sm text-muted-foreground">
+                            {JSON.stringify(log.details)}
+                          </div>
+                        )}
+                        {log.ip_address && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            IP: {log.ip_address}
+                          </div>
+                        )}
                       </div>
-                      <div className="text-sm text-muted-foreground mb-1">
-                        {log.details}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        IP: {log.ip_address}
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                   
-                  {securityLogs.length === 0 && (
+                  {auditLogs.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
-                      Aucun log de sécurité disponible
+                      Aucun log d'audit disponible
                     </div>
                   )}
                 </div>
@@ -703,39 +802,17 @@ const NetworkAdvancedAdministration = () => {
 
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm text-muted-foreground">
-                  Affichage de {securityLogs.length} événements
+                  Affichage de {Math.min(50, auditLogs.length)} événements sur {auditLogs.length}
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      const csvContent = securityLogs.map(log => 
-                        `${log.timestamp},${log.type},${log.user},${log.pharmacy},${log.ip_address},"${log.details}"`
-                      ).join('\n');
-                      const csvHeader = 'Timestamp,Type,Utilisateur,Pharmacie,IP,Détails\n';
-                      const blob = new Blob([csvHeader + csvContent], { type: 'text/csv' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `logs-securite-${new Date().toISOString().split('T')[0]}.csv`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
-                      toast({
-                        title: "Export terminé",
-                        description: "Les logs ont été exportés en CSV.",
-                      });
-                    }}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setAuditViewerDialog(true)}>
                     <Download className="h-4 w-4 mr-2" />
                     Exporter
                   </Button>
-                    <Button variant="outline" size="sm" onClick={refreshSystemStatus} disabled={loading}>
-                      <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                      Actualiser
-                    </Button>
+                  <Button variant="outline" size="sm" onClick={refreshSystemStatus} disabled={loading}>
+                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    Actualiser
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -756,6 +833,33 @@ const NetworkAdvancedAdministration = () => {
         pharmacy={userPermissions.find(p => p.id === pharmacyDetailsDialog) || null}
         open={!!pharmacyDetailsDialog}
         onOpenChange={(open) => !open && setPharmacyDetailsDialog(null)}
+        loading={loading}
+      />
+
+      <PartnerChatInvitationDialog
+        open={partnerInviteDialog}
+        onOpenChange={setPartnerInviteDialog}
+        availablePartners={availablePartners}
+        channels={channels.map(c => ({ id: c.id, name: c.name }))}
+        onInvitePartner={handleInvitePartner}
+        loading={loading}
+      />
+
+      <InterTenantPermissionDialog
+        open={permissionsDialog}
+        onOpenChange={setPermissionsDialog}
+        currentTenantId={currentTenantId}
+        pharmacies={pharmacies}
+        existingPermissions={chatPermissions}
+        onUpdatePermission={handleUpdatePermission}
+        loading={loading}
+      />
+
+      <NetworkAuditViewerDialog
+        open={auditViewerDialog}
+        onOpenChange={setAuditViewerDialog}
+        auditLogs={auditLogs}
+        pharmacyName={(id) => pharmacies.find(p => p.id === id)?.name || id}
         loading={loading}
       />
     </div>

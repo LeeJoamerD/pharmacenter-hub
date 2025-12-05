@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/use-toast';
 import { 
   Shield, 
   Users, 
@@ -31,42 +32,38 @@ import {
   Database,
   Server,
   Wifi,
-  Monitor
+  Monitor,
+  Plus,
+  Edit,
+  Trash2,
+  RefreshCw,
+  Save
 } from 'lucide-react';
-import { useNetworkMessaging } from '@/hooks/useNetworkMessaging';
+import { useNetworkChatAdmin } from '@/hooks/useNetworkChatAdmin';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-
-interface SystemMetrics {
-  total_pharmacies: number;
-  active_pharmacies: number;
-  total_channels: number;
-  total_messages: number;
-  system_uptime: string;
-  network_status: 'healthy' | 'warning' | 'critical';
-}
-
-interface AuditLog {
-  id: string;
-  action: string;
-  user: string;
-  timestamp: string;
-  details: string;
-  severity: 'info' | 'warning' | 'error';
-}
+import CreateChannelDialog from './dialogs/CreateChannelDialog';
+import ChannelMembersManagerDialog from './dialogs/ChannelMembersManagerDialog';
 
 const CentralAdministration = () => {
-  const { pharmacies, channels, loading } = useNetworkMessaging();
-  const [systemMetrics, setSystemMetrics] = useState<SystemMetrics>({
-    total_pharmacies: 0,
-    active_pharmacies: 0,
-    total_channels: 0,
-    total_messages: 0,
-    system_uptime: '99.9%',
-    network_status: 'healthy'
-  });
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const { toast } = useToast();
+  const {
+    pharmacies,
+    channels,
+    channelInvitations,
+    auditLogs,
+    chatConfigs,
+    networkStats,
+    loading,
+    createChannel,
+    updateChannel,
+    deleteChannel,
+    updateChatConfig,
+    logAuditAction,
+    refetch
+  } = useNetworkChatAdmin();
+
   const [systemSettings, setSystemSettings] = useState({
     maintenance_mode: false,
     auto_backup: true,
@@ -75,80 +72,43 @@ const CentralAdministration = () => {
     max_file_size: '10'
   });
 
+  const [createChannelDialog, setCreateChannelDialog] = useState(false);
+  const [membersManagerDialog, setMembersManagerDialog] = useState<string | null>(null);
+  const [selectedChannel, setSelectedChannel] = useState<any>(null);
+
+  // Load chat configs into settings
   useEffect(() => {
-    if (pharmacies.length > 0 && channels.length > 0) {
-      loadSystemMetrics();
-      loadAuditLogs();
-    }
-  }, [pharmacies, channels]);
-
-  const loadSystemMetrics = async () => {
-    try {
-      // Simuler des métriques système
-      const activeCount = pharmacies.filter(p => p.status === 'active').length;
-      
-      // Compter les messages (simulation)
-      const { count: messageCount } = await supabase
-        .from('network_messages')
-        .select('*', { count: 'exact', head: true });
-
-      setSystemMetrics({
-        total_pharmacies: pharmacies.length,
-        active_pharmacies: activeCount,
-        total_channels: channels.length,
-        total_messages: messageCount || 0,
-        system_uptime: '99.9%',
-        network_status: activeCount / pharmacies.length > 0.8 ? 'healthy' : 'warning'
+    if (chatConfigs.length > 0) {
+      const config = chatConfigs[0];
+      setSystemSettings({
+        maintenance_mode: config.maintenance_mode || false,
+        auto_backup: config.auto_backup_enabled || true,
+        real_time_sync: config.realtime_enabled || true,
+        message_retention: String(config.message_retention_days || 30),
+        max_file_size: String(config.max_file_size_mb || 10)
       });
-    } catch (error) {
-      console.error('Erreur lors du chargement des métriques:', error);
     }
-  };
+  }, [chatConfigs]);
 
-  const loadAuditLogs = () => {
-    // Simuler des logs d'audit
-    const mockLogs: AuditLog[] = [
-      {
-        id: '1',
-        action: 'Connexion pharmacie',
-        user: 'Pharmacie du Centre',
-        timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
-        details: 'Connexion réussie au réseau',
-        severity: 'info'
-      },
-      {
-        id: '2',
-        action: 'Création canal',
-        user: 'Admin Système',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        details: 'Nouveau canal "Urgences Régionales" créé',
-        severity: 'info'
-      },
-      {
-        id: '3',
-        action: 'Alerte sécurité',
-        user: 'Système',
-        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-        details: 'Tentative de connexion suspecte détectée',
-        severity: 'warning'
-      },
-      {
-        id: '4',
-        action: 'Maintenance',
-        user: 'Admin Technique',
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        details: 'Maintenance programmée effectuée',
-        severity: 'info'
-      }
-    ];
-    setAuditLogs(mockLogs);
+  // Calculate metrics
+  const systemMetrics = {
+    total_pharmacies: pharmacies.length,
+    active_pharmacies: pharmacies.filter(p => p.status === 'active').length,
+    total_channels: channels.length,
+    total_messages: networkStats?.total_messages || 0,
+    system_uptime: '99.9%',
+    network_status: pharmacies.filter(p => p.status === 'active').length / Math.max(pharmacies.length, 1) > 0.8 
+      ? 'healthy' as const 
+      : 'warning' as const
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'healthy': return 'bg-green-500';
+      case 'healthy': 
+      case 'active': return 'bg-green-500';
       case 'warning': return 'bg-orange-500';
-      case 'critical': return 'bg-red-500';
+      case 'critical': 
+      case 'inactive': return 'bg-red-500';
       default: return 'bg-gray-500';
     }
   };
@@ -164,9 +124,66 @@ const CentralAdministration = () => {
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'error': return 'text-red-600';
+      case 'error': 
+      case 'critical': return 'text-red-600';
       case 'warning': return 'text-orange-600';
       default: return 'text-blue-600';
+    }
+  };
+
+  const handleCreateChannel = async (data: any) => {
+    await createChannel({
+      name: data.name,
+      description: data.description,
+      type: data.type,
+      category: data.category,
+      is_public: data.isPublic,
+      is_system: data.isSystem,
+      auto_archive_days: data.autoArchiveDays
+    });
+
+    await logAuditAction('channel_create', 'channel', undefined, { name: data.name, type: data.type });
+  };
+
+  const handleDeleteChannel = async (channelId: string) => {
+    const channel = channels.find(c => c.id === channelId);
+    if (!channel) return;
+
+    if (channel.is_system) {
+      toast({
+        title: "Action non autorisée",
+        description: "Les canaux système ne peuvent pas être supprimés.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    await deleteChannel(channelId);
+    await logAuditAction('channel_delete', 'channel', channelId, { name: channel.name });
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      await updateChatConfig({
+        maintenance_mode: systemSettings.maintenance_mode,
+        auto_backup_enabled: systemSettings.auto_backup,
+        realtime_enabled: systemSettings.real_time_sync,
+        message_retention_days: parseInt(systemSettings.message_retention),
+        max_file_size_mb: parseInt(systemSettings.max_file_size)
+      });
+
+      await logAuditAction('config_change', 'config', undefined, systemSettings);
+
+      toast({
+        title: "Paramètres sauvegardés",
+        description: "La configuration a été mise à jour avec succès."
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder les paramètres.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -194,6 +211,10 @@ const CentralAdministration = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualiser
+          </Button>
           <Badge 
             variant="secondary" 
             className={`${getStatusColor(systemMetrics.network_status)} text-white`}
@@ -296,9 +317,9 @@ const CentralAdministration = () => {
                     <Wifi className="h-4 w-4" />
                     <span className="font-medium">Temps Réel</span>
                   </div>
-                  <div className="flex items-center gap-1 text-green-600">
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="text-sm">Connecté</span>
+                  <div className={`flex items-center gap-1 ${systemSettings.real_time_sync ? 'text-green-600' : 'text-gray-400'}`}>
+                    {systemSettings.real_time_sync ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                    <span className="text-sm">{systemSettings.real_time_sync ? 'Connecté' : 'Désactivé'}</span>
                   </div>
                 </div>
 
@@ -327,28 +348,40 @@ const CentralAdministration = () => {
             <CardContent>
               <ScrollArea className="h-64">
                 <div className="space-y-3">
-                  {auditLogs.map((log) => (
+                  {auditLogs.slice(0, 10).map((log) => (
                     <div key={log.id} className="flex items-center gap-3 p-3 border rounded-lg">
                       <div className={`w-2 h-2 rounded-full ${
-                        log.severity === 'error' ? 'bg-red-500' :
+                        log.severity === 'error' || log.severity === 'critical' ? 'bg-red-500' :
                         log.severity === 'warning' ? 'bg-orange-500' :
                         'bg-blue-500'
                       }`} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-sm">{log.action}</span>
-                          <span className="text-xs text-muted-foreground">par {log.user}</span>
+                          <span className="font-medium text-sm">{log.action_type}</span>
+                          {log.target_type && (
+                            <span className="text-xs text-muted-foreground">sur {log.target_type}</span>
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground">{log.details}</p>
+                        {log.details && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {JSON.stringify(log.details)}
+                          </p>
+                        )}
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(log.timestamp), { 
+                        {formatDistanceToNow(new Date(log.created_at), { 
                           addSuffix: true, 
                           locale: fr 
                         })}
                       </span>
                     </div>
                   ))}
+
+                  {auditLogs.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Aucune activité récente
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </CardContent>
@@ -376,12 +409,12 @@ const CentralAdministration = () => {
                       <div>
                         <h4 className="font-medium">{pharmacy.name}</h4>
                         <p className="text-sm text-muted-foreground">
-                          {pharmacy.code} - {pharmacy.city}, {pharmacy.region}
+                          {pharmacy.code || 'N/A'} - {pharmacy.city || 'N/A'}, {pharmacy.region || 'N/A'}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline">{pharmacy.type}</Badge>
+                      <Badge variant="outline">{pharmacy.type || 'standard'}</Badge>
                       <Button variant="outline" size="sm">
                         <UserCog className="h-4 w-4 mr-2" />
                         Gérer
@@ -389,6 +422,12 @@ const CentralAdministration = () => {
                     </div>
                   </div>
                 ))}
+
+                {pharmacies.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Aucune pharmacie dans le réseau
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -398,13 +437,21 @@ const CentralAdministration = () => {
         <TabsContent value="channels" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                Gestion des Canaux
-              </CardTitle>
-              <CardDescription>
-                Administration des canaux de communication
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" />
+                    Gestion des Canaux
+                  </CardTitle>
+                  <CardDescription>
+                    Administration des canaux de communication
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setCreateChannelDialog(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nouveau Canal
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -414,21 +461,58 @@ const CentralAdministration = () => {
                       <MessageSquare className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <h4 className="font-medium">{channel.name}</h4>
-                        <p className="text-sm text-muted-foreground">{channel.description}</p>
+                        <p className="text-sm text-muted-foreground">{channel.description || 'Aucune description'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {channel.is_system && (
                         <Badge variant="secondary">Système</Badge>
                       )}
+                      {channel.is_public ? (
+                        <Badge variant="outline" className="gap-1">
+                          <Globe className="h-3 w-3" />
+                          Public
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1">
+                          <Lock className="h-3 w-3" />
+                          Privé
+                        </Badge>
+                      )}
                       <Badge variant="outline">{channel.type}</Badge>
-                      <Button variant="outline" size="sm">
-                        <Settings className="h-4 w-4 mr-2" />
-                        Configurer
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setSelectedChannel(channel);
+                          setMembersManagerDialog(channel.id);
+                        }}
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        Membres
                       </Button>
+                      <Button variant="outline" size="sm">
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                      {!channel.is_system && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteChannel(channel.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
+
+                {channels.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Aucun canal créé
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -447,10 +531,49 @@ const CentralAdministration = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">Monitoring Avancé</p>
-                <p className="text-sm">Graphiques et métriques temps réel en cours de développement</p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-medium mb-3">Statistiques Réseau</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Pharmacies actives:</span>
+                      <span className="font-medium">{networkStats?.active_pharmacies || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Canaux actifs:</span>
+                      <span className="font-medium">{networkStats?.active_channels || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Messages aujourd'hui:</span>
+                      <span className="font-medium">{networkStats?.messages_today || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Utilisateurs en ligne:</span>
+                      <span className="font-medium">{networkStats?.online_users || 0}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border rounded-lg">
+                  <h4 className="font-medium mb-3">Invitations en attente</h4>
+                  {channelInvitations.filter(i => i.status === 'pending').length > 0 ? (
+                    <div className="space-y-2">
+                      {channelInvitations
+                        .filter(i => i.status === 'pending')
+                        .slice(0, 5)
+                        .map((invitation) => (
+                          <div key={invitation.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                            <span className="text-sm">
+                              Invitation canal #{invitation.channel_id?.slice(0, 8)}
+                            </span>
+                            <Badge variant="secondary">En attente</Badge>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Aucune invitation en attente</p>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -534,13 +657,53 @@ const CentralAdministration = () => {
               <Separator />
 
               <div className="flex justify-end gap-2">
-                <Button variant="outline">Réinitialiser</Button>
-                <Button>Sauvegarder</Button>
+                <Button variant="outline" onClick={() => refetch()}>Réinitialiser</Button>
+                <Button onClick={handleSaveSettings}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Sauvegarder
+                </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <CreateChannelDialog
+        open={createChannelDialog}
+        onOpenChange={setCreateChannelDialog}
+        onCreateChannel={handleCreateChannel}
+        loading={loading}
+      />
+
+      {selectedChannel && (
+        <ChannelMembersManagerDialog
+          open={!!membersManagerDialog}
+          onOpenChange={(open) => {
+            if (!open) {
+              setMembersManagerDialog(null);
+              setSelectedChannel(null);
+            }
+          }}
+          channelId={selectedChannel.id}
+          channelName={selectedChannel.name}
+          members={[]} // TODO: fetch channel members
+          availablePharmacies={pharmacies}
+          onAddMember={async (pharmacyId, role) => {
+            // TODO: implement add member
+            toast({ title: "Membre ajouté" });
+          }}
+          onRemoveMember={async (memberId) => {
+            // TODO: implement remove member
+            toast({ title: "Membre retiré" });
+          }}
+          onUpdateMemberRole={async (memberId, role) => {
+            // TODO: implement update role
+            toast({ title: "Rôle mis à jour" });
+          }}
+          loading={loading}
+        />
+      )}
     </div>
   );
 };
