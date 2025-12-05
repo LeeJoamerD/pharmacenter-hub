@@ -75,7 +75,9 @@ const EncaissementDashboard = () => {
     }
   };
 
-  const getPaymentMethodIcon = (method: string) => {
+  const getPaymentMethodIcon = (method: string | null | undefined) => {
+    if (!method) return <Receipt className="h-4 w-4 text-muted-foreground" />;
+    
     const lowerMethod = method.toLowerCase();
     if (lowerMethod.includes('espèce')) return <DollarSign className="h-4 w-4" />;
     if (lowerMethod.includes('carte')) return <CreditCard className="h-4 w-4" />;
@@ -84,10 +86,13 @@ const EncaissementDashboard = () => {
     return <Receipt className="h-4 w-4" />;
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | null | undefined) => {
+    if (!status) return <Badge variant="outline">-</Badge>;
+    
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
       Finalisée: 'default',
       Validée: 'default',
+      'En cours': 'secondary',
       'En attente': 'secondary',
       Annulée: 'destructive',
       Remboursée: 'outline',
@@ -96,6 +101,7 @@ const EncaissementDashboard = () => {
     const labels: Record<string, string> = {
       Finalisée: 'Terminé',
       Validée: 'Validé',
+      'En cours': 'En cours',
       'En attente': 'En attente',
       Annulée: 'Annulé',
       Remboursée: 'Remboursé',
