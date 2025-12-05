@@ -3,6 +3,8 @@
  * Inclut un code-barres pour faciliter l'encaissement ultérieur
  */
 import jsPDF from 'jspdf';
+// @ts-ignore - bwip-js types
+import bwipjs from 'bwip-js';
 
 interface SalesTicketData {
   vente: {
@@ -45,10 +47,23 @@ interface CashReceiptData {
 }
 
 /**
- * Génère un code-barres Code 128 simplifié (représentation textuelle)
+ * Génère un code-barres Code 128 en base64
  */
-function generateBarcodeText(text: string): string {
-  return `*${text}*`;
+async function generateBarcodeBase64(text: string): Promise<string> {
+  try {
+    const canvas = document.createElement('canvas');
+    await bwipjs.toCanvas(canvas, {
+      bcid: 'code128',
+      text: text,
+      scale: 3,
+      height: 10,
+      includetext: false,
+    });
+    return canvas.toDataURL('image/png');
+  } catch (error) {
+    console.error('Erreur génération code-barres:', error);
+    return '';
+  }
 }
 
 /**
@@ -163,20 +178,26 @@ export async function printSalesTicket(data: SalesTicketData): Promise<string> {
   doc.text(`${data.vente.montant_net.toLocaleString()} FCFA`, 75, y, { align: 'right' });
   y += 8;
 
-  // Code-barres (représentation textuelle)
+  // Code-barres
   doc.line(5, y, 75, y);
   y += 5;
   
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.text('Scanner ce code à la caisse:', 40, y, { align: 'center' });
-  y += 5;
+  y += 3;
 
-  // Simulation visuelle code-barres
-  doc.setFontSize(18);
-  doc.setFont('courier', 'bold');
-  doc.text(generateBarcodeText(data.vente.numero_vente), 40, y, { align: 'center' });
-  y += 6;
+  // Générer et ajouter le code-barres
+  try {
+    const barcodeBase64 = await generateBarcodeBase64(data.vente.numero_vente);
+    if (barcodeBase64) {
+      doc.addImage(barcodeBase64, 'PNG', 10, y, 60, 15);
+      y += 18;
+    }
+  } catch (error) {
+    console.error('Erreur ajout code-barres:', error);
+    y += 5;
+  }
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
