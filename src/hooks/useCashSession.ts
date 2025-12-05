@@ -10,28 +10,37 @@ export const useCashSession = () => {
   const { tenantId, currentUser } = useTenant();
 
   const { data: activeSession, isLoading, error, refetch } = useQuery({
-    queryKey: ['active-cash-session', tenantId, currentUser?.id],
+    queryKey: ['active-cash-session', tenantId, currentUser?.id, currentUser?.role],
     queryFn: async () => {
       if (!currentUser?.id) {
         console.log('❌ useCashSession: currentUser.id manquant');
         return null;
       }
 
+      const isAdminOrManager = ['Admin', 'Manager', 'Gérant'].includes(currentUser.role || '');
+
       console.log('🔍 Recherche session caisse:', {
         tenantId,
         currentUserId: currentUser.id,
-        query: `agent_id.eq.${currentUser.id},caissier_id.eq.${currentUser.id}`
+        role: currentUser.role,
+        isAdminOrManager
       });
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('sessions_caisse')
         .select('*')
         .eq('tenant_id', tenantId)
-        .or(`agent_id.eq.${currentUser.id},caissier_id.eq.${currentUser.id}`)
         .eq('statut', 'Ouverte')
         .order('date_ouverture', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+
+      // Admins/Managers peuvent utiliser n'importe quelle session ouverte
+      // Les autres rôles ne voient que leurs propres sessions
+      if (!isAdminOrManager) {
+        query = query.or(`agent_id.eq.${currentUser.id},caissier_id.eq.${currentUser.id}`);
+      }
+
+      const { data, error } = await query.maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         console.error('❌ Erreur récupération session caisse:', error);
