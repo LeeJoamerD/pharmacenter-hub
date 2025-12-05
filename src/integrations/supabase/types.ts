@@ -6344,6 +6344,74 @@ export type Database = {
           },
         ]
       }
+      network_activity_stats: {
+        Row: {
+          active_channels: number | null
+          active_users: number | null
+          avg_response_time_ms: number | null
+          created_at: string | null
+          error_count: number | null
+          files_shared: number | null
+          files_size_mb: number | null
+          id: string
+          inter_tenant_messages: number | null
+          messages_received: number | null
+          messages_sent: number | null
+          partner_messages: number | null
+          peak_concurrent_users: number | null
+          stat_date: string
+          stat_hour: number | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          active_channels?: number | null
+          active_users?: number | null
+          avg_response_time_ms?: number | null
+          created_at?: string | null
+          error_count?: number | null
+          files_shared?: number | null
+          files_size_mb?: number | null
+          id?: string
+          inter_tenant_messages?: number | null
+          messages_received?: number | null
+          messages_sent?: number | null
+          partner_messages?: number | null
+          peak_concurrent_users?: number | null
+          stat_date?: string
+          stat_hour?: number | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          active_channels?: number | null
+          active_users?: number | null
+          avg_response_time_ms?: number | null
+          created_at?: string | null
+          error_count?: number | null
+          files_shared?: number | null
+          files_size_mb?: number | null
+          id?: string
+          inter_tenant_messages?: number | null
+          messages_received?: number | null
+          messages_sent?: number | null
+          partner_messages?: number | null
+          peak_concurrent_users?: number | null
+          stat_date?: string
+          stat_hour?: number | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_activity_stats_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       network_admin_settings: {
         Row: {
           created_at: string
@@ -6384,6 +6452,130 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "network_admin_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_audit_logs: {
+        Row: {
+          action_category: string
+          action_type: string
+          created_at: string | null
+          details: Json | null
+          geo_location: Json | null
+          id: string
+          ip_address: unknown
+          is_reviewed: boolean | null
+          is_sensitive: boolean | null
+          partner_account_id: string | null
+          personnel_id: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          session_id: string | null
+          severity: string | null
+          source_tenant_id: string | null
+          target_id: string | null
+          target_name: string | null
+          target_tenant_id: string | null
+          target_type: string | null
+          tenant_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_category: string
+          action_type: string
+          created_at?: string | null
+          details?: Json | null
+          geo_location?: Json | null
+          id?: string
+          ip_address?: unknown
+          is_reviewed?: boolean | null
+          is_sensitive?: boolean | null
+          partner_account_id?: string | null
+          personnel_id?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          session_id?: string | null
+          severity?: string | null
+          source_tenant_id?: string | null
+          target_id?: string | null
+          target_name?: string | null
+          target_tenant_id?: string | null
+          target_type?: string | null
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_category?: string
+          action_type?: string
+          created_at?: string | null
+          details?: Json | null
+          geo_location?: Json | null
+          id?: string
+          ip_address?: unknown
+          is_reviewed?: boolean | null
+          is_sensitive?: boolean | null
+          partner_account_id?: string | null
+          personnel_id?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          session_id?: string | null
+          severity?: string | null
+          source_tenant_id?: string | null
+          target_id?: string | null
+          target_name?: string | null
+          target_tenant_id?: string | null
+          target_type?: string | null
+          tenant_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_audit_logs_partner_account_id_fkey"
+            columns: ["partner_account_id"]
+            isOneToOne: false
+            referencedRelation: "network_partner_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_audit_logs_personnel_id_fkey"
+            columns: ["personnel_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_audit_logs_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_audit_logs_source_tenant_id_fkey"
+            columns: ["source_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_audit_logs_target_tenant_id_fkey"
+            columns: ["target_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_audit_logs_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -6544,6 +6736,115 @@ export type Database = {
           },
         ]
       }
+      network_channel_invitations: {
+        Row: {
+          accepted_at: string | null
+          channel_id: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          invitee_email: string | null
+          invitee_partner_id: string | null
+          invitee_tenant_id: string | null
+          invitee_type: string
+          inviter_tenant_id: string
+          inviter_user_id: string | null
+          message: string | null
+          rejected_at: string | null
+          rejection_reason: string | null
+          reminder_sent_at: string | null
+          role_in_channel: string | null
+          status: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          channel_id: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          invitee_email?: string | null
+          invitee_partner_id?: string | null
+          invitee_tenant_id?: string | null
+          invitee_type: string
+          inviter_tenant_id: string
+          inviter_user_id?: string | null
+          message?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          reminder_sent_at?: string | null
+          role_in_channel?: string | null
+          status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          channel_id?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          invitee_email?: string | null
+          invitee_partner_id?: string | null
+          invitee_tenant_id?: string | null
+          invitee_type?: string
+          inviter_tenant_id?: string
+          inviter_user_id?: string | null
+          message?: string | null
+          rejected_at?: string | null
+          rejection_reason?: string | null
+          reminder_sent_at?: string | null
+          role_in_channel?: string | null
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_channel_invitations_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "network_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_channel_invitations_invitee_partner_id_fkey"
+            columns: ["invitee_partner_id"]
+            isOneToOne: false
+            referencedRelation: "network_partner_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_channel_invitations_invitee_tenant_id_fkey"
+            columns: ["invitee_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_channel_invitations_inviter_tenant_id_fkey"
+            columns: ["inviter_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_channel_invitations_inviter_user_id_fkey"
+            columns: ["inviter_user_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_channel_invitations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       network_channels: {
         Row: {
           created_at: string
@@ -6582,6 +6883,143 @@ export type Database = {
           {
             foreignKeyName: "network_channels_tenant_id_fkey"
             columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_chat_config: {
+        Row: {
+          can_override: boolean | null
+          category: string | null
+          config_key: string
+          config_type: string | null
+          config_value: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_encrypted: boolean | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          can_override?: boolean | null
+          category?: string | null
+          config_key: string
+          config_type?: string | null
+          config_value?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_encrypted?: boolean | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          can_override?: boolean | null
+          category?: string | null
+          config_key?: string
+          config_type?: string | null
+          config_value?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_encrypted?: boolean | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_chat_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_chat_permissions: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          granted_by: string | null
+          id: string
+          is_bidirectional: boolean | null
+          is_granted: boolean | null
+          notes: string | null
+          permission_type: string
+          revoked_at: string | null
+          revoked_by: string | null
+          source_tenant_id: string
+          target_partner_id: string | null
+          target_tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_bidirectional?: boolean | null
+          is_granted?: boolean | null
+          notes?: string | null
+          permission_type: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          source_tenant_id: string
+          target_partner_id?: string | null
+          target_tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_bidirectional?: boolean | null
+          is_granted?: boolean | null
+          notes?: string | null
+          permission_type?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          source_tenant_id?: string
+          target_partner_id?: string | null
+          target_tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_chat_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_chat_permissions_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_chat_permissions_source_tenant_id_fkey"
+            columns: ["source_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_chat_permissions_target_partner_id_fkey"
+            columns: ["target_partner_id"]
+            isOneToOne: false
+            referencedRelation: "network_partner_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_chat_permissions_target_tenant_id_fkey"
+            columns: ["target_tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
@@ -6708,6 +7146,93 @@ export type Database = {
           },
           {
             foreignKeyName: "network_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_partner_accounts: {
+        Row: {
+          activated_at: string | null
+          allowed_channels: string[] | null
+          avatar_url: string | null
+          can_create_channels: boolean | null
+          can_initiate_conversation: boolean | null
+          chat_enabled: boolean | null
+          created_at: string | null
+          display_name: string
+          email: string | null
+          id: string
+          invitation_sent_at: string | null
+          invited_by: string | null
+          last_active_at: string | null
+          max_daily_messages: number | null
+          metadata: Json | null
+          partner_id: string
+          partner_type: string
+          phone: string | null
+          status: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          allowed_channels?: string[] | null
+          avatar_url?: string | null
+          can_create_channels?: boolean | null
+          can_initiate_conversation?: boolean | null
+          chat_enabled?: boolean | null
+          created_at?: string | null
+          display_name: string
+          email?: string | null
+          id?: string
+          invitation_sent_at?: string | null
+          invited_by?: string | null
+          last_active_at?: string | null
+          max_daily_messages?: number | null
+          metadata?: Json | null
+          partner_id: string
+          partner_type: string
+          phone?: string | null
+          status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          allowed_channels?: string[] | null
+          avatar_url?: string | null
+          can_create_channels?: boolean | null
+          can_initiate_conversation?: boolean | null
+          chat_enabled?: boolean | null
+          created_at?: string | null
+          display_name?: string
+          email?: string | null
+          id?: string
+          invitation_sent_at?: string | null
+          invited_by?: string | null
+          last_active_at?: string | null
+          max_daily_messages?: number | null
+          metadata?: Json | null
+          partner_id?: string
+          partner_type?: string
+          phone?: string | null
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_partner_accounts_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_partner_accounts_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
