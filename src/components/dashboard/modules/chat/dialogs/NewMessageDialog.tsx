@@ -112,9 +112,9 @@ const NewMessageDialog = ({ open, onOpenChange }: NewMessageDialogProps) => {
           let { data: existingChannel } = await supabase
             .from('network_channels')
             .select('id')
-            .eq('channel_type', 'direct')
+            .eq('type', 'direct')
             .contains('metadata', { participants: [currentTenant?.id, pharmacyId] })
-            .single();
+            .single() as { data: { id: string } | null };
 
           if (!existingChannel) {
             // Créer un nouveau canal direct
@@ -122,7 +122,7 @@ const NewMessageDialog = ({ open, onOpenChange }: NewMessageDialogProps) => {
               .from('network_channels')
               .insert({
                 name: `Direct: ${(currentTenant as any)?.name} - ${pharmacies.find(p => p.id === pharmacyId)?.name}`,
-                channel_type: 'direct',
+                type: 'direct',
                 is_public: false,
                 tenant_id: currentTenant?.id,
                 metadata: { participants: [currentTenant?.id, pharmacyId] }

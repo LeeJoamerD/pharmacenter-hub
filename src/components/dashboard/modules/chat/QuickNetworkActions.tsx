@@ -54,9 +54,9 @@ const QuickNetworkActions = () => {
       const { data: channels } = await supabase
         .from('network_channels')
         .select('id, name, description, created_at')
-        .eq('channel_type', 'collaboration')
+        .eq('type', 'collaboration')
         .order('created_at', { ascending: false })
-        .limit(5);
+        .limit(5) as { data: any[] | null };
 
       // Get participant counts
       const collabs: Collaboration[] = await Promise.all(

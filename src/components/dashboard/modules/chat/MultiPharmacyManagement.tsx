@@ -140,9 +140,9 @@ const MultiPharmacyManagement = () => {
       const { data } = await supabase
         .from('network_channels')
         .select('id, name, description, created_at')
-        .eq('channel_type', 'collaboration')
+        .eq('type', 'collaboration')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(10) as { data: any[] | null };
 
       const collabs = await Promise.all(
         (data || []).map(async (ch) => {

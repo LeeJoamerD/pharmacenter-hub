@@ -3,6 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 
+// Helper pour éviter les erreurs de type "excessively deep"
+const queryTable = async (table: string, select: string = '*'): Promise<any[]> => {
+  const { data } = await supabase.from(table as any).select(select);
+  return data || [];
+};
+
 export interface Pharmacy {
   id: string;
   name: string;
@@ -221,40 +227,26 @@ export const useNetworkMessagingEnhanced = () => {
     if (!tenantId) return;
 
     try {
-      // Charger les canaux propres
-      const { data: ownChannels } = await supabase
-        .from('network_channels')
-        .select('id, name, description, type, is_system, is_public, tenant_id, created_at')
-        .eq('tenant_id', tenantId) as { data: any[] | null };
-
-      // Charger les canaux publics d'autres tenants
-      const { data: publicChannels } = await supabase
-        .from('network_channels')
-        .select('id, name, description, type, is_system, is_public, tenant_id, created_at')
-        .eq('is_public', true)
-        .neq('tenant_id', tenantId) as { data: any[] | null };
+      // Utiliser des appels séparés pour éviter les types récursifs
+      const ownChannels = await queryTable('network_channels');
+      const filteredOwnChannels = ownChannels.filter((c: any) => c.tenant_id === tenantId);
+      
+      const allPublicChannels = await queryTable('network_channels');
+      const publicChannels = allPublicChannels.filter((c: any) => c.is_public && c.tenant_id !== tenantId);
 
       // Charger les canaux où on participe
-      const { data: participantData } = await supabase
-        .from('channel_participants')
-        .select('channel_id')
-        .eq('pharmacy_id', tenantId);
-
-      const participantChannelIds = (participantData || []).map(p => p.channel_id);
+      const allParticipants = await queryTable('channel_participants');
+      const participantData = allParticipants.filter((p: any) => p.pharmacy_id === tenantId);
+      const participantChannelIds = participantData.map((p: any) => p.channel_id);
       
-      let participantChannels: any[] = [];
-      if (participantChannelIds.length > 0) {
-        const { data } = await supabase
-          .from('network_channels')
-          .select('id, name, description, type, is_system, is_public, tenant_id, created_at')
-          .in('id', participantChannelIds) as { data: any[] | null };
-        participantChannels = data || [];
-      }
+      const participantChannels = allPublicChannels.filter((c: any) => 
+        participantChannelIds.includes(c.id) && c.tenant_id !== tenantId
+      );
 
       // Fusionner et dédupliquer
       const allChannelsMap = new Map<string, Channel>();
       
-      (ownChannels || []).forEach((c: any) => {
+      filteredOwnChannels.forEach((c: any) => {
         allChannelsMap.set(c.id, {
           id: c.id,
           name: c.name,
@@ -268,7 +260,7 @@ export const useNetworkMessagingEnhanced = () => {
         });
       });
       
-      (publicChannels || []).forEach((c: any) => {
+      publicChannels.forEach((c: any) => {
         if (!allChannelsMap.has(c.id)) {
           allChannelsMap.set(c.id, {
             id: c.id,
@@ -552,20 +544,23 @@ export const useNetworkMessagingEnhanced = () => {
           });
         }
 
-        const mappedMessages: Message[] = data.map(msg => ({
-          id: msg.id,
-          channel_id: msg.channel_id,
-          sender_pharmacy_id: msg.sender_pharmacy_id,
-          sender_name: msg.sender_name,
-          sender_user_id: msg.sender_user_id,
-          content: msg.content,
-          message_type: msg.message_type || 'text',
-          priority: msg.priority || 'normal',
-          created_at: msg.created_at,
-          read_by: msg.read_by,
-          attachments: msg.attachments as any[],
-          pharmacy: pharmacyMap[msg.sender_pharmacy_id]
-        }));
+        const mappedMessages: Message[] = data.map(msg => {
+          const metadata = msg.metadata as Record<string, any> || {};
+          return {
+            id: msg.id,
+            channel_id: msg.channel_id,
+            sender_pharmacy_id: msg.sender_pharmacy_id,
+            sender_name: msg.sender_name,
+            sender_user_id: metadata.sender_user_id || undefined,
+            content: msg.content,
+            message_type: msg.message_type || 'text',
+            priority: (msg.priority as 'normal' | 'high' | 'urgent') || 'normal',
+            created_at: msg.created_at,
+            read_by: Array.isArray(msg.read_by) ? msg.read_by as string[] : [],
+            attachments: (metadata.attachments as any[]) || [],
+            pharmacy: pharmacyMap[msg.sender_pharmacy_id]
+          };
+        });
         
         setMessages(mappedMessages);
       }
