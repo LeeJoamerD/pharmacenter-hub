@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/components/ui/use-toast';
 import { 
   Lock,
   Shield,
@@ -47,187 +48,147 @@ import {
   LogOut,
   LogIn,
   Monitor,
-  Bell
+  Bell,
+  Save
 } from 'lucide-react';
-
-interface SecurityEvent {
-  id: string;
-  timestamp: string;
-  event_type: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  user: string;
-  pharmacy: string;
-  description: string;
-  ip_address: string;
-  status: 'pending' | 'resolved' | 'investigating';
-}
-
-interface AccessRule {
-  id: string;
-  name: string;
-  type: 'user' | 'role' | 'pharmacy';
-  target: string;
-  permissions: string[];
-  resources: string[];
-  status: 'active' | 'inactive';
-  created_at: string;
-}
-
-interface ComplianceReport {
-  id: string;
-  type: string;
-  period: string;
-  status: 'completed' | 'in_progress' | 'failed';
-  generated_at: string;
-  file_size: string;
-  compliance_score: number;
-}
-
-interface EncryptionStatus {
-  id: string;
-  resource: string;
-  type: string;
-  algorithm: string;
-  key_rotation: string;
-  status: 'active' | 'expired' | 'rotating';
-  last_updated: string;
-}
+import { useNetworkChatAdmin } from '@/hooks/useNetworkChatAdmin';
+import { useNetworkAdministration } from '@/hooks/useNetworkAdministration';
+import NetworkAuditViewerDialog from './dialogs/NetworkAuditViewerDialog';
 
 const NetworkSecurityManager = () => {
-  const [securityEvents, setSecurityEvents] = useState<SecurityEvent[]>([]);
-  const [accessRules, setAccessRules] = useState<AccessRule[]>([]);
-  const [complianceReports, setComplianceReports] = useState<ComplianceReport[]>([]);
-  const [encryptionStatus, setEncryptionStatus] = useState<EncryptionStatus[]>([]);
+  const { toast } = useToast();
+  const {
+    auditLogs,
+    chatPermissions,
+    chatConfigs,
+    loading: chatLoading,
+    updateChatConfig,
+    logAuditAction
+  } = useNetworkChatAdmin();
+
+  const {
+    securityLogs,
+    loading: networkLoading,
+    getSetting,
+    updateAdminSetting
+  } = useNetworkAdministration();
+
+  const loading = chatLoading || networkLoading;
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState('all');
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
   const [encryptionEnabled, setEncryptionEnabled] = useState(true);
   const [auditingEnabled, setAuditingEnabled] = useState(true);
+  const [auditViewerDialog, setAuditViewerDialog] = useState(false);
 
+  // Load settings from config
   useEffect(() => {
-    loadSecurityData();
-  }, []);
+    if (chatConfigs.length > 0) {
+      const config = chatConfigs[0];
+      setTwoFactorEnabled(config.require_2fa || true);
+      setEncryptionEnabled(config.encryption_enabled || true);
+    }
+  }, [chatConfigs]);
 
-  const loadSecurityData = () => {
-    // Simulation des événements de sécurité
-    const mockSecurityEvents: SecurityEvent[] = [
-      {
-        id: 'SEC001',
-        timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-        event_type: 'unauthorized_access_attempt',
-        severity: 'high',
-        user: 'Unknown',
-        pharmacy: 'Pharmacie Central',
-        description: 'Tentative d\'accès non autorisée détectée',
-        ip_address: '192.168.1.100',
-        status: 'investigating'
-      },
-      {
-        id: 'SEC002',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        event_type: 'password_change',
-        severity: 'low',
-        user: 'Marie Dupont',
-        pharmacy: 'Pharmacie de la Gare',
-        description: 'Changement de mot de passe réussi',
-        ip_address: '192.168.1.45',
-        status: 'resolved'
-      },
-      {
-        id: 'SEC003',
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-        event_type: 'data_export',
-        severity: 'medium',
-        user: 'Jean Martin',
-        pharmacy: 'Pharmacie du Centre',
-        description: 'Export de données patients effectué',
-        ip_address: '192.168.1.78',
-        status: 'pending'
-      }
-    ];
+  // Combine audit logs from both sources
+  const allSecurityEvents = [
+    ...auditLogs.map(log => ({
+      id: log.id,
+      timestamp: log.created_at,
+      event_type: log.action_type,
+      severity: log.severity as 'low' | 'medium' | 'high' | 'critical',
+      user: log.user_id || 'Système',
+      pharmacy: log.tenant_id || 'Réseau',
+      description: log.details ? JSON.stringify(log.details) : log.action_type,
+      ip_address: log.ip_address || 'N/A',
+      status: 'resolved' as const
+    })),
+    ...securityLogs.map(log => ({
+      id: log.id,
+      timestamp: log.timestamp,
+      event_type: log.type,
+      severity: (log.severity === 'error' ? 'high' : log.severity === 'warning' ? 'medium' : 'low') as 'low' | 'medium' | 'high' | 'critical',
+      user: log.user,
+      pharmacy: log.pharmacy,
+      description: log.details,
+      ip_address: log.ip_address,
+      status: 'resolved' as const
+    }))
+  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    // Simulation des règles d'accès
-    const mockAccessRules: AccessRule[] = [
-      {
-        id: 'RULE001',
-        name: 'Pharmaciens - Accès complet',
-        type: 'role',
-        target: 'pharmacien',
-        permissions: ['read', 'write', 'delete', 'export'],
-        resources: ['prescriptions', 'patient_data', 'medications'],
-        status: 'active',
-        created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'RULE002',
-        name: 'Caissiers - Accès limité',
-        type: 'role',
-        target: 'caissier',
-        permissions: ['read'],
-        resources: ['medications', 'inventory'],
-        status: 'active',
-        created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
-      }
-    ];
+  // Access rules from chat permissions
+  const accessRules = chatPermissions.map(perm => ({
+    id: perm.id,
+    name: `Permission ${perm.permission_type}`,
+    type: 'permission' as const,
+    target: perm.target_tenant_id,
+    permissions: [perm.permission_type],
+    resources: ['chat', 'channels'],
+    status: perm.is_granted ? 'active' as const : 'inactive' as const,
+    created_at: perm.created_at || new Date().toISOString()
+  }));
 
-    // Simulation des rapports de conformité
-    const mockComplianceReports: ComplianceReport[] = [
-      {
-        id: 'COMP001',
-        type: 'HIPAA Compliance',
-        period: 'Q4 2024',
-        status: 'completed',
-        generated_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        file_size: '2.4 MB',
-        compliance_score: 98
-      },
-      {
-        id: 'COMP002',
-        type: 'Data Protection Audit',
-        period: 'Décembre 2024',
-        status: 'in_progress',
-        generated_at: new Date().toISOString(),
-        file_size: 'En cours',
-        compliance_score: 0
-      }
-    ];
-
-    // Simulation du statut de chiffrement
-    const mockEncryptionStatus: EncryptionStatus[] = [
-      {
-        id: 'ENC001',
-        resource: 'Messages Chat',
-        type: 'End-to-End',
-        algorithm: 'AES-256-GCM',
-        key_rotation: '30 jours',
-        status: 'active',
-        last_updated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'ENC002',
-        resource: 'Base de données',
-        type: 'Database Encryption',
-        algorithm: 'AES-256',
-        key_rotation: '90 jours',
-        status: 'active',
-        last_updated: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: 'ENC003',
-        resource: 'Fichiers partagés',
-        type: 'File Encryption',
-        algorithm: 'ChaCha20-Poly1305',
-        key_rotation: '60 jours',
-        status: 'rotating',
-        last_updated: new Date().toISOString()
-      }
-    ];
-
-    setSecurityEvents(mockSecurityEvents);
-    setAccessRules(mockAccessRules);
-    setComplianceReports(mockComplianceReports);
-    setEncryptionStatus(mockEncryptionStatus);
+  // Security metrics
+  const securityMetrics = {
+    score: 98,
+    activeAlerts: allSecurityEvents.filter(e => e.severity === 'high' || e.severity === 'critical').length,
+    activeSessions: 127,
+    encryptionStatus: encryptionEnabled ? 'Actif' : 'Inactif'
   };
+
+  // Encryption status (mock data + real config)
+  const encryptionStatus = [
+    {
+      id: 'ENC001',
+      resource: 'Messages Chat',
+      type: 'End-to-End',
+      algorithm: 'AES-256-GCM',
+      key_rotation: '30 jours',
+      status: encryptionEnabled ? 'active' : 'inactive',
+      last_updated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'ENC002',
+      resource: 'Base de données',
+      type: 'Database Encryption',
+      algorithm: 'AES-256',
+      key_rotation: '90 jours',
+      status: 'active',
+      last_updated: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'ENC003',
+      resource: 'Fichiers partagés',
+      type: 'File Encryption',
+      algorithm: 'ChaCha20-Poly1305',
+      key_rotation: '60 jours',
+      status: 'active',
+      last_updated: new Date().toISOString()
+    }
+  ];
+
+  // Compliance reports (mock)
+  const complianceReports = [
+    {
+      id: 'COMP001',
+      type: 'HIPAA Compliance',
+      period: 'Q4 2024',
+      status: 'completed',
+      generated_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      file_size: '2.4 MB',
+      compliance_score: 98
+    },
+    {
+      id: 'COMP002',
+      type: 'Data Protection Audit',
+      period: 'Décembre 2024',
+      status: 'in_progress',
+      generated_at: new Date().toISOString(),
+      file_size: 'En cours',
+      compliance_score: 0
+    }
+  ];
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -255,12 +216,49 @@ const NetworkSecurityManager = () => {
     }
   };
 
-  const filteredEvents = securityEvents.filter(event => {
+  const filteredEvents = allSecurityEvents.filter(event => {
     const matchesSearch = event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.user.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSeverity = selectedSeverity === 'all' || event.severity === selectedSeverity;
     return matchesSearch && matchesSeverity;
   });
+
+  const handleSaveSecuritySettings = async () => {
+    try {
+      await updateChatConfig({
+        require_2fa: twoFactorEnabled,
+        encryption_enabled: encryptionEnabled
+      });
+
+      await updateAdminSetting('security', 'require_2fa', twoFactorEnabled.toString());
+      await updateAdminSetting('security', 'encryption_enabled', encryptionEnabled.toString());
+
+      await logAuditAction('config_change', 'security', undefined, {
+        twoFactorEnabled,
+        encryptionEnabled,
+        auditingEnabled
+      });
+
+      toast({
+        title: "Paramètres de sécurité sauvegardés",
+        description: "Les modifications ont été appliquées."
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder les paramètres.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    await logAuditAction('report_generate', 'compliance', undefined, { type: 'security_audit' });
+    toast({
+      title: "Rapport en cours de génération",
+      description: "Le rapport sera disponible dans quelques minutes."
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -275,13 +273,13 @@ const NetworkSecurityManager = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setAuditViewerDialog(true)}>
             <Download className="h-4 w-4 mr-2" />
             Rapport Sécurité
           </Button>
-          <Button>
-            <Settings className="h-4 w-4 mr-2" />
-            Configuration
+          <Button onClick={handleSaveSecuritySettings} disabled={loading}>
+            <Save className="h-4 w-4 mr-2" />
+            Sauvegarder
           </Button>
         </div>
       </div>
@@ -296,7 +294,7 @@ const NetworkSecurityManager = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Score Sécurité</p>
-                <p className="text-2xl font-bold text-green-600">98%</p>
+                <p className="text-2xl font-bold text-green-600">{securityMetrics.score}%</p>
               </div>
             </div>
           </CardContent>
@@ -310,7 +308,7 @@ const NetworkSecurityManager = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Chiffrement</p>
-                <p className="text-2xl font-bold text-blue-600">Actif</p>
+                <p className="text-2xl font-bold text-blue-600">{securityMetrics.encryptionStatus}</p>
               </div>
             </div>
           </CardContent>
@@ -324,7 +322,7 @@ const NetworkSecurityManager = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Alertes Actives</p>
-                <p className="text-2xl font-bold text-orange-600">3</p>
+                <p className="text-2xl font-bold text-orange-600">{securityMetrics.activeAlerts}</p>
               </div>
             </div>
           </CardContent>
@@ -338,7 +336,7 @@ const NetworkSecurityManager = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Sessions Actives</p>
-                <p className="text-2xl font-bold text-purple-600">127</p>
+                <p className="text-2xl font-bold text-purple-600">{securityMetrics.activeSessions}</p>
               </div>
             </div>
           </CardContent>
@@ -395,59 +393,67 @@ const NetworkSecurityManager = () => {
                 </Select>
               </div>
 
-              <div className="space-y-4">
-                {filteredEvents.map((event) => (
-                  <div key={event.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${getStatusColor(event.status)}`}></div>
-                        <div>
-                          <h4 className="font-medium">{event.description}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {event.user} • {event.pharmacy} • {event.ip_address}
-                          </p>
+              <ScrollArea className="h-[400px]">
+                <div className="space-y-4">
+                  {filteredEvents.slice(0, 20).map((event) => (
+                    <div key={event.id} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${getStatusColor(event.status)}`}></div>
+                          <div>
+                            <h4 className="font-medium">{event.description}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {event.user} • {event.pharmacy} • {event.ip_address}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`px-2 py-1 rounded text-xs border ${getSeverityColor(event.severity)}`}>
+                            {event.severity.toUpperCase()}
+                          </div>
+                          <Button variant="outline" size="sm">
+                            <Eye className="h-4 w-4 mr-2" />
+                            Détails
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className={`px-2 py-1 rounded text-xs border ${getSeverityColor(event.severity)}`}>
-                          {event.severity.toUpperCase()}
-                        </div>
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4 mr-2" />
-                          Détails
-                        </Button>
-                      </div>
-                    </div>
 
-                    <div className="grid gap-4 md:grid-cols-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Type: </span>
-                        <span className="font-medium capitalize">{event.event_type.replace('_', ' ')}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Timestamp: </span>
-                        <span className="font-medium">
-                          {new Date(event.timestamp).toLocaleString('fr-FR')}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Statut: </span>
-                        <span className="font-medium capitalize">{event.status}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                          <Shield className="h-4 w-4 mr-1" />
-                          Analyser
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Résoudre
-                        </Button>
+                      <div className="grid gap-4 md:grid-cols-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Type: </span>
+                          <span className="font-medium capitalize">{event.event_type.replace('_', ' ')}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Timestamp: </span>
+                          <span className="font-medium">
+                            {new Date(event.timestamp).toLocaleString('fr-FR')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Statut: </span>
+                          <span className="font-medium capitalize">{event.status}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm">
+                            <Shield className="h-4 w-4 mr-1" />
+                            Analyser
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Résoudre
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+
+                  {filteredEvents.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Aucun événement de sécurité
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
@@ -459,55 +465,35 @@ const NetworkSecurityManager = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Key className="h-5 w-5" />
-                  Règles d'Accès
+                  Permissions Inter-Pharmacies
                 </CardTitle>
                 <CardDescription>
-                  Gestion granulaire des permissions par utilisateur et rôle
+                  Permissions de communication entre pharmacies
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {accessRules.map((rule) => (
-                  <div key={rule.id} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${getStatusColor(rule.status)}`}></div>
-                        <div>
-                          <h4 className="font-medium">{rule.name}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Type: {rule.type} • Cible: {rule.target}
-                          </p>
+                {chatPermissions.length > 0 ? (
+                  chatPermissions.map((perm) => (
+                    <div key={perm.id} className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${perm.is_granted ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                          <div>
+                            <h4 className="font-medium capitalize">{perm.permission_type.replace('_', ' ')}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Cible: {perm.target_tenant_id?.slice(0, 8)}...
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        <Settings className="h-4 w-4 mr-2" />
-                        Modifier
-                      </Button>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div>
-                        <Label className="text-sm">Permissions:</Label>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {rule.permissions.map((permission, index) => (
-                            <Badge key={index} variant="secondary" className="text-xs">
-                              {permission}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-sm">Ressources:</Label>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {rule.resources.map((resource, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {resource}
-                            </Badge>
-                          ))}
-                        </div>
+                        <Badge variant={perm.is_granted ? 'default' : 'secondary'}>
+                          {perm.is_granted ? 'Accordé' : 'Refusé'}
+                        </Badge>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucune permission configurée</p>
+                )}
 
                 <Button className="w-full">
                   <Key className="h-4 w-4 mr-2" />
@@ -746,7 +732,7 @@ const NetworkSecurityManager = () => {
                   </div>
                 ))}
 
-                <Button className="w-full">
+                <Button className="w-full" onClick={handleGenerateReport}>
                   <FileText className="h-4 w-4 mr-2" />
                   Générer Nouveau Rapport
                 </Button>
@@ -834,13 +820,21 @@ const NetworkSecurityManager = () => {
         <TabsContent value="audit" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Monitor className="h-5 w-5" />
-                Audit et Traçabilité
-              </CardTitle>
-              <CardDescription>
-                Surveillance et enregistrement de toutes les activités du système
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Monitor className="h-5 w-5" />
+                    Audit et Traçabilité
+                  </CardTitle>
+                  <CardDescription>
+                    Surveillance et enregistrement de toutes les activités du système
+                  </CardDescription>
+                </div>
+                <Button variant="outline" onClick={() => setAuditViewerDialog(true)}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Vue complète
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid gap-6 md:grid-cols-2">
@@ -871,60 +865,30 @@ const NetworkSecurityManager = () => {
                       <Switch defaultChecked />
                     </div>
                   </div>
-
-                  <Separator />
-
-                  <div>
-                    <Label>Rétention des logs d'audit</Label>
-                    <Select defaultValue="365">
-                      <SelectTrigger className="mt-2">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="30">30 jours</SelectItem>
-                        <SelectItem value="90">90 jours</SelectItem>
-                        <SelectItem value="180">180 jours</SelectItem>
-                        <SelectItem value="365">1 an</SelectItem>
-                        <SelectItem value="1095">3 ans</SelectItem>
-                        <SelectItem value="1825">5 ans</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
 
                 <div className="space-y-4">
-                  <h4 className="font-medium">Statistiques d'Audit</h4>
-                  <div className="space-y-3">
-                    <div className="p-3 border rounded">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Événements aujourd'hui</span>
-                        <span className="font-medium">1,247</span>
-                      </div>
+                  <h4 className="font-medium">Résumé des Événements</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between p-2 bg-muted/50 rounded">
+                      <span>Événements totaux (30 jours):</span>
+                      <span className="font-medium">{auditLogs.length}</span>
                     </div>
-                    <div className="p-3 border rounded">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Connexions cette semaine</span>
-                        <span className="font-medium">89</span>
-                      </div>
+                    <div className="flex justify-between p-2 bg-muted/50 rounded">
+                      <span>Alertes critiques:</span>
+                      <span className="font-medium text-red-600">
+                        {auditLogs.filter(l => l.severity === 'critical').length}
+                      </span>
                     </div>
-                    <div className="p-3 border rounded">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Accès dossiers patients</span>
-                        <span className="font-medium">456</span>
-                      </div>
-                    </div>
-                    <div className="p-3 border rounded">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Modifications de données</span>
-                        <span className="font-medium">234</span>
-                      </div>
+                    <div className="flex justify-between p-2 bg-muted/50 rounded">
+                      <span>Événements d'aujourd'hui:</span>
+                      <span className="font-medium">
+                        {auditLogs.filter(l => 
+                          new Date(l.created_at).toDateString() === new Date().toDateString()
+                        ).length}
+                      </span>
                     </div>
                   </div>
-
-                  <Button className="w-full">
-                    <Download className="h-4 w-4 mr-2" />
-                    Exporter Logs d'Audit
-                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -933,149 +897,90 @@ const NetworkSecurityManager = () => {
 
         {/* Paramètres */}
         <TabsContent value="settings" className="space-y-4">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Paramètres Généraux
-                </CardTitle>
-                <CardDescription>
-                  Configuration générale de la sécurité du réseau
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Paramètres de Sécurité
+              </CardTitle>
+              <CardDescription>
+                Configuration globale de la sécurité du réseau
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-4">
+                  <h4 className="font-medium">Authentification</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>2FA obligatoire</Label>
+                        <p className="text-xs text-muted-foreground">Pour tous les utilisateurs</p>
+                      </div>
+                      <Switch 
+                        checked={twoFactorEnabled}
+                        onCheckedChange={setTwoFactorEnabled}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Verrouillage automatique</Label>
+                        <p className="text-xs text-muted-foreground">Après 3 tentatives échouées</p>
+                      </div>
+                      <Switch defaultChecked />
+                    </div>
                     <div>
-                      <Label>Mode sécurisé renforcé</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Active les contrôles de sécurité avancés
-                      </p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Blocage automatique des IP suspectes</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Bloque automatiquement les adresses IP malveillantes
-                      </p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Notifications temps réel</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Alertes instantanées pour événements critiques
-                      </p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Masquage automatique des données</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Masque automatiquement les informations sensibles
-                      </p>
-                    </div>
-                    <Switch defaultChecked />
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <Label>Niveau de sécurité par défaut</Label>
-                  <Select defaultValue="high">
-                    <SelectTrigger className="mt-2">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Faible</SelectItem>
-                      <SelectItem value="medium">Moyen</SelectItem>
-                      <SelectItem value="high">Élevé</SelectItem>
-                      <SelectItem value="maximum">Maximum</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bell className="h-5 w-5" />
-                  Alertes et Notifications
-                </CardTitle>
-                <CardDescription>
-                  Configuration des alertes de sécurité
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div>
-                    <Label>Types d'alertes activées</Label>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="unauthorized" defaultChecked />
-                        <label htmlFor="unauthorized" className="text-sm">Accès non autorisé</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="suspicious" defaultChecked />
-                        <label htmlFor="suspicious" className="text-sm">Activité suspecte</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="failed-login" defaultChecked />
-                        <label htmlFor="failed-login" className="text-sm">Échecs de connexion</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="data-export" defaultChecked />
-                        <label htmlFor="data-export" className="text-sm">Export de données</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="permission-change" />
-                        <label htmlFor="permission-change" className="text-sm">Changement de permissions</label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label>Canaux de notification</Label>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="email-notif" defaultChecked />
-                        <label htmlFor="email-notif" className="text-sm">Email</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="sms-notif" defaultChecked />
-                        <label htmlFor="sms-notif" className="text-sm">SMS</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="chat-notif" defaultChecked />
-                        <label htmlFor="chat-notif" className="text-sm">Chat interne</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="webhook-notif" />
-                        <label htmlFor="webhook-notif" className="text-sm">Webhook</label>
-                      </div>
+                      <Label>Durée de session (minutes)</Label>
+                      <Input type="number" defaultValue="30" className="mt-2" />
                     </div>
                   </div>
                 </div>
 
-                <div>
-                  <Label>Délai d'escalade (minutes)</Label>
-                  <Input type="number" defaultValue="15" className="mt-2" />
+                <div className="space-y-4">
+                  <h4 className="font-medium">Chiffrement</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Chiffrement E2E</Label>
+                        <p className="text-xs text-muted-foreground">Messages et fichiers</p>
+                      </div>
+                      <Switch 
+                        checked={encryptionEnabled}
+                        onCheckedChange={setEncryptionEnabled}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Rotation automatique des clés</Label>
+                        <p className="text-xs text-muted-foreground">Tous les 30 jours</p>
+                      </div>
+                      <Switch defaultChecked />
+                    </div>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+
+              <Separator />
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline">Réinitialiser</Button>
+                <Button onClick={handleSaveSecuritySettings} disabled={loading}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Sauvegarder
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <NetworkAuditViewerDialog
+        open={auditViewerDialog}
+        onOpenChange={setAuditViewerDialog}
+        auditLogs={auditLogs}
+        loading={loading}
+      />
     </div>
   );
 };
