@@ -1,73 +1,151 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Activity, MessageCircle, Users, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Activity, MessageCircle, Users, AlertCircle, CheckCircle, Clock, RefreshCw, Hash } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
+
+interface ActivityItem {
+  id: string;
+  type: 'message' | 'collaboration' | 'alert' | 'completion' | 'channel' | 'user';
+  user: string;
+  pharmacy: string;
+  action: string;
+  target: string;
+  time: string;
+  priority?: string;
+}
 
 const GlobalActivity = () => {
-  const activities = [
-    {
-      id: 1,
-      type: 'message',
-      user: 'Dr. Martin',
-      pharmacy: 'Pharmacie du Centre',
-      action: 'a envoyé un message dans',
-      target: '#fournisseurs-communs',
-      time: '2 min',
-      icon: MessageCircle,
-      color: 'text-blue-600'
-    },
-    {
-      id: 2,
-      type: 'collaboration',
-      user: 'Équipe Lyon',
-      pharmacy: 'Pharmacie de la Gare',
-      action: 'a rejoint la collaboration',
-      target: 'Achats Groupés Q1',
-      time: '5 min',
-      icon: Users,
-      color: 'text-green-600'
-    },
-    {
-      id: 3,
-      type: 'alert',
-      user: 'Système',
-      pharmacy: 'Réseau National',
-      action: 'alerte diffusée',
-      target: 'Rappel Médicament X',
-      time: '12 min',
-      icon: AlertCircle,
-      color: 'text-red-600'
-    },
-    {
-      id: 4,
-      type: 'completion',
-      user: 'Pharmacie Rurale',
-      pharmacy: 'Provence',
-      action: 'a terminé la formation',
-      target: 'Pharmacovigilance 2024',
-      time: '25 min',
-      icon: CheckCircle,
-      color: 'text-green-600'
-    },
-    {
-      id: 5,
-      type: 'message',
-      user: 'Dr. Dubois',
-      pharmacy: 'Pharmacie Hospitalière',
-      action: 'a partagé un document dans',
-      target: '#urgences-sanitaires',
-      time: '1h',
-      icon: MessageCircle,
-      color: 'text-blue-600'
-    }
-  ];
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const getActivityBadge = (type: string) => {
+  useEffect(() => {
+    loadActivities();
+    
+    // Souscrire aux nouveaux messages en temps réel
+    const channel = supabase
+      .channel('global-activity')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'network_messages' },
+        (payload) => {
+          const newMsg = payload.new as any;
+          const newActivity: ActivityItem = {
+            id: newMsg.id,
+            type: newMsg.priority === 'urgent' ? 'alert' : 'message',
+            user: newMsg.sender_name,
+            pharmacy: newMsg.sender_name,
+            action: 'a envoyé un message dans',
+            target: `#${newMsg.channel_id?.slice(0, 8) || 'canal'}`,
+            time: newMsg.created_at,
+            priority: newMsg.priority
+          };
+          setActivities(prev => [newActivity, ...prev.slice(0, 9)]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const loadActivities = async () => {
+    setLoading(true);
+    try {
+      // Charger les messages récents
+      const { data: messages } = await supabase
+        .from('network_messages')
+        .select(`
+          id,
+          sender_name,
+          sender_pharmacy_id,
+          content,
+          message_type,
+          priority,
+          created_at,
+          channel:network_channels(name)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      // Charger les logs d'audit
+      const { data: auditLogs } = await supabase
+        .from('network_audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      const messageActivities: ActivityItem[] = (messages || []).map(msg => ({
+        id: msg.id,
+        type: msg.priority === 'urgent' ? 'alert' : 'message',
+        user: msg.sender_name,
+        pharmacy: msg.sender_name,
+        action: msg.message_type === 'file' ? 'a partagé un document dans' : 'a envoyé un message dans',
+        target: `#${(msg.channel as any)?.name || 'canal'}`,
+        time: msg.created_at,
+        priority: msg.priority
+      }));
+
+      const auditActivities: ActivityItem[] = (auditLogs || []).map(log => ({
+        id: log.id,
+        type: log.action_type?.includes('channel') ? 'channel' : 
+              log.action_type?.includes('collaboration') ? 'collaboration' : 'user',
+        user: log.actor_name || 'Système',
+        pharmacy: log.actor_pharmacy_name || 'Réseau',
+        action: log.action_description || log.action_type,
+        target: log.target_name || '',
+        time: log.created_at
+      }));
+
+      // Fusionner et trier par date
+      const allActivities = [...messageActivities, ...auditActivities]
+        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+        .slice(0, 10);
+
+      setActivities(allActivities);
+    } catch (error) {
+      console.error('Erreur chargement activités:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getActivityIcon = (type: string, priority?: string) => {
+    if (priority === 'urgent') return AlertCircle;
+    switch (type) {
+      case 'message': return MessageCircle;
+      case 'collaboration': return Users;
+      case 'alert': return AlertCircle;
+      case 'completion': return CheckCircle;
+      case 'channel': return Hash;
+      default: return Activity;
+    }
+  };
+
+  const getActivityColor = (type: string, priority?: string) => {
+    if (priority === 'urgent') return 'text-red-600';
+    switch (type) {
+      case 'message': return 'text-blue-600';
+      case 'collaboration': return 'text-green-600';
+      case 'alert': return 'text-red-600';
+      case 'completion': return 'text-green-600';
+      case 'channel': return 'text-purple-600';
+      default: return 'text-gray-600';
+    }
+  };
+
+  const getActivityBadge = (type: string, priority?: string) => {
+    if (priority === 'urgent') return { text: 'Urgent', variant: 'destructive' as const };
     switch (type) {
       case 'message': return { text: 'Message', variant: 'default' as const };
       case 'collaboration': return { text: 'Collaboration', variant: 'secondary' as const };
       case 'alert': return { text: 'Alerte', variant: 'destructive' as const };
-      case 'completion': return { text: 'Formation', variant: 'secondary' as const };
+      case 'completion': return { text: 'Terminé', variant: 'secondary' as const };
+      case 'channel': return { text: 'Canal', variant: 'outline' as const };
       default: return { text: 'Activité', variant: 'outline' as const };
     }
   };
@@ -75,51 +153,82 @@ const GlobalActivity = () => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <Activity className="h-5 w-5 text-primary" />
-          <CardTitle>Activité Globale Réseau</CardTitle>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-primary" />
+            <CardTitle>Activité Globale Réseau</CardTitle>
+          </div>
+          <Button variant="ghost" size="sm" onClick={loadActivities} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
         </div>
         <CardDescription>
           Activités récentes dans le réseau multi-officines
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {activities.map((activity) => (
-            <div key={activity.id} className="flex items-start gap-3 pb-3 border-b border-border/50 last:border-0 last:pb-0">
-              <div className="flex-shrink-0 mt-1">
-                <activity.icon className={`h-4 w-4 ${activity.color}`} />
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-sm">{activity.user}</span>
-                  <Badge variant={getActivityBadge(activity.type).variant} className="text-xs">
-                    {getActivityBadge(activity.type).text}
-                  </Badge>
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="animate-pulse flex items-start gap-3 pb-3 border-b">
+                <div className="h-4 w-4 bg-muted rounded mt-1" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-muted rounded w-1/2" />
+                  <div className="h-3 bg-muted rounded w-2/3" />
                 </div>
-                
-                <p className="text-sm text-muted-foreground">
-                  {activity.action} <span className="font-medium">{activity.target}</span>
-                </p>
-                
-                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                  <span>{activity.pharmacy}</span>
-                  <span>•</span>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {activity.time}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {activities.map((activity) => {
+              const IconComponent = getActivityIcon(activity.type, activity.priority);
+              const badgeConfig = getActivityBadge(activity.type, activity.priority);
+              
+              return (
+                <div key={activity.id} className="flex items-start gap-3 pb-3 border-b border-border/50 last:border-0 last:pb-0">
+                  <div className="flex-shrink-0 mt-1">
+                    <IconComponent className={`h-4 w-4 ${getActivityColor(activity.type, activity.priority)}`} />
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-medium text-sm">{activity.user}</span>
+                      <Badge variant={badgeConfig.variant} className="text-xs">
+                        {badgeConfig.text}
+                      </Badge>
+                    </div>
+                    
+                    <p className="text-sm text-muted-foreground">
+                      {activity.action} <span className="font-medium">{activity.target}</span>
+                    </p>
+                    
+                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                      <span>{activity.pharmacy}</span>
+                      <span>•</span>
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDistanceToNow(new Date(activity.time), { addSuffix: true, locale: fr })}
+                      </div>
+                    </div>
                   </div>
                 </div>
+              );
+            })}
+
+            {activities.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Aucune activité récente</p>
               </div>
-            </div>
-          ))}
-        </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-4 text-center">
-          <button className="text-sm text-primary hover:underline">
+          <Button variant="link" size="sm" className="text-primary">
             Voir toute l'activité réseau
-          </button>
+          </Button>
         </div>
       </CardContent>
     </Card>
