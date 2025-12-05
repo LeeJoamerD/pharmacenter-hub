@@ -73,7 +73,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   <FormLabel>
                     Fonction <span className="text-destructive">*</span>
                   </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner une fonction" />
@@ -299,7 +299,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   <FormLabel>
                     Situation familiale <span className="text-destructive">*</span>
                   </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner la situation" />
@@ -346,7 +346,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   <FormLabel>
                     Statut contractuel <span className="text-destructive">*</span>
                   </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionner le statut" />
