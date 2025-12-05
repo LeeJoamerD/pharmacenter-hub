@@ -78,6 +78,7 @@ const NetworkAdvancedAdministration = () => {
     chatConfigs,
     loading: chatLoading,
     createPartnerAccount,
+    createChatPermission,
     updateChatPermission,
     logAuditAction,
     getAvailablePartners
@@ -97,7 +98,10 @@ const NetworkAdvancedAdministration = () => {
   // Fetch available partners when opening dialog
   const handleOpenPartnerDialog = async () => {
     const partners = await getAvailablePartners();
-    setAvailablePartners(partners);
+    setAvailablePartners([
+      ...partners.fournisseurs.map((f: any) => ({ ...f, type: 'fournisseur' })),
+      ...partners.laboratoires.map((l: any) => ({ ...l, type: 'laboratoire' }))
+    ]);
     setPartnerInviteDialog(true);
   };
 
@@ -110,15 +114,16 @@ const NetworkAdvancedAdministration = () => {
       email: data.email,
       phone: data.phone,
       chat_enabled: data.chatEnabled,
-      can_initiate_conversation: data.canInitiateConversation,
-      allowed_channels: data.allowedChannels
+      can_initiate_conversation: data.canInitiateConversation
     });
 
     await logAuditAction(
       'partner_invite',
       'partner',
+      'partner_account',
       data.partnerId,
-      { display_name: data.displayName, type: data.partnerType }
+      data.displayName,
+      { type: data.partnerType }
     );
   };
 
@@ -128,11 +133,27 @@ const NetworkAdvancedAdministration = () => {
     permissionType: 'chat' | 'channel_invite' | 'file_share' | 'video_call';
     isGranted: boolean;
   }) => {
-    await updateChatPermission(data.targetTenantId, data.permissionType, data.isGranted);
+    // Find existing permission or create new one
+    const existingPerm = chatPermissions.find(p => 
+      p.target_tenant_id === data.targetTenantId && p.permission_type === data.permissionType
+    );
+    
+    if (existingPerm) {
+      await updateChatPermission(existingPerm.id, { is_granted: data.isGranted });
+    } else {
+      await createChatPermission({
+        target_tenant_id: data.targetTenantId,
+        permission_type: data.permissionType,
+        is_granted: data.isGranted
+      });
+    }
+    
     await logAuditAction(
       data.isGranted ? 'permission_grant' : 'permission_revoke',
       'permission',
+      'chat_permission',
       data.targetTenantId,
+      data.permissionType,
       { permission_type: data.permissionType }
     );
   };

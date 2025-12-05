@@ -85,9 +85,12 @@ const NetworkSecurityManager = () => {
   // Load settings from config
   useEffect(() => {
     if (chatConfigs.length > 0) {
-      const config = chatConfigs[0];
-      setTwoFactorEnabled(config.require_2fa || true);
-      setEncryptionEnabled(config.encryption_enabled || true);
+      const getConfig = (key: string, defaultVal: string) => {
+        const cfg = chatConfigs.find(c => c.key === key);
+        return cfg?.value || defaultVal;
+      };
+      setTwoFactorEnabled(getConfig('require_2fa', 'true') === 'true');
+      setEncryptionEnabled(getConfig('encryption_enabled', 'true') === 'true');
     }
   }, [chatConfigs]);
 
@@ -225,15 +228,13 @@ const NetworkSecurityManager = () => {
 
   const handleSaveSecuritySettings = async () => {
     try {
-      await updateChatConfig({
-        require_2fa: twoFactorEnabled,
-        encryption_enabled: encryptionEnabled
-      });
+      await updateChatConfig('require_2fa', String(twoFactorEnabled), 'security');
+      await updateChatConfig('encryption_enabled', String(encryptionEnabled), 'security');
 
       await updateAdminSetting('security', 'require_2fa', twoFactorEnabled.toString());
       await updateAdminSetting('security', 'encryption_enabled', encryptionEnabled.toString());
 
-      await logAuditAction('config_change', 'security', undefined, {
+      await logAuditAction('config_change', 'security', 'config', undefined, 'security_settings', {
         twoFactorEnabled,
         encryptionEnabled,
         auditingEnabled
@@ -253,7 +254,7 @@ const NetworkSecurityManager = () => {
   };
 
   const handleGenerateReport = async () => {
-    await logAuditAction('report_generate', 'compliance', undefined, { type: 'security_audit' });
+    await logAuditAction('report_generate', 'compliance', 'report', undefined, 'security_audit', { type: 'security_audit' });
     toast({
       title: "Rapport en cours de génération",
       description: "Le rapport sera disponible dans quelques minutes."

@@ -29,6 +29,7 @@ export interface NetworkChannel {
   type: string;
   is_system: boolean;
   is_private: boolean;
+  is_public?: boolean;
   category?: string;
   member_count: number;
   message_count: number;
@@ -46,6 +47,7 @@ export interface PartnerAccount {
   phone?: string;
   chat_enabled: boolean;
   can_initiate_conversation: boolean;
+  allowed_channels?: string[];
   status: string;
   last_active_at?: string;
   created_at: string;
@@ -54,9 +56,9 @@ export interface PartnerAccount {
 export interface ChatPermission {
   id: string;
   source_tenant_id: string;
-  target_tenant_id?: string;
+  target_tenant_id: string;
   target_partner_id?: string;
-  permission_type: string;
+  permission_type: 'chat' | 'channel_invite' | 'file_share' | 'video_call';
   is_granted: boolean;
   is_bidirectional: boolean;
   expires_at?: string;
@@ -87,13 +89,14 @@ export interface NetworkAuditLog {
   id: string;
   tenant_id?: string;
   personnel_id?: string;
+  user_id?: string;
   action_type: string;
   action_category: string;
   target_type?: string;
   target_name?: string;
   details: any;
   ip_address?: string;
-  severity: string;
+  severity: 'info' | 'warning' | 'error' | 'critical';
   is_reviewed: boolean;
   created_at: string;
   personnel?: { noms: string; prenoms: string };
@@ -216,6 +219,7 @@ export const useNetworkChatAdmin = () => {
         type: channel.type || 'team',
         is_system: channel.is_system || false,
         is_private: false,
+        is_public: !channel.is_system,
         category: '',
         member_count: channel.participants?.[0]?.count || 0,
         message_count: channel.messages?.[0]?.count || 0,
@@ -252,6 +256,7 @@ export const useNetworkChatAdmin = () => {
         phone: item.phone,
         chat_enabled: item.chat_enabled,
         can_initiate_conversation: item.can_initiate_conversation,
+        allowed_channels: item.allowed_channels || [],
         status: item.status,
         last_active_at: item.last_active_at,
         created_at: item.created_at
@@ -279,9 +284,9 @@ export const useNetworkChatAdmin = () => {
       const transformed: ChatPermission[] = (data || []).map((item: any) => ({
         id: item.id,
         source_tenant_id: item.source_tenant_id,
-        target_tenant_id: item.target_tenant_id,
+        target_tenant_id: item.target_tenant_id || item.source_tenant_id,
         target_partner_id: item.target_partner_id,
-        permission_type: item.permission_type,
+        permission_type: item.permission_type as 'chat' | 'channel_invite' | 'file_share' | 'video_call',
         is_granted: item.is_granted,
         is_bidirectional: item.is_bidirectional,
         expires_at: item.expires_at,
@@ -346,13 +351,14 @@ export const useNetworkChatAdmin = () => {
         id: item.id,
         tenant_id: item.tenant_id,
         personnel_id: item.personnel_id,
+        user_id: item.personnel_id,
         action_type: item.action_type,
         action_category: item.action_category,
         target_type: item.target_type,
         target_name: item.target_name,
         details: item.details,
         ip_address: item.ip_address ? String(item.ip_address) : undefined,
-        severity: item.severity,
+        severity: (item.severity || 'info') as 'info' | 'warning' | 'error' | 'critical',
         is_reviewed: item.is_reviewed,
         created_at: item.created_at
       }));
@@ -765,6 +771,41 @@ export const useNetworkChatAdmin = () => {
     }
   };
 
+  // Update chat permission
+  const updateChatPermission = async (id: string, updates: Partial<ChatPermission>) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('network_chat_permissions')
+        .update({
+          is_granted: updates.is_granted,
+          is_bidirectional: updates.is_bidirectional,
+          permission_type: updates.permission_type,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await logAuditAction('permission_updated', 'authorization', 'chat_permission', id);
+      
+      toast({
+        title: "Permission mise à jour",
+        description: "La permission de chat a été mise à jour.",
+      });
+
+      await loadChatPermissions();
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de mettre à jour la permission.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Revoke chat permission
   const revokeChatPermission = async (id: string) => {
     try {
@@ -985,7 +1026,9 @@ export const useNetworkChatAdmin = () => {
     channelInvitations,
     auditLogs,
     chatConfig,
+    chatConfigs: chatConfig,
     stats,
+    networkStats: stats,
 
     // Operations - Partners
     createPartnerAccount,
@@ -999,6 +1042,7 @@ export const useNetworkChatAdmin = () => {
 
     // Operations - Permissions
     createChatPermission,
+    updateChatPermission,
     revokeChatPermission,
 
     // Operations - Invitations
@@ -1011,6 +1055,7 @@ export const useNetworkChatAdmin = () => {
 
     // Helpers
     refreshData,
+    refetch: refreshData,
     getAvailablePartners,
     logAuditAction
   };
