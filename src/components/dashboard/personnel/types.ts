@@ -1,5 +1,6 @@
 import * as z from 'zod';
 
+// Schéma assoupli pour accepter les données incomplètes des anciens employés
 export const employeeSchema = z.object({
   noms: z.string().min(1, "Le nom est requis")
     .min(2, "Le nom doit contenir au moins 2 caractères")
@@ -10,34 +11,55 @@ export const employeeSchema = z.object({
   adresse: z.string()
     .transform(val => val === "" ? undefined : val)
     .optional(),
-  telephone_appel: z.string().min(1, "Le téléphone est requis")
-    .min(8, "Le numéro de téléphone doit contenir au moins 8 caractères")
-    .regex(/^[\d+\-\s()\.]+$/, "Format de téléphone invalide"),
+  // Téléphone : optionnel pour les anciens employés, validation souple si fourni
+  telephone_appel: z.string()
+    .optional()
+    .or(z.literal(''))
+    .transform(val => val === "" ? undefined : val),
   telephone_whatsapp: z.string()
     .transform(val => val === "" ? undefined : val)
     .optional(),
   email: z.string().min(1, "L'email est requis")
     .email("Email invalide"),
-  niu_cni: z.string().min(1, "Le NIU/CNI est requis"),
+  // NIU/CNI : optionnel pour les anciens employés
+  niu_cni: z.string()
+    .optional()
+    .or(z.literal(''))
+    .transform(val => val === "" ? undefined : val),
   profession: z.string()
     .transform(val => val === "" ? undefined : val)
     .optional(),
-  date_naissance: z.string().min(1, "La date de naissance est requise"),
-  date_recrutement: z.string().min(1, "La date de recrutement est requise"),
+  // Dates : optionnelles pour les anciens employés
+  date_naissance: z.string()
+    .optional()
+    .or(z.literal(''))
+    .transform(val => val === "" ? undefined : val),
+  date_recrutement: z.string()
+    .optional()
+    .or(z.literal(''))
+    .transform(val => val === "" ? undefined : val),
   photo_identite: z.string()
     .transform(val => val === "" ? undefined : val)
     .optional(),
   salaire_base: z.number()
     .min(0, "Le salaire doit être positif")
     .optional(),
-  situation_familiale: z.string().min(1, "La situation familiale est requise"),
+  // Situation familiale : optionnelle pour les anciens employés
+  situation_familiale: z.string()
+    .optional()
+    .or(z.literal(''))
+    .transform(val => val === "" ? undefined : val),
   nombre_enfants: z.number()
     .min(0, "Le nombre d'enfants doit être positif")
     .default(0),
   numero_cnss: z.string()
     .transform(val => val === "" ? undefined : val)
     .optional(),
-  statut_contractuel: z.string().min(1, "Le statut contractuel est requis")
+  // Statut contractuel : optionnel pour les anciens employés
+  statut_contractuel: z.string()
+    .optional()
+    .or(z.literal(''))
+    .transform(val => val === "" ? undefined : val)
 });
 
 export type EmployeeFormData = z.infer<typeof employeeSchema>;
@@ -50,19 +72,19 @@ export interface Employee {
   prenoms: string;
   fonction: string;
   adresse?: string;
-  telephone_appel: string;
+  telephone_appel?: string;
   telephone_whatsapp?: string;
   email: string;
-  niu_cni: string;
+  niu_cni?: string;
   profession?: string;
-  date_naissance: string;
-  date_recrutement: string;
+  date_naissance?: string;
+  date_recrutement?: string;
   photo_identite?: string;
   salaire_base?: number;
-  situation_familiale: string;
+  situation_familiale?: string;
   nombre_enfants: number;
   numero_cnss?: string;
-  statut_contractuel: string;
+  statut_contractuel?: string;
   role?: string;
   is_active?: boolean;
   reference_agent?: string;
