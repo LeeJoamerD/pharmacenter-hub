@@ -50,27 +50,31 @@ const QuickNetworkActions = () => {
   const loadCollaborations = async () => {
     setLoading(true);
     try {
-      // Charger les canaux de type collaboration
+      // Load collaboration channels
       const { data: channels } = await supabase
         .from('network_channels')
-        .select(`
-          id,
-          name,
-          description,
-          created_at,
-          channel_participants(count)
-        `)
+        .select('id, name, description, created_at')
         .eq('channel_type', 'collaboration')
         .order('created_at', { ascending: false })
         .limit(5);
 
-      const collabs: Collaboration[] = (channels || []).map(ch => ({
-        id: ch.id,
-        title: ch.name,
-        participants: (ch.channel_participants as any)?.[0]?.count || 0,
-        status: 'active',
-        lastActivity: ch.created_at
-      }));
+      // Get participant counts
+      const collabs: Collaboration[] = await Promise.all(
+        (channels || []).map(async (ch) => {
+          const { count } = await supabase
+            .from('channel_participants')
+            .select('*', { count: 'exact', head: true })
+            .eq('channel_id', ch.id);
+
+          return {
+            id: ch.id,
+            title: ch.name,
+            participants: count || 0,
+            status: 'active' as const,
+            lastActivity: ch.created_at
+          };
+        })
+      );
 
       setCollaborations(collabs);
     } catch (error) {
@@ -116,7 +120,6 @@ const QuickNetworkActions = () => {
       color: "bg-purple-500/10 text-purple-600 hover:bg-purple-500/20",
       badge: null,
       onClick: () => {
-        // TODO: Intégrer un système de planification de réunions
         alert('Fonctionnalité de planification de réunions à venir');
       }
     },
@@ -128,7 +131,6 @@ const QuickNetworkActions = () => {
       color: "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20",
       badge: null,
       onClick: () => {
-        // TODO: Intégrer le module de rédaction de documents
         alert('Fonctionnalité de rédaction de circulaires à venir');
       }
     },

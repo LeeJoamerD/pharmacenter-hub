@@ -11,52 +11,31 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { 
-  Folder,
-  Users,
-  Settings,
-  Plus,
-  Edit,
-  Trash2,
-  Archive,
-  Bell,
-  Shield,
-  Search,
-  Filter,
-  Eye,
-  EyeOff,
-  Hash,
-  Building,
-  Truck,
-  UserCheck,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Globe,
-  Lock,
-  Zap,
-  Database,
-  Network,
-  MessageSquare,
-  Tag,
-  Key,
-  Save,
-  X
+  Folder, Users, Settings, Plus, Edit, Trash2, Archive, Bell, Shield, Search,
+  Filter, Hash, Building, Truck, Database, Network, MessageSquare, Tag, Save, X,
+  CheckCircle, AlertTriangle, Globe, Lock, Zap, RefreshCw
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/contexts/TenantContext';
+import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 interface Channel {
   id: string;
   name: string;
   description: string;
-  type: 'team' | 'function' | 'supplier' | 'system';
-  category: string;
-  members: number;
-  messages: number;
+  type?: string;
+  channel_type?: string;
+  members_count: number;
+  messages_count: number;
   status: 'active' | 'archived' | 'paused';
-  permissions: string[];
+  is_public: boolean;
+  is_system: boolean;
   keywords: string[];
   autoArchive: boolean;
   lastActivity: string;
   created_at: string;
+  tenant_id: string;
 }
 
 interface Permission {
@@ -75,143 +54,220 @@ interface KeywordAlert {
   active: boolean;
 }
 
+interface PartnerAccount {
+  id: string;
+  partner_type: string;
+  partner_name: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 const NetworkChannelManagement = () => {
+  const { currentTenant } = useTenant();
+  const tenantId = currentTenant?.id;
+
   const [channels, setChannels] = useState<Channel[]>([]);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [permissions] = useState<Permission[]>([
+    { id: '1', name: 'Lecture', description: 'Voir les messages', level: 'read' },
+    { id: '2', name: 'Écriture', description: 'Envoyer des messages', level: 'write' },
+    { id: '3', name: 'Administration', description: 'Gérer le canal', level: 'admin' }
+  ]);
   const [keywordAlerts, setKeywordAlerts] = useState<KeywordAlert[]>([]);
-  const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
+  const [partnerAccounts, setPartnerAccounts] = useState<PartnerAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
 
+  // Form state for new/edit channel
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    channel_type: 'team',
+    is_public: false,
+    keywords: ''
+  });
+
   useEffect(() => {
-    loadChannelData();
-  }, []);
+    if (tenantId) {
+      loadAllData();
+    }
+  }, [tenantId]);
 
-  const loadChannelData = () => {
-    // Simulation des données de canaux
-    const mockChannels: Channel[] = [
-      {
-        id: '1',
-        name: 'Direction Générale',
-        description: 'Canal de communication pour la direction',
-        type: 'team',
-        category: 'Direction',
-        members: 8,
-        messages: 247,
-        status: 'active',
-        permissions: ['read', 'write', 'admin'],
-        keywords: ['urgent', 'direction', 'décision'],
-        autoArchive: true,
-        lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: '2',
-        name: 'Équipe Pharmaciens',
-        description: 'Discussions professionnelles entre pharmaciens',
-        type: 'team',
-        category: 'Pharmaciens',
-        members: 12,
-        messages: 1523,
-        status: 'active',
-        permissions: ['read', 'write'],
-        keywords: ['ordonnance', 'interaction', 'conseil'],
-        autoArchive: false,
-        lastActivity: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-        created_at: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: '3',
-        name: 'Support Client',
-        description: 'Canal dédié au support clientèle',
-        type: 'function',
-        category: 'Support',
-        members: 6,
-        messages: 892,
-        status: 'active',
-        permissions: ['read', 'write'],
-        keywords: ['problème', 'réclamation', 'aide'],
-        autoArchive: true,
-        lastActivity: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-        created_at: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: '4',
-        name: 'Fournisseur Sanofi',
-        description: 'Communication avec le laboratoire Sanofi',
-        type: 'supplier',
-        category: 'Laboratoires',
-        members: 4,
-        messages: 156,
-        status: 'active',
-        permissions: ['read'],
-        keywords: ['commande', 'livraison', 'sanofi'],
-        autoArchive: true,
-        lastActivity: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        created_at: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: '5',
-        name: 'Alertes Système',
-        description: 'Notifications automatiques du système',
-        type: 'system',
-        category: 'Technique',
-        members: 0,
-        messages: 45,
-        status: 'active',
-        permissions: ['read'],
-        keywords: ['alerte', 'système', 'erreur'],
-        autoArchive: false,
-        lastActivity: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-        created_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
-      }
-    ];
-
-    const mockPermissions: Permission[] = [
-      { id: '1', name: 'Lecture', description: 'Voir les messages', level: 'read' },
-      { id: '2', name: 'Écriture', description: 'Envoyer des messages', level: 'write' },
-      { id: '3', name: 'Administration', description: 'Gérer le canal', level: 'admin' }
-    ];
-
-    const mockKeywordAlerts: KeywordAlert[] = [
-      {
-        id: '1',
-        keyword: 'urgent',
-        channels: ['1', '2', '3'],
-        alertType: 'immediate',
-        recipients: ['admin@pharmacie.fr'],
-        active: true
-      },
-      {
-        id: '2',
-        keyword: 'rappel',
-        channels: ['2', '3'],
-        alertType: 'daily',
-        recipients: ['direction@pharmacie.fr'],
-        active: true
-      },
-      {
-        id: '3',
-        keyword: 'rupture',
-        channels: ['1', '5'],
-        alertType: 'immediate',
-        recipients: ['stock@pharmacie.fr'],
-        active: false
-      }
-    ];
-
-    setChannels(mockChannels);
-    setPermissions(mockPermissions);
-    setKeywordAlerts(mockKeywordAlerts);
+  const loadAllData = async () => {
+    setLoading(true);
+    await Promise.all([
+      loadChannels(),
+      loadKeywordAlerts(),
+      loadPartnerAccounts()
+    ]);
+    setLoading(false);
   };
 
-  const getChannelIcon = (type: string) => {
+  const loadChannels = async () => {
+    try {
+      const { data } = await supabase
+        .from('network_channels')
+        .select('id, name, description, type, is_public, is_system, tenant_id, created_at')
+        .order('created_at', { ascending: false }) as { data: any[] | null };
+
+      const enrichedChannels: Channel[] = (data || []).map((ch: any) => ({
+        id: ch.id,
+        name: ch.name,
+        description: ch.description || '',
+        type: ch.type,
+        channel_type: ch.type,
+        members_count: 0,
+        messages_count: 0,
+        status: 'active' as const,
+        is_public: ch.is_public || false,
+        is_system: ch.is_system || false,
+        keywords: [],
+        autoArchive: false,
+        lastActivity: ch.created_at,
+        created_at: ch.created_at,
+        tenant_id: ch.tenant_id
+      }));
+
+      setChannels(enrichedChannels);
+    } catch (error) {
+      console.error('Erreur chargement canaux:', error);
+    }
+  };
+
+  const loadKeywordAlerts = async () => {
+    // Keyword alerts not yet implemented in DB
+    setKeywordAlerts([]);
+  };
+
+  const loadPartnerAccounts = async () => {
+    try {
+      const { data } = await supabase
+        .from('network_partner_accounts')
+        .select('id, partner_type, display_name, is_active, created_at')
+        .order('created_at', { ascending: false }) as { data: any[] | null };
+
+      const mapped: PartnerAccount[] = (data || []).map((p: any) => ({
+        id: p.id,
+        partner_type: p.partner_type,
+        partner_name: p.display_name || '',
+        is_active: p.is_active,
+        created_at: p.created_at
+      }));
+
+      setPartnerAccounts(mapped);
+    } catch (error) {
+      console.error('Erreur chargement partenaires:', error);
+    }
+  };
+
+  const handleCreateChannel = async () => {
+    if (!formData.name.trim()) {
+      toast.error('Le nom du canal est requis');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('network_channels')
+        .insert({
+          name: formData.name,
+          description: formData.description,
+          channel_type: formData.channel_type,
+          is_public: formData.is_public,
+          tenant_id: tenantId,
+          is_system: false
+        });
+
+      if (error) throw error;
+
+      toast.success('Canal créé avec succès');
+      setShowCreateChannel(false);
+      resetForm();
+      await loadChannels();
+    } catch (error) {
+      console.error('Erreur création canal:', error);
+      toast.error('Erreur lors de la création du canal');
+    }
+  };
+
+  const handleUpdateChannel = async () => {
+    if (!editingChannel || !formData.name.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('network_channels')
+        .update({
+          name: formData.name,
+          description: formData.description,
+          is_public: formData.is_public
+        })
+        .eq('id', editingChannel.id);
+
+      if (error) throw error;
+
+      toast.success('Canal mis à jour');
+      setEditingChannel(null);
+      resetForm();
+      await loadChannels();
+    } catch (error) {
+      console.error('Erreur mise à jour canal:', error);
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
+
+  const handleDeleteChannel = async (channelId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce canal ?')) return;
+
+    try {
+      // Delete participants first
+      await supabase.from('channel_participants').delete().eq('channel_id', channelId);
+      // Delete messages
+      await supabase.from('network_messages').delete().eq('channel_id', channelId);
+      // Delete channel
+      const { error } = await supabase.from('network_channels').delete().eq('id', channelId);
+
+      if (error) throw error;
+
+      toast.success('Canal supprimé');
+      await loadChannels();
+    } catch (error) {
+      console.error('Erreur suppression canal:', error);
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      channel_type: 'team',
+      is_public: false,
+      keywords: ''
+    });
+  };
+
+  const openEditDialog = (channel: Channel) => {
+    setFormData({
+      name: channel.name,
+      description: channel.description,
+      channel_type: channel.channel_type || 'team',
+      is_public: channel.is_public,
+      keywords: channel.keywords.join(', ')
+    });
+    setEditingChannel(channel);
+  };
+
+  const getChannelIcon = (type?: string) => {
     switch (type) {
       case 'team': return Users;
       case 'function': return Settings;
       case 'supplier': return Building;
       case 'system': return Database;
+      case 'collaboration': return Network;
+      case 'alert': return AlertTriangle;
       default: return MessageSquare;
     }
   };
@@ -228,67 +284,9 @@ const NetworkChannelManagement = () => {
   const filteredChannels = channels.filter(channel => {
     const matchesSearch = channel.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          channel.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterType === 'all' || channel.type === filterType;
+    const matchesFilter = filterType === 'all' || channel.channel_type === filterType;
     return matchesSearch && matchesFilter;
   });
-
-  const CreateChannelForm = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Plus className="h-5 w-5" />
-          Créer un nouveau canal
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <Label>Nom du canal</Label>
-            <Input placeholder="Ex: Support Technique" className="mt-2" />
-          </div>
-          <div>
-            <Label>Type de canal</Label>
-            <Select>
-              <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Sélectionner un type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="team">Équipe</SelectItem>
-                <SelectItem value="function">Fonction</SelectItem>
-                <SelectItem value="supplier">Fournisseur</SelectItem>
-                <SelectItem value="system">Système</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        
-        <div>
-          <Label>Description</Label>
-          <Textarea placeholder="Description du canal..." className="mt-2" rows={3} />
-        </div>
-
-        <div>
-          <Label>Catégorie</Label>
-          <Input placeholder="Ex: Direction, Support, Commandes..." className="mt-2" />
-        </div>
-
-        <div>
-          <Label>Mots-clés surveillés</Label>
-          <Input placeholder="urgent, problème, commande... (séparés par des virgules)" className="mt-2" />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <Label>Archivage automatique</Label>
-          <Switch />
-        </div>
-
-        <div className="flex gap-2 pt-4">
-          <Button>Créer le canal</Button>
-          <Button variant="outline" onClick={() => setShowCreateChannel(false)}>Annuler</Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
 
   return (
     <div className="space-y-6">
@@ -302,17 +300,21 @@ const NetworkChannelManagement = () => {
             Configuration et administration des canaux de communication spécialisés
           </p>
         </div>
-        <Button onClick={() => setShowCreateChannel(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouveau Canal
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={loadAllData} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+          <Button onClick={() => setShowCreateChannel(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouveau Canal
+          </Button>
+        </div>
       </div>
-
-      {showCreateChannel && <CreateChannelForm />}
 
       <Tabs defaultValue="channels" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="channels">Canaux</TabsTrigger>
+          <TabsTrigger value="channels">Canaux ({channels.length})</TabsTrigger>
           <TabsTrigger value="permissions">Permissions</TabsTrigger>
           <TabsTrigger value="keywords">Mots-clés</TabsTrigger>
           <TabsTrigger value="external">Flux Externes</TabsTrigger>
@@ -346,6 +348,8 @@ const NetworkChannelManagement = () => {
                       <SelectItem value="team">Équipe</SelectItem>
                       <SelectItem value="function">Fonction</SelectItem>
                       <SelectItem value="supplier">Fournisseur</SelectItem>
+                      <SelectItem value="collaboration">Collaboration</SelectItem>
+                      <SelectItem value="alert">Alertes</SelectItem>
                       <SelectItem value="system">Système</SelectItem>
                     </SelectContent>
                   </Select>
@@ -353,67 +357,89 @@ const NetworkChannelManagement = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {filteredChannels.map((channel) => {
-                  const IconComponent = getChannelIcon(channel.type);
-                  return (
-                    <div key={channel.id} className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <IconComponent className="h-5 w-5 text-primary" />
-                          <div>
-                            <h4 className="font-medium">{channel.name}</h4>
-                            <p className="text-sm text-muted-foreground">{channel.description}</p>
+              {loading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="animate-pulse p-4 border rounded-lg">
+                      <div className="h-5 bg-muted rounded w-1/3 mb-2" />
+                      <div className="h-4 bg-muted rounded w-1/2" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredChannels.map((channel) => {
+                    const IconComponent = getChannelIcon(channel.channel_type);
+                    return (
+                      <div key={channel.id} className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <IconComponent className="h-5 w-5 text-primary" />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium">{channel.name}</h4>
+                                {channel.is_system && (
+                                  <Badge variant="outline" className="text-xs">Système</Badge>
+                                )}
+                                {channel.is_public && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <Globe className="h-3 w-3 mr-1" />Public
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground">{channel.description}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${getStatusColor(channel.status)}`} />
+                            <Badge variant="outline">{channel.channel_type || 'team'}</Badge>
+                            {!channel.is_system && (
+                              <>
+                                <Button variant="outline" size="sm" onClick={() => openEditDialog(channel)}>
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => handleDeleteChannel(channel.id)}>
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${getStatusColor(channel.status)}`}></div>
-                          <Badge variant="outline">{channel.category}</Badge>
-                          <Button variant="outline" size="sm" onClick={() => setSelectedChannel(channel)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Modifier
-                          </Button>
-                        </div>
-                      </div>
 
-                      <div className="grid gap-4 md:grid-cols-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Membres: </span>
-                          <span className="font-medium">{channel.members}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Messages: </span>
-                          <span className="font-medium">{channel.messages}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Dernière activité: </span>
-                          <span className="font-medium">
-                            {new Date(channel.lastActivity).toLocaleString('fr-FR')}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Archive className="h-4 w-4" />
-                          <span className="text-sm">
-                            Auto-archivage: {channel.autoArchive ? 'Activé' : 'Désactivé'}
-                          </span>
+                        <div className="grid gap-4 md:grid-cols-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Membres: </span>
+                            <span className="font-medium">{channel.members_count}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Messages: </span>
+                            <span className="font-medium">{channel.messages_count}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Dernière activité: </span>
+                            <span className="font-medium">
+                              {new Date(channel.lastActivity).toLocaleString('fr-FR')}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Archive className="h-4 w-4" />
+                            <span className="text-sm">
+                              Auto-archivage: {channel.autoArchive ? 'Activé' : 'Désactivé'}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                    );
+                  })}
 
-                      <div className="mt-3">
-                        <Label className="text-sm">Mots-clés surveillés:</Label>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {channel.keywords.map((keyword, index) => (
-                            <Badge key={index} variant="secondary">
-                              <Tag className="h-3 w-3 mr-1" />
-                              {keyword}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
+                  {filteredChannels.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Hash className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>Aucun canal trouvé</p>
                     </div>
-                  );
-                })}
-              </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -451,16 +477,15 @@ const NetworkChannelManagement = () => {
                 <div>
                   <h4 className="font-medium mb-4">Attribution des Permissions par Canal</h4>
                   <div className="space-y-3">
-                    {channels.slice(0, 3).map((channel) => (
+                    {channels.slice(0, 5).map((channel) => (
                       <div key={channel.id} className="flex items-center justify-between p-3 border rounded">
                         <div className="flex items-center gap-3">
                           <Hash className="h-4 w-4" />
                           <span className="font-medium">{channel.name}</span>
                         </div>
                         <div className="flex gap-2">
-                          {channel.permissions.map((perm, index) => (
-                            <Badge key={index} variant="outline">{perm}</Badge>
-                          ))}
+                          <Badge variant="outline">read</Badge>
+                          <Badge variant="outline">write</Badge>
                           <Button variant="outline" size="sm">
                             <Edit className="h-4 w-4 mr-2" />
                             Modifier
@@ -496,56 +521,50 @@ const NetworkChannelManagement = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {keywordAlerts.map((alert) => (
-                  <div key={alert.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
+              {keywordAlerts.length > 0 ? (
+                <div className="space-y-4">
+                  {keywordAlerts.map((alert) => (
+                    <div key={alert.id} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
                           <Tag className="h-5 w-5 text-primary" />
                           <span className="font-medium text-lg">"{alert.keyword}"</span>
-                        </div>
-                        <Badge variant={alert.active ? 'default' : 'secondary'}>
-                          {alert.active ? 'Actif' : 'Inactif'}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch checked={alert.active} />
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Modifier
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 md:grid-cols-3 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Type d'alerte: </span>
-                        <Badge variant="outline">{alert.alertType}</Badge>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Canaux surveillés: </span>
-                        <span className="font-medium">{alert.channels.length}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Destinataires: </span>
-                        <span className="font-medium">{alert.recipients.length}</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-3">
-                      <Label className="text-sm">Destinataires:</Label>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {alert.recipients.map((recipient, index) => (
-                          <Badge key={index} variant="secondary">
-                            {recipient}
+                          <Badge variant={alert.active ? 'default' : 'secondary'}>
+                            {alert.active ? 'Actif' : 'Inactif'}
                           </Badge>
-                        ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch checked={alert.active} />
+                          <Button variant="outline" size="sm">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-3 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Type d'alerte: </span>
+                          <Badge variant="outline">{alert.alertType}</Badge>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Canaux surveillés: </span>
+                          <span className="font-medium">{alert.channels.length}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Destinataires: </span>
+                          <span className="font-medium">{alert.recipients.length}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Tag className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Aucune alerte configurée</p>
+                  <p className="text-sm">Créez des alertes pour surveiller des mots-clés importants</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -565,64 +584,74 @@ const NetworkChannelManagement = () => {
             <CardContent>
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-4">
-                  <h4 className="font-medium">Systèmes Connectés</h4>
+                  <h4 className="font-medium">Partenaires Connectés ({partnerAccounts.length})</h4>
                   
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 border rounded">
-                      <div className="flex items-center gap-3">
-                        <Database className="h-5 w-5 text-green-500" />
-                        <div>
-                          <span className="font-medium">Système de Stock</span>
-                          <p className="text-sm text-muted-foreground">Alertes ruptures et péremptions</p>
+                    {partnerAccounts.length > 0 ? (
+                      partnerAccounts.map((partner) => (
+                        <div key={partner.id} className="flex items-center justify-between p-3 border rounded">
+                          <div className="flex items-center gap-3">
+                            <Building className="h-5 w-5 text-primary" />
+                            <div>
+                              <span className="font-medium">{partner.partner_name}</span>
+                              <p className="text-sm text-muted-foreground">{partner.partner_type}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {partner.is_active ? (
+                              <CheckCircle className="h-5 w-5 text-green-500" />
+                            ) : (
+                              <AlertTriangle className="h-5 w-5 text-orange-500" />
+                            )}
+                            <Switch checked={partner.is_active} />
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <Switch defaultChecked />
-                      </div>
-                    </div>
+                      ))
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between p-3 border rounded">
+                          <div className="flex items-center gap-3">
+                            <Database className="h-5 w-5 text-green-500" />
+                            <div>
+                              <span className="font-medium">Système de Stock</span>
+                              <p className="text-sm text-muted-foreground">Alertes ruptures et péremptions</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-5 w-5 text-green-500" />
+                            <Switch defaultChecked />
+                          </div>
+                        </div>
 
-                    <div className="flex items-center justify-between p-3 border rounded">
-                      <div className="flex items-center gap-3">
-                        <Network className="h-5 w-5 text-blue-500" />
-                        <div>
-                          <span className="font-medium">ERP Pharmacie</span>
-                          <p className="text-sm text-muted-foreground">Commandes et facturation</p>
+                        <div className="flex items-center justify-between p-3 border rounded">
+                          <div className="flex items-center gap-3">
+                            <Network className="h-5 w-5 text-blue-500" />
+                            <div>
+                              <span className="font-medium">ERP Pharmacie</span>
+                              <p className="text-sm text-muted-foreground">Commandes et facturation</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-5 w-5 text-green-500" />
+                            <Switch defaultChecked />
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <Switch defaultChecked />
-                      </div>
-                    </div>
 
-                    <div className="flex items-center justify-between p-3 border rounded">
-                      <div className="flex items-center gap-3">
-                        <Globe className="h-5 w-5 text-orange-500" />
-                        <div>
-                          <span className="font-medium">Site Web</span>
-                          <p className="text-sm text-muted-foreground">Messages clients et commandes en ligne</p>
+                        <div className="flex items-center justify-between p-3 border rounded">
+                          <div className="flex items-center gap-3">
+                            <Truck className="h-5 w-5 text-purple-500" />
+                            <div>
+                              <span className="font-medium">Transporteurs</span>
+                              <p className="text-sm text-muted-foreground">Notifications de livraison</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-5 w-5 text-green-500" />
+                            <Switch defaultChecked />
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-orange-500" />
-                        <Switch />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 border rounded">
-                      <div className="flex items-center gap-3">
-                        <Truck className="h-5 w-5 text-purple-500" />
-                        <div>
-                          <span className="font-medium">Transporteurs</span>
-                          <p className="text-sm text-muted-foreground">Notifications de livraison</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <Switch defaultChecked />
-                      </div>
-                    </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -653,8 +682,9 @@ const NetworkChannelManagement = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="system">Alertes Système</SelectItem>
-                          <SelectItem value="direction">Direction Générale</SelectItem>
-                          <SelectItem value="support">Support Client</SelectItem>
+                          {channels.slice(0, 5).map(ch => (
+                            <SelectItem key={ch.id} value={ch.id}>{ch.name}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -680,6 +710,110 @@ const NetworkChannelManagement = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Create Channel Dialog */}
+      <Dialog open={showCreateChannel} onOpenChange={setShowCreateChannel}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Créer un nouveau canal
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nom du canal</Label>
+              <Input 
+                placeholder="Ex: Support Technique" 
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className="mt-2" 
+              />
+            </div>
+            <div>
+              <Label>Type de canal</Label>
+              <Select value={formData.channel_type} onValueChange={(v) => setFormData({...formData, channel_type: v})}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="team">Équipe</SelectItem>
+                  <SelectItem value="function">Fonction</SelectItem>
+                  <SelectItem value="supplier">Fournisseur</SelectItem>
+                  <SelectItem value="collaboration">Collaboration</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Textarea 
+                placeholder="Description du canal..." 
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="mt-2" 
+                rows={3} 
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Canal public</Label>
+              <Switch 
+                checked={formData.is_public} 
+                onCheckedChange={(v) => setFormData({...formData, is_public: v})}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowCreateChannel(false); resetForm(); }}>
+              Annuler
+            </Button>
+            <Button onClick={handleCreateChannel}>Créer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Channel Dialog */}
+      <Dialog open={!!editingChannel} onOpenChange={() => { setEditingChannel(null); resetForm(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5" />
+              Modifier le canal
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nom du canal</Label>
+              <Input 
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className="mt-2" 
+              />
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Textarea 
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="mt-2" 
+                rows={3} 
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Canal public</Label>
+              <Switch 
+                checked={formData.is_public} 
+                onCheckedChange={(v) => setFormData({...formData, is_public: v})}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setEditingChannel(null); resetForm(); }}>
+              Annuler
+            </Button>
+            <Button onClick={handleUpdateChannel}>Sauvegarder</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
