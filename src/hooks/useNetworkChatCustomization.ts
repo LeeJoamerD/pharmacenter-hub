@@ -86,13 +86,17 @@ export const useNetworkChatCustomization = () => {
   // Get current user context
   useEffect(() => {
     const fetchUserContext = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData?.user;
       if (user) {
-        const { data: personnel } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data } = await (supabase as any)
           .from('personnel')
           .select('id, tenant_id')
           .eq('user_id', user.id)
-          .single();
+          .limit(1);
+        
+        const personnel = data?.[0];
         
         if (personnel) {
           setTenantId(personnel.tenant_id);
