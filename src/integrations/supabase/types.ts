@@ -8316,6 +8316,72 @@ export type Database = {
           },
         ]
       }
+      network_customization_themes: {
+        Row: {
+          accent_color: string
+          background_color: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_default: boolean | null
+          is_network_shared: boolean | null
+          name: string
+          preview_class: string | null
+          primary_color: string
+          secondary_color: string
+          tenant_id: string | null
+          theme_id: string
+          updated_at: string
+        }
+        Insert: {
+          accent_color: string
+          background_color: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean | null
+          is_network_shared?: boolean | null
+          name: string
+          preview_class?: string | null
+          primary_color: string
+          secondary_color: string
+          tenant_id?: string | null
+          theme_id: string
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string
+          background_color?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean | null
+          is_network_shared?: boolean | null
+          name?: string
+          preview_class?: string | null
+          primary_color?: string
+          secondary_color?: string
+          tenant_id?: string | null
+          theme_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_customization_themes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_customization_themes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       network_maintenance_task_runs: {
         Row: {
           completed_at: string | null
@@ -8439,6 +8505,72 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_notification_preferences: {
+        Row: {
+          created_at: string
+          description: string | null
+          email: boolean | null
+          enabled: boolean | null
+          id: string
+          is_network_shared: boolean | null
+          name: string
+          notification_type: string
+          popup: boolean | null
+          priority: number | null
+          sound: boolean | null
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          email?: boolean | null
+          enabled?: boolean | null
+          id?: string
+          is_network_shared?: boolean | null
+          name: string
+          notification_type: string
+          popup?: boolean | null
+          priority?: number | null
+          sound?: boolean | null
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          email?: boolean | null
+          enabled?: boolean | null
+          id?: string
+          is_network_shared?: boolean | null
+          name?: string
+          notification_type?: string
+          popup?: boolean | null
+          priority?: number | null
+          sound?: boolean | null
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_notification_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
         ]
@@ -8694,6 +8826,96 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_user_preferences: {
+        Row: {
+          animations_enabled: boolean | null
+          auto_retry: boolean | null
+          auto_save: boolean | null
+          connection_timeout: number | null
+          created_at: string
+          device_mode: string | null
+          display_quality: string | null
+          font_size: number
+          high_contrast: boolean | null
+          id: string
+          is_network_shared: boolean | null
+          keyboard_focus: boolean | null
+          language: string
+          layout_compact: boolean | null
+          max_retries: number | null
+          offline_mode: boolean | null
+          reduced_motion: boolean | null
+          screen_reader: boolean | null
+          tenant_id: string
+          theme_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          animations_enabled?: boolean | null
+          auto_retry?: boolean | null
+          auto_save?: boolean | null
+          connection_timeout?: number | null
+          created_at?: string
+          device_mode?: string | null
+          display_quality?: string | null
+          font_size?: number
+          high_contrast?: boolean | null
+          id?: string
+          is_network_shared?: boolean | null
+          keyboard_focus?: boolean | null
+          language?: string
+          layout_compact?: boolean | null
+          max_retries?: number | null
+          offline_mode?: boolean | null
+          reduced_motion?: boolean | null
+          screen_reader?: boolean | null
+          tenant_id: string
+          theme_id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          animations_enabled?: boolean | null
+          auto_retry?: boolean | null
+          auto_save?: boolean | null
+          connection_timeout?: number | null
+          created_at?: string
+          device_mode?: string | null
+          display_quality?: string | null
+          font_size?: number
+          high_contrast?: boolean | null
+          id?: string
+          is_network_shared?: boolean | null
+          keyboard_focus?: boolean | null
+          language?: string
+          layout_compact?: boolean | null
+          max_retries?: number | null
+          offline_mode?: boolean | null
+          reduced_motion?: boolean | null
+          screen_reader?: boolean | null
+          tenant_id?: string
+          theme_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_user_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_user_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
         ]
@@ -15998,6 +16220,10 @@ export type Database = {
       }
       get_current_tenant_alert_settings: { Args: never; Returns: Json }
       get_current_user_tenant_id: { Args: never; Returns: string }
+      get_customization_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       get_dashboard_stock_metrics: {
         Args: { tenant_filter: string }
         Returns: Json

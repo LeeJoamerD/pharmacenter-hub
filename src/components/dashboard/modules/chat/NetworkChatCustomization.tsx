@@ -3,22 +3,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Palette,
   Layout,
   Bell,
-  Globe,
-  User,
-  Shield,
-  Zap,
   Eye,
-  Volume2,
   Settings,
   Save,
   RotateCcw,
@@ -27,168 +22,174 @@ import {
   Monitor,
   Smartphone,
   Tablet,
-  Sun,
-  Moon,
-  Contrast,
   Type,
-  Languages,
-  Clock,
-  MessageSquare,
-  Users,
   Network,
-  Database
+  Database,
+  Plus,
+  RefreshCw,
+  Users,
+  Zap,
+  Globe
 } from 'lucide-react';
-
-interface CustomizationTheme {
-  id: string;
-  name: string;
-  primary: string;
-  secondary: string;
-  accent: string;
-  background: string;
-  preview: string;
-}
-
-interface NotificationSetting {
-  id: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-  sound: boolean;
-  popup: boolean;
-  email: boolean;
-}
+import { useNetworkChatCustomization } from '@/hooks/useNetworkChatCustomization';
+import { CreateThemeDialog } from './dialogs/CreateThemeDialog';
+import { ExportSettingsDialog } from './dialogs/ExportSettingsDialog';
+import { ImportSettingsDialog } from './dialogs/ImportSettingsDialog';
+import { toast } from 'sonner';
 
 const NetworkChatCustomization = () => {
+  const {
+    loading,
+    saving,
+    preferences,
+    notificationSettings,
+    themes,
+    metrics,
+    savePreferences,
+    updateNotificationSetting,
+    createTheme,
+    resetAllSettings,
+    exportSettings,
+    importSettings,
+    clearLocalCache,
+    refreshAllData
+  } = useNetworkChatCustomization();
+
+  // Local state for form
   const [currentTheme, setCurrentTheme] = useState('default');
   const [fontSize, setFontSize] = useState([14]);
   const [language, setLanguage] = useState('fr');
-  const [notificationSettings, setNotificationSettings] = useState<NotificationSetting[]>([]);
   const [layoutCompact, setLayoutCompact] = useState(false);
   const [animationsEnabled, setAnimationsEnabled] = useState(true);
   const [autoSave, setAutoSave] = useState(true);
+  const [displayQuality, setDisplayQuality] = useState<'low' | 'medium' | 'high'>('high');
+  const [deviceMode, setDeviceMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [highContrast, setHighContrast] = useState(false);
+  const [keyboardFocus, setKeyboardFocus] = useState(true);
+  const [screenReader, setScreenReader] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [connectionTimeout, setConnectionTimeout] = useState('30');
+  const [autoRetry, setAutoRetry] = useState(true);
+  const [offlineMode, setOfflineMode] = useState(false);
 
+  // Dialogs
+  const [createThemeOpen, setCreateThemeOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+
+  // Sync local state with database preferences
   useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = () => {
-    // Paramètres de notifications
-    const mockNotifications: NotificationSetting[] = [
-      {
-        id: '1',
-        name: 'Messages directs',
-        description: 'Notifications pour les messages privés',
-        enabled: true,
-        sound: true,
-        popup: true,
-        email: false
-      },
-      {
-        id: '2',
-        name: 'Mentions réseau',
-        description: 'Quand vous êtes mentionné dans une conversation',
-        enabled: true,
-        sound: true,
-        popup: true,
-        email: true
-      },
-      {
-        id: '3',
-        name: 'Alertes système',
-        description: 'Notifications système importantes',
-        enabled: true,
-        sound: false,
-        popup: true,
-        email: true
-      },
-      {
-        id: '4',
-        name: 'Collaborations',
-        description: 'Invitations et mises à jour de projets',
-        enabled: true,
-        sound: false,
-        popup: true,
-        email: false
-      }
-    ];
-    setNotificationSettings(mockNotifications);
-  };
-
-  const themes: CustomizationTheme[] = [
-    {
-      id: 'default',
-      name: 'Défaut',
-      primary: '#0ea5e9',
-      secondary: '#64748b',
-      accent: '#8b5cf6',
-      background: '#ffffff',
-      preview: 'bg-blue-500'
-    },
-    {
-      id: 'dark',
-      name: 'Sombre',
-      primary: '#3b82f6',
-      secondary: '#94a3b8',
-      accent: '#a855f7',
-      background: '#0f172a',
-      preview: 'bg-gray-900'
-    },
-    {
-      id: 'green',
-      name: 'Vert Pharmacie',
-      primary: '#10b981',
-      secondary: '#6b7280',
-      accent: '#f59e0b',
-      background: '#f9fafb',
-      preview: 'bg-green-500'
-    },
-    {
-      id: 'purple',
-      name: 'Violet Moderne',
-      primary: '#8b5cf6',
-      secondary: '#6b7280',
-      accent: '#06b6d4',
-      background: '#fafafa',
-      preview: 'bg-purple-500'
+    if (preferences) {
+      setCurrentTheme(preferences.theme_id);
+      setFontSize([preferences.font_size]);
+      setLanguage(preferences.language);
+      setLayoutCompact(preferences.layout_compact);
+      setAnimationsEnabled(preferences.animations_enabled);
+      setAutoSave(preferences.auto_save);
+      setDisplayQuality(preferences.display_quality as any);
+      setDeviceMode(preferences.device_mode as any);
+      setHighContrast(preferences.high_contrast);
+      setKeyboardFocus(preferences.keyboard_focus);
+      setScreenReader(preferences.screen_reader);
+      setReducedMotion(preferences.reduced_motion);
+      setConnectionTimeout(String(preferences.connection_timeout));
+      setAutoRetry(preferences.auto_retry);
+      setOfflineMode(preferences.offline_mode);
     }
-  ];
+  }, [preferences]);
 
-  const updateNotificationSetting = (id: string, field: string, value: boolean) => {
-    setNotificationSettings(prev => 
-      prev.map(setting => 
-        setting.id === id 
-          ? { ...setting, [field]: value }
-          : setting
-      )
-    );
-  };
-
-  const saveSettings = () => {
-    // Sauvegarder les paramètres
-    console.log('Paramètres sauvegardés:', {
-      theme: currentTheme,
-      fontSize: fontSize[0],
+  const handleSaveSettings = () => {
+    savePreferences({
+      theme_id: currentTheme,
+      font_size: fontSize[0],
       language,
-      notifications: notificationSettings,
-      layoutCompact,
-      animationsEnabled,
-      autoSave
+      layout_compact: layoutCompact,
+      animations_enabled: animationsEnabled,
+      auto_save: autoSave,
+      display_quality: displayQuality,
+      device_mode: deviceMode,
+      high_contrast: highContrast,
+      keyboard_focus: keyboardFocus,
+      screen_reader: screenReader,
+      reduced_motion: reducedMotion,
+      connection_timeout: parseInt(connectionTimeout),
+      auto_retry: autoRetry,
+      offline_mode: offlineMode
     });
   };
 
-  const resetSettings = () => {
+  const handleResetSettings = async () => {
+    await resetAllSettings();
+    // Reset local state to defaults
     setCurrentTheme('default');
     setFontSize([14]);
     setLanguage('fr');
     setLayoutCompact(false);
     setAnimationsEnabled(true);
     setAutoSave(true);
-    loadSettings();
+    setDisplayQuality('high');
+    setDeviceMode('desktop');
+    setHighContrast(false);
+    setKeyboardFocus(true);
+    setScreenReader(false);
+    setReducedMotion(false);
+    setConnectionTimeout('30');
+    setAutoRetry(true);
+    setOfflineMode(false);
   };
+
+  const handleCreateTheme = (theme: any) => {
+    createTheme(theme);
+  };
+
+  const getExportData = () => ({
+    preferences: preferences ? {
+      theme_id: currentTheme,
+      font_size: fontSize[0],
+      language,
+      layout_compact: layoutCompact,
+      animations_enabled: animationsEnabled,
+      auto_save: autoSave,
+      display_quality: displayQuality,
+      device_mode: deviceMode,
+      high_contrast: highContrast,
+      keyboard_focus: keyboardFocus,
+      screen_reader: screenReader,
+      reduced_motion: reducedMotion,
+      connection_timeout: parseInt(connectionTimeout),
+      auto_retry: autoRetry,
+      offline_mode: offlineMode
+    } : null,
+    notifications: notificationSettings.map(n => ({
+      name: n.name,
+      notification_type: n.notification_type,
+      enabled: n.enabled,
+      sound: n.sound,
+      popup: n.popup,
+      email: n.email
+    })),
+    exportedAt: new Date().toISOString()
+  });
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-10 w-48" />
+        </div>
+        <Skeleton className="h-12 w-full" />
+        <div className="grid gap-6 md:grid-cols-2">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -200,15 +201,67 @@ const NetworkChatCustomization = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={resetSettings}>
+          <Button variant="outline" size="icon" onClick={refreshAllData}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" onClick={handleResetSettings} disabled={saving}>
             <RotateCcw className="h-4 w-4 mr-2" />
             Réinitialiser
           </Button>
-          <Button onClick={saveSettings}>
+          <Button onClick={handleSaveSettings} disabled={saving}>
             <Save className="h-4 w-4 mr-2" />
-            Sauvegarder
+            {saving ? 'Sauvegarde...' : 'Sauvegarder'}
           </Button>
         </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Utilisateurs configurés</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics?.total_users_with_preferences || 0}</div>
+            <p className="text-xs text-muted-foreground">Avec préférences personnalisées</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Thème populaire</CardTitle>
+            <Palette className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold capitalize">{metrics?.most_used_theme || 'Défaut'}</div>
+            <p className="text-xs text-muted-foreground">Le plus utilisé</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Notifications actives</CardTitle>
+            <Bell className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics?.notifications_enabled_count || 0}</div>
+            <p className="text-xs text-muted-foreground">Paramètres activés</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Thèmes disponibles</CardTitle>
+            <Zap className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{themes.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {metrics?.accessibility_features_active || 0} a11y actifs
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs defaultValue="appearance" className="space-y-4">
@@ -225,13 +278,21 @@ const NetworkChatCustomization = () => {
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Palette className="h-5 w-5" />
-                  Thèmes
-                </CardTitle>
-                <CardDescription>
-                  Choisissez le thème de couleur pour l'interface
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Palette className="h-5 w-5" />
+                      Thèmes
+                    </CardTitle>
+                    <CardDescription>
+                      Choisissez le thème de couleur pour l'interface
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setCreateThemeOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Créer
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-3 md:grid-cols-2">
@@ -239,18 +300,27 @@ const NetworkChatCustomization = () => {
                     <div 
                       key={theme.id}
                       className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                        currentTheme === theme.id ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
+                        currentTheme === theme.theme_id ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
                       }`}
-                      onClick={() => setCurrentTheme(theme.id)}
+                      onClick={() => setCurrentTheme(theme.theme_id)}
                     >
                       <div className="flex items-center gap-3 mb-2">
-                        <div className={`w-6 h-6 rounded-full ${theme.preview}`}></div>
+                        <div 
+                          className="w-6 h-6 rounded-full"
+                          style={{ backgroundColor: theme.primary_color }}
+                        />
                         <span className="font-medium">{theme.name}</span>
+                        {theme.is_network_shared && (
+                          <Badge variant="outline" className="ml-auto text-xs">
+                            <Globe className="h-3 w-3 mr-1" />
+                            Réseau
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex gap-1">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: theme.primary }}></div>
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: theme.secondary }}></div>
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: theme.accent }}></div>
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: theme.primary_color }} />
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: theme.secondary_color }} />
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: theme.accent_color }} />
                       </div>
                     </div>
                   ))}
@@ -321,46 +391,52 @@ const NetworkChatCustomization = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {notificationSettings.map((setting) => (
-                  <div key={setting.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h4 className="font-medium">{setting.name}</h4>
-                        <p className="text-sm text-muted-foreground">{setting.description}</p>
+                {notificationSettings.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    Chargement des paramètres de notifications...
+                  </p>
+                ) : (
+                  notificationSettings.map((setting) => (
+                    <div key={setting.id} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="font-medium">{setting.name}</h4>
+                          <p className="text-sm text-muted-foreground">{setting.description}</p>
+                        </div>
+                        <Switch
+                          checked={setting.enabled}
+                          onCheckedChange={(checked) => updateNotificationSetting(setting.id, 'enabled', checked)}
+                        />
                       </div>
-                      <Switch
-                        checked={setting.enabled}
-                        onCheckedChange={(checked) => updateNotificationSetting(setting.id, 'enabled', checked)}
-                      />
+                      
+                      {setting.enabled && (
+                        <div className="grid gap-3 md:grid-cols-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm">Son</Label>
+                            <Switch
+                              checked={setting.sound}
+                              onCheckedChange={(checked) => updateNotificationSetting(setting.id, 'sound', checked)}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm">Pop-up</Label>
+                            <Switch
+                              checked={setting.popup}
+                              onCheckedChange={(checked) => updateNotificationSetting(setting.id, 'popup', checked)}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm">Email</Label>
+                            <Switch
+                              checked={setting.email}
+                              onCheckedChange={(checked) => updateNotificationSetting(setting.id, 'email', checked)}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    
-                    {setting.enabled && (
-                      <div className="grid gap-3 md:grid-cols-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-sm">Son</Label>
-                          <Switch
-                            checked={setting.sound}
-                            onCheckedChange={(checked) => updateNotificationSetting(setting.id, 'sound', checked)}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label className="text-sm">Pop-up</Label>
-                          <Switch
-                            checked={setting.popup}
-                            onCheckedChange={(checked) => updateNotificationSetting(setting.id, 'popup', checked)}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <Label className="text-sm">Email</Label>
-                          <Switch
-                            checked={setting.email}
-                            onCheckedChange={(checked) => updateNotificationSetting(setting.id, 'email', checked)}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -419,7 +495,7 @@ const NetworkChatCustomization = () => {
               <CardContent className="space-y-4">
                 <div>
                   <Label>Qualité d'affichage</Label>
-                  <Select defaultValue="high">
+                  <Select value={displayQuality} onValueChange={(v) => setDisplayQuality(v as any)}>
                     <SelectTrigger className="mt-2">
                       <SelectValue />
                     </SelectTrigger>
@@ -434,15 +510,27 @@ const NetworkChatCustomization = () => {
                 <div>
                   <Label>Adaptation écran</Label>
                   <div className="flex gap-2 mt-2">
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant={deviceMode === 'desktop' ? 'default' : 'outline'} 
+                      size="sm"
+                      onClick={() => setDeviceMode('desktop')}
+                    >
                       <Monitor className="h-4 w-4 mr-2" />
                       Bureau
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant={deviceMode === 'tablet' ? 'default' : 'outline'} 
+                      size="sm"
+                      onClick={() => setDeviceMode('tablet')}
+                    >
                       <Tablet className="h-4 w-4 mr-2" />
                       Tablette
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant={deviceMode === 'mobile' ? 'default' : 'outline'} 
+                      size="sm"
+                      onClick={() => setDeviceMode('mobile')}
+                    >
                       <Smartphone className="h-4 w-4 mr-2" />
                       Mobile
                     </Button>
@@ -472,7 +560,7 @@ const NetworkChatCustomization = () => {
                     <Label>Contraste élevé</Label>
                     <p className="text-sm text-muted-foreground">Améliorer la lisibilité</p>
                   </div>
-                  <Switch />
+                  <Switch checked={highContrast} onCheckedChange={setHighContrast} />
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -480,7 +568,7 @@ const NetworkChatCustomization = () => {
                     <Label>Focus clavier</Label>
                     <p className="text-sm text-muted-foreground">Afficher les indicateurs de focus</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch checked={keyboardFocus} onCheckedChange={setKeyboardFocus} />
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -488,7 +576,7 @@ const NetworkChatCustomization = () => {
                     <Label>Lecteur d'écran</Label>
                     <p className="text-sm text-muted-foreground">Optimiser pour les lecteurs d'écran</p>
                   </div>
-                  <Switch />
+                  <Switch checked={screenReader} onCheckedChange={setScreenReader} />
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -496,7 +584,7 @@ const NetworkChatCustomization = () => {
                     <Label>Réduction mouvement</Label>
                     <p className="text-sm text-muted-foreground">Réduire les animations</p>
                   </div>
-                  <Switch />
+                  <Switch checked={reducedMotion} onCheckedChange={setReducedMotion} />
                 </div>
               </div>
             </CardContent>
@@ -520,11 +608,11 @@ const NetworkChatCustomization = () => {
                 <div>
                   <Label>Cache local</Label>
                   <div className="flex gap-2 mt-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={clearLocalCache}>
                       <Download className="h-4 w-4 mr-2" />
                       Vider cache
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={handleResetSettings}>
                       <Database className="h-4 w-4 mr-2" />
                       Réinitialiser
                     </Button>
@@ -536,11 +624,11 @@ const NetworkChatCustomization = () => {
                 <div>
                   <Label>Import/Export</Label>
                   <div className="flex gap-2 mt-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)}>
                       <Upload className="h-4 w-4 mr-2" />
                       Importer
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => setExportDialogOpen(true)}>
                       <Download className="h-4 w-4 mr-2" />
                       Exporter
                     </Button>
@@ -562,7 +650,7 @@ const NetworkChatCustomization = () => {
               <CardContent className="space-y-4">
                 <div>
                   <Label>Délai de connexion</Label>
-                  <Select defaultValue="30">
+                  <Select value={connectionTimeout} onValueChange={setConnectionTimeout}>
                     <SelectTrigger className="mt-2">
                       <SelectValue />
                     </SelectTrigger>
@@ -577,7 +665,7 @@ const NetworkChatCustomization = () => {
                 <div>
                   <Label>Retry automatique</Label>
                   <div className="flex items-center gap-2 mt-2">
-                    <Switch defaultChecked />
+                    <Switch checked={autoRetry} onCheckedChange={setAutoRetry} />
                     <span className="text-sm text-muted-foreground">3 tentatives max</span>
                   </div>
                 </div>
@@ -585,7 +673,7 @@ const NetworkChatCustomization = () => {
                 <div>
                   <Label>Mode hors ligne</Label>
                   <div className="flex items-center gap-2 mt-2">
-                    <Switch />
+                    <Switch checked={offlineMode} onCheckedChange={setOfflineMode} />
                     <span className="text-sm text-muted-foreground">Fonctionnement en local</span>
                   </div>
                 </div>
@@ -594,6 +682,25 @@ const NetworkChatCustomization = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <CreateThemeDialog
+        open={createThemeOpen}
+        onOpenChange={setCreateThemeOpen}
+        onCreateTheme={handleCreateTheme}
+      />
+
+      <ExportSettingsDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        exportData={getExportData()}
+      />
+
+      <ImportSettingsDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onImportSettings={importSettings}
+      />
     </div>
   );
 };
