@@ -30,7 +30,7 @@ interface AnalyticsInsightDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   insight: NetworkInsight | null;
-  pharmacies: { id: string; name: string }[];
+  pharmacies?: { id: string; name: string }[];
   onApply: (id: string) => Promise<void>;
   onDismiss: (id: string) => Promise<void>;
 }
@@ -39,7 +39,7 @@ const AnalyticsInsightDialog = ({
   open,
   onOpenChange,
   insight,
-  pharmacies,
+  pharmacies = [],
   onApply,
   onDismiss,
 }: AnalyticsInsightDialogProps) => {

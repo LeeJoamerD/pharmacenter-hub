@@ -471,6 +471,23 @@ export const useNetworkAdvancedAnalytics = () => {
     }
   }, [tenantId, loadInsights]);
 
+  // Refresh all data
+  const refreshAllData = useCallback(async (timeframe: string = '7d') => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        loadMetrics(timeframe),
+        loadInsights(),
+        loadHeatmapData(),
+        loadTimeSeriesData(timeframe),
+        loadActivityDistribution(),
+        loadCollaborationStats()
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadMetrics, loadInsights, loadHeatmapData, loadTimeSeriesData, loadActivityDistribution, loadCollaborationStats]);
+
   // Get insight by ID
   const getInsightById = useCallback((insightId: string): NetworkInsight | undefined => {
     return insights.find(i => i.id === insightId);
@@ -491,6 +508,7 @@ export const useNetworkAdvancedAnalytics = () => {
     loadActivityDistribution,
     loadCollaborationStats,
     loadAllAnalytics,
+    refreshAllData,
     applyInsight,
     dismissInsight,
     generateInsights,
