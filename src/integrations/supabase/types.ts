@@ -3748,6 +3748,65 @@ export type Database = {
           },
         ]
       }
+      encryption_configs: {
+        Row: {
+          active_keys_count: number | null
+          algorithm: string
+          auto_rotation_enabled: boolean | null
+          created_at: string
+          encryption_type: string
+          id: string
+          key_rotation_days: number | null
+          last_rotation_at: string | null
+          metadata_encryption: boolean | null
+          next_rotation_at: string | null
+          resource_name: string
+          status: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          active_keys_count?: number | null
+          algorithm?: string
+          auto_rotation_enabled?: boolean | null
+          created_at?: string
+          encryption_type: string
+          id?: string
+          key_rotation_days?: number | null
+          last_rotation_at?: string | null
+          metadata_encryption?: boolean | null
+          next_rotation_at?: string | null
+          resource_name: string
+          status?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          active_keys_count?: number | null
+          algorithm?: string
+          auto_rotation_enabled?: boolean | null
+          created_at?: string
+          encryption_type?: string
+          id?: string
+          key_rotation_days?: number | null
+          last_rotation_at?: string | null
+          metadata_encryption?: boolean | null
+          next_rotation_at?: string | null
+          resource_name?: string
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encryption_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       engagements_tresorerie: {
         Row: {
           compte_bancaire_id: string | null
@@ -7380,6 +7439,69 @@ export type Database = {
           {
             foreignKeyName: "network_chat_permissions_target_tenant_id_fkey"
             columns: ["target_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      network_compliance_reports: {
+        Row: {
+          completed_at: string | null
+          compliance_score: number | null
+          created_at: string
+          file_size_mb: number | null
+          file_url: string | null
+          findings: Json | null
+          generated_by: string | null
+          id: string
+          period: string
+          recommendations: Json | null
+          report_type: string
+          status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          compliance_score?: number | null
+          created_at?: string
+          file_size_mb?: number | null
+          file_url?: string | null
+          findings?: Json | null
+          generated_by?: string | null
+          id?: string
+          period: string
+          recommendations?: Json | null
+          report_type: string
+          status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          compliance_score?: number | null
+          created_at?: string
+          file_size_mb?: number | null
+          file_url?: string | null
+          findings?: Json | null
+          generated_by?: string | null
+          id?: string
+          period?: string
+          recommendations?: Json | null
+          report_type?: string
+          status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_compliance_reports_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_compliance_reports_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
@@ -11896,6 +12018,69 @@ export type Database = {
           },
         ]
       }
+      security_access_rules: {
+        Row: {
+          conditions: Json | null
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          permissions: string[] | null
+          priority: number | null
+          rule_name: string
+          rule_type: string
+          target_resource: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          conditions?: Json | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          permissions?: string[] | null
+          priority?: number | null
+          rule_name: string
+          rule_type: string
+          target_resource?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          conditions?: Json | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          permissions?: string[] | null
+          priority?: number | null
+          rule_name?: string
+          rule_type?: string
+          target_resource?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_access_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_access_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       security_alerts: {
         Row: {
           alert_type: string
@@ -11945,6 +12130,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "security_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_auth_methods: {
+        Row: {
+          configuration: Json | null
+          created_at: string
+          id: string
+          is_enabled: boolean | null
+          is_required_for_2fa: boolean | null
+          last_used_at: string | null
+          method_type: string
+          tenant_id: string
+          updated_at: string
+          users_enrolled_count: number | null
+        }
+        Insert: {
+          configuration?: Json | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          is_required_for_2fa?: boolean | null
+          last_used_at?: string | null
+          method_type: string
+          tenant_id: string
+          updated_at?: string
+          users_enrolled_count?: number | null
+        }
+        Update: {
+          configuration?: Json | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean | null
+          is_required_for_2fa?: boolean | null
+          last_used_at?: string | null
+          method_type?: string
+          tenant_id?: string
+          updated_at?: string
+          users_enrolled_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_auth_methods_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -12059,6 +12291,67 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      security_key_rotations: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          encryption_config_id: string | null
+          id: string
+          initiated_by: string | null
+          new_key_id: string | null
+          old_key_id: string | null
+          rotation_type: string
+          status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          encryption_config_id?: string | null
+          id?: string
+          initiated_by?: string | null
+          new_key_id?: string | null
+          old_key_id?: string | null
+          rotation_type: string
+          status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          encryption_config_id?: string | null
+          id?: string
+          initiated_by?: string | null
+          new_key_id?: string | null
+          old_key_id?: string | null
+          rotation_type?: string
+          status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_key_rotations_encryption_config_id_fkey"
+            columns: ["encryption_config_id"]
+            isOneToOne: false
+            referencedRelation: "encryption_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_key_rotations_initiated_by_fkey"
+            columns: ["initiated_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_key_rotations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       security_reports: {
         Row: {
