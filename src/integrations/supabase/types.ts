@@ -7155,6 +7155,94 @@ export type Database = {
           },
         ]
       }
+      network_analytics_insights: {
+        Row: {
+          applied_at: string | null
+          applied_by: string | null
+          confidence: number | null
+          created_at: string
+          description: string | null
+          dismissed_at: string | null
+          dismissed_by: string | null
+          expires_at: string | null
+          id: string
+          impact: string | null
+          insight_type: string
+          is_applied: boolean | null
+          is_dismissed: boolean | null
+          metadata: Json | null
+          metric_change: number | null
+          pharmacies_involved: string[] | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_by?: string | null
+          confidence?: number | null
+          created_at?: string
+          description?: string | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          expires_at?: string | null
+          id?: string
+          impact?: string | null
+          insight_type?: string
+          is_applied?: boolean | null
+          is_dismissed?: boolean | null
+          metadata?: Json | null
+          metric_change?: number | null
+          pharmacies_involved?: string[] | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          applied_at?: string | null
+          applied_by?: string | null
+          confidence?: number | null
+          created_at?: string
+          description?: string | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          expires_at?: string | null
+          id?: string
+          impact?: string | null
+          insight_type?: string
+          is_applied?: boolean | null
+          is_dismissed?: boolean | null
+          metadata?: Json | null
+          metric_change?: number | null
+          pharmacies_involved?: string[] | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "network_analytics_insights_applied_by_fkey"
+            columns: ["applied_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_analytics_insights_dismissed_by_fkey"
+            columns: ["dismissed_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_analytics_insights_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       network_audit_logs: {
         Row: {
           action_category: string
@@ -15179,6 +15267,10 @@ export type Database = {
         }
         Returns: Json
       }
+      calculate_network_analytics_metrics: {
+        Args: { p_tenant_id: string; p_timeframe?: string }
+        Returns: Json
+      }
       calculate_out_of_stock_metrics: {
         Args: { p_tenant_id: string }
         Returns: Json
@@ -15293,6 +15385,10 @@ export type Database = {
         Args: { p_tenant_id: string; p_type: string }
         Returns: string
       }
+      generate_network_heatmap_data: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       generate_piece_number: { Args: { p_journal_id: string }; Returns: string }
       generate_pos_invoice_number: {
         Args: { p_tenant_id: string }
@@ -15349,6 +15445,10 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      get_collaboration_analytics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       get_current_tenant_alert_settings: { Args: never; Returns: Json }
       get_current_user_tenant_id: { Args: never; Returns: string }
       get_dashboard_stock_metrics: {
@@ -15381,6 +15481,14 @@ export type Database = {
             }
             Returns: Json
           }
+      get_network_activity_distribution: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
+      get_network_time_series_data: {
+        Args: { p_tenant_id: string; p_timeframe?: string }
+        Returns: Json
+      }
       get_next_accounting_number: {
         Args: {
           p_journal_code?: string
