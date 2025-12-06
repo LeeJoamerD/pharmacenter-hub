@@ -2285,6 +2285,298 @@ export type Database = {
           },
         ]
       }
+      collaborative_events: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string | null
+          event_date: string
+          event_time: string | null
+          event_type: string
+          id: string
+          is_network_event: boolean | null
+          is_virtual: boolean | null
+          location: string | null
+          meeting_link: string | null
+          metadata: Json | null
+          organizer_name: string | null
+          organizer_pharmacy_id: string | null
+          organizer_user_id: string | null
+          participants: Json | null
+          recurrence_rule: string | null
+          reminder_enabled: boolean | null
+          reminder_minutes: number | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          event_date: string
+          event_time?: string | null
+          event_type?: string
+          id?: string
+          is_network_event?: boolean | null
+          is_virtual?: boolean | null
+          location?: string | null
+          meeting_link?: string | null
+          metadata?: Json | null
+          organizer_name?: string | null
+          organizer_pharmacy_id?: string | null
+          organizer_user_id?: string | null
+          participants?: Json | null
+          recurrence_rule?: string | null
+          reminder_enabled?: boolean | null
+          reminder_minutes?: number | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          event_date?: string
+          event_time?: string | null
+          event_type?: string
+          id?: string
+          is_network_event?: boolean | null
+          is_virtual?: boolean | null
+          location?: string | null
+          meeting_link?: string | null
+          metadata?: Json | null
+          organizer_name?: string | null
+          organizer_pharmacy_id?: string | null
+          organizer_user_id?: string | null
+          participants?: Json | null
+          recurrence_rule?: string | null
+          reminder_enabled?: boolean | null
+          reminder_minutes?: number | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collaborative_events_organizer_pharmacy_id_fkey"
+            columns: ["organizer_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborative_events_organizer_user_id_fkey"
+            columns: ["organizer_user_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborative_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collaborative_tasks: {
+        Row: {
+          assignee_pharmacy_id: string | null
+          assignee_user_id: string | null
+          channel_id: string | null
+          completed_at: string | null
+          created_at: string
+          creator_pharmacy_id: string | null
+          creator_user_id: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          is_network_task: boolean | null
+          metadata: Json | null
+          priority: string
+          status: string
+          tags: string[] | null
+          tenant_id: string
+          title: string
+          updated_at: string
+          workspace_id: string | null
+        }
+        Insert: {
+          assignee_pharmacy_id?: string | null
+          assignee_user_id?: string | null
+          channel_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          creator_pharmacy_id?: string | null
+          creator_user_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_network_task?: boolean | null
+          metadata?: Json | null
+          priority?: string
+          status?: string
+          tags?: string[] | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          assignee_pharmacy_id?: string | null
+          assignee_user_id?: string | null
+          channel_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          creator_pharmacy_id?: string | null
+          creator_user_id?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_network_task?: boolean | null
+          metadata?: Json | null
+          priority?: string
+          status?: string
+          tags?: string[] | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collaborative_tasks_assignee_pharmacy_id_fkey"
+            columns: ["assignee_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborative_tasks_assignee_user_id_fkey"
+            columns: ["assignee_user_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborative_tasks_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "network_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborative_tasks_creator_pharmacy_id_fkey"
+            columns: ["creator_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborative_tasks_creator_user_id_fkey"
+            columns: ["creator_user_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborative_tasks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborative_tasks_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "collaborative_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collaborative_workspaces: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          goals: Json | null
+          icon: string | null
+          id: string
+          is_network_workspace: boolean | null
+          milestones: Json | null
+          name: string
+          owner_pharmacy_id: string | null
+          owner_user_id: string | null
+          progress_percent: number | null
+          settings: Json | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          goals?: Json | null
+          icon?: string | null
+          id?: string
+          is_network_workspace?: boolean | null
+          milestones?: Json | null
+          name: string
+          owner_pharmacy_id?: string | null
+          owner_user_id?: string | null
+          progress_percent?: number | null
+          settings?: Json | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          goals?: Json | null
+          icon?: string | null
+          id?: string
+          is_network_workspace?: boolean | null
+          milestones?: Json | null
+          name?: string
+          owner_pharmacy_id?: string | null
+          owner_user_id?: string | null
+          progress_percent?: number | null
+          settings?: Json | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collaborative_workspaces_owner_pharmacy_id_fkey"
+            columns: ["owner_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborative_workspaces_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborative_workspaces_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       commandes_fournisseurs: {
         Row: {
           agent_id: string | null
@@ -12508,6 +12800,124 @@ export type Database = {
           },
         ]
       }
+      shared_documents: {
+        Row: {
+          category: string | null
+          channel_id: string | null
+          created_at: string
+          description: string | null
+          document_id: string | null
+          download_count: number | null
+          file_size: number | null
+          file_type: string | null
+          file_url: string | null
+          id: string
+          is_network_document: boolean | null
+          last_accessed_at: string | null
+          name: string
+          shared_with_pharmacies: string[] | null
+          tags: string[] | null
+          tenant_id: string
+          updated_at: string
+          uploaded_by_name: string | null
+          uploaded_by_pharmacy_id: string | null
+          uploaded_by_user_id: string | null
+          version: number | null
+          workspace_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          channel_id?: string | null
+          created_at?: string
+          description?: string | null
+          document_id?: string | null
+          download_count?: number | null
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          is_network_document?: boolean | null
+          last_accessed_at?: string | null
+          name: string
+          shared_with_pharmacies?: string[] | null
+          tags?: string[] | null
+          tenant_id: string
+          updated_at?: string
+          uploaded_by_name?: string | null
+          uploaded_by_pharmacy_id?: string | null
+          uploaded_by_user_id?: string | null
+          version?: number | null
+          workspace_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          channel_id?: string | null
+          created_at?: string
+          description?: string | null
+          document_id?: string | null
+          download_count?: number | null
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          is_network_document?: boolean | null
+          last_accessed_at?: string | null
+          name?: string
+          shared_with_pharmacies?: string[] | null
+          tags?: string[] | null
+          tenant_id?: string
+          updated_at?: string
+          uploaded_by_name?: string | null
+          uploaded_by_pharmacy_id?: string | null
+          uploaded_by_user_id?: string | null
+          version?: number | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_documents_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "network_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_documents_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_documents_uploaded_by_pharmacy_id_fkey"
+            columns: ["uploaded_by_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_documents_uploaded_by_user_id_fkey"
+            columns: ["uploaded_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_documents_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "collaborative_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       societes: {
         Row: {
           adresse: string | null
@@ -12957,6 +13367,58 @@ export type Database = {
             columns: ["transporteur_id"]
             isOneToOne: false
             referencedRelation: "transporteurs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_comments: {
+        Row: {
+          author_name: string | null
+          author_pharmacy_id: string | null
+          author_user_id: string | null
+          content: string
+          created_at: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          author_name?: string | null
+          author_pharmacy_id?: string | null
+          author_user_id?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          author_name?: string | null
+          author_pharmacy_id?: string | null
+          author_user_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_author_pharmacy_id_fkey"
+            columns: ["author_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comments_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "collaborative_tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -14038,6 +14500,64 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      workspace_members: {
+        Row: {
+          id: string
+          invited_by: string | null
+          joined_at: string
+          pharmacy_id: string | null
+          role: string
+          status: string
+          user_id: string | null
+          user_name: string | null
+          workspace_id: string
+        }
+        Insert: {
+          id?: string
+          invited_by?: string | null
+          joined_at?: string
+          pharmacy_id?: string | null
+          role?: string
+          status?: string
+          user_id?: string | null
+          user_name?: string | null
+          workspace_id: string
+        }
+        Update: {
+          id?: string
+          invited_by?: string | null
+          joined_at?: string
+          pharmacy_id?: string | null
+          role?: string
+          status?: string
+          user_id?: string | null
+          user_name?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_members_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workspace_members_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "collaborative_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
