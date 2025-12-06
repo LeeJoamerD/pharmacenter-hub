@@ -1,244 +1,228 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 import { 
   Bot,
   MessageSquare,
-  Zap,
   Brain,
   TrendingUp,
   AlertTriangle,
   Clock,
-  Users,
   Settings,
   Play,
   Pause,
-  RotateCcw,
   Send,
   Mic,
   MicOff,
   Volume2,
   VolumeX,
-  Database,
-  FileText,
-  ChevronDown,
   CheckCircle,
   XCircle,
-  Activity,
   Target,
   Lightbulb,
   Shield,
-  BookOpen,
-  Search
+  RefreshCw,
+  Plus,
+  Trash2,
+  Eye,
+  Download,
+  FileText,
+  Loader2,
+  Wrench,
+  Save
 } from 'lucide-react';
-import { useNetworkMessaging } from '@/hooks/useNetworkMessaging';
-
-interface AIConversation {
-  id: string;
-  title: string;
-  participants: string[];
-  messages: AIMessage[];
-  status: 'active' | 'paused' | 'completed';
-  created_at: string;
-  ai_model: string;
-  context: string;
-}
-
-interface AIMessage {
-  id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  timestamp: string;
-  pharmacy_id?: string;
-  confidence?: number;
-  suggestions?: string[];
-}
-
-interface AIModel {
-  id: string;
-  name: string;
-  description: string;
-  capabilities: string[];
-  specialization: string;
-  status: 'active' | 'maintenance' | 'inactive';
-}
-
-interface AIInsight {
-  id: string;
-  type: 'recommendation' | 'alert' | 'trend' | 'optimization';
-  title: string;
-  description: string;
-  impact: 'low' | 'medium' | 'high' | 'critical';
-  pharmacies_affected: string[];
-  confidence: number;
-  created_at: string;
-}
+import { useNetworkConversationalAI, AIConversation, AIMessage, AIModel, AIInsight } from '@/hooks/useNetworkConversationalAI';
+import CreateConversationDialog from './dialogs/CreateConversationDialog';
+import ConfigureModelDialog from './dialogs/ConfigureModelDialog';
+import TestModelDialog from './dialogs/TestModelDialog';
+import InsightDetailDialog from './dialogs/InsightDetailDialog';
+import { exportConversationsToExcel, exportInsightsToExcel } from '@/utils/networkAIExportUtils';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 const NetworkConversationalAI = () => {
-  const { pharmacies, loading } = useNetworkMessaging();
-  const [conversations, setConversations] = useState<AIConversation[]>([]);
-  const [aiModels, setAIModels] = useState<AIModel[]>([]);
-  const [insights, setInsights] = useState<AIInsight[]>([]);
+  const {
+    conversations,
+    messages,
+    aiModels,
+    insights,
+    settings,
+    loading,
+    streamingMessage,
+    isStreaming,
+    loadConversations,
+    loadAIModels,
+    loadInsights,
+    loadSettings,
+    createConversation,
+    updateConversation,
+    deleteConversation,
+    loadConversationMessages,
+    sendMessage,
+    createAIModel,
+    updateAIModel,
+    testAIModel,
+    markInsightAsRead,
+    applyInsight,
+    dismissInsight,
+    saveSettings,
+    getConversationStats,
+    getAverageConfidence
+  } = useNetworkConversationalAI();
+
   const [selectedConversation, setSelectedConversation] = useState<string>('');
   const [currentMessage, setCurrentMessage] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('');
+  const [insightFilter, setInsightFilter] = useState<string>('all');
+  const [impactFilter, setImpactFilter] = useState<string>('all');
+  
+  // Dialogs
+  const [showCreateConversation, setShowCreateConversation] = useState(false);
+  const [showConfigureModel, setShowConfigureModel] = useState(false);
+  const [showTestModel, setShowTestModel] = useState(false);
+  const [showInsightDetail, setShowInsightDetail] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
+  const [selectedInsight, setSelectedInsight] = useState<AIInsight | null>(null);
+
+  // Local settings state
+  const [localSettings, setLocalSettings] = useState({
+    voice_assistant: false,
+    voice_recognition: false,
+    auto_suggestions: true,
+    default_model_id: '',
+    conversation_encryption: true,
+    audit_interactions: true,
+    anonymize_data: false,
+    data_retention_days: 90
+  });
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadMockData();
+    loadConversations();
+    loadAIModels();
+    loadInsights();
+    loadSettings();
   }, []);
 
-  const loadMockData = () => {
-    // Modèles IA disponibles
-    const mockModels: AIModel[] = [
-      {
-        id: '1',
-        name: 'PharmaSoft Assistant Pro',
-        description: 'IA spécialisée dans les questions pharmaceutiques et réglementaires',
-        capabilities: ['Consultation médicaments', 'Réglementation', 'Interactions', 'Conseils'],
-        specialization: 'Pharmacie',
-        status: 'active'
-      },
-      {
-        id: '2',
-        name: 'Business Intelligence AI',
-        description: 'IA d\'analyse de performance et optimisation business',
-        capabilities: ['Analytics', 'Prédictions', 'Optimisation', 'Reporting'],
-        specialization: 'Business',
-        status: 'active'
-      },
-      {
-        id: '3',
-        name: 'Technical Support Bot',
-        description: 'Support technique et résolution de problèmes',
-        capabilities: ['Diagnostic', 'Dépannage', 'Configuration', 'Maintenance'],
-        specialization: 'Technique',
-        status: 'active'
-      }
-    ];
-
-    // Conversations IA
-    const mockConversations: AIConversation[] = [
-      {
-        id: '1',
-        title: 'Optimisation des stocks réseau',
-        participants: ['pharmacy-1', 'pharmacy-2', 'ai-assistant'],
-        messages: [
-          {
-            id: '1',
-            role: 'system',
-            content: 'Conversation démarrée pour l\'optimisation des stocks',
-            timestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString()
-          },
-          {
-            id: '2',
-            role: 'user',
-            content: 'Nous avons des problèmes de rupture de stock fréquentes',
-            timestamp: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
-            pharmacy_id: 'pharmacy-1'
-          },
-          {
-            id: '3',
-            role: 'assistant',
-            content: 'J\'ai analysé vos données de stock. Je recommande d\'ajuster les seuils de réapprovisionnement pour 15 produits clés.',
-            timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-            confidence: 0.92,
-            suggestions: ['Ajuster seuils', 'Optimiser rotations', 'Prévoir demande']
-          }
-        ],
-        status: 'active',
-        created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        ai_model: 'PharmaSoft Assistant Pro',
-        context: 'gestion_stock'
-      },
-      {
-        id: '2',
-        title: 'Formation sur nouveaux protocoles',
-        participants: ['pharmacy-1', 'pharmacy-2', 'pharmacy-3', 'ai-assistant'],
-        messages: [
-          {
-            id: '1',
-            role: 'system',
-            content: 'Session de formation IA démarrée',
-            timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString()
-          },
-          {
-            id: '2',
-            role: 'assistant',
-            content: 'Bonjour ! Je vais vous accompagner dans l\'apprentissage des nouveaux protocoles de dispensation.',
-            timestamp: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-            confidence: 0.98
-          }
-        ],
-        status: 'active',
-        created_at: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
-        ai_model: 'PharmaSoft Assistant Pro',
-        context: 'formation'
-      }
-    ];
-
-    // Insights IA
-    const mockInsights: AIInsight[] = [
-      {
-        id: '1',
-        type: 'recommendation',
-        title: 'Optimisation des commandes groupées',
-        description: 'L\'IA recommande de regrouper les commandes de 3 officines pour économiser 15% sur les frais de livraison',
-        impact: 'high',
-        pharmacies_affected: ['pharmacy-1', 'pharmacy-2', 'pharmacy-3'],
-        confidence: 0.87,
-        created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: '2',
-        type: 'alert',
-        title: 'Pic de demande prévu',
-        description: 'Augmentation prévue de 30% de la demande en produits anti-allergiques cette semaine',
-        impact: 'medium',
-        pharmacies_affected: ['pharmacy-1', 'pharmacy-2'],
-        confidence: 0.78,
-        created_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: '3',
-        type: 'trend',
-        title: 'Évolution des consultations',
-        description: 'Tendance croissante des consultations en fin de journée (+25% sur 2 semaines)',
-        impact: 'low',
-        pharmacies_affected: ['pharmacy-1'],
-        confidence: 0.92,
-        created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString()
-      }
-    ];
-
-    setAIModels(mockModels);
-    setConversations(mockConversations);
-    setInsights(mockInsights);
-    if (mockConversations.length > 0) {
-      setSelectedConversation(mockConversations[0].id);
+  useEffect(() => {
+    if (settings) {
+      setLocalSettings({
+        voice_assistant: settings.voice_assistant ?? false,
+        voice_recognition: settings.voice_recognition ?? false,
+        auto_suggestions: settings.auto_suggestions ?? true,
+        default_model_id: settings.default_model_id ?? '',
+        conversation_encryption: settings.conversation_encryption ?? true,
+        audit_interactions: settings.audit_interactions ?? true,
+        anonymize_data: settings.anonymize_data ?? false,
+        data_retention_days: settings.data_retention_days ?? 90
+      });
     }
-    if (mockModels.length > 0) {
-      setSelectedModel(mockModels[0].id);
+  }, [settings]);
+
+  useEffect(() => {
+    if (selectedConversation) {
+      loadConversationMessages(selectedConversation);
+    }
+  }, [selectedConversation]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, streamingMessage]);
+
+  const stats = getConversationStats();
+  const avgConfidence = getAverageConfidence();
+
+  const handleSendMessage = async () => {
+    if (!currentMessage.trim() || !selectedConversation || isStreaming) return;
+    
+    const messageText = currentMessage;
+    setCurrentMessage('');
+    await sendMessage(selectedConversation, messageText);
+  };
+
+  const handleCreateConversation = async (data: { title: string; modelId: string; context: string; participants: string[] }) => {
+    const newConv = await createConversation(data.title, data.modelId, data.context, data.participants);
+    if (newConv) {
+      setSelectedConversation(newConv.id);
+      setShowCreateConversation(false);
     }
   };
 
+  const handleDeleteConversation = async (id: string) => {
+    await deleteConversation(id);
+    if (selectedConversation === id) {
+      setSelectedConversation('');
+    }
+  };
+
+  const handlePauseResume = async (conv: AIConversation) => {
+    const newStatus = conv.status === 'active' ? 'paused' : 'active';
+    await updateConversation(conv.id, { status: newStatus });
+  };
+
+  const handleConfigureModel = (model: AIModel) => {
+    setSelectedModel(model);
+    setShowConfigureModel(true);
+  };
+
+  const handleTestModel = (model: AIModel) => {
+    setSelectedModel(model);
+    setShowTestModel(true);
+  };
+
+  const handleSaveModelConfig = async (modelId: string, config: { max_tokens: number; temperature: number }) => {
+    await updateAIModel(modelId, config);
+    setShowConfigureModel(false);
+  };
+
+  const handleViewInsight = (insight: AIInsight) => {
+    setSelectedInsight(insight);
+    setShowInsightDetail(true);
+    if (!insight.is_read) {
+      markInsightAsRead(insight.id);
+    }
+  };
+
+  const handleApplyInsight = async (id: string) => {
+    await applyInsight(id);
+    setShowInsightDetail(false);
+  };
+
+  const handleDismissInsight = async (id: string) => {
+    await dismissInsight(id);
+    setShowInsightDetail(false);
+  };
+
+  const handleSaveSettings = async () => {
+    await saveSettings(localSettings);
+    toast.success('Configuration sauvegardée');
+  };
+
+  const filteredInsights = insights.filter(insight => {
+    if (insightFilter !== 'all' && insight.type !== insightFilter) return false;
+    if (impactFilter !== 'all' && insight.impact !== impactFilter) return false;
+    return true;
+  });
+
   const getImpactColor = (impact: string) => {
     switch (impact) {
-      case 'critical': return 'bg-red-500';
-      case 'high': return 'bg-orange-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-green-500';
-      default: return 'bg-gray-500';
+      case 'critical': return 'bg-destructive text-destructive-foreground';
+      case 'high': return 'bg-orange-500 text-white';
+      case 'medium': return 'bg-yellow-500 text-black';
+      case 'low': return 'bg-green-500 text-white';
+      default: return 'bg-muted';
     }
   };
 
@@ -252,50 +236,14 @@ const NetworkConversationalAI = () => {
     }
   };
 
-  const sendMessage = () => {
-    if (!currentMessage.trim() || !selectedConversation) return;
-
-    const newMessage: AIMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: currentMessage,
-      timestamp: new Date().toISOString(),
-      pharmacy_id: 'current-pharmacy'
-    };
-
-    setConversations(prev => prev.map(conv => 
-      conv.id === selectedConversation 
-        ? { ...conv, messages: [...conv.messages, newMessage] }
-        : conv
-    ));
-
-    setCurrentMessage('');
-
-    // Simuler une réponse de l'IA
-    setTimeout(() => {
-      const aiResponse: AIMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Je traite votre demande et analyse les données du réseau pour vous fournir la meilleure réponse possible.',
-        timestamp: new Date().toISOString(),
-        confidence: 0.89,
-        suggestions: ['Analyser données', 'Proposer solutions', 'Suivre métriques']
-      };
-
-      setConversations(prev => prev.map(conv => 
-        conv.id === selectedConversation 
-          ? { ...conv, messages: [...conv.messages, aiResponse] }
-          : conv
-      ));
-    }, 1500);
-  };
+  const selectedConv = conversations.find(c => c.id === selectedConversation);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <Bot className="h-8 w-8 animate-pulse mx-auto mb-2" />
-          <p>Chargement de l'IA réseau...</p>
+          <Bot className="h-8 w-8 animate-pulse mx-auto mb-2 text-primary" />
+          <p className="text-muted-foreground">Chargement de l'IA réseau...</p>
         </div>
       </div>
     );
@@ -314,11 +262,11 @@ const NetworkConversationalAI = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline">
-            <Settings className="h-4 w-4 mr-2" />
-            Configuration IA
+          <Button variant="outline" onClick={() => loadInsights()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualiser
           </Button>
-          <Button>
+          <Button onClick={() => setShowCreateConversation(true)}>
             <MessageSquare className="h-4 w-4 mr-2" />
             Nouvelle conversation
           </Button>
@@ -333,9 +281,9 @@ const NetworkConversationalAI = () => {
             <MessageSquare className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{conversations.filter(c => c.status === 'active').length}</div>
+            <div className="text-2xl font-bold">{stats.active}</div>
             <p className="text-xs text-muted-foreground">
-              {conversations.length} total
+              {stats.total} total
             </p>
           </CardContent>
         </Card>
@@ -348,7 +296,7 @@ const NetworkConversationalAI = () => {
           <CardContent>
             <div className="text-2xl font-bold">{aiModels.filter(m => m.status === 'active').length}</div>
             <p className="text-xs text-muted-foreground">
-              Modèles disponibles
+              {aiModels.length} modèles disponibles
             </p>
           </CardContent>
         </Card>
@@ -359,9 +307,9 @@ const NetworkConversationalAI = () => {
             <Lightbulb className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{insights.length}</div>
+            <div className="text-2xl font-bold">{insights.filter(i => !i.is_read).length}</div>
             <p className="text-xs text-muted-foreground">
-              Dernières 24h
+              Non lus sur {insights.length} total
             </p>
           </CardContent>
         </Card>
@@ -372,7 +320,7 @@ const NetworkConversationalAI = () => {
             <Target className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">94%</div>
+            <div className="text-2xl font-bold">{avgConfidence}%</div>
             <p className="text-xs text-muted-foreground">
               Taux de confiance moyen
             </p>
@@ -394,35 +342,56 @@ const NetworkConversationalAI = () => {
             {/* Liste des conversations */}
             <Card className="lg:col-span-1">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" />
-                  Conversations
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" />
+                    Conversations
+                  </span>
+                  <Button size="sm" variant="ghost" onClick={() => setShowCreateConversation(true)}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-96">
                   <div className="space-y-3">
-                    {conversations.map((conv) => (
-                      <div 
-                        key={conv.id} 
-                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                          selectedConversation === conv.id ? 'bg-primary/10' : 'hover:bg-muted'
-                        }`}
-                        onClick={() => setSelectedConversation(conv.id)}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium text-sm">{conv.title}</h4>
-                          <Badge variant={conv.status === 'active' ? 'default' : 'secondary'}>
-                            {conv.status}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground mb-2">{conv.ai_model}</p>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{conv.participants.length - 1} participants</span>
-                          <span>{conv.messages.length} messages</span>
-                        </div>
+                    {conversations.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Aucune conversation</p>
+                        <Button 
+                          variant="link" 
+                          size="sm" 
+                          onClick={() => setShowCreateConversation(true)}
+                        >
+                          Créer une conversation
+                        </Button>
                       </div>
-                    ))}
+                    ) : (
+                      conversations.map((conv) => (
+                        <div 
+                          key={conv.id} 
+                          className={`p-3 rounded-lg cursor-pointer transition-colors border ${
+                            selectedConversation === conv.id 
+                              ? 'bg-primary/10 border-primary' 
+                              : 'hover:bg-muted border-transparent'
+                          }`}
+                          onClick={() => setSelectedConversation(conv.id)}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-sm truncate">{conv.title}</h4>
+                            <Badge variant={conv.status === 'active' ? 'default' : 'secondary'}>
+                              {conv.status === 'active' ? 'Actif' : conv.status === 'paused' ? 'En pause' : 'Terminé'}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-2">{conv.context}</p>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{(conv.participants as string[])?.length || 0} participants</span>
+                            <span>{format(new Date(conv.created_at), 'dd/MM HH:mm', { locale: fr })}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </ScrollArea>
               </CardContent>
@@ -434,36 +403,66 @@ const NetworkConversationalAI = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>
-                      {conversations.find(c => c.id === selectedConversation)?.title || 'Sélectionner une conversation'}
+                      {selectedConv?.title || 'Sélectionner une conversation'}
                     </CardTitle>
                     <CardDescription className="flex items-center gap-2">
                       <Bot className="h-4 w-4" />
-                      {conversations.find(c => c.id === selectedConversation)?.ai_model}
+                      {selectedConv?.context || 'Assistant IA'}
                     </CardDescription>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                      {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      {voiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  {selectedConv && (
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setIsListening(!isListening)}
+                      >
+                        {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setVoiceEnabled(!voiceEnabled)}
+                      >
+                        {voiceEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePauseResume(selectedConv)}
+                      >
+                        {selectedConv.status === 'active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteConversation(selectedConv.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
                 <ScrollArea className="h-64 mb-4">
-                  <div className="space-y-4">
-                    {conversations.find(c => c.id === selectedConversation)?.messages.map((message) => (
-                      <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className="space-y-4 pr-4">
+                    {messages.map((message) => (
+                      <div 
+                        key={message.id} 
+                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
                         <div className={`max-w-[80%] p-3 rounded-lg ${
                           message.role === 'user' 
                             ? 'bg-primary text-primary-foreground' 
                             : message.role === 'assistant'
                             ? 'bg-muted'
-                            : 'bg-muted/50'
+                            : 'bg-muted/50 text-xs'
                         }`}>
-                          <p className="text-sm">{message.content}</p>
+                          {message.sender_name && (
+                            <p className="text-xs font-medium mb-1 opacity-70">{message.sender_name}</p>
+                          )}
+                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                           {message.confidence && (
                             <div className="flex items-center gap-2 mt-2">
                               <Badge variant="outline" className="text-xs">
@@ -471,31 +470,47 @@ const NetworkConversationalAI = () => {
                               </Badge>
                             </div>
                           )}
-                          {message.suggestions && (
+                          {message.suggestions && (message.suggestions as string[]).length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
-                              {message.suggestions.map((suggestion, idx) => (
-                                <Badge key={idx} variant="secondary" className="text-xs">
+                              {(message.suggestions as string[]).map((suggestion, idx) => (
+                                <Button key={idx} variant="ghost" size="sm" className="text-xs h-6 px-2">
                                   {suggestion}
-                                </Badge>
+                                </Button>
                               ))}
                             </div>
                           )}
                         </div>
                       </div>
                     ))}
+                    {streamingMessage && (
+                      <div className="flex justify-start">
+                        <div className="max-w-[80%] p-3 rounded-lg bg-muted">
+                          <p className="text-sm whitespace-pre-wrap">{streamingMessage}</p>
+                          <Loader2 className="h-3 w-3 animate-spin mt-1" />
+                        </div>
+                      </div>
+                    )}
+                    <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Tapez votre message..."
-                    value={currentMessage}
-                    onChange={(e) => setCurrentMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                  />
-                  <Button onClick={sendMessage}>
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
+                
+                {selectedConv && (
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Tapez votre message..."
+                      value={currentMessage}
+                      onChange={(e) => setCurrentMessage(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                      disabled={isStreaming || selectedConv.status !== 'active'}
+                    />
+                    <Button 
+                      onClick={handleSendMessage}
+                      disabled={!currentMessage.trim() || isStreaming || selectedConv.status !== 'active'}
+                    >
+                      {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -503,158 +518,220 @@ const NetworkConversationalAI = () => {
 
         {/* Modèles IA */}
         <TabsContent value="models" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Brain className="h-5 w-5" />
-                Modèles IA Disponibles
-              </CardTitle>
-              <CardDescription>
-                Gestion et configuration des modèles d'intelligence artificielle
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {aiModels.map((model) => (
-                  <div key={model.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium">{model.name}</h4>
-                      <Badge variant={model.status === 'active' ? 'default' : 'secondary'}>
-                        {model.status}
-                      </Badge>
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">Modèles IA Disponibles</h3>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => exportConversationsToExcel(conversations, 'PharmaSoft')}>
+                <Download className="h-4 w-4 mr-2" />
+                Export Excel
+              </Button>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {aiModels.map((model) => (
+              <Card key={model.id}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Brain className="h-5 w-5 text-primary" />
+                      {model.name}
+                    </CardTitle>
+                    <Badge variant={model.status === 'active' ? 'default' : model.status === 'maintenance' ? 'secondary' : 'outline'}>
+                      {model.status === 'active' ? 'Actif' : model.status === 'maintenance' ? 'Maintenance' : 'Inactif'}
+                    </Badge>
+                  </div>
+                  <CardDescription>{model.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Spécialisation</Label>
+                      <p className="font-medium">{model.specialization}</p>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-3">{model.description}</p>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Target className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-medium">{model.specialization}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {model.capabilities.map((capability) => (
-                          <Badge key={capability} variant="outline" className="text-xs">
-                            {capability}
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Capacités</Label>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(model.capabilities as string[] || []).map((cap, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">
+                            {cap}
                           </Badge>
                         ))}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-4">
-                      <Button variant="outline" size="sm">
-                        <Settings className="h-4 w-4 mr-2" />
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Max Tokens</Label>
+                        <p className="font-medium">{model.max_tokens || 2048}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Température</Label>
+                        <p className="font-medium">{model.temperature || 0.7}</p>
+                      </div>
+                    </div>
+                    <Separator />
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleConfigureModel(model)}>
+                        <Wrench className="h-4 w-4 mr-1" />
                         Configurer
                       </Button>
-                      <Button variant="outline" size="sm">
-                        <Play className="h-4 w-4 mr-2" />
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleTestModel(model)}>
+                        <Play className="h-4 w-4 mr-1" />
                         Tester
                       </Button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </TabsContent>
 
-        {/* Insights IA */}
+        {/* Insights */}
         <TabsContent value="insights" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lightbulb className="h-5 w-5" />
-                Insights et Recommandations IA
-              </CardTitle>
-              <CardDescription>
-                Analyses intelligentes et recommandations générées par l'IA
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {insights.map((insight) => (
-                  <div key={insight.id} className="p-4 border rounded-lg">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getImpactColor(insight.impact)}`}>
-                          {getTypeIcon(insight.type)}
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{insight.title}</h4>
-                          <Badge variant="outline" className="text-xs">
-                            {insight.type}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="text-right text-sm text-muted-foreground">
-                        <div>Confiance: {Math.round(insight.confidence * 100)}%</div>
-                        <div>Impact: {insight.impact}</div>
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-3">{insight.description}</p>
+          <div className="flex flex-wrap justify-between items-center gap-4">
+            <h3 className="text-lg font-semibold">Insights IA Générés</h3>
+            <div className="flex gap-2 flex-wrap">
+              <Select value={insightFilter} onValueChange={setInsightFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les types</SelectItem>
+                  <SelectItem value="recommendation">Recommandations</SelectItem>
+                  <SelectItem value="alert">Alertes</SelectItem>
+                  <SelectItem value="trend">Tendances</SelectItem>
+                  <SelectItem value="optimization">Optimisations</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={impactFilter} onValueChange={setImpactFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Impact" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les impacts</SelectItem>
+                  <SelectItem value="critical">Critique</SelectItem>
+                  <SelectItem value="high">Élevé</SelectItem>
+                  <SelectItem value="medium">Moyen</SelectItem>
+                  <SelectItem value="low">Faible</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" onClick={() => exportInsightsToExcel(insights, 'PharmaSoft')}>
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredInsights.length === 0 ? (
+              <div className="col-span-full text-center py-12 text-muted-foreground">
+                <Lightbulb className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Aucun insight correspondant aux filtres</p>
+              </div>
+            ) : (
+              filteredInsights.map((insight) => (
+                <Card key={insight.id} className={!insight.is_read ? 'border-primary' : ''}>
+                  <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{insight.pharmacies_affected.length} officines concernées</span>
+                        {getTypeIcon(insight.type)}
+                        <Badge className={getImpactColor(insight.impact)}>
+                          {insight.impact}
+                        </Badge>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
-                          Détails
-                        </Button>
-                        <Button size="sm">
-                          Appliquer
-                        </Button>
-                      </div>
+                      {!insight.is_read && <Badge variant="outline" className="text-xs">Nouveau</Badge>}
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                    <CardTitle className="text-base">{insight.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{insight.description}</p>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Confiance</span>
+                        <span className="font-medium">{Math.round((insight.confidence || 0) * 100)}%</span>
+                      </div>
+                      <Progress value={(insight.confidence || 0) * 100} className="h-1" />
+                    </div>
+                    <div className="flex items-center justify-between mt-4">
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(insight.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                      </span>
+                      <Button variant="outline" size="sm" onClick={() => handleViewInsight(insight)}>
+                        <Eye className="h-4 w-4 mr-1" />
+                        Détails
+                      </Button>
+                    </div>
+                    {insight.is_applied && (
+                      <Badge variant="secondary" className="mt-2 w-full justify-center">
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Appliqué
+                      </Badge>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         </TabsContent>
 
-        {/* Configuration IA */}
+        {/* Configuration */}
         <TabsContent value="settings" className="space-y-4">
           <div className="grid gap-6 md:grid-cols-2">
+            {/* Paramètres Généraux */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="h-5 w-5" />
                   Paramètres Généraux
                 </CardTitle>
+                <CardDescription>Configuration générale de l'assistant IA</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="space-y-0.5">
                     <Label>Assistant vocal</Label>
-                    <p className="text-sm text-muted-foreground">Activer les réponses vocales</p>
+                    <p className="text-xs text-muted-foreground">Activer les réponses vocales</p>
                   </div>
-                  <Switch checked={voiceEnabled} onCheckedChange={setVoiceEnabled} />
+                  <Switch 
+                    checked={localSettings.voice_assistant}
+                    onCheckedChange={(checked) => setLocalSettings(prev => ({ ...prev, voice_assistant: checked }))}
+                  />
                 </div>
-                
+                <Separator />
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="space-y-0.5">
                     <Label>Reconnaissance vocale</Label>
-                    <p className="text-sm text-muted-foreground">Dictée vocale des messages</p>
+                    <p className="text-xs text-muted-foreground">Activer la saisie vocale</p>
                   </div>
-                  <Switch />
+                  <Switch 
+                    checked={localSettings.voice_recognition}
+                    onCheckedChange={(checked) => setLocalSettings(prev => ({ ...prev, voice_recognition: checked }))}
+                  />
                 </div>
-
+                <Separator />
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="space-y-0.5">
                     <Label>Auto-suggestions</Label>
-                    <p className="text-sm text-muted-foreground">Suggestions automatiques</p>
+                    <p className="text-xs text-muted-foreground">Suggérer des réponses automatiques</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={localSettings.auto_suggestions}
+                    onCheckedChange={(checked) => setLocalSettings(prev => ({ ...prev, auto_suggestions: checked }))}
+                  />
                 </div>
-
+                <Separator />
                 <div className="space-y-2">
                   <Label>Modèle IA par défaut</Label>
-                  <Select value={selectedModel} onValueChange={setSelectedModel}>
+                  <Select 
+                    value={localSettings.default_model_id} 
+                    onValueChange={(value) => setLocalSettings(prev => ({ ...prev, default_model_id: value }))}
+                  >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Sélectionner un modèle" />
                     </SelectTrigger>
                     <SelectContent>
-                      {aiModels.map((model) => (
-                        <SelectItem key={model.id} value={model.id}>
-                          {model.name}
-                        </SelectItem>
+                      {aiModels.filter(m => m.status === 'active').map((model) => (
+                        <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -662,41 +739,55 @@ const NetworkConversationalAI = () => {
               </CardContent>
             </Card>
 
+            {/* Sécurité & Confidentialité */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="h-5 w-5" />
-                  Sécurité et Confidentialité
+                  Sécurité & Confidentialité
                 </CardTitle>
+                <CardDescription>Paramètres de sécurité des conversations IA</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="space-y-0.5">
                     <Label>Chiffrement des conversations</Label>
-                    <p className="text-sm text-muted-foreground">Sécurise les échanges</p>
+                    <p className="text-xs text-muted-foreground">Chiffrer toutes les conversations</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={localSettings.conversation_encryption}
+                    onCheckedChange={(checked) => setLocalSettings(prev => ({ ...prev, conversation_encryption: checked }))}
+                  />
                 </div>
-                
+                <Separator />
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="space-y-0.5">
                     <Label>Audit des interactions</Label>
-                    <p className="text-sm text-muted-foreground">Traçabilité des échanges</p>
+                    <p className="text-xs text-muted-foreground">Journaliser les interactions IA</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={localSettings.audit_interactions}
+                    onCheckedChange={(checked) => setLocalSettings(prev => ({ ...prev, audit_interactions: checked }))}
+                  />
                 </div>
-
+                <Separator />
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="space-y-0.5">
                     <Label>Données anonymisées</Label>
-                    <p className="text-sm text-muted-foreground">Protection de la vie privée</p>
+                    <p className="text-xs text-muted-foreground">Anonymiser les données dans les logs</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={localSettings.anonymize_data}
+                    onCheckedChange={(checked) => setLocalSettings(prev => ({ ...prev, anonymize_data: checked }))}
+                  />
                 </div>
-
+                <Separator />
                 <div className="space-y-2">
                   <Label>Rétention des données</Label>
-                  <Select defaultValue="30">
+                  <Select 
+                    value={String(localSettings.data_retention_days)} 
+                    onValueChange={(value) => setLocalSettings(prev => ({ ...prev, data_retention_days: parseInt(value) }))}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -711,8 +802,51 @@ const NetworkConversationalAI = () => {
               </CardContent>
             </Card>
           </div>
+
+          <div className="flex justify-end">
+            <Button onClick={handleSaveSettings}>
+              <Save className="h-4 w-4 mr-2" />
+              Enregistrer les paramètres
+            </Button>
+          </div>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <CreateConversationDialog
+        open={showCreateConversation}
+        onOpenChange={setShowCreateConversation}
+        aiModels={aiModels}
+        onCreateConversation={createConversation}
+      />
+
+      {selectedModel && (
+        <>
+          <ConfigureModelDialog
+            open={showConfigureModel}
+            onOpenChange={setShowConfigureModel}
+            model={selectedModel}
+            onSave={handleSaveModelConfig}
+          />
+          <TestModelDialog
+            open={showTestModel}
+            onOpenChange={setShowTestModel}
+            model={selectedModel}
+            onTest={testAIModel}
+          />
+        </>
+      )}
+
+      {selectedInsight && (
+        <InsightDetailDialog
+          open={showInsightDetail}
+          onOpenChange={setShowInsightDetail}
+          insight={selectedInsight}
+          pharmacies={[]}
+          onApply={handleApplyInsight}
+          onDismiss={handleDismissInsight}
+        />
+      )}
     </div>
   );
 };
