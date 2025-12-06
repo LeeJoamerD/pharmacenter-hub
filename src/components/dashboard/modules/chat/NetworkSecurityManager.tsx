@@ -950,14 +950,17 @@ const NetworkSecurityManager = () => {
         open={eventDetailDialog}
         onOpenChange={setEventDetailDialog}
         event={selectedEvent}
-        onResolve={(event) => handleResolveEvent(event)}
+        onResolve={(eventId) => {
+          const event = securityEvents.find(e => e.id === eventId);
+          if (event) handleResolveEvent(event);
+        }}
       />
 
       <CreateAccessRuleDialog
         open={createRuleDialog}
         onOpenChange={setCreateRuleDialog}
-        onCreate={handleCreateRule}
-        isCreating={saving}
+        onSubmit={handleCreateRule}
+        isSubmitting={saving}
       />
 
       <EncryptionDetailDialog
