@@ -672,6 +672,178 @@ export type Database = {
           },
         ]
       }
+      ai_forecast_models: {
+        Row: {
+          accuracy: number | null
+          best_for: string | null
+          created_at: string | null
+          description: string | null
+          display_name: string
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          last_used_at: string | null
+          model_code: string
+          parameters: Json | null
+          tenant_id: string
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          accuracy?: number | null
+          best_for?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          last_used_at?: string | null
+          model_code: string
+          parameters?: Json | null
+          tenant_id: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          accuracy?: number | null
+          best_for?: string | null
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          last_used_at?: string | null
+          model_code?: string
+          parameters?: Json | null
+          tenant_id?: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_forecast_models_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_forecasts: {
+        Row: {
+          confidence_score: number | null
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          forecast_data: Json
+          forecast_type: string
+          id: string
+          model_used: string
+          period_days: number | null
+          status: string | null
+          summary_metrics: Json | null
+          tenant_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          forecast_data?: Json
+          forecast_type: string
+          id?: string
+          model_used?: string
+          period_days?: number | null
+          status?: string | null
+          summary_metrics?: Json | null
+          tenant_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          forecast_data?: Json
+          forecast_type?: string
+          id?: string
+          model_used?: string
+          period_days?: number | null
+          status?: string | null
+          summary_metrics?: Json | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_forecasts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_forecasts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_influential_factors: {
+        Row: {
+          created_at: string | null
+          data_source: string | null
+          description: string | null
+          factor_name: string
+          id: string
+          influence_score: number | null
+          is_active: boolean | null
+          metadata: Json | null
+          tenant_id: string
+          trend_type: string | null
+          updated_at: string | null
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_source?: string | null
+          description?: string | null
+          factor_name: string
+          id?: string
+          influence_score?: number | null
+          is_active?: boolean | null
+          metadata?: Json | null
+          tenant_id: string
+          trend_type?: string | null
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          data_source?: string | null
+          description?: string | null
+          factor_name?: string
+          id?: string
+          influence_score?: number | null
+          is_active?: boolean | null
+          metadata?: Json | null
+          tenant_id?: string
+          trend_type?: string | null
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_influential_factors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_insights: {
         Row: {
           applied_at: string | null
@@ -799,6 +971,122 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ai_models_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_stock_predictions: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          current_stock: number
+          days_until_stockout: number | null
+          dismissed: boolean | null
+          forecast_id: string | null
+          id: string
+          lot_id: string | null
+          order_created: boolean | null
+          order_id: string | null
+          predicted_demand_daily: number | null
+          priority: string | null
+          product_code: string | null
+          product_name: string | null
+          produit_id: string | null
+          recommended_order_qty: number | null
+          tenant_id: string
+          trend: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          current_stock?: number
+          days_until_stockout?: number | null
+          dismissed?: boolean | null
+          forecast_id?: string | null
+          id?: string
+          lot_id?: string | null
+          order_created?: boolean | null
+          order_id?: string | null
+          predicted_demand_daily?: number | null
+          priority?: string | null
+          product_code?: string | null
+          product_name?: string | null
+          produit_id?: string | null
+          recommended_order_qty?: number | null
+          tenant_id: string
+          trend?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          current_stock?: number
+          days_until_stockout?: number | null
+          dismissed?: boolean | null
+          forecast_id?: string | null
+          id?: string
+          lot_id?: string | null
+          order_created?: boolean | null
+          order_id?: string | null
+          predicted_demand_daily?: number | null
+          priority?: string | null
+          product_code?: string | null
+          product_name?: string | null
+          produit_id?: string | null
+          recommended_order_qty?: number | null
+          tenant_id?: string
+          trend?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_stock_predictions_forecast_id_fkey"
+            columns: ["forecast_id"]
+            isOneToOne: false
+            referencedRelation: "ai_forecasts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_stock_predictions_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_stock_predictions_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_stock_predictions_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_stock_predictions_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_produits_with_famille"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_stock_predictions_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "ai_stock_predictions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -16430,6 +16718,14 @@ export type Database = {
         Args: { jours_restants: number }
         Returns: string
       }
+      generate_ai_forecast: {
+        Args: {
+          p_model_code?: string
+          p_period_days?: number
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       generate_avoir_number: { Args: { p_tenant_id: string }; Returns: string }
       generate_cost_center_code: {
         Args: { p_tenant_id: string }
@@ -16540,6 +16836,7 @@ export type Database = {
           valeur_vendue: number
         }[]
       }
+      get_forecast_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_low_stock_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_low_stock_products:
         | { Args: { p_tenant_id: string }; Returns: Json }
@@ -16688,6 +16985,10 @@ export type Database = {
       init_fiscal_params_for_tenant: {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: string
+      }
+      init_forecast_models_for_tenant: {
+        Args: { p_tenant_id: string }
+        Returns: undefined
       }
       init_inventaire_items:
         | { Args: { p_session_id: string; p_tenant_id: string }; Returns: Json }
