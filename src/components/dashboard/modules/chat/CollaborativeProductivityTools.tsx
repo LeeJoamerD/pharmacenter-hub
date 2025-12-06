@@ -4,11 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
 import { 
   Zap,
   CheckSquare,
@@ -16,7 +14,6 @@ import {
   FileText,
   Users,
   Share2,
-  Bell,
   Clock,
   Plus,
   Edit,
@@ -24,230 +21,179 @@ import {
   Download,
   Upload,
   Search,
-  Filter,
   Target,
   TrendingUp,
-  Activity,
   Folder,
-  Link,
   AlertCircle,
   CheckCircle,
   User,
-  MessageSquare,
-  Star,
-  Archive
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
-import { useNetworkMessaging } from '@/hooks/useNetworkMessaging';
-import { formatDistanceToNow } from 'date-fns';
+import { useCollaborativeProductivity, type CollaborativeTask, type SharedDocument, type CollaborativeWorkspace } from '@/hooks/useCollaborativeProductivity';
+import { formatDistanceToNow, format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  assignee: string;
-  pharmacy_id: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  due_date: string;
-  created_at: string;
-  created_by: string;
-  tags: string[];
-}
-
-interface Document {
-  id: string;
-  name: string;
-  type: string;
-  size: string;
-  uploaded_by: string;
-  uploaded_at: string;
-  pharmacy_id: string;
-  shared_with: string[];
-  category: string;
-}
-
-interface Event {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  organizer: string;
-  participants: string[];
-  type: 'meeting' | 'training' | 'event' | 'deadline';
-  location: string;
-}
+import { CreateTaskDialog } from './dialogs/CreateTaskDialog';
+import { EditTaskDialog } from './dialogs/EditTaskDialog';
+import { CreateEventDialog } from './dialogs/CreateEventDialog';
+import { UploadDocumentDialog } from './dialogs/UploadDocumentDialog';
+import { ShareDocumentDialog } from './dialogs/ShareDocumentDialog';
+import { CreateWorkspaceDialog } from './dialogs/CreateWorkspaceDialog';
+import { WorkspaceDetailDialog } from './dialogs/WorkspaceDetailDialog';
+import { 
+  exportTasksToExcel, 
+  exportTasksToPDF, 
+  exportDocumentsToExcel,
+  exportDocumentsToPDF,
+  exportEventsToExcel,
+  exportEventsToPDF,
+  exportWorkspacesToExcel 
+} from '@/utils/collaborativeExportUtils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const CollaborativeProductivityTools = () => {
-  const { pharmacies, loading } = useNetworkMessaging();
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [selectedPharmacy, setSelectedPharmacy] = useState<string>('all');
-  const [taskFilter, setTaskFilter] = useState<string>('all');
+  const {
+    loading,
+    saving,
+    tasks,
+    documents,
+    events,
+    workspaces,
+    pharmacies,
+    metrics,
+    loadTasks,
+    createTask,
+    updateTask,
+    deleteTask,
+    loadDocuments,
+    uploadDocument,
+    shareDocument,
+    deleteDocument,
+    loadEvents,
+    createEvent,
+    deleteEvent,
+    createWorkspace,
+    updateWorkspaceProgress,
+    loadWorkspaceMembers,
+    addWorkspaceMember,
+    removeWorkspaceMember,
+    loadAll
+  } = useCollaborativeProductivity();
+
+  // Filters
+  const [taskFilter, setTaskFilter] = useState('all');
+  const [taskPriorityFilter, setTaskPriorityFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [docCategoryFilter, setDocCategoryFilter] = useState('all');
+  const [eventTypeFilter, setEventTypeFilter] = useState('all');
 
-  useEffect(() => {
-    loadMockData();
-  }, [pharmacies]);
+  // Dialogs
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [editTaskOpen, setEditTaskOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<CollaborativeTask | null>(null);
+  const [createEventOpen, setCreateEventOpen] = useState(false);
+  const [uploadDocOpen, setUploadDocOpen] = useState(false);
+  const [shareDocOpen, setShareDocOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<SharedDocument | null>(null);
+  const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
+  const [workspaceDetailOpen, setWorkspaceDetailOpen] = useState(false);
+  const [selectedWorkspace, setSelectedWorkspace] = useState<CollaborativeWorkspace | null>(null);
+  const [workspaceMembers, setWorkspaceMembers] = useState<any[]>([]);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: string; id: string; name: string } | null>(null);
 
-  const loadMockData = () => {
-    // Simuler des tâches collaboratives
-    const mockTasks: Task[] = [
-      {
-        id: '1',
-        title: 'Révision des protocoles de sécurité',
-        description: 'Mise à jour des procédures de sécurité pour toutes les officines',
-        assignee: 'Pharmacie du Centre',
-        pharmacy_id: 'pharmacy-1',
-        priority: 'high',
-        status: 'in_progress',
-        due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-        created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        created_by: 'Dr. Martin',
-        tags: ['sécurité', 'protocoles', 'urgent']
-      },
-      {
-        id: '2',
-        title: 'Formation sur nouveaux médicaments',
-        description: 'Organisation de la formation collective sur les nouveaux produits',
-        assignee: 'Pharmacie Moderne',
-        pharmacy_id: 'pharmacy-2',
-        priority: 'medium',
-        status: 'pending',
-        due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        created_by: 'Dr. Dubois',
-        tags: ['formation', 'médicaments']
-      },
-      {
-        id: '3',
-        title: 'Audit qualité trimestriel',
-        description: 'Préparation et coordination de l\'audit qualité du réseau',
-        assignee: 'Pharmacie Santé Plus',
-        pharmacy_id: 'pharmacy-3',
-        priority: 'medium',
-        status: 'completed',
-        due_date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-        created_by: 'Dr. Laurent',
-        tags: ['audit', 'qualité']
-      }
-    ];
+  // Handle workspace detail opening
+  const handleOpenWorkspaceDetail = async (workspace: CollaborativeWorkspace) => {
+    setSelectedWorkspace(workspace);
+    const members = await loadWorkspaceMembers(workspace.id);
+    setWorkspaceMembers(members);
+    setWorkspaceDetailOpen(true);
+  };
 
-    // Simuler des documents partagés
-    const mockDocuments: Document[] = [
-      {
-        id: '1',
-        name: 'Protocole COVID-19 V3.pdf',
-        type: 'PDF',
-        size: '2.4 MB',
-        uploaded_by: 'Dr. Martin',
-        uploaded_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-        pharmacy_id: 'pharmacy-1',
-        shared_with: ['pharmacy-2', 'pharmacy-3'],
-        category: 'Protocoles'
-      },
-      {
-        id: '2',
-        name: 'Catalogue Produits 2024.xlsx',
-        type: 'Excel',
-        size: '5.1 MB',
-        uploaded_by: 'Dr. Dubois',
-        uploaded_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-        pharmacy_id: 'pharmacy-2',
-        shared_with: ['pharmacy-1', 'pharmacy-3'],
-        category: 'Catalogues'
-      },
-      {
-        id: '3',
-        name: 'Rapport Audit Q1.docx',
-        type: 'Word',
-        size: '1.8 MB',
-        uploaded_by: 'Dr. Laurent',
-        uploaded_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        pharmacy_id: 'pharmacy-3',
-        shared_with: ['pharmacy-1', 'pharmacy-2'],
-        category: 'Rapports'
-      }
-    ];
+  // Filter tasks
+  const filteredTasks = tasks.filter(task => {
+    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (task.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = taskFilter === 'all' || task.status === taskFilter;
+    const matchesPriority = taskPriorityFilter === 'all' || task.priority === taskPriorityFilter;
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
 
-    // Simuler des événements
-    const mockEvents: Event[] = [
-      {
-        id: '1',
-        title: 'Réunion réseau mensuelle',
-        description: 'Point mensuel sur les activités du réseau',
-        date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-        time: '14:00',
-        organizer: 'Administration Centrale',
-        participants: ['pharmacy-1', 'pharmacy-2', 'pharmacy-3'],
-        type: 'meeting',
-        location: 'Visioconférence'
-      },
-      {
-        id: '2',
-        title: 'Formation Nouvelles Réglementations',
-        description: 'Session de formation sur les nouvelles réglementations pharmaceutiques',
-        date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-        time: '10:00',
-        organizer: 'Dr. Martin',
-        participants: ['pharmacy-1', 'pharmacy-2'],
-        type: 'training',
-        location: 'Centre de Formation Régional'
-      }
-    ];
+  // Filter documents
+  const filteredDocuments = documents.filter(doc => {
+    const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = docCategoryFilter === 'all' || doc.category === docCategoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
-    setTasks(mockTasks);
-    setDocuments(mockDocuments);
-    setEvents(mockEvents);
+  // Filter events
+  const filteredEvents = events.filter(event => {
+    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = eventTypeFilter === 'all' || event.event_type === eventTypeFilter;
+    return matchesSearch && matchesType;
+  });
+
+  // Confirm delete
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    
+    if (deleteTarget.type === 'task') {
+      await deleteTask(deleteTarget.id);
+    } else if (deleteTarget.type === 'document') {
+      await deleteDocument(deleteTarget.id);
+    } else if (deleteTarget.type === 'event') {
+      await deleteEvent(deleteTarget.id);
+    }
+    
+    setDeleteConfirmOpen(false);
+    setDeleteTarget(null);
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-500';
+      case 'urgent': return 'bg-destructive';
       case 'high': return 'bg-orange-500';
       case 'medium': return 'bg-yellow-500';
       case 'low': return 'bg-green-500';
-      default: return 'bg-gray-500';
+      default: return 'bg-muted';
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'completed': return 'text-green-600';
-      case 'in_progress': return 'text-blue-600';
-      case 'pending': return 'text-orange-600';
-      case 'cancelled': return 'text-red-600';
-      default: return 'text-gray-600';
+      case 'completed': return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Terminée</Badge>;
+      case 'in_progress': return <Badge className="bg-blue-500"><Clock className="h-3 w-3 mr-1" />En cours</Badge>;
+      case 'pending': return <Badge variant="outline"><AlertCircle className="h-3 w-3 mr-1" />En attente</Badge>;
+      case 'cancelled': return <Badge variant="destructive"><Trash2 className="h-3 w-3 mr-1" />Annulée</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return <CheckCircle className="h-4 w-4" />;
-      case 'in_progress': return <Clock className="h-4 w-4" />;
-      case 'pending': return <AlertCircle className="h-4 w-4" />;
-      case 'cancelled': return <Trash2 className="h-4 w-4" />;
-      default: return <Clock className="h-4 w-4" />;
+  const getEventTypeBadge = (type: string) => {
+    switch (type) {
+      case 'meeting': return <Badge className="bg-blue-500">Réunion</Badge>;
+      case 'training': return <Badge className="bg-purple-500">Formation</Badge>;
+      case 'event': return <Badge className="bg-green-500">Événement</Badge>;
+      case 'deadline': return <Badge className="bg-orange-500">Échéance</Badge>;
+      default: return <Badge variant="outline">{type}</Badge>;
     }
   };
-
-  const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         task.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPharmacy = selectedPharmacy === 'all' || task.pharmacy_id === selectedPharmacy;
-    const matchesStatus = taskFilter === 'all' || task.status === taskFilter;
-    return matchesSearch && matchesPharmacy && matchesStatus;
-  });
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <Zap className="h-8 w-8 animate-pulse mx-auto mb-2" />
-          <p>Chargement des outils collaboratifs...</p>
+          <Zap className="h-8 w-8 animate-pulse mx-auto mb-2 text-primary" />
+          <p className="text-muted-foreground">Chargement des outils collaboratifs...</p>
         </div>
       </div>
     );
@@ -265,39 +211,35 @@ const CollaborativeProductivityTools = () => {
             Outils de collaboration et de productivité pour le réseau multi-officines
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvel élément
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={loadAll} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Actualiser
+        </Button>
       </div>
 
-      {/* Métriques de collaboration */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* KPI Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tâches Actives</CardTitle>
             <CheckSquare className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{tasks.filter(t => t.status !== 'completed').length}</div>
+            <div className="text-2xl font-bold">{metrics.activeTasks}</div>
             <p className="text-xs text-muted-foreground">
-              {tasks.filter(t => t.status === 'completed').length} terminées
+              {metrics.completedTasks} terminées
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Documents Partagés</CardTitle>
+            <CardTitle className="text-sm font-medium">Documents</CardTitle>
             <FileText className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{documents.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Bibliothèque commune
-            </p>
+            <div className="text-2xl font-bold">{metrics.sharedDocuments}</div>
+            <p className="text-xs text-muted-foreground">Bibliothèque partagée</p>
           </CardContent>
         </Card>
 
@@ -307,36 +249,63 @@ const CollaborativeProductivityTools = () => {
             <Calendar className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{events.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Planifiés ce mois
-            </p>
+            <div className="text-2xl font-bold">{metrics.upcomingEvents}</div>
+            <p className="text-xs text-muted-foreground">À venir</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Espaces</CardTitle>
+            <Folder className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.activeWorkspaces}</div>
+            <p className="text-xs text-muted-foreground">Actifs</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Collaboration</CardTitle>
-            <Users className="h-4 w-4 text-purple-500" />
+            <Users className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pharmacies.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Officines actives
-            </p>
+            <div className="text-2xl font-bold">{metrics.collaboratingPharmacies}</div>
+            <p className="text-xs text-muted-foreground">Officines</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Taux Complétion</CardTitle>
+            <TrendingUp className="h-4 w-4 text-cyan-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {metrics.activeTasks + metrics.completedTasks > 0 
+                ? Math.round((metrics.completedTasks / (metrics.activeTasks + metrics.completedTasks)) * 100)
+                : 0}%
+            </div>
+            <Progress 
+              value={metrics.activeTasks + metrics.completedTasks > 0 
+                ? (metrics.completedTasks / (metrics.activeTasks + metrics.completedTasks)) * 100 
+                : 0} 
+              className="h-1 mt-1" 
+            />
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="tasks" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="tasks">Tâches</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="calendar">Calendrier</TabsTrigger>
-          <TabsTrigger value="workspace">Espaces</TabsTrigger>
+          <TabsTrigger value="tasks">Tâches ({tasks.length})</TabsTrigger>
+          <TabsTrigger value="documents">Documents ({documents.length})</TabsTrigger>
+          <TabsTrigger value="calendar">Calendrier ({events.length})</TabsTrigger>
+          <TabsTrigger value="workspace">Espaces ({workspaces.length})</TabsTrigger>
         </TabsList>
 
-        {/* Gestion des tâches */}
+        {/* === TASKS TAB === */}
         <TabsContent value="tasks" className="space-y-4">
           <Card>
             <CardHeader>
@@ -346,109 +315,135 @@ const CollaborativeProductivityTools = () => {
                     <CheckSquare className="h-5 w-5" />
                     Gestion des Tâches Collaboratives
                   </CardTitle>
-                  <CardDescription>
-                    Suivi et coordination des tâches inter-officines
-                  </CardDescription>
+                  <CardDescription>Suivi et coordination des tâches inter-officines</CardDescription>
                 </div>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nouvelle tâche
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => exportTasksToExcel(filteredTasks)}>
+                    <Download className="h-4 w-4 mr-1" />Excel
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => exportTasksToPDF(filteredTasks)}>
+                    <Download className="h-4 w-4 mr-1" />PDF
+                  </Button>
+                  <Button onClick={() => setCreateTaskOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />Nouvelle tâche
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              {/* Filtres */}
+              {/* Filters */}
               <div className="flex flex-wrap gap-4 mb-6">
                 <div className="flex items-center gap-2">
                   <Search className="h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Rechercher des tâches..."
+                    placeholder="Rechercher..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-64"
                   />
                 </div>
-                <Select value={selectedPharmacy} onValueChange={setSelectedPharmacy}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Filtrer par officine" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes les officines</SelectItem>
-                    {pharmacies.map((pharmacy) => (
-                      <SelectItem key={pharmacy.id} value={pharmacy.id}>
-                        {pharmacy.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <Select value={taskFilter} onValueChange={setTaskFilter}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Filtrer par statut" />
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Statut" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Tous les statuts</SelectItem>
+                    <SelectItem value="all">Tous</SelectItem>
                     <SelectItem value="pending">En attente</SelectItem>
                     <SelectItem value="in_progress">En cours</SelectItem>
                     <SelectItem value="completed">Terminées</SelectItem>
+                    <SelectItem value="cancelled">Annulées</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={taskPriorityFilter} onValueChange={setTaskPriorityFilter}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Priorité" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes</SelectItem>
+                    <SelectItem value="urgent">Urgente</SelectItem>
+                    <SelectItem value="high">Haute</SelectItem>
+                    <SelectItem value="medium">Moyenne</SelectItem>
+                    <SelectItem value="low">Faible</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Liste des tâches */}
               <ScrollArea className="h-96">
-                <div className="space-y-4">
-                  {filteredTasks.map((task) => (
-                    <div key={task.id} className="p-4 border rounded-lg">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-medium">{task.title}</h4>
-                            <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`} />
-                            <Badge variant="outline" className="text-xs">
-                              {task.priority}
-                            </Badge>
+                {filteredTasks.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CheckSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>Aucune tâche trouvée</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredTasks.map((task) => (
+                      <div key={task.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium">{task.title}</h4>
+                              <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`} />
+                              {task.is_network_task && <Badge variant="outline" className="text-xs">Réseau</Badge>}
+                            </div>
+                            {task.description && (
+                              <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
+                            )}
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              {task.assignee_name && (
+                                <div className="flex items-center gap-1">
+                                  <User className="h-3 w-3" />
+                                  {task.assignee_name}
+                                </div>
+                              )}
+                              {task.due_date && (
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {formatDistanceToNow(new Date(task.due_date), { addSuffix: true, locale: fr })}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-sm text-muted-foreground mb-2">{task.description}</p>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              {task.assignee}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              Échéance: {formatDistanceToNow(new Date(task.due_date), { 
-                                addSuffix: true, 
-                                locale: fr 
-                              })}
-                            </div>
+                          <div className="flex items-center gap-2">
+                            {getStatusBadge(task.status)}
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => {
+                                setSelectedTask(task);
+                                setEditTaskOpen(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => {
+                                setDeleteTarget({ type: 'task', id: task.id, name: task.title });
+                                setDeleteConfirmOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className={`flex items-center gap-1 ${getStatusColor(task.status)}`}>
-                            {getStatusIcon(task.status)}
-                            <span className="text-sm capitalize">{task.status.replace('_', ' ')}</span>
+                        {task.tags && task.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {task.tags.map((tag) => (
+                              <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                            ))}
                           </div>
-                          <Button variant="outline" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {task.tags.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Gestion des documents */}
+        {/* === DOCUMENTS TAB === */}
         <TabsContent value="documents" className="space-y-4">
           <Card>
             <CardHeader>
@@ -456,68 +451,107 @@ const CollaborativeProductivityTools = () => {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    Bibliothèque de Documents Partagés
+                    Bibliothèque de Documents
                   </CardTitle>
-                  <CardDescription>
-                    Partage et gestion de documents inter-officines
-                  </CardDescription>
+                  <CardDescription>Documents partagés entre officines</CardDescription>
                 </div>
-                <Button>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Télécharger
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => exportDocumentsToExcel(filteredDocuments)}>
+                    <Download className="h-4 w-4 mr-1" />Excel
+                  </Button>
+                  <Button onClick={() => setUploadDocOpen(true)}>
+                    <Upload className="h-4 w-4 mr-2" />Ajouter
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {documents.map((doc) => (
-                  <div key={doc.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center gap-3 mb-3">
-                      <FileText className="h-8 w-8 text-blue-500" />
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium truncate">{doc.name}</h4>
-                        <p className="text-sm text-muted-foreground">{doc.type} • {doc.size}</p>
-                      </div>
-                    </div>
-                    <div className="space-y-2 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        {doc.uploaded_by}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {formatDistanceToNow(new Date(doc.uploaded_at), { 
-                          addSuffix: true, 
-                          locale: fr 
-                        })}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Share2 className="h-3 w-3" />
-                        Partagé avec {doc.shared_with.length} officines
-                      </div>
-                    </div>
-                    <Separator className="my-3" />
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline" className="text-xs">
-                        {doc.category}
-                      </Badge>
-                      <div className="flex items-center gap-1">
-                        <Button variant="outline" size="sm">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Share2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex flex-wrap gap-4 mb-6">
+                <div className="flex items-center gap-2">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-64"
+                  />
+                </div>
+                <Select value={docCategoryFilter} onValueChange={setDocCategoryFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Catégorie" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes</SelectItem>
+                    <SelectItem value="general">Général</SelectItem>
+                    <SelectItem value="protocols">Protocoles</SelectItem>
+                    <SelectItem value="reports">Rapports</SelectItem>
+                    <SelectItem value="training">Formation</SelectItem>
+                    <SelectItem value="regulations">Réglementation</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              <ScrollArea className="h-96">
+                {filteredDocuments.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>Aucun document trouvé</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredDocuments.map((doc) => (
+                      <div key={doc.id} className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50">
+                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <FileText className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium truncate">{doc.name}</h4>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span>{doc.category}</span>
+                            <span>{doc.file_type || 'Document'}</span>
+                            <span>{doc.download_count} téléchargements</span>
+                            {doc.is_network_document && <Badge variant="outline" className="text-xs">Réseau</Badge>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => {
+                              setSelectedDocument(doc);
+                              setShareDocOpen(true);
+                            }}
+                          >
+                            <Share2 className="h-4 w-4" />
+                          </Button>
+                          {doc.file_url && (
+                            <Button variant="ghost" size="icon" asChild>
+                              <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </Button>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => {
+                              setDeleteTarget({ type: 'document', id: doc.id, name: doc.name });
+                              setDeleteConfirmOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Calendrier collaboratif */}
+        {/* === CALENDAR TAB === */}
         <TabsContent value="calendar" className="space-y-4">
           <Card>
             <CardHeader>
@@ -527,156 +561,273 @@ const CollaborativeProductivityTools = () => {
                     <Calendar className="h-5 w-5" />
                     Calendrier Collaboratif
                   </CardTitle>
-                  <CardDescription>
-                    Planification et coordination des événements réseau
-                  </CardDescription>
+                  <CardDescription>Événements et réunions du réseau</CardDescription>
                 </div>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nouvel événement
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => exportEventsToExcel(filteredEvents)}>
+                    <Download className="h-4 w-4 mr-1" />Excel
+                  </Button>
+                  <Button onClick={() => setCreateEventOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />Nouvel événement
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {events.map((event) => (
-                  <div key={event.id} className="p-4 border rounded-lg">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-medium">{event.title}</h4>
-                          <Badge variant="outline">
-                            {event.type}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-3">{event.description}</p>
-                        <div className="grid gap-2 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {new Date(event.date).toLocaleDateString('fr-FR')} à {event.time}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            Organisé par {event.organizer}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Users className="h-3 w-3" />
-                            {event.participants.length} participants
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Target className="h-3 w-3" />
-                            {event.location}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Bell className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex flex-wrap gap-4 mb-6">
+                <div className="flex items-center gap-2">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-64"
+                  />
+                </div>
+                <Select value={eventTypeFilter} onValueChange={setEventTypeFilter}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous</SelectItem>
+                    <SelectItem value="meeting">Réunions</SelectItem>
+                    <SelectItem value="training">Formations</SelectItem>
+                    <SelectItem value="event">Événements</SelectItem>
+                    <SelectItem value="deadline">Échéances</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              <ScrollArea className="h-96">
+                {filteredEvents.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>Aucun événement trouvé</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredEvents.map((event) => (
+                      <div key={event.id} className="p-4 border rounded-lg hover:bg-muted/50">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium">{event.title}</h4>
+                              {getEventTypeBadge(event.event_type)}
+                              {event.is_network_event && <Badge variant="outline" className="text-xs">Réseau</Badge>}
+                            </div>
+                            {event.description && (
+                              <p className="text-sm text-muted-foreground mb-2">{event.description}</p>
+                            )}
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {format(new Date(event.event_date), 'dd MMMM yyyy', { locale: fr })}
+                              </div>
+                              {event.event_time && (
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {event.event_time}
+                                </div>
+                              )}
+                              {event.location && <span>{event.location}</span>}
+                              {event.is_virtual && <Badge variant="outline" className="text-xs">Virtuel</Badge>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary">
+                              <Users className="h-3 w-3 mr-1" />
+                              {event.participants?.length || 0}
+                            </Badge>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => {
+                                setDeleteTarget({ type: 'event', id: event.id, name: event.title });
+                                setDeleteConfirmOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Espaces de travail */}
+        {/* === WORKSPACES TAB === */}
         <TabsContent value="workspace" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Folder className="h-5 w-5" />
-                Espaces de Travail Collaboratifs
-              </CardTitle>
-              <CardDescription>
-                Espaces dédiés pour les projets et initiatives communes
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Folder className="h-5 w-5" />
+                    Espaces de Travail Collaboratifs
+                  </CardTitle>
+                  <CardDescription>Projets et espaces de collaboration</CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => exportWorkspacesToExcel(workspaces)}>
+                    <Download className="h-4 w-4 mr-1" />Excel
+                  </Button>
+                  <Button onClick={() => setCreateWorkspaceOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />Nouvel espace
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="p-6 border rounded-lg">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <Target className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium">Projet Qualité 2024</h3>
-                      <p className="text-sm text-muted-foreground">Amélioration continue</p>
-                    </div>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span>Progression</span>
-                      <span className="font-medium">65%</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div className="bg-primary h-2 rounded-full" style={{ width: '65%' }} />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Users className="h-3 w-3" />
-                      3 officines
-                    </div>
-                    <Button variant="outline" size="sm">
-                      Accéder
-                    </Button>
-                  </div>
+              {workspaces.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Folder className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Aucun espace de travail</p>
+                  <Button className="mt-4" onClick={() => setCreateWorkspaceOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />Créer un espace
+                  </Button>
                 </div>
-
-                <div className="p-6 border rounded-lg">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                      <TrendingUp className="h-6 w-6 text-green-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium">Formation Continue</h3>
-                      <p className="text-sm text-muted-foreground">Programme de formation</p>
-                    </div>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span>Modules terminés</span>
-                      <span className="font-medium">8/12</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div className="bg-green-500 h-2 rounded-full" style={{ width: '67%' }} />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Users className="h-3 w-3" />
-                      Toutes les officines
-                    </div>
-                    <Button variant="outline" size="sm">
-                      Accéder
-                    </Button>
-                  </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {workspaces.map((workspace) => (
+                    <Card 
+                      key={workspace.id} 
+                      className="cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => handleOpenWorkspaceDetail(workspace)}
+                    >
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-${workspace.color === 'primary' ? 'primary' : workspace.color + '-500'}/10`}>
+                            <Target className={`h-5 w-5 text-${workspace.color === 'primary' ? 'primary' : workspace.color + '-500'}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-base truncate">{workspace.name}</CardTitle>
+                            {workspace.is_network_workspace && (
+                              <Badge variant="outline" className="text-xs">Réseau</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {workspace.description && (
+                          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{workspace.description}</p>
+                        )}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span>Progression</span>
+                            <span className="font-medium">{workspace.progress_percent}%</span>
+                          </div>
+                          <Progress value={workspace.progress_percent} className="h-2" />
+                        </div>
+                        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {workspace.members_count || 0}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <CheckSquare className="h-3 w-3" />
+                            {workspace.tasks_count || 0}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <FileText className="h-3 w-3" />
+                            {workspace.documents_count || 0}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              </div>
-
-              <Separator className="my-6" />
-
-              <div className="text-center py-8">
-                <Folder className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <h3 className="font-medium mb-2">Créer un nouvel espace</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Organisez vos projets collaboratifs dans des espaces dédiés
-                </p>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Créer un espace
-                </Button>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <CreateTaskDialog
+        open={createTaskOpen}
+        onOpenChange={setCreateTaskOpen}
+        onSubmit={createTask}
+        pharmacies={pharmacies}
+        workspaces={workspaces.map(w => ({ id: w.id, name: w.name }))}
+        isSubmitting={saving}
+      />
+
+      <EditTaskDialog
+        open={editTaskOpen}
+        onOpenChange={setEditTaskOpen}
+        task={selectedTask}
+        onSubmit={updateTask}
+        pharmacies={pharmacies}
+        workspaces={workspaces.map(w => ({ id: w.id, name: w.name }))}
+        isSubmitting={saving}
+      />
+
+      <CreateEventDialog
+        open={createEventOpen}
+        onOpenChange={setCreateEventOpen}
+        onSubmit={createEvent}
+        pharmacies={pharmacies}
+        isSubmitting={saving}
+      />
+
+      <UploadDocumentDialog
+        open={uploadDocOpen}
+        onOpenChange={setUploadDocOpen}
+        onSubmit={uploadDocument}
+        workspaces={workspaces.map(w => ({ id: w.id, name: w.name }))}
+        isSubmitting={saving}
+      />
+
+      <ShareDocumentDialog
+        open={shareDocOpen}
+        onOpenChange={setShareDocOpen}
+        document={selectedDocument}
+        pharmacies={pharmacies}
+        onShare={shareDocument}
+        isSubmitting={saving}
+      />
+
+      <CreateWorkspaceDialog
+        open={createWorkspaceOpen}
+        onOpenChange={setCreateWorkspaceOpen}
+        onSubmit={createWorkspace}
+        isSubmitting={saving}
+      />
+
+      <WorkspaceDetailDialog
+        open={workspaceDetailOpen}
+        onOpenChange={setWorkspaceDetailOpen}
+        workspace={selectedWorkspace}
+        members={workspaceMembers}
+        tasks={tasks}
+        documents={documents}
+        pharmacies={pharmacies}
+        onUpdateProgress={(progress) => selectedWorkspace && updateWorkspaceProgress(selectedWorkspace.id, progress)}
+        onAddMember={(pharmacyId, role) => selectedWorkspace && addWorkspaceMember(selectedWorkspace.id, pharmacyId, role)}
+        onRemoveMember={(memberId) => selectedWorkspace && removeWorkspaceMember(selectedWorkspace.id, memberId)}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer "{deleteTarget?.name}" ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
