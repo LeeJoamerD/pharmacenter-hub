@@ -27,8 +27,9 @@ interface AnalyticsExportDialogProps {
   insights: NetworkInsight[];
   heatmapData: HeatmapData[];
   timeSeriesData: TimeSeriesData[];
-  collaborationStats: CollaborationStats | null;
-  onExport: (format: 'excel' | 'pdf', options: ExportOptions) => Promise<void>;
+  collaborationStats?: CollaborationStats | null;
+  timeframe?: string;
+  onExport?: (format: 'excel' | 'pdf', options: ExportOptions) => Promise<void>;
 }
 
 export interface ExportOptions {
@@ -47,7 +48,8 @@ const AnalyticsExportDialog = ({
   insights,
   heatmapData,
   timeSeriesData,
-  collaborationStats,
+  collaborationStats = null,
+  timeframe = '7d',
   onExport,
 }: AnalyticsExportDialogProps) => {
   const [format, setFormat] = useState<'excel' | 'pdf'>('excel');
@@ -64,7 +66,18 @@ const AnalyticsExportDialog = ({
   const handleExport = async () => {
     setExporting(true);
     try {
-      await onExport(format, options);
+      if (onExport) {
+        await onExport(format, { ...options, timeframe });
+      } else {
+        // Default export using utility
+        const utils = await import('@/utils/networkAnalyticsExportUtils');
+        const data = { metrics, insights, heatmapData, timeSeriesData, collaborationStats };
+        if (format === 'excel') {
+          utils.exportAnalyticsToExcel(data, options, 'analytics-reseau');
+        } else {
+          utils.exportAnalyticsToPDF(data, options, 'analytics-reseau');
+        }
+      }
       onOpenChange(false);
     } finally {
       setExporting(false);
