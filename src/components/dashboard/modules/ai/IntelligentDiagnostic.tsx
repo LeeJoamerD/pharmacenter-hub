@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Search, 
   TrendingUp, 
@@ -20,123 +21,74 @@ import {
   Award,
   XCircle
 } from 'lucide-react';
+import { useIntelligentDiagnostic } from '@/hooks/useIntelligentDiagnostic';
+import InvestigateAnomalyDialog from './dialogs/InvestigateAnomalyDialog';
+import AnalyzeBottleneckDialog from './dialogs/AnalyzeBottleneckDialog';
+import ActionPlanDialog from './dialogs/ActionPlanDialog';
+import DiagnosticReportDialog from './dialogs/DiagnosticReportDialog';
+import type { Anomaly, Bottleneck } from '@/hooks/useIntelligentDiagnostic';
 
 const IntelligentDiagnostic = () => {
-  const [diagnosticRunning, setDiagnosticRunning] = useState(false);
-  const [lastScanTime] = useState('2025-01-05 14:30');
+  const {
+    loading,
+    diagnosticRunning,
+    latestSession,
+    anomalies,
+    bottlenecks,
+    runDiagnostic,
+    investigateAnomaly,
+    resolveAnomaly,
+    dismissAnomaly,
+    analyzeBottleneck,
+    planAction,
+    resolveBottleneck,
+    getLastScanTime
+  } = useIntelligentDiagnostic();
 
-  // Analyses de performance
-  const [performanceAnalysis] = useState({
-    globalScore: 78,
+  // Dialog states
+  const [selectedAnomaly, setSelectedAnomaly] = useState<Anomaly | null>(null);
+  const [investigateDialogOpen, setInvestigateDialogOpen] = useState(false);
+  const [selectedBottleneck, setSelectedBottleneck] = useState<Bottleneck | null>(null);
+  const [analyzeDialogOpen, setAnalyzeDialogOpen] = useState(false);
+  const [actionPlanDialogOpen, setActionPlanDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+
+  // Derived data
+  const performanceAnalysis = latestSession ? {
+    globalScore: latestSession.global_score,
     trends: [
       {
         category: 'Ventes',
-        score: 85,
-        trend: '+12%',
-        status: 'good',
-        details: 'Performance au-dessus de la moyenne sectorielle'
+        score: latestSession.sales_score,
+        trend: latestSession.sales_trend,
+        status: latestSession.sales_status,
+        details: latestSession.sales_details || 'Performance ventes'
       },
       {
         category: 'Stock',
-        score: 72,
-        trend: '-5%',
-        status: 'warning',
-        details: 'Rotation stock plus lente que optimal'
+        score: latestSession.stock_score,
+        trend: latestSession.stock_trend,
+        status: latestSession.stock_status,
+        details: latestSession.stock_details || 'Gestion du stock'
       },
       {
         category: 'Marge',
-        score: 91,
-        trend: '+18%',
-        status: 'excellent',
-        details: 'Optimisation des marges très efficace'
+        score: latestSession.margin_score,
+        trend: latestSession.margin_trend,
+        status: latestSession.margin_status,
+        details: latestSession.margin_details || 'Optimisation des marges'
       },
       {
         category: 'Clients',
-        score: 65,
-        trend: '-8%',
-        status: 'attention',
-        details: 'Fidélisation en baisse, action requise'
+        score: latestSession.customer_score,
+        trend: latestSession.customer_trend,
+        status: latestSession.customer_status,
+        details: latestSession.customer_details || 'Fidélisation client'
       }
     ]
-  });
-
-  // Détection d'anomalies
-  const [anomalies] = useState([
-    {
-      type: 'critique',
-      title: 'Chute soudaine des ventes OTC',
-      description: 'Baisse de 35% des ventes de produits sans ordonnance depuis 3 jours',
-      impact: 'high',
-      confidence: 94,
-      suggestions: [
-        'Vérifier stratégie merchandising',
-        'Analyser concurrence locale',
-        'Réviser politique de prix'
-      ],
-      detectedAt: '2025-01-05 12:45'
-    },
-    {
-      type: 'warning',
-      title: 'Pattern inhabituel - Vitamines',
-      description: 'Pics de vente de vitamine D uniquement les mardis',
-      impact: 'medium',
-      confidence: 87,
-      suggestions: [
-        'Optimiser stock mardi',
-        'Analyser cause du pattern',
-        'Ajuster planning personnel'
-      ],
-      detectedAt: '2025-01-05 10:20'
-    },
-    {
-      type: 'info',
-      title: 'Opportunité détectée',
-      description: 'Demande croissante de produits bio non satisfaite',
-      impact: 'medium',
-      confidence: 79,
-      suggestions: [
-        'Étendre gamme bio',
-        'Négocier nouveaux fournisseurs',
-        'Campagne promotion bio'
-      ],
-      detectedAt: '2025-01-05 09:15'
-    }
-  ]);
-
-  // Goulots d'étranglement
-  const [bottlenecks] = useState([
-    {
-      area: 'Approvisionnement',
-      severity: 'high',
-      description: 'Délais fournisseur Laboratoire X trop longs',
-      impact: '15% des ruptures de stock',
-      solution: 'Diversifier fournisseurs ou négocier SLA',
-      priority: 1
-    },
-    {
-      area: 'Point de Vente',
-      severity: 'medium',
-      description: 'Temps d\'attente client pic 12h-14h',
-      impact: 'Satisfaction client -12%',
-      solution: 'Optimiser planning ou ajouter caisse temporaire',
-      priority: 2
-    },
-    {
-      area: 'Gestion Stock',
-      severity: 'medium',
-      description: 'Inventaire manuel chronophage',
-      impact: '8h/semaine mobilisées',
-      solution: 'Implémentation RFID ou scanning mobile',
-      priority: 3
-    }
-  ]);
-
-  const runDiagnostic = async () => {
-    setDiagnosticRunning(true);
-    // Simulation diagnostic en cours
-    setTimeout(() => {
-      setDiagnosticRunning(false);
-    }, 3000);
+  } : {
+    globalScore: 0,
+    trends: []
   };
 
   const getStatusColor = (status: string) => {
@@ -167,6 +119,51 @@ const IntelligentDiagnostic = () => {
     }
   };
 
+  const getStatusLevelBadge = (level: string) => {
+    switch (level) {
+      case 'excellent': return <Badge className="bg-green-50 text-green-600">Excellent</Badge>;
+      case 'bon': return <Badge className="bg-blue-50 text-blue-600">Bon niveau</Badge>;
+      case 'attention': return <Badge className="bg-orange-50 text-orange-600">Attention requise</Badge>;
+      case 'critique': return <Badge className="bg-red-50 text-red-600">Critique</Badge>;
+      default: return <Badge variant="secondary">{level}</Badge>;
+    }
+  };
+
+  const handleInvestigateClick = (anomaly: Anomaly) => {
+    setSelectedAnomaly(anomaly);
+    setInvestigateDialogOpen(true);
+  };
+
+  const handleAnalyzeClick = (bottleneck: Bottleneck) => {
+    setSelectedBottleneck(bottleneck);
+    setAnalyzeDialogOpen(true);
+  };
+
+  const handlePlanActionClick = (bottleneck: Bottleneck) => {
+    setSelectedBottleneck(bottleneck);
+    setAnalyzeDialogOpen(true);
+  };
+
+  // Filter active items
+  const activeAnomalies = anomalies.filter(a => a.status !== 'resolved' && a.status !== 'dismissed');
+  const activeBottlenecks = bottlenecks.filter(b => b.status !== 'resolved');
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <Skeleton className="h-10 w-40" />
+        </div>
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -179,7 +176,7 @@ const IntelligentDiagnostic = () => {
         </div>
         <div className="flex items-center gap-4">
           <div className="text-sm text-muted-foreground">
-            Dernière analyse: {lastScanTime}
+            Dernière analyse: {getLastScanTime()}
           </div>
           <Button onClick={runDiagnostic} disabled={diagnosticRunning}>
             {diagnosticRunning ? (
@@ -204,12 +201,16 @@ const IntelligentDiagnostic = () => {
         <CardContent>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="text-4xl font-bold text-primary">{performanceAnalysis.globalScore}/100</div>
+              <div className="text-4xl font-bold text-primary">
+                {latestSession ? `${latestSession.global_score}/100` : '--/100'}
+              </div>
               <p className="text-sm text-muted-foreground">Score d'excellence</p>
             </div>
             <div className="text-right">
-              <Badge className="bg-blue-50 text-blue-600 mb-2">Bon niveau</Badge>
-              <p className="text-sm text-muted-foreground">Potentiel d'amélioration: 22 points</p>
+              {latestSession ? getStatusLevelBadge(latestSession.status_level) : <Badge variant="secondary">Aucun diagnostic</Badge>}
+              <p className="text-sm text-muted-foreground mt-2">
+                Potentiel d'amélioration: {latestSession?.improvement_potential || '--'} points
+              </p>
             </div>
           </div>
           <Progress value={performanceAnalysis.globalScore} className="h-3" />
@@ -219,8 +220,18 @@ const IntelligentDiagnostic = () => {
       <Tabs defaultValue="performance" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="anomalies">Anomalies</TabsTrigger>
-          <TabsTrigger value="bottlenecks">Goulots</TabsTrigger>
+          <TabsTrigger value="anomalies">
+            Anomalies
+            {activeAnomalies.length > 0 && (
+              <Badge variant="destructive" className="ml-2">{activeAnomalies.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="bottlenecks">
+            Goulots
+            {activeBottlenecks.length > 0 && (
+              <Badge variant="secondary" className="ml-2">{activeBottlenecks.length}</Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="trends">Tendances</TabsTrigger>
         </TabsList>
 
@@ -234,30 +245,38 @@ const IntelligentDiagnostic = () => {
               <CardDescription>Évaluation détaillée de chaque domaine d'activité</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {performanceAnalysis.trends.map((trend, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold">{trend.score}</div>
-                        <div className="text-xs text-muted-foreground">Score</div>
+              {performanceAnalysis.trends.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Search className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Aucun diagnostic disponible</p>
+                  <p className="text-sm">Lancez un diagnostic pour voir l'analyse par secteur</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {performanceAnalysis.trends.map((trend, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold">{trend.score}</div>
+                          <div className="text-xs text-muted-foreground">Score</div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">{trend.category}</h4>
+                          <p className="text-sm text-muted-foreground">{trend.details}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-semibold">{trend.category}</h4>
-                        <p className="text-sm text-muted-foreground">{trend.details}</p>
+                      <div className="text-right">
+                        <Badge className={getStatusColor(trend.status)}>
+                          {trend.status === 'excellent' ? 'Excellent' :
+                           trend.status === 'good' ? 'Bon' :
+                           trend.status === 'warning' ? 'Attention' : 'Critique'}
+                        </Badge>
+                        <div className="text-sm font-medium mt-1">{trend.trend}</div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <Badge className={getStatusColor(trend.status)}>
-                        {trend.status === 'excellent' ? 'Excellent' :
-                         trend.status === 'good' ? 'Bon' :
-                         trend.status === 'warning' ? 'Attention' : 'Critique'}
-                      </Badge>
-                      <div className="text-sm font-medium mt-1">{trend.trend}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -272,48 +291,66 @@ const IntelligentDiagnostic = () => {
               <CardDescription>Patterns inhabituels identifiés automatiquement</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {anomalies.map((anomaly, index) => (
-                  <div key={index} className={`p-4 border rounded-lg ${getAnomalyColor(anomaly.type)}`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">
-                          {anomaly.type === 'critique' ? 'Critique' :
-                           anomaly.type === 'warning' ? 'Attention' : 'Information'}
-                        </Badge>
-                        <span className="text-xs">Confiance: {anomaly.confidence}%</span>
+              {anomalies.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-3 opacity-50 text-green-500" />
+                  <p>Aucune anomalie détectée</p>
+                  <p className="text-sm">Votre pharmacie fonctionne normalement</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {anomalies.map((anomaly) => (
+                    <div key={anomaly.id} className={`p-4 border rounded-lg ${getAnomalyColor(anomaly.type)}`}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">
+                            {anomaly.type === 'critique' ? 'Critique' :
+                             anomaly.type === 'warning' ? 'Attention' : 'Information'}
+                          </Badge>
+                          <span className="text-xs">Confiance: {anomaly.confidence}%</span>
+                          {anomaly.status !== 'detected' && (
+                            <Badge variant="secondary" className="text-xs">
+                              {anomaly.status === 'investigating' ? 'Investigation' :
+                               anomaly.status === 'resolved' ? 'Résolue' : 'Ignorée'}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          {new Date(anomaly.detected_at).toLocaleDateString('fr-FR')}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        {anomaly.detectedAt}
+                      
+                      <h4 className="font-semibold mb-2">{anomaly.title}</h4>
+                      <p className="text-sm text-muted-foreground mb-3">{anomaly.description}</p>
+                      
+                      <div className="space-y-2">
+                        <h5 className="text-sm font-medium">Suggestions d'action:</h5>
+                        <ul className="space-y-1">
+                          {anomaly.suggestions.map((suggestion, idx) => (
+                            <li key={idx} className="text-sm text-muted-foreground flex items-center gap-2">
+                              <div className="w-1 h-1 bg-current rounded-full"></div>
+                              {suggestion}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      
+                      <div className="flex justify-between items-center mt-4">
+                        <Progress value={anomaly.confidence} className="w-24 h-2" />
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleInvestigateClick(anomaly)}
+                        >
+                          <Target className="h-4 w-4 mr-2" />
+                          {anomaly.status === 'detected' ? 'Investiguer' : 'Voir détails'}
+                        </Button>
                       </div>
                     </div>
-                    
-                    <h4 className="font-semibold mb-2">{anomaly.title}</h4>
-                    <p className="text-sm text-muted-foreground mb-3">{anomaly.description}</p>
-                    
-                    <div className="space-y-2">
-                      <h5 className="text-sm font-medium">Suggestions d'action:</h5>
-                      <ul className="space-y-1">
-                        {anomaly.suggestions.map((suggestion, idx) => (
-                          <li key={idx} className="text-sm text-muted-foreground flex items-center gap-2">
-                            <div className="w-1 h-1 bg-current rounded-full"></div>
-                            {suggestion}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    
-                    <div className="flex justify-between items-center mt-4">
-                      <Progress value={anomaly.confidence} className="w-24 h-2" />
-                      <Button size="sm" variant="outline">
-                        <Target className="h-4 w-4 mr-2" />
-                        Investiguer
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -328,50 +365,82 @@ const IntelligentDiagnostic = () => {
               <CardDescription>Obstacles limitant la performance identifiés par l'IA</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {bottlenecks.map((bottleneck, index) => (
-                  <div key={index} className="p-4 border rounded-lg">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        {getSeverityIcon(bottleneck.severity)}
-                        <div>
-                          <h4 className="font-semibold">{bottleneck.area}</h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline">Priorité {bottleneck.priority}</Badge>
-                            <Badge className={`${
-                              bottleneck.severity === 'high' ? 'bg-red-50 text-red-600' :
-                              bottleneck.severity === 'medium' ? 'bg-orange-50 text-orange-600' :
-                              'bg-green-50 text-green-600'
-                            }`}>
-                              {bottleneck.severity === 'high' ? 'Élevé' :
-                               bottleneck.severity === 'medium' ? 'Moyen' : 'Faible'}
-                            </Badge>
+              {bottlenecks.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Zap className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Aucun goulot d'étranglement identifié</p>
+                  <p className="text-sm">Les processus fonctionnent de manière optimale</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {bottlenecks.map((bottleneck) => (
+                    <div key={bottleneck.id} className="p-4 border rounded-lg">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          {getSeverityIcon(bottleneck.severity)}
+                          <div>
+                            <h4 className="font-semibold">{bottleneck.area}</h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="outline">Priorité {bottleneck.priority}</Badge>
+                              <Badge className={`${
+                                bottleneck.severity === 'high' ? 'bg-red-50 text-red-600' :
+                                bottleneck.severity === 'medium' ? 'bg-orange-50 text-orange-600' :
+                                'bg-green-50 text-green-600'
+                              }`}>
+                                {bottleneck.severity === 'high' ? 'Élevé' :
+                                 bottleneck.severity === 'medium' ? 'Moyen' : 'Faible'}
+                              </Badge>
+                              {bottleneck.status !== 'identified' && (
+                                <Badge variant="secondary">
+                                  {bottleneck.status === 'analyzing' ? 'Analyse' :
+                                   bottleneck.status === 'action_planned' ? 'Planifié' : 'Résolu'}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
+                      
+                      <p className="text-sm text-muted-foreground mb-2">{bottleneck.description}</p>
+                      <p className="text-sm font-medium text-orange-600 mb-3">Impact: {bottleneck.impact}</p>
+                      
+                      {bottleneck.recommended_solution && (
+                        <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                          <h5 className="text-sm font-medium text-blue-800 mb-1">Solution recommandée:</h5>
+                          <p className="text-sm text-blue-700">{bottleneck.recommended_solution}</p>
+                        </div>
+                      )}
+
+                      {bottleneck.action_plan && (
+                        <div className="bg-green-50 p-3 rounded border border-green-200 mt-2">
+                          <h5 className="text-sm font-medium text-green-800 mb-1">Plan d'action:</h5>
+                          <p className="text-sm text-green-700">{bottleneck.action_plan}</p>
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-2 mt-3">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleAnalyzeClick(bottleneck)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Analyser
+                        </Button>
+                        {bottleneck.status !== 'resolved' && (
+                          <Button 
+                            size="sm"
+                            onClick={() => handlePlanActionClick(bottleneck)}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Planifier Action
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    
-                    <p className="text-sm text-muted-foreground mb-2">{bottleneck.description}</p>
-                    <p className="text-sm font-medium text-orange-600 mb-3">Impact: {bottleneck.impact}</p>
-                    
-                    <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                      <h5 className="text-sm font-medium text-blue-800 mb-1">Solution recommandée:</h5>
-                      <p className="text-sm text-blue-700">{bottleneck.solution}</p>
-                    </div>
-                    
-                    <div className="flex gap-2 mt-3">
-                      <Button size="sm" variant="outline">
-                        <Eye className="h-4 w-4 mr-2" />
-                        Analyser
-                      </Button>
-                      <Button size="sm">
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Planifier Action
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -386,42 +455,91 @@ const IntelligentDiagnostic = () => {
               <CardDescription>Patterns et évolutions détectées par l'intelligence artificielle</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="p-4 border rounded-lg bg-green-50 border-green-200">
-                  <h4 className="font-semibold text-green-800 mb-2">Tendances Positives</h4>
-                  <ul className="space-y-2 text-sm text-green-700">
-                    <li>• Croissance ventes parapharmacie +15%</li>
-                    <li>• Amélioration marge brute +3.2%</li>
-                    <li>• Réduction gaspillage -12%</li>
-                    <li>• Fidélisation client âgé stable</li>
-                  </ul>
+              {!latestSession ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <TrendingUp className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Aucune analyse de tendances disponible</p>
+                  <p className="text-sm">Lancez un diagnostic pour voir les tendances</p>
                 </div>
-                
-                <div className="p-4 border rounded-lg bg-orange-50 border-orange-200">
-                  <h4 className="font-semibold text-orange-800 mb-2">Points d'Attention</h4>
-                  <ul className="space-y-2 text-sm text-orange-700">
-                    <li>• Baisse achat clients jeunes -8%</li>
-                    <li>• Rotation stock homéopathie lente</li>
-                    <li>• Saisonnalité plus marquée</li>
-                    <li>• Concurrence e-commerce croissante</li>
-                  </ul>
-                </div>
-              </div>
-              
-              <div className="mt-6 flex gap-4">
-                <Button variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
-                  Exporter Rapport
-                </Button>
-                <Button>
-                  <Target className="h-4 w-4 mr-2" />
-                  Plan d'Action
-                </Button>
-              </div>
+              ) : (
+                <>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="p-4 border rounded-lg bg-green-50 border-green-200">
+                      <h4 className="font-semibold text-green-800 mb-2">Tendances Positives</h4>
+                      <ul className="space-y-2 text-sm text-green-700">
+                        {latestSession.positive_trends.map((trend, index) => (
+                          <li key={index}>• {trend.text}</li>
+                        ))}
+                        {latestSession.positive_trends.length === 0 && (
+                          <li className="italic">Aucune tendance positive détectée</li>
+                        )}
+                      </ul>
+                    </div>
+                    
+                    <div className="p-4 border rounded-lg bg-orange-50 border-orange-200">
+                      <h4 className="font-semibold text-orange-800 mb-2">Points d'Attention</h4>
+                      <ul className="space-y-2 text-sm text-orange-700">
+                        {latestSession.attention_points.map((point, index) => (
+                          <li key={index}>• {point.text}</li>
+                        ))}
+                        {latestSession.attention_points.length === 0 && (
+                          <li className="italic">Aucun point d'attention</li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 flex gap-4">
+                    <Button variant="outline" onClick={() => setReportDialogOpen(true)}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Exporter Rapport
+                    </Button>
+                    <Button onClick={() => setActionPlanDialogOpen(true)}>
+                      <Target className="h-4 w-4 mr-2" />
+                      Plan d'Action
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <InvestigateAnomalyDialog
+        open={investigateDialogOpen}
+        onOpenChange={setInvestigateDialogOpen}
+        anomaly={selectedAnomaly}
+        onInvestigate={investigateAnomaly}
+        onResolve={resolveAnomaly}
+        onDismiss={dismissAnomaly}
+      />
+
+      <AnalyzeBottleneckDialog
+        open={analyzeDialogOpen}
+        onOpenChange={setAnalyzeDialogOpen}
+        bottleneck={selectedBottleneck}
+        onAnalyze={analyzeBottleneck}
+        onPlanAction={planAction}
+        onResolve={resolveBottleneck}
+      />
+
+      <ActionPlanDialog
+        open={actionPlanDialogOpen}
+        onOpenChange={setActionPlanDialogOpen}
+        bottlenecks={bottlenecks}
+        pharmacyName="PharmaSoft"
+      />
+
+      <DiagnosticReportDialog
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+        session={latestSession}
+        anomalies={anomalies}
+        bottlenecks={bottlenecks}
+        pharmacyName="PharmaSoft"
+      />
     </div>
   );
 };
