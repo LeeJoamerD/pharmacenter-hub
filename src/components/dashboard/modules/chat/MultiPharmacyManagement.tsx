@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,191 +9,75 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Building, MapPin, Phone, Mail, Users, Activity, TrendingUp,
   AlertCircle, CheckCircle, Clock, ArrowUpDown, Filter, Search,
-  Network, BarChart3, Globe, Zap, RefreshCw, MessageSquare
+  Network, BarChart3, Globe, Zap, RefreshCw, MessageSquare,
+  Download, Plus, Eye, Send, UserPlus
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, LineChart, Line, Legend
+} from 'recharts';
+import { useMultiPharmacyManagement } from '@/hooks/useMultiPharmacyManagement';
+import PharmacyDetailModal from './dialogs/PharmacyDetailModal';
+import CollaborationDetailModal from './dialogs/CollaborationDetailModal';
+import ExportOptionsDialog from './dialogs/ExportOptionsDialog';
+import CreateCollaborationDialog from './dialogs/CreateCollaborationDialog';
+import { 
+  exportPharmaciesExcel, 
+  exportPharmaciesPDF,
+  exportAnalyticsExcel,
+  exportAnalyticsPDF,
+  exportCollaborationsExcel
+} from '@/utils/multiPharmacyExportUtils';
 
-interface PharmacyMetrics {
-  messages_sent: number;
-  messages_received: number;
-  active_channels: number;
-  last_activity: string;
-}
-
-interface PharmacyWithMetrics {
-  id: string;
-  name: string;
-  code: string;
-  address: string;
-  city: string;
-  region: string;
-  type: string;
-  status: string;
-  phone: string;
-  email: string;
-  metrics: PharmacyMetrics;
-}
-
-interface Collaboration {
-  id: string;
-  name: string;
-  description: string;
-  participants_count: number;
-  status: string;
-  created_at: string;
-}
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 const MultiPharmacyManagement = () => {
-  const { currentTenant } = useTenant();
-  const tenantId = currentTenant?.id;
+  const {
+    pharmacies,
+    collaborations,
+    loading,
+    networkStats,
+    regionStats,
+    analyticsData,
+    recentActivities,
+    loadAllData,
+    createCollaboration,
+    deleteCollaboration,
+    leaveCollaboration,
+    startConversationWith,
+    tenantId
+  } = useMultiPharmacyManagement();
 
-  const [pharmacies, setPharmacies] = useState<PharmacyWithMetrics[]>([]);
-  const [collaborations, setCollaborations] = useState<Collaboration[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Filters
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'activity' | 'messages'>('name');
 
-  // Stats
-  const [totalMessages, setTotalMessages] = useState(0);
-  const [networkAvailability, setNetworkAvailability] = useState(98);
+  // Modals
+  const [selectedPharmacy, setSelectedPharmacy] = useState<any>(null);
+  const [pharmacyModalOpen, setPharmacyModalOpen] = useState(false);
+  const [selectedCollaboration, setSelectedCollaboration] = useState<any>(null);
+  const [collaborationModalOpen, setCollaborationModalOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportType, setExportType] = useState<'pharmacies' | 'analytics' | 'collaborations'>('pharmacies');
+  const [createCollabDialogOpen, setCreateCollabDialogOpen] = useState(false);
 
-  useEffect(() => {
-    loadAllData();
-  }, [tenantId]);
-
-  const loadAllData = async () => {
-    setLoading(true);
-    await Promise.all([
-      loadPharmaciesWithMetrics(),
-      loadCollaborations(),
-      loadNetworkStats()
-    ]);
-    setLoading(false);
-  };
-
-  const loadPharmaciesWithMetrics = async () => {
-    try {
-      const { data: pharmaciesData } = await supabase
-        .from('pharmacies')
-        .select('id, name, code, city, region, type, status, email, phone, address')
-        .order('name');
-
-      if (!pharmaciesData) return;
-
-      // Get metrics for each pharmacy
-      const pharmaciesWithMetrics = await Promise.all(
-        pharmaciesData.map(async (pharmacy) => {
-          // Count messages sent
-          const { count: messagesSent } = await supabase
-            .from('network_messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('sender_pharmacy_id', pharmacy.id);
-
-          // Count channels participated
-          const { count: activeChannels } = await supabase
-            .from('channel_participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('pharmacy_id', pharmacy.id);
-
-          // Get last activity
-          const { data: lastMessage } = await supabase
-            .from('network_messages')
-            .select('created_at')
-            .eq('sender_pharmacy_id', pharmacy.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          return {
-            id: pharmacy.id,
-            name: pharmacy.name || '',
-            code: pharmacy.code || '',
-            address: pharmacy.address || '',
-            city: pharmacy.city || '',
-            region: pharmacy.region || '',
-            type: pharmacy.type || '',
-            status: pharmacy.status || 'active',
-            phone: pharmacy.phone || '',
-            email: pharmacy.email || '',
-            metrics: {
-              messages_sent: messagesSent || 0,
-              messages_received: 0,
-              active_channels: activeChannels || 0,
-              last_activity: lastMessage?.created_at || new Date().toISOString()
-            }
-          };
-        })
-      );
-
-      setPharmacies(pharmaciesWithMetrics);
-    } catch (error) {
-      console.error('Erreur chargement pharmacies:', error);
-    }
-  };
-
-  const loadCollaborations = async () => {
-    try {
-      const { data } = await supabase
-        .from('network_channels')
-        .select('id, name, description, created_at')
-        .eq('type', 'collaboration')
-        .order('created_at', { ascending: false })
-        .limit(10) as { data: any[] | null };
-
-      const collabs = await Promise.all(
-        (data || []).map(async (ch) => {
-          const { count } = await supabase
-            .from('channel_participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('channel_id', ch.id);
-
-          return {
-            id: ch.id,
-            name: ch.name,
-            description: ch.description || '',
-            participants_count: count || 0,
-            status: 'active',
-            created_at: ch.created_at
-          };
-        })
-      );
-
-      setCollaborations(collabs);
-    } catch (error) {
-      console.error('Erreur chargement collaborations:', error);
-    }
-  };
-
-  const loadNetworkStats = async () => {
-    try {
-      const { count } = await supabase
-        .from('network_messages')
-        .select('*', { count: 'exact', head: true });
-
-      setTotalMessages(count || 0);
-      // Network availability is calculated - default to 98%
-      setNetworkAvailability(98);
-    } catch (error) {
-      console.error('Erreur chargement stats:', error);
-    }
-  };
-
+  // Derived data
   const regions = [...new Set(pharmacies.map(p => p.region).filter(Boolean))];
   const types = [...new Set(pharmacies.map(p => p.type).filter(Boolean))];
 
   const filteredPharmacies = pharmacies.filter(pharmacy => {
     const matchesRegion = selectedRegion === 'all' || pharmacy.region === selectedRegion;
     const matchesType = selectedType === 'all' || pharmacy.type === selectedType;
+    const matchesStatus = selectedStatus === 'all' || pharmacy.status === selectedStatus;
     const matchesSearch = searchTerm === '' || 
       pharmacy.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       pharmacy.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
       pharmacy.code.toLowerCase().includes(searchTerm.toLowerCase());
-      
-    return matchesRegion && matchesType && matchesSearch;
+    return matchesRegion && matchesType && matchesStatus && matchesSearch;
   });
 
   const sortedPharmacies = [...filteredPharmacies].sort((a, b) => {
@@ -234,6 +118,53 @@ const MultiPharmacyManagement = () => {
     }
   };
 
+  const handleExport = (format: 'excel' | 'pdf', options: any) => {
+    const exportData = sortedPharmacies.map(p => ({
+      name: p.name,
+      code: p.code,
+      city: p.city,
+      region: p.region,
+      type: p.type,
+      status: p.status,
+      phone: options.includeContacts ? p.phone : '',
+      email: options.includeContacts ? p.email : '',
+      messages_sent: options.includeMetrics ? p.metrics.messages_sent : 0,
+      active_channels: options.includeMetrics ? p.metrics.active_channels : 0
+    }));
+
+    if (exportType === 'pharmacies') {
+      format === 'excel' ? exportPharmaciesExcel(exportData) : exportPharmaciesPDF(exportData);
+    } else if (exportType === 'analytics') {
+      format === 'excel' ? exportAnalyticsExcel(analyticsData, 'all') : exportAnalyticsPDF(analyticsData, 'all');
+    } else {
+      exportCollaborationsExcel(collaborations.map(c => ({
+        name: c.name,
+        description: c.description,
+        participants_count: c.participants_count,
+        status: c.status,
+        created_at: c.created_at
+      })));
+    }
+  };
+
+  const handlePharmacyClick = (pharmacy: any) => {
+    setSelectedPharmacy(pharmacy);
+    setPharmacyModalOpen(true);
+  };
+
+  const handleCollaborationClick = (collab: any) => {
+    setSelectedCollaboration(collab);
+    setCollaborationModalOpen(true);
+  };
+
+  const resetFilters = () => {
+    setSelectedRegion('all');
+    setSelectedType('all');
+    setSelectedStatus('all');
+    setSearchTerm('');
+    setSortBy('name');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -247,6 +178,7 @@ const MultiPharmacyManagement = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -285,12 +217,8 @@ const MultiPharmacyManagement = () => {
                 <CheckCircle className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {pharmacies.filter(p => p.status === 'active').length}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Sur {pharmacies.length} officines
-                </p>
+                <div className="text-2xl font-bold">{networkStats.activePharmacies}</div>
+                <p className="text-xs text-muted-foreground">Sur {networkStats.totalPharmacies} officines</p>
               </CardContent>
             </Card>
 
@@ -300,12 +228,8 @@ const MultiPharmacyManagement = () => {
                 <Activity className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {totalMessages.toLocaleString('fr-FR')}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Sur le réseau
-                </p>
+                <div className="text-2xl font-bold">{networkStats.totalMessages.toLocaleString('fr-FR')}</div>
+                <p className="text-xs text-muted-foreground">+{networkStats.todayMessages} aujourd'hui</p>
               </CardContent>
             </Card>
 
@@ -315,28 +239,24 @@ const MultiPharmacyManagement = () => {
                 <MapPin className="h-4 w-4 text-orange-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{regions.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  Régions couvertes
-                </p>
+                <div className="text-2xl font-bold">{networkStats.regionsCount}</div>
+                <p className="text-xs text-muted-foreground">Régions couvertes</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Activité Réseau</CardTitle>
+                <CardTitle className="text-sm font-medium">Disponibilité</CardTitle>
                 <TrendingUp className="h-4 w-4 text-purple-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{networkAvailability}%</div>
-                <p className="text-xs text-muted-foreground">
-                  Disponibilité réseau
-                </p>
+                <div className="text-2xl font-bold">{networkStats.networkAvailability}%</div>
+                <p className="text-xs text-muted-foreground">Réseau opérationnel</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Aperçu des régions */}
+          {/* Répartition par région */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -346,31 +266,30 @@ const MultiPharmacyManagement = () => {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {regions.map((region) => {
-                  const regionPharmacies = pharmacies.filter(p => p.region === region);
-                  return (
-                    <div key={region} className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-semibold">{region}</h4>
-                        <Badge variant="outline">{regionPharmacies.length}</Badge>
-                      </div>
-                      <div className="space-y-1 text-sm text-muted-foreground">
-                        {regionPharmacies.slice(0, 3).map(p => (
-                          <div key={p.id} className="flex items-center gap-2">
-                            {getTypeIcon(p.type)}
-                            <span>{p.name}</span>
-                            <div className={`w-2 h-2 rounded-full ${getStatusColor(p.status)}`} />
-                          </div>
-                        ))}
-                        {regionPharmacies.length > 3 && (
-                          <p className="text-xs">+{regionPharmacies.length - 3} autres</p>
-                        )}
-                      </div>
+                {regionStats.map((region) => (
+                  <div key={region.region} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold">{region.region}</h4>
+                      <Badge variant="outline">{region.pharmacyCount}</Badge>
                     </div>
-                  );
-                })}
-
-                {regions.length === 0 && (
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      {region.pharmacies.slice(0, 3).map(p => (
+                        <div key={p.id} className="flex items-center gap-2">
+                          {getTypeIcon(p.type)}
+                          <span className="truncate">{p.name}</span>
+                          <div className={`w-2 h-2 rounded-full ${getStatusColor(p.status)}`} />
+                        </div>
+                      ))}
+                      {region.pharmacies.length > 3 && (
+                        <p className="text-xs">+{region.pharmacies.length - 3} autres</p>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {region.messageCount} messages
+                    </p>
+                  </div>
+                ))}
+                {regionStats.length === 0 && (
                   <div className="col-span-3 text-center py-8 text-muted-foreground">
                     <MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
                     <p>Aucune région définie</p>
@@ -379,11 +298,38 @@ const MultiPharmacyManagement = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Activité récente */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Activité Récente
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {recentActivities.slice(0, 5).map((activity, idx) => (
+                  <div key={activity.id || idx} className="flex items-center gap-3 p-2 border rounded">
+                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="text-sm">{activity.description}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(activity.created_at).toLocaleString('fr-FR')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {recentActivities.length === 0 && (
+                  <p className="text-center py-4 text-muted-foreground">Aucune activité récente</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Annuaire */}
         <TabsContent value="directory" className="space-y-4">
-          {/* Filtres et recherche */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -406,8 +352,8 @@ const MultiPharmacyManagement = () => {
                 </div>
                 
                 <Select value={selectedRegion} onValueChange={setSelectedRegion}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Toutes les régions" />
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Région" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Toutes les régions</SelectItem>
@@ -418,8 +364,8 @@ const MultiPharmacyManagement = () => {
                 </Select>
 
                 <Select value={selectedType} onValueChange={setSelectedType}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Tous les types" />
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tous les types</SelectItem>
@@ -429,8 +375,20 @@ const MultiPharmacyManagement = () => {
                   </SelectContent>
                 </Select>
 
-                <Select value={sortBy} onValueChange={(value: 'name' | 'activity' | 'messages') => setSortBy(value)}>
-                  <SelectTrigger className="w-48">
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Statut" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous</SelectItem>
+                    <SelectItem value="active">Actif</SelectItem>
+                    <SelectItem value="inactive">Inactif</SelectItem>
+                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                  <SelectTrigger className="w-40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -439,11 +397,14 @@ const MultiPharmacyManagement = () => {
                     <SelectItem value="messages">Messages envoyés</SelectItem>
                   </SelectContent>
                 </Select>
+
+                <Button variant="ghost" size="sm" onClick={resetFilters}>
+                  Reset
+                </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Liste des pharmacies */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -451,17 +412,25 @@ const MultiPharmacyManagement = () => {
                   <Building className="h-5 w-5" />
                   Annuaire des Officines
                 </span>
-                <Button variant="outline" size="sm">
-                  <ArrowUpDown className="h-4 w-4 mr-2" />
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => { setExportType('pharmacies'); setExportDialogOpen(true); }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
                   Exporter
                 </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-96">
+              <ScrollArea className="h-[500px]">
                 <div className="space-y-4">
                   {sortedPharmacies.map((pharmacy) => (
-                    <div key={pharmacy.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div 
+                      key={pharmacy.id} 
+                      className="p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => handlePharmacyClick(pharmacy)}
+                    >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-3">
@@ -469,10 +438,9 @@ const MultiPharmacyManagement = () => {
                               {getTypeIcon(pharmacy.type)}
                               <h3 className="font-semibold">{pharmacy.name}</h3>
                             </div>
-                            {pharmacy.code && (
-                              <Badge variant="outline" className="text-xs">
-                                {pharmacy.code}
-                              </Badge>
+                            {pharmacy.code && <Badge variant="outline" className="text-xs">{pharmacy.code}</Badge>}
+                            {pharmacy.is_inter_tenant && (
+                              <Badge variant="secondary" className="text-xs">Inter-réseau</Badge>
                             )}
                             <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs text-white ${getStatusColor(pharmacy.status)}`}>
                               {getStatusIcon(pharmacy.status)}
@@ -511,20 +479,31 @@ const MultiPharmacyManagement = () => {
                         <div className="text-right space-y-2">
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div className="text-center">
-                              <div className="font-semibold text-blue-600">
-                                {pharmacy.metrics.messages_sent}
-                              </div>
+                              <div className="font-semibold text-blue-600">{pharmacy.metrics.messages_sent}</div>
                               <div className="text-xs text-muted-foreground">Messages</div>
                             </div>
                             <div className="text-center">
-                              <div className="font-semibold text-green-600">
-                                {pharmacy.metrics.active_channels}
-                              </div>
+                              <div className="font-semibold text-green-600">{pharmacy.metrics.active_channels}</div>
                               <div className="text-xs text-muted-foreground">Canaux</div>
                             </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            Dernière activité: {new Date(pharmacy.metrics.last_activity).toLocaleDateString('fr-FR')}
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={(e) => { e.stopPropagation(); handlePharmacyClick(pharmacy); }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {pharmacy.id !== tenantId && (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={(e) => { e.stopPropagation(); startConversationWith(pharmacy.id); }}
+                              >
+                                <Send className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -545,59 +524,113 @@ const MultiPharmacyManagement = () => {
 
         {/* Analytics */}
         <TabsContent value="analytics" className="space-y-4">
+          <div className="flex justify-end">
+            <Button 
+              variant="outline" 
+              onClick={() => { setExportType('analytics'); setExportDialogOpen(true); }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exporter Analytics
+            </Button>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Top Officines */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Top 10 Officines par Messages</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analyticsData.topPharmacies} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" />
+                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Bar dataKey="messages" fill="#3b82f6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Distribution par type */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Répartition par Type</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={analyticsData.typeDistribution}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ type, percentage }) => `${type} (${percentage}%)`}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="count"
+                    >
+                      {analyticsData.typeDistribution.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Évolution mensuelle */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-sm">Évolution Mensuelle de l'Activité</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={analyticsData.monthlyActivity}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="messages" stroke="#3b82f6" name="Messages" />
+                    <Line type="monotone" dataKey="collaborations" stroke="#10b981" name="Collaborations" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Tableau comparatif */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Analytics Réseau
-              </CardTitle>
-              <CardDescription>
-                Statistiques et performances du réseau d'officines
-              </CardDescription>
+              <CardTitle>Tableau Comparatif</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-4">
-                  <h4 className="font-medium">Top Officines par Messages</h4>
-                  <div className="space-y-2">
-                    {pharmacies
-                      .sort((a, b) => b.metrics.messages_sent - a.metrics.messages_sent)
-                      .slice(0, 5)
-                      .map((pharmacy, index) => (
-                        <div key={pharmacy.id} className="flex items-center justify-between p-2 border rounded">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-muted-foreground">#{index + 1}</span>
-                            <span>{pharmacy.name}</span>
-                          </div>
-                          <Badge variant="secondary">{pharmacy.metrics.messages_sent} messages</Badge>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h4 className="font-medium">Répartition par Type</h4>
-                  <div className="space-y-2">
-                    {types.map(type => {
-                      const count = pharmacies.filter(p => p.type === type).length;
-                      const percentage = Math.round((count / pharmacies.length) * 100) || 0;
-                      return (
-                        <div key={type} className="space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span>{type}</span>
-                            <span>{count} ({percentage}%)</span>
-                          </div>
-                          <div className="h-2 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-primary" 
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-2">Officine</th>
+                      <th className="text-center p-2">Messages</th>
+                      <th className="text-center p-2">Canaux</th>
+                      <th className="text-center p-2">Type</th>
+                      <th className="text-center p-2">Région</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pharmacies.slice(0, 10).map(p => (
+                      <tr key={p.id} className="border-b hover:bg-muted/50">
+                        <td className="p-2 font-medium">{p.name}</td>
+                        <td className="p-2 text-center">{p.metrics.messages_sent}</td>
+                        <td className="p-2 text-center">{p.metrics.active_channels}</td>
+                        <td className="p-2 text-center"><Badge variant="outline">{p.type}</Badge></td>
+                        <td className="p-2 text-center">{p.region}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>
@@ -605,24 +638,34 @@ const MultiPharmacyManagement = () => {
 
         {/* Coordination */}
         <TabsContent value="coordination" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-semibold">Projets Inter-Officines</h3>
+              <p className="text-sm text-muted-foreground">
+                {collaborations.length} collaborations actives
+              </p>
+            </div>
+            <Button onClick={() => setCreateCollabDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouveau Projet
+            </Button>
+          </div>
+
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Projets Inter-Officines
-              </CardTitle>
-              <CardDescription>
-                Collaborations et projets en cours entre les officines
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {collaborations.length > 0 ? (
                 <div className="space-y-4">
                   {collaborations.map((collab) => (
-                    <div key={collab.id} className="p-4 border rounded-lg">
+                    <div 
+                      key={collab.id} 
+                      className="p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => handleCollaborationClick(collab)}
+                    >
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium">{collab.name}</h4>
-                        <Badge variant="secondary">{collab.status}</Badge>
+                        <Badge variant={collab.status === 'active' ? 'default' : 'secondary'}>
+                          {collab.status === 'active' ? 'Actif' : collab.status}
+                        </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground mb-2">{collab.description}</p>
                       <div className="flex items-center gap-4 text-sm">
@@ -635,6 +678,20 @@ const MultiPharmacyManagement = () => {
                           {new Date(collab.created_at).toLocaleDateString('fr-FR')}
                         </div>
                       </div>
+                      {collab.participants && collab.participants.length > 0 && (
+                        <div className="flex gap-1 mt-2">
+                          {collab.participants.slice(0, 3).map((p, i) => (
+                            <Badge key={i} variant="outline" className="text-xs">
+                              {p.pharmacy_name}
+                            </Badge>
+                          ))}
+                          {collab.participants.length > 3 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{collab.participants.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -643,12 +700,46 @@ const MultiPharmacyManagement = () => {
                   <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p>Aucun projet inter-officines en cours</p>
                   <p className="text-sm">Créez une collaboration pour démarrer</p>
+                  <Button className="mt-4" onClick={() => setCreateCollabDialogOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Créer une collaboration
+                  </Button>
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Modals */}
+      <PharmacyDetailModal
+        open={pharmacyModalOpen}
+        onOpenChange={setPharmacyModalOpen}
+        pharmacy={selectedPharmacy}
+        onStartConversation={startConversationWith}
+      />
+
+      <CollaborationDetailModal
+        open={collaborationModalOpen}
+        onOpenChange={setCollaborationModalOpen}
+        collaboration={selectedCollaboration}
+        onUpdate={loadAllData}
+        onDelete={deleteCollaboration}
+        onLeave={leaveCollaboration}
+      />
+
+      <ExportOptionsDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        exportType={exportType}
+        onExport={handleExport}
+      />
+
+      <CreateCollaborationDialog
+        open={createCollabDialogOpen}
+        onOpenChange={setCreateCollabDialogOpen}
+        onSuccess={loadAllData}
+      />
     </div>
   );
 };
