@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -8,9 +8,7 @@ import {
   Target, 
   Lightbulb, 
   TrendingUp,
-  Package,
   DollarSign,
-  Users,
   Calendar,
   Award,
   CheckCircle,
@@ -18,163 +16,52 @@ import {
   AlertTriangle,
   Eye,
   ArrowRight,
-  BarChart3
+  BarChart3,
+  RefreshCw,
+  Download,
+  Sparkles,
+  Loader2
 } from 'lucide-react';
-
-interface Recommendation {
-  id: string;
-  category: string;
-  title: string;
-  description: string;
-  impact: 'high' | 'medium' | 'low';
-  confidence: number;
-  priority: number;
-  estimatedROI: string;
-  timeframe: string;
-  effort: 'low' | 'medium' | 'high';
-  status: 'new' | 'in-progress' | 'implemented' | 'rejected';
-  factors: string[];
-  actions: string[];
-}
+import { useStrategicRecommendations, StrategicRecommendation } from '@/hooks/useStrategicRecommendations';
+import { useTenant } from '@/contexts/TenantContext';
+import { exportRecommendationsToPDF, exportRecommendationsToExcel } from '@/utils/recommendationExportUtils';
+import RecommendationDetailDialog from './dialogs/RecommendationDetailDialog';
+import RejectRecommendationDialog from './dialogs/RejectRecommendationDialog';
+import ScheduleRecommendationDialog from './dialogs/ScheduleRecommendationDialog';
 
 const StrategicRecommendations = () => {
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [sortBy, setSortBy] = useState('priority');
+  const { currentTenant } = useTenant();
+  const {
+    loading,
+    generating,
+    recommendations,
+    metrics,
+    categories,
+    filters,
+    setFilters,
+    generateRecommendations,
+    implementRecommendation,
+    rejectRecommendation,
+    scheduleRecommendation,
+    refreshData
+  } = useStrategicRecommendations();
 
-  const [recommendations] = useState<Recommendation[]>([
-    {
-      id: '1',
-      category: 'Assortiment',
-      title: 'Étendre la gamme produits bio',
-      description: 'L\'IA a détecté une demande croissante (+34%) pour les produits biologiques. Recommandation d\'étendre la gamme actuelle.',
-      impact: 'high',
-      confidence: 92,
-      priority: 1,
-      estimatedROI: '+€8,500/mois',
-      timeframe: '4-6 semaines',
-      effort: 'medium',
-      status: 'new',
-      factors: [
-        'Demande client en hausse de 34%',
-        'Marges supérieures de 15%',
-        'Concurrence limitée localement',
-        'Tendance marché favorable'
-      ],
-      actions: [
-        'Identifier fournisseurs bio certifiés',
-        'Négocier conditions préférentielles',
-        'Planifier espace de présentation',
-        'Former équipe sur produits bio'
-      ]
-    },
-    {
-      id: '2',
-      category: 'Pricing',
-      title: 'Optimisation prix génériques',
-      description: 'Opportunité d\'ajuster les prix de 12 médicaments génériques pour améliorer la marge sans impacter les ventes.',
-      impact: 'medium',
-      confidence: 87,
-      priority: 2,
-      estimatedROI: '+€2,800/mois',
-      timeframe: '1-2 semaines',
-      effort: 'low',
-      status: 'new',
-      factors: [
-        'Élasticité prix faible sur génériques',
-        'Concurrence moins agressive',
-        'Marge actuellement sous-optimale',
-        'Loyauté client élevée'
-      ],
-      actions: [
-        'Analyser prix concurrence',
-        'Tester ajustement progressif',
-        'Monitorer impact ventes',
-        'Communiquer valeur ajoutée'
-      ]
-    },
-    {
-      id: '3',
-      category: 'Promotion',
-      title: 'Campagne ciblée vitamines hiver',
-      description: 'Lancement recommandé d\'une promotion vitamines D et C avec le pic saisonnier prévu dans 2 semaines.',
-      impact: 'medium',
-      confidence: 89,
-      priority: 3,
-      estimatedROI: '+€1,200/semaine',
-      timeframe: '2 semaines',
-      effort: 'low',
-      status: 'new',
-      factors: [
-        'Pic saisonnier prévu',
-        'Stock suffisant disponible',
-        'Historique promotions réussies',
-        'Météo favorable à la demande'
-      ],
-      actions: [
-        'Préparer supports marketing',
-        'Négocier remises fournisseurs',
-        'Planifier mise en avant',
-        'Coordonner communication'
-      ]
-    },
-    {
-      id: '4',
-      category: 'Fidélisation',
-      title: 'Programme personnalisé seniors',
-      description: 'Créer un programme de fidélisation spécifique aux clients seniors qui représentent 67% du CA.',
-      impact: 'high',
-      confidence: 85,
-      priority: 1,
-      estimatedROI: '+€5,200/mois',
-      timeframe: '6-8 semaines',
-      effort: 'high',
-      status: 'new',
-      factors: [
-        'Segment seniors = 67% du CA',
-        'Fidélité actuellement moyenne',
-        'Besoins spécifiques identifiés',
-        'Concurrence peu différenciée'
-      ],
-      actions: [
-        'Définir avantages exclusifs',
-        'Mettre en place système points',
-        'Former équipe service senior',
-        'Créer communication adaptée'
-      ]
-    },
-    {
-      id: '5',
-      category: 'Cross-selling',
-      title: 'Vente croisée automédication',
-      description: 'Opportunités de vente croisée identifiées entre prescriptions et conseils automédication.',
-      impact: 'medium',
-      confidence: 91,
-      priority: 2,
-      estimatedROI: '+€3,100/mois',
-      timeframe: '3-4 semaines',
-      effort: 'medium',
-      status: 'new',
-      factors: [
-        'Patterns d\'achat identifiés',
-        'Expertise équipe élevée',
-        'Marge automédication attractive',
-        'Satisfaction client préservée'
-      ],
-      actions: [
-        'Former équipe aux associations',
-        'Créer aide-mémoire conseil',
-        'Mettre en place alertes système',
-        'Suivre taux de conversion'
-      ]
-    }
-  ]);
+  // Dialog states
+  const [selectedRecommendation, setSelectedRecommendation] = useState<StrategicRecommendation | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectingTitle, setRejectingTitle] = useState('');
+  const [schedulingId, setSchedulingId] = useState<string | null>(null);
+  const [schedulingTitle, setSchedulingTitle] = useState('');
 
   const getImpactColor = (impact: string) => {
     switch (impact) {
       case 'high': return 'text-red-600 bg-red-50 border-red-200';
       case 'medium': return 'text-orange-600 bg-orange-50 border-orange-200';
       case 'low': return 'text-blue-600 bg-blue-50 border-blue-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      default: return 'text-muted-foreground bg-muted';
     }
   };
 
@@ -183,7 +70,7 @@ const StrategicRecommendations = () => {
       case 'high': return 'bg-red-50 text-red-600';
       case 'medium': return 'bg-orange-50 text-orange-600';
       case 'low': return 'bg-green-50 text-green-600';
-      default: return 'bg-gray-50 text-gray-600';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -191,18 +78,46 @@ const StrategicRecommendations = () => {
     switch (status) {
       case 'new': return <Lightbulb className="h-4 w-4 text-blue-600" />;
       case 'in-progress': return <Clock className="h-4 w-4 text-orange-600" />;
+      case 'scheduled': return <Calendar className="h-4 w-4 text-purple-600" />;
       case 'implemented': return <CheckCircle className="h-4 w-4 text-green-600" />;
       case 'rejected': return <AlertTriangle className="h-4 w-4 text-red-600" />;
-      default: return <Eye className="h-4 w-4 text-gray-600" />;
+      default: return <Eye className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
-  const filteredRecommendations = recommendations.filter(rec => 
-    selectedCategory === 'all' || rec.category.toLowerCase() === selectedCategory
-  );
+  const handleImplement = (id: string) => {
+    implementRecommendation(id);
+  };
 
-  const sortedRecommendations = [...filteredRecommendations].sort((a, b) => {
-    switch (sortBy) {
+  const handleOpenReject = (rec: StrategicRecommendation) => {
+    setRejectingId(rec.id);
+    setRejectingTitle(rec.title);
+    setRejectDialogOpen(true);
+  };
+
+  const handleOpenSchedule = (rec: StrategicRecommendation) => {
+    setSchedulingId(rec.id);
+    setSchedulingTitle(rec.title);
+    setScheduleDialogOpen(true);
+  };
+
+  const handleOpenDetail = (rec: StrategicRecommendation) => {
+    setSelectedRecommendation(rec);
+    setDetailDialogOpen(true);
+  };
+
+  const handleExport = (format: 'pdf' | 'excel') => {
+    const pharmacyName = (currentTenant as any)?.nom_pharmacie || currentTenant?.name || 'PharmaSoft';
+    if (format === 'pdf') {
+      exportRecommendationsToPDF(recommendations, metrics, pharmacyName);
+    } else {
+      exportRecommendationsToExcel(recommendations, metrics);
+    }
+  };
+
+  // Sort recommendations based on filter
+  const sortedRecommendations = [...recommendations].sort((a, b) => {
+    switch (filters.sortBy) {
       case 'priority': return a.priority - b.priority;
       case 'impact': 
         const impactOrder = { high: 3, medium: 2, low: 1 };
@@ -211,14 +126,6 @@ const StrategicRecommendations = () => {
       default: return 0;
     }
   });
-
-  const handleImplement = (id: string) => {
-    console.log('Implémenter recommandation:', id);
-  };
-
-  const handleReject = (id: string) => {
-    console.log('Rejeter recommandation:', id);
-  };
 
   return (
     <div className="space-y-6">
@@ -230,28 +137,67 @@ const StrategicRecommendations = () => {
             Suggestions d'optimisation personnalisées basées sur l'analyse de vos données
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           <select 
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 border rounded-md text-sm"
+            value={filters.category}
+            onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+            className="px-3 py-2 border rounded-md text-sm bg-background"
           >
             <option value="all">Toutes catégories</option>
-            <option value="assortiment">Assortiment</option>
-            <option value="pricing">Pricing</option>
-            <option value="promotion">Promotion</option>
-            <option value="fidélisation">Fidélisation</option>
-            <option value="cross-selling">Cross-selling</option>
+            {categories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
           </select>
           <select 
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-2 border rounded-md text-sm"
+            value={filters.sortBy}
+            onChange={(e) => setFilters({ ...filters, sortBy: e.target.value as 'priority' | 'impact' | 'confidence' })}
+            className="px-3 py-2 border rounded-md text-sm bg-background"
           >
             <option value="priority">Par priorité</option>
             <option value="impact">Par impact</option>
             <option value="confidence">Par confiance</option>
           </select>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => refreshData()}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
+          <Button 
+            size="sm"
+            onClick={() => generateRecommendations()}
+            disabled={generating}
+          >
+            {generating ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4 mr-2" />
+            )}
+            Générer
+          </Button>
+          <div className="relative">
+            <Button variant="outline" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              Exporter
+            </Button>
+            <div className="absolute right-0 mt-1 w-32 bg-background border rounded-md shadow-lg z-10 hidden group-hover:block">
+              <button 
+                className="w-full px-3 py-2 text-sm text-left hover:bg-muted"
+                onClick={() => handleExport('pdf')}
+              >
+                PDF
+              </button>
+              <button 
+                className="w-full px-3 py-2 text-sm text-left hover:bg-muted"
+                onClick={() => handleExport('excel')}
+              >
+                Excel
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -263,9 +209,9 @@ const StrategicRecommendations = () => {
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{recommendations.length}</div>
+            <div className="text-2xl font-bold">{metrics.total_recommendations}</div>
             <p className="text-xs text-muted-foreground">
-              {recommendations.filter(r => r.status === 'new').length} nouvelles
+              {metrics.new_recommendations} nouvelles
             </p>
           </CardContent>
         </Card>
@@ -276,7 +222,7 @@ const StrategicRecommendations = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">€21,8K</div>
+            <div className="text-2xl font-bold">{metrics.potential_roi}</div>
             <p className="text-xs text-muted-foreground">
               Par mois estimé
             </p>
@@ -289,7 +235,7 @@ const StrategicRecommendations = () => {
             <Award className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">88.8%</div>
+            <div className="text-2xl font-bold">{metrics.avg_confidence}%</div>
             <p className="text-xs text-muted-foreground">
               Fiabilité IA
             </p>
@@ -302,13 +248,26 @@ const StrategicRecommendations = () => {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            <div className="text-2xl font-bold">{metrics.implemented}</div>
             <p className="text-xs text-muted-foreground">
-              Ce mois-ci
+              {metrics.in_progress} en cours
             </p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Loading state */}
+      {loading && recommendations.length === 0 && (
+        <Card>
+          <CardContent className="text-center py-12">
+            <Loader2 className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-spin" />
+            <h3 className="text-lg font-semibold mb-2">Chargement...</h3>
+            <p className="text-muted-foreground">
+              Récupération des recommandations en cours
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Liste des recommandations */}
       <div className="space-y-6">
@@ -320,7 +279,7 @@ const StrategicRecommendations = () => {
                   {getStatusIcon(recommendation.status)}
                   <div>
                     <CardTitle className="text-lg">{recommendation.title}</CardTitle>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <Badge variant="outline">{recommendation.category}</Badge>
                       <Badge className={getImpactColor(recommendation.impact)}>
                         Impact {recommendation.impact === 'high' ? 'Élevé' : 
@@ -334,8 +293,8 @@ const StrategicRecommendations = () => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-bold text-green-600">{recommendation.estimatedROI}</div>
-                  <div className="text-sm text-muted-foreground">{recommendation.timeframe}</div>
+                  <div className="text-lg font-bold text-green-600">{recommendation.estimated_roi || '-'}</div>
+                  <div className="text-sm text-muted-foreground">{recommendation.timeframe || '-'}</div>
                 </div>
               </div>
             </CardHeader>
@@ -396,32 +355,46 @@ const StrategicRecommendations = () => {
               {/* Actions */}
               <div className="flex items-center justify-between pt-4 border-t">
                 <div className="flex items-center gap-2">
-                  <Button 
-                    size="sm" 
-                    onClick={() => handleImplement(recommendation.id)}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Implémenter
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handleReject(recommendation.id)}
-                  >
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                    Rejeter
-                  </Button>
+                  {!['implemented', 'rejected'].includes(recommendation.status) && (
+                    <>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleImplement(recommendation.id)}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Implémenter
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleOpenReject(recommendation)}
+                      >
+                        <AlertTriangle className="h-4 w-4 mr-2" />
+                        Rejeter
+                      </Button>
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="ghost">
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => handleOpenDetail(recommendation)}
+                  >
                     <Eye className="h-4 w-4 mr-2" />
                     Analyser
                   </Button>
-                  <Button size="sm" variant="ghost">
-                    Programmer
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
+                  {!['implemented', 'rejected', 'scheduled'].includes(recommendation.status) && (
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={() => handleOpenSchedule(recommendation)}
+                    >
+                      Programmer
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -429,17 +402,61 @@ const StrategicRecommendations = () => {
         ))}
       </div>
 
-      {sortedRecommendations.length === 0 && (
+      {sortedRecommendations.length === 0 && !loading && (
         <Card>
           <CardContent className="text-center py-12">
             <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Aucune recommandation</h3>
-            <p className="text-muted-foreground">
-              Aucune recommandation trouvée pour les filtres sélectionnés.
+            <p className="text-muted-foreground mb-4">
+              {filters.category !== 'all' 
+                ? 'Aucune recommandation trouvée pour les filtres sélectionnés.'
+                : 'Cliquez sur "Générer" pour créer des recommandations basées sur vos données.'}
             </p>
+            {filters.category === 'all' && (
+              <Button onClick={() => generateRecommendations()} disabled={generating}>
+                {generating ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4 mr-2" />
+                )}
+                Générer des recommandations
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
+
+      {/* Dialogs */}
+      <RecommendationDetailDialog
+        recommendation={selectedRecommendation}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        onImplement={handleImplement}
+        onReject={(id) => {
+          const rec = recommendations.find(r => r.id === id);
+          if (rec) handleOpenReject(rec);
+        }}
+        onSchedule={(id) => {
+          const rec = recommendations.find(r => r.id === id);
+          if (rec) handleOpenSchedule(rec);
+        }}
+      />
+
+      <RejectRecommendationDialog
+        recommendationId={rejectingId}
+        recommendationTitle={rejectingTitle}
+        open={rejectDialogOpen}
+        onOpenChange={setRejectDialogOpen}
+        onReject={rejectRecommendation}
+      />
+
+      <ScheduleRecommendationDialog
+        recommendationId={schedulingId}
+        recommendationTitle={schedulingTitle}
+        open={scheduleDialogOpen}
+        onOpenChange={setScheduleDialogOpen}
+        onSchedule={scheduleRecommendation}
+      />
     </div>
   );
 };
