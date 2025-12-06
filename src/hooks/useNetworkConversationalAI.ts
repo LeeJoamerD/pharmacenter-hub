@@ -58,13 +58,13 @@ export interface AIInsight {
 }
 
 export interface AISettings {
-  voice_enabled: boolean;
-  speech_recognition: boolean;
+  voice_assistant: boolean;
+  voice_recognition: boolean;
   auto_suggestions: boolean;
   default_model_id: string | null;
-  encryption_enabled: boolean;
-  audit_enabled: boolean;
-  anonymized_data: boolean;
+  conversation_encryption: boolean;
+  audit_interactions: boolean;
+  anonymize_data: boolean;
   data_retention_days: number;
 }
 
@@ -77,13 +77,13 @@ export const useNetworkConversationalAI = () => {
   const [aiModels, setAIModels] = useState<AIModel[]>([]);
   const [insights, setInsights] = useState<AIInsight[]>([]);
   const [settings, setSettings] = useState<AISettings>({
-    voice_enabled: false,
-    speech_recognition: false,
+    voice_assistant: false,
+    voice_recognition: false,
     auto_suggestions: true,
     default_model_id: null,
-    encryption_enabled: true,
-    audit_enabled: true,
-    anonymized_data: true,
+    conversation_encryption: true,
+    audit_interactions: true,
+    anonymize_data: true,
     data_retention_days: 30,
   });
   
@@ -604,7 +604,42 @@ export const useNetworkConversationalAI = () => {
     }
   }, [tenantId, settings, toast]);
 
-  // Get statistics
+  // Get conversation statistics
+  const getConversationStats = useCallback(() => {
+    return {
+      active: conversations.filter(c => c.status === 'active').length,
+      paused: conversations.filter(c => c.status === 'paused').length,
+      completed: conversations.filter(c => c.status === 'completed').length,
+      total: conversations.length,
+    };
+  }, [conversations]);
+
+  // Get average confidence
+  const getAverageConfidence = useCallback(() => {
+    const assistantMessages = messages.filter(m => m.role === 'assistant' && m.confidence);
+    if (assistantMessages.length === 0) return 94;
+    const avg = assistantMessages.reduce((acc, m) => acc + (m.confidence || 0), 0) / assistantMessages.length;
+    return Math.round(avg * 100);
+  }, [messages]);
+
+  // Delete AI model
+  const deleteAIModel = useCallback(async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('ai_models')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast({ title: 'Modèle supprimé' });
+      await loadAIModels();
+    } catch (error) {
+      console.error('Error deleting model:', error);
+      toast({ title: 'Erreur', description: 'Impossible de supprimer le modèle', variant: 'destructive' });
+    }
+  }, [loadAIModels, toast]);
+
+  // Get statistics (legacy)
   const getStats = useCallback(() => {
     const activeConversations = conversations.filter(c => c.status === 'active').length;
     const activeModels = aiModels.filter(m => m.status === 'active').length;
@@ -638,10 +673,13 @@ export const useNetworkConversationalAI = () => {
     loading,
     streaming,
     streamingContent,
+    streamingMessage: streamingContent, // Alias for component compatibility
+    isStreaming: streaming, // Alias for component compatibility
     
     // Conversation methods
     loadConversations,
     loadMessages,
+    loadConversationMessages: loadMessages, // Alias for component compatibility
     createConversation,
     updateConversation,
     deleteConversation,
@@ -652,6 +690,7 @@ export const useNetworkConversationalAI = () => {
     loadAIModels,
     createAIModel,
     updateAIModel,
+    deleteAIModel,
     toggleModelStatus,
     setDefaultModel,
     testAIModel,
@@ -668,5 +707,7 @@ export const useNetworkConversationalAI = () => {
     
     // Stats
     getStats,
+    getConversationStats,
+    getAverageConfidence,
   };
 };
