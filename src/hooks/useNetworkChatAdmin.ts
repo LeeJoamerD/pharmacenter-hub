@@ -1016,8 +1016,132 @@ export const useNetworkChatAdmin = () => {
     }
   }, [tenantId, loadNetworkData]);
 
+  // Channel Members Management
+  const loadChannelMembers = async (channelId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('channel_participants')
+        .select(`
+          id, pharmacy_id, role, joined_at, last_read_at,
+          pharmacy:pharmacies(id, name, email)
+        `)
+        .eq('channel_id', channelId);
+
+      if (error) throw error;
+      return (data || []).map((m: any) => ({
+        id: m.id,
+        pharmacyId: m.pharmacy_id,
+        pharmacyName: m.pharmacy?.name || m.pharmacy?.email || m.pharmacy_id?.slice(0, 8),
+        role: m.role || 'member',
+        joinedAt: m.joined_at
+      }));
+    } catch (error) {
+      console.error('Error loading channel members:', error);
+      return [];
+    }
+  };
+
+  const addChannelMember = async (channelId: string, pharmacyId: string, role: string = 'member') => {
+    if (!tenantId) return;
+    try {
+      const { error } = await supabase
+        .from('channel_participants')
+        .insert({
+          channel_id: channelId,
+          pharmacy_id: pharmacyId,
+          tenant_id: tenantId,
+          role
+        });
+      if (error) throw error;
+      await logAuditAction('member_added', 'channel_management', 'channel_participant', channelId);
+      toast({ title: "Membre ajouté", description: "Le membre a été ajouté au canal." });
+      await loadChannels();
+    } catch (error: any) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const removeChannelMember = async (participantId: string) => {
+    try {
+      const { error } = await supabase
+        .from('channel_participants')
+        .delete()
+        .eq('id', participantId);
+      if (error) throw error;
+      await logAuditAction('member_removed', 'channel_management', 'channel_participant', participantId);
+      toast({ title: "Membre retiré", description: "Le membre a été retiré du canal." });
+      await loadChannels();
+    } catch (error: any) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const updateChannelMemberRole = async (participantId: string, role: string) => {
+    try {
+      const { error } = await supabase
+        .from('channel_participants')
+        .update({ role })
+        .eq('id', participantId);
+      if (error) throw error;
+      await logAuditAction('member_role_updated', 'channel_management', 'channel_participant', participantId);
+      toast({ title: "Rôle mis à jour", description: "Le rôle du membre a été modifié." });
+    } catch (error: any) {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const markAlertAsReviewed = async (alertId: string) => {
+    try {
+      const { error } = await supabase
+        .from('network_audit_logs')
+        .update({ is_reviewed: true })
+        .eq('id', alertId);
+      if (error) throw error;
+      await loadAuditLogs();
+    } catch (error) {
+      console.error('Error marking alert as reviewed:', error);
+    }
+  };
+
+  const getMessageEvolution = async (days: number = 7) => {
+    try {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      
+      const { data } = await supabase
+        .from('network_messages')
+        .select('created_at')
+        .gte('created_at', startDate.toISOString());
+
+      const grouped: Record<string, number> = {};
+      (data || []).forEach((m: any) => {
+        const date = new Date(m.created_at).toLocaleDateString('fr-FR', { weekday: 'short' });
+        grouped[date] = (grouped[date] || 0) + 1;
+      });
+
+      return Object.entries(grouped).map(([date, messages]) => ({ date, messages }));
+    } catch (error) {
+      return [];
+    }
+  };
+
+  const getChannelDistribution = async () => {
+    const types = ['team', 'function', 'supplier', 'system'];
+    const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6'];
+    return types.map((type, i) => ({
+      name: type,
+      value: channels.filter(c => c.type === type).length,
+      color: colors[i]
+    }));
+  };
+
+  useEffect(() => {
+    if (tenantId) {
+      loadNetworkData();
+    }
+  }, [tenantId, loadNetworkData]);
+
   return {
-    // State
     loading,
     pharmacies,
     channels,
@@ -1029,34 +1153,29 @@ export const useNetworkChatAdmin = () => {
     chatConfigs: chatConfig,
     stats,
     networkStats: stats,
-
-    // Operations - Partners
     createPartnerAccount,
     updatePartnerAccount,
     deletePartnerAccount,
-
-    // Operations - Channels
     createChannel,
     updateChannel,
     deleteChannel,
-
-    // Operations - Permissions
     createChatPermission,
     updateChatPermission,
     revokeChatPermission,
-
-    // Operations - Invitations
     createChannelInvitation,
     respondToInvitation,
-
-    // Operations - Config
     updateChatConfig,
     getConfigValue,
-
-    // Helpers
     refreshData,
     refetch: refreshData,
     getAvailablePartners,
-    logAuditAction
+    logAuditAction,
+    loadChannelMembers,
+    addChannelMember,
+    removeChannelMember,
+    updateChannelMemberRole,
+    markAlertAsReviewed,
+    getMessageEvolution,
+    getChannelDistribution
   };
 };
