@@ -2,3 +2,6 @@ project_id = "pzsoeapzuijhgemjzydo"
 
 [functions.create-user-with-personnel]
 verify_jwt = false
+
+[functions.network-ai-chat]
+verify_jwt = false

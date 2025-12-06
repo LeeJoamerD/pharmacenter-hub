@@ -262,6 +262,261 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_conversation_messages: {
+        Row: {
+          confidence: number | null
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          role: string
+          sender_name: string | null
+          sender_pharmacy_id: string | null
+          suggestions: Json | null
+          tenant_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role: string
+          sender_name?: string | null
+          sender_pharmacy_id?: string | null
+          suggestions?: Json | null
+          tenant_id: string
+        }
+        Update: {
+          confidence?: number | null
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          role?: string
+          sender_name?: string | null
+          sender_pharmacy_id?: string | null
+          suggestions?: Json | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_conversation_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_conversation_messages_sender_pharmacy_id_fkey"
+            columns: ["sender_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_conversation_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_conversations: {
+        Row: {
+          ai_model_id: string | null
+          context: string | null
+          created_at: string
+          created_by: string
+          id: string
+          metadata: Json | null
+          participants: Json | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          ai_model_id?: string | null
+          context?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          metadata?: Json | null
+          participants?: Json | null
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          ai_model_id?: string | null
+          context?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          metadata?: Json | null
+          participants?: Json | null
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_conversations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_insights: {
+        Row: {
+          applied_at: string | null
+          applied_by: string | null
+          confidence: number | null
+          created_at: string
+          description: string
+          expires_at: string | null
+          id: string
+          impact: string
+          is_applied: boolean | null
+          is_read: boolean | null
+          metadata: Json | null
+          pharmacies_affected: Json | null
+          tenant_id: string
+          title: string
+          type: string
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_by?: string | null
+          confidence?: number | null
+          created_at?: string
+          description: string
+          expires_at?: string | null
+          id?: string
+          impact?: string
+          is_applied?: boolean | null
+          is_read?: boolean | null
+          metadata?: Json | null
+          pharmacies_affected?: Json | null
+          tenant_id: string
+          title: string
+          type: string
+        }
+        Update: {
+          applied_at?: string | null
+          applied_by?: string | null
+          confidence?: number | null
+          created_at?: string
+          description?: string
+          expires_at?: string | null
+          id?: string
+          impact?: string
+          is_applied?: boolean | null
+          is_read?: boolean | null
+          metadata?: Json | null
+          pharmacies_affected?: Json | null
+          tenant_id?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_insights_applied_by_fkey"
+            columns: ["applied_by"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insights_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_models: {
+        Row: {
+          capabilities: Json | null
+          created_at: string
+          description: string | null
+          id: string
+          is_default: boolean | null
+          is_system: boolean | null
+          max_tokens: number | null
+          model_identifier: string
+          name: string
+          provider: string
+          specialization: string | null
+          status: string
+          system_prompt: string | null
+          temperature: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          capabilities?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          is_system?: boolean | null
+          max_tokens?: number | null
+          model_identifier?: string
+          name: string
+          provider?: string
+          specialization?: string | null
+          status?: string
+          system_prompt?: string | null
+          temperature?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          capabilities?: Json | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          is_system?: boolean | null
+          max_tokens?: number | null
+          model_identifier?: string
+          name?: string
+          provider?: string
+          specialization?: string | null
+          status?: string
+          system_prompt?: string | null
+          temperature?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_models_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_templates: {
         Row: {
           category: string
