@@ -7269,6 +7269,205 @@ export type Database = {
           },
         ]
       }
+      multichannel_analytics: {
+        Row: {
+          avg_response_time_ms: number | null
+          connector_id: string | null
+          cost_estimate: number | null
+          created_at: string | null
+          engagement_rate: number | null
+          id: string
+          messages_delivered: number | null
+          messages_failed: number | null
+          messages_received: number | null
+          messages_sent: number | null
+          metadata: Json | null
+          period_end: string
+          period_start: string
+          response_rate: number | null
+          tenant_id: string
+        }
+        Insert: {
+          avg_response_time_ms?: number | null
+          connector_id?: string | null
+          cost_estimate?: number | null
+          created_at?: string | null
+          engagement_rate?: number | null
+          id?: string
+          messages_delivered?: number | null
+          messages_failed?: number | null
+          messages_received?: number | null
+          messages_sent?: number | null
+          metadata?: Json | null
+          period_end: string
+          period_start: string
+          response_rate?: number | null
+          tenant_id: string
+        }
+        Update: {
+          avg_response_time_ms?: number | null
+          connector_id?: string | null
+          cost_estimate?: number | null
+          created_at?: string | null
+          engagement_rate?: number | null
+          id?: string
+          messages_delivered?: number | null
+          messages_failed?: number | null
+          messages_received?: number | null
+          messages_sent?: number | null
+          metadata?: Json | null
+          period_end?: string
+          period_start?: string
+          response_rate?: number | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "multichannel_analytics_connector_id_fkey"
+            columns: ["connector_id"]
+            isOneToOne: false
+            referencedRelation: "multichannel_connectors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "multichannel_analytics_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      multichannel_automation_rules: {
+        Row: {
+          actions: Json | null
+          created_at: string | null
+          description: string | null
+          execution_count: number | null
+          id: string
+          is_active: boolean | null
+          is_network_rule: boolean | null
+          last_executed_at: string | null
+          name: string
+          priority_order: number | null
+          rule_type: string
+          target_channels: string[] | null
+          tenant_id: string
+          trigger_conditions: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          actions?: Json | null
+          created_at?: string | null
+          description?: string | null
+          execution_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_network_rule?: boolean | null
+          last_executed_at?: string | null
+          name: string
+          priority_order?: number | null
+          rule_type: string
+          target_channels?: string[] | null
+          tenant_id: string
+          trigger_conditions?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          actions?: Json | null
+          created_at?: string | null
+          description?: string | null
+          execution_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_network_rule?: boolean | null
+          last_executed_at?: string | null
+          name?: string
+          priority_order?: number | null
+          rule_type?: string
+          target_channels?: string[] | null
+          tenant_id?: string
+          trigger_conditions?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "multichannel_automation_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      multichannel_connectors: {
+        Row: {
+          channel_type: string
+          config: Json | null
+          created_at: string | null
+          id: string
+          is_network_shared: boolean | null
+          last_error: string | null
+          last_used_at: string | null
+          messages_received: number | null
+          messages_sent: number | null
+          name: string
+          priority_order: number | null
+          provider: string
+          response_rate: number | null
+          shared_with_pharmacies: string[] | null
+          status: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          channel_type: string
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_network_shared?: boolean | null
+          last_error?: string | null
+          last_used_at?: string | null
+          messages_received?: number | null
+          messages_sent?: number | null
+          name: string
+          priority_order?: number | null
+          provider?: string
+          response_rate?: number | null
+          shared_with_pharmacies?: string[] | null
+          status?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          channel_type?: string
+          config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_network_shared?: boolean | null
+          last_error?: string | null
+          last_used_at?: string | null
+          messages_received?: number | null
+          messages_sent?: number | null
+          name?: string
+          priority_order?: number | null
+          provider?: string
+          response_rate?: number | null
+          shared_with_pharmacies?: string[] | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "multichannel_connectors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       network_activity_stats: {
         Row: {
           active_channels: number | null
@@ -15839,6 +16038,7 @@ export type Database = {
             }
             Returns: Json
           }
+      get_multichannel_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_network_activity_distribution: {
         Args: { p_tenant_id: string }
         Returns: Json
