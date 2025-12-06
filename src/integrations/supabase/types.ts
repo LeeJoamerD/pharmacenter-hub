@@ -223,6 +223,190 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_anomalies: {
+        Row: {
+          confidence: number
+          created_at: string | null
+          description: string
+          detected_at: string | null
+          diagnostic_session_id: string | null
+          id: string
+          impact: string
+          investigated_at: string | null
+          investigated_by: string | null
+          metadata: Json | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string | null
+          suggestions: Json | null
+          tenant_id: string
+          title: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string | null
+          description: string
+          detected_at?: string | null
+          diagnostic_session_id?: string | null
+          id?: string
+          impact?: string
+          investigated_at?: string | null
+          investigated_by?: string | null
+          metadata?: Json | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string | null
+          suggestions?: Json | null
+          tenant_id: string
+          title: string
+          type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          confidence?: number
+          created_at?: string | null
+          description?: string
+          detected_at?: string | null
+          diagnostic_session_id?: string | null
+          id?: string
+          impact?: string
+          investigated_at?: string | null
+          investigated_by?: string | null
+          metadata?: Json | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string | null
+          suggestions?: Json | null
+          tenant_id?: string
+          title?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_anomalies_diagnostic_session_id_fkey"
+            columns: ["diagnostic_session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_diagnostic_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_anomalies_investigated_by_fkey"
+            columns: ["investigated_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_anomalies_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_anomalies_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_bottlenecks: {
+        Row: {
+          action_plan: string | null
+          action_planned_at: string | null
+          action_planned_by: string | null
+          area: string
+          created_at: string | null
+          description: string
+          diagnostic_session_id: string | null
+          id: string
+          impact: string
+          priority: number | null
+          recommended_solution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          action_plan?: string | null
+          action_planned_at?: string | null
+          action_planned_by?: string | null
+          area: string
+          created_at?: string | null
+          description: string
+          diagnostic_session_id?: string | null
+          id?: string
+          impact: string
+          priority?: number | null
+          recommended_solution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          action_plan?: string | null
+          action_planned_at?: string | null
+          action_planned_by?: string | null
+          area?: string
+          created_at?: string | null
+          description?: string
+          diagnostic_session_id?: string | null
+          id?: string
+          impact?: string
+          priority?: number | null
+          recommended_solution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_bottlenecks_action_planned_by_fkey"
+            columns: ["action_planned_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_bottlenecks_diagnostic_session_id_fkey"
+            columns: ["diagnostic_session_id"]
+            isOneToOne: false
+            referencedRelation: "ai_diagnostic_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_bottlenecks_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_bottlenecks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_configurations: {
         Row: {
           created_at: string | null
@@ -376,6 +560,111 @@ export type Database = {
           },
           {
             foreignKeyName: "ai_conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_diagnostic_sessions: {
+        Row: {
+          ai_model_used: string | null
+          attention_points: Json | null
+          created_at: string | null
+          created_by: string | null
+          customer_details: string | null
+          customer_score: number | null
+          customer_status: string | null
+          customer_trend: string | null
+          duration_ms: number | null
+          global_score: number
+          id: string
+          improvement_potential: number | null
+          margin_details: string | null
+          margin_score: number | null
+          margin_status: string | null
+          margin_trend: string | null
+          positive_trends: Json | null
+          sales_details: string | null
+          sales_score: number | null
+          sales_status: string | null
+          sales_trend: string | null
+          status_level: string | null
+          stock_details: string | null
+          stock_score: number | null
+          stock_status: string | null
+          stock_trend: string | null
+          tenant_id: string
+        }
+        Insert: {
+          ai_model_used?: string | null
+          attention_points?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_details?: string | null
+          customer_score?: number | null
+          customer_status?: string | null
+          customer_trend?: string | null
+          duration_ms?: number | null
+          global_score?: number
+          id?: string
+          improvement_potential?: number | null
+          margin_details?: string | null
+          margin_score?: number | null
+          margin_status?: string | null
+          margin_trend?: string | null
+          positive_trends?: Json | null
+          sales_details?: string | null
+          sales_score?: number | null
+          sales_status?: string | null
+          sales_trend?: string | null
+          status_level?: string | null
+          stock_details?: string | null
+          stock_score?: number | null
+          stock_status?: string | null
+          stock_trend?: string | null
+          tenant_id: string
+        }
+        Update: {
+          ai_model_used?: string | null
+          attention_points?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          customer_details?: string | null
+          customer_score?: number | null
+          customer_status?: string | null
+          customer_trend?: string | null
+          duration_ms?: number | null
+          global_score?: number
+          id?: string
+          improvement_potential?: number | null
+          margin_details?: string | null
+          margin_score?: number | null
+          margin_status?: string | null
+          margin_trend?: string | null
+          positive_trends?: Json | null
+          sales_details?: string | null
+          sales_score?: number | null
+          sales_status?: string | null
+          sales_trend?: string | null
+          status_level?: string | null
+          stock_details?: string | null
+          stock_score?: number | null
+          stock_status?: string | null
+          stock_trend?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_diagnostic_sessions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_diagnostic_sessions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -16228,6 +16517,7 @@ export type Database = {
         Args: { tenant_filter: string }
         Returns: Json
       }
+      get_diagnostic_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_drug_database_with_details: {
         Args: {
           p_category?: string
@@ -16555,6 +16845,7 @@ export type Database = {
             }
             Returns: Json
           }
+      run_ai_diagnostic: { Args: { p_tenant_id: string }; Returns: Json }
       search_product_by_barcode: {
         Args: { p_barcode: string; p_tenant_id: string }
         Returns: {
