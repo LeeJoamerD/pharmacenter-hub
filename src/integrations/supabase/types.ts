@@ -2072,6 +2072,8 @@ export type Database = {
       clients: {
         Row: {
           adresse: string | null
+          allergies: Json | null
+          chronic_conditions: Json | null
           contact_email: string | null
           contact_fonction: string | null
           contact_nom: string | null
@@ -2084,6 +2086,7 @@ export type Database = {
           date_naissance: string | null
           email: string | null
           id: string
+          last_visit_at: string | null
           limite_credit: number | null
           metadata: Json | null
           niu: string | null
@@ -2109,6 +2112,8 @@ export type Database = {
         }
         Insert: {
           adresse?: string | null
+          allergies?: Json | null
+          chronic_conditions?: Json | null
           contact_email?: string | null
           contact_fonction?: string | null
           contact_nom?: string | null
@@ -2121,6 +2126,7 @@ export type Database = {
           date_naissance?: string | null
           email?: string | null
           id?: string
+          last_visit_at?: string | null
           limite_credit?: number | null
           metadata?: Json | null
           niu?: string | null
@@ -2146,6 +2152,8 @@ export type Database = {
         }
         Update: {
           adresse?: string | null
+          allergies?: Json | null
+          chronic_conditions?: Json | null
           contact_email?: string | null
           contact_fonction?: string | null
           contact_nom?: string | null
@@ -2158,6 +2166,7 @@ export type Database = {
           date_naissance?: string | null
           email?: string | null
           id?: string
+          last_visit_at?: string | null
           limite_credit?: number | null
           metadata?: Json | null
           niu?: string | null
@@ -9258,6 +9267,89 @@ export type Database = {
           },
         ]
       }
+      patient_reminders: {
+        Row: {
+          channel: string
+          client_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          metadata: Json | null
+          prescription_id: string | null
+          reminder_type: string
+          scheduled_date: string
+          sent_at: string | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          prescription_id?: string | null
+          reminder_type: string
+          scheduled_date: string
+          sent_at?: string | null
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          prescription_id?: string | null
+          reminder_type?: string
+          scheduled_date?: string
+          sent_at?: string | null
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_reminders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_reminders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_reminders_prescription_id_fkey"
+            columns: ["prescription_id"]
+            isOneToOne: false
+            referencedRelation: "prescriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_reminders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           categorie: string
@@ -11062,6 +11154,68 @@ export type Database = {
             columns: ["facture_id"]
             isOneToOne: false
             referencedRelation: "v_factures_avec_details"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reminder_settings: {
+        Row: {
+          auto_send: boolean
+          control_reminders_enabled: boolean
+          created_at: string
+          days_before_expiry: number
+          email_enabled: boolean
+          id: string
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          reminder_frequency: string
+          renewal_reminders_enabled: boolean
+          sms_enabled: boolean
+          tenant_id: string
+          updated_at: string
+          vaccination_reminders_enabled: boolean
+          whatsapp_enabled: boolean
+        }
+        Insert: {
+          auto_send?: boolean
+          control_reminders_enabled?: boolean
+          created_at?: string
+          days_before_expiry?: number
+          email_enabled?: boolean
+          id?: string
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          reminder_frequency?: string
+          renewal_reminders_enabled?: boolean
+          sms_enabled?: boolean
+          tenant_id: string
+          updated_at?: string
+          vaccination_reminders_enabled?: boolean
+          whatsapp_enabled?: boolean
+        }
+        Update: {
+          auto_send?: boolean
+          control_reminders_enabled?: boolean
+          created_at?: string
+          days_before_expiry?: number
+          email_enabled?: boolean
+          id?: string
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          reminder_frequency?: string
+          renewal_reminders_enabled?: boolean
+          sms_enabled?: boolean
+          tenant_id?: string
+          updated_at?: string
+          vaccination_reminders_enabled?: boolean
+          whatsapp_enabled?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
         ]
