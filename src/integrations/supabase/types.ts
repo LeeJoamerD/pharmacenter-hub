@@ -1609,6 +1609,51 @@ export type Database = {
           },
         ]
       }
+      channel_keyword_alerts: {
+        Row: {
+          alert_type: string
+          channel_ids: string[] | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          keyword: string
+          last_triggered_at: string | null
+          recipients: string[] | null
+          tenant_id: string
+          trigger_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          alert_type?: string
+          channel_ids?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          keyword: string
+          last_triggered_at?: string | null
+          recipients?: string[] | null
+          tenant_id: string
+          trigger_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          alert_type?: string
+          channel_ids?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          keyword?: string
+          last_triggered_at?: string | null
+          recipients?: string[] | null
+          tenant_id?: string
+          trigger_count?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       channel_participants: {
         Row: {
           channel_id: string
@@ -1660,6 +1705,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      channel_permissions: {
+        Row: {
+          channel_id: string
+          created_at: string
+          granted_by: string | null
+          id: string
+          permission_level: string
+          pharmacy_id: string | null
+          role: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          channel_id: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          permission_level?: string
+          pharmacy_id?: string | null
+          role: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          permission_level?: string
+          pharmacy_id?: string | null
+          role?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       classes_therapeutiques: {
         Row: {
@@ -6847,34 +6928,49 @@ export type Database = {
       }
       network_channels: {
         Row: {
+          auto_archive_days: number | null
+          category: string | null
           created_at: string
           created_by: string | null
           description: string | null
           id: string
+          is_public: boolean | null
           is_system: boolean | null
+          keywords: string[] | null
           name: string
+          status: string | null
           tenant_id: string
           type: string | null
           updated_at: string
         }
         Insert: {
+          auto_archive_days?: number | null
+          category?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
+          is_public?: boolean | null
           is_system?: boolean | null
+          keywords?: string[] | null
           name: string
+          status?: string | null
           tenant_id: string
           type?: string | null
           updated_at?: string
         }
         Update: {
+          auto_archive_days?: number | null
+          category?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           id?: string
+          is_public?: boolean | null
           is_system?: boolean | null
+          keywords?: string[] | null
           name?: string
+          status?: string | null
           tenant_id?: string
           type?: string | null
           updated_at?: string
