@@ -1094,6 +1094,115 @@ export type Database = {
           },
         ]
       }
+      ai_strategic_recommendations: {
+        Row: {
+          actions: Json | null
+          ai_model_used: string | null
+          category: string
+          confidence: number
+          created_at: string | null
+          description: string
+          effort: string | null
+          estimated_roi: string | null
+          expires_at: string | null
+          factors: Json | null
+          generated_by: string | null
+          id: string
+          impact: string
+          implemented_at: string | null
+          implemented_by: string | null
+          metadata: Json | null
+          priority: number
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          scheduled_date: string | null
+          status: string | null
+          tenant_id: string
+          timeframe: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          actions?: Json | null
+          ai_model_used?: string | null
+          category: string
+          confidence?: number
+          created_at?: string | null
+          description: string
+          effort?: string | null
+          estimated_roi?: string | null
+          expires_at?: string | null
+          factors?: Json | null
+          generated_by?: string | null
+          id?: string
+          impact?: string
+          implemented_at?: string | null
+          implemented_by?: string | null
+          metadata?: Json | null
+          priority?: number
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          scheduled_date?: string | null
+          status?: string | null
+          tenant_id: string
+          timeframe?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          actions?: Json | null
+          ai_model_used?: string | null
+          category?: string
+          confidence?: number
+          created_at?: string | null
+          description?: string
+          effort?: string | null
+          estimated_roi?: string | null
+          expires_at?: string | null
+          factors?: Json | null
+          generated_by?: string | null
+          id?: string
+          impact?: string
+          implemented_at?: string | null
+          implemented_by?: string | null
+          metadata?: Json | null
+          priority?: number
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          scheduled_date?: string | null
+          status?: string | null
+          tenant_id?: string
+          timeframe?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_strategic_recommendations_implemented_by_fkey"
+            columns: ["implemented_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_strategic_recommendations_rejected_by_fkey"
+            columns: ["rejected_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_strategic_recommendations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_templates: {
         Row: {
           category: string
@@ -16758,6 +16867,10 @@ export type Database = {
             Args: { p_caisse_id?: string; p_type_session?: string }
             Returns: string
           }
+      generate_strategic_recommendations: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       generer_alertes_expiration_automatiques: { Args: never; Returns: Json }
       get_account_hierarchy: {
         Args: { p_tenant_id: string }
@@ -16913,6 +17026,10 @@ export type Database = {
           p_search?: string
           p_tenant_id: string
         }
+        Returns: Json
+      }
+      get_recommendations_metrics: {
+        Args: { p_tenant_id: string }
         Returns: Json
       }
       get_sales_dashboard_metrics: {
