@@ -602,12 +602,29 @@ export const useMultiPharmacyManagement = () => {
   // Actions pharmacies
   const startConversationWith = async (pharmacyId: string) => {
     try {
-      // Vérifier si un canal direct existe déjà
-      const { data: existingChannel } = await supabase
-        .from('network_channels')
-        .select('id')
-        .eq('type', 'direct')
-        .eq('tenant_id', tenantId) as { data: { id: string }[] | null };
+      // Vérifier si un canal direct existe déjà avec cette pharmacie
+      const { data: existingParticipations } = await supabase
+        .from('channel_participants')
+        .select('channel_id')
+        .eq('pharmacy_id', pharmacyId);
+      
+      const existingChannelIds = (existingParticipations || []).map(p => p.channel_id);
+      
+      let existingDirectChannel = null;
+      if (existingChannelIds.length > 0) {
+        const { data: directChannels } = await supabase
+          .from('network_channels')
+          .select('id')
+          .eq('type', 'direct')
+          .in('id', existingChannelIds) as { data: { id: string }[] | null };
+        
+        existingDirectChannel = directChannels?.[0] || null;
+      }
+      
+      if (existingDirectChannel) {
+        toast.info('Une conversation existe déjà avec cette officine');
+        return existingDirectChannel;
+      }
 
       // Pour simplifier, créer un nouveau canal
       const targetPharmacy = pharmacies.find(p => p.id === pharmacyId);

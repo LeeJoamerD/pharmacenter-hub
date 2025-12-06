@@ -8,9 +8,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Building, MapPin, Phone, Mail, Users, Activity, TrendingUp,
-  AlertCircle, CheckCircle, Clock, ArrowUpDown, Filter, Search,
-  Network, BarChart3, Globe, Zap, RefreshCw, MessageSquare,
-  Download, Plus, Eye, Send, UserPlus
+  AlertCircle, CheckCircle, Clock, Filter, Search,
+  Network, Globe, Zap, RefreshCw, MessageSquare,
+  Download, Plus, Eye, Send
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { 
