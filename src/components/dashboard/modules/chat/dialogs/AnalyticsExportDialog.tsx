@@ -73,9 +73,9 @@ const AnalyticsExportDialog = ({
         const utils = await import('@/utils/networkAnalyticsExportUtils');
         const data = { metrics, insights, heatmapData, timeSeriesData, collaborationStats };
         if (format === 'excel') {
-          utils.exportAnalyticsToExcel(data, options, 'analytics-reseau');
+          utils.exportNetworkAnalyticsToExcel(data, options, 'analytics-reseau');
         } else {
-          utils.exportAnalyticsToPDF(data, options, 'analytics-reseau');
+          utils.exportNetworkAnalyticsToPDF(data, options, 'analytics-reseau');
         }
       }
       onOpenChange(false);
