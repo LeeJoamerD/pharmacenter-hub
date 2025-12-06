@@ -2221,6 +2221,90 @@ export type Database = {
           },
         ]
       }
+      clinical_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          actions_required: string[] | null
+          affected_drugs: string[] | null
+          affected_product_ids: string[] | null
+          alert_type: string
+          created_at: string | null
+          date_issued: string | null
+          description: string | null
+          expiry_date: string | null
+          id: string
+          is_acknowledged: boolean | null
+          is_network_alert: boolean | null
+          metadata: Json | null
+          severity: string
+          source: string | null
+          target_pharmacies: string[] | null
+          tenant_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          actions_required?: string[] | null
+          affected_drugs?: string[] | null
+          affected_product_ids?: string[] | null
+          alert_type: string
+          created_at?: string | null
+          date_issued?: string | null
+          description?: string | null
+          expiry_date?: string | null
+          id?: string
+          is_acknowledged?: boolean | null
+          is_network_alert?: boolean | null
+          metadata?: Json | null
+          severity?: string
+          source?: string | null
+          target_pharmacies?: string[] | null
+          tenant_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          actions_required?: string[] | null
+          affected_drugs?: string[] | null
+          affected_product_ids?: string[] | null
+          alert_type?: string
+          created_at?: string | null
+          date_issued?: string | null
+          description?: string | null
+          expiry_date?: string | null
+          id?: string
+          is_acknowledged?: boolean | null
+          is_network_alert?: boolean | null
+          metadata?: Json | null
+          severity?: string
+          source?: string | null
+          target_pharmacies?: string[] | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinical_alerts_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coefficients_repartition: {
         Row: {
           centre_cout_id: string
@@ -3653,6 +3737,151 @@ export type Database = {
           },
           {
             foreignKeyName: "documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drug_interactions: {
+        Row: {
+          clinical_effect: string | null
+          created_at: string | null
+          dci1_id: string | null
+          dci2_id: string | null
+          drug1_id: string | null
+          drug1_name: string
+          drug2_id: string | null
+          drug2_name: string
+          id: string
+          is_network_shared: boolean | null
+          management: string | null
+          mechanism: string | null
+          severity: string
+          shared_by_pharmacy_id: string | null
+          source_references: string[] | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          clinical_effect?: string | null
+          created_at?: string | null
+          dci1_id?: string | null
+          dci2_id?: string | null
+          drug1_id?: string | null
+          drug1_name: string
+          drug2_id?: string | null
+          drug2_name: string
+          id?: string
+          is_network_shared?: boolean | null
+          management?: string | null
+          mechanism?: string | null
+          severity?: string
+          shared_by_pharmacy_id?: string | null
+          source_references?: string[] | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          clinical_effect?: string | null
+          created_at?: string | null
+          dci1_id?: string | null
+          dci2_id?: string | null
+          drug1_id?: string | null
+          drug1_name?: string
+          drug2_id?: string | null
+          drug2_name?: string
+          id?: string
+          is_network_shared?: boolean | null
+          management?: string | null
+          mechanism?: string | null
+          severity?: string
+          shared_by_pharmacy_id?: string | null
+          source_references?: string[] | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drug_interactions_dci1_id_fkey"
+            columns: ["dci1_id"]
+            isOneToOne: false
+            referencedRelation: "dci"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drug_interactions_dci2_id_fkey"
+            columns: ["dci2_id"]
+            isOneToOne: false
+            referencedRelation: "dci"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drug_interactions_drug1_id_fkey"
+            columns: ["drug1_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drug_interactions_drug1_id_fkey"
+            columns: ["drug1_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drug_interactions_drug1_id_fkey"
+            columns: ["drug1_id"]
+            isOneToOne: false
+            referencedRelation: "v_produits_with_famille"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drug_interactions_drug1_id_fkey"
+            columns: ["drug1_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "drug_interactions_drug2_id_fkey"
+            columns: ["drug2_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drug_interactions_drug2_id_fkey"
+            columns: ["drug2_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drug_interactions_drug2_id_fkey"
+            columns: ["drug2_id"]
+            isOneToOne: false
+            referencedRelation: "v_produits_with_famille"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drug_interactions_drug2_id_fkey"
+            columns: ["drug2_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "drug_interactions_shared_by_pharmacy_id_fkey"
+            columns: ["shared_by_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drug_interactions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -9992,6 +10221,53 @@ export type Database = {
           },
         ]
       }
+      pharma_tool_configs: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          external_url: string | null
+          id: string
+          is_enabled: boolean | null
+          last_sync_at: string | null
+          tenant_id: string
+          tool_name: string
+          tool_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          external_url?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          last_sync_at?: string | null
+          tenant_id: string
+          tool_name: string
+          tool_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          external_url?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          last_sync_at?: string | null
+          tenant_id?: string
+          tool_name?: string
+          tool_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharma_tool_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pharmacies: {
         Row: {
           address: string | null
@@ -10165,6 +10441,68 @@ export type Database = {
           {
             foreignKeyName: "pharmacy_sessions_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_specialties: {
+        Row: {
+          certifications: string[] | null
+          created_at: string | null
+          description: string | null
+          equipment: string[] | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          is_network_shared: boolean | null
+          name: string
+          patient_demographics: string | null
+          protocols: string[] | null
+          shared_with_pharmacies: string[] | null
+          staff_requirements: string[] | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          certifications?: string[] | null
+          created_at?: string | null
+          description?: string | null
+          equipment?: string[] | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_network_shared?: boolean | null
+          name: string
+          patient_demographics?: string | null
+          protocols?: string[] | null
+          shared_with_pharmacies?: string[] | null
+          staff_requirements?: string[] | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          certifications?: string[] | null
+          created_at?: string | null
+          description?: string | null
+          equipment?: string[] | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_network_shared?: boolean | null
+          name?: string
+          patient_demographics?: string | null
+          protocols?: string[] | null
+          shared_with_pharmacies?: string[] | null
+          staff_requirements?: string[] | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_specialties_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
@@ -15337,6 +15675,16 @@ export type Database = {
         Args: { p_account_id: string; p_tenant_id: string }
         Returns: Json
       }
+      check_drug_interactions: {
+        Args: {
+          p_drug1_id?: string
+          p_drug1_name?: string
+          p_drug2_id?: string
+          p_drug2_name?: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       check_login_attempts: {
         Args: { p_email: string; p_tenant_id: string }
         Returns: Json
@@ -15455,6 +15803,16 @@ export type Database = {
         Args: { tenant_filter: string }
         Returns: Json
       }
+      get_drug_database_with_details: {
+        Args: {
+          p_category?: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       get_fast_moving_products: {
         Args: { p_days?: number; p_limit?: number; p_tenant_id: string }
         Returns: {
@@ -15497,6 +15855,7 @@ export type Database = {
         }
         Returns: string
       }
+      get_pharma_tools_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_pos_products: {
         Args: {
           p_page?: number
