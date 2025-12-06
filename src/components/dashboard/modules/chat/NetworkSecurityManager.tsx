@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,191 +7,81 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/components/ui/use-toast';
 import { 
   Lock,
   Shield,
   Key,
   AlertTriangle,
   CheckCircle,
-  XCircle,
   Eye,
-  EyeOff,
   Settings,
   Search,
   Filter,
   Download,
-  Upload,
   Clock,
   RefreshCw,
   Users,
   FileText,
-  Database,
   Smartphone,
-  Wifi,
   Activity,
-  BarChart3,
-  Zap,
-  Globe,
-  Server,
-  HardDrive,
-  UserCheck,
-  UserX,
-  Calendar,
   Fingerprint,
-  ShieldAlert,
   ShieldCheck,
-  ShieldX,
-  LogOut,
-  LogIn,
   Monitor,
-  Bell,
-  Save
+  Save,
+  Plus,
+  Loader2,
+  Trash2
 } from 'lucide-react';
-import { useNetworkChatAdmin } from '@/hooks/useNetworkChatAdmin';
-import { useNetworkAdministration } from '@/hooks/useNetworkAdministration';
+import { useNetworkSecurity } from '@/hooks/useNetworkSecurity';
 import NetworkAuditViewerDialog from './dialogs/NetworkAuditViewerDialog';
+import SecurityEventDetailDialog from './dialogs/SecurityEventDetailDialog';
+import CreateAccessRuleDialog from './dialogs/CreateAccessRuleDialog';
+import EncryptionDetailDialog from './dialogs/EncryptionDetailDialog';
+import GenerateComplianceReportDialog from './dialogs/GenerateComplianceReportDialog';
+import ResolveSecurityEventDialog from './dialogs/ResolveSecurityEventDialog';
+import { exportSecurityEventsToExcel, exportSecurityEventsToPDF } from '@/utils/networkSecurityExportUtils';
+import type { SecurityEvent, EncryptionConfig, SecurityAccessRule } from '@/hooks/useNetworkSecurity';
 
 const NetworkSecurityManager = () => {
-  const { toast } = useToast();
   const {
-    auditLogs,
-    chatPermissions,
-    chatConfigs,
-    loading: chatLoading,
-    updateChatConfig,
-    logAuditAction
-  } = useNetworkChatAdmin();
-
-  const {
-    securityLogs,
-    loading: networkLoading,
-    getSetting,
-    updateAdminSetting
-  } = useNetworkAdministration();
-
-  const loading = chatLoading || networkLoading;
+    loading,
+    saving,
+    securityEvents,
+    encryptionConfigs,
+    complianceReports,
+    accessRules,
+    authMethods,
+    securitySettings,
+    securityMetrics,
+    complianceStatuses,
+    refreshData,
+    resolveEvent,
+    createAccessRule,
+    deleteAccessRule,
+    rotateEncryptionKey,
+    updateEncryptionConfig,
+    generateComplianceReport,
+    toggleAuthMethod,
+    saveSecuritySettings,
+    resetSecuritySettings,
+    setSecuritySettings,
+  } = useNetworkSecurity();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState('all');
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
-  const [encryptionEnabled, setEncryptionEnabled] = useState(true);
-  const [auditingEnabled, setAuditingEnabled] = useState(true);
+  
+  // Dialog states
   const [auditViewerDialog, setAuditViewerDialog] = useState(false);
-
-  // Load settings from config
-  useEffect(() => {
-    if (chatConfigs.length > 0) {
-      const getConfig = (key: string, defaultVal: string) => {
-        const cfg = chatConfigs.find(c => c.key === key);
-        return cfg?.value || defaultVal;
-      };
-      setTwoFactorEnabled(getConfig('require_2fa', 'true') === 'true');
-      setEncryptionEnabled(getConfig('encryption_enabled', 'true') === 'true');
-    }
-  }, [chatConfigs]);
-
-  // Combine audit logs from both sources
-  const allSecurityEvents = [
-    ...auditLogs.map(log => ({
-      id: log.id,
-      timestamp: log.created_at,
-      event_type: log.action_type,
-      severity: log.severity as 'low' | 'medium' | 'high' | 'critical',
-      user: log.user_id || 'Système',
-      pharmacy: log.tenant_id || 'Réseau',
-      description: log.details ? JSON.stringify(log.details) : log.action_type,
-      ip_address: log.ip_address || 'N/A',
-      status: 'resolved' as const
-    })),
-    ...securityLogs.map(log => ({
-      id: log.id,
-      timestamp: log.timestamp,
-      event_type: log.type,
-      severity: (log.severity === 'error' ? 'high' : log.severity === 'warning' ? 'medium' : 'low') as 'low' | 'medium' | 'high' | 'critical',
-      user: log.user,
-      pharmacy: log.pharmacy,
-      description: log.details,
-      ip_address: log.ip_address,
-      status: 'resolved' as const
-    }))
-  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-  // Access rules from chat permissions
-  const accessRules = chatPermissions.map(perm => ({
-    id: perm.id,
-    name: `Permission ${perm.permission_type}`,
-    type: 'permission' as const,
-    target: perm.target_tenant_id,
-    permissions: [perm.permission_type],
-    resources: ['chat', 'channels'],
-    status: perm.is_granted ? 'active' as const : 'inactive' as const,
-    created_at: perm.created_at || new Date().toISOString()
-  }));
-
-  // Security metrics
-  const securityMetrics = {
-    score: 98,
-    activeAlerts: allSecurityEvents.filter(e => e.severity === 'high' || e.severity === 'critical').length,
-    activeSessions: 127,
-    encryptionStatus: encryptionEnabled ? 'Actif' : 'Inactif'
-  };
-
-  // Encryption status (mock data + real config)
-  const encryptionStatus = [
-    {
-      id: 'ENC001',
-      resource: 'Messages Chat',
-      type: 'End-to-End',
-      algorithm: 'AES-256-GCM',
-      key_rotation: '30 jours',
-      status: encryptionEnabled ? 'active' : 'inactive',
-      last_updated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 'ENC002',
-      resource: 'Base de données',
-      type: 'Database Encryption',
-      algorithm: 'AES-256',
-      key_rotation: '90 jours',
-      status: 'active',
-      last_updated: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 'ENC003',
-      resource: 'Fichiers partagés',
-      type: 'File Encryption',
-      algorithm: 'ChaCha20-Poly1305',
-      key_rotation: '60 jours',
-      status: 'active',
-      last_updated: new Date().toISOString()
-    }
-  ];
-
-  // Compliance reports (mock)
-  const complianceReports = [
-    {
-      id: 'COMP001',
-      type: 'HIPAA Compliance',
-      period: 'Q4 2024',
-      status: 'completed',
-      generated_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      file_size: '2.4 MB',
-      compliance_score: 98
-    },
-    {
-      id: 'COMP002',
-      type: 'Data Protection Audit',
-      period: 'Décembre 2024',
-      status: 'in_progress',
-      generated_at: new Date().toISOString(),
-      file_size: 'En cours',
-      compliance_score: 0
-    }
-  ];
+  const [eventDetailDialog, setEventDetailDialog] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<SecurityEvent | null>(null);
+  const [createRuleDialog, setCreateRuleDialog] = useState(false);
+  const [encryptionDetailDialog, setEncryptionDetailDialog] = useState(false);
+  const [selectedEncryption, setSelectedEncryption] = useState<EncryptionConfig | null>(null);
+  const [generateReportDialog, setGenerateReportDialog] = useState(false);
+  const [resolveEventDialog, setResolveEventDialog] = useState(false);
+  const [eventToResolve, setEventToResolve] = useState<SecurityEvent | null>(null);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -199,67 +89,92 @@ const NetworkSecurityManager = () => {
       case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
       case 'high': return 'text-orange-600 bg-orange-50 border-orange-200';
       case 'critical': return 'text-red-600 bg-red-50 border-red-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      default: return 'text-muted-foreground bg-muted border-border';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-500';
-      case 'inactive': return 'bg-gray-500';
-      case 'expired': return 'bg-red-500';
+      case 'inactive': return 'bg-muted-foreground';
+      case 'expired': return 'bg-destructive';
       case 'rotating': return 'bg-blue-500';
       case 'completed': return 'bg-green-500';
       case 'in_progress': return 'bg-blue-500';
-      case 'failed': return 'bg-red-500';
+      case 'failed': return 'bg-destructive';
       case 'resolved': return 'bg-green-500';
       case 'pending': return 'bg-yellow-500';
       case 'investigating': return 'bg-orange-500';
-      default: return 'bg-gray-500';
+      default: return 'bg-muted-foreground';
     }
   };
 
-  const filteredEvents = allSecurityEvents.filter(event => {
+  const filteredEvents = securityEvents.filter(event => {
     const matchesSearch = event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.user.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSeverity = selectedSeverity === 'all' || event.severity === selectedSeverity;
     return matchesSearch && matchesSeverity;
   });
 
-  const handleSaveSecuritySettings = async () => {
-    try {
-      await updateChatConfig('require_2fa', String(twoFactorEnabled), 'security');
-      await updateChatConfig('encryption_enabled', String(encryptionEnabled), 'security');
+  const handleViewEventDetails = (event: SecurityEvent) => {
+    setSelectedEvent(event);
+    setEventDetailDialog(true);
+  };
 
-      await updateAdminSetting('security', 'require_2fa', twoFactorEnabled.toString());
-      await updateAdminSetting('security', 'encryption_enabled', encryptionEnabled.toString());
+  const handleResolveEvent = (event: SecurityEvent) => {
+    setEventToResolve(event);
+    setResolveEventDialog(true);
+  };
 
-      await logAuditAction('config_change', 'security', 'config', undefined, 'security_settings', {
-        twoFactorEnabled,
-        encryptionEnabled,
-        auditingEnabled
-      });
-
-      toast({
-        title: "Paramètres de sécurité sauvegardés",
-        description: "Les modifications ont été appliquées."
-      });
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder les paramètres.",
-        variant: "destructive"
-      });
+  const handleConfirmResolve = async (notes: string) => {
+    if (eventToResolve) {
+      await resolveEvent(eventToResolve.id, notes);
+      setResolveEventDialog(false);
+      setEventToResolve(null);
     }
   };
 
-  const handleGenerateReport = async () => {
-    await logAuditAction('report_generate', 'compliance', 'report', undefined, 'security_audit', { type: 'security_audit' });
-    toast({
-      title: "Rapport en cours de génération",
-      description: "Le rapport sera disponible dans quelques minutes."
-    });
+  const handleViewEncryptionDetails = (config: EncryptionConfig) => {
+    setSelectedEncryption(config);
+    setEncryptionDetailDialog(true);
   };
+
+  const handleRotateKey = async (configId: string) => {
+    await rotateEncryptionKey(configId);
+  };
+
+  const handleCreateRule = async (rule: Partial<SecurityAccessRule>) => {
+    await createAccessRule(rule);
+    setCreateRuleDialog(false);
+  };
+
+  const handleDeleteRule = async (ruleId: string) => {
+    await deleteAccessRule(ruleId);
+  };
+
+  const handleGenerateReport = async (reportType: string, period: string) => {
+    await generateComplianceReport(reportType, period);
+  };
+
+  const handleSaveSettings = async () => {
+    await saveSecuritySettings(securitySettings);
+  };
+
+  const handleExportEvents = (format: 'excel' | 'pdf') => {
+    if (format === 'excel') {
+      exportSecurityEventsToExcel(filteredEvents);
+    } else {
+      exportSecurityEventsToPDF(filteredEvents);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -274,12 +189,16 @@ const NetworkSecurityManager = () => {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => refreshData()} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </Button>
           <Button variant="outline" onClick={() => setAuditViewerDialog(true)}>
             <Download className="h-4 w-4 mr-2" />
             Rapport Sécurité
           </Button>
-          <Button onClick={handleSaveSecuritySettings} disabled={loading}>
-            <Save className="h-4 w-4 mr-2" />
+          <Button onClick={handleSaveSettings} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
             Sauvegarder
           </Button>
         </div>
@@ -295,7 +214,9 @@ const NetworkSecurityManager = () => {
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Score Sécurité</p>
-                <p className="text-2xl font-bold text-green-600">{securityMetrics.score}%</p>
+                <p className={`text-2xl font-bold ${securityMetrics.score >= 80 ? 'text-green-600' : securityMetrics.score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  {securityMetrics.score}%
+                </p>
               </div>
             </div>
           </CardContent>
@@ -358,13 +279,27 @@ const NetworkSecurityManager = () => {
         <TabsContent value="events" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
-                Événements de Sécurité en Temps Réel
-              </CardTitle>
-              <CardDescription>
-                Monitoring et analyse des événements de sécurité du réseau
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5" />
+                    Événements de Sécurité en Temps Réel
+                  </CardTitle>
+                  <CardDescription>
+                    Monitoring et analyse des événements de sécurité du réseau ({securityEvents.length} événements)
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleExportEvents('excel')}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Excel
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleExportEvents('pdf')}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    PDF
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="flex gap-4 mb-6">
@@ -402,9 +337,9 @@ const NetworkSecurityManager = () => {
                         <div className="flex items-center gap-3">
                           <div className={`w-2 h-2 rounded-full ${getStatusColor(event.status)}`}></div>
                           <div>
-                            <h4 className="font-medium">{event.description}</h4>
+                            <h4 className="font-medium">{event.description.slice(0, 100)}{event.description.length > 100 ? '...' : ''}</h4>
                             <p className="text-sm text-muted-foreground">
-                              {event.user} • {event.pharmacy} • {event.ip_address}
+                              {event.user} • {event.pharmacy?.slice(0, 8)}... • {event.ip_address}
                             </p>
                           </div>
                         </div>
@@ -412,7 +347,7 @@ const NetworkSecurityManager = () => {
                           <div className={`px-2 py-1 rounded text-xs border ${getSeverityColor(event.severity)}`}>
                             {event.severity.toUpperCase()}
                           </div>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => handleViewEventDetails(event)}>
                             <Eye className="h-4 w-4 mr-2" />
                             Détails
                           </Button>
@@ -422,7 +357,7 @@ const NetworkSecurityManager = () => {
                       <div className="grid gap-4 md:grid-cols-4 text-sm">
                         <div>
                           <span className="text-muted-foreground">Type: </span>
-                          <span className="font-medium capitalize">{event.event_type.replace('_', ' ')}</span>
+                          <span className="font-medium capitalize">{event.event_type.replace(/_/g, ' ')}</span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Timestamp: </span>
@@ -435,14 +370,16 @@ const NetworkSecurityManager = () => {
                           <span className="font-medium capitalize">{event.status}</span>
                         </div>
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => handleViewEventDetails(event)}>
                             <Shield className="h-4 w-4 mr-1" />
                             Analyser
                           </Button>
-                          <Button variant="outline" size="sm">
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Résoudre
-                          </Button>
+                          {event.status !== 'resolved' && (
+                            <Button variant="outline" size="sm" onClick={() => handleResolveEvent(event)}>
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Résoudre
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -464,42 +401,57 @@ const NetworkSecurityManager = () => {
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Key className="h-5 w-5" />
-                  Permissions Inter-Pharmacies
-                </CardTitle>
-                <CardDescription>
-                  Permissions de communication entre pharmacies
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Key className="h-5 w-5" />
+                      Règles d'Accès
+                    </CardTitle>
+                    <CardDescription>
+                      Règles de sécurité et permissions ({accessRules.length} règles)
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => setCreateRuleDialog(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouvelle Règle
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {chatPermissions.length > 0 ? (
-                  chatPermissions.map((perm) => (
-                    <div key={perm.id} className="p-3 border rounded-lg">
+                {accessRules.length > 0 ? (
+                  accessRules.map((rule) => (
+                    <div key={rule.id} className="p-3 border rounded-lg">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                          <div className={`w-2 h-2 rounded-full ${perm.is_granted ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+                          <div className={`w-2 h-2 rounded-full ${rule.is_active ? 'bg-green-500' : 'bg-muted-foreground'}`}></div>
                           <div>
-                            <h4 className="font-medium capitalize">{perm.permission_type.replace('_', ' ')}</h4>
+                            <h4 className="font-medium">{rule.rule_name}</h4>
                             <p className="text-sm text-muted-foreground">
-                              Cible: {perm.target_tenant_id?.slice(0, 8)}...
+                              Type: {rule.rule_type} • Priorité: {rule.priority}
                             </p>
                           </div>
                         </div>
-                        <Badge variant={perm.is_granted ? 'default' : 'secondary'}>
-                          {perm.is_granted ? 'Accordé' : 'Refusé'}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={rule.is_active ? 'default' : 'secondary'}>
+                            {rule.is_active ? 'Actif' : 'Inactif'}
+                          </Badge>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteRule(rule.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
+                      {rule.target_resource && (
+                        <p className="text-sm text-muted-foreground">
+                          Ressource: {rule.target_resource}
+                        </p>
+                      )}
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-muted-foreground">Aucune permission configurée</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Aucune règle d'accès configurée
+                  </p>
                 )}
-
-                <Button className="w-full">
-                  <Key className="h-4 w-4 mr-2" />
-                  Nouvelle Règle d'Accès
-                </Button>
               </CardContent>
             </Card>
 
@@ -523,8 +475,8 @@ const NetworkSecurityManager = () => {
                       </p>
                     </div>
                     <Switch 
-                      checked={twoFactorEnabled}
-                      onCheckedChange={setTwoFactorEnabled}
+                      checked={securitySettings.require_2fa}
+                      onCheckedChange={(checked) => setSecuritySettings({...securitySettings, require_2fa: checked})}
                     />
                   </div>
 
@@ -533,29 +485,27 @@ const NetworkSecurityManager = () => {
                   <div className="space-y-3">
                     <Label>Méthodes d'authentification autorisées</Label>
                     <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="sms" defaultChecked />
-                        <label htmlFor="sms" className="text-sm">SMS</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="app" defaultChecked />
-                        <label htmlFor="app" className="text-sm">Application d'authentification</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="email" />
-                        <label htmlFor="email" className="text-sm">Email</label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="biometric" />
-                        <label htmlFor="biometric" className="text-sm">Biométrie</label>
-                      </div>
+                      {authMethods.map((method) => (
+                        <div key={method.id} className="flex items-center justify-between p-2 border rounded">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm capitalize">{method.method_type}</span>
+                            {method.is_required_for_2fa && (
+                              <Badge variant="secondary" className="text-xs">Requis</Badge>
+                            )}
+                          </div>
+                          <Switch 
+                            checked={method.is_enabled}
+                            onCheckedChange={(checked) => toggleAuthMethod(method.id, checked)}
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
 
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded">
                     <div className="flex items-center gap-2 text-sm text-blue-600">
                       <Fingerprint className="h-4 w-4" />
-                      <span>127 utilisateurs ont activé la 2FA</span>
+                      <span>{securityMetrics.usersWithTwoFA} utilisateurs actifs</span>
                     </div>
                   </div>
                 </div>
@@ -573,28 +523,32 @@ const NetworkSecurityManager = () => {
                 État du Chiffrement Bout-en-Bout
               </CardTitle>
               <CardDescription>
-                Monitoring et gestion du chiffrement des communications
+                Monitoring et gestion du chiffrement des communications ({encryptionConfigs.length} configurations)
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {encryptionStatus.map((encryption) => (
-                  <div key={encryption.id} className="p-4 border rounded-lg">
+                {encryptionConfigs.map((config) => (
+                  <div key={config.id} className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${getStatusColor(encryption.status)}`}></div>
+                        <div className={`w-3 h-3 rounded-full ${getStatusColor(config.status)}`}></div>
                         <div>
-                          <h4 className="font-medium">{encryption.resource}</h4>
-                          <p className="text-sm text-muted-foreground">{encryption.type}</p>
+                          <h4 className="font-medium">{config.resource_name}</h4>
+                          <p className="text-sm text-muted-foreground">{config.encryption_type}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={encryption.status === 'active' ? 'default' : 'secondary'}>
-                          {encryption.status}
+                        <Badge variant={config.status === 'active' ? 'default' : 'secondary'}>
+                          {config.status}
                         </Badge>
-                        <Button variant="outline" size="sm">
-                          <RefreshCw className="h-4 w-4 mr-2" />
+                        <Button variant="outline" size="sm" onClick={() => handleRotateKey(config.id)} disabled={saving}>
+                          <RefreshCw className={`h-4 w-4 mr-2 ${saving ? 'animate-spin' : ''}`} />
                           Rotation
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleViewEncryptionDetails(config)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Détails
                         </Button>
                       </div>
                     </div>
@@ -602,23 +556,21 @@ const NetworkSecurityManager = () => {
                     <div className="grid gap-4 md:grid-cols-4 text-sm">
                       <div>
                         <span className="text-muted-foreground">Algorithme: </span>
-                        <span className="font-medium">{encryption.algorithm}</span>
+                        <span className="font-medium">{config.algorithm}</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Rotation: </span>
-                        <span className="font-medium">{encryption.key_rotation}</span>
+                        <span className="font-medium">{config.key_rotation_days} jours</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Dernière mise à jour: </span>
+                        <span className="text-muted-foreground">Dernière rotation: </span>
                         <span className="font-medium">
-                          {new Date(encryption.last_updated).toLocaleDateString('fr-FR')}
+                          {config.last_rotation_at ? new Date(config.last_rotation_at).toLocaleDateString('fr-FR') : 'Jamais'}
                         </span>
                       </div>
                       <div>
-                        <Button variant="outline" size="sm">
-                          <Eye className="h-4 w-4 mr-2" />
-                          Détails
-                        </Button>
+                        <span className="text-muted-foreground">Clés actives: </span>
+                        <span className="font-medium">{config.active_keys_count}</span>
                       </div>
                     </div>
                   </div>
@@ -634,17 +586,16 @@ const NetworkSecurityManager = () => {
                     <div className="flex items-center justify-between">
                       <Label>Chiffrement automatique</Label>
                       <Switch 
-                        checked={encryptionEnabled}
-                        onCheckedChange={setEncryptionEnabled}
+                        checked={securitySettings.encryption_enabled}
+                        onCheckedChange={(checked) => setSecuritySettings({...securitySettings, encryption_enabled: checked})}
                       />
                     </div>
                     <div className="flex items-center justify-between">
                       <Label>Rotation automatique des clés</Label>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label>Chiffrement des métadonnées</Label>
-                      <Switch defaultChecked />
+                      <Switch 
+                        checked={securitySettings.auto_key_rotation}
+                        onCheckedChange={(checked) => setSecuritySettings({...securitySettings, auto_key_rotation: checked})}
+                      />
                     </div>
                   </div>
                 </div>
@@ -654,7 +605,7 @@ const NetworkSecurityManager = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Messages chiffrés:</span>
-                      <span className="font-medium">99.8%</span>
+                      <span className="font-medium">{securityMetrics.encryptedMessagesPercent}%</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Fichiers chiffrés:</span>
@@ -666,7 +617,7 @@ const NetworkSecurityManager = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Clés actives:</span>
-                      <span className="font-medium">15</span>
+                      <span className="font-medium">{securityMetrics.activeKeysCount}</span>
                     </div>
                   </div>
                 </div>
@@ -680,60 +631,74 @@ const NetworkSecurityManager = () => {
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Rapports de Conformité
-                </CardTitle>
-                <CardDescription>
-                  Génération et suivi des rapports de conformité réglementaire
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Rapports de Conformité
+                    </CardTitle>
+                    <CardDescription>
+                      Génération et suivi des rapports ({complianceReports.length} rapports)
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {complianceReports.map((report) => (
-                  <div key={report.id} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${getStatusColor(report.status)}`}></div>
-                        <div>
-                          <h4 className="font-medium">{report.type}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Période: {report.period}
-                          </p>
+                {complianceReports.length > 0 ? (
+                  complianceReports.map((report) => (
+                    <div key={report.id} className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${getStatusColor(report.status)}`}></div>
+                          <div>
+                            <h4 className="font-medium">{report.report_type}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Période: {report.period}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {report.compliance_score && (
+                            <Badge variant="default" className="bg-green-500">
+                              {Math.round(report.compliance_score)}%
+                            </Badge>
+                          )}
+                          {report.status === 'completed' && report.file_url && (
+                            <Button variant="outline" size="sm">
+                              <Download className="h-4 w-4 mr-2" />
+                              Télécharger
+                            </Button>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {report.compliance_score > 0 && (
-                          <Badge variant="default" className="bg-green-500">
-                            {report.compliance_score}%
-                          </Badge>
-                        )}
-                        <Button variant="outline" size="sm">
-                          <Download className="h-4 w-4 mr-2" />
-                          Télécharger
-                        </Button>
+
+                      <div className="grid gap-2 md:grid-cols-3 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Statut: </span>
+                          <span className="font-medium capitalize">{report.status.replace('_', ' ')}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Créé: </span>
+                          <span className="font-medium">
+                            {new Date(report.created_at).toLocaleDateString('fr-FR')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Taille: </span>
+                          <span className="font-medium">
+                            {report.file_size_mb ? `${report.file_size_mb.toFixed(1)} MB` : 'En cours'}
+                          </span>
+                        </div>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Aucun rapport généré
+                  </p>
+                )}
 
-                    <div className="grid gap-2 md:grid-cols-3 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Statut: </span>
-                        <span className="font-medium capitalize">{report.status.replace('_', ' ')}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Généré: </span>
-                        <span className="font-medium">
-                          {new Date(report.generated_at).toLocaleDateString('fr-FR')}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Taille: </span>
-                        <span className="font-medium">{report.file_size}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                <Button className="w-full" onClick={handleGenerateReport}>
+                <Button className="w-full" onClick={() => setGenerateReportDialog(true)}>
                   <FileText className="h-4 w-4 mr-2" />
                   Générer Nouveau Rapport
                 </Button>
@@ -752,49 +717,26 @@ const NetworkSecurityManager = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      <div>
-                        <span className="font-medium">HIPAA Compliance</span>
-                        <p className="text-sm text-muted-foreground">Conforme</p>
+                  {complianceStatuses.map((status) => (
+                    <div key={status.code} className="flex items-center justify-between p-3 border rounded">
+                      <div className="flex items-center gap-3">
+                        {status.status === 'compliant' ? (
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        ) : status.status === 'pending' ? (
+                          <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                        ) : (
+                          <AlertTriangle className="h-5 w-5 text-red-500" />
+                        )}
+                        <div>
+                          <span className="font-medium">{status.name}</span>
+                          <p className="text-sm text-muted-foreground">{status.description}</p>
+                        </div>
                       </div>
+                      <Badge className={status.status === 'compliant' ? 'bg-green-500' : status.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'}>
+                        {status.score}%
+                      </Badge>
                     </div>
-                    <Badge className="bg-green-500">98%</Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      <div>
-                        <span className="font-medium">RGPD</span>
-                        <p className="text-sm text-muted-foreground">Conforme</p>
-                      </div>
-                    </div>
-                    <Badge className="bg-green-500">96%</Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center gap-3">
-                      <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                      <div>
-                        <span className="font-medium">HDS (Hébergement Données Santé)</span>
-                        <p className="text-sm text-muted-foreground">En cours de certification</p>
-                      </div>
-                    </div>
-                    <Badge variant="secondary">92%</Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      <div>
-                        <span className="font-medium">ISO 27001</span>
-                        <p className="text-sm text-muted-foreground">Certifié</p>
-                      </div>
-                    </div>
-                    <Badge className="bg-green-500">100%</Badge>
-                  </div>
+                  ))}
                 </div>
 
                 <Separator />
@@ -843,27 +785,32 @@ const NetworkSecurityManager = () => {
                   <h4 className="font-medium">Configuration de l'Audit</h4>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <Label>Audit global activé</Label>
+                      <Label>Audit des connexions</Label>
                       <Switch 
-                        checked={auditingEnabled}
-                        onCheckedChange={setAuditingEnabled}
+                        checked={securitySettings.audit_connections}
+                        onCheckedChange={(checked) => setSecuritySettings({...securitySettings, audit_connections: checked})}
                       />
                     </div>
                     <div className="flex items-center justify-between">
-                      <Label>Audit des connexions</Label>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
                       <Label>Audit des modifications de données</Label>
-                      <Switch defaultChecked />
+                      <Switch 
+                        checked={securitySettings.audit_data_changes}
+                        onCheckedChange={(checked) => setSecuritySettings({...securitySettings, audit_data_changes: checked})}
+                      />
                     </div>
                     <div className="flex items-center justify-between">
                       <Label>Audit des accès aux dossiers patients</Label>
-                      <Switch defaultChecked />
+                      <Switch 
+                        checked={securitySettings.audit_patient_access}
+                        onCheckedChange={(checked) => setSecuritySettings({...securitySettings, audit_patient_access: checked})}
+                      />
                     </div>
                     <div className="flex items-center justify-between">
                       <Label>Audit des exports de données</Label>
-                      <Switch defaultChecked />
+                      <Switch 
+                        checked={securitySettings.audit_exports}
+                        onCheckedChange={(checked) => setSecuritySettings({...securitySettings, audit_exports: checked})}
+                      />
                     </div>
                   </div>
                 </div>
@@ -873,21 +820,15 @@ const NetworkSecurityManager = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between p-2 bg-muted/50 rounded">
                       <span>Événements totaux (30 jours):</span>
-                      <span className="font-medium">{auditLogs.length}</span>
+                      <span className="font-medium">{securityMetrics.totalEvents30Days}</span>
                     </div>
                     <div className="flex justify-between p-2 bg-muted/50 rounded">
                       <span>Alertes critiques:</span>
-                      <span className="font-medium text-red-600">
-                        {auditLogs.filter(l => l.severity === 'critical').length}
-                      </span>
+                      <span className="font-medium text-red-600">{securityMetrics.criticalAlerts}</span>
                     </div>
                     <div className="flex justify-between p-2 bg-muted/50 rounded">
                       <span>Événements d'aujourd'hui:</span>
-                      <span className="font-medium">
-                        {auditLogs.filter(l => 
-                          new Date(l.created_at).toDateString() === new Date().toDateString()
-                        ).length}
-                      </span>
+                      <span className="font-medium">{securityMetrics.eventsToday}</span>
                     </div>
                   </div>
                 </div>
@@ -919,8 +860,8 @@ const NetworkSecurityManager = () => {
                         <p className="text-xs text-muted-foreground">Pour tous les utilisateurs</p>
                       </div>
                       <Switch 
-                        checked={twoFactorEnabled}
-                        onCheckedChange={setTwoFactorEnabled}
+                        checked={securitySettings.require_2fa}
+                        onCheckedChange={(checked) => setSecuritySettings({...securitySettings, require_2fa: checked})}
                       />
                     </div>
                     <div className="flex items-center justify-between">
@@ -928,11 +869,19 @@ const NetworkSecurityManager = () => {
                         <Label>Verrouillage automatique</Label>
                         <p className="text-xs text-muted-foreground">Après 3 tentatives échouées</p>
                       </div>
-                      <Switch defaultChecked />
+                      <Switch 
+                        checked={securitySettings.auto_lock_enabled}
+                        onCheckedChange={(checked) => setSecuritySettings({...securitySettings, auto_lock_enabled: checked})}
+                      />
                     </div>
                     <div>
                       <Label>Durée de session (minutes)</Label>
-                      <Input type="number" defaultValue="30" className="mt-2" />
+                      <Input 
+                        type="number" 
+                        value={securitySettings.session_duration_minutes} 
+                        onChange={(e) => setSecuritySettings({...securitySettings, session_duration_minutes: parseInt(e.target.value) || 30})}
+                        className="mt-2" 
+                      />
                     </div>
                   </div>
                 </div>
@@ -946,8 +895,8 @@ const NetworkSecurityManager = () => {
                         <p className="text-xs text-muted-foreground">Messages et fichiers</p>
                       </div>
                       <Switch 
-                        checked={encryptionEnabled}
-                        onCheckedChange={setEncryptionEnabled}
+                        checked={securitySettings.encryption_enabled}
+                        onCheckedChange={(checked) => setSecuritySettings({...securitySettings, encryption_enabled: checked})}
                       />
                     </div>
                     <div className="flex items-center justify-between">
@@ -955,7 +904,10 @@ const NetworkSecurityManager = () => {
                         <Label>Rotation automatique des clés</Label>
                         <p className="text-xs text-muted-foreground">Tous les 30 jours</p>
                       </div>
-                      <Switch defaultChecked />
+                      <Switch 
+                        checked={securitySettings.auto_key_rotation}
+                        onCheckedChange={(checked) => setSecuritySettings({...securitySettings, auto_key_rotation: checked})}
+                      />
                     </div>
                   </div>
                 </div>
@@ -964,9 +916,11 @@ const NetworkSecurityManager = () => {
               <Separator />
 
               <div className="flex justify-end gap-2">
-                <Button variant="outline">Réinitialiser</Button>
-                <Button onClick={handleSaveSecuritySettings} disabled={loading}>
-                  <Save className="h-4 w-4 mr-2" />
+                <Button variant="outline" onClick={resetSecuritySettings}>
+                  Réinitialiser
+                </Button>
+                <Button onClick={handleSaveSettings} disabled={saving}>
+                  {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                   Sauvegarder
                 </Button>
               </div>
@@ -979,8 +933,55 @@ const NetworkSecurityManager = () => {
       <NetworkAuditViewerDialog
         open={auditViewerDialog}
         onOpenChange={setAuditViewerDialog}
-        auditLogs={auditLogs}
+        auditLogs={securityEvents.map(e => ({
+          id: e.id,
+          created_at: e.timestamp,
+          action_type: e.event_type,
+          severity: e.severity === 'high' ? 'error' : e.severity === 'medium' ? 'warning' : e.severity === 'low' ? 'info' : 'critical',
+          user_id: e.user,
+          tenant_id: e.pharmacy,
+          details: e.metadata || {},
+          ip_address: e.ip_address,
+        }))}
         loading={loading}
+      />
+
+      <SecurityEventDetailDialog
+        open={eventDetailDialog}
+        onOpenChange={setEventDetailDialog}
+        event={selectedEvent}
+        onResolve={(event) => handleResolveEvent(event)}
+      />
+
+      <CreateAccessRuleDialog
+        open={createRuleDialog}
+        onOpenChange={setCreateRuleDialog}
+        onCreate={handleCreateRule}
+        isCreating={saving}
+      />
+
+      <EncryptionDetailDialog
+        open={encryptionDetailDialog}
+        onOpenChange={setEncryptionDetailDialog}
+        config={selectedEncryption}
+        onRotateKey={handleRotateKey}
+        isRotating={saving}
+        rotations={[]}
+      />
+
+      <GenerateComplianceReportDialog
+        open={generateReportDialog}
+        onOpenChange={setGenerateReportDialog}
+        onGenerate={handleGenerateReport}
+        isGenerating={saving}
+      />
+
+      <ResolveSecurityEventDialog
+        open={resolveEventDialog}
+        onOpenChange={setResolveEventDialog}
+        event={eventToResolve}
+        onResolve={handleConfirmResolve}
+        isResolving={saving}
       />
     </div>
   );
