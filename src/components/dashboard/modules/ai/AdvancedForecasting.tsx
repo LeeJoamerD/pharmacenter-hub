@@ -12,138 +12,88 @@ import {
   DollarSign,
   Cloud,
   Activity,
-  BarChart3,
-  LineChart,
   Target,
   AlertTriangle,
-  CheckCircle,
   Zap,
   Brain,
   Eye,
-  RefreshCw
+  RefreshCw,
+  Download,
+  Plus,
+  Trash2,
+  Edit
 } from 'lucide-react';
-import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { 
+  LineChart as RechartsLineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  AreaChart, 
+  Area 
+} from 'recharts';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+
+import { useAdvancedForecasting } from '@/hooks/useAdvancedForecasting';
+import StockPredictionDetailDialog from './dialogs/StockPredictionDetailDialog';
+import AddFactorDialog from './dialogs/AddFactorDialog';
+import ForecastExportDialog from './dialogs/ForecastExportDialog';
+import type { StockPrediction, InfluentialFactor } from '@/hooks/useAdvancedForecasting';
 
 const AdvancedForecasting = () => {
-  const [selectedModel, setSelectedModel] = useState('lstm');
+  const {
+    loading,
+    generating,
+    models,
+    selectedModel,
+    setSelectedModel,
+    salesForecast,
+    stockPredictions,
+    cashflowForecast,
+    influentialFactors,
+    metrics,
+    latestForecast,
+    generateForecast,
+    loadAllData,
+    createOrderFromPrediction,
+    dismissPrediction,
+    addFactor,
+    updateFactor,
+    deleteFactor,
+    setDefaultModel
+  } = useAdvancedForecasting();
+
   const [forecastPeriod, setForecastPeriod] = useState('30');
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedPrediction, setSelectedPrediction] = useState<StockPrediction | null>(null);
+  const [predictionDialogOpen, setPredictionDialogOpen] = useState(false);
+  const [addFactorDialogOpen, setAddFactorDialogOpen] = useState(false);
+  const [editingFactor, setEditingFactor] = useState<InfluentialFactor | null>(null);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
-  // Données de prévisions de ventes
-  const [salesForecastData] = useState([
-    { date: '2025-01-06', actual: 2800, predicted: 2750, confidence: 85 },
-    { date: '2025-01-07', actual: 3200, predicted: 3100, confidence: 87 },
-    { date: '2025-01-08', actual: 2900, predicted: 2950, confidence: 82 },
-    { date: '2025-01-09', actual: null, predicted: 3350, confidence: 89 },
-    { date: '2025-01-10', actual: null, predicted: 3200, confidence: 86 },
-    { date: '2025-01-11', actual: null, predicted: 2950, confidence: 84 },
-    { date: '2025-01-12', actual: null, predicted: 3100, confidence: 88 },
-    { date: '2025-01-13', actual: null, predicted: 3450, confidence: 91 },
-    { date: '2025-01-14', actual: null, predicted: 3600, confidence: 85 },
-    { date: '2025-01-15', actual: null, predicted: 3300, confidence: 83 }
-  ]);
+  const handleGenerateForecast = async () => {
+    await generateForecast(selectedModel, parseInt(forecastPeriod));
+  };
 
-  // Prévisions de stock
-  const [stockPredictions] = useState([
-    {
-      product: 'Doliprane 1000mg',
-      currentStock: 150,
-      predictedDemand: 45,
-      daysUntilStockout: 3,
-      recommendedOrder: 200,
-      confidence: 94,
-      trend: 'increasing',
-      priority: 'critical'
-    },
-    {
-      product: 'Vitamine D 1000UI',
-      currentStock: 80,
-      predictedDemand: 12,
-      daysUntilStockout: 7,
-      recommendedOrder: 100,
-      confidence: 87,
-      trend: 'stable',
-      priority: 'medium'
-    },
-    {
-      product: 'Masques FFP2',
-      currentStock: 500,
-      predictedDemand: 25,
-      daysUntilStockout: 20,
-      recommendedOrder: 0,
-      confidence: 76,
-      trend: 'decreasing',
-      priority: 'low'
-    },
-    {
-      product: 'Antihistaminique',
-      currentStock: 75,
-      predictedDemand: 38,
-      daysUntilStockout: 2,
-      recommendedOrder: 150,
-      confidence: 91,
-      trend: 'seasonal_peak',
-      priority: 'critical'
+  const handleViewPrediction = (prediction: StockPrediction) => {
+    setSelectedPrediction(prediction);
+    setPredictionDialogOpen(true);
+  };
+
+  const handleEditFactor = (factor: InfluentialFactor) => {
+    setEditingFactor(factor);
+    setAddFactorDialogOpen(true);
+  };
+
+  const handleSaveFactor = async (factorData: Omit<InfluentialFactor, 'id'>) => {
+    if (editingFactor) {
+      await updateFactor(editingFactor.id, factorData);
+      setEditingFactor(null);
+    } else {
+      await addFactor(factorData);
     }
-  ]);
-
-  // Prévisions de trésorerie
-  const [cashflowForecast] = useState([
-    { month: 'Jan 2025', inflow: 45000, outflow: 38000, net: 7000, cumulative: 15000 },
-    { month: 'Fév 2025', inflow: 48000, outflow: 41000, net: 7000, cumulative: 22000 },
-    { month: 'Mar 2025', inflow: 52000, outflow: 43000, net: 9000, cumulative: 31000 },
-    { month: 'Avr 2025', inflow: 49000, outflow: 40000, net: 9000, cumulative: 40000 },
-    { month: 'Mai 2025', inflow: 51000, outflow: 42000, net: 9000, cumulative: 49000 },
-    { month: 'Jun 2025', inflow: 47000, outflow: 39000, net: 8000, cumulative: 57000 }
-  ]);
-
-  // Modèles IA disponibles
-  const [models] = useState([
-    {
-      id: 'lstm',
-      name: 'LSTM Neural Network',
-      accuracy: 92.5,
-      description: 'Réseau de neurones pour séries temporelles complexes',
-      bestFor: 'Patterns complexes, saisonnalité'
-    },
-    {
-      id: 'arima',
-      name: 'ARIMA Autorégressif',
-      accuracy: 87.3,
-      description: 'Modèle statistique classique',
-      bestFor: 'Tendances linéaires, données stationnaires'
-    },
-    {
-      id: 'prophet',
-      name: 'Facebook Prophet',
-      accuracy: 89.1,
-      description: 'Optimisé pour données business',
-      bestFor: 'Événements spéciaux, anomalies'
-    },
-    {
-      id: 'ensemble',
-      name: 'Ensemble Methods',
-      accuracy: 94.7,
-      description: 'Combinaison de plusieurs modèles',
-      bestFor: 'Précision maximale'
-    }
-  ]);
-
-  // Facteurs influents
-  const [influentialFactors] = useState([
-    { factor: 'Météo', influence: 78, trend: 'positive', description: 'Température et humidité affectent ventes OTC' },
-    { factor: 'Saisonnalité', influence: 85, trend: 'cyclical', description: 'Patterns saisonniers récurrents' },
-    { factor: 'Événements locaux', influence: 62, trend: 'variable', description: 'Festivals, événements sportifs' },
-    { factor: 'Épidémies', influence: 91, trend: 'spike', description: 'Grippes, gastro-entérites' },
-    { factor: 'Promotions', influence: 45, trend: 'controlled', description: 'Campagnes marketing planifiées' }
-  ]);
-
-  const generateForecast = async () => {
-    setIsGenerating(true);
-    // Simulation génération prévision
-    setTimeout(() => {
-      setIsGenerating(false);
-    }, 3000);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -164,6 +114,30 @@ const AdvancedForecasting = () => {
     }
   };
 
+  const currentModel = models.find(m => m.model_code === selectedModel);
+  const modelAccuracy = currentModel?.accuracy || metrics.default_accuracy;
+  const modelName = currentModel?.display_name || 'Ensemble Methods';
+
+  // Formater les données du graphique de ventes
+  const salesChartData = salesForecast.map(item => ({
+    ...item,
+    date: format(new Date(item.date), 'dd/MM', { locale: fr })
+  }));
+
+  // Résumé des ventes
+  const tomorrowForecast = salesForecast.find(s => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return s.date === format(tomorrow, 'yyyy-MM-dd');
+  });
+  const weekForecast = salesForecast
+    .filter(s => s.actual === null)
+    .slice(0, 7)
+    .reduce((sum, s) => sum + s.predicted, 0);
+  const avgConfidence = salesForecast.length > 0 
+    ? Math.round(salesForecast.reduce((sum, s) => sum + s.confidence, 0) / salesForecast.length) 
+    : 0;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -176,24 +150,40 @@ const AdvancedForecasting = () => {
         </div>
         <div className="flex items-center gap-4">
           <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-56">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {models.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  {model.name} - {model.accuracy}%
+                <SelectItem key={model.model_code} value={model.model_code}>
+                  {model.display_name} - {model.accuracy}%
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={generateForecast} disabled={isGenerating}>
-            {isGenerating ? (
+          <Select value={forecastPeriod} onValueChange={setForecastPeriod}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">7 jours</SelectItem>
+              <SelectItem value="14">14 jours</SelectItem>
+              <SelectItem value="30">30 jours</SelectItem>
+              <SelectItem value="60">60 jours</SelectItem>
+              <SelectItem value="90">90 jours</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setExportDialogOpen(true)} variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Exporter
+          </Button>
+          <Button onClick={handleGenerateForecast} disabled={generating}>
+            {generating ? (
               <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <Brain className="h-4 w-4 mr-2" />
             )}
-            {isGenerating ? 'Génération...' : 'Générer Prévision'}
+            {generating ? 'Génération...' : 'Générer Prévision'}
           </Button>
         </div>
       </div>
@@ -206,9 +196,7 @@ const AdvancedForecasting = () => {
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {models.find(m => m.id === selectedModel)?.accuracy}%
-            </div>
+            <div className="text-2xl font-bold">{modelAccuracy}%</div>
             <p className="text-xs text-muted-foreground">
               {selectedModel.toUpperCase()}
             </p>
@@ -221,7 +209,7 @@ const AdvancedForecasting = () => {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">{metrics.active_forecasts}</div>
             <p className="text-xs text-muted-foreground">
               En cours de suivi
             </p>
@@ -234,7 +222,9 @@ const AdvancedForecasting = () => {
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">2</div>
+            <div className={`text-2xl font-bold ${metrics.critical_alerts > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {metrics.critical_alerts}
+            </div>
             <p className="text-xs text-muted-foreground">
               Ruptures prévues
             </p>
@@ -247,7 +237,9 @@ const AdvancedForecasting = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">+€3.2K</div>
+            <div className="text-2xl font-bold text-green-600">
+              +{metrics.estimated_roi.toLocaleString('fr-FR')} FCFA
+            </div>
             <p className="text-xs text-muted-foreground">
               Ce mois estimé
             </p>
@@ -263,6 +255,7 @@ const AdvancedForecasting = () => {
           <TabsTrigger value="factors">Facteurs</TabsTrigger>
         </TabsList>
 
+        {/* Onglet Ventes */}
         <TabsContent value="sales" className="space-y-6">
           <Card>
             <CardHeader>
@@ -271,57 +264,80 @@ const AdvancedForecasting = () => {
                 Prévisions de Ventes
               </CardTitle>
               <CardDescription>
-                Prédictions basées sur {selectedModel.toUpperCase()} avec {forecastPeriod} jours d'horizon
+                Prédictions basées sur {modelName} avec {forecastPeriod} jours d'horizon
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-80 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsLineChart data={salesForecastData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line 
-                      type="monotone" 
-                      dataKey="actual" 
-                      stroke="#10b981" 
-                      strokeWidth={2}
-                      name="Ventes réelles"
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="predicted" 
-                      stroke="#3b82f6" 
-                      strokeWidth={2}
-                      strokeDasharray="5 5"
-                      name="Prévisions"
-                    />
-                  </RechartsLineChart>
-                </ResponsiveContainer>
-              </div>
-              
-              <div className="grid gap-4 md:grid-cols-3 mt-6">
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">€3,350</div>
-                  <div className="text-sm text-blue-700">Prévision demain</div>
-                  <div className="text-xs text-muted-foreground">Confiance: 89%</div>
+              {salesForecast.length > 0 ? (
+                <>
+                  <div className="h-80 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsLineChart data={salesChartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis />
+                        <Tooltip 
+                          formatter={(value: number) => [`${value.toLocaleString('fr-FR')} FCFA`, '']}
+                          labelFormatter={(label) => `Date: ${label}`}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="actual" 
+                          stroke="#10b981" 
+                          strokeWidth={2}
+                          name="Ventes réelles"
+                          connectNulls={false}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="predicted" 
+                          stroke="#3b82f6" 
+                          strokeWidth={2}
+                          strokeDasharray="5 5"
+                          name="Prévisions"
+                        />
+                      </RechartsLineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="grid gap-4 md:grid-cols-3 mt-6">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {tomorrowForecast ? tomorrowForecast.predicted.toLocaleString('fr-FR') : '--'} FCFA
+                      </div>
+                      <div className="text-sm text-blue-700">Prévision demain</div>
+                      <div className="text-xs text-muted-foreground">
+                        Confiance: {tomorrowForecast?.confidence || '--'}%
+                      </div>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">
+                        {avgConfidence}%
+                      </div>
+                      <div className="text-sm text-green-700">Confiance moyenne</div>
+                      <div className="text-xs text-muted-foreground">Sur la période</div>
+                    </div>
+                    <div className="text-center p-4 bg-orange-50 rounded-lg">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {weekForecast.toLocaleString('fr-FR')} FCFA
+                      </div>
+                      <div className="text-sm text-orange-700">Prévision semaine</div>
+                      <div className="text-xs text-muted-foreground">7 jours horizon</div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Brain className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Aucune prévision disponible</p>
+                  <p className="text-sm">Cliquez sur "Générer Prévision" pour créer des prédictions</p>
                 </div>
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">+12%</div>
-                  <div className="text-sm text-green-700">vs semaine dernière</div>
-                  <div className="text-xs text-muted-foreground">Tendance positive</div>
-                </div>
-                <div className="text-center p-4 bg-orange-50 rounded-lg">
-                  <div className="text-2xl font-bold text-orange-600">€22.1K</div>
-                  <div className="text-sm text-orange-700">Prévision semaine</div>
-                  <div className="text-xs text-muted-foreground">7 jours horizon</div>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Onglet Stock */}
         <TabsContent value="stock" className="space-y-6">
           <Card>
             <CardHeader>
@@ -332,68 +348,85 @@ const AdvancedForecasting = () => {
               <CardDescription>Algorithmes prédictifs pour optimisation stock</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {stockPredictions.map((prediction, index) => (
-                  <div key={index} className={`p-4 border rounded-lg ${getPriorityColor(prediction.priority)}`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        {getTrendIcon(prediction.trend)}
-                        <div>
-                          <h4 className="font-semibold">{prediction.product}</h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline">Stock: {prediction.currentStock}</Badge>
-                            <Badge className={getPriorityColor(prediction.priority)}>
-                              {prediction.priority === 'critical' ? 'Critique' :
-                               prediction.priority === 'medium' ? 'Moyen' : 'Faible'}
-                            </Badge>
+              {stockPredictions.length > 0 ? (
+                <div className="space-y-4">
+                  {stockPredictions.map((prediction) => (
+                    <div key={prediction.id} className={`p-4 border rounded-lg ${getPriorityColor(prediction.priority)}`}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          {getTrendIcon(prediction.trend)}
+                          <div>
+                            <h4 className="font-semibold">{prediction.product_name || 'Produit'}</h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="outline">Stock: {prediction.current_stock}</Badge>
+                              <Badge className={getPriorityColor(prediction.priority)}>
+                                {prediction.priority === 'critical' ? 'Critique' :
+                                 prediction.priority === 'medium' ? 'Moyen' : 'Faible'}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold">
-                          {prediction.daysUntilStockout} jours
+                        <div className="text-right">
+                          <div className="text-lg font-bold">
+                            {prediction.days_until_stockout} jours
+                          </div>
+                          <div className="text-sm text-muted-foreground">Avant rupture</div>
                         </div>
-                        <div className="text-sm text-muted-foreground">Avant rupture</div>
                       </div>
-                    </div>
-                    
-                    <div className="grid gap-4 md:grid-cols-3 mb-3">
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Demande prévue:</span>
-                        <span className="font-medium ml-2">{prediction.predictedDemand}/jour</span>
+                      
+                      <div className="grid gap-4 md:grid-cols-3 mb-3">
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Demande prévue:</span>
+                          <span className="font-medium ml-2">{prediction.predicted_demand_daily}/jour</span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Commande suggérée:</span>
+                          <span className="font-medium ml-2">{prediction.recommended_order_qty} unités</span>
+                        </div>
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Confiance:</span>
+                          <span className="font-medium ml-2">{prediction.confidence}%</span>
+                        </div>
                       </div>
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Commande suggérée:</span>
-                        <span className="font-medium ml-2">{prediction.recommendedOrder} unités</span>
-                      </div>
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Confiance:</span>
-                        <span className="font-medium ml-2">{prediction.confidence}%</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <Progress value={prediction.confidence} className="w-24 h-2" />
-                      <div className="flex gap-2">
-                        {prediction.recommendedOrder > 0 && (
-                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                            <Package className="h-4 w-4 mr-2" />
-                            Commander
+                      
+                      <div className="flex justify-between items-center">
+                        <Progress value={prediction.confidence} className="w-24 h-2" />
+                        <div className="flex gap-2">
+                          {prediction.recommended_order_qty > 0 && !prediction.order_created && (
+                            <Button 
+                              size="sm" 
+                              className="bg-blue-600 hover:bg-blue-700"
+                              onClick={() => createOrderFromPrediction(prediction.id)}
+                            >
+                              <Package className="h-4 w-4 mr-2" />
+                              Commander
+                            </Button>
+                          )}
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleViewPrediction(prediction)}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            Détails
                           </Button>
-                        )}
-                        <Button size="sm" variant="outline">
-                          <Eye className="h-4 w-4 mr-2" />
-                          Détails
-                        </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Aucune prédiction de stock disponible</p>
+                  <p className="text-sm">Générez une prévision pour voir les alertes de rupture</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Onglet Trésorerie */}
         <TabsContent value="cashflow" className="space-y-6">
           <Card>
             <CardHeader>
@@ -404,101 +437,174 @@ const AdvancedForecasting = () => {
               <CardDescription>Projections des flux financiers futurs</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-80 w-full mb-6">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={cashflowForecast}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Area 
-                      type="monotone" 
-                      dataKey="inflow" 
-                      stackId="1"
-                      stroke="#10b981" 
-                      fill="#10b981"
-                      fillOpacity={0.6}
-                      name="Entrées"
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="outflow" 
-                      stackId="2"
-                      stroke="#ef4444" 
-                      fill="#ef4444"
-                      fillOpacity={0.6}
-                      name="Sorties"
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="cumulative" 
-                      stroke="#3b82f6" 
-                      strokeWidth={3}
-                      name="Cumulé"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-              
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">€51K</div>
-                  <div className="text-sm text-green-700">Revenus prévus Mai</div>
+              {cashflowForecast.length > 0 ? (
+                <>
+                  <div className="h-80 w-full mb-6">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={cashflowForecast}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip 
+                          formatter={(value: number) => [`${value.toLocaleString('fr-FR')} FCFA`, '']}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="inflow" 
+                          stackId="1"
+                          stroke="#10b981" 
+                          fill="#10b981"
+                          fillOpacity={0.6}
+                          name="Entrées"
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="outflow" 
+                          stackId="2"
+                          stroke="#ef4444" 
+                          fill="#ef4444"
+                          fillOpacity={0.6}
+                          name="Sorties"
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="cumulative" 
+                          stroke="#3b82f6" 
+                          strokeWidth={3}
+                          name="Cumulé"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">
+                        {cashflowForecast[cashflowForecast.length - 2]?.inflow.toLocaleString('fr-FR') || '--'} FCFA
+                      </div>
+                      <div className="text-sm text-green-700">Revenus prévus prochain mois</div>
+                    </div>
+                    <div className="text-center p-4 bg-red-50 rounded-lg">
+                      <div className="text-2xl font-bold text-red-600">
+                        {cashflowForecast[cashflowForecast.length - 2]?.outflow.toLocaleString('fr-FR') || '--'} FCFA
+                      </div>
+                      <div className="text-sm text-red-700">Dépenses prévues prochain mois</div>
+                    </div>
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {cashflowForecast[cashflowForecast.length - 1]?.cumulative.toLocaleString('fr-FR') || '--'} FCFA
+                      </div>
+                      <div className="text-sm text-blue-700">Trésorerie fin de période</div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Aucune prévision de trésorerie disponible</p>
+                  <p className="text-sm">Générez une prévision pour voir les projections financières</p>
                 </div>
-                <div className="text-center p-4 bg-red-50 rounded-lg">
-                  <div className="text-2xl font-bold text-red-600">€42K</div>
-                  <div className="text-sm text-red-700">Dépenses prévues Mai</div>
-                </div>
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">€57K</div>
-                  <div className="text-sm text-blue-700">Trésorerie fin Juin</div>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Onglet Facteurs */}
         <TabsContent value="factors" className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Cloud className="h-5 w-5" />
-                Facteurs Influents
-              </CardTitle>
-              <CardDescription>Analyse des variables impactant les prévisions</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Cloud className="h-5 w-5" />
+                  Facteurs Influents
+                </CardTitle>
+                <CardDescription>Analyse des variables impactant les prévisions</CardDescription>
+              </div>
+              <Button onClick={() => { setEditingFactor(null); setAddFactorDialogOpen(true); }}>
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {influentialFactors.map((factor, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="text-center">
-                        <div className="text-xl font-bold">{factor.influence}%</div>
-                        <div className="text-xs text-muted-foreground">Impact</div>
+              {influentialFactors.length > 0 ? (
+                <div className="space-y-4">
+                  {influentialFactors.map((factor) => (
+                    <div key={factor.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className="text-center">
+                          <div className="text-xl font-bold">{factor.influence_score}%</div>
+                          <div className="text-xs text-muted-foreground">Impact</div>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">{factor.factor_name}</h4>
+                          <p className="text-sm text-muted-foreground">{factor.description}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-semibold">{factor.factor}</h4>
-                        <p className="text-sm text-muted-foreground">{factor.description}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <Badge className={
+                            factor.trend_type === 'positive' ? 'bg-green-50 text-green-600' :
+                            factor.trend_type === 'negative' ? 'bg-red-50 text-red-600' :
+                            factor.trend_type === 'spike' ? 'bg-orange-50 text-orange-600' :
+                            'bg-blue-50 text-blue-600'
+                          }>
+                            {factor.trend_type}
+                          </Badge>
+                          <Progress value={factor.influence_score} className="w-16 h-2 mt-2" />
+                        </div>
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" onClick={() => handleEditFactor(factor)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => deleteFactor(factor.id)}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <Badge className={
-                        factor.trend === 'positive' ? 'bg-green-50 text-green-600' :
-                        factor.trend === 'negative' ? 'bg-red-50 text-red-600' :
-                        factor.trend === 'spike' ? 'bg-orange-50 text-orange-600' :
-                        'bg-blue-50 text-blue-600'
-                      }>
-                        {factor.trend}
-                      </Badge>
-                      <Progress value={factor.influence} className="w-16 h-2 mt-2" />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Cloud className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Aucun facteur influent configuré</p>
+                  <p className="text-sm">Ajoutez des facteurs pour améliorer la précision des prévisions</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <StockPredictionDetailDialog
+        open={predictionDialogOpen}
+        onOpenChange={setPredictionDialogOpen}
+        prediction={selectedPrediction}
+        onCreateOrder={createOrderFromPrediction}
+        onDismiss={dismissPrediction}
+      />
+
+      <AddFactorDialog
+        open={addFactorDialogOpen}
+        onOpenChange={(open) => {
+          setAddFactorDialogOpen(open);
+          if (!open) setEditingFactor(null);
+        }}
+        onSave={handleSaveFactor}
+        editingFactor={editingFactor}
+      />
+
+      <ForecastExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        salesData={salesForecast}
+        stockPredictions={stockPredictions}
+        cashflowData={cashflowForecast}
+        factors={influentialFactors}
+        metrics={metrics}
+        modelName={modelName}
+      />
     </div>
   );
 };
