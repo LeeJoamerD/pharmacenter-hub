@@ -802,6 +802,316 @@ export type Database = {
           },
         ]
       }
+      ai_bi_config: {
+        Row: {
+          analysis_frequency: string | null
+          auto_analysis_enabled: boolean | null
+          created_at: string
+          data_retention_days: number | null
+          enable_auto_segmentation: boolean | null
+          enable_pattern_discovery: boolean | null
+          id: string
+          model_preferences: Json | null
+          notification_thresholds: Json | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          analysis_frequency?: string | null
+          auto_analysis_enabled?: boolean | null
+          created_at?: string
+          data_retention_days?: number | null
+          enable_auto_segmentation?: boolean | null
+          enable_pattern_discovery?: boolean | null
+          id?: string
+          model_preferences?: Json | null
+          notification_thresholds?: Json | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          analysis_frequency?: string | null
+          auto_analysis_enabled?: boolean | null
+          created_at?: string
+          data_retention_days?: number | null
+          enable_auto_segmentation?: boolean | null
+          enable_pattern_discovery?: boolean | null
+          id?: string
+          model_preferences?: Json | null
+          notification_thresholds?: Json | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_bi_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_bi_patterns: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          data_source: Json | null
+          description: string | null
+          discovery_method: string | null
+          expires_at: string | null
+          exploited_at: string | null
+          exploited_by: string | null
+          frequency: string | null
+          id: string
+          impact: string | null
+          is_actionable: boolean | null
+          is_exploited: boolean | null
+          pattern_name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          data_source?: Json | null
+          description?: string | null
+          discovery_method?: string | null
+          expires_at?: string | null
+          exploited_at?: string | null
+          exploited_by?: string | null
+          frequency?: string | null
+          id?: string
+          impact?: string | null
+          is_actionable?: boolean | null
+          is_exploited?: boolean | null
+          pattern_name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          data_source?: Json | null
+          description?: string | null
+          discovery_method?: string | null
+          expires_at?: string | null
+          exploited_at?: string | null
+          exploited_by?: string | null
+          frequency?: string | null
+          id?: string
+          impact?: string | null
+          is_actionable?: boolean | null
+          is_exploited?: boolean | null
+          pattern_name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_bi_patterns_exploited_by_fkey"
+            columns: ["exploited_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_bi_patterns_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_bi_predictions: {
+        Row: {
+          applied_at: string | null
+          client_id: string | null
+          confidence: number | null
+          created_at: string
+          factors: Json | null
+          id: string
+          is_applied: boolean | null
+          model_version: string | null
+          predicted_value: number | null
+          prediction_type: string
+          risk_level: string | null
+          segment: string | null
+          tenant_id: string
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          client_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          factors?: Json | null
+          id?: string
+          is_applied?: boolean | null
+          model_version?: string | null
+          predicted_value?: number | null
+          prediction_type: string
+          risk_level?: string | null
+          segment?: string | null
+          tenant_id: string
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          client_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          factors?: Json | null
+          id?: string
+          is_applied?: boolean | null
+          model_version?: string | null
+          predicted_value?: number | null
+          prediction_type?: string
+          risk_level?: string | null
+          segment?: string | null
+          tenant_id?: string
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_bi_predictions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_bi_predictions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_bi_process_optimizations: {
+        Row: {
+          created_at: string
+          current_time_minutes: number | null
+          difficulty: string | null
+          id: string
+          implementation_notes: string | null
+          implemented_at: string | null
+          implemented_by: string | null
+          improvement_percentage: number | null
+          optimized_time_minutes: number | null
+          process_name: string
+          roi: string | null
+          status: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_time_minutes?: number | null
+          difficulty?: string | null
+          id?: string
+          implementation_notes?: string | null
+          implemented_at?: string | null
+          implemented_by?: string | null
+          improvement_percentage?: number | null
+          optimized_time_minutes?: number | null
+          process_name: string
+          roi?: string | null
+          status?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_time_minutes?: number | null
+          difficulty?: string | null
+          id?: string
+          implementation_notes?: string | null
+          implemented_at?: string | null
+          implemented_by?: string | null
+          improvement_percentage?: number | null
+          optimized_time_minutes?: number | null
+          process_name?: string
+          roi?: string | null
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_bi_process_optimizations_implemented_by_fkey"
+            columns: ["implemented_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_bi_process_optimizations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_bi_segments: {
+        Row: {
+          characteristics: Json | null
+          clv: number | null
+          color: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          is_auto_generated: boolean | null
+          next_action: string | null
+          segment_name: string
+          size: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          characteristics?: Json | null
+          clv?: number | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          is_auto_generated?: boolean | null
+          next_action?: string | null
+          segment_name: string
+          size?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          characteristics?: Json | null
+          clv?: number | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          is_auto_generated?: boolean | null
+          next_action?: string | null
+          segment_name?: string
+          size?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_bi_segments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_bottlenecks: {
         Row: {
           action_plan: string | null
@@ -18018,6 +18328,11 @@ export type Database = {
       }
     }
     Functions: {
+      analyze_process_optimization: {
+        Args: { p_tenant_id: string }
+        Returns: number
+      }
+      auto_segment_clients: { Args: { p_tenant_id: string }; Returns: number }
       calculate_account_level: {
         Args: { p_account_id: string; p_tenant_id: string }
         Returns: number
@@ -18038,6 +18353,10 @@ export type Database = {
           coefficient: number
           montant: number
         }[]
+      }
+      calculate_client_predictions: {
+        Args: { p_tenant_id: string }
+        Returns: number
       }
       calculate_compliance_metrics: {
         Args: { p_tenant_id: string }
@@ -18199,6 +18518,10 @@ export type Database = {
         Args: { jours_restants: number }
         Returns: string
       }
+      discover_business_patterns: {
+        Args: { p_tenant_id: string }
+        Returns: number
+      }
       execute_ai_workflow: {
         Args: {
           p_tenant_id: string
@@ -18298,6 +18621,7 @@ export type Database = {
       }
       get_ai_stock_suggestions: { Args: { p_tenant_id: string }; Returns: Json }
       get_automation_metrics: { Args: { p_tenant_id: string }; Returns: Json }
+      get_bi_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_cash_registers_status: {
         Args: { p_tenant_id: string }
         Returns: Json
