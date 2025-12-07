@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useComputerVision } from '@/hooks/useComputerVision';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 import VisionConfigDialog from './dialogs/VisionConfigDialog';
 import DetectionDetailDialog from './dialogs/DetectionDetailDialog';
 import ShelfAnalysisDetailDialog from './dialogs/ShelfAnalysisDetailDialog';
@@ -19,8 +20,9 @@ import { exportDetectionsToPDF, exportDetectionsToExcel, exportShelfAnalysisToPD
 import type { VisionDetection, ShelfAnalysis, QualityControl } from '@/hooks/useComputerVision';
 
 const ComputerVision = () => {
-  const { user } = useAuth();
-  const tenantId = user?.pharmacy_id || null;
+  const { personnel } = useAuth();
+  const { tenantId: contextTenantId } = useTenant();
+  const tenantId = contextTenantId || personnel?.tenant_id || null;
   
   const {
     metrics, detections, shelfAnalyses, qualityControls, batchRecognitions, config,
