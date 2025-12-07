@@ -331,7 +331,7 @@ export const useMultiPharmacyManagement = () => {
       const { data: activityStats } = await supabase
         .from('network_activity_stats')
         .select('avg_response_time_ms')
-        .order('date', { ascending: false })
+        .order('stat_date', { ascending: false })
         .limit(1)
         .maybeSingle();
 

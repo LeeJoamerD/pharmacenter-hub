@@ -41,7 +41,7 @@ const PharmacyDirectory = () => {
       const { data, error } = await supabase
         .from('pharmacies')
         .select('*')
-        .order('nom_pharmacie');
+        .order('name');
 
       if (error) throw error;
 
