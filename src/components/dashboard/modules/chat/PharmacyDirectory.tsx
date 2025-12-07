@@ -63,7 +63,15 @@ const PharmacyDirectory = () => {
           .single();
 
         return {
-          ...pharmacy,
+          id: pharmacy.id,
+          name: pharmacy.name || 'Pharmacie',
+          city: pharmacy.city,
+          region: pharmacy.region,
+          pays: pharmacy.pays,
+          type: pharmacy.type,
+          status: pharmacy.status,
+          email: pharmacy.email,
+          phone: pharmacy.phone,
           personnel_count: count || 0,
           last_activity: lastMessage?.created_at || pharmacy.created_at
         } as Pharmacy;
