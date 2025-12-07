@@ -33,10 +33,9 @@ interface CreateChannelDialogProps {
 }
 
 const CHANNEL_TYPES = [
-  { value: 'team', label: 'Équipe', icon: Users, description: 'Communication d\'équipe interne' },
-  { value: 'function', label: 'Fonction', icon: Building, description: 'Par fonction/département' },
-  { value: 'supplier', label: 'Fournisseur', icon: Truck, description: 'Communication avec fournisseurs' },
-  { value: 'system', label: 'Système', icon: Server, description: 'Notifications système' }
+  { value: 'public', label: 'Public', icon: Globe, description: 'Visible par tous les membres' },
+  { value: 'private', label: 'Privé', icon: Lock, description: 'Accès sur invitation uniquement' },
+  { value: 'direct', label: 'Direct', icon: Users, description: 'Conversation directe entre utilisateurs' }
 ];
 
 const CHANNEL_CATEGORIES = [
@@ -58,7 +57,7 @@ const CreateChannelDialog = ({
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [type, setType] = useState('team');
+  const [type, setType] = useState('public');
   const [category, setCategory] = useState('general');
   const [isPublic, setIsPublic] = useState(true);
   const [isSystem, setIsSystem] = useState(false);
@@ -94,7 +93,7 @@ const CreateChannelDialog = ({
       // Reset form
       setName('');
       setDescription('');
-      setType('team');
+      setType('public');
       setCategory('general');
       setIsPublic(true);
       setIsSystem(false);
