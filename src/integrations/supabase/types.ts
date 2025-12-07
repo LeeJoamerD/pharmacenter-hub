@@ -1361,6 +1361,87 @@ export type Database = {
           },
         ]
       }
+      ai_data_sources: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data_size_mb: number | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_encrypted: boolean | null
+          last_sync_at: string | null
+          next_sync_at: string | null
+          records_count: number | null
+          retention_days: number | null
+          source_config: Json | null
+          source_name: string
+          source_type: string
+          sync_error_message: string | null
+          sync_frequency: string | null
+          sync_status: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data_size_mb?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_encrypted?: boolean | null
+          last_sync_at?: string | null
+          next_sync_at?: string | null
+          records_count?: number | null
+          retention_days?: number | null
+          source_config?: Json | null
+          source_name: string
+          source_type?: string
+          sync_error_message?: string | null
+          sync_frequency?: string | null
+          sync_status?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data_size_mb?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_encrypted?: boolean | null
+          last_sync_at?: string | null
+          next_sync_at?: string | null
+          records_count?: number | null
+          retention_days?: number | null
+          source_config?: Json | null
+          source_name?: string
+          source_type?: string
+          sync_error_message?: string | null
+          sync_frequency?: string | null
+          sync_status?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_data_sources_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_data_sources_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_diagnostic_sessions: {
         Row: {
           ai_model_used: string | null
@@ -1937,6 +2018,86 @@ export type Database = {
             foreignKeyName: "ai_pharma_expert_config_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_provider_connections: {
+        Row: {
+          api_endpoint: string | null
+          api_key_encrypted: string | null
+          avg_latency_ms: number | null
+          config: Json | null
+          created_at: string
+          error_message: string | null
+          failed_calls: number | null
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          last_connection_at: string | null
+          max_tokens: number | null
+          model_name: string | null
+          provider_name: string
+          provider_type: string
+          status: string | null
+          success_calls: number | null
+          temperature: number | null
+          tenant_id: string
+          total_calls: number | null
+          updated_at: string
+        }
+        Insert: {
+          api_endpoint?: string | null
+          api_key_encrypted?: string | null
+          avg_latency_ms?: number | null
+          config?: Json | null
+          created_at?: string
+          error_message?: string | null
+          failed_calls?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          last_connection_at?: string | null
+          max_tokens?: number | null
+          model_name?: string | null
+          provider_name: string
+          provider_type?: string
+          status?: string | null
+          success_calls?: number | null
+          temperature?: number | null
+          tenant_id: string
+          total_calls?: number | null
+          updated_at?: string
+        }
+        Update: {
+          api_endpoint?: string | null
+          api_key_encrypted?: string | null
+          avg_latency_ms?: number | null
+          config?: Json | null
+          created_at?: string
+          error_message?: string | null
+          failed_calls?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          last_connection_at?: string | null
+          max_tokens?: number | null
+          model_name?: string | null
+          provider_name?: string
+          provider_type?: string
+          status?: string | null
+          success_calls?: number | null
+          temperature?: number | null
+          tenant_id?: string
+          total_calls?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_provider_connections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
@@ -2903,6 +3064,65 @@ export type Database = {
             columns: ["verified_by"]
             isOneToOne: false
             referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_webhook_events: {
+        Row: {
+          created_at: string
+          direction: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          latency_ms: number | null
+          payload: Json | null
+          processed_at: string | null
+          response: Json | null
+          source: string
+          source_id: string | null
+          status: string | null
+          status_code: number | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          direction?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          latency_ms?: number | null
+          payload?: Json | null
+          processed_at?: string | null
+          response?: Json | null
+          source: string
+          source_id?: string | null
+          status?: string | null
+          status_code?: number | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          direction?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          latency_ms?: number | null
+          payload?: Json | null
+          processed_at?: string | null
+          response?: Json | null
+          source?: string
+          source_id?: string | null
+          status?: string | null
+          status_code?: number | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_webhook_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
         ]
@@ -18619,6 +18839,10 @@ export type Database = {
           stock_actuel: number
         }[]
       }
+      get_ai_integration_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       get_ai_stock_suggestions: { Args: { p_tenant_id: string }; Returns: Json }
       get_automation_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_bi_metrics: { Args: { p_tenant_id: string }; Returns: Json }
@@ -19023,6 +19247,14 @@ export type Database = {
           tenant_id: string
           tva_rate: number
         }[]
+      }
+      sync_ai_data_source: {
+        Args: { p_source_id: string; p_tenant_id: string }
+        Returns: Json
+      }
+      test_ai_provider_connection: {
+        Args: { p_provider_id: string; p_tenant_id: string }
+        Returns: Json
       }
       validate_password_strength: {
         Args: { p_tenant_id: string; password: string }

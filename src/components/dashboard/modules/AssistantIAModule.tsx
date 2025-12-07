@@ -13,6 +13,7 @@ import AIConfiguration from './ai/AIConfiguration';
 import AIAutomation from './ai/AIAutomation';
 import AIStockManagement from './ai/AIStockManagement';
 import AccountingExpert from './ai/AccountingExpert';
+import AIIntegrations from './ai/AIIntegrations';
 
 interface AssistantIAModuleProps {
   activeSubModule: string;
@@ -47,6 +48,8 @@ const AssistantIAModule = ({ activeSubModule }: AssistantIAModuleProps) => {
         return <AIAutomation />;
       case 'stocks ia':
         return <AIStockManagement />;
+      case 'intégrations':
+        return <AIIntegrations />;
       case '':
         return <AIDashboard />;
       default:

@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.bi-analytics-consultation]
 verify_jwt = false
+
+[functions.ai-integration-test]
+verify_jwt = false
