@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.accounting-expert-consultation]
 verify_jwt = false
+
+[functions.bi-analytics-consultation]
+verify_jwt = false
