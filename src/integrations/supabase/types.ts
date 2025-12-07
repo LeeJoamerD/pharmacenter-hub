@@ -1341,6 +1341,65 @@ export type Database = {
           },
         ]
       }
+      ai_stock_optimization_config: {
+        Row: {
+          auto_optimization_enabled: boolean | null
+          confidence_threshold: number | null
+          created_at: string | null
+          critical_alert_days: number | null
+          enable_fifo_alerts: boolean | null
+          enable_rotation_analysis: boolean | null
+          id: string
+          notification_settings: Json | null
+          prediction_horizon_days: number | null
+          promotion_expiry_threshold_days: number | null
+          reorder_lead_time_days: number | null
+          safety_stock_multiplier: number | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          auto_optimization_enabled?: boolean | null
+          confidence_threshold?: number | null
+          created_at?: string | null
+          critical_alert_days?: number | null
+          enable_fifo_alerts?: boolean | null
+          enable_rotation_analysis?: boolean | null
+          id?: string
+          notification_settings?: Json | null
+          prediction_horizon_days?: number | null
+          promotion_expiry_threshold_days?: number | null
+          reorder_lead_time_days?: number | null
+          safety_stock_multiplier?: number | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          auto_optimization_enabled?: boolean | null
+          confidence_threshold?: number | null
+          created_at?: string | null
+          critical_alert_days?: number | null
+          enable_fifo_alerts?: boolean | null
+          enable_rotation_analysis?: boolean | null
+          id?: string
+          notification_settings?: Json | null
+          prediction_horizon_days?: number | null
+          promotion_expiry_threshold_days?: number | null
+          reorder_lead_time_days?: number | null
+          safety_stock_multiplier?: number | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_stock_optimization_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_stock_predictions: {
         Row: {
           confidence: number | null
@@ -17041,6 +17100,10 @@ export type Database = {
         Args: { p_account_id: string; p_tenant_id: string }
         Returns: number
       }
+      calculate_ai_stock_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       calculate_automatic_allocation: {
         Args: {
           p_cle_id: string
@@ -17283,6 +17346,7 @@ export type Database = {
           stock_actuel: number
         }[]
       }
+      get_ai_stock_suggestions: { Args: { p_tenant_id: string }; Returns: Json }
       get_automation_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_cash_registers_status: {
         Args: { p_tenant_id: string }
@@ -17640,6 +17704,7 @@ export type Database = {
             Returns: Json
           }
       run_ai_diagnostic: { Args: { p_tenant_id: string }; Returns: Json }
+      run_ai_stock_analysis: { Args: { p_tenant_id: string }; Returns: Json }
       search_product_by_barcode: {
         Args: { p_barcode: string; p_tenant_id: string }
         Returns: {

@@ -11,6 +11,7 @@ import AIBusinessIntelligence from './ai/AIBusinessIntelligence';
 import ContinuousLearning from './ai/ContinuousLearning';
 import AIConfiguration from './ai/AIConfiguration';
 import AIAutomation from './ai/AIAutomation';
+import AIStockManagement from './ai/AIStockManagement';
 
 interface AssistantIAModuleProps {
   activeSubModule: string;
@@ -41,6 +42,8 @@ const AssistantIAModule = ({ activeSubModule }: AssistantIAModuleProps) => {
         return <ConversationalAI />;
       case 'automatisation':
         return <AIAutomation />;
+      case 'stocks ia':
+        return <AIStockManagement />;
       case '':
         return <AIDashboard />;
       default:
