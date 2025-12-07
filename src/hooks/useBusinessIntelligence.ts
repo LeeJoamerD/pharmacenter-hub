@@ -8,6 +8,7 @@ import { Json } from '@/integrations/supabase/types';
 export interface BIMetrics {
   churn_prediction: number;
   avg_ltv: number;
+  average_ltv: number; // Alias for compatibility
   next_best_action: string;
   risk_score: number;
   total_clients: number;
@@ -100,7 +101,10 @@ export const useBusinessIntelligence = () => {
       const { data, error } = await supabase.rpc('get_bi_metrics', { p_tenant_id: tenantId });
       if (error) throw error;
       if (data && typeof data === 'object' && !Array.isArray(data)) {
-        setMetrics(data as unknown as BIMetrics);
+        const metricsData = data as unknown as BIMetrics;
+        // Add alias for compatibility
+        metricsData.average_ltv = metricsData.avg_ltv;
+        setMetrics(metricsData);
       }
     } catch (err) {
       console.error('Error loading BI metrics:', err);
@@ -233,6 +237,86 @@ export const useBusinessIntelligence = () => {
       });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // Run Predictive Analysis only
+  const runPredictiveAnalysis = async () => {
+    if (!tenantId) return;
+    setIsProcessing(true);
+    try {
+      await supabase.rpc('calculate_client_predictions', { p_tenant_id: tenantId });
+      await loadPredictions();
+      await loadMetrics();
+      toast({
+        title: "Analyse prédictive terminée",
+        description: "Les prédictions clients ont été recalculées"
+      });
+    } catch (err) {
+      console.error('Error running predictive analysis:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Discover Patterns only
+  const discoverPatterns = async () => {
+    if (!tenantId) return;
+    setIsProcessing(true);
+    try {
+      await supabase.rpc('discover_business_patterns', { p_tenant_id: tenantId });
+      await loadPatterns();
+      toast({
+        title: "Découverte terminée",
+        description: "De nouveaux patterns ont été identifiés"
+      });
+    } catch (err) {
+      console.error('Error discovering patterns:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Export Report
+  const exportReport = async (
+    type: 'predictions' | 'patterns' | 'segments' | 'optimizations' | 'full',
+    format: 'pdf' | 'excel'
+  ) => {
+    // Import export utilities dynamically
+    const { 
+      exportBIPredictionsPDF, 
+      exportBIPredictionsExcel,
+      exportBIPatternsPDF,
+      exportBIPatternsExcel,
+      exportBISegmentsPDF,
+      exportBISegmentsExcel,
+      exportBIOptimizationsPDF,
+      exportBIOptimizationsExcel,
+      exportBIFullReportPDF,
+      exportBIFullReportExcel
+    } = await import('@/utils/biExportUtils');
+
+    switch (type) {
+      case 'predictions':
+        if (format === 'pdf') exportBIPredictionsPDF(predictions);
+        else exportBIPredictionsExcel(predictions);
+        break;
+      case 'patterns':
+        if (format === 'pdf') exportBIPatternsPDF(patterns);
+        else exportBIPatternsExcel(patterns);
+        break;
+      case 'segments':
+        if (format === 'pdf') exportBISegmentsPDF(segments);
+        else exportBISegmentsExcel(segments);
+        break;
+      case 'optimizations':
+        if (format === 'pdf') exportBIOptimizationsPDF(processOptimizations);
+        else exportBIOptimizationsExcel(processOptimizations);
+        break;
+      case 'full':
+        if (format === 'pdf') exportBIFullReportPDF(metrics, predictions, patterns, segments, processOptimizations);
+        else exportBIFullReportExcel(metrics, predictions, patterns, segments, processOptimizations);
+        break;
     }
   };
 
@@ -570,6 +654,8 @@ export const useBusinessIntelligence = () => {
     loadProcessOptimizations,
     loadConfig,
     runFullAnalysis,
+    runPredictiveAnalysis,
+    discoverPatterns,
     exploitPattern,
     deletePattern,
     createSegment,
@@ -579,6 +665,7 @@ export const useBusinessIntelligence = () => {
     rejectOptimization,
     saveConfig,
     consultAI,
+    exportReport,
 
     // Utilities
     getPredictionsBySegment,
