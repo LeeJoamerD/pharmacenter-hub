@@ -10,6 +10,7 @@ import PharmaceuticalExpert from './ai/PharmaceuticalExpert';
 import AIBusinessIntelligence from './ai/AIBusinessIntelligence';
 import ContinuousLearning from './ai/ContinuousLearning';
 import AIConfiguration from './ai/AIConfiguration';
+import AIAutomation from './ai/AIAutomation';
 
 interface AssistantIAModuleProps {
   activeSubModule: string;
@@ -38,6 +39,8 @@ const AssistantIAModule = ({ activeSubModule }: AssistantIAModuleProps) => {
         return <StrategicRecommendations />;
       case 'chat ia':
         return <ConversationalAI />;
+      case 'automatisation':
+        return <AIAutomation />;
       case '':
         return <AIDashboard />;
       default:
