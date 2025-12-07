@@ -64,7 +64,7 @@ const NetworkMetrics = () => {
         .eq('tenant_id', currentTenant?.id)
         .order('stat_date', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       // Calculer le taux de disponibilité (basé sur les pharmacies actives)
       const availabilityRate = totalPharmacies 
