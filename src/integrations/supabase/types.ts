@@ -318,6 +318,215 @@ export type Database = {
           },
         ]
       }
+      ai_automation_executions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          execution_log: Json | null
+          id: string
+          result: Json | null
+          started_at: string | null
+          status: string
+          tenant_id: string
+          trigger_context: Json | null
+          workflow_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          execution_log?: Json | null
+          id?: string
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          tenant_id: string
+          trigger_context?: Json | null
+          workflow_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          execution_log?: Json | null
+          id?: string
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          tenant_id?: string
+          trigger_context?: Json | null
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_automation_executions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_automation_executions_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "ai_automation_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_automation_templates: {
+        Row: {
+          actions: Json | null
+          category: string
+          conditions: Json | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          is_system: boolean | null
+          name: string
+          tenant_id: string
+          trigger_config: Json | null
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          actions?: Json | null
+          category?: string
+          conditions?: Json | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_system?: boolean | null
+          name: string
+          tenant_id: string
+          trigger_config?: Json | null
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json | null
+          category?: string
+          conditions?: Json | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_system?: boolean | null
+          name?: string
+          tenant_id?: string
+          trigger_config?: Json | null
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_automation_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_automation_workflows: {
+        Row: {
+          actions: Json | null
+          avg_execution_time_ms: number | null
+          category: string
+          conditions: Json | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          execution_count: number | null
+          failure_count: number | null
+          id: string
+          is_active: boolean | null
+          last_execution_at: string | null
+          name: string
+          next_execution_at: string | null
+          priority: number | null
+          schedule_config: Json | null
+          success_count: number | null
+          template_id: string | null
+          tenant_id: string
+          trigger_config: Json | null
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          actions?: Json | null
+          avg_execution_time_ms?: number | null
+          category?: string
+          conditions?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          execution_count?: number | null
+          failure_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_execution_at?: string | null
+          name: string
+          next_execution_at?: string | null
+          priority?: number | null
+          schedule_config?: Json | null
+          success_count?: number | null
+          template_id?: string | null
+          tenant_id: string
+          trigger_config?: Json | null
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          actions?: Json | null
+          avg_execution_time_ms?: number | null
+          category?: string
+          conditions?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          execution_count?: number | null
+          failure_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_execution_at?: string | null
+          name?: string
+          next_execution_at?: string | null
+          priority?: number | null
+          schedule_config?: Json | null
+          success_count?: number | null
+          template_id?: string | null
+          tenant_id?: string
+          trigger_config?: Json | null
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_automation_workflows_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "ai_automation_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_automation_workflows_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_bottlenecks: {
         Row: {
           action_plan: string | null
@@ -16827,6 +17036,14 @@ export type Database = {
         Args: { jours_restants: number }
         Returns: string
       }
+      execute_ai_workflow: {
+        Args: {
+          p_tenant_id: string
+          p_trigger_context?: Json
+          p_workflow_id: string
+        }
+        Returns: Json
+      }
       generate_ai_forecast: {
         Args: {
           p_model_code?: string
@@ -16908,6 +17125,7 @@ export type Database = {
           stock_actuel: number
         }[]
       }
+      get_automation_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_cash_registers_status: {
         Args: { p_tenant_id: string }
         Returns: Json
