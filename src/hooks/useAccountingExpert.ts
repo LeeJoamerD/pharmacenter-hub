@@ -64,7 +64,9 @@ interface FiscalObligation {
   type_obligation: string;
   description: string;
   prochaine_echeance: string;
+  frequence: string | null;
   statut: string;
+  rappel_jours_avant: number | null;
 }
 
 interface AccountingEntry {
@@ -176,7 +178,7 @@ export function useAccountingExpert() {
     try {
       const { data, error } = await supabase
         .from('obligations_fiscales')
-        .select('id, type_obligation, description, prochaine_echeance, statut')
+        .select('id, type_obligation, description, prochaine_echeance, frequence, statut, rappel_jours_avant')
         .eq('tenant_id', tenantId)
         .order('prochaine_echeance', { ascending: true });
       if (error) throw error;
