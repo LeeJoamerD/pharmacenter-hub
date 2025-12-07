@@ -635,7 +635,7 @@ export const useNetworkChatAdmin = () => {
           tenant_id: tenantId,
           name: channelData.name,
           description: channelData.description,
-          type: channelData.type || 'team',
+          type: channelData.type || 'public',
           is_system: false
         })
         .select()
