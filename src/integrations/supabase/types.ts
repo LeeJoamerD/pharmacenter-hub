@@ -19409,6 +19409,7 @@ export type Database = {
           stock_actuel: number
         }[]
       }
+      get_ai_dashboard_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_ai_integration_metrics: {
         Args: { p_tenant_id: string }
         Returns: Json
