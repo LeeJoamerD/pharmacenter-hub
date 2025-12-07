@@ -82,6 +82,7 @@ export function HelpCenterDialog({
   const [isSearching, setIsSearching] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState<HelpArticle | null>(null);
   const [articleDialogOpen, setArticleDialogOpen] = useState(false);
+  const [selectedModuleFilter, setSelectedModuleFilter] = useState<string | null>(null);
 
   // Debounced search
   useEffect(() => {
@@ -111,6 +112,19 @@ export function HelpCenterDialog({
   const contextualArticles = currentModule 
     ? articles.filter(a => a.module_key === currentModule).slice(0, 3)
     : featuredArticles.slice(0, 3);
+
+  // Get articles for selected module filter
+  const filteredModuleArticles = selectedModuleFilter 
+    ? articles.filter(a => a.module_key === selectedModuleFilter)
+    : [];
+
+  // Clear module filter when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setSelectedModuleFilter(null);
+      setSearchQuery('');
+    }
+  }, [open]);
 
   return (
     <>
@@ -143,7 +157,7 @@ export function HelpCenterDialog({
           <ScrollArea className="flex-1 max-h-[60vh]">
             <div className="p-4 pt-0 space-y-4">
               {/* Search Results */}
-              {searchQuery && (
+              {searchQuery && !selectedModuleFilter && (
                 <HelpSearchResults 
                   results={searchResults}
                   isSearching={isSearching}
@@ -152,8 +166,62 @@ export function HelpCenterDialog({
                 />
               )}
 
-              {/* Default content when not searching */}
-              {!searchQuery && (
+              {/* Module Filter Results */}
+              {selectedModuleFilter && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium flex items-center gap-2">
+                      {(() => {
+                        const Icon = moduleIcons[selectedModuleFilter] || BookOpen;
+                        return <Icon className="h-4 w-4 text-primary" />;
+                      })()}
+                      Articles - {moduleLabels[selectedModuleFilter]}
+                    </h3>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setSelectedModuleFilter(null)}
+                    >
+                      ← Retour
+                    </Button>
+                  </div>
+                  
+                  {filteredModuleArticles.length > 0 ? (
+                    <div className="space-y-1">
+                      {filteredModuleArticles.map((article) => (
+                        <Button
+                          key={article.id}
+                          variant="ghost"
+                          className="w-full justify-start h-auto py-3 px-3"
+                          onClick={() => handleArticleClick(article)}
+                        >
+                          <BookOpen className="h-4 w-4 mr-2 text-primary shrink-0" />
+                          <div className="flex-1 text-left">
+                            <div className="font-medium truncate">{article.title}</div>
+                            {article.summary && (
+                              <div className="text-xs text-muted-foreground truncate">
+                                {article.summary}
+                              </div>
+                            )}
+                          </div>
+                          <ChevronRight className="h-4 w-4 ml-2 shrink-0" />
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p className="font-medium">Aucun article disponible</p>
+                      <p className="text-sm mt-1">
+                        Les articles pour ce module seront bientôt ajoutés.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Default content when not searching and no module filter */}
+              {!searchQuery && !selectedModuleFilter && (
                 <>
                   {/* Contextual Suggestions */}
                   {currentModule && contextualArticles.length > 0 && (
@@ -219,7 +287,7 @@ export function HelpCenterDialog({
                             key={key}
                             variant="outline"
                             className="justify-start h-auto py-3"
-                            onClick={() => setSearchQuery(`module:${key}`)}
+                            onClick={() => setSelectedModuleFilter(key)}
                           >
                             <Icon className="h-4 w-4 mr-2" />
                             <span className="flex-1 text-left">{label}</span>
