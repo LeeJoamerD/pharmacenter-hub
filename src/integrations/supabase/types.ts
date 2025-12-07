@@ -1187,6 +1187,160 @@ export type Database = {
           },
         ]
       }
+      ai_sentiment_analyses: {
+        Row: {
+          analysis_metadata: Json | null
+          category: string | null
+          client_id: string | null
+          created_at: string
+          emotions: Json | null
+          id: string
+          keywords: Json | null
+          score: number
+          sentiment: string
+          source: string | null
+          tenant_id: string
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          analysis_metadata?: Json | null
+          category?: string | null
+          client_id?: string | null
+          created_at?: string
+          emotions?: Json | null
+          id?: string
+          keywords?: Json | null
+          score: number
+          sentiment: string
+          source?: string | null
+          tenant_id: string
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          analysis_metadata?: Json | null
+          category?: string | null
+          client_id?: string | null
+          created_at?: string
+          emotions?: Json | null
+          id?: string
+          keywords?: Json | null
+          score?: number
+          sentiment?: string
+          source?: string | null
+          tenant_id?: string
+          text?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_sentiment_analyses_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_sentiment_analyses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_sentiment_keywords: {
+        Row: {
+          created_at: string
+          frequency: number | null
+          id: string
+          impact: string | null
+          last_detected_at: string | null
+          sentiment: string
+          tenant_id: string
+          updated_at: string
+          word: string
+        }
+        Insert: {
+          created_at?: string
+          frequency?: number | null
+          id?: string
+          impact?: string | null
+          last_detected_at?: string | null
+          sentiment: string
+          tenant_id: string
+          updated_at?: string
+          word: string
+        }
+        Update: {
+          created_at?: string
+          frequency?: number | null
+          id?: string
+          impact?: string | null
+          last_detected_at?: string | null
+          sentiment?: string
+          tenant_id?: string
+          updated_at?: string
+          word?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_sentiment_keywords_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_sentiment_settings: {
+        Row: {
+          auto_analysis_enabled: boolean | null
+          categories: Json | null
+          created_at: string
+          default_model: string | null
+          id: string
+          notification_threshold: number | null
+          retention_days: number | null
+          sources: Json | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          auto_analysis_enabled?: boolean | null
+          categories?: Json | null
+          created_at?: string
+          default_model?: string | null
+          id?: string
+          notification_threshold?: number | null
+          retention_days?: number | null
+          sources?: Json | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          auto_analysis_enabled?: boolean | null
+          categories?: Json | null
+          created_at?: string
+          default_model?: string | null
+          id?: string
+          notification_threshold?: number | null
+          retention_days?: number | null
+          sources?: Json | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_sentiment_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_stock_predictions: {
         Row: {
           confidence: number | null
@@ -16927,6 +17081,10 @@ export type Database = {
       }
       calculate_out_of_stock_metrics: {
         Args: { p_tenant_id: string }
+        Returns: Json
+      }
+      calculate_sentiment_metrics: {
+        Args: { p_days?: number; p_tenant_id: string }
         Returns: Json
       }
       calculate_session_risk_score: {
