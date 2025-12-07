@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.pharma-expert-consultation]
 verify_jwt = false
+
+[functions.accounting-expert-consultation]
+verify_jwt = false
