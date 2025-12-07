@@ -2,7 +2,8 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useTenantContext } from '@/contexts/TenantContext';
+import { useTenant } from '@/contexts/TenantContext';
+import { Json } from '@/integrations/supabase/types';
 
 // Types
 export interface AIProviderConnection {
@@ -95,7 +96,7 @@ export interface AIIntegrationConfig {
 export function useAIIntegrations() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { tenantId } = useTenantContext();
+  const { tenantId } = useTenant();
   const [config, setConfig] = useState<AIIntegrationConfig>({
     auto_sync_enabled: true,
     default_provider_id: null,
@@ -112,7 +113,7 @@ export function useAIIntegrations() {
       if (!tenantId) return null;
       const { data, error } = await supabase.rpc('get_ai_integration_metrics', { p_tenant_id: tenantId });
       if (error) throw error;
-      return data as AIIntegrationMetrics;
+      return data as unknown as AIIntegrationMetrics;
     },
     enabled: !!tenantId,
   });
@@ -170,9 +171,24 @@ export function useAIIntegrations() {
   const createProviderMutation = useMutation({
     mutationFn: async (provider: Partial<AIProviderConnection>) => {
       if (!tenantId) throw new Error('Tenant non trouvé');
+      
+      const insertData = {
+        provider_name: provider.provider_name || '',
+        provider_type: provider.provider_type || 'custom',
+        api_endpoint: provider.api_endpoint,
+        api_key_encrypted: provider.api_key_encrypted,
+        model_name: provider.model_name,
+        is_active: provider.is_active ?? true,
+        is_default: provider.is_default ?? false,
+        config: provider.config as Json,
+        max_tokens: provider.max_tokens,
+        temperature: provider.temperature,
+        tenant_id: tenantId
+      };
+      
       const { data, error } = await supabase
         .from('ai_provider_connections')
-        .insert({ ...provider, tenant_id: tenantId })
+        .insert(insertData)
         .select()
         .single();
       if (error) throw error;
@@ -294,9 +310,22 @@ export function useAIIntegrations() {
   const createDataSourceMutation = useMutation({
     mutationFn: async (source: Partial<AIDataSource>) => {
       if (!tenantId) throw new Error('Tenant non trouvé');
+      
+      const insertData = {
+        source_name: source.source_name || '',
+        source_type: source.source_type || 'table',
+        description: source.description,
+        source_config: source.source_config as Json,
+        sync_frequency: source.sync_frequency || 'manual',
+        is_active: source.is_active ?? true,
+        is_encrypted: source.is_encrypted ?? false,
+        retention_days: source.retention_days,
+        tenant_id: tenantId
+      };
+      
       const { data, error } = await supabase
         .from('ai_data_sources')
-        .insert({ ...source, tenant_id: tenantId })
+        .insert(insertData)
         .select()
         .single();
       if (error) throw error;
@@ -367,12 +396,14 @@ export function useAIIntegrations() {
       refetchEvents();
       refetchMetrics();
 
+      const result = data as unknown as { success: boolean; records_count?: number; error?: string };
+
       toast({
-        title: data.success ? 'Synchronisation réussie' : 'Échec de synchronisation',
-        description: data.success 
-          ? `${data.records_count} enregistrements synchronisés` 
-          : data.error,
-        variant: data.success ? 'default' : 'destructive',
+        title: result?.success ? 'Synchronisation réussie' : 'Échec de synchronisation',
+        description: result?.success 
+          ? `${result.records_count || 0} enregistrements synchronisés` 
+          : result?.error || 'Erreur inconnue',
+        variant: result?.success ? 'default' : 'destructive',
       });
 
       return data;
