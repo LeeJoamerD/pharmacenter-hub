@@ -1788,6 +1788,172 @@ export type Database = {
           },
         ]
       }
+      ai_learning_feedback: {
+        Row: {
+          accuracy_after: number | null
+          accuracy_before: number | null
+          comment: string | null
+          created_at: string
+          feedback_type: string
+          id: string
+          impact_analysis: Json | null
+          impact_applied: boolean | null
+          impact_applied_at: string | null
+          metadata: Json | null
+          model_id: string | null
+          model_name: string | null
+          tenant_id: string
+          updated_at: string
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          accuracy_after?: number | null
+          accuracy_before?: number | null
+          comment?: string | null
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          impact_analysis?: Json | null
+          impact_applied?: boolean | null
+          impact_applied_at?: string | null
+          metadata?: Json | null
+          model_id?: string | null
+          model_name?: string | null
+          tenant_id: string
+          updated_at?: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          accuracy_after?: number | null
+          accuracy_before?: number | null
+          comment?: string | null
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          impact_analysis?: Json | null
+          impact_applied?: boolean | null
+          impact_applied_at?: string | null
+          metadata?: Json | null
+          model_id?: string | null
+          model_name?: string | null
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_learning_feedback_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_learning_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_learning_feedback_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_learning_feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_learning_models: {
+        Row: {
+          accuracy: number | null
+          config: Json | null
+          created_at: string
+          created_by: string | null
+          current_epoch: number | null
+          data_points: number | null
+          description: string | null
+          epochs: number | null
+          hyperparameters: Json | null
+          id: string
+          is_active: boolean | null
+          last_training_at: string | null
+          model_type: string
+          name: string
+          next_training_at: string | null
+          progress: number | null
+          status: string
+          tenant_id: string
+          training_frequency: string | null
+          updated_at: string
+          version: number | null
+        }
+        Insert: {
+          accuracy?: number | null
+          config?: Json | null
+          created_at?: string
+          created_by?: string | null
+          current_epoch?: number | null
+          data_points?: number | null
+          description?: string | null
+          epochs?: number | null
+          hyperparameters?: Json | null
+          id?: string
+          is_active?: boolean | null
+          last_training_at?: string | null
+          model_type?: string
+          name: string
+          next_training_at?: string | null
+          progress?: number | null
+          status?: string
+          tenant_id: string
+          training_frequency?: string | null
+          updated_at?: string
+          version?: number | null
+        }
+        Update: {
+          accuracy?: number | null
+          config?: Json | null
+          created_at?: string
+          created_by?: string | null
+          current_epoch?: number | null
+          data_points?: number | null
+          description?: string | null
+          epochs?: number | null
+          hyperparameters?: Json | null
+          id?: string
+          is_active?: boolean | null
+          last_training_at?: string | null
+          model_type?: string
+          name?: string
+          next_training_at?: string | null
+          progress?: number | null
+          status?: string
+          tenant_id?: string
+          training_frequency?: string | null
+          updated_at?: string
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_learning_models_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_learning_models_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_models: {
         Row: {
           capabilities: Json | null
@@ -2908,6 +3074,181 @@ export type Database = {
           },
           {
             foreignKeyName: "ai_therapeutic_recommendations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_training_datasets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          is_encrypted: boolean | null
+          last_sync_at: string | null
+          name: string
+          next_sync_at: string | null
+          quality_score: number | null
+          records_count: number | null
+          retention_days: number | null
+          source_config: Json | null
+          source_name: string | null
+          source_type: string | null
+          sync_error_message: string | null
+          sync_frequency: string | null
+          sync_status: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_encrypted?: boolean | null
+          last_sync_at?: string | null
+          name: string
+          next_sync_at?: string | null
+          quality_score?: number | null
+          records_count?: number | null
+          retention_days?: number | null
+          source_config?: Json | null
+          source_name?: string | null
+          source_type?: string | null
+          sync_error_message?: string | null
+          sync_frequency?: string | null
+          sync_status?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_encrypted?: boolean | null
+          last_sync_at?: string | null
+          name?: string
+          next_sync_at?: string | null
+          quality_score?: number | null
+          records_count?: number | null
+          retention_days?: number | null
+          source_config?: Json | null
+          source_name?: string | null
+          source_type?: string | null
+          sync_error_message?: string | null
+          sync_frequency?: string | null
+          sync_status?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_training_datasets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_training_datasets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_training_sessions: {
+        Row: {
+          accuracy_gain: number | null
+          completed_at: string | null
+          created_at: string
+          data_points_used: number | null
+          epochs_completed: number | null
+          epochs_total: number | null
+          error_message: string | null
+          final_accuracy: number | null
+          hyperparameters_used: Json | null
+          id: string
+          initial_accuracy: number | null
+          logs: Json | null
+          metrics: Json | null
+          model_id: string
+          started_at: string | null
+          started_by: string | null
+          status: string
+          tenant_id: string
+          training_time_seconds: number | null
+          updated_at: string
+        }
+        Insert: {
+          accuracy_gain?: number | null
+          completed_at?: string | null
+          created_at?: string
+          data_points_used?: number | null
+          epochs_completed?: number | null
+          epochs_total?: number | null
+          error_message?: string | null
+          final_accuracy?: number | null
+          hyperparameters_used?: Json | null
+          id?: string
+          initial_accuracy?: number | null
+          logs?: Json | null
+          metrics?: Json | null
+          model_id: string
+          started_at?: string | null
+          started_by?: string | null
+          status?: string
+          tenant_id: string
+          training_time_seconds?: number | null
+          updated_at?: string
+        }
+        Update: {
+          accuracy_gain?: number | null
+          completed_at?: string | null
+          created_at?: string
+          data_points_used?: number | null
+          epochs_completed?: number | null
+          epochs_total?: number | null
+          error_message?: string | null
+          final_accuracy?: number | null
+          hyperparameters_used?: Json | null
+          id?: string
+          initial_accuracy?: number | null
+          logs?: Json | null
+          metrics?: Json | null
+          model_id?: string
+          started_at?: string | null
+          started_by?: string | null
+          status?: string
+          tenant_id?: string
+          training_time_seconds?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_training_sessions_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_learning_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_training_sessions_started_by_fkey"
+            columns: ["started_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_training_sessions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -18705,6 +19046,14 @@ export type Database = {
         }[]
       }
       cleanup_expired_pharmacy_sessions: { Args: never; Returns: number }
+      complete_training_session: {
+        Args: {
+          p_final_accuracy: number
+          p_session_id: string
+          p_status?: string
+        }
+        Returns: Json
+      }
       create_pharmacy_session: {
         Args: {
           p_ip_address?: unknown
@@ -18843,6 +19192,7 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      get_ai_learning_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_ai_stock_suggestions: { Args: { p_tenant_id: string }; Returns: Json }
       get_automation_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_bi_metrics: { Args: { p_tenant_id: string }; Returns: Json }
@@ -19248,12 +19598,29 @@ export type Database = {
           tva_rate: number
         }[]
       }
+      start_ai_model_training: {
+        Args: {
+          p_epochs?: number
+          p_model_id: string
+          p_started_by?: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       sync_ai_data_source: {
         Args: { p_source_id: string; p_tenant_id: string }
         Returns: Json
       }
       test_ai_provider_connection: {
         Args: { p_provider_id: string; p_tenant_id: string }
+        Returns: Json
+      }
+      update_training_progress: {
+        Args: {
+          p_current_accuracy?: number
+          p_epochs_completed: number
+          p_session_id: string
+        }
         Returns: Json
       }
       validate_password_strength: {

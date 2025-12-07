@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.ai-integration-test]
 verify_jwt = false
+
+[functions.ai-training-manager]
+verify_jwt = false
