@@ -7909,6 +7909,227 @@ export type Database = {
         }
         Relationships: []
       }
+      help_articles: {
+        Row: {
+          category_id: string | null
+          content: string
+          created_at: string
+          faq_items: Json | null
+          id: string
+          is_active: boolean | null
+          is_featured: boolean | null
+          keywords: string[] | null
+          media_urls: string[] | null
+          steps: Json | null
+          summary: string | null
+          tenant_id: string
+          title: string
+          translations: Json | null
+          updated_at: string
+          video_url: string | null
+          view_count: number | null
+        }
+        Insert: {
+          category_id?: string | null
+          content: string
+          created_at?: string
+          faq_items?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          keywords?: string[] | null
+          media_urls?: string[] | null
+          steps?: Json | null
+          summary?: string | null
+          tenant_id: string
+          title: string
+          translations?: Json | null
+          updated_at?: string
+          video_url?: string | null
+          view_count?: number | null
+        }
+        Update: {
+          category_id?: string | null
+          content?: string
+          created_at?: string
+          faq_items?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          keywords?: string[] | null
+          media_urls?: string[] | null
+          steps?: Json | null
+          summary?: string | null
+          tenant_id?: string
+          title?: string
+          translations?: Json | null
+          updated_at?: string
+          video_url?: string | null
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_articles_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "help_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "help_articles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      help_categories: {
+        Row: {
+          created_at: string
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          module_key: string | null
+          name: string
+          order_index: number | null
+          parent_id: string | null
+          tenant_id: string
+          translations: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          module_key?: string | null
+          name: string
+          order_index?: number | null
+          parent_id?: string | null
+          tenant_id: string
+          translations?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          module_key?: string | null
+          name?: string
+          order_index?: number | null
+          parent_id?: string | null
+          tenant_id?: string
+          translations?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "help_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "help_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      help_history: {
+        Row: {
+          accessed_at: string
+          article_id: string | null
+          helpful_vote: boolean | null
+          id: string
+          search_query: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          accessed_at?: string
+          article_id?: string | null
+          helpful_vote?: boolean | null
+          id?: string
+          search_query?: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          accessed_at?: string
+          article_id?: string | null
+          helpful_vote?: boolean | null
+          id?: string
+          search_query?: string | null
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_history_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "help_articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "help_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      help_settings: {
+        Row: {
+          ai_suggestions_enabled: boolean | null
+          created_at: string
+          default_language: string | null
+          enable_search_analytics: boolean | null
+          id: string
+          max_recent_items: number | null
+          show_video_tutorials: boolean | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          ai_suggestions_enabled?: boolean | null
+          created_at?: string
+          default_language?: string | null
+          enable_search_analytics?: boolean | null
+          id?: string
+          max_recent_items?: number | null
+          show_video_tutorials?: boolean | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          ai_suggestions_enabled?: boolean | null
+          created_at?: string
+          default_language?: string | null
+          enable_search_analytics?: boolean | null
+          id?: string
+          max_recent_items?: number | null
+          show_video_tutorials?: boolean | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       immobilisations: {
         Row: {
           compte_id: string | null
@@ -19242,6 +19463,10 @@ export type Database = {
         Returns: Json
       }
       get_forecast_metrics: { Args: { p_tenant_id: string }; Returns: Json }
+      get_help_metrics: {
+        Args: { p_days?: number; p_tenant_id: string }
+        Returns: Json
+      }
       get_low_stock_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_low_stock_products:
         | { Args: { p_tenant_id: string }; Returns: Json }
@@ -19580,6 +19805,29 @@ export type Database = {
       run_pharma_compliance_check: {
         Args: { p_category: string; p_checked_by: string; p_tenant_id: string }
         Returns: Json
+      }
+      search_help_articles: {
+        Args: {
+          p_language?: string
+          p_limit?: number
+          p_module?: string
+          p_query: string
+          p_tenant_id: string
+        }
+        Returns: {
+          category_id: string
+          category_name: string
+          content: string
+          id: string
+          is_featured: boolean
+          keywords: string[]
+          module_key: string
+          rank: number
+          summary: string
+          title: string
+          video_url: string
+          view_count: number
+        }[]
       }
       search_product_by_barcode: {
         Args: { p_barcode: string; p_tenant_id: string }

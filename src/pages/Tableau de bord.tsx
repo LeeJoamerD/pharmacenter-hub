@@ -1,14 +1,15 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import { SystemSettingsSync } from '@/components/system-settings/SystemSettingsSync';
-import { LogOut, AlertTriangle } from 'lucide-react';
+import { LogOut, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { HelpCenterDialog } from '@/components/help/HelpCenterDialog';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Import components
 import AppSidebar from '@/components/dashboard/sidebar/AppSidebar';
@@ -83,8 +84,22 @@ const Dashboard = () => {
   const { signOut, personnel, pharmacy, user, connectedPharmacy } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [activeModule, setActiveModule] = useState('dashboard');
   const [activeSubModule, setActiveSubModule] = useState('');
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  // Global keyboard shortcut for Help (Ctrl+H or Cmd+H)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
+        e.preventDefault();
+        setHelpOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Protection : Vérifier qu'une pharmacie est connectée
   const activePharmacy = pharmacy || connectedPharmacy;
@@ -259,7 +274,23 @@ const Dashboard = () => {
                       {personnel.prenoms} {personnel.noms} - {pharmacy?.name}
                     </span>
                   )}
-                  <Button variant="outline" size="sm">Aide</Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setHelpOpen(true)}
+                        aria-label="Ouvrir le centre d'aide (Ctrl+H)"
+                        className="gap-2"
+                      >
+                        <HelpCircle className="h-4 w-4" />
+                        {t('help')}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Centre d'aide (Ctrl+H)</p>
+                    </TooltipContent>
+                  </Tooltip>
                   {user && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -295,6 +326,14 @@ const Dashboard = () => {
               </div>
             </main>
           </div>
+          
+          {/* Help Center Dialog */}
+          <HelpCenterDialog 
+            open={helpOpen} 
+            onOpenChange={setHelpOpen}
+            currentModule={activeModule}
+            currentSubModule={activeSubModule}
+          />
         </CurrencyProvider>
       </SidebarProvider>
     </NavigationProvider>
