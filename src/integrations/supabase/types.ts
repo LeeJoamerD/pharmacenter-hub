@@ -527,6 +527,75 @@ export type Database = {
           },
         ]
       }
+      ai_batch_recognitions: {
+        Row: {
+          accuracy: number | null
+          batch_name: string
+          completed_at: string | null
+          duplicates_count: number | null
+          failed_count: number | null
+          id: string
+          items: Json | null
+          new_products_count: number | null
+          processing_time_ms: number | null
+          recognized_count: number | null
+          started_at: string
+          started_by: string | null
+          status: string | null
+          tenant_id: string
+          total_items: number | null
+        }
+        Insert: {
+          accuracy?: number | null
+          batch_name: string
+          completed_at?: string | null
+          duplicates_count?: number | null
+          failed_count?: number | null
+          id?: string
+          items?: Json | null
+          new_products_count?: number | null
+          processing_time_ms?: number | null
+          recognized_count?: number | null
+          started_at?: string
+          started_by?: string | null
+          status?: string | null
+          tenant_id: string
+          total_items?: number | null
+        }
+        Update: {
+          accuracy?: number | null
+          batch_name?: string
+          completed_at?: string | null
+          duplicates_count?: number | null
+          failed_count?: number | null
+          id?: string
+          items?: Json | null
+          new_products_count?: number | null
+          processing_time_ms?: number | null
+          recognized_count?: number | null
+          started_at?: string
+          started_by?: string | null
+          status?: string | null
+          tenant_id?: string
+          total_items?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_batch_recognitions_started_by_fkey"
+            columns: ["started_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_batch_recognitions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_bottlenecks: {
         Row: {
           action_plan: string | null
@@ -1187,6 +1256,104 @@ export type Database = {
           },
         ]
       }
+      ai_quality_controls: {
+        Row: {
+          accuracy: number | null
+          alerts_generated: number | null
+          checked_at: string
+          checked_by: string | null
+          checked_items: number | null
+          control_type: string
+          details: Json | null
+          id: string
+          image_url: string | null
+          lot_id: string | null
+          product_id: string | null
+          status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          alerts_generated?: number | null
+          checked_at?: string
+          checked_by?: string | null
+          checked_items?: number | null
+          control_type: string
+          details?: Json | null
+          id?: string
+          image_url?: string | null
+          lot_id?: string | null
+          product_id?: string | null
+          status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          alerts_generated?: number | null
+          checked_at?: string
+          checked_by?: string | null
+          checked_items?: number | null
+          control_type?: string
+          details?: Json | null
+          id?: string
+          image_url?: string | null
+          lot_id?: string | null
+          product_id?: string | null
+          status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_quality_controls_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_quality_controls_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_quality_controls_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_quality_controls_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_quality_controls_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_produits_with_famille"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_quality_controls_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "ai_quality_controls_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_sentiment_analyses: {
         Row: {
           analysis_metadata: Json | null
@@ -1336,6 +1503,76 @@ export type Database = {
             foreignKeyName: "ai_sentiment_settings_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_shelf_analyses: {
+        Row: {
+          compliance_score: number | null
+          id: string
+          image_url: string | null
+          issues: Json | null
+          misplacements_detected: number | null
+          rayon_id: string | null
+          scanned_at: string
+          scanned_by: string | null
+          shelf_location: string | null
+          shelf_name: string
+          stockouts_detected: number | null
+          tenant_id: string
+          total_products: number | null
+        }
+        Insert: {
+          compliance_score?: number | null
+          id?: string
+          image_url?: string | null
+          issues?: Json | null
+          misplacements_detected?: number | null
+          rayon_id?: string | null
+          scanned_at?: string
+          scanned_by?: string | null
+          shelf_location?: string | null
+          shelf_name: string
+          stockouts_detected?: number | null
+          tenant_id: string
+          total_products?: number | null
+        }
+        Update: {
+          compliance_score?: number | null
+          id?: string
+          image_url?: string | null
+          issues?: Json | null
+          misplacements_detected?: number | null
+          rayon_id?: string | null
+          scanned_at?: string
+          scanned_by?: string | null
+          shelf_location?: string | null
+          shelf_name?: string
+          stockouts_detected?: number | null
+          tenant_id?: string
+          total_products?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_shelf_analyses_rayon_id_fkey"
+            columns: ["rayon_id"]
+            isOneToOne: false
+            referencedRelation: "rayons_produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_shelf_analyses_scanned_by_fkey"
+            columns: ["scanned_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_shelf_analyses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
@@ -1671,6 +1908,159 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_vision_config: {
+        Row: {
+          auto_detection_enabled: boolean | null
+          created_at: string
+          enable_shelf_monitoring: boolean | null
+          id: string
+          min_confidence_threshold: number | null
+          notification_settings: Json | null
+          quality_control_types: Json | null
+          save_processed_images: boolean | null
+          shelf_scan_interval_hours: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          auto_detection_enabled?: boolean | null
+          created_at?: string
+          enable_shelf_monitoring?: boolean | null
+          id?: string
+          min_confidence_threshold?: number | null
+          notification_settings?: Json | null
+          quality_control_types?: Json | null
+          save_processed_images?: boolean | null
+          shelf_scan_interval_hours?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          auto_detection_enabled?: boolean | null
+          created_at?: string
+          enable_shelf_monitoring?: boolean | null
+          id?: string
+          min_confidence_threshold?: number | null
+          notification_settings?: Json | null
+          quality_control_types?: Json | null
+          save_processed_images?: boolean | null
+          shelf_scan_interval_hours?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_vision_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_vision_detections: {
+        Row: {
+          confidence: number
+          created_at: string
+          detected_barcode: string | null
+          detected_expiry_date: string | null
+          detected_name: string
+          detected_price: number | null
+          detected_stock: number | null
+          id: string
+          image_url: string | null
+          metadata: Json | null
+          packaging_status: string | null
+          processing_time_ms: number | null
+          product_id: string | null
+          status: string | null
+          tenant_id: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          confidence: number
+          created_at?: string
+          detected_barcode?: string | null
+          detected_expiry_date?: string | null
+          detected_name: string
+          detected_price?: number | null
+          detected_stock?: number | null
+          id?: string
+          image_url?: string | null
+          metadata?: Json | null
+          packaging_status?: string | null
+          processing_time_ms?: number | null
+          product_id?: string | null
+          status?: string | null
+          tenant_id: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          detected_barcode?: string | null
+          detected_expiry_date?: string | null
+          detected_name?: string
+          detected_price?: number | null
+          detected_stock?: number | null
+          id?: string
+          image_url?: string | null
+          metadata?: Json | null
+          packaging_status?: string | null
+          processing_time_ms?: number | null
+          product_id?: string | null
+          status?: string | null
+          tenant_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_vision_detections_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_vision_detections_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_vision_detections_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_produits_with_famille"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_vision_detections_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "ai_vision_detections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_vision_detections_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
             referencedColumns: ["id"]
           },
         ]
@@ -17204,6 +17594,7 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      calculate_vision_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       calculer_jours_restants_expiration: {
         Args: { date_peremption: string }
         Returns: number
@@ -17250,6 +17641,21 @@ export type Database = {
           p_user_agent?: string
         }
         Returns: Json
+      }
+      create_shelf_analysis: {
+        Args: {
+          p_image_url?: string
+          p_issues?: Json
+          p_misplacements_detected?: number
+          p_rayon_id?: string
+          p_scanned_by?: string
+          p_shelf_location?: string
+          p_shelf_name: string
+          p_stockouts_detected?: number
+          p_tenant_id: string
+          p_total_products?: number
+        }
+        Returns: string
       }
       debug_user_connection_state: { Args: never; Returns: Json }
       detect_suspicious_patterns: { Args: never; Returns: undefined }
@@ -17521,6 +17927,7 @@ export type Database = {
           stock_limite: number
         }[]
       }
+      get_vision_statistics: { Args: { p_tenant_id: string }; Returns: Json }
       has_open_session:
         | { Args: never; Returns: boolean }
         | {
@@ -17616,6 +18023,21 @@ export type Database = {
       network_update_security_settings: {
         Args: { settings: Json; target_tenant_id: string }
         Returns: Json
+      }
+      process_vision_detection: {
+        Args: {
+          p_confidence?: number
+          p_detected_barcode?: string
+          p_detected_expiry_date?: string
+          p_detected_name: string
+          p_detected_price?: number
+          p_image_url?: string
+          p_metadata?: Json
+          p_packaging_status?: string
+          p_processing_time_ms?: number
+          p_tenant_id: string
+        }
+        Returns: string
       }
       recalculer_prix_lots: { Args: never; Returns: Json }
       recalculer_prix_produits: { Args: never; Returns: Json }
