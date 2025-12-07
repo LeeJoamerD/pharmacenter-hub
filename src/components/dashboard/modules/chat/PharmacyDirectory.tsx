@@ -59,8 +59,8 @@ const PharmacyDirectory = () => {
           .select('created_at')
           .eq('sender_pharmacy_id', pharmacy.id)
           .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+        .limit(1)
+        .maybeSingle();
 
         return {
           id: pharmacy.id,
