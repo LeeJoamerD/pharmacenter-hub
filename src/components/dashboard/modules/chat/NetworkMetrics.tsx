@@ -62,7 +62,7 @@ const NetworkMetrics = () => {
         .from('network_activity_stats')
         .select('*')
         .eq('tenant_id', currentTenant?.id)
-        .order('date', { ascending: false })
+        .order('stat_date', { ascending: false })
         .limit(1)
         .single();
 

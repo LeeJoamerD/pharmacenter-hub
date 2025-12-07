@@ -424,7 +424,7 @@ export const useNetworkMessagingEnhanced = () => {
         .from('network_activity_stats')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('date', { ascending: false })
+        .order('stat_date', { ascending: false })
         .limit(1)
         .maybeSingle();
 
