@@ -378,3 +378,115 @@ export const exportFullBIReportToPDF = (
 
   doc.save(`rapport-bi-complet-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 };
+
+// Export Full BI Report to Excel
+export const exportFullBIReportToExcel = (
+  metrics: BIMetrics | null,
+  predictions: ClientPrediction[],
+  patterns: BusinessPattern[],
+  segments: ClientSegment[],
+  optimizations: ProcessOptimization[],
+  pharmacyName: string
+) => {
+  const wb = XLSX.utils.book_new();
+
+  // Metrics sheet
+  if (metrics) {
+    const metricsData = [{
+      'Indicateur': 'Prédiction Attrition',
+      'Valeur': `${metrics.churn_prediction}%`
+    }, {
+      'Indicateur': 'LTV Moyenne',
+      'Valeur': `${metrics.avg_ltv} FCFA`
+    }, {
+      'Indicateur': 'Score Risque',
+      'Valeur': `${metrics.risk_score}/100`
+    }, {
+      'Indicateur': 'Next Best Action',
+      'Valeur': metrics.next_best_action
+    }, {
+      'Indicateur': 'Total Clients',
+      'Valeur': metrics.total_clients
+    }, {
+      'Indicateur': 'Clients à Risque',
+      'Valeur': metrics.at_risk_clients
+    }];
+    const wsMetrics = XLSX.utils.json_to_sheet(metricsData);
+    XLSX.utils.book_append_sheet(wb, wsMetrics, 'Indicateurs');
+  }
+
+  // Predictions sheet
+  const predData = predictions.map(pred => ({
+    'Segment': pred.segment || 'N/A',
+    'Risque': pred.risk_level,
+    'Confiance (%)': pred.confidence,
+    'Score': pred.predicted_value
+  }));
+  const wsPred = XLSX.utils.json_to_sheet(predData);
+  XLSX.utils.book_append_sheet(wb, wsPred, 'Prédictions');
+
+  // Patterns sheet
+  const patternData = patterns.map(p => ({
+    'Pattern': p.pattern_name,
+    'Confiance (%)': p.confidence,
+    'Impact': p.impact,
+    'Exploité': p.is_exploited ? 'Oui' : 'Non'
+  }));
+  const wsPatterns = XLSX.utils.json_to_sheet(patternData);
+  XLSX.utils.book_append_sheet(wb, wsPatterns, 'Patterns');
+
+  // Segments sheet
+  const segData = segments.map(s => ({
+    'Segment': s.segment_name,
+    'Taille': s.size,
+    'CLV': s.clv,
+    'Action': s.next_action
+  }));
+  const wsSegs = XLSX.utils.json_to_sheet(segData);
+  XLSX.utils.book_append_sheet(wb, wsSegs, 'Segments');
+
+  // Optimizations sheet
+  const optData = optimizations.map(o => ({
+    'Processus': o.process_name,
+    'Amélioration (%)': o.improvement_percentage,
+    'Difficulté': o.difficulty,
+    'ROI': o.roi,
+    'Statut': o.status
+  }));
+  const wsOpts = XLSX.utils.json_to_sheet(optData);
+  XLSX.utils.book_append_sheet(wb, wsOpts, 'Optimisations');
+
+  XLSX.writeFile(wb, `rapport-bi-complet-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+};
+
+// Alias exports for hook compatibility
+export const exportBIPredictionsPDF = (predictions: ClientPrediction[]) => 
+  exportPredictionsToPDF(predictions, null, 'PharmaSoft');
+export const exportBIPredictionsExcel = (predictions: ClientPrediction[]) => 
+  exportPredictionsToExcel(predictions, 'PharmaSoft');
+export const exportBIPatternsPDF = (patterns: BusinessPattern[]) => 
+  exportPatternsToPDF(patterns, 'PharmaSoft');
+export const exportBIPatternsExcel = (patterns: BusinessPattern[]) => 
+  exportPatternsToExcel(patterns, 'PharmaSoft');
+export const exportBISegmentsPDF = (segments: ClientSegment[]) => 
+  exportSegmentsToPDF(segments, 'PharmaSoft');
+export const exportBISegmentsExcel = (segments: ClientSegment[]) => 
+  exportSegmentsToExcel(segments, 'PharmaSoft');
+export const exportBIOptimizationsPDF = (optimizations: ProcessOptimization[]) => 
+  exportOptimizationsToPDF(optimizations, 'PharmaSoft');
+export const exportBIOptimizationsExcel = (optimizations: ProcessOptimization[]) => 
+  exportOptimizationsToExcel(optimizations, 'PharmaSoft');
+export const exportBIFullReportPDF = (
+  metrics: BIMetrics | null,
+  predictions: ClientPrediction[],
+  patterns: BusinessPattern[],
+  segments: ClientSegment[],
+  optimizations: ProcessOptimization[]
+) => exportFullBIReportToPDF(metrics, predictions, patterns, segments, optimizations, 'PharmaSoft');
+export const exportBIFullReportExcel = (
+  metrics: BIMetrics | null,
+  predictions: ClientPrediction[],
+  patterns: BusinessPattern[],
+  segments: ClientSegment[],
+  optimizations: ProcessOptimization[]
+) => exportFullBIReportToExcel(metrics, predictions, patterns, segments, optimizations, 'PharmaSoft');
