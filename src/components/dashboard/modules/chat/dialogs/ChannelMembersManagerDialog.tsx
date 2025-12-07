@@ -175,7 +175,7 @@ const ChannelMembersManagerDialog = ({
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="no-pharmacy-available" disabled>
                       Toutes les pharmacies sont déjà membres
                     </SelectItem>
                   )}

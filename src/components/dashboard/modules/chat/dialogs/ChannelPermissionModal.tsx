@@ -68,7 +68,7 @@ const ChannelPermissionModal = ({
       channel_id: channel.id,
       role: newRole,
       permission_level: newLevel,
-      pharmacy_id: newPharmacy || undefined
+      pharmacy_id: newPharmacy === 'all' ? undefined : (newPharmacy || undefined)
     });
     setNewRole('');
     setNewLevel('read');
@@ -141,7 +141,7 @@ const ChannelPermissionModal = ({
                     <SelectValue placeholder="Toutes" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Toutes les pharmacies</SelectItem>
+                    <SelectItem value="all">Toutes les pharmacies</SelectItem>
                     {pharmacies.map(pharmacy => (
                       <SelectItem key={pharmacy.id} value={pharmacy.id}>
                         {pharmacy.nom_pharmacie}
