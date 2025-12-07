@@ -382,7 +382,7 @@ export const useNetworkChannelManagement = () => {
         .from('network_chat_config')
         .select('*')
         .eq('tenant_id', tenantId)
-        .single() as { data: any };
+        .maybeSingle() as { data: any };
 
       if (data) {
         setFluxConfig({
