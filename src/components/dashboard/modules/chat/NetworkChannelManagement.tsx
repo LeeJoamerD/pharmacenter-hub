@@ -823,10 +823,14 @@ const NetworkChannelManagement = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="public">Public</SelectItem>
+                    <SelectItem value="private">Privé</SelectItem>
+                    <SelectItem value="direct">Direct</SelectItem>
                     <SelectItem value="team">Équipe</SelectItem>
                     <SelectItem value="function">Fonction</SelectItem>
                     <SelectItem value="supplier">Fournisseur</SelectItem>
                     <SelectItem value="collaboration">Collaboration</SelectItem>
+                    <SelectItem value="system">Système</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -838,10 +842,14 @@ const NetworkChannelManagement = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="general">Général</SelectItem>
-                    <SelectItem value="operations">Opérations</SelectItem>
+                    <SelectItem value="urgences">Urgences</SelectItem>
+                    <SelectItem value="commandes">Commandes</SelectItem>
                     <SelectItem value="stock">Stock</SelectItem>
+                    <SelectItem value="operations">Opérations</SelectItem>
                     <SelectItem value="sales">Ventes</SelectItem>
-                    <SelectItem value="admin">Administration</SelectItem>
+                    <SelectItem value="pharmacovigilance">Pharmacovigilance</SelectItem>
+                    <SelectItem value="formation">Formation</SelectItem>
+                    <SelectItem value="administration">Administration</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -920,10 +928,14 @@ const NetworkChannelManagement = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="public">Public</SelectItem>
+                    <SelectItem value="private">Privé</SelectItem>
+                    <SelectItem value="direct">Direct</SelectItem>
                     <SelectItem value="team">Équipe</SelectItem>
                     <SelectItem value="function">Fonction</SelectItem>
                     <SelectItem value="supplier">Fournisseur</SelectItem>
                     <SelectItem value="collaboration">Collaboration</SelectItem>
+                    <SelectItem value="system">Système</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -935,10 +947,14 @@ const NetworkChannelManagement = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="general">Général</SelectItem>
-                    <SelectItem value="operations">Opérations</SelectItem>
+                    <SelectItem value="urgences">Urgences</SelectItem>
+                    <SelectItem value="commandes">Commandes</SelectItem>
                     <SelectItem value="stock">Stock</SelectItem>
+                    <SelectItem value="operations">Opérations</SelectItem>
                     <SelectItem value="sales">Ventes</SelectItem>
-                    <SelectItem value="admin">Administration</SelectItem>
+                    <SelectItem value="pharmacovigilance">Pharmacovigilance</SelectItem>
+                    <SelectItem value="formation">Formation</SelectItem>
+                    <SelectItem value="administration">Administration</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

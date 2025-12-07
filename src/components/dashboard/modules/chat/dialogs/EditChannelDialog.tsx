@@ -29,9 +29,13 @@ interface EditChannelDialogProps {
 }
 
 const CHANNEL_TYPES = [
+  { value: 'public', label: 'Public' },
+  { value: 'private', label: 'Privé' },
+  { value: 'direct', label: 'Direct' },
   { value: 'team', label: 'Équipe' },
   { value: 'function', label: 'Fonction' },
   { value: 'supplier', label: 'Fournisseur' },
+  { value: 'collaboration', label: 'Collaboration' },
   { value: 'system', label: 'Système' }
 ];
 
@@ -40,6 +44,8 @@ const CHANNEL_CATEGORIES = [
   { value: 'urgences', label: 'Urgences' },
   { value: 'commandes', label: 'Commandes' },
   { value: 'stock', label: 'Stock' },
+  { value: 'operations', label: 'Opérations' },
+  { value: 'sales', label: 'Ventes' },
   { value: 'pharmacovigilance', label: 'Pharmacovigilance' },
   { value: 'formation', label: 'Formation' },
   { value: 'administration', label: 'Administration' }

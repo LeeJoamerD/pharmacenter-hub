@@ -35,7 +35,12 @@ interface CreateChannelDialogProps {
 const CHANNEL_TYPES = [
   { value: 'public', label: 'Public', icon: Globe, description: 'Visible par tous les membres' },
   { value: 'private', label: 'Privé', icon: Lock, description: 'Accès sur invitation uniquement' },
-  { value: 'direct', label: 'Direct', icon: Users, description: 'Conversation directe entre utilisateurs' }
+  { value: 'direct', label: 'Direct', icon: Users, description: 'Conversation directe entre utilisateurs' },
+  { value: 'team', label: 'Équipe', icon: Users, description: 'Canal interne d\'équipe' },
+  { value: 'function', label: 'Fonction', icon: Building, description: 'Canal fonctionnel' },
+  { value: 'supplier', label: 'Fournisseur', icon: Truck, description: 'Communication fournisseurs' },
+  { value: 'collaboration', label: 'Collaboration', icon: Users, description: 'Projet collaboratif' },
+  { value: 'system', label: 'Système', icon: Server, description: 'Notifications système' }
 ];
 
 const CHANNEL_CATEGORIES = [
@@ -43,6 +48,8 @@ const CHANNEL_CATEGORIES = [
   { value: 'urgences', label: 'Urgences' },
   { value: 'commandes', label: 'Commandes' },
   { value: 'stock', label: 'Stock' },
+  { value: 'operations', label: 'Opérations' },
+  { value: 'sales', label: 'Ventes' },
   { value: 'pharmacovigilance', label: 'Pharmacovigilance' },
   { value: 'formation', label: 'Formation' },
   { value: 'administration', label: 'Administration' }
