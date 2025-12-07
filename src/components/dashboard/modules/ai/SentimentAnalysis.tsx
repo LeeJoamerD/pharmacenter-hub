@@ -1,21 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { 
   Eye, 
   MessageCircle,
-  Heart,
-  Frown,
   Smile, 
   Meh,
   TrendingUp,
-  AlertTriangle,
-  Users,
   Star,
   ThumbsUp,
   ThumbsDown,
@@ -23,119 +26,109 @@ import {
   Brain,
   Zap,
   Clock,
-  Activity
+  Activity,
+  RefreshCw,
+  Plus,
+  FileText,
+  Frown,
+  Trash2,
+  Save
 } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { useSentimentAnalysis, type SentimentAnalysis as SentimentAnalysisType, type SentimentKeyword } from '@/hooks/useSentimentAnalysis';
+import { useTenant } from '@/contexts/TenantContext';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import AddFeedbackDialog from './dialogs/AddFeedbackDialog';
+import FeedbackDetailDialog from './dialogs/FeedbackDetailDialog';
+import KeywordConfigDialog from './dialogs/KeywordConfigDialog';
+import SentimentReportDialog from './dialogs/SentimentReportDialog';
 
 const SentimentAnalysis = () => {
+  const { currentTenant } = useTenant();
+  const {
+    analyses,
+    keywords,
+    settings,
+    metrics,
+    isLoading,
+    isAnalyzing,
+    loadAnalyses,
+    loadMetrics,
+    loadKeywords,
+    createAnalysis,
+    analyzeTextRealtime,
+    deleteAnalysis,
+    updateKeywordImpact,
+    deleteKeyword,
+    getSentimentDistribution
+  } = useSentimentAnalysis();
+
+  // Local state
   const [textToAnalyze, setTextToAnalyze] = useState('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzerSource, setAnalyzerSource] = useState('manual');
+  const [analyzerCategory, setAnalyzerCategory] = useState('');
+  const [analysisResult, setAnalysisResult] = useState<{
+    sentiment: string;
+    score: number;
+    emotions: string[];
+    keywords: string[];
+  } | null>(null);
 
-  // Données d'analyse de sentiment globale
-  const [sentimentOverview] = useState({
-    globalScore: 4.2,
-    totalReviews: 1247,
-    positiveRate: 78,
-    neutralRate: 15,
-    negativeRate: 7,
-    trend: '+0.3'
-  });
+  // Filters
+  const [feedbackSentimentFilter, setFeedbackSentimentFilter] = useState('all');
+  const [feedbackSourceFilter, setFeedbackSourceFilter] = useState('all');
+  const [keywordSentimentFilter, setKeywordSentimentFilter] = useState('all');
 
-  // Distribution des sentiments
-  const [sentimentDistribution] = useState([
-    { name: 'Très Positif', value: 45, color: '#10b981', count: 562 },
-    { name: 'Positif', value: 33, color: '#34d399', count: 411 },
-    { name: 'Neutre', value: 15, color: '#6b7280', count: 187 },
-    { name: 'Négatif', value: 5, color: '#f59e0b', count: 62 },
-    { name: 'Très Négatif', value: 2, color: '#ef4444', count: 25 }
-  ]);
+  // Dialogs
+  const [addFeedbackOpen, setAddFeedbackOpen] = useState(false);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<SentimentAnalysisType | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedKeyword, setSelectedKeyword] = useState<SentimentKeyword | null>(null);
+  const [keywordDialogOpen, setKeywordDialogOpen] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
-  // Évolution temporelle du sentiment
-  const [sentimentTrend] = useState([
-    { date: '2025-01-01', positive: 72, neutral: 18, negative: 10, score: 4.1 },
-    { date: '2025-01-02', positive: 75, neutral: 16, negative: 9, score: 4.2 },
-    { date: '2025-01-03', positive: 78, neutral: 15, negative: 7, score: 4.3 },
-    { date: '2025-01-04', positive: 76, neutral: 17, negative: 7, score: 4.2 },
-    { date: '2025-01-05', positive: 78, neutral: 15, negative: 7, score: 4.2 }
-  ]);
+  // Apply filters
+  useEffect(() => {
+    const filters: Record<string, string> = {};
+    if (feedbackSentimentFilter !== 'all') filters.sentiment = feedbackSentimentFilter;
+    if (feedbackSourceFilter !== 'all') filters.source = feedbackSourceFilter;
+    loadAnalyses(filters);
+  }, [feedbackSentimentFilter, feedbackSourceFilter, loadAnalyses]);
 
-  // Retours clients récents avec analyse
-  const [customerFeedback] = useState([
-    {
-      id: 1,
-      text: "Excellent service, pharmacien très compétent et à l'écoute. Conseils précieux pour ma prescription.",
-      sentiment: 'very_positive',
-      score: 0.95,
-      emotions: ['satisfaction', 'confiance', 'gratitude'],
-      category: 'service',
-      date: '2025-01-05 14:30',
-      source: 'Google Reviews'
-    },
-    {
-      id: 2,
-      text: "Attente un peu longue mais personnel professionnel. Produits toujours disponibles.",
-      sentiment: 'positive',
-      score: 0.72,
-      emotions: ['patience', 'satisfaction'],
-      category: 'service',
-      date: '2025-01-05 12:15',
-      source: 'Facebook'
-    },
-    {
-      id: 3,
-      text: "Prix corrects, bonne gamme de produits bio. Juste dommage que ce soit fermé le dimanche.",
-      sentiment: 'neutral',
-      score: 0.58,
-      emotions: ['satisfaction', 'déception'],
-      category: 'horaires',
-      date: '2025-01-05 10:45',
-      source: 'Enquête'
-    },
-    {
-      id: 4,
-      text: "Problème avec ma commande en ligne, pas reçu de notification. Service client à améliorer.",
-      sentiment: 'negative',
-      score: 0.25,
-      emotions: ['frustration', 'déception'],
-      category: 'digital',
-      date: '2025-01-04 16:20',
-      source: 'Email'
-    }
-  ]);
+  // Get distribution for charts
+  const sentimentDistribution = getSentimentDistribution();
 
-  // Analyse par catégorie
-  const [categoryAnalysis] = useState([
-    { category: 'Service Client', score: 4.5, volume: 456, trend: '+0.2' },
-    { category: 'Produits', score: 4.3, volume: 332, trend: '+0.1' },
-    { category: 'Prix', score: 3.8, volume: 278, trend: '-0.1' },
-    { category: 'Conseil Pharmaceutique', score: 4.7, volume: 234, trend: '+0.4' },
-    { category: 'Horaires', score: 3.2, volume: 156, trend: '0.0' },
-    { category: 'Digital/Site', score: 3.5, volume: 89, trend: '+0.3' }
-  ]);
+  // Filtered keywords
+  const filteredKeywords = keywords.filter(k => 
+    keywordSentimentFilter === 'all' || k.sentiment === keywordSentimentFilter
+  );
 
-  // Mots-clés fréquents
-  const [keywordAnalysis] = useState([
-    { word: 'professionnel', sentiment: 'positive', frequency: 89, impact: 'high' },
-    { word: 'compétent', sentiment: 'positive', frequency: 76, impact: 'high' },
-    { word: 'rapide', sentiment: 'positive', frequency: 65, impact: 'medium' },
-    { word: 'cher', sentiment: 'negative', frequency: 43, impact: 'medium' },
-    { word: 'attente', sentiment: 'negative', frequency: 38, impact: 'medium' },
-    { word: 'conseil', sentiment: 'positive', frequency: 92, impact: 'high' },
-    { word: 'disponible', sentiment: 'positive', frequency: 54, impact: 'medium' },
-    { word: 'fermé', sentiment: 'negative', frequency: 29, impact: 'low' }
-  ]);
-
-  const analyzeSentiment = async () => {
+  // Real-time analysis
+  const handleAnalyze = async () => {
     if (!textToAnalyze.trim()) return;
     
-    setIsAnalyzing(true);
-    // Simulation analyse NLP
-    setTimeout(() => {
-      setIsAnalyzing(false);
-      // Ici on afficherait le résultat de l'analyse
-    }, 2000);
+    const result = await analyzeTextRealtime(textToAnalyze);
+    if (result) {
+      setAnalysisResult(result);
+    }
   };
 
+  // Save analyzed text
+  const handleSaveAnalysis = async () => {
+    if (!textToAnalyze.trim()) return;
+    
+    await createAnalysis(textToAnalyze, analyzerSource, analyzerCategory || undefined);
+    setTextToAnalyze('');
+    setAnalysisResult(null);
+  };
+
+  // Handle feedback submission
+  const handleAddFeedback = async (text: string, source: string, category?: string) => {
+    await createAnalysis(text, source, category);
+  };
+
+  // Sentiment helpers
   const getSentimentIcon = (sentiment: string) => {
     switch (sentiment) {
       case 'very_positive': return <Smile className="h-5 w-5 text-green-600" />;
@@ -145,6 +138,17 @@ const SentimentAnalysis = () => {
       case 'very_negative': return <Frown className="h-5 w-5 text-red-600" />;
       default: return <Eye className="h-5 w-5 text-gray-500" />;
     }
+  };
+
+  const getSentimentLabel = (sentiment: string) => {
+    const labels: Record<string, string> = {
+      'very_positive': 'Très Positif',
+      'positive': 'Positif',
+      'neutral': 'Neutre',
+      'negative': 'Négatif',
+      'very_negative': 'Très Négatif'
+    };
+    return labels[sentiment] || sentiment;
   };
 
   const getSentimentColor = (sentiment: string) => {
@@ -166,6 +170,23 @@ const SentimentAnalysis = () => {
     return 'text-red-600';
   };
 
+  const sourceLabels: Record<string, string> = {
+    'google_reviews': 'Google',
+    'facebook': 'Facebook',
+    'email': 'Email',
+    'enquete': 'Enquête',
+    'manual': 'Manuel'
+  };
+
+  const categoryLabels: Record<string, string> = {
+    'service': 'Service Client',
+    'produits': 'Produits',
+    'prix': 'Prix',
+    'conseil': 'Conseil',
+    'horaires': 'Horaires',
+    'digital': 'Digital'
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -176,18 +197,28 @@ const SentimentAnalysis = () => {
             Traitement du langage naturel pour comprendre la satisfaction client
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="text-sm text-muted-foreground">
-            Dernière analyse: Il y a 15 min
+            {analyses.length > 0 && (
+              <>Dernière analyse: {format(new Date(analyses[0]?.created_at), 'dd/MM HH:mm', { locale: fr })}</>
+            )}
           </div>
-          <Button size="sm">
-            <Brain className="h-4 w-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={() => loadMetrics()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualiser
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setAddFeedbackOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Ajouter
+          </Button>
+          <Button size="sm" onClick={() => setReportDialogOpen(true)}>
+            <FileText className="h-4 w-4 mr-2" />
             Rapport Complet
           </Button>
         </div>
       </div>
 
-      {/* Vue d'ensemble */}
+      {/* 5 KPI Cards */}
       <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -195,9 +226,11 @@ const SentimentAnalysis = () => {
             <Star className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{sentimentOverview.globalScore}/5</div>
-            <p className="text-xs text-green-600">
-              {sentimentOverview.trend} vs hier
+            <div className={`text-2xl font-bold ${getScoreColor(metrics?.globalScore || 0)}`}>
+              {metrics?.globalScore?.toFixed(1) || '0'}/5
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Sur {metrics?.totalAnalyses || 0} analyses
             </p>
           </CardContent>
         </Card>
@@ -208,10 +241,8 @@ const SentimentAnalysis = () => {
             <MessageCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{sentimentOverview.totalReviews}</div>
-            <p className="text-xs text-muted-foreground">
-              Analysés
-            </p>
+            <div className="text-2xl font-bold">{metrics?.totalAnalyses || 0}</div>
+            <p className="text-xs text-muted-foreground">Analysés</p>
           </CardContent>
         </Card>
 
@@ -221,10 +252,8 @@ const SentimentAnalysis = () => {
             <ThumbsUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{sentimentOverview.positiveRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              Sentiment positif
-            </p>
+            <div className="text-2xl font-bold text-green-600">{metrics?.positiveRate || 0}%</div>
+            <p className="text-xs text-muted-foreground">Sentiment positif</p>
           </CardContent>
         </Card>
 
@@ -234,10 +263,8 @@ const SentimentAnalysis = () => {
             <Meh className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{sentimentOverview.neutralRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              Sentiment neutre
-            </p>
+            <div className="text-2xl font-bold text-gray-600">{metrics?.neutralRate || 0}%</div>
+            <p className="text-xs text-muted-foreground">Sentiment neutre</p>
           </CardContent>
         </Card>
 
@@ -247,14 +274,13 @@ const SentimentAnalysis = () => {
             <ThumbsDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{sentimentOverview.negativeRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              Sentiment négatif
-            </p>
+            <div className="text-2xl font-bold text-red-600">{metrics?.negativeRate || 0}%</div>
+            <p className="text-xs text-muted-foreground">Sentiment négatif</p>
           </CardContent>
         </Card>
       </div>
 
+      {/* 5 Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
@@ -264,6 +290,7 @@ const SentimentAnalysis = () => {
           <TabsTrigger value="analyzer">Analyseur</TabsTrigger>
         </TabsList>
 
+        {/* Tab: Overview */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
@@ -298,10 +325,7 @@ const SentimentAnalysis = () => {
                   {sentimentDistribution.map((item, index) => (
                     <div key={index} className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded" 
-                          style={{ backgroundColor: item.color }}
-                        ></div>
+                        <div className="w-3 h-3 rounded" style={{ backgroundColor: item.color }}></div>
                         <span>{item.name}</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -325,35 +349,14 @@ const SentimentAnalysis = () => {
               <CardContent>
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={sentimentTrend}>
+                    <AreaChart data={metrics?.trend || []}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
+                      <XAxis dataKey="date" tickFormatter={(v) => format(new Date(v), 'dd/MM')} />
                       <YAxis />
-                      <Tooltip />
-                      <Area 
-                        type="monotone" 
-                        dataKey="positive" 
-                        stackId="1"
-                        stroke="#10b981" 
-                        fill="#10b981"
-                        fillOpacity={0.6}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="neutral" 
-                        stackId="1"
-                        stroke="#6b7280" 
-                        fill="#6b7280"
-                        fillOpacity={0.6}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="negative" 
-                        stackId="1"
-                        stroke="#ef4444" 
-                        fill="#ef4444"
-                        fillOpacity={0.6}
-                      />
+                      <Tooltip labelFormatter={(v) => format(new Date(v), 'dd/MM/yyyy')} />
+                      <Area type="monotone" dataKey="positive" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} name="Positif" />
+                      <Area type="monotone" dataKey="neutral" stackId="1" stroke="#6b7280" fill="#6b7280" fillOpacity={0.6} name="Neutre" />
+                      <Area type="monotone" dataKey="negative" stackId="1" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} name="Négatif" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -362,52 +365,107 @@ const SentimentAnalysis = () => {
           </div>
         </TabsContent>
 
+        {/* Tab: Feedback */}
         <TabsContent value="feedback" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="h-5 w-5" />
-                Retours Clients Analysés
-              </CardTitle>
-              <CardDescription>Analyse automatique des commentaires par IA</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageCircle className="h-5 w-5" />
+                    Retours Clients Analysés
+                  </CardTitle>
+                  <CardDescription>Analyse automatique des commentaires par IA</CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Select value={feedbackSentimentFilter} onValueChange={setFeedbackSentimentFilter}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Sentiment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous</SelectItem>
+                      <SelectItem value="very_positive">Très Positif</SelectItem>
+                      <SelectItem value="positive">Positif</SelectItem>
+                      <SelectItem value="neutral">Neutre</SelectItem>
+                      <SelectItem value="negative">Négatif</SelectItem>
+                      <SelectItem value="very_negative">Très Négatif</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={feedbackSourceFilter} onValueChange={setFeedbackSourceFilter}>
+                    <SelectTrigger className="w-[130px]">
+                      <SelectValue placeholder="Source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes</SelectItem>
+                      <SelectItem value="google_reviews">Google</SelectItem>
+                      <SelectItem value="facebook">Facebook</SelectItem>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="enquete">Enquête</SelectItem>
+                      <SelectItem value="manual">Manuel</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {customerFeedback.map((feedback) => (
-                  <div key={feedback.id} className={`p-4 border rounded-lg ${getSentimentColor(feedback.sentiment)}`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        {getSentimentIcon(feedback.sentiment)}
-                        <div>
-                          <Badge variant="outline">{feedback.source}</Badge>
-                          <Badge className="ml-2" variant="outline">{feedback.category}</Badge>
+              <ScrollArea className="h-[500px]">
+                <div className="space-y-4">
+                  {isLoading ? (
+                    <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+                  ) : analyses.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Aucune analyse trouvée. Ajoutez des feedbacks pour commencer.
+                    </div>
+                  ) : (
+                    analyses.map((feedback) => (
+                      <div 
+                        key={feedback.id} 
+                        className={`p-4 border rounded-lg cursor-pointer hover:shadow-md transition-shadow ${getSentimentColor(feedback.sentiment)}`}
+                        onClick={() => {
+                          setSelectedAnalysis(feedback);
+                          setDetailDialogOpen(true);
+                        }}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            {getSentimentIcon(feedback.sentiment)}
+                            <div className="flex gap-2">
+                              <Badge variant="outline">{sourceLabels[feedback.source] || feedback.source}</Badge>
+                              {feedback.category && (
+                                <Badge variant="outline">{categoryLabels[feedback.category] || feedback.category}</Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-medium">Score: {Math.round(feedback.score * 100)}%</div>
+                            <div className="text-xs text-muted-foreground">
+                              {format(new Date(feedback.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <p className="text-sm mb-3 italic line-clamp-2">"{feedback.text}"</p>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex gap-1 flex-wrap">
+                            {feedback.emotions?.slice(0, 3).map((emotion, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {emotion}
+                              </Badge>
+                            ))}
+                          </div>
+                          <Progress value={feedback.score * 100} className="w-20 h-2" />
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium">Score: {(feedback.score * 100).toFixed(0)}%</div>
-                        <div className="text-xs text-muted-foreground">{feedback.date}</div>
-                      </div>
-                    </div>
-                    
-                    <p className="text-sm mb-3 italic">"{feedback.text}"</p>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex gap-1">
-                        {feedback.emotions.map((emotion, index) => (
-                          <Badge key={index} variant="secondary" className="text-xs">
-                            {emotion}
-                          </Badge>
-                        ))}
-                      </div>
-                      <Progress value={feedback.score * 100} className="w-20 h-2" />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Tab: Categories */}
         <TabsContent value="categories" className="space-y-6">
           <Card>
             <CardHeader>
@@ -418,79 +476,112 @@ const SentimentAnalysis = () => {
               <CardDescription>Performance du sentiment par domaine d'activité</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {categoryAnalysis.map((category, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="text-center">
-                        <div className={`text-2xl font-bold ${getScoreColor(category.score)}`}>
-                          {category.score}
+              {metrics?.categoryBreakdown && metrics.categoryBreakdown.length > 0 ? (
+                <div className="space-y-4">
+                  {metrics.categoryBreakdown.map((category, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className="text-center">
+                          <div className={`text-2xl font-bold ${getScoreColor(category.score)}`}>
+                            {category.score}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Score</div>
                         </div>
-                        <div className="text-xs text-muted-foreground">Score</div>
+                        <div>
+                          <h4 className="font-semibold capitalize">{categoryLabels[category.category] || category.category}</h4>
+                          <p className="text-sm text-muted-foreground">{category.volume} avis analysés</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-semibold">{category.category}</h4>
-                        <p className="text-sm text-muted-foreground">{category.volume} avis analysés</p>
+                      <div className="text-right">
+                        <Badge className={category.trend.startsWith('+') ? 'bg-green-50 text-green-600' : 
+                                       category.trend.startsWith('-') ? 'bg-red-50 text-red-600' :
+                                       'bg-gray-50 text-gray-600'}>
+                          {category.trend}
+                        </Badge>
+                        <Progress value={category.score * 20} className="w-16 h-2 mt-2" />
                       </div>
                     </div>
-                    <div className="text-right">
-                      <Badge className={category.trend.startsWith('+') ? 'bg-green-50 text-green-600' : 
-                                     category.trend.startsWith('-') ? 'bg-red-50 text-red-600' :
-                                     'bg-gray-50 text-gray-600'}>
-                        {category.trend}
-                      </Badge>
-                      <Progress value={category.score * 20} className="w-16 h-2 mt-2" />
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Aucune donnée par catégorie disponible
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Tab: Keywords */}
         <TabsContent value="keywords" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
-                Analyse des Mots-clés
-              </CardTitle>
-              <CardDescription>Mots les plus fréquents et leur impact sur le sentiment</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5" />
+                    Analyse des Mots-clés
+                  </CardTitle>
+                  <CardDescription>Mots les plus fréquents et leur impact sur le sentiment</CardDescription>
+                </div>
+                <Select value={keywordSentimentFilter} onValueChange={setKeywordSentimentFilter}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Filtre" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous</SelectItem>
+                    <SelectItem value="positive">Positifs</SelectItem>
+                    <SelectItem value="negative">Négatifs</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 md:grid-cols-2">
-                {keywordAnalysis.map((keyword, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded ${
-                        keyword.sentiment === 'positive' ? 'bg-green-50' : 'bg-red-50'
-                      }`}>
-                        {keyword.sentiment === 'positive' ? 
-                          <ThumbsUp className="h-4 w-4 text-green-600" /> :
-                          <ThumbsDown className="h-4 w-4 text-red-600" />
-                        }
-                      </div>
-                      <div>
-                        <span className="font-medium">"{keyword.word}"</span>
-                        <div className="text-xs text-muted-foreground">
-                          {keyword.frequency} mentions
+              {filteredKeywords.length > 0 ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {filteredKeywords.map((keyword) => (
+                    <div 
+                      key={keyword.id} 
+                      className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-muted/50"
+                      onClick={() => {
+                        setSelectedKeyword(keyword);
+                        setKeywordDialogOpen(true);
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded ${keyword.sentiment === 'positive' ? 'bg-green-50' : 'bg-red-50'}`}>
+                          {keyword.sentiment === 'positive' ? 
+                            <ThumbsUp className="h-4 w-4 text-green-600" /> :
+                            <ThumbsDown className="h-4 w-4 text-red-600" />
+                          }
+                        </div>
+                        <div>
+                          <span className="font-medium">"{keyword.word}"</span>
+                          <div className="text-xs text-muted-foreground">
+                            {keyword.frequency} mentions
+                          </div>
                         </div>
                       </div>
+                      <Badge className={
+                        keyword.impact === 'high' ? 'bg-red-50 text-red-600' :
+                        keyword.impact === 'medium' ? 'bg-orange-50 text-orange-600' :
+                        'bg-blue-50 text-blue-600'
+                      }>
+                        {keyword.impact === 'high' ? 'Élevé' : keyword.impact === 'medium' ? 'Moyen' : 'Faible'}
+                      </Badge>
                     </div>
-                    <Badge className={
-                      keyword.impact === 'high' ? 'bg-red-50 text-red-600' :
-                      keyword.impact === 'medium' ? 'bg-orange-50 text-orange-600' :
-                      'bg-blue-50 text-blue-600'
-                    }>
-                      {keyword.impact}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Aucun mot-clé détecté pour le moment
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Tab: Analyzer */}
         <TabsContent value="analyzer" className="space-y-6">
           <Card>
             <CardHeader>
@@ -502,9 +593,7 @@ const SentimentAnalysis = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">
-                  Texte à analyser
-                </label>
+                <label className="text-sm font-medium mb-2 block">Texte à analyser</label>
                 <Textarea
                   placeholder="Saisissez un commentaire client, avis, ou feedback à analyser..."
                   value={textToAnalyze}
@@ -512,9 +601,43 @@ const SentimentAnalysis = () => {
                   className="min-h-24"
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Source</label>
+                  <Select value={analyzerSource} onValueChange={setAnalyzerSource}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manual">Saisie manuelle</SelectItem>
+                      <SelectItem value="google_reviews">Google Reviews</SelectItem>
+                      <SelectItem value="facebook">Facebook</SelectItem>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="enquete">Enquête</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Catégorie (optionnel)</label>
+                  <Select value={analyzerCategory} onValueChange={setAnalyzerCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="service">Service Client</SelectItem>
+                      <SelectItem value="produits">Produits</SelectItem>
+                      <SelectItem value="prix">Prix</SelectItem>
+                      <SelectItem value="conseil">Conseil</SelectItem>
+                      <SelectItem value="horaires">Horaires</SelectItem>
+                      <SelectItem value="digital">Digital</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               
               <Button 
-                onClick={analyzeSentiment}
+                onClick={handleAnalyze}
                 disabled={!textToAnalyze.trim() || isAnalyzing}
                 className="w-full"
               >
@@ -531,16 +654,92 @@ const SentimentAnalysis = () => {
                 )}
               </Button>
               
-              {/* Zone de résultat d'analyse - à implémenter */}
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-muted-foreground text-center">
-                  Les résultats d'analyse apparaîtront ici
-                </p>
-              </div>
+              {/* Analysis Result */}
+              {analysisResult ? (
+                <div className={`p-4 rounded-lg border ${getSentimentColor(analysisResult.sentiment)}`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      {getSentimentIcon(analysisResult.sentiment)}
+                      <div>
+                        <div className="font-semibold">{getSentimentLabel(analysisResult.sentiment)}</div>
+                        <div className="text-sm opacity-80">Score: {Math.round(analysisResult.score * 100)}%</div>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={handleSaveAnalysis} disabled={isAnalyzing}>
+                      <Save className="h-4 w-4 mr-2" />
+                      Sauvegarder
+                    </Button>
+                  </div>
+                  
+                  <Progress value={analysisResult.score * 100} className="mb-4 h-3" />
+                  
+                  {analysisResult.emotions?.length > 0 && (
+                    <div className="mb-3">
+                      <span className="text-sm font-medium">Émotions détectées:</span>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {analysisResult.emotions.map((emotion, i) => (
+                          <Badge key={i} variant="secondary">{emotion}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {analysisResult.keywords?.length > 0 && (
+                    <div>
+                      <span className="text-sm font-medium">Mots-clés:</span>
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {analysisResult.keywords.map((kw, i) => (
+                          <Badge key={i} variant="outline">{kw}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Les résultats d'analyse apparaîtront ici
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <AddFeedbackDialog
+        open={addFeedbackOpen}
+        onOpenChange={setAddFeedbackOpen}
+        onSubmit={handleAddFeedback}
+        isLoading={isAnalyzing}
+        categories={settings?.categories || undefined}
+        sources={settings?.sources || undefined}
+      />
+
+      <FeedbackDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        analysis={selectedAnalysis}
+        onDelete={deleteAnalysis}
+      />
+
+      <KeywordConfigDialog
+        open={keywordDialogOpen}
+        onOpenChange={setKeywordDialogOpen}
+        keyword={selectedKeyword}
+        onUpdateImpact={updateKeywordImpact}
+        onDelete={deleteKeyword}
+      />
+
+      <SentimentReportDialog
+        open={reportDialogOpen}
+        onOpenChange={setReportDialogOpen}
+        metrics={metrics}
+        analyses={analyses}
+        keywords={keywords}
+        pharmacyName={currentTenant?.name || 'PharmaSoft'}
+      />
     </div>
   );
 };
