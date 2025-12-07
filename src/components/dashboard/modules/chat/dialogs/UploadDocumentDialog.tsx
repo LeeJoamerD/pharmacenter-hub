@@ -72,7 +72,7 @@ export function UploadDocumentDialog({
       category,
       file_type: fileType || undefined,
       file_url: fileUrl.trim() || undefined,
-      workspace_id: workspaceId || undefined,
+      workspace_id: workspaceId === 'no-workspace' ? undefined : (workspaceId || undefined),
       is_network_document: isNetworkDocument,
       tags: tags.length > 0 ? tags : undefined
     });
@@ -193,7 +193,7 @@ export function UploadDocumentDialog({
                     <SelectValue placeholder="Aucun espace" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Aucun</SelectItem>
+                    <SelectItem value="no-workspace">Aucun</SelectItem>
                     {workspaces.map((ws) => (
                       <SelectItem key={ws.id} value={ws.id}>
                         {ws.name}

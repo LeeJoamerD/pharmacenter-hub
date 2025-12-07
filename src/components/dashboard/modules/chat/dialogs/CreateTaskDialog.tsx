@@ -52,10 +52,10 @@ export function CreateTaskDialog({
     await onSubmit({
       title: title.trim(),
       description: description.trim() || null,
-      assignee_pharmacy_id: assigneePharmacyId || null,
+      assignee_pharmacy_id: assigneePharmacyId === 'unassigned' ? null : (assigneePharmacyId || null),
       priority,
       due_date: dueDate ? new Date(dueDate).toISOString() : null,
-      workspace_id: workspaceId || null,
+      workspace_id: workspaceId === 'no-workspace' ? null : (workspaceId || null),
       is_network_task: isNetworkTask,
       tags
     });
@@ -151,7 +151,7 @@ export function CreateTaskDialog({
                   <SelectValue placeholder="Sélectionner une officine" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Non assignée</SelectItem>
+                  <SelectItem value="unassigned">Non assignée</SelectItem>
                   {pharmacies.map((pharmacy) => (
                     <SelectItem key={pharmacy.id} value={pharmacy.id}>
                       {pharmacy.name}
@@ -169,7 +169,7 @@ export function CreateTaskDialog({
                     <SelectValue placeholder="Aucun espace" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Aucun</SelectItem>
+                    <SelectItem value="no-workspace">Aucun</SelectItem>
                     {workspaces.map((ws) => (
                       <SelectItem key={ws.id} value={ws.id}>
                         {ws.name}
