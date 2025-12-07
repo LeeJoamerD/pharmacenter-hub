@@ -223,6 +223,212 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_accounting_anomalies: {
+        Row: {
+          affected_accounts: string[] | null
+          affected_entries: string[] | null
+          anomaly_type: string
+          correction_steps: Json | null
+          created_at: string
+          description: string
+          detected_at: string
+          detected_by: string | null
+          id: string
+          metadata: Json | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string
+          suggested_correction: string | null
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          affected_accounts?: string[] | null
+          affected_entries?: string[] | null
+          anomaly_type: string
+          correction_steps?: Json | null
+          created_at?: string
+          description: string
+          detected_at?: string
+          detected_by?: string | null
+          id?: string
+          metadata?: Json | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          suggested_correction?: string | null
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          affected_accounts?: string[] | null
+          affected_entries?: string[] | null
+          anomaly_type?: string
+          correction_steps?: Json | null
+          created_at?: string
+          description?: string
+          detected_at?: string
+          detected_by?: string | null
+          id?: string
+          metadata?: Json | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          suggested_correction?: string | null
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_accounting_anomalies_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_accounting_anomalies_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_accounting_consultations: {
+        Row: {
+          ai_response: string | null
+          confidence: number | null
+          consultation_type: string | null
+          context_data: Json | null
+          created_at: string
+          created_by: string | null
+          feedback: string | null
+          id: string
+          is_useful: boolean | null
+          question: string
+          related_accounts: string[] | null
+          related_entries: string[] | null
+          tenant_id: string
+        }
+        Insert: {
+          ai_response?: string | null
+          confidence?: number | null
+          consultation_type?: string | null
+          context_data?: Json | null
+          created_at?: string
+          created_by?: string | null
+          feedback?: string | null
+          id?: string
+          is_useful?: boolean | null
+          question: string
+          related_accounts?: string[] | null
+          related_entries?: string[] | null
+          tenant_id: string
+        }
+        Update: {
+          ai_response?: string | null
+          confidence?: number | null
+          consultation_type?: string | null
+          context_data?: Json | null
+          created_at?: string
+          created_by?: string | null
+          feedback?: string | null
+          id?: string
+          is_useful?: boolean | null
+          question?: string
+          related_accounts?: string[] | null
+          related_entries?: string[] | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_accounting_consultations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_accounting_consultations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_accounting_expert_config: {
+        Row: {
+          accounting_system: string | null
+          anomaly_detection_frequency: string | null
+          auto_reconciliation: boolean | null
+          created_at: string
+          enable_auto_anomaly_detection: boolean | null
+          enable_fiscal_reminders: boolean | null
+          enable_tax_optimization_suggestions: boolean | null
+          fiscal_year_start_month: number | null
+          id: string
+          min_anomaly_severity: string | null
+          notification_settings: Json | null
+          optimization_check_frequency: string | null
+          reminder_days_before: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          accounting_system?: string | null
+          anomaly_detection_frequency?: string | null
+          auto_reconciliation?: boolean | null
+          created_at?: string
+          enable_auto_anomaly_detection?: boolean | null
+          enable_fiscal_reminders?: boolean | null
+          enable_tax_optimization_suggestions?: boolean | null
+          fiscal_year_start_month?: number | null
+          id?: string
+          min_anomaly_severity?: string | null
+          notification_settings?: Json | null
+          optimization_check_frequency?: string | null
+          reminder_days_before?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          accounting_system?: string | null
+          anomaly_detection_frequency?: string | null
+          auto_reconciliation?: boolean | null
+          created_at?: string
+          enable_auto_anomaly_detection?: boolean | null
+          enable_fiscal_reminders?: boolean | null
+          enable_tax_optimization_suggestions?: boolean | null
+          fiscal_year_start_month?: number | null
+          id?: string
+          min_anomaly_severity?: string | null
+          notification_settings?: Json | null
+          optimization_check_frequency?: string | null
+          reminder_days_before?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_accounting_expert_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_anomalies: {
         Row: {
           confidence: number
@@ -2025,6 +2231,93 @@ export type Database = {
           },
           {
             foreignKeyName: "ai_strategic_recommendations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_tax_optimizations: {
+        Row: {
+          ai_model_used: string | null
+          applicable_period: string | null
+          category: string
+          confidence: number | null
+          created_at: string
+          deadline: string | null
+          description: string
+          estimated_savings: number | null
+          id: string
+          implementation_steps: Json | null
+          implemented_at: string | null
+          implemented_by: string | null
+          legal_references: string[] | null
+          metadata: Json | null
+          optimization_type: string
+          priority: number | null
+          rejected_reason: string | null
+          status: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          ai_model_used?: string | null
+          applicable_period?: string | null
+          category?: string
+          confidence?: number | null
+          created_at?: string
+          deadline?: string | null
+          description: string
+          estimated_savings?: number | null
+          id?: string
+          implementation_steps?: Json | null
+          implemented_at?: string | null
+          implemented_by?: string | null
+          legal_references?: string[] | null
+          metadata?: Json | null
+          optimization_type: string
+          priority?: number | null
+          rejected_reason?: string | null
+          status?: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          ai_model_used?: string | null
+          applicable_period?: string | null
+          category?: string
+          confidence?: number | null
+          created_at?: string
+          deadline?: string | null
+          description?: string
+          estimated_savings?: number | null
+          id?: string
+          implementation_steps?: Json | null
+          implemented_at?: string | null
+          implemented_by?: string | null
+          legal_references?: string[] | null
+          metadata?: Json | null
+          optimization_type?: string
+          priority?: number | null
+          rejected_reason?: string | null
+          status?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_tax_optimizations_implemented_by_fkey"
+            columns: ["implemented_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_tax_optimizations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -17897,6 +18190,10 @@ export type Database = {
         Returns: string
       }
       debug_user_connection_state: { Args: never; Returns: Json }
+      detect_accounting_anomalies: {
+        Args: { p_tenant_id: string }
+        Returns: number
+      }
       detect_suspicious_patterns: { Args: never; Returns: undefined }
       determiner_niveau_urgence: {
         Args: { jours_restants: number }
@@ -17908,6 +18205,10 @@ export type Database = {
           p_trigger_context?: Json
           p_workflow_id: string
         }
+        Returns: Json
+      }
+      generate_accounting_report_summary: {
+        Args: { p_end_date: string; p_start_date: string; p_tenant_id: string }
         Returns: Json
       }
       generate_ai_forecast: {
@@ -17974,6 +18275,10 @@ export type Database = {
           type: string
         }[]
       }
+      get_accounting_expert_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       get_active_sessions_totals: {
         Args: { p_tenant_id: string }
         Returns: Json
@@ -18033,6 +18338,10 @@ export type Database = {
           stock_actuel: number
           valeur_vendue: number
         }[]
+      }
+      get_fiscal_calendar: {
+        Args: { p_tenant_id: string; p_year?: number }
+        Returns: Json
       }
       get_forecast_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_low_stock_metrics: { Args: { p_tenant_id: string }; Returns: Json }
