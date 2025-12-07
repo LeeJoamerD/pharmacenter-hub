@@ -1256,6 +1256,176 @@ export type Database = {
           },
         ]
       }
+      ai_pharma_compliance_checks: {
+        Row: {
+          audit_notes: string | null
+          category: string
+          created_at: string
+          id: string
+          issues_count: number | null
+          issues_details: Json | null
+          items_count: number | null
+          last_check_at: string | null
+          last_check_by: string | null
+          next_audit_date: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          audit_notes?: string | null
+          category: string
+          created_at?: string
+          id?: string
+          issues_count?: number | null
+          issues_details?: Json | null
+          items_count?: number | null
+          last_check_at?: string | null
+          last_check_by?: string | null
+          next_audit_date?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          audit_notes?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          issues_count?: number | null
+          issues_details?: Json | null
+          items_count?: number | null
+          last_check_at?: string | null
+          last_check_by?: string | null
+          next_audit_date?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_pharma_compliance_checks_last_check_by_fkey"
+            columns: ["last_check_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_pharma_compliance_checks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_pharma_consultations: {
+        Row: {
+          ai_response: string | null
+          confidence: number | null
+          consultation_type: string | null
+          created_at: string
+          created_by: string | null
+          feedback: string | null
+          id: string
+          is_useful: boolean | null
+          question: string
+          related_drugs: string[] | null
+          tenant_id: string
+        }
+        Insert: {
+          ai_response?: string | null
+          confidence?: number | null
+          consultation_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          feedback?: string | null
+          id?: string
+          is_useful?: boolean | null
+          question: string
+          related_drugs?: string[] | null
+          tenant_id: string
+        }
+        Update: {
+          ai_response?: string | null
+          confidence?: number | null
+          consultation_type?: string | null
+          created_at?: string
+          created_by?: string | null
+          feedback?: string | null
+          id?: string
+          is_useful?: boolean | null
+          question?: string
+          related_drugs?: string[] | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_pharma_consultations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_pharma_consultations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_pharma_expert_config: {
+        Row: {
+          auto_interaction_check: boolean | null
+          compliance_check_frequency: string | null
+          created_at: string
+          enable_ai_consultation: boolean | null
+          enable_compliance_alerts: boolean | null
+          id: string
+          interaction_alert_level: string | null
+          pharmacovigilance_sources: string[] | null
+          tenant_id: string
+          therapeutic_guidelines_version: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_interaction_check?: boolean | null
+          compliance_check_frequency?: string | null
+          created_at?: string
+          enable_ai_consultation?: boolean | null
+          enable_compliance_alerts?: boolean | null
+          id?: string
+          interaction_alert_level?: string | null
+          pharmacovigilance_sources?: string[] | null
+          tenant_id: string
+          therapeutic_guidelines_version?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_interaction_check?: boolean | null
+          compliance_check_frequency?: string | null
+          created_at?: string
+          enable_ai_consultation?: boolean | null
+          enable_compliance_alerts?: boolean | null
+          id?: string
+          interaction_alert_level?: string | null
+          pharmacovigilance_sources?: string[] | null
+          tenant_id?: string
+          therapeutic_guidelines_version?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_pharma_expert_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_quality_controls: {
         Row: {
           accuracy: number | null
@@ -1905,6 +2075,75 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ai_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_therapeutic_recommendations: {
+        Row: {
+          alternative_treatments: Json | null
+          condition_category: string | null
+          condition_name: string
+          contraindications: string | null
+          created_at: string
+          created_by: string | null
+          duration: string | null
+          evidence_level: string | null
+          first_line_treatments: Json | null
+          id: string
+          is_active: boolean | null
+          monitoring: string | null
+          source_guidelines: string[] | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          alternative_treatments?: Json | null
+          condition_category?: string | null
+          condition_name: string
+          contraindications?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration?: string | null
+          evidence_level?: string | null
+          first_line_treatments?: Json | null
+          id?: string
+          is_active?: boolean | null
+          monitoring?: string | null
+          source_guidelines?: string[] | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          alternative_treatments?: Json | null
+          condition_category?: string | null
+          condition_name?: string
+          contraindications?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration?: string | null
+          evidence_level?: string | null
+          first_line_treatments?: Json | null
+          id?: string
+          is_active?: boolean | null
+          monitoring?: string | null
+          source_guidelines?: string[] | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_therapeutic_recommendations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_therapeutic_recommendations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -17827,6 +18066,10 @@ export type Database = {
         }
         Returns: string
       }
+      get_pharma_expert_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       get_pharma_tools_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_pos_products: {
         Args: {
@@ -18127,6 +18370,10 @@ export type Database = {
           }
       run_ai_diagnostic: { Args: { p_tenant_id: string }; Returns: Json }
       run_ai_stock_analysis: { Args: { p_tenant_id: string }; Returns: Json }
+      run_pharma_compliance_check: {
+        Args: { p_category: string; p_checked_by: string; p_tenant_id: string }
+        Returns: Json
+      }
       search_product_by_barcode: {
         Args: { p_barcode: string; p_tenant_id: string }
         Returns: {

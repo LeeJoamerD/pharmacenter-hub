@@ -5,167 +5,53 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Pill, 
-  AlertTriangle,
-  Shield,
-  Search,
-  Book,
-  FileText,
-  Users,
-  Target,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Brain,
-  Zap,
-  Activity,
-  Heart,
-  Eye,
-  Info
+  Pill, AlertTriangle, Shield, Search, Book, FileText, Target, CheckCircle, XCircle, 
+  Clock, Brain, Zap, Eye, Info, Settings, Plus, Trash2, Download, RefreshCw
 } from 'lucide-react';
+import { usePharmaceuticalExpert } from '@/hooks/usePharmaceuticalExpert';
+import { useTenant } from '@/contexts/TenantContext';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import PharmaExpertConfigDialog from './dialogs/PharmaExpertConfigDialog';
+import DrugDetailDialog from './dialogs/DrugDetailDialog';
+import InteractionCheckDialog from './dialogs/InteractionCheckDialog';
+import TherapeuticRecommendationDialog from './dialogs/TherapeuticRecommendationDialog';
+import ComplianceReportDialog from './dialogs/ComplianceReportDialog';
+import AIConsultationDialog from './dialogs/AIConsultationDialog';
+import { exportDrugDatabasePDF, exportInteractionsPDF, exportRecommendationsPDF, exportPharmacovigilancePDF } from '@/utils/pharmaExpertExportUtils';
 
 const PharmaceuticalExpert = () => {
+  const { currentTenant } = useTenant();
+  const {
+    loading, metrics, drugDatabase, interactions, recommendations,
+    pharmacovigilanceAlerts, complianceChecks, config,
+    loadDrugs, checkInteraction, createInteraction, deleteInteraction,
+    createRecommendation, updateRecommendation, deleteRecommendation,
+    acknowledgeAlert, runComplianceCheck, askAI, saveConfig, drugsPagination
+  } = usePharmaceuticalExpert();
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDrug, setSelectedDrug] = useState<string | null>(null);
+  const [selectedDrug, setSelectedDrug] = useState<any>(null);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [drugDetailOpen, setDrugDetailOpen] = useState(false);
+  const [interactionCheckOpen, setInteractionCheckOpen] = useState(false);
+  const [recommendationDialogOpen, setRecommendationDialogOpen] = useState(false);
+  const [editingRecommendation, setEditingRecommendation] = useState<any>(null);
+  const [complianceReportOpen, setComplianceReportOpen] = useState(false);
+  const [selectedCompliance, setSelectedCompliance] = useState<any>(null);
+  const [aiConsultationOpen, setAiConsultationOpen] = useState(false);
 
-  // Base de connaissance médicaments
-  const [drugDatabase] = useState([
-    {
-      id: 'doliprane1000',
-      name: 'Doliprane 1000mg',
-      genericName: 'Paracétamol',
-      therapeuticClass: 'Antalgique/Antipyrétique',
-      indications: ['Douleur', 'Fièvre'],
-      contraindications: ['Insuffisance hépatique sévère', 'Allergie paracétamol'],
-      sideEffects: ['Rares: réactions cutanées', 'Hépatotoxicité (surdosage)'],
-      dosage: '1000mg toutes les 6-8h, max 4g/jour',
-      interactions: ['Anticoagulants (surveillance)', 'Inducteurs enzymatiques'],
-      pregnancy: 'Autorisé',
-      breastfeeding: 'Compatible',
-      age: 'Adulte et enfant >50kg',
-      price: 2.84,
-      reimbursement: 65
-    },
-    {
-      id: 'amoxicilline500',
-      name: 'Amoxicilline 500mg',
-      genericName: 'Amoxicilline',
-      therapeuticClass: 'Antibiotique β-lactamine',
-      indications: ['Infections respiratoires', 'Infections urinaires', 'Infections ORL'],
-      contraindications: ['Allergie pénicillines', 'Mononucléose infectieuse'],
-      sideEffects: ['Troubles digestifs', 'Réactions allergiques', 'Candidoses'],
-      dosage: '500mg 3x/jour pendant 7-10 jours',
-      interactions: ['Méthotrexate', 'Anticoagulants oraux'],
-      pregnancy: 'Autorisé',
-      breastfeeding: 'Compatible',
-      age: 'Tous âges (adaptation posologie)',
-      price: 4.12,
-      reimbursement: 100
-    }
-  ]);
+  const pharmacyName = currentTenant?.name || 'Pharmacie';
 
-  // Vérificateur d'interactions
-  const [interactionChecker] = useState([
-    {
-      drug1: 'Warfarine',
-      drug2: 'Paracétamol',
-      severity: 'moderate',
-      description: 'Augmentation possible de l\'effet anticoagulant',
-      recommendation: 'Surveillance INR renforcée',
-      mechanism: 'Inhibition métabolisme warfarine'
-    },
-    {
-      drug1: 'Metformine',
-      drug2: 'Furosémide',
-      severity: 'high',
-      description: 'Risque d\'acidose lactique',
-      recommendation: 'Éviter l\'association, surveillance fonction rénale',
-      mechanism: 'Altération élimination rénale'
-    },
-    {
-      drug1: 'Aspirine',
-      drug2: 'Méthotrexate',
-      severity: 'high',
-      description: 'Toxicité hématologique majorée',
-      recommendation: 'Association contre-indiquée',
-      mechanism: 'Diminution élimination rénale du méthotrexate'
-    }
-  ]);
-
-  // Recommandations thérapeutiques
-  const [therapeuticRecommendations] = useState([
-    {
-      condition: 'Douleur légère à modérée',
-      firstLine: ['Paracétamol 1g', 'Ibuprofène 400mg'],
-      alternatives: ['Aspirine 500mg', 'Kétoprofène gel'],
-      contraindications: 'AINS si ulcère, insuffisance rénale',
-      duration: '3-5 jours max sans avis médical',
-      monitoring: 'Évaluer efficacité à 48h'
-    },
-    {
-      condition: 'Rhinite allergique',
-      firstLine: ['Cétirizine 10mg', 'Loratadine 10mg'],
-      alternatives: ['Desloratadine 5mg', 'Corticoïdes nasaux'],
-      contraindications: 'Allergie antihistaminiques',
-      duration: 'Selon exposition allergène',
-      monitoring: 'Somnolence, efficacité'
-    }
-  ]);
-
-  // Alertes pharmacovigilance
-  const [pharmacovigilanceAlerts] = useState([
-    {
-      drug: 'Tramadol',
-      alert: 'Risque de convulsions majoré',
-      date: '2025-01-03',
-      severity: 'high',
-      action: 'Information patients, surveillance neurologique',
-      source: 'ANSM'
-    },
-    {
-      drug: 'Ibuprofène',
-      alert: 'Rappel risques cardiovasculaires',
-      date: '2025-01-02',
-      severity: 'moderate',
-      action: 'Éviter traitement prolongé >3 jours',
-      source: 'EMA'
-    }
-  ]);
-
-  // Conformité réglementaire
-  const [complianceChecks] = useState([
-    {
-      category: 'Stupéfiants',
-      status: 'compliant',
-      lastCheck: '2025-01-05',
-      items: 23,
-      issues: 0,
-      nextAudit: '2025-01-12'
-    },
-    {
-      category: 'Liste I',
-      status: 'compliant',
-      lastCheck: '2025-01-05',
-      items: 156,
-      issues: 0,
-      nextAudit: '2025-01-10'
-    },
-    {
-      category: 'Liste II',
-      status: 'warning',
-      lastCheck: '2025-01-04',
-      items: 89,
-      issues: 2,
-      nextAudit: '2025-01-08'
-    }
-  ]);
+  const handleSearch = () => {
+    loadDrugs(searchQuery);
+  };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'high': return 'text-red-600 bg-red-50 border-red-200';
-      case 'moderate': return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'low': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'major': case 'contraindicated': case 'critical': return 'text-red-600 bg-red-50 border-red-200';
+      case 'moderate': case 'warning': return 'text-orange-600 bg-orange-50 border-orange-200';
+      default: return 'text-yellow-600 bg-yellow-50 border-yellow-200';
     }
   };
 
@@ -176,13 +62,6 @@ const PharmaceuticalExpert = () => {
       case 'critical': return <XCircle className="h-4 w-4 text-red-600" />;
       default: return <Clock className="h-4 w-4 text-gray-600" />;
     }
-  };
-
-  const searchDrugs = (query: string) => {
-    return drugDatabase.filter(drug => 
-      drug.name.toLowerCase().includes(query.toLowerCase()) ||
-      drug.genericName.toLowerCase().includes(query.toLowerCase())
-    );
   };
 
   return (
@@ -196,59 +75,39 @@ const PharmaceuticalExpert = () => {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => exportRecommendationsPDF(recommendations, pharmacyName)}>
             <Book className="h-4 w-4 mr-2" />
             Guide Thérapeutique
           </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={() => setAiConsultationOpen(true)}>
             <Brain className="h-4 w-4 mr-2" />
             Consultation IA
           </Button>
+          <Button variant="ghost" size="icon" onClick={() => setConfigOpen(true)}>
+            <Settings className="h-4 w-4" />
+          </Button>
         </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card><CardContent className="pt-4"><div className="flex justify-between"><div><p className="text-sm text-muted-foreground">Médicaments</p><p className="text-2xl font-bold">{metrics.drugsCount}</p></div><Pill className="h-8 w-8 text-blue-500" /></div></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="flex justify-between"><div><p className="text-sm text-muted-foreground">Interactions</p><p className="text-2xl font-bold">{metrics.interactionsCount}</p></div><Shield className="h-8 w-8 text-orange-500" /></div></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="flex justify-between"><div><p className="text-sm text-muted-foreground">Alertes Actives</p><p className="text-2xl font-bold">{metrics.activeAlerts}</p></div><AlertTriangle className="h-8 w-8 text-red-500" /></div></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="flex justify-between"><div><p className="text-sm text-muted-foreground">Score Conformité</p><p className="text-2xl font-bold">{metrics.complianceScore}%</p></div><CheckCircle className="h-8 w-8 text-green-500" /></div></CardContent></Card>
       </div>
 
       {/* Recherche rapide */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Recherche Médicament
-          </CardTitle>
+          <CardTitle className="flex items-center gap-2"><Search className="h-5 w-5" />Recherche Médicament</CardTitle>
           <CardDescription>Recherchez des informations complètes sur les médicaments</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4">
-            <Input
-              placeholder="Nom du médicament ou DCI..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1"
-            />
-            <Button>
-              <Search className="h-4 w-4 mr-2" />
-              Rechercher
-            </Button>
+            <Input placeholder="Nom du médicament ou DCI..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="flex-1" onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
+            <Button onClick={handleSearch} disabled={loading}><Search className="h-4 w-4 mr-2" />Rechercher</Button>
           </div>
-          
-          {searchQuery && (
-            <div className="mt-4 space-y-2">
-              {searchDrugs(searchQuery).map((drug) => (
-                <div 
-                  key={drug.id} 
-                  className="p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
-                  onClick={() => setSelectedDrug(drug.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-semibold">{drug.name}</h4>
-                      <p className="text-sm text-muted-foreground">{drug.genericName} • {drug.therapeuticClass}</p>
-                    </div>
-                    <Badge variant="outline">{drug.price}€</Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -262,54 +121,24 @@ const PharmaceuticalExpert = () => {
         </TabsList>
 
         <TabsContent value="knowledge-base" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-muted-foreground">{drugsPagination.total} médicaments trouvés</p>
+            <Button variant="outline" size="sm" onClick={() => exportDrugDatabasePDF(drugDatabase, pharmacyName)}><Download className="h-4 w-4 mr-2" />Exporter</Button>
+          </div>
           <div className="grid gap-6 md:grid-cols-2">
             {drugDatabase.map((drug) => (
               <Card key={drug.id}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Pill className="h-5 w-5" />
-                    {drug.name}
-                  </CardTitle>
+                  <CardTitle className="flex items-center gap-2"><Pill className="h-5 w-5" />{drug.name}</CardTitle>
                   <CardDescription>{drug.genericName} • {drug.therapeuticClass}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <h5 className="font-medium mb-1">Indications</h5>
-                    <div className="flex flex-wrap gap-1">
-                      {drug.indications.map((indication, index) => (
-                        <Badge key={index} variant="secondary">{indication}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h5 className="font-medium mb-1">Posologie</h5>
-                    <p className="text-sm text-muted-foreground">{drug.dosage}</p>
-                  </div>
-                  
-                  <div>
-                    <h5 className="font-medium mb-1">Contre-indications</h5>
-                    <ul className="text-sm text-red-600 space-y-1">
-                      {drug.contraindications.map((ci, index) => (
-                        <li key={index} className="flex items-center gap-2">
-                          <AlertTriangle className="h-3 w-3" />
-                          {ci}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  
                   <div className="flex items-center justify-between pt-2 border-t">
                     <div className="flex items-center gap-2">
-                      <Badge className="bg-green-50 text-green-600">
-                        Remb. {drug.reimbursement}%
-                      </Badge>
-                      <span className="font-medium">{drug.price}€</span>
+                      <Badge className="bg-green-50 text-green-600">Remb. {drug.reimbursement}%</Badge>
+                      <span className="font-medium">{drug.price.toFixed(2)}€</span>
                     </div>
-                    <Button size="sm" variant="outline">
-                      <Info className="h-4 w-4 mr-2" />
-                      Détails
-                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setSelectedDrug(drug); setDrugDetailOpen(true); }}><Info className="h-4 w-4 mr-2" />Détails</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -320,58 +149,28 @@ const PharmaceuticalExpert = () => {
         <TabsContent value="interactions" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Vérificateur d'Interactions
-              </CardTitle>
+              <CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5" />Vérificateur d'Interactions</CardTitle>
               <CardDescription>Détection automatique des interactions médicamenteuses</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {interactionChecker.map((interaction, index) => (
-                  <div key={index} className={`p-4 border rounded-lg ${getSeverityColor(interaction.severity)}`}>
+                {interactions.slice(0, 10).map((interaction) => (
+                  <div key={interaction.id} className={`p-4 border rounded-lg ${getSeverityColor(interaction.severity)}`}>
                     <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="font-semibold">
-                          {interaction.drug1} + {interaction.drug2}
-                        </h4>
-                        <Badge className={getSeverityColor(interaction.severity)}>
-                          {interaction.severity === 'high' ? 'Sévère' :
-                           interaction.severity === 'moderate' ? 'Modérée' : 'Légère'}
-                        </Badge>
+                      <div><h4 className="font-semibold">{interaction.drug1_name} + {interaction.drug2_name}</h4>
+                        <Badge className={getSeverityColor(interaction.severity)}>{interaction.severity === 'major' ? 'Majeure' : interaction.severity === 'contraindicated' ? 'Contre-indiquée' : interaction.severity === 'moderate' ? 'Modérée' : 'Mineure'}</Badge>
                       </div>
-                      <AlertTriangle className={`h-5 w-5 ${
-                        interaction.severity === 'high' ? 'text-red-600' :
-                        interaction.severity === 'moderate' ? 'text-orange-600' : 'text-yellow-600'
-                      }`} />
+                      <Button variant="ghost" size="icon" onClick={() => deleteInteraction(interaction.id)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
-                    
-                    <p className="text-sm mb-2">{interaction.description}</p>
-                    
-                    <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                      <h5 className="font-medium text-blue-800 mb-1">Recommandation:</h5>
-                      <p className="text-sm text-blue-700">{interaction.recommendation}</p>
-                    </div>
-                    
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      Mécanisme: {interaction.mechanism}
-                    </div>
+                    {interaction.clinical_effect && <p className="text-sm mb-2">{interaction.clinical_effect}</p>}
+                    {interaction.management && <div className="bg-blue-50 p-3 rounded border border-blue-200"><h5 className="font-medium text-blue-800 mb-1">Recommandation:</h5><p className="text-sm text-blue-700">{interaction.management}</p></div>}
                   </div>
                 ))}
               </div>
-              
               <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <Zap className="h-5 w-5 text-green-600" />
-                  <h4 className="font-semibold text-green-800">Vérification Automatique</h4>
-                </div>
-                <p className="text-sm text-green-700 mb-3">
-                  L'IA vérifie automatiquement les interactions lors de chaque prescription
-                </p>
-                <Button size="sm">
-                  <Search className="h-4 w-4 mr-2" />
-                  Vérifier Nouvelle Interaction
-                </Button>
+                <div className="flex items-center gap-2 mb-2"><Zap className="h-5 w-5 text-green-600" /><h4 className="font-semibold text-green-800">Vérification Automatique</h4></div>
+                <p className="text-sm text-green-700 mb-3">L'IA vérifie automatiquement les interactions lors de chaque prescription</p>
+                <Button size="sm" onClick={() => setInteractionCheckOpen(true)}><Search className="h-4 w-4 mr-2" />Vérifier Nouvelle Interaction</Button>
               </div>
             </CardContent>
           </Card>
@@ -379,70 +178,27 @@ const PharmaceuticalExpert = () => {
 
         <TabsContent value="recommendations" className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5" />
-                Recommandations Thérapeutiques
-              </CardTitle>
-              <CardDescription>Protocoles et guidelines basés sur l'évidence</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div><CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" />Recommandations Thérapeutiques</CardTitle><CardDescription>Protocoles et guidelines basés sur l'évidence</CardDescription></div>
+              <Button size="sm" onClick={() => { setEditingRecommendation(null); setRecommendationDialogOpen(true); }}><Plus className="h-4 w-4 mr-2" />Ajouter</Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {therapeuticRecommendations.map((rec, index) => (
-                  <div key={index} className="p-4 border rounded-lg">
-                    <h4 className="font-semibold text-lg mb-3">{rec.condition}</h4>
-                    
+                {recommendations.map((rec) => (
+                  <div key={rec.id} className="p-4 border rounded-lg">
+                    <div className="flex justify-between"><h4 className="font-semibold text-lg mb-3">{rec.condition_name}</h4>
+                      <div className="flex gap-1"><Button variant="ghost" size="icon" onClick={() => { setEditingRecommendation(rec); setRecommendationDialogOpen(true); }}><Info className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => deleteRecommendation(rec.id)}><Trash2 className="h-4 w-4" /></Button></div>
+                    </div>
                     <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <h5 className="font-medium text-green-700 mb-2">Première intention</h5>
-                        <div className="space-y-1">
-                          {rec.firstLine.map((drug, drugIndex) => (
-                            <Badge key={drugIndex} className="bg-green-50 text-green-700 mr-1">
-                              {drug}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <h5 className="font-medium text-blue-700 mb-2">Alternatives</h5>
-                        <div className="space-y-1">
-                          {rec.alternatives.map((alt, altIndex) => (
-                            <Badge key={altIndex} className="bg-blue-50 text-blue-700 mr-1">
-                              {alt}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
+                      <div><h5 className="font-medium text-green-700 mb-2">Première intention</h5><div className="space-y-1">{rec.first_line_treatments.map((drug, i) => <Badge key={i} className="bg-green-50 text-green-700 mr-1">{drug.name}</Badge>)}</div></div>
+                      <div><h5 className="font-medium text-blue-700 mb-2">Alternatives</h5><div className="space-y-1">{rec.alternative_treatments.map((alt, i) => <Badge key={i} className="bg-blue-50 text-blue-700 mr-1">{alt.name}</Badge>)}</div></div>
                     </div>
-                    
-                    <div className="mt-4 space-y-2">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />
-                        <div>
-                          <span className="font-medium text-red-700">Contre-indications: </span>
-                          <span className="text-sm">{rec.contraindications}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-2">
-                        <Clock className="h-4 w-4 text-blue-600 mt-0.5" />
-                        <div>
-                          <span className="font-medium text-blue-700">Durée: </span>
-                          <span className="text-sm">{rec.duration}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-2">
-                        <Eye className="h-4 w-4 text-purple-600 mt-0.5" />
-                        <div>
-                          <span className="font-medium text-purple-700">Surveillance: </span>
-                          <span className="text-sm">{rec.monitoring}</span>
-                        </div>
-                      </div>
-                    </div>
+                    {rec.contraindications && <div className="mt-4 flex items-start gap-2"><AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" /><div><span className="font-medium text-red-700">Contre-indications: </span><span className="text-sm">{rec.contraindications}</span></div></div>}
+                    {rec.duration && <div className="flex items-start gap-2"><Clock className="h-4 w-4 text-blue-600 mt-0.5" /><div><span className="font-medium text-blue-700">Durée: </span><span className="text-sm">{rec.duration}</span></div></div>}
+                    {rec.monitoring && <div className="flex items-start gap-2"><Eye className="h-4 w-4 text-purple-600 mt-0.5" /><div><span className="font-medium text-purple-700">Surveillance: </span><span className="text-sm">{rec.monitoring}</span></div></div>}
                   </div>
                 ))}
+                {recommendations.length === 0 && <p className="text-center text-muted-foreground py-8">Aucune recommandation. Cliquez sur "Ajouter" pour en créer.</p>}
               </div>
             </CardContent>
           </Card>
@@ -450,40 +206,24 @@ const PharmaceuticalExpert = () => {
 
         <TabsContent value="pharmacovigilance" className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
-                Alertes Pharmacovigilance
-              </CardTitle>
-              <CardDescription>Surveillance des effets indésirables et alertes réglementaires</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5" />Alertes Pharmacovigilance</CardTitle><CardDescription>Informations de sécurité et rappels de produits</CardDescription></div>
+              <Button variant="outline" size="sm" onClick={() => exportPharmacovigilancePDF(pharmacovigilanceAlerts, pharmacyName)}><Download className="h-4 w-4 mr-2" />Exporter</Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {pharmacovigilanceAlerts.map((alert, index) => (
-                  <div key={index} className={`p-4 border rounded-lg ${getSeverityColor(alert.severity)}`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="font-semibold">{alert.drug}</h4>
-                        <p className="text-sm mt-1">{alert.alert}</p>
-                      </div>
-                      <div className="text-right">
-                        <Badge className={getSeverityColor(alert.severity)}>
-                          {alert.severity === 'high' ? 'Urgent' : 'Information'}
-                        </Badge>
-                        <div className="text-xs text-muted-foreground mt-1">{alert.date}</div>
-                      </div>
+                {pharmacovigilanceAlerts.map((alert) => (
+                  <div key={alert.id} className={`p-4 border rounded-lg ${getSeverityColor(alert.severity)}`}>
+                    <div className="flex items-start justify-between mb-2">
+                      <div><h4 className="font-semibold">{alert.title}</h4><div className="flex items-center gap-2 mt-1"><Badge className={getSeverityColor(alert.severity)}>{alert.severity === 'critical' ? 'Critique' : alert.severity === 'warning' ? 'Attention' : 'Information'}</Badge><span className="text-xs text-muted-foreground">{alert.source} • {format(new Date(alert.date_issued), 'dd/MM/yyyy', { locale: fr })}</span></div></div>
+                      {!alert.is_acknowledged && <Button size="sm" onClick={() => acknowledgeAlert(alert.id)}>Acquitter</Button>}
                     </div>
-                    
-                    <div className="bg-orange-50 p-3 rounded border border-orange-200">
-                      <h5 className="font-medium text-orange-800 mb-1">Action requise:</h5>
-                      <p className="text-sm text-orange-700">{alert.action}</p>
-                    </div>
-                    
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      Source: {alert.source}
-                    </div>
+                    <p className="text-sm mb-2">{alert.description}</p>
+                    {alert.affected_drugs.length > 0 && <div className="flex flex-wrap gap-1">{alert.affected_drugs.map((drug, i) => <Badge key={i} variant="outline">{drug}</Badge>)}</div>}
+                    {alert.is_acknowledged && <Badge variant="secondary" className="mt-2"><CheckCircle className="h-3 w-3 mr-1" />Acquitté</Badge>}
                   </div>
                 ))}
+                {pharmacovigilanceAlerts.length === 0 && <p className="text-center text-muted-foreground py-8">Aucune alerte de pharmacovigilance active</p>}
               </div>
             </CardContent>
           </Card>
@@ -492,53 +232,36 @@ const PharmaceuticalExpert = () => {
         <TabsContent value="compliance" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Conformité Réglementaire
-              </CardTitle>
-              <CardDescription>Suivi automatique de la conformité pharmaceutique</CardDescription>
+              <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5" />Contrôle de Conformité Réglementaire</CardTitle>
+              <CardDescription>Suivi de la conformité des produits réglementés</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                {complianceChecks.map((check, index) => (
-                  <div key={index} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold">{check.category}</h4>
-                      {getComplianceIcon(check.status)}
-                    </div>
-                    
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span>Articles:</span>
-                        <span className="font-medium">{check.items}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Problèmes:</span>
-                        <span className={`font-medium ${
-                          check.issues === 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>{check.issues}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Dernier contrôle:</span>
-                        <span className="text-muted-foreground">{check.lastCheck}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Prochain audit:</span>
-                        <span className="font-medium">{check.nextAudit}</span>
+              <div className="space-y-4">
+                {['Stupéfiants', 'Liste I', 'Liste II', 'Produits Froid'].map((category) => {
+                  const check = complianceChecks.find(c => c.category === category);
+                  return (
+                    <div key={category} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-3">{getComplianceIcon(check?.status || 'pending')}<div><h4 className="font-medium">{category}</h4><p className="text-sm text-muted-foreground">{check ? `${check.items_count} produits, ${check.issues_count} problèmes` : 'Non vérifié'}</p></div></div>
+                      <div className="flex items-center gap-2">
+                        {check && <Button variant="outline" size="sm" onClick={() => { setSelectedCompliance(check); setComplianceReportOpen(true); }}><FileText className="h-4 w-4 mr-2" />Rapport</Button>}
+                        <Button size="sm" onClick={() => runComplianceCheck(category)} disabled={loading}><RefreshCw className="h-4 w-4 mr-2" />Contrôler</Button>
                       </div>
                     </div>
-                    
-                    <Button size="sm" className="w-full mt-3" variant="outline">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Rapport Détaillé
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <PharmaExpertConfigDialog open={configOpen} onOpenChange={setConfigOpen} config={config} onSave={saveConfig} />
+      <DrugDetailDialog open={drugDetailOpen} onOpenChange={setDrugDetailOpen} drug={selectedDrug} />
+      <InteractionCheckDialog open={interactionCheckOpen} onOpenChange={setInteractionCheckOpen} onCheck={checkInteraction} />
+      <TherapeuticRecommendationDialog open={recommendationDialogOpen} onOpenChange={setRecommendationDialogOpen} recommendation={editingRecommendation} onSave={editingRecommendation ? (data) => updateRecommendation(editingRecommendation.id, data) : createRecommendation} />
+      <ComplianceReportDialog open={complianceReportOpen} onOpenChange={setComplianceReportOpen} check={selectedCompliance} allChecks={complianceChecks} pharmacyName={pharmacyName} />
+      <AIConsultationDialog open={aiConsultationOpen} onOpenChange={setAiConsultationOpen} onAsk={askAI} />
     </div>
   );
 };

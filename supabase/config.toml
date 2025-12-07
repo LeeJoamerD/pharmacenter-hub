@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.network-ai-chat]
 verify_jwt = false
+
+[functions.pharma-expert-consultation]
+verify_jwt = false
