@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
+import type { Json } from '@/integrations/supabase/types';
 
 export interface AutomationWorkflow {
   id: string;
@@ -399,7 +400,7 @@ export function useAIAutomation() {
       const { data, error } = await supabase.rpc('execute_ai_workflow', {
         p_tenant_id: tenantId,
         p_workflow_id: workflowId,
-        p_trigger_context: context
+        p_trigger_context: context as unknown as Json
       });
       
       if (error) throw error;
