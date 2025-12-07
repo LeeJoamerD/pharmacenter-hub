@@ -87,7 +87,7 @@ const AccountingExpert: React.FC = () => {
     const matchesSearch =
       account.numero_compte?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       account.libelle_compte?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClass = !classFilter || account.classe === classFilter;
+    const matchesClass = !classFilter || String(account.classe) === classFilter;
     return matchesSearch && matchesClass;
   });
 
@@ -432,7 +432,7 @@ const AccountingExpert: React.FC = () => {
               <ScrollArea className="h-96">
                 <div className="space-y-2">
                   {obligations.map((obligation) => {
-                    const dueDate = new Date(obligation.date_echeance);
+                    const dueDate = new Date(obligation.prochaine_echeance);
                     const isOverdue = dueDate < new Date() && obligation.statut === 'en_attente';
                     return (
                       <div
@@ -460,8 +460,8 @@ const AccountingExpert: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-4">
                           <div className="text-right">
-                            <p className="font-medium">
-                              {obligation.montant?.toLocaleString('fr-FR')} FCFA
+                            <p className="font-medium text-sm">
+                              {obligation.frequence || 'Non définie'}
                             </p>
                             <p className={`text-sm ${isOverdue ? 'text-red-600' : 'text-muted-foreground'}`}>
                               {format(dueDate, 'dd/MM/yyyy', { locale: fr })}
