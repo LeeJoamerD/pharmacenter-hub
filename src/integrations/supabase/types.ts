@@ -12337,6 +12337,77 @@ export type Database = {
           },
         ]
       }
+      paiements_fournisseurs: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          date_paiement: string
+          fournisseur_id: string | null
+          id: string
+          mode_paiement: string
+          montant: number
+          notes: string | null
+          reception_id: string | null
+          reference_paiement: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          date_paiement?: string
+          fournisseur_id?: string | null
+          id?: string
+          mode_paiement?: string
+          montant: number
+          notes?: string | null
+          reception_id?: string | null
+          reference_paiement?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          date_paiement?: string
+          fournisseur_id?: string | null
+          id?: string
+          mode_paiement?: string
+          montant?: number
+          notes?: string | null
+          reception_id?: string | null
+          reference_paiement?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paiements_fournisseurs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paiements_fournisseurs_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paiements_fournisseurs_reception_id_fkey"
+            columns: ["reception_id"]
+            isOneToOne: false
+            referencedRelation: "receptions_fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paiements_fournisseurs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       parametres_audit_regionaux: {
         Row: {
           code_devise: string
