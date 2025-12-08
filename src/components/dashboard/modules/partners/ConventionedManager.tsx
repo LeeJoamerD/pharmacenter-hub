@@ -140,243 +140,7 @@ const ConventionedManager = () => {
     form.reset(defaultValues);
   }, [form, defaultValues]);
 
-  const ConventionneForm = () => (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="noms"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nom de l'établissement *</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="Ex: Hôpital Général de Brazzaville" 
-                    {...field} 
-                    autoFocus
-                    tabIndex={1}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="niu"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>NIU</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="Numéro d'identification unique" 
-                    {...field} 
-                    tabIndex={2}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="telephone_appel"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Téléphone</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="+242 06 123 45 67" 
-                    {...field} 
-                    tabIndex={3}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="telephone_whatsapp"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>WhatsApp</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="+242 06 123 45 67" 
-                    {...field} 
-                    tabIndex={4}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="email" 
-                    placeholder="contact@etablissement.cg" 
-                    {...field} 
-                    tabIndex={5}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="ville"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Ville</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="Brazzaville" 
-                    {...field} 
-                    tabIndex={6}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="limite_dette"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Limite de dette (XAF)</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    placeholder="0" 
-                    {...field}
-                    onChange={e => field.onChange(Number(e.target.value))}
-                    tabIndex={7}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="caution"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Caution (XAF)</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    placeholder="0" 
-                    {...field}
-                    onChange={e => field.onChange(Number(e.target.value))}
-                    tabIndex={8}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="taux_ticket_moderateur"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Taux ticket modérateur (%)</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    placeholder="0" 
-                    min="0" 
-                    max="100"
-                    {...field}
-                    onChange={e => field.onChange(Number(e.target.value))}
-                    tabIndex={9}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="taux_remise_automatique"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Taux remise automatique (%)</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    placeholder="0" 
-                    min="0" 
-                    max="100"
-                    {...field}
-                    onChange={e => field.onChange(Number(e.target.value))}
-                    tabIndex={10}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <FormField
-          control={form.control}
-          name="adresse"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Adresse</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="Adresse complète" 
-                  {...field} 
-                  tabIndex={11}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="flex justify-end gap-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={handleDialogClose}
-            tabIndex={12}
-          >
-            Annuler
-          </Button>
-          <Button 
-            type="submit"
-            disabled={createMutation.isPending || updateMutation.isPending}
-            tabIndex={13}
-          >
-            {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingConventionne ? 'Modifier' : 'Ajouter')}
-          </Button>
-        </div>
-      </form>
-    </Form>
-  );
+  // Form is rendered inline in DialogContent to prevent re-creation on each render
 
   return (
     <div className="space-y-6">
@@ -407,7 +171,230 @@ const ConventionedManager = () => {
                     {editingConventionne ? 'Modifiez les informations du conventionné ci-dessous.' : 'Remplissez les informations pour créer un nouveau conventionné.'}
                   </DialogDescription>
                 </DialogHeader>
-                <ConventionneForm />
+                
+                {/* Formulaire inline pour éviter les problèmes de tabulation */}
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="noms"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nom de l'établissement *</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Ex: Hôpital Général de Brazzaville" 
+                                {...field} 
+                                autoFocus
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="niu"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>NIU</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Numéro d'identification unique" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="telephone_appel"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Téléphone</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="+242 06 123 45 67" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="telephone_whatsapp"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>WhatsApp</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="+242 06 123 45 67" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="email" 
+                                placeholder="contact@etablissement.cg" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="ville"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Ville</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Brazzaville" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="limite_dette"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Limite de dette (XAF)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                placeholder="0" 
+                                {...field}
+                                onChange={e => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="caution"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Caution (XAF)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                placeholder="0" 
+                                {...field}
+                                onChange={e => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="taux_ticket_moderateur"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Taux ticket modérateur (%)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                placeholder="0" 
+                                min="0" 
+                                max="100"
+                                {...field}
+                                onChange={e => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="taux_remise_automatique"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Taux remise automatique (%)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                placeholder="0" 
+                                min="0" 
+                                max="100"
+                                {...field}
+                                onChange={e => field.onChange(Number(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="adresse"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Adresse</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Adresse complète" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleDialogClose}
+                      >
+                        Annuler
+                      </Button>
+                      <Button 
+                        type="submit"
+                        disabled={createMutation.isPending || updateMutation.isPending}
+                      >
+                        {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingConventionne ? 'Modifier' : 'Ajouter')}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
               </DialogContent>
             </Dialog>
           </div>
