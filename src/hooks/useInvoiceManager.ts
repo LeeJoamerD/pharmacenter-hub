@@ -277,14 +277,19 @@ export const useInvoiceManager = () => {
         invoiceData.numero = await generateInvoiceNumber(invoiceData.type);
       }
 
+      // Clean empty string UUIDs - convert to null for database
+      const cleanedInvoiceData = {
+        ...invoiceData,
+        client_id: invoiceData.client_id || null,
+        fournisseur_id: invoiceData.fournisseur_id || null,
+        tenant_id: tenantId,
+        created_by_id: personnelId,
+      };
+
       // Insert invoice
       const { data: newInvoice, error: invoiceError } = await supabase
         .from('factures')
-        .insert({
-          ...invoiceData,
-          tenant_id: tenantId,
-          created_by_id: personnelId,
-        } as any)
+        .insert(cleanedInvoiceData as any)
         .select()
         .single();
 
