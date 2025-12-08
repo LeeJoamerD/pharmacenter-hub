@@ -47,6 +47,53 @@ export type Database = {
         }
         Relationships: []
       }
+      accounting_default_accounts: {
+        Row: {
+          compte_credit_numero: string
+          compte_debit_numero: string
+          created_at: string | null
+          description: string | null
+          event_type: string
+          id: string
+          is_active: boolean | null
+          journal_code: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          compte_credit_numero: string
+          compte_debit_numero: string
+          created_at?: string | null
+          description?: string | null
+          event_type: string
+          id?: string
+          is_active?: boolean | null
+          journal_code: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          compte_credit_numero?: string
+          compte_debit_numero?: string
+          created_at?: string | null
+          description?: string | null
+          event_type?: string
+          id?: string
+          is_active?: boolean | null
+          journal_code?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounting_default_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       accounting_exchange_rates: {
         Row: {
           auto_update_enabled: boolean
@@ -6977,6 +7024,7 @@ export type Database = {
           date_ecriture: string
           exercice_id: string
           id: string
+          is_auto_generated: boolean | null
           journal_id: string
           libelle: string
           locked_at: string | null
@@ -6987,6 +7035,8 @@ export type Database = {
           reference_type: string | null
           statut: string | null
           tenant_id: string
+          total_credit: number | null
+          total_debit: number | null
           updated_at: string
           validated_at: string | null
           validated_by_id: string | null
@@ -6997,6 +7047,7 @@ export type Database = {
           date_ecriture: string
           exercice_id: string
           id?: string
+          is_auto_generated?: boolean | null
           journal_id: string
           libelle: string
           locked_at?: string | null
@@ -7007,6 +7058,8 @@ export type Database = {
           reference_type?: string | null
           statut?: string | null
           tenant_id: string
+          total_credit?: number | null
+          total_debit?: number | null
           updated_at?: string
           validated_at?: string | null
           validated_by_id?: string | null
@@ -7017,6 +7070,7 @@ export type Database = {
           date_ecriture?: string
           exercice_id?: string
           id?: string
+          is_auto_generated?: boolean | null
           journal_id?: string
           libelle?: string
           locked_at?: string | null
@@ -7027,6 +7081,8 @@ export type Database = {
           reference_type?: string | null
           statut?: string | null
           tenant_id?: string
+          total_credit?: number | null
+          total_debit?: number | null
           updated_at?: string
           validated_at?: string | null
           validated_by_id?: string | null
@@ -19453,6 +19509,18 @@ export type Database = {
           p_workflow_id: string
         }
         Returns: Json
+      }
+      generate_accounting_entry: {
+        Args: {
+          p_date_ecriture: string
+          p_journal_code: string
+          p_libelle: string
+          p_lines: Json
+          p_reference_id: string
+          p_reference_type: string
+          p_tenant_id: string
+        }
+        Returns: string
       }
       generate_accounting_report_summary: {
         Args: { p_end_date: string; p_start_date: string; p_tenant_id: string }
