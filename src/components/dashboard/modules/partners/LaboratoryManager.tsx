@@ -109,143 +109,6 @@ const LaboratoryManager = () => {
     form.reset(defaultValues);
   }, [form, defaultValues]);
 
-  const LaboratoireForm = () => (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="libelle"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nom du laboratoire *</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="Ex: Laboratoires Roche" 
-                    {...field} 
-                    autoFocus
-                    tabIndex={1}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="pays_siege"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Pays du siège</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="France" 
-                    {...field} 
-                    tabIndex={2}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="email_siege"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email du siège</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="email" 
-                    placeholder="contact@laboratoire.com" 
-                    {...field} 
-                    tabIndex={3}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="email_delegation_local"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email délégation locale</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="email" 
-                    placeholder="delegation@laboratoire.cg" 
-                    {...field} 
-                    tabIndex={4}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="telephone_appel_delegation_local"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Téléphone délégation</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="+242 06 123 45 67" 
-                    {...field} 
-                    tabIndex={5}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="telephone_whatsapp_delegation_local"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>WhatsApp délégation</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="+242 06 123 45 67" 
-                    {...field} 
-                    tabIndex={6}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <div className="flex justify-end gap-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={handleDialogClose}
-            tabIndex={9}
-          >
-            Annuler
-          </Button>
-          <Button 
-            type="submit"
-            disabled={createMutation.isPending || updateMutation.isPending}
-            tabIndex={10}
-          >
-            {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingLaboratoire ? 'Modifier' : 'Ajouter')}
-          </Button>
-        </div>
-      </form>
-    </Form>
-  );
-
   return (
     <div className="space-y-6">
       <Card>
@@ -275,7 +138,132 @@ const LaboratoryManager = () => {
                     {editingLaboratoire ? 'Modifiez les informations du laboratoire ci-dessous.' : 'Remplissez les informations pour créer un nouveau laboratoire.'}
                   </DialogDescription>
                 </DialogHeader>
-                <LaboratoireForm />
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="libelle"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nom du laboratoire *</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Ex: Laboratoires Roche" 
+                                {...field} 
+                                autoFocus
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="pays_siege"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Pays du siège</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="France" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="email_siege"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email du siège</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="email" 
+                                placeholder="contact@laboratoire.com" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="email_delegation_local"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email délégation locale</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="email" 
+                                placeholder="delegation@laboratoire.cg" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="telephone_appel_delegation_local"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Téléphone délégation</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="+242 06 123 45 67" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="telephone_whatsapp_delegation_local"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>WhatsApp délégation</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="+242 06 123 45 67" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleDialogClose}
+                      >
+                        Annuler
+                      </Button>
+                      <Button 
+                        type="submit"
+                        disabled={createMutation.isPending || updateMutation.isPending}
+                      >
+                        {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingLaboratoire ? 'Modifier' : 'Ajouter')}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
               </DialogContent>
             </Dialog>
           </div>
