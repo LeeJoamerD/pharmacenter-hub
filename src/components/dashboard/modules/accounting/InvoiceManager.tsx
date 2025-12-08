@@ -13,8 +13,13 @@ import { Search, Plus, Edit, Trash2, Eye, Send, Download, CheckCircle, Clock, Al
 import { ClientSelector } from '@/components/accounting/ClientSelector';
 import { FournisseurSelector } from '@/components/accounting/FournisseurSelector';
 import { useInvoiceManager, Invoice, InvoiceLine, CreditNote } from '@/hooks/useInvoiceManager';
+import { InvoiceDetailDialog } from '@/components/accounting/InvoiceDetailDialog';
+import { InvoicePDFService } from '@/services/InvoicePDFService';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const InvoiceManager = () => {
+  const { toast } = useToast();
   const {
     invoices,
     creditNotes,
@@ -48,6 +53,10 @@ const InvoiceManager = () => {
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState<Invoice | null>(null);
   const [selectedInvoiceForReminder, setSelectedInvoiceForReminder] = useState<Invoice | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [showViewDialog, setShowViewDialog] = useState(false);
+  const [selectedCreditNote, setSelectedCreditNote] = useState<CreditNote | null>(null);
+  const [showCreditViewDialog, setShowCreditViewDialog] = useState(false);
 
   const [newInvoice, setNewInvoice] = useState<Partial<Invoice & { lines: Partial<InvoiceLine>[] }>>({
     type: 'client',
@@ -95,6 +104,105 @@ const InvoiceManager = () => {
     montant_tva: 0,
     montant_ttc: 0,
   });
+
+  // Handler pour visualiser une facture
+  const handleViewInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowViewDialog(true);
+  };
+
+  // Handler pour télécharger une facture en PDF
+  const handleDownloadInvoice = async (invoice: Invoice) => {
+    try {
+      const { data: lines } = await supabase
+        .from('lignes_facture')
+        .select('*')
+        .eq('facture_id', invoice.id);
+
+      const { url, filename } = await InvoicePDFService.generateInvoicePDF(
+        invoice,
+        (lines as InvoiceLine[]) || [],
+        regionalParams
+      );
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Téléchargement",
+        description: `Facture ${invoice.numero} téléchargée avec succès`
+      });
+    } catch (error: any) {
+      console.error('Error downloading invoice:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de télécharger la facture",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handler pour visualiser un avoir
+  const handleViewCreditNote = (credit: CreditNote) => {
+    setSelectedCreditNote(credit);
+    setShowCreditViewDialog(true);
+  };
+
+  // Handler pour télécharger un avoir
+  const handleDownloadCreditNote = async (credit: CreditNote) => {
+    try {
+      // Create a simplified invoice-like structure for the credit note
+      const creditInvoice: Invoice = {
+        id: credit.id,
+        numero: credit.numero,
+        type: 'client',
+        date_emission: credit.date_emission,
+        date_echeance: credit.date_emission,
+        libelle: `Avoir - ${credit.motif}`,
+        montant_ht: credit.montant_ht,
+        montant_tva: credit.montant_tva,
+        montant_ttc: credit.montant_ttc,
+        statut: credit.statut === 'applique' || credit.statut === 'emis' ? 'emise' : credit.statut === 'annule' ? 'annulee' : 'brouillon',
+        statut_paiement: 'payee',
+        montant_paye: credit.montant_ttc,
+        montant_restant: 0,
+        tenant_id: credit.tenant_id,
+        created_at: credit.created_at,
+        updated_at: credit.updated_at,
+        relances_effectuees: 0,
+        pieces_jointes: [],
+      };
+
+      const { url, filename } = await InvoicePDFService.generateInvoicePDF(
+        creditInvoice,
+        [],
+        regionalParams
+      );
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `avoir-${credit.numero}.html`;
+      link.click();
+      
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Téléchargement",
+        description: `Avoir ${credit.numero} téléchargé avec succès`
+      });
+    } catch (error: any) {
+      console.error('Error downloading credit note:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de télécharger l'avoir",
+        variant: "destructive"
+      });
+    }
+  };
 
   const filteredInvoices = (type: 'client' | 'fournisseur') => {
     let filtered = getInvoicesByType(type);
@@ -612,10 +720,10 @@ const InvoiceManager = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-1">
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => handleViewInvoice(invoice)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => handleDownloadInvoice(invoice)}>
                             <Download className="h-4 w-4" />
                           </Button>
                           {invoice.statut_paiement !== 'payee' && (
@@ -737,10 +845,10 @@ const InvoiceManager = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-1">
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => handleViewInvoice(invoice)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => handleDownloadInvoice(invoice)}>
                             <Download className="h-4 w-4" />
                           </Button>
                           {invoice.statut_paiement !== 'payee' && (
@@ -865,10 +973,10 @@ const InvoiceManager = () => {
                         <TableCell>{getStatusBadge(credit.statut)}</TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" onClick={() => handleViewCreditNote(credit)}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" onClick={() => handleDownloadCreditNote(credit)}>
                               <Download className="h-4 w-4" />
                             </Button>
                           </div>
@@ -1091,6 +1199,69 @@ const InvoiceManager = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de visualisation de facture */}
+      <InvoiceDetailDialog
+        invoice={selectedInvoice}
+        open={showViewDialog}
+        onOpenChange={setShowViewDialog}
+      />
+
+      {/* Dialog de visualisation d'avoir */}
+      {selectedCreditNote && (
+        <Dialog open={showCreditViewDialog} onOpenChange={setShowCreditViewDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Avoir {selectedCreditNote.numero}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Facture d'origine</Label>
+                  <p className="font-medium">
+                    {invoices.find(inv => inv.id === selectedCreditNote.facture_origine_id)?.numero || 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Date d'émission</Label>
+                  <p className="font-medium">{new Date(selectedCreditNote.date_emission).toLocaleDateString('fr-FR')}</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Motif</Label>
+                <p className="font-medium">{selectedCreditNote.motif}</p>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Montant HT</Label>
+                  <p className="font-medium">{selectedCreditNote.montant_ht.toLocaleString()} FCFA</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">TVA</Label>
+                  <p className="font-medium">{selectedCreditNote.montant_tva.toLocaleString()} FCFA</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Montant TTC</Label>
+                  <p className="font-bold text-lg">{selectedCreditNote.montant_ttc.toLocaleString()} FCFA</p>
+                </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Statut</Label>
+                <div className="mt-1">{getStatusBadge(selectedCreditNote.statut)}</div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowCreditViewDialog(false)}>
+                  Fermer
+                </Button>
+                <Button onClick={() => handleDownloadCreditNote(selectedCreditNote)}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Télécharger
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
