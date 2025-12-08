@@ -6115,6 +6115,69 @@ export type Database = {
           },
         ]
       }
+      comptes_comptables: {
+        Row: {
+          classe: string
+          compte_parent_id: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          is_imputable: boolean | null
+          libelle_compte: string
+          numero_compte: string
+          solde_credit: number | null
+          solde_debit: number | null
+          tenant_id: string
+          type_compte: string
+          updated_at: string | null
+        }
+        Insert: {
+          classe: string
+          compte_parent_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_imputable?: boolean | null
+          libelle_compte: string
+          numero_compte: string
+          solde_credit?: number | null
+          solde_debit?: number | null
+          tenant_id: string
+          type_compte?: string
+          updated_at?: string | null
+        }
+        Update: {
+          classe?: string
+          compte_parent_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_imputable?: boolean | null
+          libelle_compte?: string
+          numero_compte?: string
+          solde_credit?: number | null
+          solde_debit?: number | null
+          tenant_id?: string
+          type_compte?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comptes_comptables_compte_parent_id_fkey"
+            columns: ["compte_parent_id"]
+            isOneToOne: false
+            referencedRelation: "comptes_comptables"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comptes_comptables_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configurations_fifo: {
         Row: {
           actif: boolean | null
