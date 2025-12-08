@@ -116,142 +116,6 @@ const SupplierManager = () => {
     form.reset(defaultValues);
   }, [form, defaultValues]);
 
-  const FournisseurForm = () => (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="nom"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nom du fournisseur *</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="Ex: COPHAL - Comptoir Pharmaceutique" 
-                    {...field} 
-                    autoFocus
-                    tabIndex={1}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="niu"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>NIU</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="Numéro d'identification unique" 
-                    {...field} 
-                    tabIndex={2}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="telephone_appel"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Téléphone</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="+242 06 123 45 67" 
-                    {...field} 
-                    tabIndex={3}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="telephone_whatsapp"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>WhatsApp</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="+242 06 123 45 67" 
-                    {...field} 
-                    tabIndex={4}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem className="md:col-span-2">
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="email" 
-                    placeholder="contact@fournisseur.cg" 
-                    {...field} 
-                    tabIndex={5}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <FormField
-          control={form.control}
-          name="adresse"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Adresse</FormLabel>
-              <FormControl>
-                <Textarea 
-                  placeholder="Adresse complète du fournisseur" 
-                  {...field} 
-                  tabIndex={6}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="flex justify-end gap-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={handleDialogClose}
-            tabIndex={7}
-          >
-            Annuler
-          </Button>
-          <Button 
-            type="submit"
-            disabled={createMutation.isPending || updateMutation.isPending}
-            tabIndex={8}
-          >
-            {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingFournisseur ? 'Modifier' : 'Ajouter')}
-          </Button>
-        </div>
-      </form>
-    </Form>
-  );
-
   return (
     <div className="space-y-6">
       <Card>
@@ -281,7 +145,132 @@ const SupplierManager = () => {
                     {editingFournisseur ? 'Modifiez les informations du fournisseur ci-dessous.' : 'Remplissez les informations pour créer un nouveau fournisseur.'}
                   </DialogDescription>
                 </DialogHeader>
-                <FournisseurForm />
+                
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="nom"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nom du fournisseur *</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Ex: COPHAL - Comptoir Pharmaceutique" 
+                                {...field} 
+                                autoFocus
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="niu"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>NIU</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Numéro d'identification unique" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="telephone_appel"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Téléphone</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="+242 06 123 45 67" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="telephone_whatsapp"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>WhatsApp</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="+242 06 123 45 67" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="email" 
+                                placeholder="contact@fournisseur.cg" 
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="adresse"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Adresse</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Adresse complète du fournisseur" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleDialogClose}
+                      >
+                        Annuler
+                      </Button>
+                      <Button 
+                        type="submit"
+                        disabled={createMutation.isPending || updateMutation.isPending}
+                      >
+                        {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingFournisseur ? 'Modifier' : 'Ajouter')}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
               </DialogContent>
             </Dialog>
           </div>
