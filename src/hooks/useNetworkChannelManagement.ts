@@ -719,7 +719,7 @@ export const useNetworkChannelManagement = () => {
           tenant_id: tenantId,
           config_key: 'flux_config',
           config_value: JSON.stringify(config)
-        } as any, { onConflict: 'tenant_id' });
+        } as any, { onConflict: 'tenant_id,config_key' });
 
       if (error) throw error;
 
