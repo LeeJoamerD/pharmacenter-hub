@@ -7920,6 +7920,7 @@ export type Database = {
           id: string
           niu: string | null
           nom: string
+          statut: string | null
           telephone_appel: string | null
           telephone_whatsapp: string | null
           tenant_id: string
@@ -7932,6 +7933,7 @@ export type Database = {
           id?: string
           niu?: string | null
           nom: string
+          statut?: string | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
           tenant_id: string
@@ -7944,6 +7946,7 @@ export type Database = {
           id?: string
           niu?: string | null
           nom?: string
+          statut?: string | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
           tenant_id?: string
