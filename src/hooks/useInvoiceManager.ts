@@ -634,43 +634,87 @@ export const useInvoiceManager = () => {
 
         // Generate accounting entry for applied credit note
         try {
-          const { error: accountingError } = await supabase.rpc('generate_accounting_entry', {
-            p_tenant_id: tenantId,
-            p_journal_code: 'VT',
-            p_date_ecriture: new Date().toISOString().split('T')[0],
-            p_libelle: `Avoir ${creditNote.numero} - Annulation partielle facture ${originInvoice?.numero || ''}`,
-            p_reference_type: 'avoir',
-            p_reference_id: creditNoteId,
-            p_lines: [
-              // Debit: Annulation ventes (701)
+          // Determine if it's a client or supplier invoice
+          const isClientInvoice = originInvoice?.type === 'client';
+          const journalCode = isClientInvoice ? 'VT' : 'AC';
+          
+          // Build accounting lines based on invoice type
+          let accountingLines;
+          if (isClientInvoice) {
+            // Client credit note: reverse sales entry
+            // Debit 701 (cancel sales) + Debit 4431 (cancel collected VAT)
+            // Credit 411 (reduce customer receivable)
+            accountingLines = [
               {
-                compte_numero: '701',
-                libelle: `Avoir ${creditNote.numero}`,
+                numero_compte: '701',
+                libelle_ligne: `Avoir ${creditNote.numero} - Annulation ventes`,
                 debit: creditNote.montant_ht,
                 credit: 0
               },
-              // Debit: Annulation TVA collectée (4431)
               {
-                compte_numero: '4431',
-                libelle: `TVA avoir ${creditNote.numero}`,
-                debit: creditNote.montant_tva,
+                numero_compte: '4431',
+                libelle_ligne: `TVA avoir ${creditNote.numero}`,
+                debit: creditNote.montant_tva || 0,
                 credit: 0
               },
-              // Credit: Réduction créance client (411)
               {
-                compte_numero: '411',
-                libelle: `Avoir client ${creditNote.numero}`,
+                numero_compte: '411',
+                libelle_ligne: `Avoir client ${creditNote.numero}`,
                 debit: 0,
                 credit: creditNote.montant_ttc
               }
-            ]
+            ];
+          } else {
+            // Supplier credit note: reverse purchase entry
+            // Credit 601 (cancel purchases) + Credit 4451 (cancel deductible VAT)
+            // Debit 401 (reduce supplier payable)
+            accountingLines = [
+              {
+                numero_compte: '401',
+                libelle_ligne: `Avoir fournisseur ${creditNote.numero}`,
+                debit: creditNote.montant_ttc,
+                credit: 0
+              },
+              {
+                numero_compte: '601',
+                libelle_ligne: `Avoir ${creditNote.numero} - Annulation achats`,
+                debit: 0,
+                credit: creditNote.montant_ht
+              },
+              {
+                numero_compte: '4451',
+                libelle_ligne: `TVA avoir ${creditNote.numero}`,
+                debit: 0,
+                credit: creditNote.montant_tva || 0
+              }
+            ];
+          }
+
+          const { error: accountingError } = await supabase.rpc('generate_accounting_entry', {
+            p_tenant_id: tenantId,
+            p_journal_code: journalCode,
+            p_date_ecriture: new Date().toISOString().split('T')[0],
+            p_libelle: `Avoir ${creditNote.numero} - ${isClientInvoice ? 'Client' : 'Fournisseur'} - Annulation ${isClientInvoice ? 'partielle' : ''} facture ${originInvoice?.numero || ''}`,
+            p_reference_type: 'avoir',
+            p_reference_id: creditNoteId,
+            p_lines: accountingLines
           });
 
           if (accountingError) {
             console.error('Error generating accounting entry for credit note:', accountingError);
+            toast({
+              title: "Avertissement",
+              description: `L'avoir a été appliqué mais l'écriture comptable n'a pas pu être générée: ${accountingError.message}`,
+              variant: "destructive"
+            });
           }
-        } catch (accountingErr) {
+        } catch (accountingErr: any) {
           console.error('Accounting entry generation failed:', accountingErr);
+          toast({
+            title: "Avertissement",
+            description: `L'avoir a été appliqué mais l'écriture comptable a échoué: ${accountingErr?.message || 'Erreur inconnue'}`,
+            variant: "destructive"
+          });
         }
       }
 
