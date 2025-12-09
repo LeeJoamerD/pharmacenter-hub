@@ -40,6 +40,7 @@ interface TransactionSelectorProps {
     montant_centime_additionnel?: number;
     montant_ttc: number;
   }) => void;
+  selectedIds?: string[]; // For bidirectional sync with parent
 }
 
 export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
@@ -47,6 +48,7 @@ export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
   clientId,
   fournisseurId,
   onSelectionChange,
+  selectedIds,
 }) => {
   const { pharmacy } = useAuth();
   const { formatPrice } = useCurrency();
@@ -142,6 +144,17 @@ export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
       setSelectedReceptions([]);
     }
   }, [type, clientId, fournisseurId, tenantId]);
+
+  // Sync internal state with parent's selectedIds prop (bidirectional sync)
+  useEffect(() => {
+    if (selectedIds !== undefined) {
+      if (type === 'client') {
+        setSelectedSales(selectedIds);
+      } else {
+        setSelectedReceptions(selectedIds);
+      }
+    }
+  }, [selectedIds, type]);
 
   // Handle sale selection
   const handleSaleSelection = (saleId: string, checked: boolean) => {

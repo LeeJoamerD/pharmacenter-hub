@@ -614,6 +614,7 @@ const InvoiceManager = () => {
                 clientId={newInvoice.client_id || undefined}
                 fournisseurId={newInvoice.fournisseur_id || undefined}
                 onSelectionChange={handleTransactionSelection}
+                selectedIds={newInvoice.type === 'fournisseur' ? newInvoice.reception_ids : newInvoice.vente_ids}
               />
               
               <div className="grid grid-cols-2 gap-4">
