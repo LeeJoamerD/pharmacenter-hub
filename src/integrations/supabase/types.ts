@@ -19574,12 +19574,12 @@ export type Database = {
           p_date_ecriture: string
           p_journal_code: string
           p_libelle: string
-          p_lines: Json
-          p_reference_id: string
-          p_reference_type: string
+          p_lines?: Json
+          p_reference_id?: string
+          p_reference_type?: string
           p_tenant_id: string
         }
-        Returns: string
+        Returns: Json
       }
       generate_accounting_report_summary: {
         Args: { p_end_date: string; p_start_date: string; p_tenant_id: string }
