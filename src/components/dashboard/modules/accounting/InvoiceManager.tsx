@@ -138,10 +138,9 @@ const InvoiceManager = () => {
         totals
       });
 
-      // Auto-fill invoice amounts for supplier invoice
-      const reception = receptions[0];
-      if (reception) {
-        const lines: Partial<InvoiceLine>[] = [{
+      // Auto-fill invoice amounts for supplier invoice - generate one line per reception
+      if (receptions.length > 0) {
+        const lines: Partial<InvoiceLine>[] = receptions.map(reception => ({
           id: reception.id,
           designation: `Réception ${reception.numero_reception || reception.reference_facture || ''}`,
           quantite: 1,
@@ -150,7 +149,10 @@ const InvoiceManager = () => {
           montant_ht: reception.montant_ht,
           montant_tva: reception.montant_tva + (reception.montant_centime_additionnel || 0),
           montant_ttc: reception.montant_ttc,
-        }];
+        }));
+
+        const receptionIds = receptions.map(r => r.id);
+        const receptionRefs = receptions.map(r => r.numero_reception || r.reference_facture || '').filter(Boolean);
 
         setNewInvoice(prev => ({
           ...prev,
@@ -159,8 +161,9 @@ const InvoiceManager = () => {
           montant_ttc: totals.montant_ttc,
           montant_restant: totals.montant_ttc,
           lines,
-          reception_id: reception.id,
-          libelle: `Facture fournisseur - Réception ${reception.numero_reception || reception.reference_facture || ''}`,
+          reception_id: receptionIds[0], // Keep first for backward compatibility
+          reception_ids: receptionIds, // Store all reception IDs
+          libelle: `Facture fournisseur - ${receptions.length} réception(s): ${receptionRefs.join(', ')}`,
         }));
       } else {
         setNewInvoice(prev => ({
@@ -171,6 +174,7 @@ const InvoiceManager = () => {
           montant_restant: 0,
           lines: [],
           reception_id: undefined,
+          reception_ids: [],
         }));
       }
     }
