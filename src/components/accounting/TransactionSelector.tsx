@@ -162,9 +162,12 @@ export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
     onSelectionChange(selectedItems, totals);
   };
 
-  // Handle reception selection (single selection for supplier invoices)
+  // Handle reception selection (multi-selection like sales)
   const handleReceptionSelection = (receptionId: string, checked: boolean) => {
-    const newSelection = checked ? [receptionId] : [];
+    const newSelection = checked
+      ? [...selectedReceptions, receptionId]
+      : selectedReceptions.filter(id => id !== receptionId);
+    
     setSelectedReceptions(newSelection);
 
     // Calculate totals
@@ -177,6 +180,21 @@ export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
     };
 
     onSelectionChange(selectedItems, totals);
+  };
+
+  // Select all receptions
+  const handleSelectAllReceptions = () => {
+    const allIds = receptions.map(r => r.id);
+    setSelectedReceptions(allIds);
+
+    const totals = {
+      montant_ht: receptions.reduce((sum, r) => sum + (r.montant_ht || 0), 0),
+      montant_tva: receptions.reduce((sum, r) => sum + (r.montant_tva || 0), 0),
+      montant_centime_additionnel: receptions.reduce((sum, r) => sum + (r.montant_centime_additionnel || 0), 0),
+      montant_ttc: receptions.reduce((sum, r) => sum + (r.montant_ttc || 0), 0),
+    };
+
+    onSelectionChange(receptions, totals);
   };
 
   // Select all sales
@@ -298,9 +316,19 @@ export const TransactionSelector: React.FC<TransactionSelectorProps> = ({
             </p>
           ) : (
             <div className="space-y-2">
-              <span className="text-xs text-muted-foreground">
-                {receptions.length} réception(s) disponible(s)
-              </span>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs text-muted-foreground">
+                  {receptions.length} réception(s) disponible(s) - {selectedReceptions.length} sélectionnée(s)
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={handleSelectAllReceptions}>
+                    Tout sélectionner
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleClearSelection}>
+                    Effacer
+                  </Button>
+                </div>
+              </div>
               <div className="max-h-48 overflow-y-auto border rounded-md">
                 {receptions.map(reception => (
                   <div
