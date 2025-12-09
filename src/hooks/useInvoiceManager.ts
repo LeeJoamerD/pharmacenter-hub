@@ -268,9 +268,9 @@ export const useInvoiceManager = () => {
 
   // Create invoice
   const createInvoiceMutation = useMutation({
-    mutationFn: async (invoice: Partial<Invoice> & { lines: Partial<InvoiceLine>[] }) => {
+    mutationFn: async (invoice: Partial<Invoice> & { lines: Partial<InvoiceLine>[], vente_ids?: string[], reception_id?: string }) => {
       setIsSaving(true);
-      const { lines, ...invoiceData } = invoice;
+      const { lines, vente_ids, reception_id, ...invoiceData } = invoice;
 
       // Generate numero if not provided
       if (!invoiceData.numero && invoiceData.type) {
@@ -282,6 +282,9 @@ export const useInvoiceManager = () => {
         ...invoiceData,
         client_id: invoiceData.client_id || null,
         fournisseur_id: invoiceData.fournisseur_id || null,
+        // Link to first vente/reception if available
+        vente_id: vente_ids && vente_ids.length > 0 ? vente_ids[0] : null,
+        reception_id: reception_id || null,
         tenant_id: tenantId,
         created_by_id: personnelId,
       };
@@ -315,6 +318,36 @@ export const useInvoiceManager = () => {
           .insert(linesToInsert as any);
 
         if (linesError) throw linesError;
+      }
+
+      // Mark sales as invoiced if vente_ids provided
+      if (vente_ids && vente_ids.length > 0) {
+        const { error: updateSalesError } = await supabase
+          .from('ventes')
+          .update({ 
+            facture_generee: true, 
+            facture_id: newInvoice.id 
+          })
+          .in('id', vente_ids);
+
+        if (updateSalesError) {
+          console.error('Error marking sales as invoiced:', updateSalesError);
+        }
+      }
+
+      // Mark reception as invoiced if reception_id provided
+      if (reception_id) {
+        const { error: updateReceptionError } = await supabase
+          .from('receptions_fournisseurs')
+          .update({ 
+            facture_generee: true, 
+            facture_id: newInvoice.id 
+          })
+          .eq('id', reception_id);
+
+        if (updateReceptionError) {
+          console.error('Error marking reception as invoiced:', updateReceptionError);
+        }
       }
 
       return newInvoice;

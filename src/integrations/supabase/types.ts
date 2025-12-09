@@ -15394,8 +15394,14 @@ export type Database = {
           commande_id: string | null
           created_at: string
           date_reception: string | null
+          facture_generee: boolean | null
+          facture_id: string | null
           fournisseur_id: string
           id: string
+          montant_centime_additionnel: number | null
+          montant_ht: number | null
+          montant_ttc: number | null
+          montant_tva: number | null
           notes: string | null
           numero_reception: string | null
           reference_facture: string | null
@@ -15409,8 +15415,14 @@ export type Database = {
           commande_id?: string | null
           created_at?: string
           date_reception?: string | null
+          facture_generee?: boolean | null
+          facture_id?: string | null
           fournisseur_id: string
           id?: string
+          montant_centime_additionnel?: number | null
+          montant_ht?: number | null
+          montant_ttc?: number | null
+          montant_tva?: number | null
           notes?: string | null
           numero_reception?: string | null
           reference_facture?: string | null
@@ -15424,8 +15436,14 @@ export type Database = {
           commande_id?: string | null
           created_at?: string
           date_reception?: string | null
+          facture_generee?: boolean | null
+          facture_id?: string | null
           fournisseur_id?: string
           id?: string
+          montant_centime_additionnel?: number | null
+          montant_ht?: number | null
+          montant_ttc?: number | null
+          montant_tva?: number | null
           notes?: string | null
           numero_reception?: string | null
           reference_facture?: string | null
@@ -15447,6 +15465,20 @@ export type Database = {
             columns: ["commande_id"]
             isOneToOne: false
             referencedRelation: "commandes_fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receptions_fournisseurs_facture_id_fkey"
+            columns: ["facture_id"]
+            isOneToOne: false
+            referencedRelation: "factures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receptions_fournisseurs_facture_id_fkey"
+            columns: ["facture_id"]
+            isOneToOne: false
+            referencedRelation: "v_factures_avec_details"
             referencedColumns: ["id"]
           },
           {
@@ -18072,6 +18104,8 @@ export type Database = {
           client_id: string | null
           created_at: string
           date_vente: string | null
+          facture_generee: boolean | null
+          facture_id: string | null
           id: string
           metadata: Json | null
           mode_paiement: Database["public"]["Enums"]["mode_paiement"] | null
@@ -18108,6 +18142,8 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           date_vente?: string | null
+          facture_generee?: boolean | null
+          facture_id?: string | null
           id?: string
           metadata?: Json | null
           mode_paiement?: Database["public"]["Enums"]["mode_paiement"] | null
@@ -18144,6 +18180,8 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           date_vente?: string | null
+          facture_generee?: boolean | null
+          facture_id?: string | null
           id?: string
           metadata?: Json | null
           mode_paiement?: Database["public"]["Enums"]["mode_paiement"] | null
@@ -18201,6 +18239,20 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_facture_id_fkey"
+            columns: ["facture_id"]
+            isOneToOne: false
+            referencedRelation: "factures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ventes_facture_id_fkey"
+            columns: ["facture_id"]
+            isOneToOne: false
+            referencedRelation: "v_factures_avec_details"
             referencedColumns: ["id"]
           },
           {
@@ -19362,6 +19414,10 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      calculate_reception_totals: {
+        Args: { p_reception_id: string }
+        Returns: Json
+      }
       calculate_sentiment_metrics: {
         Args: { p_days?: number; p_tenant_id: string }
         Returns: Json
@@ -19806,6 +19862,30 @@ export type Database = {
           stock_critique: number
           stock_faible: number
           stock_limite: number
+        }[]
+      }
+      get_unbilled_receptions_by_supplier: {
+        Args: { p_fournisseur_id: string; p_tenant_id: string }
+        Returns: {
+          date_reception: string
+          id: string
+          montant_centime_additionnel: number
+          montant_ht: number
+          montant_ttc: number
+          montant_tva: number
+          numero_reception: string
+          reference_facture: string
+        }[]
+      }
+      get_unbilled_sales_by_client: {
+        Args: { p_client_id: string; p_tenant_id: string }
+        Returns: {
+          date_vente: string
+          id: string
+          montant_total_ht: number
+          montant_total_ttc: number
+          montant_tva: number
+          numero_vente: string
         }[]
       }
       get_vision_statistics: { Args: { p_tenant_id: string }; Returns: Json }

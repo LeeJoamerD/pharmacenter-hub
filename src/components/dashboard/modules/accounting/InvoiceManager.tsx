@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, Plus, Edit, Trash2, Eye, Send, Download, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { ClientSelector } from '@/components/accounting/ClientSelector';
 import { FournisseurSelector } from '@/components/accounting/FournisseurSelector';
+import { TransactionSelector, UnbilledSale, UnbilledReception } from '@/components/accounting/TransactionSelector';
 import { useInvoiceManager, Invoice, InvoiceLine, CreditNote } from '@/hooks/useInvoiceManager';
 import { InvoiceDetailDialog } from '@/components/accounting/InvoiceDetailDialog';
 import { InvoicePDFService } from '@/services/InvoicePDFService';
@@ -58,7 +59,22 @@ const InvoiceManager = () => {
   const [selectedCreditNote, setSelectedCreditNote] = useState<CreditNote | null>(null);
   const [showCreditViewDialog, setShowCreditViewDialog] = useState(false);
 
-  const [newInvoice, setNewInvoice] = useState<Partial<Invoice & { lines: Partial<InvoiceLine>[] }>>({
+  const [selectedTransactions, setSelectedTransactions] = useState<{
+    sales: UnbilledSale[];
+    receptions: UnbilledReception[];
+    totals: {
+      montant_ht: number;
+      montant_tva: number;
+      montant_centime_additionnel?: number;
+      montant_ttc: number;
+    };
+  }>({
+    sales: [],
+    receptions: [],
+    totals: { montant_ht: 0, montant_tva: 0, montant_ttc: 0 }
+  });
+
+  const [newInvoice, setNewInvoice] = useState<Partial<Invoice & { lines: Partial<InvoiceLine>[], vente_ids?: string[], reception_id?: string }>>({
     type: 'client',
     date_emission: new Date().toISOString().split('T')[0],
     date_echeance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -76,6 +92,89 @@ const InvoiceManager = () => {
     relances_effectuees: 0,
     lines: []
   });
+
+  // Handle transaction selection from TransactionSelector
+  const handleTransactionSelection = useCallback((
+    selected: UnbilledSale[] | UnbilledReception[],
+    totals: { montant_ht: number; montant_tva: number; montant_centime_additionnel?: number; montant_ttc: number }
+  ) => {
+    if (newInvoice.type === 'client') {
+      const sales = selected as UnbilledSale[];
+      setSelectedTransactions({
+        sales,
+        receptions: [],
+        totals
+      });
+      
+      // Auto-fill invoice amounts and generate lines from selected sales
+      const lines: Partial<InvoiceLine>[] = sales.map(sale => ({
+        id: sale.id,
+        designation: `Vente ${sale.numero_vente}`,
+        quantite: 1,
+        prix_unitaire: sale.montant_total_ht,
+        taux_tva: sale.montant_total_ht > 0 ? (sale.montant_tva / sale.montant_total_ht) * 100 : 0,
+        montant_ht: sale.montant_total_ht,
+        montant_tva: sale.montant_tva,
+        montant_ttc: sale.montant_total_ttc,
+      }));
+
+      setNewInvoice(prev => ({
+        ...prev,
+        montant_ht: totals.montant_ht,
+        montant_tva: totals.montant_tva,
+        montant_ttc: totals.montant_ttc,
+        montant_restant: totals.montant_ttc,
+        lines,
+        vente_ids: sales.map(s => s.id),
+        libelle: sales.length > 0 
+          ? `Facture pour ${sales.length} vente(s): ${sales.map(s => s.numero_vente).join(', ')}`
+          : prev.libelle,
+      }));
+    } else {
+      const receptions = selected as UnbilledReception[];
+      setSelectedTransactions({
+        sales: [],
+        receptions,
+        totals
+      });
+
+      // Auto-fill invoice amounts for supplier invoice
+      const reception = receptions[0];
+      if (reception) {
+        const lines: Partial<InvoiceLine>[] = [{
+          id: reception.id,
+          designation: `Réception ${reception.numero_reception || reception.reference_facture || ''}`,
+          quantite: 1,
+          prix_unitaire: reception.montant_ht,
+          taux_tva: reception.montant_ht > 0 ? (reception.montant_tva / reception.montant_ht) * 100 : 0,
+          montant_ht: reception.montant_ht,
+          montant_tva: reception.montant_tva + (reception.montant_centime_additionnel || 0),
+          montant_ttc: reception.montant_ttc,
+        }];
+
+        setNewInvoice(prev => ({
+          ...prev,
+          montant_ht: totals.montant_ht,
+          montant_tva: totals.montant_tva + (totals.montant_centime_additionnel || 0),
+          montant_ttc: totals.montant_ttc,
+          montant_restant: totals.montant_ttc,
+          lines,
+          reception_id: reception.id,
+          libelle: `Facture fournisseur - Réception ${reception.numero_reception || reception.reference_facture || ''}`,
+        }));
+      } else {
+        setNewInvoice(prev => ({
+          ...prev,
+          montant_ht: 0,
+          montant_tva: 0,
+          montant_ttc: 0,
+          montant_restant: 0,
+          lines: [],
+          reception_id: undefined,
+        }));
+      }
+    }
+  }, [newInvoice.type]);
 
   const [newLine, setNewLine] = useState<Partial<InvoiceLine>>({
     designation: '',
@@ -308,13 +407,20 @@ const InvoiceManager = () => {
       montant_restant: 0,
       pieces_jointes: [],
       relances_effectuees: 0,
-      lines: []
+      lines: [],
+      vente_ids: undefined,
+      reception_id: undefined,
     });
     setNewLine({
       designation: '',
       quantite: 1,
       prix_unitaire: 0,
       taux_tva: 0,
+    });
+    setSelectedTransactions({
+      sales: [],
+      receptions: [],
+      totals: { montant_ht: 0, montant_tva: 0, montant_ttc: 0 }
     });
   };
 
@@ -480,6 +586,14 @@ const InvoiceManager = () => {
                   )}
                 </div>
               </div>
+
+              {/* Transaction Selector - shows unbilled sales/receptions */}
+              <TransactionSelector
+                type={newInvoice.type || 'client'}
+                clientId={newInvoice.client_id || undefined}
+                fournisseurId={newInvoice.fournisseur_id || undefined}
+                onSelectionChange={handleTransactionSelection}
+              />
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
