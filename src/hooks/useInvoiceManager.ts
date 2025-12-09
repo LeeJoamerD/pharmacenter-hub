@@ -573,6 +573,146 @@ export const useInvoiceManager = () => {
     },
   });
 
+  // Update credit note status with automatic accounting entry generation
+  const updateCreditNoteStatusMutation = useMutation({
+    mutationFn: async ({ creditNoteId, newStatus }: { creditNoteId: string; newStatus: 'brouillon' | 'emis' | 'applique' | 'annule' }) => {
+      setIsSaving(true);
+
+      // Fetch current credit note
+      const { data: creditNote, error: fetchError } = await supabase
+        .from('avoirs')
+        .select('*, factures:facture_origine_id(*)')
+        .eq('id', creditNoteId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Validate status transitions
+      const validTransitions: Record<string, string[]> = {
+        'brouillon': ['emis', 'annule'],
+        'emis': ['applique', 'annule'],
+        'applique': [], // Final state
+        'annule': [], // Final state
+      };
+
+      if (!validTransitions[creditNote.statut]?.includes(newStatus)) {
+        throw new Error(`Transition de statut invalide: ${creditNote.statut} → ${newStatus}`);
+      }
+
+      // Update credit note status
+      const { error: updateError } = await supabase
+        .from('avoirs')
+        .update({ 
+          statut: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', creditNoteId);
+
+      if (updateError) throw updateError;
+
+      // If applying the credit note, update the original invoice
+      if (newStatus === 'applique' && creditNote.facture_origine_id) {
+        const originInvoice = creditNote.factures;
+        if (originInvoice) {
+          const newMontantRestant = Math.max(0, (originInvoice.montant_restant || 0) - creditNote.montant_ttc);
+          const newStatutPaiement = newMontantRestant === 0 ? 'payee' : 
+            (newMontantRestant < originInvoice.montant_ttc ? 'partielle' : 'impayee');
+
+          const { error: invoiceUpdateError } = await supabase
+            .from('factures')
+            .update({
+              montant_restant: newMontantRestant,
+              statut_paiement: newStatutPaiement,
+              statut: newMontantRestant === 0 ? 'payee' : originInvoice.statut
+            })
+            .eq('id', creditNote.facture_origine_id);
+
+          if (invoiceUpdateError) {
+            console.error('Error updating origin invoice:', invoiceUpdateError);
+          }
+        }
+
+        // Generate accounting entry for applied credit note
+        try {
+          const { error: accountingError } = await supabase.rpc('generate_accounting_entry', {
+            p_tenant_id: tenantId,
+            p_journal_code: 'VT',
+            p_date_ecriture: new Date().toISOString().split('T')[0],
+            p_libelle: `Avoir ${creditNote.numero} - Annulation partielle facture ${originInvoice?.numero || ''}`,
+            p_reference_type: 'avoir',
+            p_reference_id: creditNoteId,
+            p_lines: [
+              // Debit: Annulation ventes (701)
+              {
+                compte_numero: '701',
+                libelle: `Avoir ${creditNote.numero}`,
+                debit: creditNote.montant_ht,
+                credit: 0
+              },
+              // Debit: Annulation TVA collectée (4431)
+              {
+                compte_numero: '4431',
+                libelle: `TVA avoir ${creditNote.numero}`,
+                debit: creditNote.montant_tva,
+                credit: 0
+              },
+              // Credit: Réduction créance client (411)
+              {
+                compte_numero: '411',
+                libelle: `Avoir client ${creditNote.numero}`,
+                debit: 0,
+                credit: creditNote.montant_ttc
+              }
+            ]
+          });
+
+          if (accountingError) {
+            console.error('Error generating accounting entry for credit note:', accountingError);
+          }
+        } catch (accountingErr) {
+          console.error('Accounting entry generation failed:', accountingErr);
+        }
+      }
+
+      // Generate accounting entry for issued credit note (optional - just record the event)
+      if (newStatus === 'emis') {
+        try {
+          // Log the emission in audit trail or create a pending accounting entry
+          console.log(`Credit note ${creditNote.numero} issued - awaiting application`);
+        } catch (err) {
+          console.error('Error logging credit note emission:', err);
+        }
+      }
+
+      return { creditNote, newStatus };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['avoirs'] });
+      queryClient.invalidateQueries({ queryKey: ['factures'] });
+      queryClient.invalidateQueries({ queryKey: ['ecritures-comptables'] });
+      
+      const statusLabels: Record<string, string> = {
+        'emis': 'émis',
+        'applique': 'appliqué',
+        'annule': 'annulé'
+      };
+      
+      toast({ 
+        title: 'Succès', 
+        description: `Avoir ${statusLabels[result.newStatus] || result.newStatus}${result.newStatus === 'applique' ? ' - Écriture comptable générée' : ''}` 
+      });
+      setIsSaving(false);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Erreur', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+      setIsSaving(false);
+    },
+  });
+
   // Search and filter functions
   const searchInvoices = useCallback((term: string, type?: 'client' | 'fournisseur') => {
     return invoices.filter(inv => {
@@ -656,6 +796,7 @@ export const useInvoiceManager = () => {
     recordPayment: recordPaymentMutation.mutate,
     sendReminder: sendReminderMutation.mutate,
     createCreditNote: createCreditNoteMutation.mutate,
+    updateCreditNoteStatus: updateCreditNoteStatusMutation.mutate,
     
     // Utilities
     searchInvoices,

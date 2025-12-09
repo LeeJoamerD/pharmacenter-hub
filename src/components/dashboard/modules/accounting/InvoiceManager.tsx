@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Plus, Edit, Trash2, Eye, Send, Download, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Eye, Send, Download, CheckCircle, Clock, AlertCircle, ArrowRight, XCircle } from 'lucide-react';
 import { ClientSelector } from '@/components/accounting/ClientSelector';
 import { FournisseurSelector } from '@/components/accounting/FournisseurSelector';
 import { TransactionSelector, UnbilledSale, UnbilledReception } from '@/components/accounting/TransactionSelector';
@@ -36,6 +36,7 @@ const InvoiceManager = () => {
     recordPayment,
     sendReminder,
     createCreditNote,
+    updateCreditNoteStatus,
     searchInvoices,
     getInvoicesByType,
     getOverdueInvoices,
@@ -1108,13 +1109,58 @@ const InvoiceManager = () => {
                         <TableCell>{credit.montant_ttc.toLocaleString()}</TableCell>
                         <TableCell>{getStatusBadge(credit.statut)}</TableCell>
                         <TableCell>
-                          <div className="flex space-x-2">
+                          <div className="flex space-x-1">
                             <Button variant="ghost" size="sm" onClick={() => handleViewCreditNote(credit)}>
                               <Eye className="h-4 w-4" />
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => handleDownloadCreditNote(credit)}>
                               <Download className="h-4 w-4" />
                             </Button>
+                            {/* Status action buttons */}
+                            {credit.statut === 'brouillon' && (
+                              <>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => updateCreditNoteStatus({ creditNoteId: credit.id, newStatus: 'emis' })}
+                                  disabled={isSaving}
+                                  title="Émettre l'avoir"
+                                >
+                                  <Send className="h-4 w-4 text-blue-600" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => updateCreditNoteStatus({ creditNoteId: credit.id, newStatus: 'annule' })}
+                                  disabled={isSaving}
+                                  title="Annuler l'avoir"
+                                >
+                                  <XCircle className="h-4 w-4 text-red-600" />
+                                </Button>
+                              </>
+                            )}
+                            {credit.statut === 'emis' && (
+                              <>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => updateCreditNoteStatus({ creditNoteId: credit.id, newStatus: 'applique' })}
+                                  disabled={isSaving}
+                                  title="Appliquer l'avoir"
+                                >
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => updateCreditNoteStatus({ creditNoteId: credit.id, newStatus: 'annule' })}
+                                  disabled={isSaving}
+                                  title="Annuler l'avoir"
+                                >
+                                  <XCircle className="h-4 w-4 text-red-600" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
