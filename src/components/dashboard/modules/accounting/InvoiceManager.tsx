@@ -74,7 +74,7 @@ const InvoiceManager = () => {
     totals: { montant_ht: 0, montant_tva: 0, montant_ttc: 0 }
   });
 
-  const [newInvoice, setNewInvoice] = useState<Partial<Invoice & { lines: Partial<InvoiceLine>[], vente_ids?: string[], reception_id?: string }>>({
+  const [newInvoice, setNewInvoice] = useState<Partial<Invoice & { lines: Partial<InvoiceLine>[], vente_ids?: string[], reception_id?: string, reception_ids?: string[] }>>({
     type: 'client',
     date_emission: new Date().toISOString().split('T')[0],
     date_echeance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -363,11 +363,28 @@ const InvoiceManager = () => {
       montant_ttc: updatedLines.reduce((sum, l) => sum + (l.montant_ttc || 0), 0),
     };
 
+    // Update reception_ids to match remaining lines (for supplier invoices)
+    const updatedReceptionIds = (newInvoice.reception_ids || []).filter(id => id !== lineId);
+    
+    // Update libelle based on remaining lines
+    const remainingRefs = updatedLines.map(l => {
+      const designation = l.designation || '';
+      const match = designation.match(/Réception\s+(.+)/);
+      return match ? match[1] : '';
+    }).filter(Boolean);
+
+    const updatedLibelle = updatedLines.length > 0
+      ? `Facture fournisseur - ${updatedLines.length} réception(s): ${remainingRefs.join(', ')}`
+      : '';
+
     setNewInvoice(prev => ({
       ...prev,
       lines: updatedLines,
       ...invoiceTotals,
-      montant_restant: invoiceTotals.montant_ttc
+      montant_restant: invoiceTotals.montant_ttc,
+      reception_ids: updatedReceptionIds,
+      reception_id: updatedReceptionIds[0] || undefined,
+      libelle: prev.type === 'fournisseur' ? updatedLibelle : prev.libelle,
     }));
   };
 
