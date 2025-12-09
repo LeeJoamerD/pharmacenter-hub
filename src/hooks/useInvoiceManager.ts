@@ -268,14 +268,20 @@ export const useInvoiceManager = () => {
 
   // Create invoice
   const createInvoiceMutation = useMutation({
-    mutationFn: async (invoice: Partial<Invoice> & { lines: Partial<InvoiceLine>[], vente_ids?: string[], reception_id?: string }) => {
+    mutationFn: async (invoice: Partial<Invoice> & { lines: Partial<InvoiceLine>[], vente_ids?: string[], reception_id?: string, reception_ids?: string[] }) => {
       setIsSaving(true);
-      const { lines, vente_ids, reception_id, ...invoiceData } = invoice;
+      // Destructure reception_ids to exclude from database payload (column doesn't exist)
+      const { lines, vente_ids, reception_id, reception_ids, ...invoiceData } = invoice;
 
       // Generate numero if not provided
       if (!invoiceData.numero && invoiceData.type) {
         invoiceData.numero = await generateInvoiceNumber(invoiceData.type);
       }
+
+      // Determine all reception IDs to link
+      const allReceptionIds = reception_ids && reception_ids.length > 0 
+        ? reception_ids 
+        : (reception_id ? [reception_id] : []);
 
       // Clean empty string UUIDs - convert to null for database
       const cleanedInvoiceData = {
@@ -284,7 +290,7 @@ export const useInvoiceManager = () => {
         fournisseur_id: invoiceData.fournisseur_id || null,
         // Link to first vente/reception if available
         vente_id: vente_ids && vente_ids.length > 0 ? vente_ids[0] : null,
-        reception_id: reception_id || null,
+        reception_id: allReceptionIds.length > 0 ? allReceptionIds[0] : null,
         tenant_id: tenantId,
         created_by_id: personnelId,
       };
@@ -335,18 +341,18 @@ export const useInvoiceManager = () => {
         }
       }
 
-      // Mark reception as invoiced if reception_id provided
-      if (reception_id) {
+      // Mark ALL receptions as invoiced if any reception IDs provided
+      if (allReceptionIds.length > 0) {
         const { error: updateReceptionError } = await supabase
           .from('receptions_fournisseurs')
           .update({ 
             facture_generee: true, 
             facture_id: newInvoice.id 
           })
-          .eq('id', reception_id);
+          .in('id', allReceptionIds);
 
         if (updateReceptionError) {
-          console.error('Error marking reception as invoiced:', updateReceptionError);
+          console.error('Error marking receptions as invoiced:', updateReceptionError);
         }
       }
 
