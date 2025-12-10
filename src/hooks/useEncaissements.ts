@@ -381,8 +381,8 @@ export const useEncaissements = () => {
         lignes_ventes!lignes_ventes_vente_id_fkey(
           id,
           quantite,
-          prix_vente,
-          montant_total,
+          prix_unitaire_ttc,
+          montant_ligne_ttc,
           produit:produits!lignes_ventes_produit_id_fkey(libelle_produit, code_cip)
         )
       `
@@ -416,8 +416,8 @@ export const useEncaissements = () => {
         id: l.id,
         produit: l.produit,
         quantite: l.quantite,
-        prix_unitaire: l.prix_vente || 0,
-        montant_ligne: l.montant_total || 0,
+        prix_unitaire: l.prix_unitaire_ttc || 0,
+        montant_ligne: l.montant_ligne_ttc || 0,
         taux_remise: 0,
         montant_remise: 0,
       })),
