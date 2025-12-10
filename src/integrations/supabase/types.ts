@@ -19569,18 +19569,31 @@ export type Database = {
         }
         Returns: Json
       }
-      generate_accounting_entry: {
-        Args: {
-          p_date_ecriture: string
-          p_journal_code: string
-          p_libelle: string
-          p_lines?: Json
-          p_reference_id?: string
-          p_reference_type?: string
-          p_tenant_id: string
-        }
-        Returns: Json
-      }
+      generate_accounting_entry:
+        | {
+            Args: {
+              p_date: string
+              p_journal_code: string
+              p_libelle: string
+              p_lines: Json
+              p_reference_id?: string
+              p_reference_type?: string
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_date_ecriture: string
+              p_journal_code: string
+              p_libelle: string
+              p_lines?: Json
+              p_reference_id?: string
+              p_reference_type?: string
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
       generate_accounting_report_summary: {
         Args: { p_end_date: string; p_start_date: string; p_tenant_id: string }
         Returns: Json
