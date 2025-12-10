@@ -636,7 +636,7 @@ export const useInvoiceManager = () => {
         try {
           // Determine if it's a client or supplier invoice
           const isClientInvoice = originInvoice?.type === 'client';
-          const journalCode = isClientInvoice ? 'VT' : 'AC';
+          const journalCode = isClientInvoice ? 'VTE' : 'ACH';
           
           // Build accounting lines based on invoice type
           let accountingLines;
