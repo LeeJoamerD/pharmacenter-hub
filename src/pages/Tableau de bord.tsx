@@ -191,7 +191,7 @@ const Dashboard = () => {
       case 'chat':
         return <ChatNetworkModule activeSubModule={activeSubModule} />;
       case 'parametres':
-        return <ParametresModule />;
+        return <ParametresModule activeSubModule={activeSubModule} />;
       default:
         return <DashboardHome />;
     }
@@ -237,7 +237,34 @@ const Dashboard = () => {
       case 'chat':
         return 'Chat PharmaSoft Réseau';
       case 'parametres':
-        return 'Configuration Système';
+        switch (activeSubModule) {
+          case 'général':
+            return 'Paramètres Généraux';
+          case 'utilisateurs':
+            return 'Gestion des Utilisateurs';
+          case 'interface':
+            return 'Interface Utilisateur';
+          case 'sécurité':
+            return 'Sécurité';
+          case 'impressions':
+            return 'Configuration Impression';
+          case 'sauvegarde':
+            return 'Sauvegarde & Restauration';
+          case 'intégrations':
+            return 'Intégrations';
+          case 'métiers':
+            return 'Paramètres Métiers';
+          case 'maintenance':
+            return 'Maintenance Système';
+          case 'alertes':
+            return 'Configuration des Alertes';
+          case 'multi-sites':
+            return 'Multi-Sites';
+          case 'avancé':
+            return 'Paramètres Avancés';
+          default:
+            return 'Configuration Système';
+        }
       default:
         return 'Tableau de bord';
     }
