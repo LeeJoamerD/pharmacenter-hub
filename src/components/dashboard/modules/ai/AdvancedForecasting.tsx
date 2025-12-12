@@ -36,6 +36,7 @@ import {
 } from 'recharts';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 import { useAdvancedForecasting } from '@/hooks/useAdvancedForecasting';
 import StockPredictionDetailDialog from './dialogs/StockPredictionDetailDialog';
@@ -44,6 +45,7 @@ import ForecastExportDialog from './dialogs/ForecastExportDialog';
 import type { StockPrediction, InfluentialFactor } from '@/hooks/useAdvancedForecasting';
 
 const AdvancedForecasting = () => {
+  const { formatAmount, getCurrencySymbol } = useCurrencyFormatting();
   const {
     loading,
     generating,
@@ -238,7 +240,7 @@ const AdvancedForecasting = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              +{metrics.estimated_roi.toLocaleString('fr-FR')} FCFA
+              +{formatAmount(metrics.estimated_roi)}
             </div>
             <p className="text-xs text-muted-foreground">
               Ce mois estimé
@@ -277,7 +279,7 @@ const AdvancedForecasting = () => {
                         <XAxis dataKey="date" />
                         <YAxis />
                         <Tooltip 
-                          formatter={(value: number) => [`${value.toLocaleString('fr-FR')} FCFA`, '']}
+                          formatter={(value: number) => [formatAmount(value), '']}
                           labelFormatter={(label) => `Date: ${label}`}
                         />
                         <Line 
@@ -303,7 +305,7 @@ const AdvancedForecasting = () => {
                   <div className="grid gap-4 md:grid-cols-3 mt-6">
                     <div className="text-center p-4 bg-blue-50 rounded-lg">
                       <div className="text-2xl font-bold text-blue-600">
-                        {tomorrowForecast ? tomorrowForecast.predicted.toLocaleString('fr-FR') : '--'} FCFA
+                        {tomorrowForecast ? formatAmount(tomorrowForecast.predicted) : '--'}
                       </div>
                       <div className="text-sm text-blue-700">Prévision demain</div>
                       <div className="text-xs text-muted-foreground">
@@ -319,7 +321,7 @@ const AdvancedForecasting = () => {
                     </div>
                     <div className="text-center p-4 bg-orange-50 rounded-lg">
                       <div className="text-2xl font-bold text-orange-600">
-                        {weekForecast.toLocaleString('fr-FR')} FCFA
+                        {formatAmount(weekForecast)}
                       </div>
                       <div className="text-sm text-orange-700">Prévision semaine</div>
                       <div className="text-xs text-muted-foreground">7 jours horizon</div>

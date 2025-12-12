@@ -11,6 +11,7 @@ import {
 import { usePharmaceuticalExpert } from '@/hooks/usePharmaceuticalExpert';
 import { useTenant } from '@/contexts/TenantContext';
 import { useDebouncedValue } from '@/hooks/use-debounce';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import PharmaExpertConfigDialog from './dialogs/PharmaExpertConfigDialog';
@@ -23,6 +24,7 @@ import { exportDrugDatabasePDF, exportInteractionsPDF, exportRecommendationsPDF,
 
 const PharmaceuticalExpert = () => {
   const { currentTenant } = useTenant();
+  const { formatAmount } = useCurrencyFormatting();
   const {
     loading, metrics, drugDatabase, interactions, recommendations,
     pharmacovigilanceAlerts, complianceChecks, config,
@@ -143,7 +145,7 @@ const PharmaceuticalExpert = () => {
                   <div className="flex items-center justify-between pt-2 border-t">
                     <div className="flex items-center gap-2">
                       <Badge className="bg-green-50 text-green-600">Remb. {drug.reimbursement}%</Badge>
-                      <span className="font-medium">{drug.price.toFixed(2)}€</span>
+                      <span className="font-medium">{formatAmount(drug.price)}</span>
                     </div>
                     <Button size="sm" variant="outline" onClick={() => { setSelectedDrug(drug); setDrugDetailOpen(true); }}><Info className="h-4 w-4 mr-2" />Détails</Button>
                   </div>

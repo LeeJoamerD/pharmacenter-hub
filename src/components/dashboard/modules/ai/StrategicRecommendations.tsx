@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useStrategicRecommendations, StrategicRecommendation } from '@/hooks/useStrategicRecommendations';
 import { useTenant } from '@/contexts/TenantContext';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { exportRecommendationsToPDF, exportRecommendationsToExcel } from '@/utils/recommendationExportUtils';
 import RecommendationDetailDialog from './dialogs/RecommendationDetailDialog';
 import RejectRecommendationDialog from './dialogs/RejectRecommendationDialog';
@@ -31,6 +32,7 @@ import ScheduleRecommendationDialog from './dialogs/ScheduleRecommendationDialog
 
 const StrategicRecommendations = () => {
   const { currentTenant } = useTenant();
+  const { formatAmount } = useCurrencyFormatting();
   const {
     loading,
     generating,

@@ -14,6 +14,7 @@ import { useAIStockManagement, type AIStockSuggestion } from '@/hooks/useAIStock
 import type { StockPrediction } from '@/hooks/useAdvancedForecasting';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 
 // Dialogs
@@ -38,6 +39,7 @@ const PRIORITY_COLORS = {
 };
 
 const AIStockManagement: React.FC = () => {
+  const { formatAmount } = useCurrencyFormatting();
   const {
     loading,
     analyzing,
@@ -213,7 +215,7 @@ const AIStockManagement: React.FC = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Économies</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {metrics.total_savings > 0 ? `${(metrics.total_savings / 1000).toFixed(0)}K` : '0'}
+                  {formatAmount(metrics.total_savings)}
                 </p>
               </div>
               <Banknote className="h-8 w-8 text-green-500/20" />
