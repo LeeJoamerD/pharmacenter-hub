@@ -104,20 +104,6 @@ const PharmaceuticalExpert = () => {
         <Card><CardContent className="pt-4"><div className="flex justify-between"><div><p className="text-sm text-muted-foreground">Score Conformité</p><p className="text-2xl font-bold">{metrics.complianceScore}%</p></div><CheckCircle className="h-8 w-8 text-green-500" /></div></CardContent></Card>
       </div>
 
-      {/* Recherche rapide */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Search className="h-5 w-5" />Recherche Médicament</CardTitle>
-          <CardDescription>Recherchez des informations complètes sur les médicaments</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
-            <Input placeholder="Nom du médicament ou DCI..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="flex-1" onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
-            <Button onClick={handleSearch} disabled={loading}><Search className="h-4 w-4 mr-2" />Rechercher</Button>
-          </div>
-        </CardContent>
-      </Card>
-
       <Tabs defaultValue="knowledge-base" className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="knowledge-base">Base Médicaments</TabsTrigger>
@@ -128,6 +114,20 @@ const PharmaceuticalExpert = () => {
         </TabsList>
 
         <TabsContent value="knowledge-base" className="space-y-6">
+          {/* Recherche intégrée dans l'onglet */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Search className="h-5 w-5" />Recherche Médicament</CardTitle>
+              <CardDescription>Recherchez des informations complètes sur les médicaments</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4">
+                <Input placeholder="Nom du médicament ou DCI..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="flex-1" onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
+                <Button onClick={handleSearch} disabled={loading}><Search className="h-4 w-4 mr-2" />Rechercher</Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="flex justify-between items-center">
             <p className="text-sm text-muted-foreground">{drugsPagination.total} médicaments trouvés</p>
             <Button variant="outline" size="sm" onClick={() => exportDrugDatabasePDF(drugDatabase, pharmacyName)}><Download className="h-4 w-4 mr-2" />Exporter</Button>
