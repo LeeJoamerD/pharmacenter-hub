@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { usePharmaceuticalExpert } from '@/hooks/usePharmaceuticalExpert';
 import { useTenant } from '@/contexts/TenantContext';
+import { useDebouncedValue } from '@/hooks/use-debounce';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import PharmaExpertConfigDialog from './dialogs/PharmaExpertConfigDialog';
@@ -31,6 +32,7 @@ const PharmaceuticalExpert = () => {
   } = usePharmaceuticalExpert();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebouncedValue(searchQuery, 400);
   const [selectedDrug, setSelectedDrug] = useState<any>(null);
   const [configOpen, setConfigOpen] = useState(false);
   const [drugDetailOpen, setDrugDetailOpen] = useState(false);
@@ -42,6 +44,11 @@ const PharmaceuticalExpert = () => {
   const [aiConsultationOpen, setAiConsultationOpen] = useState(false);
 
   const pharmacyName = currentTenant?.name || 'Pharmacie';
+
+  // Auto-search when debounced value changes
+  useEffect(() => {
+    loadDrugs(debouncedSearch);
+  }, [debouncedSearch, loadDrugs]);
 
   const handleSearch = () => {
     loadDrugs(searchQuery);
