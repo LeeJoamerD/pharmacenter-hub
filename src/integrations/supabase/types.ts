@@ -2003,6 +2003,7 @@ export type Database = {
       }
       ai_models: {
         Row: {
+          accuracy: number | null
           capabilities: Json | null
           created_at: string
           description: string | null
@@ -2021,6 +2022,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accuracy?: number | null
           capabilities?: Json | null
           created_at?: string
           description?: string | null
@@ -2039,6 +2041,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accuracy?: number | null
           capabilities?: Json | null
           created_at?: string
           description?: string | null
@@ -14689,6 +14692,7 @@ export type Database = {
           classe_therapeutique_id: string | null
           code_barre_externe: string | null
           code_cip: string | null
+          conditions_conservation: string | null
           created_at: string
           dci_id: string | null
           famille_id: string | null
@@ -14724,6 +14728,7 @@ export type Database = {
           classe_therapeutique_id?: string | null
           code_barre_externe?: string | null
           code_cip?: string | null
+          conditions_conservation?: string | null
           created_at?: string
           dci_id?: string | null
           famille_id?: string | null
@@ -14759,6 +14764,7 @@ export type Database = {
           classe_therapeutique_id?: string | null
           code_barre_externe?: string | null
           code_cip?: string | null
+          conditions_conservation?: string | null
           created_at?: string
           dci_id?: string | null
           famille_id?: string | null
