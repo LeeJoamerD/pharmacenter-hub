@@ -24,6 +24,7 @@ import {
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAccountingExpert } from '@/hooks/useAccountingExpert';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useTenant } from '@/contexts/TenantContext';
 import AccountingExpertConfigDialog from './dialogs/AccountingExpertConfigDialog';
 import AccountEntryDetailDialog from './dialogs/AccountEntryDetailDialog';
@@ -42,6 +43,7 @@ import {
 
 const AccountingExpert: React.FC = () => {
   const { currentTenant } = useTenant();
+  const { formatAmount } = useCurrencyFormatting();
   const {
     isLoading,
     metrics,
@@ -197,9 +199,9 @@ const AccountingExpert: React.FC = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Économies fiscales</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {(metrics?.optimizations.realized_savings || 0).toLocaleString('fr-FR')}
+                  {formatAmount(metrics?.optimizations.realized_savings || 0)}
                 </p>
-                <p className="text-xs text-muted-foreground">FCFA réalisées</p>
+                <p className="text-xs text-muted-foreground">réalisées</p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-500/20" />
             </div>
