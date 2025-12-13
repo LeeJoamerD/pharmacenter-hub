@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 // Interface pour la structure des données d'une société
 interface Societe {
@@ -39,6 +40,7 @@ const Societes = () => {
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { formatAmount, getCurrencySymbol, getInputStep, isNoDecimalCurrency } = useCurrencyFormatting();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -272,8 +274,8 @@ const Societes = () => {
                     )} />
                     <FormField control={form.control} name="limite_dette" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Limite de dette</FormLabel>
-                        <FormControl><Input {...field} type="number" onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                        <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
+                        <FormControl><Input {...field} type="number" step={getInputStep()} placeholder={isNoDecimalCurrency() ? "0" : "0.00"} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
@@ -364,7 +366,7 @@ const Societes = () => {
                             {societe.adresse || 'Non renseignée'}
                           </div>
                         </TableCell>
-                        <TableCell>{societe.limite_dette}</TableCell>
+                        <TableCell>{formatAmount(societe.limite_dette || 0)}</TableCell>
                         <TableCell>
                             <div className="flex space-x-2">
                             <Button variant="outline" size="icon" onClick={() => handleEdit(societe)}>

@@ -36,6 +36,7 @@ import {
 import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 interface Product {
   id?: string;
@@ -125,6 +126,7 @@ const ProductCatalogNew = () => {
   const { laboratories, loading: labLoading } = useLaboratories();
   const { personnel } = useAuth();
   const { createProductDetail } = useProducts();
+  const { getCurrencySymbol, getInputStep, isNoDecimalCurrency } = useCurrencyFormatting();
 
   // Récupération des données avec pagination
   const {
@@ -419,7 +421,8 @@ const ProductCatalogNew = () => {
         description: `${allProducts.length} produits récupérés, génération du fichier...`,
       });
 
-      // Formater les données pour Excel
+      // Formater les données pour Excel avec devise dynamique
+      const currencyLabel = getCurrencySymbol();
       const exportData = allProducts.map(product => ({
         'Code CIP': product.code_cip || '',
         'Libellé Produit': product.libelle_produit || '',
@@ -430,11 +433,11 @@ const ProductCatalogNew = () => {
         'Classe Thérapeutique': product.classe_therapeutique_libelle || '',
         'Laboratoire': product.laboratoire_nom || '',
         'Catégorie Tarification': product.categorie_tarification_libelle || '',
-        'Prix Achat (FCFA)': product.prix_achat || 0,
-        'Prix Vente HT (FCFA)': product.prix_vente_ht || 0,
-        'Prix Vente TTC (FCFA)': product.prix_vente_ttc || 0,
+        [`Prix Achat (${currencyLabel})`]: product.prix_achat || 0,
+        [`Prix Vente HT (${currencyLabel})`]: product.prix_vente_ht || 0,
+        [`Prix Vente TTC (${currencyLabel})`]: product.prix_vente_ttc || 0,
         'Taux TVA (%)': product.taux_tva || 0,
-        'Centime Additionnel (FCFA)': product.centime_additionnel || 0,
+        [`Centime Additionnel (${currencyLabel})`]: product.centime_additionnel || 0,
         'Taux Centime (%)': product.taux_centime_additionnel || 0,
         'Stock Actuel': product.stock_actuel || 0,
         'Stock Critique': product.stock_critique || 0,
@@ -442,7 +445,7 @@ const ProductCatalogNew = () => {
         'Stock Limite': product.stock_limite || 0,
         'Statut Stock': product.statut_stock || '',
         'Rotation': product.rotation || '',
-        'Valorisation Stock (FCFA)': product.valeur_stock || 0,
+        [`Valorisation Stock (${currencyLabel})`]: product.valeur_stock || 0,
         'Niveau Détail': product.niveau_detail || 0,
         'Statut': product.is_active ? 'Actif' : 'Inactif',
         'Date Création': product.created_at ? new Date(product.created_at).toLocaleDateString('fr-FR') : '',
@@ -1050,35 +1053,35 @@ const ProductCatalogNew = () => {
                 </p>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <Label htmlFor="prix_achat">Prix d'achat HT (FCFA)</Label>
+                    <Label htmlFor="prix_achat">Prix d'achat HT ({getCurrencySymbol()})</Label>
                     <Input
                       id="prix_achat"
                       type="number"
-                      step="0.01"
+                      step={getInputStep()}
                       {...register("prix_achat", { valueAsNumber: true })}
-                      placeholder="0.00"
+                      placeholder={isNoDecimalCurrency() ? "0" : "0.00"}
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="prix_vente_ht">Prix de vente HT (FCFA)</Label>
+                    <Label htmlFor="prix_vente_ht">Prix de vente HT ({getCurrencySymbol()})</Label>
                     <Input
                       id="prix_vente_ht"
                       type="number"
-                      step="0.01"
+                      step={getInputStep()}
                       {...register("prix_vente_ht", { valueAsNumber: true })}
-                      placeholder="0.00"
+                      placeholder={isNoDecimalCurrency() ? "0" : "0.00"}
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="prix_vente_ttc">Prix de vente TTC (FCFA)</Label>
+                    <Label htmlFor="prix_vente_ttc">Prix de vente TTC ({getCurrencySymbol()})</Label>
                     <Input
                       id="prix_vente_ttc"
                       type="number"
-                      step="0.01"
+                      step={getInputStep()}
                       {...register("prix_vente_ttc", { valueAsNumber: true })}
-                      placeholder="0.00"
+                      placeholder={isNoDecimalCurrency() ? "0" : "0.00"}
                     />
                   </div>
                 </div>

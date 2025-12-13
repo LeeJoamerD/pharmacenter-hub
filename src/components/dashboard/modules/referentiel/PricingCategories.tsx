@@ -10,11 +10,11 @@ import { Plus, Search, Edit, Trash2, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useQueryClient } from '@tanstack/react-query';
-// NOUVEAUX IMPORTS AJOUTÉS
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { calculateFinancials } from '@/lib/utils';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 
 interface PricingCategory {
@@ -31,6 +31,7 @@ interface PricingCategory {
 const PricingCategories = () => {
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
   const queryClient = useQueryClient();
+  const { formatNumber, getCurrencySymbol, getInputStep, isNoDecimalCurrency } = useCurrencyFormatting();
 
   // Fetch categories from database
   const { data: categories = [], isLoading, error } = useTenantQueryWithCache(
@@ -380,11 +381,12 @@ const PricingCategories = () => {
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
                     <div className="space-y-2 md:col-span-1 lg:col-span-1">
-                        <Label htmlFor="simulation_purchase_price">Prix d'achat</Label>
+                        <Label htmlFor="simulation_purchase_price">Prix d'achat ({getCurrencySymbol()})</Label>
                         <Input
                             id="simulation_purchase_price"
                             type="number"
-                            placeholder="0.00"
+                            step={getInputStep()}
+                            placeholder={isNoDecimalCurrency() ? "0" : "0.00"}
                             value={simulationPurchasePrice}
                             onChange={(e) => setSimulationPurchasePrice(e.target.value)}
                             className="w-full"
@@ -409,20 +411,20 @@ const PricingCategories = () => {
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="simulated_sale_price_ht">Prix vente HT</Label>
-                        <Input id="simulated_sale_price_ht" value={simulatedSalePriceHT.toFixed(2)} readOnly className="w-full bg-muted" />
+                        <Label htmlFor="simulated_sale_price_ht">Prix vente HT ({getCurrencySymbol()})</Label>
+                        <Input id="simulated_sale_price_ht" value={formatNumber(simulatedSalePriceHT)} readOnly className="w-full bg-muted" />
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="simulated_tva">Montant TVA</Label>
-                        <Input id="simulated_tva" value={simulatedTVA.toFixed(2)} readOnly className="w-full bg-muted" />
+                        <Label htmlFor="simulated_tva">Montant TVA ({getCurrencySymbol()})</Label>
+                        <Input id="simulated_tva" value={formatNumber(simulatedTVA)} readOnly className="w-full bg-muted" />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="simulated_centime_additionnel">Centime add.</Label>
-                        <Input id="simulated_centime_additionnel" value={simulatedCentimeAdditionnel.toFixed(2)} readOnly className="w-full bg-muted" />
+                        <Label htmlFor="simulated_centime_additionnel">Centime add. ({getCurrencySymbol()})</Label>
+                        <Input id="simulated_centime_additionnel" value={formatNumber(simulatedCentimeAdditionnel)} readOnly className="w-full bg-muted" />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="simulated_sale_price_ttc" className="font-bold">Prix vente TTC</Label>
-                        <Input id="simulated_sale_price_ttc" value={simulatedSalePriceTTC.toFixed(2)} readOnly className="w-full bg-muted font-bold text-base" />
+                        <Label htmlFor="simulated_sale_price_ttc" className="font-bold">Prix vente TTC ({getCurrencySymbol()})</Label>
+                        <Input id="simulated_sale_price_ttc" value={formatNumber(simulatedSalePriceTTC)} readOnly className="w-full bg-muted font-bold text-base" />
                     </div>
                 </div>
             </div>
