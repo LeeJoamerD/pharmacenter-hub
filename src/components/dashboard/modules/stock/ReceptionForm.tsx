@@ -26,7 +26,7 @@ import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProducts } from '@/hooks/useProducts';
-import { calculateFinancials } from '@/lib/utils';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { ReceptionValidationService } from '@/services/receptionValidationService';
 import { OrderStatusValidationService } from '@/services/orderStatusValidationService';
 import { StockUpdateService } from '@/services/stockUpdateService';
@@ -76,15 +76,20 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   const [pendingValidation, setPendingValidation] = useState<{ isValidated: boolean; warnings: string[] } | null>(null);
   const [showCameraDialog, setShowCameraDialog] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-  const [editableTva, setEditableTva] = useState<number>(18);
-  const [editableCentimeAdditionnel, setEditableCentimeAdditionnel] = useState<number>(5);
+  // Montants TVA et Centime en FCFA (saisie manuelle)
+  const [montantTva, setMontantTva] = useState<number>(0);
+  const [montantCentimeAdditionnel, setMontantCentimeAdditionnel] = useState<number>(0);
   const [currentOrderStatus, setCurrentOrderStatus] = useState<string>('En cours');
+  // AlertDialog pour avertissement TVA/Centime à zéro
+  const [showZeroWarningDialog, setShowZeroWarningDialog] = useState(false);
+  const [pendingZeroValidation, setPendingZeroValidation] = useState<{ isValidated: boolean } | null>(null);
   const { toast } = useToast();
   
   const { orderLines, loading: orderLinesLoading } = useOrderLines(selectedOrder);
   const { settings } = useSystemSettings();
   const { products } = useProducts();
   const { user } = useAuth();
+  const { formatAmount, getInputStep, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
 
   // Use real orders with appropriate statuses for reception - only "Livré" can be received
   const pendingOrders = propOrders.filter(order => 
@@ -115,12 +120,10 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     }));
     setReceptionLines(lines);
     
-    // Initialize system settings rates
-    if (settings) {
-      setEditableTva(settings.taux_tva || 18);
-      setEditableCentimeAdditionnel(settings.taux_centime_additionnel || 5);
-    }
-  }, [orderLines, orderLinesLoading, settings]);
+    // Réinitialiser les montants manuels
+    setMontantTva(0);
+    setMontantCentimeAdditionnel(0);
+  }, [orderLines, orderLinesLoading]);
 
   // Effect to load details when selectedOrder changes and data is ready
   useEffect(() => {
@@ -166,14 +169,22 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     }));
   };
 
-  // Calculate financial totals using utilitaire
+  // Calculate financial totals - Sous-total HT automatique, TVA et Centime manuels
   const calculateTotals = () => {
-    const sousTotal = receptionLines.reduce((sum, line) => {
+    let sousTotal = receptionLines.reduce((sum, line) => {
       const unitPrice = line.prixAchatReel || 0;
       return sum + (line.quantiteAcceptee * unitPrice);
     }, 0);
-    const { tva, centimeAdditionnel, totalTTC: totalGeneral } = calculateFinancials(sousTotal, editableTva, editableCentimeAdditionnel);
-    return { sousTotal, tva, centimeAdditionnel, totalGeneral };
+    
+    // Arrondir si devise sans décimales
+    if (isNoDecimalCurrency()) {
+      sousTotal = Math.round(sousTotal);
+    }
+    
+    // Total TTC = Sous-total HT + TVA (manuel) + Centime (manuel)
+    const totalGeneral = sousTotal + montantTva + montantCentimeAdditionnel;
+    
+    return { sousTotal, tva: montantTva, centimeAdditionnel: montantCentimeAdditionnel, totalGeneral };
   };
 
   const getStatusColor = (statut: string) => {
@@ -349,6 +360,9 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     setObservations('');
     setPendingValidation(null);
     setIsStockProcessed(false);
+    setMontantTva(0);
+    setMontantCentimeAdditionnel(0);
+    setPendingZeroValidation(null);
   };
 
   // Fonction helper pour la mise à jour du statut
@@ -540,7 +554,6 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       }
 
 
-
       // Handle warnings if present and not already confirmed
       if (validation.warnings.length > 0 && !pendingValidation) {
         setPendingValidation({ isValidated, warnings: validation.warnings });
@@ -548,10 +561,24 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         return;
       }
 
-      // Create the reception with validation status
+      // Vérifier si TVA ou Centime = 0 et afficher avertissement
+      if ((montantTva === 0 || montantCentimeAdditionnel === 0) && !pendingZeroValidation) {
+        setPendingZeroValidation({ isValidated });
+        setShowZeroWarningDialog(true);
+        return;
+      }
+
+      // Calculer les totaux financiers
+      const { sousTotal, totalGeneral } = calculateTotals();
+
+      // Create the reception with validation status and financial data
       const receptionPayload = {
         ...receptionData,
-        isValidated: isValidated
+        isValidated: isValidated,
+        montant_ht: sousTotal,
+        montant_tva: montantTva,
+        montant_centime_additionnel: montantCentimeAdditionnel,
+        montant_ttc: totalGeneral
       };
       
       const createdReception = await onCreateReception(receptionPayload);
@@ -597,6 +624,69 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     }
   };
 
+  // Handler pour confirmer après avertissement TVA/Centime à zéro
+  const handleConfirmZeroWarning = async () => {
+    if (!pendingZeroValidation) return;
+    setShowZeroWarningDialog(false);
+    
+    // Relancer la sauvegarde avec le flag de confirmation
+    const isValidated = pendingZeroValidation.isValidated;
+    setPendingZeroValidation(null);
+    
+    // Re-exécuter la logique de sauvegarde
+    try {
+      const selectedOrderData = pendingOrders.find(o => o.id === selectedOrder);
+      if (!selectedOrderData) return;
+
+      const { sousTotal, totalGeneral } = calculateTotals();
+
+      const receptionData = {
+        commande_id: selectedOrder,
+        fournisseur_id: selectedOrderData.fournisseur_id,
+        date_reception: new Date().toISOString(),
+        reference_facture: bonLivraison,
+        notes: observations,
+        isValidated: isValidated,
+        montant_ht: sousTotal,
+        montant_tva: montantTva,
+        montant_centime_additionnel: montantCentimeAdditionnel,
+        montant_ttc: totalGeneral,
+        lignes: receptionLines.map(line => ({
+          produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
+          quantite_commandee: line.quantiteCommandee,
+          quantite_recue: line.quantiteRecue,
+          quantite_acceptee: line.quantiteAcceptee,
+          numero_lot: line.numeroLot,
+          date_expiration: line.dateExpiration || null,
+          statut: line.statut,
+          commentaire: line.commentaire,
+          prix_achat_reel: line.prixAchatReel || 0
+        }))
+      };
+
+      const createdReception = await onCreateReception(receptionData);
+      
+      if (createdReception) {
+        setIsStockProcessed(true);
+        logReceptionActivity(receptionData, isValidated);
+        await updateOrderStatus(selectedOrderData, isValidated, createdReception, selectedOrder);
+        resetForm();
+        
+        toast({
+          title: "Succès",
+          description: `Réception ${isValidated ? 'validée' : 'sauvegardée'} avec succès`,
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de l'enregistrement de la réception",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleConfirmWithWarnings = async () => {
     if (!pendingValidation) return;
     
@@ -619,12 +709,18 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         return;
       }
       
+      const { sousTotal, totalGeneral } = calculateTotals();
+      
       const receptionData = {
         commande_id: selectedOrder,
         fournisseur_id: selectedOrderData.fournisseur_id,
         date_reception: new Date().toISOString(),
         reference_facture: bonLivraison,
         notes: observations,
+        montant_ht: sousTotal,
+        montant_tva: montantTva,
+        montant_centime_additionnel: montantCentimeAdditionnel,
+        montant_ttc: totalGeneral,
         lignes: receptionLines.map(line => ({
           produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
           quantite_commandee: line.quantiteCommandee,
@@ -905,52 +1001,65 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
 
       {/* Calculs Financiers */}
       {receptionLines.length > 0 && (() => {
-        const { sousTotal, centimeAdditionnel, tva, totalGeneral } = calculateTotals();
+        const { sousTotal, tva, centimeAdditionnel, totalGeneral } = calculateTotals();
+        const currencySymbol = getCurrencySymbol();
         return (
           <Card>
             <CardHeader>
               <CardTitle>Calculs Financiers</CardTitle>
+              <CardDescription>
+                Le sous-total HT est calculé automatiquement. TVA et Centime Additionnel sont à saisir manuellement en {currencySymbol}.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex justify-end">
-                <div className="w-80 space-y-3">
-                  <div className="flex justify-between">
-                    <span>Sous-total HT :</span>
-                    <span className="font-medium">{sousTotal.toLocaleString()} F CFA</span>
-                  </div>
+                <div className="w-96 space-y-4">
+                  {/* Sous-total HT - Calculé automatiquement */}
                   <div className="flex justify-between items-center">
-                    <span>TVA ({editableTva}%):</span>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        value={editableTva}
-                        onChange={(e) => setEditableTva(parseFloat(e.target.value) || 0)}
-                        className="w-16 h-8 text-right"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                      />
-                      <span>= {tva.toLocaleString()} F CFA</span>
-                    </div>
+                    <span className="font-medium">Sous-total HT :</span>
+                    <span className="font-bold text-lg">{formatAmount(sousTotal)}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span>Centime Additionnel ({editableCentimeAdditionnel}%):</span>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        value={editableCentimeAdditionnel}
-                        onChange={(e) => setEditableCentimeAdditionnel(parseFloat(e.target.value) || 0)}
-                        className="w-16 h-8 text-right"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                      />
-                      <span>= {centimeAdditionnel.toLocaleString()} F CFA</span>
-                    </div>
+                  
+                  {/* TVA - Saisie manuelle en montant */}
+                  <div className="flex justify-between items-center gap-4">
+                    <Label htmlFor="montant-tva" className="whitespace-nowrap">TVA ({currencySymbol}) :</Label>
+                    <Input
+                      id="montant-tva"
+                      type="number"
+                      value={montantTva}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        setMontantTva(isNoDecimalCurrency() ? Math.round(value) : value);
+                      }}
+                      className="w-40 text-right"
+                      min="0"
+                      step={getInputStep()}
+                      placeholder="0"
+                    />
                   </div>
-                  <div className="flex justify-between text-lg font-bold border-t pt-2">
+                  
+                  {/* Centime Additionnel - Saisie manuelle en montant */}
+                  <div className="flex justify-between items-center gap-4">
+                    <Label htmlFor="montant-centime" className="whitespace-nowrap">Centime Additionnel ({currencySymbol}) :</Label>
+                    <Input
+                      id="montant-centime"
+                      type="number"
+                      value={montantCentimeAdditionnel}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        setMontantCentimeAdditionnel(isNoDecimalCurrency() ? Math.round(value) : value);
+                      }}
+                      className="w-40 text-right"
+                      min="0"
+                      step={getInputStep()}
+                      placeholder="0"
+                    />
+                  </div>
+                  
+                  {/* Total TTC */}
+                  <div className="flex justify-between text-lg font-bold border-t pt-3">
                     <span>Total TTC :</span>
-                    <span>{totalGeneral.toLocaleString()} F CFA</span>
+                    <span className="text-primary">{formatAmount(totalGeneral)}</span>
                   </div>
                 </div>
               </div>
@@ -1037,6 +1146,40 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmWithWarnings}>
               Continuer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AlertDialog pour avertissement TVA/Centime à zéro */}
+      <AlertDialog open={showZeroWarningDialog} onOpenChange={setShowZeroWarningDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              Attention - TVA / Centime Additionnel à zéro
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {montantTva === 0 && montantCentimeAdditionnel === 0 ? (
+                <>La <strong>TVA</strong> et le <strong>Centime Additionnel</strong> sont tous les deux à zéro.</>
+              ) : montantTva === 0 ? (
+                <>La <strong>TVA</strong> est à zéro.</>
+              ) : (
+                <>Le <strong>Centime Additionnel</strong> est à zéro.</>
+              )}
+              <br /><br />
+              Êtes-vous sûr de vouloir valider cette réception sans ces montants ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowZeroWarningDialog(false);
+              setPendingZeroValidation(null);
+            }}>
+              Annuler et corriger
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmZeroWarning}>
+              Continuer la validation
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

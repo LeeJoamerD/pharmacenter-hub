@@ -78,6 +78,12 @@ export const useReceptions = () => {
     agent_id?: string;
     reference_facture?: string;
     isValidated?: boolean;
+    notes?: string;
+    // Montants financiers
+    montant_ht?: number;
+    montant_tva?: number;
+    montant_centime_additionnel?: number;
+    montant_ttc?: number;
     lignes: Array<{
       produit_id: string;
       quantite_commandee: number;
@@ -114,6 +120,12 @@ export const useReceptions = () => {
       }
 
       console.log('📝 Création réception avec agent_id:', personnel.id);
+      console.log('💰 Montants financiers:', {
+        montant_ht: receptionData.montant_ht,
+        montant_tva: receptionData.montant_tva,
+        montant_centime_additionnel: receptionData.montant_centime_additionnel,
+        montant_ttc: receptionData.montant_ttc
+      });
 
       const { data: reception, error: receptionError } = await supabase
         .from('receptions_fournisseurs')
@@ -125,7 +137,13 @@ export const useReceptions = () => {
           agent_id: personnel.id,
           reference_facture: receptionData.reference_facture,
           statut: receptionData.isValidated ? 'Validé' : 'En cours',
-          valide_par_id: receptionData.isValidated ? personnel.id : null
+          valide_par_id: receptionData.isValidated ? personnel.id : null,
+          // Montants financiers
+          montant_ht: receptionData.montant_ht || 0,
+          montant_tva: receptionData.montant_tva || 0,
+          montant_centime_additionnel: receptionData.montant_centime_additionnel || 0,
+          montant_ttc: receptionData.montant_ttc || 0,
+          notes: receptionData.notes || null
         })
         .select()
         .single();
