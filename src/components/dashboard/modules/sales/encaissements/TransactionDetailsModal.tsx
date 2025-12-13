@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Printer, Download, X } from 'lucide-react';
 import { TransactionDetails } from '@/hooks/useEncaissements';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 interface TransactionDetailsModalProps {
   open: boolean;
@@ -67,9 +68,8 @@ const TransactionDetailsModal = ({
     });
   };
 
-  const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('fr-CG')} FCFA`;
-  };
+  const { formatAmount } = useCurrencyFormatting();
+  const formatCurrency = (amount: number) => formatAmount(amount);
 
   if (loading) {
     return (

@@ -2,12 +2,15 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Landmark } from 'lucide-react';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 interface RegisterPerformanceChartProps {
   data?: Array<{ name: string; sales: number; count: number }>;
 }
 
 const RegisterPerformanceChart = ({ data = [] }: RegisterPerformanceChartProps) => {
+  const { formatAmount } = useCurrencyFormatting();
+
   return (
     <Card>
       <CardHeader>
@@ -24,7 +27,7 @@ const RegisterPerformanceChart = ({ data = [] }: RegisterPerformanceChartProps) 
             <YAxis />
             <Tooltip 
               formatter={(value: number, name: string) => {
-                if (name === 'Ventes') return [`${value.toLocaleString()} FCFA`, name];
+                if (name === 'Ventes') return [formatAmount(value), name];
                 return [value, name];
               }}
             />

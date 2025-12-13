@@ -25,27 +25,56 @@ export interface RecalculationResult {
   error?: string;
 }
 
+// Devises sans décimales (Franc CFA zones CEMAC et UEMOA)
+const NO_DECIMAL_CURRENCIES = ['XAF', 'XOF', 'FCFA'];
+
 class PricingCalculationService {
   /**
+   * Vérifie si une devise nécessite un arrondi à l'entier
+   */
+  private isNoDecimalCurrency(currencyCode?: string): boolean {
+    const code = currencyCode || 'XAF'; // Par défaut XAF pour le Congo
+    return NO_DECIMAL_CURRENCIES.includes(code);
+  }
+
+  /**
+   * Arrondit un montant selon la devise
+   * - XAF/XOF/FCFA : arrondi à l'entier
+   * - Autres devises : 2 décimales
+   */
+  private roundForCurrency(amount: number, currencyCode?: string): number {
+    if (this.isNoDecimalCurrency(currencyCode)) {
+      return Math.round(amount);
+    }
+    return Math.round(amount * 100) / 100;
+  }
+
+  /**
    * Calcule les prix d'un produit basé sur son prix d'achat et sa catégorie
+   * @param prixAchat Prix d'achat du produit
+   * @param coefficientPrixVente Coefficient de la catégorie de tarification
+   * @param tauxTva Taux de TVA en pourcentage
+   * @param tauxCentimeAdditionnel Taux du centime additionnel en pourcentage
+   * @param currencyCode Code devise (optionnel, défaut: XAF)
    */
   calculatePrice(
     prixAchat: number,
     coefficientPrixVente: number,
     tauxTva: number,
-    tauxCentimeAdditionnel: number
+    tauxCentimeAdditionnel: number,
+    currencyCode?: string
   ): PriceCalculationResult {
-    // Calculer prix HT (prix achat × coefficient)
-    const prix_vente_ht = prixAchat * coefficientPrixVente;
+    // Calculer prix HT (prix achat × coefficient) avec arrondi selon devise
+    const prix_vente_ht = this.roundForCurrency(prixAchat * coefficientPrixVente, currencyCode);
     
-    // Calculer centime additionnel (sur HT)
-    const centime_additionnel = prix_vente_ht * (tauxCentimeAdditionnel / 100);
+    // Calculer centime additionnel (sur HT) avec arrondi selon devise
+    const centime_additionnel = this.roundForCurrency(prix_vente_ht * (tauxCentimeAdditionnel / 100), currencyCode);
     
-    // Calculer TVA (sur HT + centime additionnel)
-    const tva = (prix_vente_ht + centime_additionnel) * (tauxTva / 100);
+    // Calculer TVA (sur HT + centime additionnel) avec arrondi selon devise
+    const tva = this.roundForCurrency((prix_vente_ht + centime_additionnel) * (tauxTva / 100), currencyCode);
     
-    // Calculer prix TTC
-    const prix_vente_ttc = prix_vente_ht + centime_additionnel + tva;
+    // Calculer prix TTC avec arrondi selon devise
+    const prix_vente_ttc = this.roundForCurrency(prix_vente_ht + centime_additionnel + tva, currencyCode);
 
     return {
       prix_vente_ht,

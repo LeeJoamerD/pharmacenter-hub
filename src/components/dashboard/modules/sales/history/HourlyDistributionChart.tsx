@@ -2,12 +2,15 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Clock } from 'lucide-react';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 interface HourlyDistributionChartProps {
   data?: Array<{ hour: string; sales: number; transactions: number }>;
 }
 
 const HourlyDistributionChart = ({ data = [] }: HourlyDistributionChartProps) => {
+  const { formatAmount } = useCurrencyFormatting();
+
   return (
     <Card className="col-span-2">
       <CardHeader>
@@ -24,7 +27,7 @@ const HourlyDistributionChart = ({ data = [] }: HourlyDistributionChartProps) =>
             <YAxis />
             <Tooltip 
               formatter={(value: number, name: string) => {
-                if (name === 'Ventes') return [`${value.toLocaleString()} FCFA`, name];
+                if (name === 'Ventes') return [formatAmount(value), name];
                 return [value, name];
               }}
             />

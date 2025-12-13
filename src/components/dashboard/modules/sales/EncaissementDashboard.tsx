@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 
 import { useEncaissements } from '@/hooks/useEncaissements';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import TransactionDetailsModal from './encaissements/TransactionDetailsModal';
 import PaymentBreakdownChart from './encaissements/PaymentBreakdownChart';
 import SalesEvolutionChart from './encaissements/SalesEvolutionChart';
@@ -114,9 +115,8 @@ const EncaissementDashboard = () => {
     );
   };
 
-  const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString('fr-CG')} FCFA`;
-  };
+  const { formatAmount } = useCurrencyFormatting();
+  const formatCurrency = (amount: number) => formatAmount(amount);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('fr-CG', {

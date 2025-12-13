@@ -2,12 +2,15 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp } from 'lucide-react';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 interface SalesEvolutionChartProps {
   data?: Array<{ date: string; sales: number; transactions: number }>;
 }
 
 const SalesEvolutionChart = ({ data = [] }: SalesEvolutionChartProps) => {
+  const { formatAmount } = useCurrencyFormatting();
+
   const formattedData = data.map(item => ({
     ...item,
     date: new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })
@@ -30,7 +33,7 @@ const SalesEvolutionChart = ({ data = [] }: SalesEvolutionChartProps) => {
             <YAxis yAxisId="right" orientation="right" />
             <Tooltip 
               formatter={(value: number, name: string) => {
-                if (name === 'Ventes') return [`${value.toLocaleString()} FCFA`, name];
+                if (name === 'Ventes') return [formatAmount(value), name];
                 return [value, name];
               }}
             />

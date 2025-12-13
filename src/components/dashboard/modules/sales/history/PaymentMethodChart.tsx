@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { CreditCard } from 'lucide-react';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 interface PaymentMethodChartProps {
   data?: Array<{ name: string; value: number; count: number }>;
@@ -10,6 +11,8 @@ interface PaymentMethodChartProps {
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
 const PaymentMethodChart = ({ data = [] }: PaymentMethodChartProps) => {
+  const { formatAmount } = useCurrencyFormatting();
+
   return (
     <Card>
       <CardHeader>
@@ -36,7 +39,7 @@ const PaymentMethodChart = ({ data = [] }: PaymentMethodChartProps) => {
               ))}
             </Pie>
             <Tooltip 
-              formatter={(value: number) => `${value.toLocaleString()} FCFA`}
+              formatter={(value: number) => formatAmount(value)}
             />
             <Legend />
           </PieChart>
