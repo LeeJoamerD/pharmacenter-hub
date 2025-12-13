@@ -45,6 +45,7 @@ interface ReceptionLine {
   statut: 'conforme' | 'non-conforme' | 'partiellement-conforme';
   commentaire: string;
   prixAchatReel?: number;
+  emplacement?: string;
 }
 
 interface ReceptionFormProps {
@@ -117,6 +118,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       statut: 'conforme',
       commentaire: '',
       prixAchatReel: line.prix_achat_unitaire_attendu || 0,
+      emplacement: '',
     }));
     setReceptionLines(lines);
     
@@ -537,7 +539,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
           date_expiration: line.dateExpiration || null,
           statut: line.statut,
           commentaire: line.commentaire,
-          prix_achat_reel: line.prixAchatReel || 0
+          prix_achat_reel: line.prixAchatReel || 0,
+          emplacement: line.emplacement || null
         }))
       };
 
@@ -660,7 +663,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
           date_expiration: line.dateExpiration || null,
           statut: line.statut,
           commentaire: line.commentaire,
-          prix_achat_reel: line.prixAchatReel || 0
+          prix_achat_reel: line.prixAchatReel || 0,
+          emplacement: line.emplacement || null
         }))
       };
 
@@ -730,7 +734,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
           date_expiration: line.dateExpiration || null,
           statut: line.statut,
           commentaire: line.commentaire,
-          prix_achat_reel: line.prixAchatReel || 0
+          prix_achat_reel: line.prixAchatReel || 0,
+          emplacement: line.emplacement || null
         })),
         isValidated: true
       };
@@ -920,6 +925,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                     <TableHead>Prix Réel</TableHead>
                     <TableHead>N° Lot</TableHead>
                     <TableHead>Expiration</TableHead>
+                    <TableHead>Emplacement</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Commentaire</TableHead>
                   </TableRow>
@@ -974,6 +980,14 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                           value={line.dateExpiration}
                           onChange={(e) => updateReceptionLine(line.id, 'dateExpiration', e.target.value)}
                           className="w-36"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          value={line.emplacement || ''}
+                          onChange={(e) => updateReceptionLine(line.id, 'emplacement', e.target.value)}
+                          className="w-24"
+                          placeholder="Ex: A1"
                         />
                       </TableCell>
                       <TableCell>
