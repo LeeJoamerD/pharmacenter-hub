@@ -94,6 +94,7 @@ export const useReceptions = () => {
       statut: 'conforme' | 'non-conforme' | 'partiellement-conforme';
       commentaire?: string;
       prix_achat_reel?: number;
+      emplacement?: string;
     }>;
   }) => {
     try {
@@ -197,12 +198,14 @@ export const useReceptions = () => {
           }
 
           if (!shouldCreateNewLot && existingLot) {
-            // Mettre à jour le lot existant
+            // Mettre à jour le lot existant avec emplacement et notes si fournis
             const { error: updateError } = await supabase
               .from('lots')
               .update({
                 quantite_restante: existingLot.quantite_restante + ligne.quantite_acceptee,
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                ...(ligne.emplacement && { emplacement: ligne.emplacement }),
+                ...(ligne.commentaire && { notes: ligne.commentaire })
               })
               .eq('id', existingLot.id);
 
@@ -239,7 +242,12 @@ export const useReceptions = () => {
                 quantite_initiale: ligne.quantite_acceptee,
                 quantite_restante: ligne.quantite_acceptee,
                 prix_achat_unitaire: ligne.prix_achat_reel || 0,
-                date_reception: dateReception
+                date_reception: dateReception,
+                // Ajout des colonnes manquantes
+                fournisseur_id: receptionData.fournisseur_id,
+                reception_id: reception.id,
+                emplacement: ligne.emplacement || null,
+                notes: ligne.commentaire || null
               })
               .select()
               .single();
