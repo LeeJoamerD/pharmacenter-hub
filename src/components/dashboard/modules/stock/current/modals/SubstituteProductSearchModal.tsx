@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Search, Package, Check } from "lucide-react";
 import { useProductSubstitutes, SubstituteSuggestion } from "@/hooks/useProductSubstitutes";
 import { CurrentStockItem } from "@/hooks/useCurrentStock";
+import { useCurrencyFormatting } from "@/hooks/useCurrencyFormatting";
 
 interface SubstituteProductSearchModalProps {
   open: boolean;
@@ -18,6 +19,7 @@ interface SubstituteProductSearchModalProps {
 
 export function SubstituteProductSearchModal({ open, onOpenChange, products }: SubstituteProductSearchModalProps) {
   const { toast } = useToast();
+  const { formatAmount } = useCurrencyFormatting();
   const { searchSubstituteSuggestions, createSubstitute } = useProductSubstitutes();
   const [loading, setLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<Record<string, SubstituteSuggestion[]>>({});
@@ -174,7 +176,7 @@ export function SubstituteProductSearchModal({ open, onOpenChange, products }: S
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                   <span>{suggestion.code_cip}</span>
                                   <span>•</span>
-                                  <span>{suggestion.prix_vente_ttc.toLocaleString()} FCFA</span>
+                                  <span>{formatAmount(suggestion.prix_vente_ttc)}</span>
                                 </div>
                               </div>
                             </div>

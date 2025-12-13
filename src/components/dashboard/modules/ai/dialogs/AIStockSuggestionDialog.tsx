@@ -16,6 +16,7 @@ import {
 import type { AIStockSuggestion } from '@/hooks/useAIStockManagement';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 interface AIStockSuggestionDialogProps {
   open: boolean;
@@ -32,6 +33,8 @@ const AIStockSuggestionDialog: React.FC<AIStockSuggestionDialogProps> = ({
   onApply,
   onIgnore
 }) => {
+  const { formatAmount } = useCurrencyFormatting();
+
   if (!suggestion) return null;
 
   const getTypeIcon = () => {
@@ -146,7 +149,7 @@ const AIStockSuggestionDialog: React.FC<AIStockSuggestionDialogProps> = ({
                     <Banknote className="h-5 w-5 text-muted-foreground" />
                     <span>Valeur du stock</span>
                   </div>
-                  <span className="font-bold">{suggestion.stock_value.toLocaleString('fr-FR')} FCFA</span>
+                  <span className="font-bold">{formatAmount(suggestion.stock_value)}</span>
                 </div>
               )}
               {suggestion.lot_number && (
@@ -194,7 +197,7 @@ const AIStockSuggestionDialog: React.FC<AIStockSuggestionDialogProps> = ({
                 </p>
                 {suggestion.expected_benefit.savings && (
                   <p className="text-green-800 dark:text-green-300 font-semibold mt-2">
-                    Économies estimées: {suggestion.expected_benefit.savings.toLocaleString('fr-FR')} FCFA
+                    Économies estimées: {formatAmount(suggestion.expected_benefit.savings)}
                   </p>
                 )}
               </div>

@@ -38,6 +38,8 @@ import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
+// Hook will be used inside the component
+
 interface Product {
   id?: string;
   tenant_id?: string;
@@ -126,7 +128,7 @@ const ProductCatalogNew = () => {
   const { laboratories, loading: labLoading } = useLaboratories();
   const { personnel } = useAuth();
   const { createProductDetail } = useProducts();
-  const { getCurrencySymbol, getInputStep, isNoDecimalCurrency } = useCurrencyFormatting();
+  const { formatAmount, getCurrencySymbol, getInputStep, isNoDecimalCurrency } = useCurrencyFormatting();
 
   // Récupération des données avec pagination
   const {
@@ -733,8 +735,8 @@ const ProductCatalogNew = () => {
                           )}
                        </div>
                      </TableCell>
-                    <TableCell>{(product.prix_achat || 0).toLocaleString()} FCFA</TableCell>
-                    <TableCell>{(product.prix_vente_ttc || 0).toLocaleString()} FCFA</TableCell>
+                    <TableCell>{formatAmount(product.prix_achat || 0)}</TableCell>
+                    <TableCell>{formatAmount(product.prix_vente_ttc || 0)}</TableCell>
                     <TableCell>
                       <div className="flex flex-col">
                         <span className="text-xs text-muted-foreground">

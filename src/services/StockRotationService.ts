@@ -141,7 +141,7 @@ export class StockRotationService {
       insights.push({
         type: 'error',
         title: 'Rotation Critique',
-        message: `${critique.length} catégorie(s) avec rotation <1/an. Valeur immobilisée: ${valeurImmobilisee.toLocaleString()} FCFA. Réduire les stocks.`,
+        message: `${critique.length} catégorie(s) avec rotation <1/an. Valeur immobilisée: ${Math.round(valeurImmobilisee).toLocaleString('fr-FR')} FCFA. Réduire les stocks.`,
         categories: critique.map(c => c.categorie)
       });
     }

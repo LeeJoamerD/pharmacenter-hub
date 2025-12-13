@@ -17,10 +17,12 @@ import { usePriceCategories } from '@/hooks/usePriceCategories';
 import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
 import pricingCalculationService from '@/services/PricingCalculationService';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 const PricingConfig = () => {
   const { toast } = useToast();
   const { tenantId } = useTenant();
+  const { getCurrencySymbol } = useCurrencyFormatting();
   const { settings, loading: settingsLoading, saveSettings, isUpdating: settingsUpdating } = usePricingSettings();
   const { rules, loading: rulesLoading, createRule, updateRule, deleteRule, isUpdating: rulesUpdating } = useMarginRules();
   const { categories, loading: categoriesLoading, createCategory, updateCategory, deleteCategory, isUpdating: categoriesUpdating } = usePriceCategories();
@@ -328,7 +330,7 @@ const PricingConfig = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="priceRoundingValue">Valeur d'arrondi (FCFA)</Label>
+              <Label htmlFor="priceRoundingValue">Valeur d'arrondi ({getCurrencySymbol()})</Label>
               <Input
                 id="priceRoundingValue"
                 type="number"
@@ -398,8 +400,8 @@ const PricingConfig = () => {
               <TableRow>
                 <TableHead>Catégorie</TableHead>
                 <TableHead>Marge (%)</TableHead>
-                <TableHead>Prix min (FCFA)</TableHead>
-                <TableHead>Prix max (FCFA)</TableHead>
+                <TableHead>Prix min ({getCurrencySymbol()})</TableHead>
+                <TableHead>Prix max ({getCurrencySymbol()})</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
