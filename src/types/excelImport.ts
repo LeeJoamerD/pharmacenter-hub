@@ -12,6 +12,8 @@ export interface ExcelReceptionLine {
   rowNumber: number;          // Numéro de ligne pour traçabilité
   hasParsingError?: boolean;  // Indique si la ligne a une erreur de parsing
   parsingErrorMessage?: string; // Message d'erreur de parsing
+  emplacement?: string;       // Position physique du lot dans l'officine
+  commentaire?: string;       // Commentaire/remarque pour cette ligne
 }
 
 export interface ParseResult {

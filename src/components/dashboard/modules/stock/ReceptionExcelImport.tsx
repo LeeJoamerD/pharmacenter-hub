@@ -1,18 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { FileUp, Upload, CheckCircle2, XCircle, AlertTriangle, Loader2, PlusCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { ExcelParserService } from '@/services/ExcelParserService';
 import { AutoOrderCreationService } from '@/services/AutoOrderCreationService';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import type { ExcelReceptionLine, ParseResult, ValidationResult } from '@/types/excelImport';
 import type { Reception } from '@/hooks/useReceptions';
 
@@ -29,6 +41,9 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   onCreateReception,
   loading
 }) => {
+  const { formatAmount, getInputStep, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
+  
+  // États de base
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
@@ -40,9 +55,48 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const [selectedForCatalog, setSelectedForCatalog] = useState<Set<number>>(new Set());
   const [addingToCatalog, setAddingToCatalog] = useState(false);
   const [editedLines, setEditedLines] = useState<Map<number, Partial<ExcelReceptionLine>>>(new Map());
+  
+  // États financiers (TVA/Centime manuels)
+  const [montantTva, setMontantTva] = useState<number>(0);
+  const [montantCentimeAdditionnel, setMontantCentimeAdditionnel] = useState<number>(0);
+  
+  // États informations complémentaires
+  const [transporteur, setTransporteur] = useState('');
+  const [observations, setObservations] = useState('');
+  
+  // États pour l'AlertDialog d'avertissement TVA/Centime à zéro
+  const [showZeroWarningDialog, setShowZeroWarningDialog] = useState(false);
+
+  // Calcul des totaux financiers
+  const calculateTotals = useMemo(() => {
+    if (!parseResult?.lines || parseResult.lines.length === 0) {
+      return { sousTotal: 0, totalGeneral: 0 };
+    }
+
+    let sousTotal = parseResult.lines.reduce((sum, line) => {
+      // Ne compter que les lignes validées si validation effectuée
+      if (validationResult) {
+        const isValid = validationResult.validLines.some(vl => vl.rowNumber === line.rowNumber);
+        if (!isValid) return sum;
+      }
+      
+      const edited = editedLines.get(line.rowNumber);
+      const prixAchatReel = edited?.prixAchatReel ?? line.prixAchatReel;
+      const quantiteAcceptee = edited?.quantiteAcceptee ?? line.quantiteAcceptee;
+      return sum + (quantiteAcceptee * prixAchatReel);
+    }, 0);
+    
+    // Arrondir pour les devises sans décimales
+    if (isNoDecimalCurrency()) {
+      sousTotal = Math.round(sousTotal);
+    }
+    
+    const totalGeneral = sousTotal + montantTva + montantCentimeAdditionnel;
+    return { sousTotal, totalGeneral };
+  }, [parseResult?.lines, validationResult, editedLines, montantTva, montantCentimeAdditionnel, isNoDecimalCurrency]);
 
   // Liste des produits avec erreur "product_not_found"
-  const productNotFoundLines = React.useMemo(() => {
+  const productNotFoundLines = useMemo(() => {
     if (!validationResult || !parseResult) return [];
     return parseResult.lines.filter(line => 
       validationResult.errors.some(
@@ -54,10 +108,8 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   // Fonction pour sélectionner/désélectionner tous les produits non trouvés
   const handleSelectAll = () => {
     if (selectedForCatalog.size === productNotFoundLines.length) {
-      // Tout désélectionner
       setSelectedForCatalog(new Set());
     } else {
-      // Tout sélectionner
       const allRowNumbers = new Set(productNotFoundLines.map(l => l.rowNumber));
       setSelectedForCatalog(allRowNumbers);
     }
@@ -106,7 +158,6 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       if (result.success && result.lines.length > 0) {
         toast.success(`${result.lines.length} lignes importées avec succès`);
         
-        // Lancer automatiquement la validation si un fournisseur est sélectionné
         if (selectedSupplierId) {
           await validateData(result.lines);
         }
@@ -147,6 +198,34 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     }
   };
 
+  // Vérification TVA/Centime à zéro avant validation
+  const handleValidateClick = () => {
+    if (!selectedSupplierId) {
+      toast.error('Veuillez sélectionner un fournisseur');
+      return;
+    }
+
+    if (!validationResult || validationResult.validLines.length === 0) {
+      toast.error('Aucune ligne valide à importer');
+      return;
+    }
+
+    // Vérifier si TVA ou Centime = 0
+    if (montantTva === 0 || montantCentimeAdditionnel === 0) {
+      setShowZeroWarningDialog(true);
+      return;
+    }
+
+    // Si tout est OK, procéder directement
+    handleSubmit();
+  };
+
+  // Confirmation après avertissement TVA/Centime à zéro
+  const handleConfirmZeroWarning = () => {
+    setShowZeroWarningDialog(false);
+    handleSubmit();
+  };
+
   const handleSubmit = async () => {
     if (!selectedSupplierId) {
       toast.error('Veuillez sélectionner un fournisseur');
@@ -180,31 +259,48 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         const edited = editedLines.get(line.rowNumber);
         const finalLine = { ...line, ...edited };
         
+        // Récupérer le statut modifié ou garder le statut par défaut
+        const statutValue = String(edited?.statut ?? line.statut ?? 'conforme');
+        // Convertir le statut au format attendu par useReceptions
+        const statutConverted = statutValue === 'non_conforme' ? 'non-conforme' : 
+                               statutValue === 'refuse' ? 'non-conforme' : 
+                               statutValue === 'partiellement-conforme' ? 'partiellement-conforme' :
+                               'conforme';
+        
         return {
           produit_id: finalLine.produitId!,
           quantite_commandee: finalLine.quantiteCommandee,
           quantite_recue: finalLine.quantiteRecue,
           quantite_acceptee: finalLine.quantiteAcceptee,
-          prix_achat_reel: finalLine.prixAchatReel,
+          prix_achat_reel: isNoDecimalCurrency() ? Math.round(finalLine.prixAchatReel) : finalLine.prixAchatReel,
           numero_lot: finalLine.numeroLot,
           date_expiration: finalLine.dateExpiration,
-          statut: finalLine.statut
+          statut: statutConverted as 'conforme' | 'non-conforme' | 'partiellement-conforme',
+          emplacement: finalLine.emplacement || null,
+          commentaire: finalLine.commentaire || null
         };
       });
 
-      // Créer la réception
+      // Créer la réception avec tous les champs
       const receptionData = {
         fournisseur_id: selectedSupplierId,
         commande_id: orderId || undefined,
         date_reception: new Date().toISOString(),
         reference_facture: bonLivraison,
+        transporteur: transporteur || null,
         isValidated: true,
+        // Montants financiers
+        montant_ht: isNoDecimalCurrency() ? Math.round(calculateTotals.sousTotal) : calculateTotals.sousTotal,
+        montant_tva: isNoDecimalCurrency() ? Math.round(montantTva) : montantTva,
+        montant_centime_additionnel: isNoDecimalCurrency() ? Math.round(montantCentimeAdditionnel) : montantCentimeAdditionnel,
+        montant_ttc: isNoDecimalCurrency() ? Math.round(calculateTotals.totalGeneral) : calculateTotals.totalGeneral,
+        notes: observations || null,
         lignes
       };
 
       await onCreateReception(receptionData as any);
 
-      // Mettre à jour le statut de la commande (qu'elle soit créée automatiquement ou existante)
+      // Mettre à jour le statut de la commande
       if (orderId) {
         await AutoOrderCreationService.updateOrderStatus(orderId, 'Réceptionné');
         toast.success(
@@ -217,17 +313,25 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       toast.success('Réception créée et validée avec succès');
 
       // Réinitialiser le formulaire
-      setFile(null);
-      setParseResult(null);
-      setValidationResult(null);
-      setBonLivraison('');
-      setSelectedOrderId('');
-      setSelectedForCatalog(new Set());
-      setEditedLines(new Map());
+      resetForm();
     } catch (error) {
       console.error('Erreur lors de la création de la réception:', error);
       toast.error('Erreur lors de la création de la réception');
     }
+  };
+
+  const resetForm = () => {
+    setFile(null);
+    setParseResult(null);
+    setValidationResult(null);
+    setBonLivraison('');
+    setSelectedOrderId('');
+    setSelectedForCatalog(new Set());
+    setEditedLines(new Map());
+    setMontantTva(0);
+    setMontantCentimeAdditionnel(0);
+    setTransporteur('');
+    setObservations('');
   };
 
   const handleAddProductsToCatalog = async () => {
@@ -235,7 +339,6 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     
     setAddingToCatalog(true);
     try {
-      // Récupérer le tenant_id
       const { data: user } = await supabase.auth.getUser();
       const { data: personnel } = await supabase
         .from('personnel')
@@ -260,7 +363,6 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         const normalizedCip = String(line.reference).trim();
         const normalizedName = String(line.produit).trim();
 
-        // Vérifier si le produit existe déjà par code_cip
         const { data: existing } = await supabase
           .from('produits')
           .select('id')
@@ -292,7 +394,6 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         }
       }
 
-      // Afficher les résultats
       if (created > 0) {
         toast.success(`${created} produit(s) ajouté(s) au catalogue`);
       }
@@ -305,7 +406,6 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
 
       setSelectedForCatalog(new Set());
 
-      // Re-valider les données pour actualiser les statuts
       if (parseResult?.lines) {
         await validateData(parseResult.lines);
       }
@@ -397,7 +497,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">1️⃣ Informations de base</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="supplier">Fournisseur *</Label>
                 <Select value={selectedSupplierId} onValueChange={setSelectedSupplierId}>
@@ -439,6 +539,27 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                   placeholder="Auto-rempli depuis Excel"
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="transporteur">Transporteur</Label>
+                <Input
+                  id="transporteur"
+                  value={transporteur}
+                  onChange={(e) => setTransporteur(e.target.value)}
+                  placeholder="Nom du transporteur"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="observations">Notes / Observations</Label>
+              <Textarea
+                id="observations"
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                placeholder="Remarques sur la réception..."
+                rows={2}
+              />
             </div>
           </div>
 
@@ -615,24 +736,27 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                     <Table>
                       <TableHeader>
                         <TableRow>
-                <TableHead className="w-[50px]">
-                  {productNotFoundLines.length > 0 && (
-                    <Checkbox
-                      checked={allSelected}
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Sélectionner tous les produits non trouvés"
-                    />
-                  )}
-                </TableHead>
+                          <TableHead className="w-[50px]">
+                            {productNotFoundLines.length > 0 && (
+                              <Checkbox
+                                checked={allSelected}
+                                onCheckedChange={handleSelectAll}
+                                aria-label="Sélectionner tous les produits non trouvés"
+                              />
+                            )}
+                          </TableHead>
                           <TableHead className="w-[80px]">Statut</TableHead>
                           <TableHead>Référence</TableHead>
                           <TableHead>Produit</TableHead>
                           <TableHead className="text-right">Commandé</TableHead>
                           <TableHead className="text-right">Reçu</TableHead>
                           <TableHead className="text-right">Accepté</TableHead>
-                          <TableHead className="text-right">Prix</TableHead>
+                          <TableHead className="text-right">Prix ({getCurrencySymbol()})</TableHead>
                           <TableHead>Lot</TableHead>
                           <TableHead>Expiration</TableHead>
+                          <TableHead>Emplacement</TableHead>
+                          <TableHead>Statut Ligne</TableHead>
+                          <TableHead>Commentaire</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -689,7 +813,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                               <TableCell className="text-right">
                                 <Input
                                   type="number"
-                                  step="0.01"
+                                  step={getInputStep()}
                                   className="w-24 h-8 text-right"
                                   value={Number(getLineValue(line, 'prixAchatReel'))}
                                   onChange={(e) => updateLineValue(line.rowNumber, 'prixAchatReel', parseFloat(e.target.value) || 0)}
@@ -711,6 +835,39 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                                   onChange={(e) => updateLineValue(line.rowNumber, 'dateExpiration', e.target.value)}
                                 />
                               </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="text"
+                                  className="w-24 h-8"
+                                  value={String(getLineValue(line, 'emplacement') || '')}
+                                  onChange={(e) => updateLineValue(line.rowNumber, 'emplacement', e.target.value)}
+                                  placeholder="Ex: A1"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  value={String(getLineValue(line, 'statut') || 'conforme')}
+                                  onValueChange={(value) => updateLineValue(line.rowNumber, 'statut', value as 'conforme' | 'non_conforme' | 'refuse')}
+                                >
+                                  <SelectTrigger className="w-32 h-8">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="conforme">Conforme</SelectItem>
+                                    <SelectItem value="non_conforme">Non conforme</SelectItem>
+                                    <SelectItem value="partiellement-conforme">Partiel</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="text"
+                                  className="w-32 h-8"
+                                  value={String(getLineValue(line, 'commentaire') || '')}
+                                  onChange={(e) => updateLineValue(line.rowNumber, 'commentaire', e.target.value)}
+                                  placeholder="Remarque..."
+                                />
+                              </TableCell>
                             </TableRow>
                           );
                         })}
@@ -722,23 +879,90 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
             </div>
           )}
 
-          {/* Section 4: Actions */}
+          {/* Section 4: Calculs Financiers */}
           {validationResult && validationResult.validLines.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">4️⃣ Actions</h3>
+              <h3 className="text-lg font-semibold">4️⃣ Calculs Financiers</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div className="space-y-2">
+                  <Label>Sous-total HT</Label>
+                  <Input
+                    type="text"
+                    value={formatAmount(calculateTotals.sousTotal)}
+                    readOnly
+                    className="bg-muted font-medium"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="tva">TVA ({getCurrencySymbol()})</Label>
+                  <Input
+                    id="tva"
+                    type="number"
+                    step={getInputStep()}
+                    min="0"
+                    value={montantTva}
+                    onChange={(e) => setMontantTva(parseFloat(e.target.value) || 0)}
+                    className={montantTva === 0 ? 'border-yellow-500' : ''}
+                    placeholder="Montant TVA"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="centime">Centime Additionnel ({getCurrencySymbol()})</Label>
+                  <Input
+                    id="centime"
+                    type="number"
+                    step={getInputStep()}
+                    min="0"
+                    value={montantCentimeAdditionnel}
+                    onChange={(e) => setMontantCentimeAdditionnel(parseFloat(e.target.value) || 0)}
+                    className={montantCentimeAdditionnel === 0 ? 'border-yellow-500' : ''}
+                    placeholder="Centime additionnel"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Total TTC</Label>
+                  <Input
+                    type="text"
+                    value={formatAmount(calculateTotals.totalGeneral)}
+                    readOnly
+                    className="bg-primary/10 font-bold text-lg"
+                  />
+                </div>
+              </div>
+              
+              {(montantTva === 0 || montantCentimeAdditionnel === 0) && (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="text-sm">
+                    {montantTva === 0 && montantCentimeAdditionnel === 0 
+                      ? 'La TVA et le Centime Additionnel sont à zéro. Vérifiez avant de valider.'
+                      : montantTva === 0 
+                        ? 'La TVA est à zéro. Vérifiez avant de valider.'
+                        : 'Le Centime Additionnel est à zéro. Vérifiez avant de valider.'
+                    }
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+
+          {/* Section 5: Actions */}
+          {validationResult && validationResult.validLines.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">5️⃣ Actions</h3>
               <div className="flex gap-2">
                 <Button
-                  onClick={() => {
-                    setFile(null);
-                    setParseResult(null);
-                    setValidationResult(null);
-                  }}
+                  onClick={resetForm}
                   variant="outline"
                 >
                   Annuler
                 </Button>
                 <Button
-                  onClick={handleSubmit}
+                  onClick={handleValidateClick}
                   disabled={loading || validationResult.validLines.length === 0}
                   className="ml-auto"
                 >
@@ -759,6 +983,36 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
           )}
         </CardContent>
       </Card>
+
+      {/* AlertDialog pour TVA/Centime à zéro */}
+      <AlertDialog open={showZeroWarningDialog} onOpenChange={setShowZeroWarningDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              Attention - TVA / Centime Additionnel à zéro
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              {montantTva === 0 && montantCentimeAdditionnel === 0 ? (
+                <p>La <strong>TVA</strong> et le <strong>Centime Additionnel</strong> sont tous les deux à zéro. Êtes-vous sûr de vouloir continuer ?</p>
+              ) : montantTva === 0 ? (
+                <p>La <strong>TVA</strong> est à zéro. Êtes-vous sûr de vouloir continuer sans TVA ?</p>
+              ) : (
+                <p>Le <strong>Centime Additionnel</strong> est à zéro. Êtes-vous sûr de vouloir continuer sans centime additionnel ?</p>
+              )}
+              <p className="text-sm text-muted-foreground">
+                Vous pouvez annuler pour corriger les montants, ou continuer si c'est intentionnel.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler et corriger</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmZeroWarning}>
+              Continuer la validation
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
