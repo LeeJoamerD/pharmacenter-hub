@@ -22,8 +22,10 @@ import { useSalesSuggestions, SalesSuggestion } from '@/hooks/useSalesSuggestion
 import { useLots } from '@/hooks/useLots';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 export const SalesIntegration = () => {
+  const { formatAmount } = useCurrencyFormatting();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLotId, setSelectedLotId] = useState<string>("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -343,7 +345,7 @@ export const SalesIntegration = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="font-medium">
-                        {suggestion.prix_vente_suggere.toLocaleString()} FCFA
+                        {formatAmount(suggestion.prix_vente_suggere)}
                       </TableCell>
                       <TableCell>
                         {suggestion.remise_suggere ? `${suggestion.remise_suggere}%` : '-'}

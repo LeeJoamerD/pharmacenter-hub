@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RotateCcw, DollarSign, AlertTriangle, Package, TrendingUp, TrendingDown } from 'lucide-react';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 interface StatisticsCardsProps {
   statistics: {
@@ -14,6 +15,8 @@ interface StatisticsCardsProps {
 }
 
 const ReturnStatisticsCards: React.FC<StatisticsCardsProps> = ({ statistics, isLoading }) => {
+  const { formatAmount } = useCurrencyFormatting();
+
   if (isLoading) {
     return (
       <div className="grid gap-4 md:grid-cols-4">
@@ -69,7 +72,7 @@ const ReturnStatisticsCards: React.FC<StatisticsCardsProps> = ({ statistics, isL
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-primary">
-            {(statistics?.montantRembourse || 0).toLocaleString('fr-FR')} FCFA
+            {formatAmount(statistics?.montantRembourse || 0)}
           </div>
           <p className="text-xs text-muted-foreground">Aujourd'hui</p>
         </CardContent>

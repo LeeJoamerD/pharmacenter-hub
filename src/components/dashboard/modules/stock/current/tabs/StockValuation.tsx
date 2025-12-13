@@ -11,11 +11,13 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const StockValuation = () => {
   const { toast } = useToast();
   const { formatPrice } = useCurrency();
+  const { formatAmount } = useCurrencyFormatting();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [rotationFilter, setRotationFilter] = useState('all');
@@ -438,7 +440,7 @@ const StockValuation = () => {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {product.prix_achat.toLocaleString()} FCFA
+                          {formatAmount(product.prix_achat)}
                         </div>
                       </TableCell>
                       <TableCell>

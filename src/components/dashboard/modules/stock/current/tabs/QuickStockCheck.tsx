@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Search, Package, CheckCircle, XCircle, AlertTriangle, BarChart3, Loader2 } from 'lucide-react';
 import { useQuickStockSearch } from '@/hooks/useQuickStockSearch';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 const QuickStockCheck = () => {
+  const { formatAmount } = useCurrencyFormatting();
   const [pageSize, setPageSize] = useState(50);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -236,7 +238,7 @@ const QuickStockCheck = () => {
                           </div>
                           <div>
                             <span className="text-muted-foreground">Prix de Vente:</span>
-                            <div className="font-medium">{product.prix_vente_ttc.toLocaleString()} FCFA</div>
+                            <div className="font-medium">{formatAmount(product.prix_vente_ttc)}</div>
                           </div>
                         </div>
 

@@ -2,12 +2,14 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { RotationChartData } from '@/services/StockRotationService';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 interface StockRotationChartProps {
   data: RotationChartData[];
 }
 
 const StockRotationChart: React.FC<StockRotationChartProps> = ({ data }) => {
+  const { formatAmount } = useCurrencyFormatting();
   const getStatusColor = (statut: RotationChartData['statut']) => {
     switch (statut) {
       case 'excellent': return 'hsl(142, 76%, 36%)'; // Green
@@ -36,7 +38,7 @@ const StockRotationChart: React.FC<StockRotationChartProps> = ({ data }) => {
             </p>
             <p>
               <span className="text-muted-foreground">Valeur stock:</span>{' '}
-              <span className="font-bold">{data.valeurStock.toLocaleString()} FCFA</span>
+              <span className="font-bold">{formatAmount(data.valeurStock)}</span>
             </p>
             <p>
               <span className="text-muted-foreground">Statut:</span>{' '}

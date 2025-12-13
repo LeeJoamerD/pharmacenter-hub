@@ -19,6 +19,7 @@ import { useSessionReports, type SessionReport, type DailyReport } from '@/hooks
 import { useSessionWithType, type TypeSession } from '@/hooks/useSessionWithType';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 const SessionReports = () => {
   const { getDailyReport, getSessionReport, loading } = useSessionReports();
@@ -53,11 +54,13 @@ const SessionReports = () => {
     setSelectedSession(report);
   };
 
+  const { formatAmount } = useCurrencyFormatting();
+
   const formatCurrency = (amount: number | null | undefined) => {
     if (amount === null || amount === undefined) {
-      return '0 FCFA';
+      return formatAmount(0);
     }
-    return `${amount.toLocaleString('fr-FR')} FCFA`;
+    return formatAmount(amount);
   };
 
   return (

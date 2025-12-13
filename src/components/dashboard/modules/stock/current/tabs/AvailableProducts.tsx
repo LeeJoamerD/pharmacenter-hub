@@ -23,8 +23,10 @@ import { OrderLowStockModal } from '../modals/OrderLowStockModal';
 import { BulkActionsModal } from '../modals/BulkActionsModal';
 import QuickLotCreationModal from '../modals/QuickLotCreationModal';
 import EditProductThresholdsModal from '../modals/EditProductThresholdsModal';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 const AvailableProducts = () => {
+  const { formatAmount } = useCurrencyFormatting();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFamily, setSelectedFamily] = useState('');
   const [selectedRayon, setSelectedRayon] = useState('');
@@ -610,13 +612,13 @@ const AvailableProducts = () => {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div>Achat: {product.prix_achat.toLocaleString()} FCFA</div>
-                          <div>Vente: {product.prix_vente_ttc.toLocaleString()} FCFA</div>
+                          <div>Achat: {formatAmount(product.prix_achat)}</div>
+                          <div>Vente: {formatAmount(product.prix_vente_ttc)}</div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="font-semibold">
-                          {product.valeur_stock.toLocaleString()} FCFA
+                          {formatAmount(product.valeur_stock)}
                         </div>
                       </TableCell>
                       <TableCell>

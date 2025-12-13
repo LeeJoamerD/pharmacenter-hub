@@ -9,6 +9,7 @@ import { XCircle, AlertCircle, ShoppingCart, Clock, TrendingDown, Search, Filter
 import { useOutOfStockDataPaginated } from '@/hooks/useOutOfStockDataPaginated';
 import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useToast } from '@/hooks/use-toast';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { OutOfStockEmergencyOrderModal } from '../modals/OutOfStockEmergencyOrderModal';
 import { SupplierAlertModal } from '../modals/SupplierAlertModal';
 import { SubstituteProductSearchModal } from '../modals/SubstituteProductSearchModal';
@@ -21,6 +22,7 @@ type SortDirection = 'asc' | 'desc';
 
 const OutOfStockProducts = () => {
   const { toast } = useToast();
+  const { formatAmount } = useCurrencyFormatting();
   
   // Local state for filters and pagination
   const [searchTerm, setSearchTerm] = useState('');
@@ -445,7 +447,7 @@ const OutOfStockProducts = () => {
                           <TableCell>
                             <div className="text-sm">
                               <div className="font-medium">
-                                {(product.prix_vente_ttc * product.stock_limite).toLocaleString()} FCFA
+                                {formatAmount(product.prix_vente_ttc * product.stock_limite)}
                               </div>
                               <div className="text-muted-foreground">potentiel perdu</div>
                             </div>

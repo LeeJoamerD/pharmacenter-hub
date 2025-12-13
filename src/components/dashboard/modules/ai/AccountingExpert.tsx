@@ -66,9 +66,10 @@ const AccountingExpert: React.FC = () => {
     markObligationPaid,
   } = useAccountingExpert();
 
+  const { formatAmount } = useCurrencyFormatting();
+
   const [activeTab, setActiveTab] = useState('plan');
   const [searchTerm, setSearchTerm] = useState('');
-  const [classFilter, setClassFilter] = useState('');
   
   // Dialogs
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
@@ -525,7 +526,7 @@ const AccountingExpert: React.FC = () => {
                       <div className="flex items-center gap-4">
                         <div className="text-right">
                           <p className="font-medium text-green-600">
-                            +{(opt.estimated_savings || 0).toLocaleString('fr-FR')} FCFA
+                            +{formatAmount(opt.estimated_savings || 0)}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             Confiance: {((opt.confidence || 0) * 100).toFixed(0)}%

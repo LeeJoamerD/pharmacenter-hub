@@ -2,12 +2,15 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Users } from 'lucide-react';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 interface CashierPerformanceChartProps {
   data?: Array<{ name: string; sales: number; count: number }>;
 }
 
 const CashierPerformanceChart = ({ data = [] }: CashierPerformanceChartProps) => {
+  const { formatAmount } = useCurrencyFormatting();
+
   return (
     <Card>
       <CardHeader>
@@ -24,7 +27,7 @@ const CashierPerformanceChart = ({ data = [] }: CashierPerformanceChartProps) =>
             <YAxis />
             <Tooltip 
               formatter={(value: number, name: string) => {
-                if (name === 'Ventes') return [`${value.toLocaleString()} FCFA`, name];
+                if (name === 'Ventes') return [formatAmount(value), name];
                 return [value, name];
               }}
             />
