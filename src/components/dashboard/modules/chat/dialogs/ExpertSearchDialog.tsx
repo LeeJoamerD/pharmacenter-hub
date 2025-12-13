@@ -128,18 +128,21 @@ const ExpertSearchDialog = ({ open, onOpenChange }: ExpertSearchDialogProps) => 
 
   const getRoleColor = (role: string) => {
     switch (role.toLowerCase()) {
-      case 'pharmacien':
       case 'pharmacien titulaire':
+      case 'pharmacien adjoint':
         return 'bg-blue-500/10 text-blue-600';
       case 'préparateur':
       case 'preparateur':
+      case 'technicien':
         return 'bg-green-500/10 text-green-600';
       case 'admin':
-      case 'administrateur':
         return 'bg-purple-500/10 text-purple-600';
-      case 'manager':
-      case 'gérant':
+      case 'gestionnaire de stock':
+      case 'comptable':
         return 'bg-orange-500/10 text-orange-600';
+      case 'caissier':
+      case 'vendeur':
+        return 'bg-cyan-500/10 text-cyan-600';
       default:
         return 'bg-gray-500/10 text-gray-600';
     }

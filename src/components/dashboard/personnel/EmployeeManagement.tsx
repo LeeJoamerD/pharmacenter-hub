@@ -125,13 +125,13 @@ export const EmployeeManagement = () => {
         updateMutation.mutate({ 
           id: editingEmployee.id, 
           ...normalizedData,
-          role: 'Employé', // Rôle par défaut pour les employés
+          role: 'Vendeur', // Rôle par défaut pour les employés (rôle unifié)
           is_active: true
         });
       } else {
         createMutation.mutate({
           ...normalizedData,
-          role: 'Employé', // Rôle par défaut pour les employés
+          role: 'Vendeur', // Rôle par défaut pour les employés (rôle unifié)
           is_active: true,
           // Générer reference_agent automatiquement
           reference_agent: `${data.prenoms.split(' ')[0]}_${data.noms.split(' ')[0].substring(0, 4).toUpperCase()}`

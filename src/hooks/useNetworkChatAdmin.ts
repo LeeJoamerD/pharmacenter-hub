@@ -165,7 +165,7 @@ export const useNetworkChatAdmin = () => {
         const personnel = pharmacy.personnel || [];
         const activePersonnel = personnel.filter((p: any) => p.is_active);
         const adminCount = activePersonnel.filter((p: any) => 
-          ['Admin', 'Pharmacien'].includes(p.role)
+          ['Admin', 'Pharmacien Titulaire', 'Pharmacien Adjoint'].includes(p.role)
         ).length;
         const lastAccess = personnel.length > 0 
           ? Math.max(...personnel.map((p: any) => new Date(p.updated_at).getTime()))
