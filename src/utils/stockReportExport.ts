@@ -7,11 +7,22 @@ interface PharmacyInfo {
   logo_url?: string;
 }
 
+// Helper function for currency formatting in non-hook context
+const formatCurrencyValue = (amount: number, currencySymbol: string = 'FCFA'): string => {
+  // For FCFA (no decimals), round to integer
+  const isNoDecimal = ['XAF', 'XOF', 'FCFA'].includes(currencySymbol);
+  if (isNoDecimal) {
+    return `${Math.round(amount).toLocaleString('fr-FR')} ${currencySymbol}`;
+  }
+  return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currencySymbol}`;
+};
+
 export const exportStockReportToPDF = async (
   reportData: StockReportsData,
   period: string,
   category: string,
-  pharmacyInfo: PharmacyInfo
+  pharmacyInfo: PharmacyInfo,
+  currencySymbol: string = 'FCFA'
 ) => {
   const doc = new jsPDF();
   let yPosition = 20;
@@ -56,7 +67,7 @@ export const exportStockReportToPDF = async (
     body: [
       [
         'Valeur Stock Total', 
-        `${reportData.kpis.valeurStockTotal.toLocaleString()} FCFA`, 
+        `${formatCurrencyValue(reportData.kpis.valeurStockTotal, currencySymbol)}`, 
         `${reportData.kpis.valeurStockVariation > 0 ? '+' : ''}${reportData.kpis.valeurStockVariation.toFixed(1)}%`
       ],
       [
@@ -108,7 +119,7 @@ export const exportStockReportToPDF = async (
         level.stock_critique.toString(),
         level.stock_faible.toString(),
         level.stock_limite.toString(),
-        `${level.valorisation.toLocaleString()} FCFA`,
+        formatCurrencyValue(level.valorisation, currencySymbol),
         level.statut.toUpperCase()
       ]),
       theme: 'striped',

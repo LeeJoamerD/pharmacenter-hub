@@ -66,10 +66,9 @@ const AccountingExpert: React.FC = () => {
     markObligationPaid,
   } = useAccountingExpert();
 
-  const { formatAmount } = useCurrencyFormatting();
-
   const [activeTab, setActiveTab] = useState('plan');
   const [searchTerm, setSearchTerm] = useState('');
+  const [classFilter, setClassFilter] = useState('');
   
   // Dialogs
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
