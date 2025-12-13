@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import type { Database } from '@/integrations/supabase/types';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 const conventionneSchema = z.object({
   noms: z.string().min(1, "Le nom est requis"),
@@ -36,6 +37,7 @@ const ConventionedManager = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingConventionne, setEditingConventionne] = useState<Conventionne | null>(null);
   const { toast } = useToast();
+  const { formatAmount, getCurrencySymbol, getInputStep, isNoDecimalCurrency } = useCurrencyFormatting();
 
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
   const { data: conventionnes = [], isLoading } = useTenantQueryWithCache(
@@ -285,11 +287,12 @@ const ConventionedManager = () => {
                         name="limite_dette"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Limite de dette (XAF)</FormLabel>
+                            <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
-                                placeholder="0" 
+                                step={getInputStep()}
+                                placeholder={isNoDecimalCurrency() ? "0" : "0.00"} 
                                 {...field}
                                 onChange={e => field.onChange(Number(e.target.value))}
                               />
@@ -304,11 +307,12 @@ const ConventionedManager = () => {
                         name="caution"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Caution (XAF)</FormLabel>
+                            <FormLabel>Caution ({getCurrencySymbol()})</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
-                                placeholder="0" 
+                                step={getInputStep()}
+                                placeholder={isNoDecimalCurrency() ? "0" : "0.00"} 
                                 {...field}
                                 onChange={e => field.onChange(Number(e.target.value))}
                               />
@@ -472,7 +476,7 @@ const ConventionedManager = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {(conv.limite_dette || 0).toLocaleString()} XAF
+                      {formatAmount(conv.limite_dette || 0)}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">

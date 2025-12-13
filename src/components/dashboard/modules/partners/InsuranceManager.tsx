@@ -13,6 +13,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 const assureurSchema = z.object({
   libelle_assureur: z.string().min(1, "Le nom est requis"),
@@ -32,6 +33,7 @@ const InsuranceManager = () => {
   const [editingAssureur, setEditingAssureur] = useState<Assureur | null>(null);
   const { toast } = useToast();
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
+  const { getCurrencySymbol, getInputStep, isNoDecimalCurrency } = useCurrencyFormatting();
 
   // Récupérer les assureurs
   const { data: assureurs = [], isLoading, refetch } = useTenantQueryWithCache(
@@ -239,11 +241,12 @@ const InsuranceManager = () => {
                         name="limite_dette"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Limite de dette</FormLabel>
+                            <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number"
-                                placeholder="0.00" 
+                                step={getInputStep()}
+                                placeholder={isNoDecimalCurrency() ? "0" : "0.00"} 
                                 {...field} 
                               />
                             </FormControl>
