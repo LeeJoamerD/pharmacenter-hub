@@ -27,12 +27,18 @@ interface ChannelPermissionModalProps {
 
 const ROLES = [
   { value: 'Admin', label: 'Administrateur' },
-  { value: 'Pharmacien', label: 'Pharmacien' },
-  { value: 'Gérant', label: 'Gérant' },
+  { value: 'Pharmacien Titulaire', label: 'Pharmacien Titulaire' },
+  { value: 'Pharmacien Adjoint', label: 'Pharmacien Adjoint' },
   { value: 'Préparateur', label: 'Préparateur' },
+  { value: 'Technicien', label: 'Technicien' },
   { value: 'Caissier', label: 'Caissier' },
   { value: 'Vendeur', label: 'Vendeur' },
-  { value: 'Employé', label: 'Employé' }
+  { value: 'Gestionnaire de stock', label: 'Gestionnaire de stock' },
+  { value: 'Comptable', label: 'Comptable' },
+  { value: 'Secrétaire', label: 'Secrétaire' },
+  { value: 'Livreur', label: 'Livreur' },
+  { value: 'Stagiaire', label: 'Stagiaire' },
+  { value: 'Invité', label: 'Invité' }
 ];
 
 const PERMISSION_LEVELS = [

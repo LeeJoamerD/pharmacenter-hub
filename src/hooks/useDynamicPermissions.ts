@@ -56,7 +56,7 @@ export const useDynamicPermissions = (): UserPermissions => {
     '*'
   );
 
-  const userRole = currentUser?.role || 'Employé';
+  const userRole = currentUser?.role || 'Vendeur';
   
   // Trouver le rôle actuel dans la base de données
   const currentRoleData = (roles as Role[]).find((role: Role) => role.nom_role === userRole);

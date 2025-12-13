@@ -74,9 +74,9 @@ export const ROLES: Record<string, Role> = {
     permissions: Object.values(PERMISSIONS)
   },
   
-  Pharmacien: {
-    id: 'Pharmacien',
-    name: 'Pharmacien',
+  'Pharmacien Titulaire': {
+    id: 'Pharmacien Titulaire',
+    name: 'Pharmacien Titulaire',
     description: 'Gestion complète de la pharmacie sauf administration',
     level: 2,
     permissions: [
@@ -103,11 +103,33 @@ export const ROLES: Record<string, Role> = {
     ]
   },
   
+  'Pharmacien Adjoint': {
+    id: 'Pharmacien Adjoint',
+    name: 'Pharmacien Adjoint',
+    description: 'Gestion de la pharmacie avec permissions limitées',
+    level: 3,
+    permissions: [
+      PERMISSIONS.USERS_VIEW,
+      PERMISSIONS.PHARMACY_VIEW,
+      PERMISSIONS.PHARMACY_EDIT,
+      PERMISSIONS.STOCK_VIEW,
+      PERMISSIONS.STOCK_CREATE,
+      PERMISSIONS.STOCK_EDIT,
+      PERMISSIONS.STOCK_AUDIT,
+      PERMISSIONS.SALES_VIEW,
+      PERMISSIONS.SALES_CREATE,
+      PERMISSIONS.SALES_EDIT,
+      PERMISSIONS.SALES_REPORTS,
+      PERMISSIONS.REPORTS_VIEW,
+      PERMISSIONS.REPORTS_CREATE,
+    ]
+  },
+  
   Préparateur: {
     id: 'Préparateur',
     name: 'Préparateur',
     description: 'Gestion du stock et préparation des commandes',
-    level: 3,
+    level: 4,
     permissions: [
       PERMISSIONS.PHARMACY_VIEW,
       PERMISSIONS.STOCK_VIEW,
@@ -119,11 +141,26 @@ export const ROLES: Record<string, Role> = {
     ]
   },
   
+  Technicien: {
+    id: 'Technicien',
+    name: 'Technicien',
+    description: 'Support technique et préparation',
+    level: 4,
+    permissions: [
+      PERMISSIONS.PHARMACY_VIEW,
+      PERMISSIONS.STOCK_VIEW,
+      PERMISSIONS.STOCK_CREATE,
+      PERMISSIONS.STOCK_EDIT,
+      PERMISSIONS.SALES_VIEW,
+      PERMISSIONS.REPORTS_VIEW,
+    ]
+  },
+  
   Caissier: {
     id: 'Caissier',
     name: 'Caissier',
     description: 'Gestion des ventes et encaissements',
-    level: 4,
+    level: 5,
     permissions: [
       PERMISSIONS.PHARMACY_VIEW,
       PERMISSIONS.STOCK_VIEW,
@@ -147,6 +184,23 @@ export const ROLES: Record<string, Role> = {
     ]
   },
   
+  'Gestionnaire de stock': {
+    id: 'Gestionnaire de stock',
+    name: 'Gestionnaire de stock',
+    description: 'Gestion avancée du stock et inventaires',
+    level: 4,
+    permissions: [
+      PERMISSIONS.PHARMACY_VIEW,
+      PERMISSIONS.STOCK_VIEW,
+      PERMISSIONS.STOCK_CREATE,
+      PERMISSIONS.STOCK_EDIT,
+      PERMISSIONS.STOCK_AUDIT,
+      PERMISSIONS.SALES_VIEW,
+      PERMISSIONS.REPORTS_VIEW,
+      PERMISSIONS.REPORTS_CREATE,
+    ]
+  },
+  
   Comptable: {
     id: 'Comptable',
     name: 'Comptable',
@@ -166,32 +220,49 @@ export const ROLES: Record<string, Role> = {
     ]
   },
   
-  'Gestionnaire de stock': {
-    id: 'Gestionnaire de stock',
-    name: 'Gestionnaire de stock',
-    description: 'Gestion avancée du stock et inventaires',
-    level: 3,
+  Secrétaire: {
+    id: 'Secrétaire',
+    name: 'Secrétaire',
+    description: 'Gestion administrative et accueil',
+    level: 5,
     permissions: [
       PERMISSIONS.PHARMACY_VIEW,
       PERMISSIONS.STOCK_VIEW,
-      PERMISSIONS.STOCK_CREATE,
-      PERMISSIONS.STOCK_EDIT,
-      PERMISSIONS.STOCK_AUDIT,
       PERMISSIONS.SALES_VIEW,
       PERMISSIONS.REPORTS_VIEW,
-      PERMISSIONS.REPORTS_CREATE,
     ]
   },
   
-  Employé: {
-    id: 'Employé',
-    name: 'Employé',
-    description: 'Accès de base aux fonctionnalités',
+  Livreur: {
+    id: 'Livreur',
+    name: 'Livreur',
+    description: 'Gestion des livraisons',
     level: 6,
     permissions: [
       PERMISSIONS.PHARMACY_VIEW,
       PERMISSIONS.STOCK_VIEW,
+    ]
+  },
+  
+  Stagiaire: {
+    id: 'Stagiaire',
+    name: 'Stagiaire',
+    description: 'Accès limité pour les stagiaires',
+    level: 7,
+    permissions: [
+      PERMISSIONS.PHARMACY_VIEW,
+      PERMISSIONS.STOCK_VIEW,
       PERMISSIONS.SALES_VIEW,
+    ]
+  },
+  
+  Invité: {
+    id: 'Invité',
+    name: 'Invité',
+    description: 'Accès en lecture seule',
+    level: 8,
+    permissions: [
+      PERMISSIONS.PHARMACY_VIEW,
     ]
   }
 };

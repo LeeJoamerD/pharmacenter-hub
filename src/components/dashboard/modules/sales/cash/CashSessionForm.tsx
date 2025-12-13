@@ -50,7 +50,7 @@ const CashSessionForm = ({ sessionId, onClose, onSubmit, loading, isClosing = fa
         .select('id, noms, prenoms, role')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true)
-        .in('role', ['Admin', 'Caissier', 'Vendeur'])
+        .in('role', ['Admin', 'Pharmacien Titulaire', 'Pharmacien Adjoint', 'Caissier', 'Vendeur'])
         .order('noms', { ascending: true });
 
       if (error) throw error;

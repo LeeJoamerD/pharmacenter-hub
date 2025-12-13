@@ -107,9 +107,18 @@ export const ManageUserDialog: React.FC<ManageUserDialogProps> = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Admin">Admin</SelectItem>
-                <SelectItem value="Pharmacien">Pharmacien</SelectItem>
-                <SelectItem value="Employé">Employé</SelectItem>
+                <SelectItem value="Pharmacien Titulaire">Pharmacien Titulaire</SelectItem>
+                <SelectItem value="Pharmacien Adjoint">Pharmacien Adjoint</SelectItem>
+                <SelectItem value="Préparateur">Préparateur</SelectItem>
+                <SelectItem value="Technicien">Technicien</SelectItem>
                 <SelectItem value="Caissier">Caissier</SelectItem>
+                <SelectItem value="Vendeur">Vendeur</SelectItem>
+                <SelectItem value="Gestionnaire de stock">Gestionnaire de stock</SelectItem>
+                <SelectItem value="Comptable">Comptable</SelectItem>
+                <SelectItem value="Secrétaire">Secrétaire</SelectItem>
+                <SelectItem value="Livreur">Livreur</SelectItem>
+                <SelectItem value="Stagiaire">Stagiaire</SelectItem>
+                <SelectItem value="Invité">Invité</SelectItem>
               </SelectContent>
             </Select>
           </div>

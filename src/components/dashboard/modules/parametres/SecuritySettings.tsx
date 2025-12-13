@@ -87,7 +87,7 @@ const SecuritySettings = () => {
         updatedPolicy.lockout_duration_minutes = value;
         break;
       case 'twoFactorAuth':
-        updatedPolicy.force_2fa_for_roles = value ? ['Admin', 'Pharmacien'] : [];
+        updatedPolicy.force_2fa_for_roles = value ? ['Admin', 'Pharmacien Titulaire', 'Pharmacien Adjoint'] : [];
         break;
     }
     
