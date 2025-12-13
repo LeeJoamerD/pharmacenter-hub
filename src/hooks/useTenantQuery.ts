@@ -247,6 +247,13 @@ export const useTenantQuery = () => {
           console.error('TenantMutation - Error:', error);
           throw error;
         }
+        
+        // Detect silent RLS failures - if no data returned, the operation was blocked
+        if (operation === 'update' && (!data || data.length === 0)) {
+          console.error('TenantMutation - Silent RLS failure: no rows updated');
+          throw new Error('La modification a échoué. Vous n\'avez peut-être pas les permissions nécessaires pour effectuer cette action.');
+        }
+        
         console.log('TenantMutation - Success:', data);
         return data;
       },

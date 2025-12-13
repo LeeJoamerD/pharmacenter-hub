@@ -103,15 +103,18 @@ const UserSettings = () => {
 
   const updatePersonnelMutation = useTenantMutation('personnel', 'update', {
     invalidateQueries: ['personnel'],
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Force immediate refetch to ensure UI is updated with latest data
+      await queryClient.refetchQueries({ queryKey: [tenantId, 'personnel'] });
       toast({ title: 'Utilisateur modifié avec succès' });
       setIsEditDialogOpen(false);
       setSelectedUser(null);
     },
     onError: (error) => {
+      console.error('Update personnel error:', error);
       toast({
         title: 'Erreur lors de la modification',
-        description: error.message,
+        description: error.message || 'Permissions insuffisantes ou erreur serveur',
         variant: 'destructive'
       });
     }
