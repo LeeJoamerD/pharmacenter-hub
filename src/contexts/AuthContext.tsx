@@ -251,7 +251,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             prenoms: personnelData.prenoms || '',
             reference_agent: personnelData.reference_agent || '',
             tenant_id: personnelData.tenant_id,
-            role: personnelData.role || 'Employé'
+            role: personnelData.role || 'Vendeur'
           });
 
         if (personnelError) {

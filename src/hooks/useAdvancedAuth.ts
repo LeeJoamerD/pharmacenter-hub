@@ -187,7 +187,7 @@ export const useAdvancedAuth = () => {
       if (riskScore > 50) {
         securityLevel = 'elevated';
         requires2fa = true;
-      } else if (['Admin', 'Pharmacien'].includes(personnel.role)) {
+      } else if (['Admin', 'Pharmacien Titulaire', 'Pharmacien Adjoint'].includes(personnel.role)) {
         securityLevel = 'elevated';
         requires2fa = true;
       }

@@ -5,11 +5,11 @@ import { ROLES, PERMISSIONS, UserPermissions } from '@/types/permissions';
 export const usePermissions = (): UserPermissions => {
   const { currentUser } = useTenant();
 
-  const userRole = currentUser?.role || 'Employé';
+  const userRole = currentUser?.role || 'Vendeur';
   const roleConfig = ROLES[userRole];
 
   const permissions = useMemo(() => {
-    return roleConfig ? roleConfig.permissions : ROLES.Employé.permissions;
+    return roleConfig ? roleConfig.permissions : ROLES.Vendeur.permissions;
   }, [roleConfig]);
 
   const canAccess = useCallback((permission: string): boolean => {

@@ -80,15 +80,17 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Pharmacien titulaire">Pharmacien titulaire</SelectItem>
-                      <SelectItem value="Pharmacien adjoint">Pharmacien adjoint</SelectItem>
+                      <SelectItem value="Pharmacien Titulaire">Pharmacien Titulaire</SelectItem>
+                      <SelectItem value="Pharmacien Adjoint">Pharmacien Adjoint</SelectItem>
                       <SelectItem value="Préparateur">Préparateur</SelectItem>
-                      <SelectItem value="Étudiant en pharmacie">Étudiant en pharmacie</SelectItem>
-                      <SelectItem value="Secrétaire">Secrétaire</SelectItem>
-                      <SelectItem value="Comptable">Comptable</SelectItem>
-                      <SelectItem value="Vendeur">Vendeur</SelectItem>
+                      <SelectItem value="Technicien">Technicien</SelectItem>
                       <SelectItem value="Caissier">Caissier</SelectItem>
-                      <SelectItem value="Agent d'entretien">Agent d'entretien</SelectItem>
+                      <SelectItem value="Vendeur">Vendeur</SelectItem>
+                      <SelectItem value="Gestionnaire de stock">Gestionnaire de stock</SelectItem>
+                      <SelectItem value="Comptable">Comptable</SelectItem>
+                      <SelectItem value="Secrétaire">Secrétaire</SelectItem>
+                      <SelectItem value="Livreur">Livreur</SelectItem>
+                      <SelectItem value="Stagiaire">Stagiaire</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

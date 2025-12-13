@@ -24,7 +24,7 @@ export const useAdminDashboardData = () => {
       return {
         total: data?.length || 0,
         actifs: data?.filter(p => p.is_active).length || 0,
-        admins: data?.filter(p => p.role === 'Admin' || p.role === 'Pharmacien').length || 0,
+        admins: data?.filter(p => p.role === 'Admin' || p.role === 'Pharmacien Titulaire' || p.role === 'Pharmacien Adjoint').length || 0,
         caissiers: data?.filter(p => p.role === 'Caissier').length || 0,
         preparateurs: data?.filter(p => p.role === 'Préparateur').length || 0,
         nouveaux_ce_mois: data?.filter(p => p.created_at && isThisMonth(new Date(p.created_at))).length || 0

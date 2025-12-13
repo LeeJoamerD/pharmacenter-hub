@@ -141,7 +141,7 @@ const UserSettings = () => {
       prenoms: '',
       email: '',
       password: '',
-      role: 'Employé',
+      role: 'Vendeur',
       is_active: true
     }
   });
@@ -280,9 +280,18 @@ const UserSettings = () => {
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'Administrateur': return 'bg-red-100 text-red-800';
-      case 'Pharmacien': return 'bg-blue-100 text-blue-800';
+      case 'Admin': return 'bg-red-100 text-red-800';
+      case 'Pharmacien Titulaire': return 'bg-blue-100 text-blue-800';
+      case 'Pharmacien Adjoint': return 'bg-indigo-100 text-indigo-800';
+      case 'Préparateur':
+      case 'Technicien': return 'bg-purple-100 text-purple-800';
+      case 'Caissier':
       case 'Vendeur': return 'bg-green-100 text-green-800';
+      case 'Gestionnaire de stock': return 'bg-orange-100 text-orange-800';
+      case 'Comptable': return 'bg-cyan-100 text-cyan-800';
+      case 'Secrétaire': return 'bg-pink-100 text-pink-800';
+      case 'Stagiaire':
+      case 'Invité': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };

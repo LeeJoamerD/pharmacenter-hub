@@ -17,7 +17,7 @@ export const useCashSession = () => {
         return null;
       }
 
-      const isAdminOrManager = ['Admin', 'Manager', 'Gérant'].includes(currentUser.role || '');
+      const isAdminOrManager = ['Admin', 'Pharmacien Titulaire', 'Pharmacien Adjoint'].includes(currentUser.role || '');
 
       console.log('🔍 Recherche session caisse:', {
         tenantId,

@@ -120,12 +120,11 @@ export const AdminPrincipalForm = ({ form, onPrevious, onNext, onSubmit, isLoadi
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Vendeur">Vendeur</SelectItem>
-              <SelectItem value="Caissier">Caissier</SelectItem>
+              <SelectItem value="Admin">Admin</SelectItem>
+              <SelectItem value="Pharmacien Titulaire">Pharmacien Titulaire</SelectItem>
+              <SelectItem value="Pharmacien Adjoint">Pharmacien Adjoint</SelectItem>
               <SelectItem value="Gestionnaire de stock">Gestionnaire de stock</SelectItem>
               <SelectItem value="Comptable">Comptable</SelectItem>
-              <SelectItem value="Administrateur">Administrateur</SelectItem>
-              <SelectItem value="Administrateur Principal">Administrateur Principal</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -149,7 +149,7 @@ export class NotificationService {
         .select('id, noms, prenoms, email, telephone_appel, role')
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
-        .in('role', ['Admin', 'Pharmacien', 'Gestionnaire Stock']);
+        .in('role', ['Admin', 'Pharmacien Titulaire', 'Pharmacien Adjoint', 'Gestionnaire de stock']);
 
       if (error) throw error;
 

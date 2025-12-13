@@ -102,7 +102,7 @@ const UserManagement = () => {
       prenoms: '',
       email: '',
       reference_agent: '',
-      role: 'Employé',
+      role: 'Vendeur',
       is_active: true
     }
   });
@@ -175,8 +175,11 @@ const UserManagement = () => {
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'Admin': return 'destructive';
-      case 'Pharmacien': return 'default';
-      case 'Préparateur': return 'secondary';
+      case 'Pharmacien Titulaire':
+      case 'Pharmacien Adjoint': return 'default';
+      case 'Préparateur':
+      case 'Technicien':
+      case 'Gestionnaire de stock': return 'secondary';
       default: return 'outline';
     }
   };
