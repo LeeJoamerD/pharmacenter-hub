@@ -121,12 +121,12 @@ const CreateCostCenterDialog = ({
 
           <div className="grid gap-2">
             <Label htmlFor="responsable">Responsable</Label>
-            <Select value={form.responsable_id} onValueChange={(v) => setForm({ ...form, responsable_id: v })}>
+            <Select value={form.responsable_id || 'none'} onValueChange={(v) => setForm({ ...form, responsable_id: v === 'none' ? '' : v })}>
               <SelectTrigger>
                 <SelectValue placeholder="Sélectionner un responsable" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Aucun</SelectItem>
+                <SelectItem value="none">Aucun</SelectItem>
                 {responsables.map((r) => (
                   <SelectItem key={r.id} value={r.id}>{r.nom_complet}</SelectItem>
                 ))}
@@ -136,12 +136,12 @@ const CreateCostCenterDialog = ({
 
           <div className="grid gap-2">
             <Label htmlFor="parent">Centre Parent</Label>
-            <Select value={form.centre_parent_id} onValueChange={(v) => setForm({ ...form, centre_parent_id: v })}>
+            <Select value={form.centre_parent_id || 'none'} onValueChange={(v) => setForm({ ...form, centre_parent_id: v === 'none' ? '' : v })}>
               <SelectTrigger>
                 <SelectValue placeholder="Aucun (niveau racine)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Aucun</SelectItem>
+                <SelectItem value="none">Aucun</SelectItem>
                 {costCenters.filter(c => c.id !== editingCenter?.id).map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.code} - {c.nom}</SelectItem>
                 ))}
