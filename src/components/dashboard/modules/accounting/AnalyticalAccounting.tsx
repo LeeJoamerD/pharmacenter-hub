@@ -23,6 +23,7 @@ import { fr } from 'date-fns/locale';
 import CreateCostCenterDialog from './dialogs/CreateCostCenterDialog';
 import CreateBudgetDialog from './dialogs/CreateBudgetDialog';
 import CreateAllocationDialog from './dialogs/CreateAllocationDialog';
+import CreateAllocationKeyDialog from './dialogs/CreateAllocationKeyDialog';
 import { exportAnalyticalReportPDF, exportAnalyticalReportExcel } from '@/utils/analyticalReportExport';
 
 const AnalyticalAccounting = () => {
@@ -55,6 +56,9 @@ const AnalyticalAccounting = () => {
     validateChargeAllocation,
     calculateAutomaticAllocation,
     createAllocationLines,
+    createAllocationKey,
+    updateAllocationKey,
+    deleteAllocationKey,
     getAnalyticsKPIs,
     getBudgetAlerts,
     refreshAll,
@@ -70,6 +74,8 @@ const AnalyticalAccounting = () => {
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; id: string } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [showKeyDialog, setShowKeyDialog] = useState(false);
+  const [editingKey, setEditingKey] = useState<any>(null);
   
   // Pagination pour le tableau de rentabilité
   const [profitabilityPage, setProfitabilityPage] = useState(1);
@@ -217,6 +223,15 @@ const AnalyticalAccounting = () => {
     }
   };
 
+  const handleSaveKey = async (key: any) => {
+    if (editingKey) {
+      await updateAllocationKey(editingKey.id, key);
+    } else {
+      await createAllocationKey(key);
+    }
+    setEditingKey(null);
+  };
+
   const handleDelete = async () => {
     if (!deleteConfirm) return;
     
@@ -227,6 +242,8 @@ const AnalyticalAccounting = () => {
         await deleteBudget(deleteConfirm.id);
       } else if (deleteConfirm.type === 'allocation') {
         await deleteChargeAllocation(deleteConfirm.id);
+      } else if (deleteConfirm.type === 'key') {
+        await deleteAllocationKey(deleteConfirm.id);
       }
     } finally {
       setDeleteConfirm(null);
@@ -681,6 +698,76 @@ const AnalyticalAccounting = () => {
                   </TableBody>
                 </Table>
               </div>
+
+              <Separator />
+
+              {/* Section Clés de Répartition */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-lg font-semibold">Clés de Répartition</h4>
+                  <Button variant="outline" size="sm" onClick={() => { setEditingKey(null); setShowKeyDialog(true); }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouvelle Clé
+                  </Button>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Libellé</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allocationKeys.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                          Aucune clé de répartition configurée. Créez-en pour pouvoir effectuer des répartitions.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      allocationKeys.map((key) => (
+                        <TableRow key={key.id}>
+                          <TableCell className="font-mono font-bold">{key.code}</TableCell>
+                          <TableCell>{key.libelle}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{key.type_cle.replace('_', ' ')}</Badge>
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate text-muted-foreground text-sm">
+                            {key.description || '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={key.est_active ? 'default' : 'secondary'}>
+                              {key.est_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => { setEditingKey(key); setShowKeyDialog(true); }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => setDeleteConfirm({ type: 'key', id: key.id })}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -907,6 +994,14 @@ const AnalyticalAccounting = () => {
         onCalculate={calculateAutomaticAllocation}
         allocationKeys={allocationKeys}
         costCenters={costCenters}
+        isSaving={isSaving}
+      />
+
+      <CreateAllocationKeyDialog
+        open={showKeyDialog}
+        onOpenChange={setShowKeyDialog}
+        onSave={handleSaveKey}
+        editingKey={editingKey}
         isSaving={isSaving}
       />
 
