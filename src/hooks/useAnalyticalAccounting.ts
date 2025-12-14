@@ -297,12 +297,11 @@ export const useAnalyticalAccounting = () => {
     if (!tenantId) return;
     setIsLoadingProfitability(true);
     try {
-      const { data, error } = await supabase
-        .from('v_rentabilite_produits')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('taux_marge', { ascending: false })
-        .limit(10000); // ✅ Limite explicite pour éviter la pagination Supabase
+      // Utiliser la RPC corrigée pour charger les données avec les vrais calculs
+      const { data, error } = await supabase.rpc('get_profitability_data', {
+        p_tenant_id: tenantId,
+        p_limit: 10000
+      });
 
       if (error) throw error;
       setProfitabilityData(data as any || []);
