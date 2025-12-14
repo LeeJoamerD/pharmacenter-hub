@@ -3,7 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { 
   UserPlus, Edit, Trash2, Upload, Download, 
-  Package, Users, Building, FileText, Settings 
+  Package, Users, Building, FileText, Settings,
+  ShoppingCart, Truck, CreditCard, ClipboardList,
+  Box, Bell, Shield, Key
 } from 'lucide-react';
 
 /**
@@ -18,46 +20,83 @@ export const useRecentAdminActivity = (limit = 10) => {
     queryFn: async () => {
       if (!tenantId) return [];
 
-      // Utiliser security_alerts comme proxy pour l'activité récente
-      // Comme audit_logs n'est pas disponible dans le schéma actuel
-      const { data: recentAlerts, error } = await supabase
-        .from('security_alerts')
-        .select('id, alert_type, title, description, created_at, severity')
+      // Requête sur audit_logs avec jointure personnel
+      const { data: auditLogs, error } = await supabase
+        .from('audit_logs')
+        .select(`
+          id,
+          action,
+          table_name,
+          new_values,
+          old_values,
+          created_at,
+          user_id
+        `)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(limit);
 
       if (error) {
-        console.error('Error fetching recent activity:', error);
+        console.error('Error fetching audit logs:', error);
         return [];
       }
       
-      if (!recentAlerts || recentAlerts.length === 0) return [];
+      if (!auditLogs || auditLogs.length === 0) return [];
 
-      // Transformer les alertes en activités lisibles
-      return recentAlerts.map(alert => ({
-        id: alert.id,
-        user: {
-          name: 'Système',
-          role: 'system',
-          initials: 'SY'
-        },
-        action: 'a généré une alerte',
-        details: `${alert.title} - ${alert.description || 'Aucun détail'}`,
-        time: formatTimeAgo(alert.created_at),
-        icon: UserPlus, // Icône par défaut
-        iconColor: alert.severity === 'critical' ? 'text-red-500' : 'text-blue-500',
-        metadata: { alert_type: alert.alert_type, severity: alert.severity }
-      }));
+      // Récupérer les infos utilisateurs en batch
+      const userIds = [...new Set(auditLogs.map(log => log.user_id).filter(Boolean))];
+      let usersMap: Record<string, { noms: string; prenoms: string }> = {};
+      
+      if (userIds.length > 0) {
+        const { data: users } = await supabase
+          .from('personnel')
+          .select('id, noms, prenoms')
+          .in('id', userIds);
+        
+        if (users) {
+          usersMap = users.reduce((acc, user) => {
+            acc[user.id] = { noms: user.noms, prenoms: user.prenoms };
+            return acc;
+          }, {} as Record<string, { noms: string; prenoms: string }>);
+        }
+      }
+
+      // Transformer les logs en activités lisibles
+      return auditLogs.map(log => {
+        const user = log.user_id && usersMap[log.user_id];
+        const userName = user ? `${user.prenoms || ''} ${user.noms || ''}`.trim() : 'Utilisateur Inconnu';
+        const initials = user 
+          ? `${(user.prenoms || 'U')[0]}${(user.noms || 'I')[0]}`.toUpperCase()
+          : 'UI';
+
+        const entityName = getEntityName(log.table_name, log.new_values || log.old_values);
+        const tableLabel = getTableLabel(log.table_name);
+        const actionLabel = getActionLabel(log.action);
+
+        return {
+          id: log.id,
+          user: {
+            name: userName,
+            role: 'user',
+            initials
+          },
+          action: actionLabel,
+          details: entityName ? `${tableLabel} - ${entityName}` : tableLabel,
+          time: formatTimeAgo(log.created_at),
+          icon: getActivityIcon(log.action, log.table_name),
+          iconColor: getActionColor(log.action),
+          metadata: { table_name: log.table_name, action: log.action }
+        };
+      });
     },
     enabled: !!tenantId,
-    refetchInterval: 60000, // Recharger toutes les minutes
+    refetchInterval: 60000,
     staleTime: 30000,
   });
 };
 
-// Fonctions utilitaires
-const getActionLabel = (action: string, entity: string) => {
+// Labels des actions en français
+const getActionLabel = (action: string) => {
   const labels: Record<string, string> = {
     INSERT: 'a ajouté',
     UPDATE: 'a modifié',
@@ -66,46 +105,81 @@ const getActionLabel = (action: string, entity: string) => {
   return labels[action] || 'a effectué une action sur';
 };
 
-const getActivityDetails = (log: any) => {
-  const entityLabels: Record<string, string> = {
+// Labels des tables en français
+const getTableLabel = (tableName: string) => {
+  const labels: Record<string, string> = {
+    produits: 'un produit',
     personnel: 'un membre du personnel',
     fournisseurs: 'un fournisseur',
-    produits: 'un produit',
-    documents: 'un document',
-    parametres_systeme: 'les paramètres système',
     clients: 'un client',
-    laboratoires: 'un laboratoire'
+    lots: 'un lot',
+    ventes: 'une vente',
+    lignes_ventes: 'une ligne de vente',
+    receptions_fournisseurs: 'une réception',
+    commandes_fournisseurs: 'une commande',
+    lignes_commandes_fournisseurs: 'une ligne de commande',
+    factures: 'une facture',
+    paiements: 'un paiement',
+    mouvements_stock: 'un mouvement de stock',
+    inventaires: 'un inventaire',
+    parametres_systeme: 'les paramètres système',
+    pharmacies: 'une pharmacie',
+    security_alerts: 'une alerte de sécurité',
+    user_sessions: 'une session utilisateur',
+    comptes_comptables: 'un compte comptable',
+    ecritures_comptables: 'une écriture comptable',
+    avoirs: 'un avoir'
   };
-
-  // Essayer d'extraire un nom du metadata ou new_values
-  if (log.new_values) {
-    try {
-      const data = typeof log.new_values === 'string' ? JSON.parse(log.new_values) : log.new_values;
-      if (data.nom) return `${entityLabels[log.entity_type]} - ${data.nom}`;
-      if (data.nom_complet) return `${entityLabels[log.entity_type]} - ${data.nom_complet}`;
-      if (data.libelle) return `${entityLabels[log.entity_type]} - ${data.libelle}`;
-      if (data.titre) return `${entityLabels[log.entity_type]} - ${data.titre}`;
-    } catch (e) {
-      // Ignorer les erreurs de parsing
-    }
-  }
-
-  return entityLabels[log.entity_type] || 'un élément';
+  return labels[tableName] || `un élément (${tableName})`;
 };
 
-const getActivityIcon = (action: string, entity: string) => {
-  // Icône par type d'entité
-  const entityIcons: Record<string, any> = {
+// Extraction du nom de l'entité depuis new_values/old_values
+const getEntityName = (tableName: string, values: any): string | null => {
+  if (!values) return null;
+  
+  try {
+    const data = typeof values === 'string' ? JSON.parse(values) : values;
+    
+    // Ordre de priorité pour trouver un nom significatif
+    return data.libelle_produit 
+        || data.nom_complet 
+        || data.noms
+        || data.nom_fournisseur
+        || data.nom
+        || data.titre
+        || data.libelle
+        || data.numero_lot
+        || data.numero_facture
+        || data.numero_commande
+        || data.numero_reception
+        || data.code_cip
+        || null;
+  } catch (e) {
+    return null;
+  }
+};
+
+// Icône par type de table et action
+const getActivityIcon = (action: string, tableName: string) => {
+  const tableIcons: Record<string, any> = {
+    produits: Package,
     personnel: UserPlus,
     fournisseurs: Building,
-    produits: Package,
-    documents: FileText,
-    parametres_systeme: Settings,
     clients: Users,
-    laboratoires: Building
+    lots: Box,
+    ventes: ShoppingCart,
+    lignes_ventes: ShoppingCart,
+    receptions_fournisseurs: Truck,
+    commandes_fournisseurs: ClipboardList,
+    factures: FileText,
+    paiements: CreditCard,
+    parametres_systeme: Settings,
+    security_alerts: Bell,
+    user_sessions: Shield,
+    comptes_comptables: FileText,
+    ecritures_comptables: FileText
   };
 
-  // Icône par action
   const actionIcons: Record<string, any> = {
     INSERT: UserPlus,
     UPDATE: Edit,
@@ -114,31 +188,31 @@ const getActivityIcon = (action: string, entity: string) => {
     DOWNLOAD: Download
   };
 
-  return entityIcons[entity] || actionIcons[action] || Edit;
+  return tableIcons[tableName] || actionIcons[action] || Edit;
 };
 
+// Couleur par type d'action
 const getActionColor = (action: string) => {
   const colors: Record<string, string> = {
     INSERT: 'text-green-500',
     UPDATE: 'text-blue-500',
-    DELETE: 'text-red-500',
-    UPLOAD: 'text-purple-500',
-    DOWNLOAD: 'text-gray-500'
+    DELETE: 'text-red-500'
   };
-  return colors[action] || 'text-blue-500';
+  return colors[action] || 'text-muted-foreground';
 };
 
+// Formatage du temps écoulé
 const formatTimeAgo = (dateString: string) => {
   const date = new Date(dateString);
   const now = new Date();
   const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
 
   if (diffInMinutes < 1) return 'À l\'instant';
-  if (diffInMinutes < 60) return `Il y a ${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''}`;
+  if (diffInMinutes < 60) return `Il y a ${diffInMinutes} min`;
   
   const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `Il y a ${diffInHours} heure${diffInHours > 1 ? 's' : ''}`;
+  if (diffInHours < 24) return `Il y a ${diffInHours}h`;
   
   const diffInDays = Math.floor(diffInHours / 24);
-  return `Il y a ${diffInDays} jour${diffInDays > 1 ? 's' : ''}`;
+  return `Il y a ${diffInDays}j`;
 };
