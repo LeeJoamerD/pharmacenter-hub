@@ -159,22 +159,25 @@ const CreateBudgetDialog = ({
             </Select>
           </div>
 
-          {exercices.length > 0 && (
-            <div className="grid gap-2">
-              <Label htmlFor="exercice">Exercice Comptable</Label>
-              <Select value={form.exercice_comptable_id} onValueChange={(v) => setForm({ ...form, exercice_comptable_id: v })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un exercice" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Aucun</SelectItem>
-                  {exercices.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>{e.libelle}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+        {exercices.length > 0 && (
+          <div className="grid gap-2">
+            <Label htmlFor="exercice">Exercice Comptable</Label>
+            <Select 
+              value={form.exercice_comptable_id || 'none'} 
+              onValueChange={(v) => setForm({ ...form, exercice_comptable_id: v === 'none' ? '' : v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un exercice" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Aucun</SelectItem>
+                {exercices.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>{e.libelle}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
