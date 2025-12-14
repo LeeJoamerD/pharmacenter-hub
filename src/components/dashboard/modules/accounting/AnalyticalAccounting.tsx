@@ -14,7 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 import { Plus, Building2, Target, TrendingUp, Calculator, FileBarChart, AlertTriangle, DollarSign, Loader2, Edit, Trash2, Check, FileSpreadsheet, FileText, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAnalyticalAccounting, CostCenter, Budget, ChargeAllocation, AllocationLine } from '@/hooks/useAnalyticalAccounting';
+import { useAnalyticalAccounting, CostCenter, Budget, ChargeAllocation, AllocationLine, AllocationCoefficient } from '@/hooks/useAnalyticalAccounting';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +24,7 @@ import CreateCostCenterDialog from './dialogs/CreateCostCenterDialog';
 import CreateBudgetDialog from './dialogs/CreateBudgetDialog';
 import CreateAllocationDialog from './dialogs/CreateAllocationDialog';
 import CreateAllocationKeyDialog from './dialogs/CreateAllocationKeyDialog';
+import CreateCoefficientDialog from './dialogs/CreateCoefficientDialog';
 import { exportAnalyticalReportPDF, exportAnalyticalReportExcel } from '@/utils/analyticalReportExport';
 
 const AnalyticalAccounting = () => {
@@ -38,6 +39,7 @@ const AnalyticalAccounting = () => {
     costCenters,
     budgets,
     allocationKeys,
+    coefficients,
     chargeAllocations,
     profitabilityData,
     isLoading,
@@ -59,6 +61,9 @@ const AnalyticalAccounting = () => {
     createAllocationKey,
     updateAllocationKey,
     deleteAllocationKey,
+    createCoefficient,
+    updateCoefficient,
+    deleteCoefficient,
     getAnalyticsKPIs,
     getBudgetAlerts,
     refreshAll,
@@ -76,6 +81,8 @@ const AnalyticalAccounting = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [showKeyDialog, setShowKeyDialog] = useState(false);
   const [editingKey, setEditingKey] = useState<any>(null);
+  const [showCoefficientDialog, setShowCoefficientDialog] = useState(false);
+  const [editingCoefficient, setEditingCoefficient] = useState<AllocationCoefficient | null>(null);
   
   // Pagination pour le tableau de rentabilité
   const [profitabilityPage, setProfitabilityPage] = useState(1);
@@ -232,6 +239,15 @@ const AnalyticalAccounting = () => {
     setEditingKey(null);
   };
 
+  const handleSaveCoefficient = async (coef: Partial<AllocationCoefficient>) => {
+    if (editingCoefficient) {
+      await updateCoefficient(editingCoefficient.id, coef);
+    } else {
+      await createCoefficient(coef);
+    }
+    setEditingCoefficient(null);
+  };
+
   const handleDelete = async () => {
     if (!deleteConfirm) return;
     
@@ -244,6 +260,8 @@ const AnalyticalAccounting = () => {
         await deleteChargeAllocation(deleteConfirm.id);
       } else if (deleteConfirm.type === 'key') {
         await deleteAllocationKey(deleteConfirm.id);
+      } else if (deleteConfirm.type === 'coefficient') {
+        await deleteCoefficient(deleteConfirm.id);
       }
     } finally {
       setDeleteConfirm(null);
@@ -768,6 +786,81 @@ const AnalyticalAccounting = () => {
                   </TableBody>
                 </Table>
               </div>
+
+              <Separator className="my-6" />
+
+              {/* Section Coefficients de Répartition */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-lg font-semibold">Coefficients de Répartition</h4>
+                  <Button variant="outline" size="sm" onClick={() => { setEditingCoefficient(null); setShowCoefficientDialog(true); }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouveau Coefficient
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Définissez les poids/valeurs de base pour chaque combinaison clé + centre de coûts.
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Clé de Répartition</TableHead>
+                      <TableHead>Centre de Coûts</TableHead>
+                      <TableHead className="text-right">Valeur Base</TableHead>
+                      <TableHead>Date Début</TableHead>
+                      <TableHead>Date Fin</TableHead>
+                      <TableHead>Notes</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {coefficients.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                          Aucun coefficient configuré. Créez-en pour pouvoir calculer des répartitions automatiques.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      coefficients.map((coef) => (
+                        <TableRow key={coef.id}>
+                          <TableCell className="font-medium">
+                            {coef.cle?.code || '-'} - {coef.cle?.libelle || '-'}
+                          </TableCell>
+                          <TableCell>
+                            {coef.centre?.code || '-'} - {coef.centre?.nom || '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {coef.valeur_base?.toFixed(2) || coef.coefficient?.toFixed(2) || '-'}
+                          </TableCell>
+                          <TableCell>{coef.date_debut ? format(new Date(coef.date_debut), 'dd/MM/yyyy') : '-'}</TableCell>
+                          <TableCell>{coef.date_fin ? format(new Date(coef.date_fin), 'dd/MM/yyyy') : '-'}</TableCell>
+                          <TableCell className="max-w-[150px] truncate text-muted-foreground text-sm">
+                            {coef.notes || '-'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => { setEditingCoefficient(coef); setShowCoefficientDialog(true); }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => setDeleteConfirm({ type: 'coefficient', id: coef.id })}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1002,6 +1095,16 @@ const AnalyticalAccounting = () => {
         onOpenChange={setShowKeyDialog}
         onSave={handleSaveKey}
         editingKey={editingKey}
+        isSaving={isSaving}
+      />
+
+      <CreateCoefficientDialog
+        open={showCoefficientDialog}
+        onOpenChange={setShowCoefficientDialog}
+        onSave={handleSaveCoefficient}
+        editingCoefficient={editingCoefficient}
+        allocationKeys={allocationKeys}
+        costCenters={costCenters}
         isSaving={isSaving}
       />
 
