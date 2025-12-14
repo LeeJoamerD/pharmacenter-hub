@@ -1,13 +1,14 @@
 import { useState, useMemo } from "react";
 import { useLotsPaginated } from "@/hooks/useLotsPaginated";
 import { useLots } from "@/hooks/useLots";
+import { useDebouncedValue } from "@/hooks/use-debounce";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Eye, Calendar, Package, MapPin, AlertTriangle, Layers, RefreshCw, RotateCcw, Download, ArrowUpDown, ChevronLeft, ChevronRight, FileSpreadsheet, FileText } from "lucide-react";
+import { Search, Filter, Eye, Calendar, Package, MapPin, AlertTriangle, Layers, RefreshCw, RotateCcw, Download, ArrowUpDown, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { LotDetailsDialog } from "./LotDetailsDialog";
@@ -27,12 +28,15 @@ export const LotTracker = () => {
   const [isDetailBreakdownDialogOpen, setIsDetailBreakdownDialogOpen] = useState(false);
   const [selectedLotForBreakdown, setSelectedLotForBreakdown] = useState<string | null>(null);
 
+  // Debounce search term to avoid excessive queries
+  const debouncedSearchTerm = useDebouncedValue(searchTerm, 400);
+
   const { calculateDaysToExpiration, determineUrgencyLevel } = useLots();
   const { toast } = useToast();
 
-  // Use paginated hook
-  const { lots, count, totalPages, metrics, isLoading, error } = useLotsPaginated({
-    searchTerm,
+  // Use paginated hook with debounced search
+  const { lots, count, totalPages, metrics, isLoading, isFetching, error } = useLotsPaginated({
+    searchTerm: debouncedSearchTerm,
     pageSize,
     currentPage,
     statusFilter,
@@ -167,14 +171,7 @@ export const LotTracker = () => {
     return pages;
   }, [currentPage, totalPages]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-muted-foreground">Chargement des lots...</div>
-      </div>
-    );
-  }
-
+  // Show error state only
   if (error) {
     return (
       <div className="text-center p-8">
@@ -184,8 +181,17 @@ export const LotTracker = () => {
     );
   }
 
+  // Initial loading state (no data yet)
+  const isInitialLoading = isLoading && lots.length === 0;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Loading indicator - discrete spinner when fetching */}
+      {isFetching && !isInitialLoading && (
+        <div className="absolute top-0 right-0 z-10">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+        </div>
+      )}
       {/* Filtres et recherche améliorés */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row gap-4">
@@ -393,7 +399,22 @@ export const LotTracker = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {lots.map((lot) => {
+                {isInitialLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Chargement des lots...
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : lots.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      Aucun lot trouvé{debouncedSearchTerm ? ` pour "${debouncedSearchTerm}"` : ''}
+                    </TableCell>
+                  </TableRow>
+                ) : lots.map((lot) => {
                   const daysToExpiration = lot.date_peremption ? calculateDaysToExpiration(lot.date_peremption) : null;
                   const urgencyLevel = daysToExpiration !== null ? determineUrgencyLevel(daysToExpiration) : 'faible';
                   const stockLevel = getStockLevel(lot.quantite_initiale, lot.quantite_restante);

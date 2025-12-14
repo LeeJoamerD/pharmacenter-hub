@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 
@@ -30,6 +30,7 @@ export interface LotsPaginatedResult {
   currentPage: number;
   metrics: LotMetrics | null;
   isLoading: boolean;
+  isFetching: boolean;
   error: Error | null;
 }
 
@@ -48,73 +49,37 @@ export const useLotsPaginated = (params: LotsPaginatedParams): LotsPaginatedResu
       return data as unknown as LotMetrics;
     },
     enabled: !!tenantId,
+    staleTime: 30000, // 30 seconds
   });
 
-  // Fetch paginated lots with filters
-  const { data, isLoading, error } = useQuery({
+  // Fetch paginated lots with filters using optimized RPC
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ['lots-paginated', tenantId, searchTerm, pageSize, currentPage, statusFilter, sortBy, sortOrder],
     queryFn: async () => {
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-
-      let query = supabase
-        .from('lots')
-        .select(`
-          *,
-          produit:produits!produit_id (
-            id,
-            libelle_produit,
-            code_cip,
-            niveau_detail,
-            quantite_unites_details_source
-          )
-        `, { count: 'exact' })
-        .eq('tenant_id', tenantId);
-
-      // Apply status filters
-      if (statusFilter === 'actif') {
-        query = query
-          .gt('quantite_restante', 0)
-          .or('date_peremption.is.null,date_peremption.gt.now()');
-      } else if (statusFilter === 'expire') {
-        query = query.lte('date_peremption', new Date().toISOString());
-      } else if (statusFilter === 'epuise') {
-        query = query.eq('quantite_restante', 0);
-      } else if (statusFilter === 'expiration_proche') {
-        const today = new Date();
-        const in60Days = new Date();
-        in60Days.setDate(today.getDate() + 60);
-        query = query
-          .gt('date_peremption', today.toISOString())
-          .lte('date_peremption', in60Days.toISOString());
-      }
-
-      // Apply search filter - search only on lot number
-      if (searchTerm) {
-        query = query.ilike('numero_lot', `%${searchTerm}%`);
-      }
-
-      // Apply sorting - removed produit sort as it's not supported
-      const orderColumn = sortBy === 'date_peremption' ? 'date_peremption' :
-                         sortBy === 'numero_lot' ? 'numero_lot' :
-                         sortBy === 'stock' ? 'quantite_restante' :
-                         'date_peremption';
-
-      query = query.order(orderColumn, { ascending: sortOrder === 'asc', nullsFirst: false });
-
-      // Apply pagination
-      query = query.range(from, to);
-
-      const { data, error, count } = await query;
+      const { data, error } = await supabase
+        .rpc('search_lots_paginated', {
+          p_tenant_id: tenantId,
+          p_search_term: searchTerm || null,
+          p_status_filter: statusFilter,
+          p_sort_by: sortBy,
+          p_sort_order: sortOrder,
+          p_page_size: pageSize,
+          p_current_page: currentPage
+        });
 
       if (error) throw error;
 
+      // Handle the JSON response from the RPC
+      const result = data as { lots: any[]; count: number } | null;
+      
       return {
-        lots: data || [],
-        count: count || 0,
+        lots: result?.lots || [],
+        count: result?.count || 0,
       };
     },
     enabled: !!tenantId,
+    placeholderData: keepPreviousData, // Keep previous data while loading new results
+    staleTime: 10000, // 10 seconds
   });
 
   const totalPages = data?.count ? Math.ceil(data.count / pageSize) : 0;
@@ -126,6 +91,7 @@ export const useLotsPaginated = (params: LotsPaginatedParams): LotsPaginatedResu
     currentPage,
     metrics: metricsData || null,
     isLoading,
+    isFetching,
     error: error as Error | null,
   };
 };
