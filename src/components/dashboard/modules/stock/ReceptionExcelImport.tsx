@@ -761,8 +761,8 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                             )}
                           </TableHead>
                           <TableHead className="w-[80px]">Statut</TableHead>
-                          <TableHead>Référence</TableHead>
                           <TableHead>Produit</TableHead>
+                          <TableHead>Cat. Tarification</TableHead>
                           <TableHead className="text-right">Commandé</TableHead>
                           <TableHead className="text-right">Reçu</TableHead>
                           <TableHead className="text-right">Accepté</TableHead>
@@ -799,8 +799,41 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                                 ) : null}
                               </TableCell>
                               <TableCell>{validationResult ? getStatusBadge(line) : '-'}</TableCell>
-                              <TableCell className="font-mono text-sm">{line.reference}</TableCell>
-                              <TableCell className="max-w-[200px] truncate">{line.produit}</TableCell>
+                              <TableCell className="max-w-[200px]">
+                                <div className="flex flex-col">
+                                  <span className="truncate font-medium">{line.produit}</span>
+                                  <span className="text-xs text-muted-foreground font-mono">{line.reference}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  value={String(getLineValue(line, 'categorieTarificationId') || '')}
+                                  onValueChange={async (value) => {
+                                    updateLineValue(line.rowNumber, 'categorieTarificationId', value);
+                                    // Mettre à jour le produit si identifié
+                                    if (line.produitId) {
+                                      const { error } = await supabase
+                                        .from('produits')
+                                        .update({ categorie_tarification_id: value })
+                                        .eq('id', line.produitId);
+                                      if (!error) {
+                                        toast.success('Catégorie tarification mise à jour');
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger className="w-36 h-8">
+                                    <SelectValue placeholder="Catégorie" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {priceCategories?.map((cat) => (
+                                      <SelectItem key={cat.id} value={cat.id}>
+                                        {cat.libelle_categorie}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
                               <TableCell className="text-right">
                                 <Input
                                   type="number"
@@ -939,6 +972,20 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                 </div>
                 
                 <div className="space-y-2">
+                  <Label htmlFor="asdi">ASDI ({getCurrencySymbol()})</Label>
+                  <Input
+                    id="asdi"
+                    type="number"
+                    step={getInputStep()}
+                    min="0"
+                    value={montantAsdi}
+                    onChange={(e) => setMontantAsdi(parseFloat(e.target.value) || 0)}
+                    className={montantAsdi === 0 ? 'border-yellow-500' : ''}
+                    placeholder="Acompte Sur Divers Impôts"
+                  />
+                </div>
+                
+                <div className="space-y-2">
                   <Label>Total TTC</Label>
                   <Input
                     type="text"
@@ -969,6 +1016,37 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
           {validationResult && validationResult.validLines.length > 0 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">5️⃣ Actions</h3>
+              
+              {/* Bloc Contrôle Qualité aligné */}
+              <div className="flex items-center gap-6 p-3 bg-muted/30 rounded-lg border">
+                <span className="text-sm font-medium">Contrôle Qualité :</span>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="emballage-excel" 
+                    checked={emballageConforme}
+                    onCheckedChange={(checked) => setEmballageConforme(checked === true)}
+                  />
+                  <Label htmlFor="emballage-excel" className="text-sm cursor-pointer">Emballage conforme</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="temperature-excel" 
+                    checked={temperatureRespectee}
+                    onCheckedChange={(checked) => setTemperatureRespectee(checked === true)}
+                  />
+                  <Label htmlFor="temperature-excel" className="text-sm cursor-pointer">Température respectée</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="etiquetage-excel" 
+                    checked={etiquetageCorrect}
+                    onCheckedChange={(checked) => setEtiquetageCorrect(checked === true)}
+                  />
+                  <Label htmlFor="etiquetage-excel" className="text-sm cursor-pointer">Étiquetage correct</Label>
+                </div>
+              </div>
+              
+              {/* Boutons d'action */}
               <div className="flex gap-2">
                 <Button
                   onClick={resetForm}
