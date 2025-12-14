@@ -20134,6 +20134,18 @@ export type Database = {
           view_count: number
         }[]
       }
+      search_lots_paginated: {
+        Args: {
+          p_current_page?: number
+          p_page_size?: number
+          p_search_term?: string
+          p_sort_by?: string
+          p_sort_order?: string
+          p_status_filter?: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
       search_product_by_barcode: {
         Args: { p_barcode: string; p_tenant_id: string }
         Returns: {
