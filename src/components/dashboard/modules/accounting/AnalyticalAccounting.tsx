@@ -90,7 +90,7 @@ const AnalyticalAccounting = () => {
         
         // Charger personnel
         const personnelResp = await fetch(
-          `${baseUrl}/personnel?tenant_id=eq.${tenantId}&est_actif=eq.true&select=id,noms,prenoms`,
+          `${baseUrl}/personnel?tenant_id=eq.${tenantId}&is_active=eq.true&select=id,noms,prenoms`,
           { headers }
         );
         const personnelData = await personnelResp.json();

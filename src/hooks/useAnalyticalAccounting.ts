@@ -187,17 +187,21 @@ export const useAnalyticalAccounting = () => {
         .from('centres_couts')
         .select(`
           *,
-          responsable:personnel(id, noms, prenoms)
+          responsable:personnel!centres_couts_responsable_id_fkey(id, noms, prenoms)
         `)
         .eq('tenant_id', tenantId)
         .order('code')
-        .limit(5000); // ✅ Limite explicite pour éviter la pagination Supabase
+        .limit(5000);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading cost centers details:', error.message, error.details, error.hint);
+        throw error;
+      }
       setCostCenters(data as any || []);
     } catch (error: any) {
       console.error('Error loading cost centers:', error);
-      toast.error('Erreur lors du chargement des centres de coûts');
+      // Initialiser avec tableau vide sans toast si c'est le premier chargement
+      setCostCenters([]);
     } finally {
       setIsLoadingCenters(false);
     }
