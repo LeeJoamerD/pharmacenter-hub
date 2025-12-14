@@ -11,10 +11,14 @@ export interface ReceptionLine {
   quantite_recue: number;
   quantite_acceptee: number;
   prix_achat_unitaire: number | null;
+  prix_achat_reel?: number;
   numero_lot: string;
   date_peremption: string | null;
   statut: 'conforme' | 'non-conforme' | 'partiellement-conforme';
   commentaire: string | null;
+  emplacement?: string | null;
+  categorie_tarification_id?: string | null;
+  lot_id?: string | null;
   created_at: string;
   updated_at: string;
   // Relations
@@ -143,7 +147,7 @@ export const useReceptionLines = (receptionId?: string) => {
       if (error) throw error;
 
       setReceptionLines(prev => prev.map(line => 
-        line.id === id ? { ...line, ...data } : line
+        line.id === id ? { ...line, ...data } as ReceptionLine : line
       ));
       
       toast({

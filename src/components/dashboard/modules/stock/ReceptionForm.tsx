@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProducts } from '@/hooks/useProducts';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { usePriceCategories } from '@/hooks/usePriceCategories';
 import { ReceptionValidationService } from '@/services/receptionValidationService';
 import { OrderStatusValidationService } from '@/services/orderStatusValidationService';
 import { StockUpdateService } from '@/services/stockUpdateService';
@@ -46,6 +47,8 @@ interface ReceptionLine {
   commentaire: string;
   prixAchatReel?: number;
   emplacement?: string;
+  categorieTarificationId?: string;
+  produitId?: string;
 }
 
 interface ReceptionFormProps {
@@ -77,11 +80,16 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   const [pendingValidation, setPendingValidation] = useState<{ isValidated: boolean; warnings: string[] } | null>(null);
   const [showCameraDialog, setShowCameraDialog] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-  // Montants TVA et Centime en FCFA (saisie manuelle)
+  // Montants TVA, Centime et ASDI en FCFA (saisie manuelle)
   const [montantTva, setMontantTva] = useState<number>(0);
   const [montantCentimeAdditionnel, setMontantCentimeAdditionnel] = useState<number>(0);
+  const [montantAsdi, setMontantAsdi] = useState<number>(0);
   const [currentOrderStatus, setCurrentOrderStatus] = useState<string>('En cours');
-  // AlertDialog pour avertissement TVA/Centime à zéro
+  // Contrôle qualité
+  const [emballageConforme, setEmballageConforme] = useState<boolean>(false);
+  const [temperatureRespectee, setTemperatureRespectee] = useState<boolean>(false);
+  const [etiquetageCorrect, setEtiquetageCorrect] = useState<boolean>(false);
+  // AlertDialog pour avertissement TVA/Centime/ASDI à zéro
   const [showZeroWarningDialog, setShowZeroWarningDialog] = useState(false);
   const [pendingZeroValidation, setPendingZeroValidation] = useState<{ isValidated: boolean } | null>(null);
   const { toast } = useToast();
@@ -91,6 +99,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   const { products } = useProducts();
   const { user } = useAuth();
   const { formatAmount, getInputStep, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
+  const { categories: priceCategories } = usePriceCategories();
 
   // Use real orders with appropriate statuses for reception - only "Livré" can be received
   const pendingOrders = propOrders.filter(order => 
@@ -119,12 +128,15 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       commentaire: '',
       prixAchatReel: line.prix_achat_unitaire_attendu || 0,
       emplacement: '',
+      categorieTarificationId: '',
+      produitId: line.produit_id,
     }));
     setReceptionLines(lines);
     
     // Réinitialiser les montants manuels
     setMontantTva(0);
     setMontantCentimeAdditionnel(0);
+    setMontantAsdi(0);
   }, [orderLines, orderLinesLoading]);
 
   // Effect to load details when selectedOrder changes and data is ready
@@ -171,7 +183,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     }));
   };
 
-  // Calculate financial totals - Sous-total HT automatique, TVA et Centime manuels
+  // Calculate financial totals - Sous-total HT automatique, TVA, Centime et ASDI manuels
   const calculateTotals = () => {
     let sousTotal = receptionLines.reduce((sum, line) => {
       const unitPrice = line.prixAchatReel || 0;
@@ -183,10 +195,10 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       sousTotal = Math.round(sousTotal);
     }
     
-    // Total TTC = Sous-total HT + TVA (manuel) + Centime (manuel)
-    const totalGeneral = sousTotal + montantTva + montantCentimeAdditionnel;
+    // Total TTC = Sous-total HT + TVA (manuel) + Centime (manuel) + ASDI (manuel)
+    const totalGeneral = sousTotal + montantTva + montantCentimeAdditionnel + montantAsdi;
     
-    return { sousTotal, tva: montantTva, centimeAdditionnel: montantCentimeAdditionnel, totalGeneral };
+    return { sousTotal, tva: montantTva, centimeAdditionnel: montantCentimeAdditionnel, asdi: montantAsdi, totalGeneral };
   };
 
   const getStatusColor = (statut: string) => {
@@ -364,6 +376,10 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     setIsStockProcessed(false);
     setMontantTva(0);
     setMontantCentimeAdditionnel(0);
+    setMontantAsdi(0);
+    setEmballageConforme(false);
+    setTemperatureRespectee(false);
+    setEtiquetageCorrect(false);
     setPendingZeroValidation(null);
   };
 
@@ -918,7 +934,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Produit</TableHead>
-                    <TableHead>Référence</TableHead>
+                    <TableHead>Cat. Tarification</TableHead>
                     <TableHead>Commandé</TableHead>
                     <TableHead>Reçu</TableHead>
                     <TableHead>Accepté</TableHead>
@@ -933,8 +949,45 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                 <TableBody>
                   {receptionLines.map((line) => (
                     <TableRow key={line.id}>
-                      <TableCell className="font-medium">{line.produit}</TableCell>
-                      <TableCell>{line.reference}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span>{line.produit}</span>
+                          <span className="text-xs text-muted-foreground font-mono">{line.reference}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={line.categorieTarificationId || 'none'}
+                          onValueChange={(value) => {
+                            const catId = value === 'none' ? '' : value;
+                            updateReceptionLine(line.id, 'categorieTarificationId', catId);
+                            // Mise à jour du produit dans la base de données si produitId disponible
+                            if (line.produitId && catId) {
+                              supabase
+                                .from('produits')
+                                .update({ categorie_tarification_id: catId })
+                                .eq('id', line.produitId)
+                                .then(({ error }) => {
+                                  if (!error) {
+                                    toast({ title: "Catégorie mise à jour", description: "Le produit a été mis à jour" });
+                                  }
+                                });
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="w-36">
+                            <SelectValue placeholder="Catégorie" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Aucune</SelectItem>
+                            {priceCategories?.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.libelle_categorie}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
                       <TableCell>{line.quantiteCommandee}</TableCell>
                       <TableCell>
                         <Input
@@ -958,7 +1011,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                       <TableCell>
                         <Input
                           type="number"
-                          step="0.01"
+                          step={getInputStep()}
                           value={line.prixAchatReel || 0}
                           onChange={(e) => updateReceptionLine(line.id, 'prixAchatReel', parseFloat(e.target.value) || 0)}
                           className="w-24"
@@ -1015,14 +1068,14 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
 
       {/* Calculs Financiers */}
       {receptionLines.length > 0 && (() => {
-        const { sousTotal, tva, centimeAdditionnel, totalGeneral } = calculateTotals();
+        const { sousTotal, tva, centimeAdditionnel, asdi, totalGeneral } = calculateTotals();
         const currencySymbol = getCurrencySymbol();
         return (
           <Card>
             <CardHeader>
               <CardTitle>Calculs Financiers</CardTitle>
               <CardDescription>
-                Le sous-total HT est calculé automatiquement. TVA et Centime Additionnel sont à saisir manuellement en {currencySymbol}.
+                Le sous-total HT est calculé automatiquement. TVA, Centime Additionnel et ASDI sont à saisir manuellement en {currencySymbol}.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1070,6 +1123,24 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                     />
                   </div>
                   
+                  {/* ASDI - Saisie manuelle en montant */}
+                  <div className="flex justify-between items-center gap-4">
+                    <Label htmlFor="montant-asdi" className="whitespace-nowrap">ASDI ({currencySymbol}) :</Label>
+                    <Input
+                      id="montant-asdi"
+                      type="number"
+                      value={montantAsdi}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        setMontantAsdi(isNoDecimalCurrency() ? Math.round(value) : value);
+                      }}
+                      className="w-40 text-right"
+                      min="0"
+                      step={getInputStep()}
+                      placeholder="0"
+                    />
+                  </div>
+                  
                   {/* Total TTC */}
                   <div className="flex justify-between text-lg font-bold border-t pt-3">
                     <span>Total TTC :</span>
@@ -1092,15 +1163,27 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="emballage" />
+                  <Checkbox 
+                    id="emballage" 
+                    checked={emballageConforme}
+                    onCheckedChange={(checked) => setEmballageConforme(checked === true)}
+                  />
                   <Label htmlFor="emballage">Emballage conforme</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="temperature" />
+                  <Checkbox 
+                    id="temperature" 
+                    checked={temperatureRespectee}
+                    onCheckedChange={(checked) => setTemperatureRespectee(checked === true)}
+                  />
                   <Label htmlFor="temperature">Température respectée</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="etiquetage" />
+                  <Checkbox 
+                    id="etiquetage" 
+                    checked={etiquetageCorrect}
+                    onCheckedChange={(checked) => setEtiquetageCorrect(checked === true)}
+                  />
                   <Label htmlFor="etiquetage">Étiquetage correct</Label>
                 </div>
               </div>

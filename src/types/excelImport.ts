@@ -14,6 +14,7 @@ export interface ExcelReceptionLine {
   parsingErrorMessage?: string; // Message d'erreur de parsing
   emplacement?: string;       // Position physique du lot dans l'officine
   commentaire?: string;       // Commentaire/remarque pour cette ligne
+  categorieTarificationId?: string; // Catégorie de tarification pour cette ligne
 }
 
 export interface ParseResult {

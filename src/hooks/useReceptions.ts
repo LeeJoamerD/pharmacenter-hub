@@ -83,7 +83,12 @@ export const useReceptions = () => {
     montant_ht?: number;
     montant_tva?: number;
     montant_centime_additionnel?: number;
+    montant_asdi?: number;
     montant_ttc?: number;
+    // Contrôle qualité
+    emballage_conforme?: boolean;
+    temperature_respectee?: boolean;
+    etiquetage_correct?: boolean;
     lignes: Array<{
       produit_id: string;
       quantite_commandee: number;
@@ -95,6 +100,7 @@ export const useReceptions = () => {
       commentaire?: string;
       prix_achat_reel?: number;
       emplacement?: string;
+      categorie_tarification_id?: string;
     }>;
   }) => {
     try {
@@ -143,8 +149,13 @@ export const useReceptions = () => {
           montant_ht: receptionData.montant_ht || 0,
           montant_tva: receptionData.montant_tva || 0,
           montant_centime_additionnel: receptionData.montant_centime_additionnel || 0,
+          montant_asdi: receptionData.montant_asdi || 0,
           montant_ttc: receptionData.montant_ttc || 0,
-          notes: receptionData.notes || null
+          notes: receptionData.notes || null,
+          // Contrôle qualité
+          emballage_conforme: receptionData.emballage_conforme || false,
+          temperature_respectee: receptionData.temperature_respectee || false,
+          etiquetage_correct: receptionData.etiquetage_correct || false
         })
         .select()
         .single();
@@ -160,16 +171,23 @@ export const useReceptions = () => {
       const dateReception = receptionData.date_reception ? new Date(receptionData.date_reception).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
       
       for (const ligne of receptionData.lignes) {
-        // Créer la ligne de réception (adaptation au schéma existant)
+        // Créer la ligne de réception avec toutes les colonnes
         const { error: ligneError } = await supabase
           .from('lignes_reception_fournisseur')
           .insert({
             tenant_id: personnel.tenant_id,
             reception_id: reception.id,
             produit_id: ligne.produit_id,
-            quantite_recue: ligne.quantite_acceptee, // Utiliser quantite_acceptee comme quantite_recue
+            quantite_commandee: ligne.quantite_commandee || 0,
+            quantite_recue: ligne.quantite_recue || ligne.quantite_acceptee,
+            quantite_acceptee: ligne.quantite_acceptee || 0,
             prix_achat_unitaire_reel: ligne.prix_achat_reel || 0,
             date_peremption: ligne.date_expiration || null,
+            numero_lot: ligne.numero_lot || null,
+            statut: ligne.statut || 'conforme',
+            commentaire: ligne.commentaire || null,
+            emplacement: ligne.emplacement || null,
+            categorie_tarification_id: ligne.categorie_tarification_id || null,
             lot_id: null // Sera mis à jour après création du lot
           });
 
@@ -243,11 +261,12 @@ export const useReceptions = () => {
                 quantite_restante: ligne.quantite_acceptee,
                 prix_achat_unitaire: ligne.prix_achat_reel || 0,
                 date_reception: dateReception,
-                // Ajout des colonnes manquantes
+                // Ajout des colonnes complètes
                 fournisseur_id: receptionData.fournisseur_id,
                 reception_id: reception.id,
                 emplacement: ligne.emplacement || null,
-                notes: ligne.commentaire || null
+                notes: ligne.commentaire || null,
+                categorie_tarification_id: ligne.categorie_tarification_id || null
               })
               .select()
               .single();
