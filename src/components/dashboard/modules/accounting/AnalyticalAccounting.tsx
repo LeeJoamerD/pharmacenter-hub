@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -10,62 +10,217 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { Plus, Building2, Target, TrendingUp, Calculator, FileBarChart, AlertTriangle, DollarSign } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
+import { Plus, Building2, Target, TrendingUp, Calculator, FileBarChart, AlertTriangle, DollarSign, Loader2, Edit, Trash2, Check, FileSpreadsheet, FileText, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAnalyticalAccounting, CostCenter, Budget, ChargeAllocation, AllocationLine } from '@/hooks/useAnalyticalAccounting';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import CreateCostCenterDialog from './dialogs/CreateCostCenterDialog';
+import CreateBudgetDialog from './dialogs/CreateBudgetDialog';
+import CreateAllocationDialog from './dialogs/CreateAllocationDialog';
+import { exportAnalyticalReportPDF, exportAnalyticalReportExcel } from '@/utils/analyticalReportExport';
 
 const AnalyticalAccounting = () => {
   const [activeTab, setActiveTab] = useState('centres-couts');
   const { toast } = useToast();
+  const { personnel } = useAuth();
+  const tenantId = personnel?.tenant_id;
+  
+  const { formatAmount, getCurrencySymbol, getInputStep } = useCurrencyFormatting();
+  
+  const {
+    costCenters,
+    budgets,
+    allocationKeys,
+    chargeAllocations,
+    profitabilityData,
+    isLoading,
+    isSaving,
+    createCostCenter,
+    updateCostCenter,
+    deleteCostCenter,
+    createBudget,
+    updateBudget,
+    deleteBudget,
+    validateBudget,
+    generateBudgets,
+    createChargeAllocation,
+    updateChargeAllocation,
+    deleteChargeAllocation,
+    validateChargeAllocation,
+    calculateAutomaticAllocation,
+    createAllocationLines,
+    getAnalyticsKPIs,
+    getBudgetAlerts,
+    refreshAll,
+  } = useAnalyticalAccounting();
 
-  // Mock data for cost centers
-  const costCenters = [
-    { id: 1, code: 'CC001', name: 'Production Médicaments', type: 'Opérationnel', manager: 'Dr. Kouassi', budget: 850000, actual: 782000, variance: -8 },
-    { id: 2, code: 'CC002', name: 'Vente Retail', type: 'Commercial', manager: 'Mme Diallo', budget: 420000, actual: 465000, variance: 10.7 },
-    { id: 3, code: 'CC003', name: 'Administration', type: 'Support', manager: 'M. Traoré', budget: 320000, actual: 298000, variance: -6.9 },
-    { id: 4, code: 'CC004', name: 'Logistique', type: 'Support', manager: 'Mme Sanogo', budget: 280000, actual: 315000, variance: 12.5 }
-  ];
+  // États locaux
+  const [responsables, setResponsables] = useState<{ id: string; nom_complet: string }[]>([]);
+  const [exercices, setExercices] = useState<{ id: string; libelle: string }[]>([]);
+  const [showCenterDialog, setShowCenterDialog] = useState(false);
+  const [showBudgetDialog, setShowBudgetDialog] = useState(false);
+  const [showAllocationDialog, setShowAllocationDialog] = useState(false);
+  const [editingCenter, setEditingCenter] = useState<CostCenter | null>(null);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; id: string } | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
-  // Mock data for profitability analysis
-  const profitabilityData = [
-    { product: 'Paracétamol', revenue: 450000, costs: 280000, margin: 170000, marginRate: 37.8 },
-    { product: 'Amoxicilline', revenue: 380000, costs: 245000, margin: 135000, marginRate: 35.5 },
-    { product: 'Vitamines', revenue: 220000, costs: 125000, margin: 95000, marginRate: 43.2 },
-    { product: 'Antiseptiques', revenue: 180000, costs: 98000, margin: 82000, marginRate: 45.6 }
-  ];
+  // Charger les responsables et exercices
+  useEffect(() => {
+    if (!tenantId) return;
+    
+    const loadReferenceData = async (): Promise<void> => {
+      const [personnelRes, exercicesRes] = await Promise.all([
+        supabase.from('personnel').select('id, noms, prenoms').eq('tenant_id', tenantId).eq('est_actif', true),
+        supabase.from('exercices_comptables').select('id, libelle_exercice').eq('tenant_id', tenantId).order('date_debut', { ascending: false }),
+      ]);
+      
+      setResponsables(personnelRes.data?.map(p => ({ id: p.id, nom_complet: `${p.prenoms} ${p.noms}` })) || []);
+      setExercices(exercicesRes.data?.map(e => ({ id: e.id, libelle: e.libelle_exercice })) || []);
+    };
+    
+    loadReferenceData();
+  }, [tenantId]);
 
-  // Mock data for budget analysis
-  const budgetAnalysis = [
-    { month: 'Jan', budget: 180000, actual: 175000, variance: -2.8 },
-    { month: 'Fév', budget: 185000, actual: 192000, variance: 3.8 },
-    { month: 'Mar', budget: 190000, actual: 185000, variance: -2.6 },
-    { month: 'Avr', budget: 175000, actual: 182000, variance: 4.0 },
-    { month: 'Mai', budget: 195000, actual: 188000, variance: -3.6 },
-    { month: 'Juin', budget: 200000, actual: 205000, variance: 2.5 }
-  ];
+  // Données graphiques
+  const profitabilityChartData = useMemo(() => {
+    return profitabilityData.slice(0, 8).map(item => ({
+      product: item.produit_nom.length > 12 ? item.produit_nom.substring(0, 12) + '...' : item.produit_nom,
+      revenue: item.chiffre_affaires,
+      costs: item.cout_achat,
+      margin: item.marge_brute,
+    }));
+  }, [profitabilityData]);
 
-  const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
-
-  const handleCreateCostCenter = () => {
-    toast({
-      title: "Centre de coûts créé",
-      description: "Le nouveau centre de coûts a été ajouté avec succès."
+  const budgetChartData = useMemo(() => {
+    const monthlyBudgets = budgets.filter(b => b.type_periode === 'mensuel' && b.mois);
+    const grouped: Record<number, { budget: number; actual: number }> = {};
+    
+    monthlyBudgets.forEach(b => {
+      if (b.mois) {
+        if (!grouped[b.mois]) grouped[b.mois] = { budget: 0, actual: 0 };
+        grouped[b.mois].budget += b.montant_prevu;
+        grouped[b.mois].actual += b.montant_realise;
+      }
     });
+    
+    const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+    return Object.entries(grouped).map(([mois, data]) => ({
+      month: months[parseInt(mois) - 1] || mois,
+      budget: data.budget,
+      actual: data.actual,
+      variance: data.budget > 0 ? ((data.actual - data.budget) / data.budget) * 100 : 0,
+    })).sort((a, b) => months.indexOf(a.month) - months.indexOf(b.month));
+  }, [budgets]);
+
+  const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+
+  // Calculs dérivés
+  const centerPerformance = useMemo(() => {
+    return costCenters.map(center => {
+      const centerBudgets = budgets.filter(b => b.centre_cout_id === center.id);
+      const totalBudget = centerBudgets.reduce((sum, b) => sum + b.montant_prevu, 0);
+      const totalRealise = centerBudgets.reduce((sum, b) => sum + b.montant_realise, 0);
+      const variance = totalBudget > 0 ? ((totalRealise - totalBudget) / totalBudget) * 100 : 0;
+      
+      return {
+        ...center,
+        budget: totalBudget,
+        actual: totalRealise,
+        variance,
+      };
+    });
+  }, [costCenters, budgets]);
+
+  const topPerformers = useMemo(() => {
+    return centerPerformance.filter(c => c.variance < 0 && c.budget > 0).sort((a, b) => a.variance - b.variance).slice(0, 5);
+  }, [centerPerformance]);
+
+  const attentionPoints = useMemo(() => {
+    return centerPerformance.filter(c => c.variance > 5 && c.budget > 0).sort((a, b) => b.variance - a.variance).slice(0, 5);
+  }, [centerPerformance]);
+
+  // Handlers
+  const handleSaveCenter = async (center: Partial<CostCenter>) => {
+    if (editingCenter) {
+      await updateCostCenter(editingCenter.id, center);
+    } else {
+      await createCostCenter(center);
+    }
+    setEditingCenter(null);
   };
 
-  const handleAllocateCharges = () => {
-    toast({
-      title: "Charges réparties",
-      description: "La répartition des charges indirectes a été mise à jour."
-    });
+  const handleSaveBudget = async (budget: Partial<Budget>) => {
+    if (editingBudget) {
+      await updateBudget(editingBudget.id, budget);
+    } else {
+      await createBudget(budget);
+    }
+    setEditingBudget(null);
   };
 
-  const handleGenerateReport = () => {
-    toast({
-      title: "Rapport généré",
-      description: "Le rapport d'analyse de rentabilité a été créé."
-    });
+  const handleSaveAllocation = async (allocation: Partial<ChargeAllocation>, lines: Partial<AllocationLine>[]) => {
+    const created = await createChargeAllocation(allocation);
+    if (created && lines.length > 0) {
+      await createAllocationLines(created.id, lines);
+    }
   };
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    
+    try {
+      if (deleteConfirm.type === 'center') {
+        await deleteCostCenter(deleteConfirm.id);
+      } else if (deleteConfirm.type === 'budget') {
+        await deleteBudget(deleteConfirm.id);
+      } else if (deleteConfirm.type === 'allocation') {
+        await deleteChargeAllocation(deleteConfirm.id);
+      }
+    } finally {
+      setDeleteConfirm(null);
+    }
+  };
+
+  const handleExport = async (format: 'pdf' | 'excel') => {
+    setIsExporting(true);
+    try {
+      const exportData = {
+        costCenters,
+        budgets,
+        chargeAllocations,
+        profitabilityData,
+        kpis: getAnalyticsKPIs,
+        formatAmount,
+      };
+      
+      if (format === 'pdf') {
+        await exportAnalyticalReportPDF(exportData);
+      } else {
+        await exportAnalyticalReportExcel(exportData);
+      }
+      toast({ title: 'Export réussi', description: `Rapport exporté en ${format.toUpperCase()}` });
+    } catch (error) {
+      toast({ title: 'Erreur', description: "Échec de l'export", variant: 'destructive' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  if (isLoading && costCenters.length === 0) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <span className="ml-3 text-muted-foreground">Chargement des données analytiques...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -77,11 +232,18 @@ const AnalyticalAccounting = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleGenerateReport} variant="outline">
-            <FileBarChart className="h-4 w-4 mr-2" />
-            Rapport Analytique
+          <Button onClick={() => handleExport('excel')} variant="outline" disabled={isExporting}>
+            {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileSpreadsheet className="h-4 w-4 mr-2" />}
+            Excel
           </Button>
-          <Button onClick={handleCreateCostCenter}>
+          <Button onClick={() => handleExport('pdf')} variant="outline" disabled={isExporting}>
+            {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
+            PDF
+          </Button>
+          <Button onClick={refreshAll} variant="outline" size="icon" disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button onClick={() => { setEditingCenter(null); setShowCenterDialog(true); }}>
             <Plus className="h-4 w-4 mr-2" />
             Nouveau Centre
           </Button>
@@ -97,6 +259,7 @@ const AnalyticalAccounting = () => {
           <TabsTrigger value="tableaux-bord">Tableaux de Bord</TabsTrigger>
         </TabsList>
 
+        {/* ONGLET CENTRES DE COÛTS */}
         <TabsContent value="centres-couts" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
@@ -105,8 +268,8 @@ const AnalyticalAccounting = () => {
                 <Building2 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">24</div>
-                <p className="text-xs text-muted-foreground">+2 ce mois</p>
+                <div className="text-2xl font-bold">{getAnalyticsKPIs.nombreCentresActifs}</div>
+                <p className="text-xs text-muted-foreground">sur {costCenters.length} total</p>
               </CardContent>
             </Card>
             <Card>
@@ -115,7 +278,7 @@ const AnalyticalAccounting = () => {
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">1,87M</div>
+                <div className="text-2xl font-bold">{formatAmount(getAnalyticsKPIs.budgetTotal)}</div>
                 <p className="text-xs text-muted-foreground">Budget alloué</p>
               </CardContent>
             </Card>
@@ -125,8 +288,10 @@ const AnalyticalAccounting = () => {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">1,86M</div>
-                <p className="text-xs text-success">-0.5% vs budget</p>
+                <div className="text-2xl font-bold">{formatAmount(getAnalyticsKPIs.realiseTotal)}</div>
+                <p className={`text-xs ${getAnalyticsKPIs.ecartMoyen < 0 ? 'text-success' : 'text-destructive'}`}>
+                  {getAnalyticsKPIs.ecartMoyen > 0 ? '+' : ''}{getAnalyticsKPIs.ecartMoyen.toFixed(1)}% vs budget
+                </p>
               </CardContent>
             </Card>
             <Card>
@@ -135,7 +300,7 @@ const AnalyticalAccounting = () => {
                 <Calculator className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">2.1%</div>
+                <div className="text-2xl font-bold">{Math.abs(getAnalyticsKPIs.ecartMoyen).toFixed(1)}%</div>
                 <p className="text-xs text-muted-foreground">Variance globale</p>
               </CardContent>
             </Card>
@@ -147,79 +312,66 @@ const AnalyticalAccounting = () => {
               <CardDescription>Configuration et suivi des centres de responsabilité</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-4">
-                  <div>
-                    <Label htmlFor="center-code">Code Centre</Label>
-                    <Input id="center-code" placeholder="CC005" />
-                  </div>
-                  <div>
-                    <Label htmlFor="center-name">Nom du Centre</Label>
-                    <Input id="center-name" placeholder="Nouveau centre" />
-                  </div>
-                  <div>
-                    <Label htmlFor="center-type">Type</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="operational">Opérationnel</SelectItem>
-                        <SelectItem value="commercial">Commercial</SelectItem>
-                        <SelectItem value="support">Support</SelectItem>
-                        <SelectItem value="profit">Centre de Profit</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="center-manager">Responsable</Label>
-                    <Input id="center-manager" placeholder="Nom du responsable" />
-                  </div>
-                </div>
-
-                <Table>
-                  <TableHeader>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Centre</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Responsable</TableHead>
+                    <TableHead>Budget</TableHead>
+                    <TableHead>Réalisé</TableHead>
+                    <TableHead>Écart</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {centerPerformance.length === 0 ? (
                     <TableRow>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Centre</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Responsable</TableHead>
-                      <TableHead>Budget</TableHead>
-                      <TableHead>Réalisé</TableHead>
-                      <TableHead>Écart</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                        Aucun centre de coûts. Cliquez sur "Nouveau Centre" pour en créer un.
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {costCenters.map((center) => (
-                      <TableRow key={center.id}>
+                  ) : (
+                    centerPerformance.map((center) => (
+                      <TableRow key={center.id} className={!center.est_actif ? 'opacity-50' : ''}>
                         <TableCell className="font-medium">{center.code}</TableCell>
-                        <TableCell>{center.name}</TableCell>
+                        <TableCell>{center.nom}</TableCell>
                         <TableCell>
-                          <Badge variant={center.type === 'Opérationnel' ? 'default' : 'secondary'}>
-                            {center.type}
+                          <Badge variant={center.type_centre === 'operationnel' ? 'default' : 'secondary'}>
+                            {center.type_centre}
                           </Badge>
                         </TableCell>
-                        <TableCell>{center.manager}</TableCell>
-                        <TableCell>{center.budget.toLocaleString()} FCFA</TableCell>
-                        <TableCell>{center.actual.toLocaleString()} FCFA</TableCell>
                         <TableCell>
-                          <span className={center.variance < 0 ? 'text-success' : 'text-destructive'}>
-                            {center.variance > 0 ? '+' : ''}{center.variance}%
+                          {center.responsable ? `${center.responsable.prenoms} ${center.responsable.noms}` : '-'}
+                        </TableCell>
+                        <TableCell>{formatAmount(center.budget)}</TableCell>
+                        <TableCell>{formatAmount(center.actual)}</TableCell>
+                        <TableCell>
+                          <span className={center.variance < 0 ? 'text-success' : center.variance > 5 ? 'text-destructive' : ''}>
+                            {center.variance > 0 ? '+' : ''}{center.variance.toFixed(1)}%
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm">Modifier</Button>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => { setEditingCenter(center); setShowCenterDialog(true); }}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm({ type: 'center', id: center.id })}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ONGLET RENTABILITÉ */}
         <TabsContent value="rentabilite" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
@@ -228,17 +380,24 @@ const AnalyticalAccounting = () => {
                 <CardDescription>Marges et contribution par ligne de produits</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={profitabilityData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="product" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => `${value.toLocaleString()} FCFA`} />
-                    <Bar dataKey="revenue" fill="hsl(var(--primary))" name="Chiffre d'affaires" />
-                    <Bar dataKey="costs" fill="hsl(var(--secondary))" name="Coûts" />
-                    <Bar dataKey="margin" fill="hsl(var(--accent))" name="Marge" />
-                  </BarChart>
-                </ResponsiveContainer>
+                {profitabilityChartData.length === 0 ? (
+                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                    Aucune donnée de vente disponible
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={profitabilityChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="product" fontSize={10} />
+                      <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                      <Tooltip formatter={(value: number) => formatAmount(value)} />
+                      <Legend />
+                      <Bar dataKey="revenue" fill="hsl(var(--primary))" name="CA" />
+                      <Bar dataKey="costs" fill="hsl(var(--muted))" name="Coûts" />
+                      <Bar dataKey="margin" fill="hsl(var(--chart-2))" name="Marge" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
 
@@ -248,25 +407,31 @@ const AnalyticalAccounting = () => {
                 <CardDescription>Contribution par catégorie de produits</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={profitabilityData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="margin"
-                    >
-                      {profitabilityData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => `${value.toLocaleString()} FCFA`} />
-                  </PieChart>
-                </ResponsiveContainer>
+                {profitabilityChartData.length === 0 ? (
+                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+                    Aucune donnée disponible
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={profitabilityChartData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        dataKey="margin"
+                        nameKey="product"
+                      >
+                        {profitabilityChartData.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number) => formatAmount(value)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -274,102 +439,74 @@ const AnalyticalAccounting = () => {
           <Card>
             <CardHeader>
               <CardTitle>Détail Rentabilité</CardTitle>
-              <CardDescription>Analyse détaillée par ligne de produits</CardDescription>
+              <CardDescription>Analyse détaillée par ligne de produits ({profitabilityData.length} produits)</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Produit</TableHead>
-                    <TableHead>Chiffre d'Affaires</TableHead>
-                    <TableHead>Coûts Directs</TableHead>
-                    <TableHead>Marge Brute</TableHead>
-                    <TableHead>Taux de Marge</TableHead>
+                    <TableHead>Famille</TableHead>
+                    <TableHead className="text-right">Chiffre d'Affaires</TableHead>
+                    <TableHead className="text-right">Coûts Directs</TableHead>
+                    <TableHead className="text-right">Marge Brute</TableHead>
+                    <TableHead className="text-right">Taux de Marge</TableHead>
                     <TableHead>Performance</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {profitabilityData.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{item.product}</TableCell>
-                      <TableCell>{item.revenue.toLocaleString()} FCFA</TableCell>
-                      <TableCell>{item.costs.toLocaleString()} FCFA</TableCell>
-                      <TableCell>{item.margin.toLocaleString()} FCFA</TableCell>
-                      <TableCell>{item.marginRate}%</TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Progress value={item.marginRate} className="w-16" />
-                          <Badge variant={item.marginRate > 40 ? 'default' : item.marginRate > 30 ? 'secondary' : 'destructive'}>
-                            {item.marginRate > 40 ? 'Excellent' : item.marginRate > 30 ? 'Bon' : 'Faible'}
-                          </Badge>
-                        </div>
+                  {profitabilityData.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                        Aucune donnée de rentabilité. Les données sont calculées à partir des ventes.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    profitabilityData.slice(0, 20).map((item) => (
+                      <TableRow key={item.produit_id}>
+                        <TableCell className="font-medium">{item.produit_nom}</TableCell>
+                        <TableCell>{item.famille}</TableCell>
+                        <TableCell className="text-right">{formatAmount(item.chiffre_affaires)}</TableCell>
+                        <TableCell className="text-right">{formatAmount(item.cout_achat)}</TableCell>
+                        <TableCell className="text-right">{formatAmount(item.marge_brute)}</TableCell>
+                        <TableCell className="text-right">{item.taux_marge.toFixed(1)}%</TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Progress value={Math.min(item.taux_marge, 100)} className="w-16" />
+                            <Badge variant={item.taux_marge > 40 ? 'default' : item.taux_marge > 25 ? 'secondary' : 'destructive'}>
+                              {item.taux_marge > 40 ? 'Excellent' : item.taux_marge > 25 ? 'Bon' : 'Faible'}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ONGLET RÉPARTITION */}
         <TabsContent value="repartition" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Répartition des Charges Indirectes</CardTitle>
-              <CardDescription>Allocation automatique et manuelle des coûts</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Répartition des Charges Indirectes</CardTitle>
+                <CardDescription>Allocation automatique et manuelle des coûts</CardDescription>
+              </div>
+              <Button onClick={() => setShowAllocationDialog(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nouvelle Répartition
+              </Button>
             </CardHeader>
             <CardContent className="space-y-4">
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  La répartition automatique utilise les clés de répartition configurées.
+                  La répartition automatique utilise les clés de répartition configurées ({allocationKeys.filter(k => k.est_active).length} clés actives).
                 </AlertDescription>
               </Alert>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <Label htmlFor="charge-type">Type de Charge</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Frais Administratifs</SelectItem>
-                      <SelectItem value="utilities">Services Généraux</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
-                      <SelectItem value="insurance">Assurances</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="allocation-key">Clé de Répartition</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="turnover">Chiffre d'affaires</SelectItem>
-                      <SelectItem value="employees">Nombre d'employés</SelectItem>
-                      <SelectItem value="surface">Surface occupée</SelectItem>
-                      <SelectItem value="direct-costs">Coûts directs</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="amount">Montant à Répartir</Label>
-                  <Input id="amount" placeholder="0 FCFA" />
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={handleAllocateCharges}>
-                  <Calculator className="h-4 w-4 mr-2" />
-                  Répartir Automatiquement
-                </Button>
-                <Button variant="outline">
-                  Répartition Manuelle
-                </Button>
-              </div>
 
               <Separator />
 
@@ -379,30 +516,53 @@ const AnalyticalAccounting = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
+                      <TableHead>Numéro</TableHead>
+                      <TableHead>Libellé</TableHead>
                       <TableHead>Type de Charge</TableHead>
-                      <TableHead>Montant Total</TableHead>
+                      <TableHead className="text-right">Montant</TableHead>
                       <TableHead>Clé Utilisée</TableHead>
                       <TableHead>Statut</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <TableRow>
-                      <TableCell>15/12/2024</TableCell>
-                      <TableCell>Frais Administratifs</TableCell>
-                      <TableCell>85,000 FCFA</TableCell>
-                      <TableCell>Chiffre d'affaires</TableCell>
-                      <TableCell><Badge>Validé</Badge></TableCell>
-                      <TableCell><Button variant="ghost" size="sm">Détail</Button></TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>12/12/2024</TableCell>
-                      <TableCell>Services Généraux</TableCell>
-                      <TableCell>45,000 FCFA</TableCell>
-                      <TableCell>Surface occupée</TableCell>
-                      <TableCell><Badge variant="secondary">En cours</Badge></TableCell>
-                      <TableCell><Button variant="ghost" size="sm">Modifier</Button></TableCell>
-                    </TableRow>
+                    {chargeAllocations.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                          Aucune répartition enregistrée
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      chargeAllocations.map((allocation) => (
+                        <TableRow key={allocation.id}>
+                          <TableCell>{format(new Date(allocation.date_repartition), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell className="font-mono text-sm">{allocation.numero_repartition}</TableCell>
+                          <TableCell>{allocation.libelle}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{allocation.type_charge}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">{formatAmount(allocation.montant_total)}</TableCell>
+                          <TableCell>{allocation.cle?.libelle || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant={allocation.statut === 'valide' ? 'default' : allocation.statut === 'comptabilise' ? 'secondary' : 'outline'}>
+                              {allocation.statut === 'valide' ? 'Validé' : allocation.statut === 'comptabilise' ? 'Comptabilisé' : 'En cours'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              {allocation.statut === 'en_cours' && (
+                                <Button variant="ghost" size="sm" onClick={() => validateChargeAllocation(allocation.id)}>
+                                  <Check className="h-4 w-4 text-success" />
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm({ type: 'allocation', id: allocation.id })}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -410,6 +570,7 @@ const AnalyticalAccounting = () => {
           </Card>
         </TabsContent>
 
+        {/* ONGLET BUDGETS */}
         <TabsContent value="budgets" className="space-y-4">
           <Card>
             <CardHeader>
@@ -417,62 +578,66 @@ const AnalyticalAccounting = () => {
               <CardDescription>Analyse des écarts budget vs réalisé</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={budgetAnalysis}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => `${value.toLocaleString()} FCFA`} />
-                  <Line type="monotone" dataKey="budget" stroke="hsl(var(--primary))" name="Budget" strokeWidth={2} />
-                  <Line type="monotone" dataKey="actual" stroke="hsl(var(--accent))" name="Réalisé" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
+              {budgetChartData.length === 0 ? (
+                <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+                  Aucun budget mensuel configuré. Créez des budgets pour voir l'évolution.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={budgetChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(value: number) => formatAmount(value)} />
+                    <Legend />
+                    <Line type="monotone" dataKey="budget" stroke="hsl(var(--primary))" name="Budget" strokeWidth={2} />
+                    <Line type="monotone" dataKey="actual" stroke="hsl(var(--chart-2))" name="Réalisé" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
 
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
-              <CardHeader>
-                <CardTitle>Budget Prévisionnel</CardTitle>
-                <CardDescription>Configuration des budgets par centre</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4">
-                  <div>
-                    <Label htmlFor="budget-center">Centre de Coûts</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un centre" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {costCenters.map((center) => (
-                          <SelectItem key={center.id} value={center.code}>
-                            {center.code} - {center.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="budget-period">Période</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="2024">Exercice 2024</SelectItem>
-                        <SelectItem value="2025">Exercice 2025</SelectItem>
-                        <SelectItem value="q1-2025">Q1 2025</SelectItem>
-                        <SelectItem value="q2-2025">Q2 2025</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="budget-amount">Montant Budget</Label>
-                    <Input id="budget-amount" placeholder="0 FCFA" />
-                  </div>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Budgets Prévisionnels</CardTitle>
+                  <CardDescription>Liste des budgets par centre ({budgets.length} budgets)</CardDescription>
                 </div>
-                <Button className="w-full">Enregistrer Budget</Button>
+                <Button onClick={() => { setEditingBudget(null); setShowBudgetDialog(true); }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nouveau
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {budgets.slice(0, 10).map(budget => (
+                    <div key={budget.id} className="flex items-center justify-between p-2 border rounded-lg">
+                      <div>
+                        <p className="font-medium text-sm">{budget.libelle}</p>
+                        <p className="text-xs text-muted-foreground">{budget.centre?.nom || '-'}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <p className="font-medium text-sm">{formatAmount(budget.montant_prevu)}</p>
+                          <p className={`text-xs ${budget.ecart_pourcentage < 0 ? 'text-success' : budget.ecart_pourcentage > 5 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                            {budget.ecart_pourcentage > 0 ? '+' : ''}{budget.ecart_pourcentage.toFixed(1)}%
+                          </p>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => { setEditingBudget(budget); setShowBudgetDialog(true); }}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm({ type: 'budget', id: budget.id })}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {budgets.length === 0 && (
+                    <p className="text-center text-muted-foreground py-4">Aucun budget configuré</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -482,21 +647,21 @@ const AnalyticalAccounting = () => {
                 <CardDescription>Dépassements et écarts significatifs</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Logistique:</strong> Dépassement de 12.5% du budget mensuel
-                    </AlertDescription>
-                  </Alert>
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Vente Retail:</strong> Dépassement de 10.7% prévu ce mois
-                    </AlertDescription>
-                  </Alert>
-                  <div className="text-sm text-muted-foreground">
-                    2 centres sous budget, 2 centres en dépassement
+                <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                  {getBudgetAlerts.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-4">Aucune alerte budgétaire</p>
+                  ) : (
+                    getBudgetAlerts.map((alert, idx) => (
+                      <Alert key={idx} variant={alert.severity === 'high' ? 'destructive' : 'default'}>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>
+                          <strong>{alert.centre}:</strong> {alert.message}
+                        </AlertDescription>
+                      </Alert>
+                    ))
+                  )}
+                  <div className="text-sm text-muted-foreground pt-2">
+                    {getAnalyticsKPIs.centresSousBudget} centres sous budget, {getAnalyticsKPIs.centresDepassement} centres en dépassement
                   </div>
                 </div>
               </CardContent>
@@ -504,6 +669,7 @@ const AnalyticalAccounting = () => {
           </div>
         </TabsContent>
 
+        {/* ONGLET TABLEAUX DE BORD */}
         <TabsContent value="tableaux-bord" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
@@ -512,8 +678,10 @@ const AnalyticalAccounting = () => {
                 <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">87%</div>
-                <Progress value={87} className="mt-2" />
+                <div className="text-2xl font-bold">
+                  {Math.max(0, 100 - Math.abs(getAnalyticsKPIs.ecartMoyen)).toFixed(0)}%
+                </div>
+                <Progress value={Math.max(0, 100 - Math.abs(getAnalyticsKPIs.ecartMoyen))} className="mt-2" />
                 <p className="text-xs text-muted-foreground mt-2">Objectifs atteints</p>
               </CardContent>
             </Card>
@@ -523,8 +691,8 @@ const AnalyticalAccounting = () => {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">38.2%</div>
-                <p className="text-xs text-success">+2.1% vs période précédente</p>
+                <div className="text-2xl font-bold">{getAnalyticsKPIs.margeGlobale.toFixed(1)}%</div>
+                <p className="text-xs text-success">Marge globale sur ventes</p>
               </CardContent>
             </Card>
             <Card>
@@ -533,8 +701,12 @@ const AnalyticalAccounting = () => {
                 <Calculator className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">-0.5%</div>
-                <p className="text-xs text-success">Sous budget global</p>
+                <div className="text-2xl font-bold">
+                  {getAnalyticsKPIs.ecartMoyen > 0 ? '+' : ''}{getAnalyticsKPIs.ecartMoyen.toFixed(1)}%
+                </div>
+                <p className={`text-xs ${getAnalyticsKPIs.ecartMoyen <= 0 ? 'text-success' : 'text-destructive'}`}>
+                  {getAnalyticsKPIs.ecartMoyen <= 0 ? 'Sous budget global' : 'Dépassement global'}
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -543,25 +715,23 @@ const AnalyticalAccounting = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Top Performers</CardTitle>
-                <CardDescription>Centres les plus performants</CardDescription>
+                <CardDescription>Centres les plus performants (sous budget)</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {costCenters
-                    .filter(center => center.variance < 0)
-                    .sort((a, b) => a.variance - b.variance)
-                    .slice(0, 3)
-                    .map((center) => (
+                  {topPerformers.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-4">Aucun centre sous budget</p>
+                  ) : (
+                    topPerformers.map((center) => (
                       <div key={center.id} className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{center.name}</p>
+                          <p className="font-medium">{center.nom}</p>
                           <p className="text-sm text-muted-foreground">{center.code}</p>
                         </div>
-                        <Badge variant="default">
-                          {center.variance}%
-                        </Badge>
+                        <Badge variant="default">{center.variance.toFixed(1)}%</Badge>
                       </div>
-                    ))}
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -569,29 +739,79 @@ const AnalyticalAccounting = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Points d'Attention</CardTitle>
-                <CardDescription>Centres nécessitant un suivi</CardDescription>
+                <CardDescription>Centres nécessitant un suivi (dépassement &gt;5%)</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {costCenters
-                    .filter(center => center.variance > 5)
-                    .map((center) => (
+                  {attentionPoints.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-4">Aucun centre en dépassement significatif</p>
+                  ) : (
+                    attentionPoints.map((center) => (
                       <div key={center.id} className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{center.name}</p>
+                          <p className="font-medium">{center.nom}</p>
                           <p className="text-sm text-muted-foreground">{center.code}</p>
                         </div>
-                        <Badge variant="destructive">
-                          +{center.variance}%
-                        </Badge>
+                        <Badge variant="destructive">+{center.variance.toFixed(1)}%</Badge>
                       </div>
-                    ))}
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* DIALOGS */}
+      <CreateCostCenterDialog
+        open={showCenterDialog}
+        onOpenChange={setShowCenterDialog}
+        onSave={handleSaveCenter}
+        editingCenter={editingCenter}
+        responsables={responsables}
+        costCenters={costCenters}
+        isSaving={isSaving}
+      />
+
+      <CreateBudgetDialog
+        open={showBudgetDialog}
+        onOpenChange={setShowBudgetDialog}
+        onSave={handleSaveBudget}
+        onGenerate={generateBudgets}
+        editingBudget={editingBudget}
+        costCenters={costCenters}
+        exercices={exercices}
+        isSaving={isSaving}
+      />
+
+      <CreateAllocationDialog
+        open={showAllocationDialog}
+        onOpenChange={setShowAllocationDialog}
+        onSave={handleSaveAllocation}
+        onCalculate={calculateAutomaticAllocation}
+        allocationKeys={allocationKeys}
+        costCenters={costCenters}
+        isSaving={isSaving}
+      />
+
+      {/* CONFIRMATION SUPPRESSION */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action est irréversible. Êtes-vous sûr de vouloir supprimer cet élément ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
