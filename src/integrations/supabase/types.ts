@@ -19612,6 +19612,10 @@ export type Database = {
         }
         Returns: Json
       }
+      generate_allocation_number: {
+        Args: { p_tenant_id: string }
+        Returns: string
+      }
       generate_avoir_number: { Args: { p_tenant_id: string }; Returns: string }
       generate_cost_center_code: {
         Args: { p_tenant_id: string }
@@ -19696,11 +19700,39 @@ export type Database = {
       }
       get_ai_learning_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_ai_stock_suggestions: { Args: { p_tenant_id: string }; Returns: Json }
+      get_analytical_summary: { Args: { p_tenant_id: string }; Returns: Json }
       get_automation_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_bi_metrics: { Args: { p_tenant_id: string }; Returns: Json }
+      get_budget_chart_data: {
+        Args: { p_annee?: number; p_centre_id?: string; p_tenant_id: string }
+        Returns: {
+          budget: number
+          ecart: number
+          mois: number
+          periode: string
+          realise: number
+        }[]
+      }
       get_cash_registers_status: {
         Args: { p_tenant_id: string }
         Returns: Json
+      }
+      get_center_performance_data: {
+        Args: { p_annee?: number; p_tenant_id: string }
+        Returns: {
+          budget_total: number
+          budgets_depassement: number
+          code: string
+          ecart_montant: number
+          ecart_pourcentage: number
+          est_actif: boolean
+          id: string
+          nom: string
+          nombre_budgets: number
+          realise_total: number
+          responsable_nom: string
+          type_centre: string
+        }[]
       }
       get_collaboration_analytics: {
         Args: { p_tenant_id: string }
@@ -19815,6 +19847,27 @@ export type Database = {
           numero_lot: string
           prix_achat_unitaire: number
           quantite_restante: number
+        }[]
+      }
+      get_profitability_data: {
+        Args: {
+          p_date_debut?: string
+          p_date_fin?: string
+          p_famille_id?: string
+          p_limit?: number
+          p_tenant_id: string
+        }
+        Returns: {
+          chiffre_affaires: number
+          code_produit: string
+          cout_achat: number
+          derniere_vente: string
+          famille: string
+          marge_brute: number
+          produit_id: string
+          produit_nom: string
+          quantite_vendue: number
+          taux_marge: number
         }[]
       }
       get_recent_sales_transactions: {
