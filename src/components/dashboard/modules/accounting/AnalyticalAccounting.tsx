@@ -70,6 +70,18 @@ const AnalyticalAccounting = () => {
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: string; id: string } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Pagination pour le tableau de rentabilité
+  const [profitabilityPage, setProfitabilityPage] = useState(1);
+  const [profitabilityPageSize, setProfitabilityPageSize] = useState(50);
+  
+  // Données paginées pour la rentabilité
+  const paginatedProfitability = useMemo(() => {
+    const start = (profitabilityPage - 1) * profitabilityPageSize;
+    return profitabilityData.slice(start, start + profitabilityPageSize);
+  }, [profitabilityData, profitabilityPage, profitabilityPageSize]);
+  
+  const totalProfitabilityPages = Math.ceil(profitabilityData.length / profitabilityPageSize);
 
   // Charger les responsables et exercices
   useEffect(() => {
@@ -470,11 +482,35 @@ const AnalyticalAccounting = () => {
           </div>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Détail Rentabilité</CardTitle>
-              <CardDescription>Analyse détaillée par ligne de produits ({profitabilityData.length} produits)</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Détail Rentabilité</CardTitle>
+                <CardDescription>
+                  Analyse détaillée par ligne de produits ({profitabilityData.length} produits) - 
+                  Page {profitabilityPage} sur {totalProfitabilityPages || 1}
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={profitabilityPageSize.toString()}
+                  onValueChange={(value) => {
+                    setProfitabilityPageSize(parseInt(value));
+                    setProfitabilityPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="25">25 / page</SelectItem>
+                    <SelectItem value="50">50 / page</SelectItem>
+                    <SelectItem value="100">100 / page</SelectItem>
+                    <SelectItem value="200">200 / page</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -488,14 +524,14 @@ const AnalyticalAccounting = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {profitabilityData.length === 0 ? (
+                  {paginatedProfitability.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                         Aucune donnée de rentabilité. Les données sont calculées à partir des ventes.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    profitabilityData.slice(0, 20).map((item) => (
+                    paginatedProfitability.map((item) => (
                       <TableRow key={item.produit_id}>
                         <TableCell className="font-medium">{item.produit_nom}</TableCell>
                         <TableCell>{item.famille}</TableCell>
@@ -516,6 +552,52 @@ const AnalyticalAccounting = () => {
                   )}
                 </TableBody>
               </Table>
+              
+              {/* Contrôles de pagination */}
+              {totalProfitabilityPages > 1 && (
+                <div className="flex items-center justify-between pt-4">
+                  <div className="text-sm text-muted-foreground">
+                    Affichage {((profitabilityPage - 1) * profitabilityPageSize) + 1} - {Math.min(profitabilityPage * profitabilityPageSize, profitabilityData.length)} sur {profitabilityData.length}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setProfitabilityPage(1)}
+                      disabled={profitabilityPage === 1}
+                    >
+                      ««
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setProfitabilityPage(p => Math.max(1, p - 1))}
+                      disabled={profitabilityPage === 1}
+                    >
+                      ‹ Précédent
+                    </Button>
+                    <span className="text-sm px-2">
+                      Page {profitabilityPage} / {totalProfitabilityPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setProfitabilityPage(p => Math.min(totalProfitabilityPages, p + 1))}
+                      disabled={profitabilityPage === totalProfitabilityPages}
+                    >
+                      Suivant ›
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setProfitabilityPage(totalProfitabilityPages)}
+                      disabled={profitabilityPage === totalProfitabilityPages}
+                    >
+                      »»
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

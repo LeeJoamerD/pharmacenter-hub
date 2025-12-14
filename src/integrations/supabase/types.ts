@@ -19420,6 +19420,10 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      calculate_profitability_metrics: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       calculate_reception_totals: {
         Args: { p_reception_id: string }
         Returns: Json
@@ -19868,6 +19872,7 @@ export type Database = {
           produit_nom: string
           quantite_vendue: number
           taux_marge: number
+          tenant_id: string
         }[]
       }
       get_recent_sales_transactions: {
