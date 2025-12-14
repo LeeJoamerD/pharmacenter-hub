@@ -477,9 +477,22 @@ export const useAnalyticalAccounting = () => {
     if (!tenantId) throw new Error('Missing tenant');
     setIsSaving(true);
     try {
+      // Filtrer uniquement les colonnes valides de la table budgets
+      const validColumns = [
+        'libelle', 'exercice_comptable_id', 'centre_cout_id', 'compte_id',
+        'type_periode', 'date_debut', 'date_fin', 'annee', 'mois', 'trimestre',
+        'montant_prevu', 'montant_realise', 'montant_engage', 'ecart_montant',
+        'ecart_pourcentage', 'statut', 'valide_par_id', 'date_validation',
+        'notes', 'commentaire_ecart'
+      ];
+      
+      const cleanedData = Object.fromEntries(
+        Object.entries(budget).filter(([key]) => validColumns.includes(key))
+      );
+      
       const { data, error } = await supabase
         .from('budgets')
-        .update(budget as any)
+        .update(cleanedData)
         .eq('id', id)
         .eq('tenant_id', tenantId)
         .select()
