@@ -75,17 +75,50 @@ const AnalyticalAccounting = () => {
   useEffect(() => {
     if (!tenantId) return;
     
-    const loadReferenceData = async (): Promise<void> => {
-      const [personnelRes, exercicesRes] = await Promise.all([
-        supabase.from('personnel').select('id, noms, prenoms').eq('tenant_id', tenantId).eq('est_actif', true),
-        supabase.from('exercices_comptables').select('id, libelle_exercice').eq('tenant_id', tenantId).order('date_debut', { ascending: false }),
-      ]);
-      
-      setResponsables(personnelRes.data?.map(p => ({ id: p.id, nom_complet: `${p.prenoms} ${p.noms}` })) || []);
-      setExercices(exercicesRes.data?.map(e => ({ id: e.id, libelle: e.libelle_exercice })) || []);
+    const loadData = async () => {
+      try {
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        const baseUrl = 'https://pzsoeapzuijhgemjzydo.supabase.co/rest/v1';
+        const apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6c29lYXB6dWlqaGdlbWp6eWRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE4Mzk4MzUsImV4cCI6MjA2NzQxNTgzNX0.GeDciO1Zxu4Q225D2nTisfd9O9SrPIvPuOtkWaQA8I0';
+        
+        const headers = {
+          'apikey': apiKey,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+        
+        // Charger personnel
+        const personnelResp = await fetch(
+          `${baseUrl}/personnel?tenant_id=eq.${tenantId}&est_actif=eq.true&select=id,noms,prenoms`,
+          { headers }
+        );
+        const personnelData = await personnelResp.json();
+        if (Array.isArray(personnelData)) {
+          setResponsables(personnelData.map((p: { id: string; noms: string; prenoms: string }) => ({
+            id: p.id,
+            nom_complet: `${p.prenoms} ${p.noms}`
+          })));
+        }
+        
+        // Charger exercices
+        const exercicesResp = await fetch(
+          `${baseUrl}/exercices_comptables?tenant_id=eq.${tenantId}&select=id,libelle_exercice&order=date_debut.desc`,
+          { headers }
+        );
+        const exercicesData = await exercicesResp.json();
+        if (Array.isArray(exercicesData)) {
+          setExercices(exercicesData.map((e: { id: string; libelle_exercice: string }) => ({
+            id: e.id,
+            libelle: e.libelle_exercice
+          })));
+        }
+      } catch (error) {
+        console.error('Erreur chargement données référence:', error);
+      }
     };
     
-    loadReferenceData();
+    loadData();
   }, [tenantId]);
 
   // Données graphiques
