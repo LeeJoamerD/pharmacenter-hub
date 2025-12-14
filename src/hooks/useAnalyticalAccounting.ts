@@ -372,9 +372,21 @@ export const useAnalyticalAccounting = () => {
     if (!tenantId) throw new Error('Missing tenant');
     setIsSaving(true);
     try {
+      // Filtrer uniquement les colonnes valides de la table centres_couts
+      const validColumns = [
+        'code', 'nom', 'type_centre', 'centre_parent_id', 'niveau',
+        'responsable_id', 'est_actif', 'date_ouverture', 'date_fermeture',
+        'compte_analytique_id', 'objectif_marge_min', 'objectif_rotation_stock',
+        'description', 'notes'
+      ];
+      
+      const cleanedData = Object.fromEntries(
+        Object.entries(center).filter(([key]) => validColumns.includes(key))
+      );
+
       const { data, error } = await supabase
         .from('centres_couts')
-        .update(center as any)
+        .update(cleanedData)
         .eq('id', id)
         .eq('tenant_id', tenantId)
         .select()

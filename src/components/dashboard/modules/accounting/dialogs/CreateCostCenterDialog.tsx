@@ -65,7 +65,7 @@ const CreateCostCenterDialog = ({
     if (!form.nom || !form.type_centre) return;
     
     await onSave({
-      ...editingCenter,
+      ...(editingCenter?.id && { id: editingCenter.id }),
       nom: form.nom,
       type_centre: form.type_centre,
       responsable_id: form.responsable_id || undefined,
