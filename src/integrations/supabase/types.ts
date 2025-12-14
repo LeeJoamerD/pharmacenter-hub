@@ -9141,45 +9141,73 @@ export type Database = {
       }
       lignes_reception_fournisseur: {
         Row: {
+          categorie_tarification_id: string | null
+          commentaire: string | null
           created_at: string
           date_peremption: string | null
+          emplacement: string | null
           id: string
           lot_id: string | null
+          numero_lot: string | null
           prix_achat_reel: number | null
           prix_achat_unitaire_reel: number
           produit_id: string
+          quantite_acceptee: number | null
+          quantite_commandee: number | null
           quantite_recue: number
           reception_id: string
+          statut: string | null
           tenant_id: string
           updated_at: string
         }
         Insert: {
+          categorie_tarification_id?: string | null
+          commentaire?: string | null
           created_at?: string
           date_peremption?: string | null
+          emplacement?: string | null
           id?: string
           lot_id?: string | null
+          numero_lot?: string | null
           prix_achat_reel?: number | null
           prix_achat_unitaire_reel: number
           produit_id: string
+          quantite_acceptee?: number | null
+          quantite_commandee?: number | null
           quantite_recue: number
           reception_id: string
+          statut?: string | null
           tenant_id: string
           updated_at?: string
         }
         Update: {
+          categorie_tarification_id?: string | null
+          commentaire?: string | null
           created_at?: string
           date_peremption?: string | null
+          emplacement?: string | null
           id?: string
           lot_id?: string | null
+          numero_lot?: string | null
           prix_achat_reel?: number | null
           prix_achat_unitaire_reel?: number
           produit_id?: string
+          quantite_acceptee?: number | null
+          quantite_commandee?: number | null
           quantite_recue?: number
           reception_id?: string
+          statut?: string | null
           tenant_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "lignes_reception_fournisseur_categorie_tarification_id_fkey"
+            columns: ["categorie_tarification_id"]
+            isOneToOne: false
+            referencedRelation: "categorie_tarification"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "lignes_reception_fournisseur_lot_id_fkey"
             columns: ["lot_id"]
@@ -9732,6 +9760,7 @@ export type Database = {
       }
       lots: {
         Row: {
+          categorie_tarification_id: string | null
           created_at: string
           date_fabrication: string | null
           date_peremption: string | null
@@ -9752,6 +9781,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          categorie_tarification_id?: string | null
           created_at?: string
           date_fabrication?: string | null
           date_peremption?: string | null
@@ -9772,6 +9802,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          categorie_tarification_id?: string | null
           created_at?: string
           date_fabrication?: string | null
           date_peremption?: string | null
@@ -9792,6 +9823,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "lots_categorie_tarification_id_fkey"
+            columns: ["categorie_tarification_id"]
+            isOneToOne: false
+            referencedRelation: "categorie_tarification"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "lots_fournisseur_id_fkey"
             columns: ["fournisseur_id"]
@@ -15400,10 +15438,13 @@ export type Database = {
           commande_id: string | null
           created_at: string
           date_reception: string | null
+          emballage_conforme: boolean | null
+          etiquetage_correct: boolean | null
           facture_generee: boolean | null
           facture_id: string | null
           fournisseur_id: string
           id: string
+          montant_asdi: number | null
           montant_centime_additionnel: number | null
           montant_ht: number | null
           montant_ttc: number | null
@@ -15412,6 +15453,7 @@ export type Database = {
           numero_reception: string | null
           reference_facture: string | null
           statut: string | null
+          temperature_respectee: boolean | null
           tenant_id: string
           updated_at: string
           valide_par_id: string | null
@@ -15421,10 +15463,13 @@ export type Database = {
           commande_id?: string | null
           created_at?: string
           date_reception?: string | null
+          emballage_conforme?: boolean | null
+          etiquetage_correct?: boolean | null
           facture_generee?: boolean | null
           facture_id?: string | null
           fournisseur_id: string
           id?: string
+          montant_asdi?: number | null
           montant_centime_additionnel?: number | null
           montant_ht?: number | null
           montant_ttc?: number | null
@@ -15433,6 +15478,7 @@ export type Database = {
           numero_reception?: string | null
           reference_facture?: string | null
           statut?: string | null
+          temperature_respectee?: boolean | null
           tenant_id: string
           updated_at?: string
           valide_par_id?: string | null
@@ -15442,10 +15488,13 @@ export type Database = {
           commande_id?: string | null
           created_at?: string
           date_reception?: string | null
+          emballage_conforme?: boolean | null
+          etiquetage_correct?: boolean | null
           facture_generee?: boolean | null
           facture_id?: string | null
           fournisseur_id?: string
           id?: string
+          montant_asdi?: number | null
           montant_centime_additionnel?: number | null
           montant_ht?: number | null
           montant_ttc?: number | null
@@ -15454,6 +15503,7 @@ export type Database = {
           numero_reception?: string | null
           reference_facture?: string | null
           statut?: string | null
+          temperature_respectee?: boolean | null
           tenant_id?: string
           updated_at?: string
           valide_par_id?: string | null

@@ -25,6 +25,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ExcelParserService } from '@/services/ExcelParserService';
 import { AutoOrderCreationService } from '@/services/AutoOrderCreationService';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { usePriceCategories } from '@/hooks/usePriceCategories';
 import type { ExcelReceptionLine, ParseResult, ValidationResult } from '@/types/excelImport';
 import type { Reception } from '@/hooks/useReceptions';
 
@@ -42,6 +43,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   loading
 }) => {
   const { formatAmount, getInputStep, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
+  const { categories: priceCategories } = usePriceCategories();
   
   // États de base
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
@@ -56,25 +58,30 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const [addingToCatalog, setAddingToCatalog] = useState(false);
   const [editedLines, setEditedLines] = useState<Map<number, Partial<ExcelReceptionLine>>>(new Map());
   
-  // États financiers (TVA/Centime manuels)
+  // États financiers (TVA/Centime/ASDI manuels)
   const [montantTva, setMontantTva] = useState<number>(0);
   const [montantCentimeAdditionnel, setMontantCentimeAdditionnel] = useState<number>(0);
+  const [montantAsdi, setMontantAsdi] = useState<number>(0);
   
   // États informations complémentaires
   const [transporteur, setTransporteur] = useState('');
   const [observations, setObservations] = useState('');
   
-  // États pour l'AlertDialog d'avertissement TVA/Centime à zéro
+  // Contrôle qualité
+  const [emballageConforme, setEmballageConforme] = useState<boolean>(false);
+  const [temperatureRespectee, setTemperatureRespectee] = useState<boolean>(false);
+  const [etiquetageCorrect, setEtiquetageCorrect] = useState<boolean>(false);
+  
+  // États pour l'AlertDialog d'avertissement TVA/Centime/ASDI à zéro
   const [showZeroWarningDialog, setShowZeroWarningDialog] = useState(false);
 
-  // Calcul des totaux financiers
+  // Calcul des totaux financiers avec ASDI
   const calculateTotals = useMemo(() => {
     if (!parseResult?.lines || parseResult.lines.length === 0) {
       return { sousTotal: 0, totalGeneral: 0 };
     }
 
     let sousTotal = parseResult.lines.reduce((sum, line) => {
-      // Ne compter que les lignes validées si validation effectuée
       if (validationResult) {
         const isValid = validationResult.validLines.some(vl => vl.rowNumber === line.rowNumber);
         if (!isValid) return sum;
@@ -86,14 +93,14 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       return sum + (quantiteAcceptee * prixAchatReel);
     }, 0);
     
-    // Arrondir pour les devises sans décimales
     if (isNoDecimalCurrency()) {
       sousTotal = Math.round(sousTotal);
     }
     
-    const totalGeneral = sousTotal + montantTva + montantCentimeAdditionnel;
+    // Total TTC = Sous-total HT + TVA + Centime + ASDI
+    const totalGeneral = sousTotal + montantTva + montantCentimeAdditionnel + montantAsdi;
     return { sousTotal, totalGeneral };
-  }, [parseResult?.lines, validationResult, editedLines, montantTva, montantCentimeAdditionnel, isNoDecimalCurrency]);
+  }, [parseResult?.lines, validationResult, editedLines, montantTva, montantCentimeAdditionnel, montantAsdi, isNoDecimalCurrency]);
 
   // Liste des produits avec erreur "product_not_found"
   const productNotFoundLines = useMemo(() => {
@@ -281,7 +288,6 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         };
       });
 
-      // Créer la réception avec tous les champs
       const receptionData = {
         fournisseur_id: selectedSupplierId,
         commande_id: orderId || undefined,
@@ -293,8 +299,13 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         montant_ht: isNoDecimalCurrency() ? Math.round(calculateTotals.sousTotal) : calculateTotals.sousTotal,
         montant_tva: isNoDecimalCurrency() ? Math.round(montantTva) : montantTva,
         montant_centime_additionnel: isNoDecimalCurrency() ? Math.round(montantCentimeAdditionnel) : montantCentimeAdditionnel,
+        montant_asdi: isNoDecimalCurrency() ? Math.round(montantAsdi) : montantAsdi,
         montant_ttc: isNoDecimalCurrency() ? Math.round(calculateTotals.totalGeneral) : calculateTotals.totalGeneral,
         notes: observations || null,
+        // Contrôle qualité
+        emballage_conforme: emballageConforme,
+        temperature_respectee: temperatureRespectee,
+        etiquetage_correct: etiquetageCorrect,
         lignes
       };
 
@@ -330,8 +341,12 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     setEditedLines(new Map());
     setMontantTva(0);
     setMontantCentimeAdditionnel(0);
+    setMontantAsdi(0);
     setTransporteur('');
     setObservations('');
+    setEmballageConforme(false);
+    setTemperatureRespectee(false);
+    setEtiquetageCorrect(false);
   };
 
   const handleAddProductsToCatalog = async () => {
