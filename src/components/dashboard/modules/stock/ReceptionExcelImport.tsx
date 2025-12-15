@@ -915,9 +915,8 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
 
               {/* Tableau de prévisualisation */}
               {parseResult.lines.length > 0 && (
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="max-h-96 overflow-y-scroll">
-                    <Table>
+                <div className="border rounded-lg max-h-96 overflow-x-scroll overflow-y-scroll">
+                    <Table className="min-w-[1600px]">
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-[50px]">
@@ -1090,7 +1089,6 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                         })}
                       </TableBody>
                     </Table>
-                  </div>
                 </div>
               )}
             </div>
