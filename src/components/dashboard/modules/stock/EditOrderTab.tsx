@@ -15,9 +15,11 @@ import {
   Send,
   Trash2,
   Edit,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
-import { useProducts } from '@/hooks/useProducts';
+import { useProductsForOrders } from '@/hooks/useProductsForOrders';
+import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
@@ -51,18 +53,19 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
   const [editableCentimeAdditionnel, setEditableCentimeAdditionnel] = useState<number>(5);
   
   const { toast } = useToast();
-  const { products } = useProducts();
+  const debouncedSearch = useDebouncedValue(searchProduct, 300);
+  const { 
+    products: filteredProducts, 
+    isLoading: productsLoading, 
+    hasMore, 
+    loadMore, 
+    totalCount 
+  } = useProductsForOrders(debouncedSearch, 50);
   const { settings } = useSystemSettings();
   const { orderLines, createOrderLine, updateOrderLine, deleteOrderLine, refetch } = useOrderLines(selectedOrderId);
 
   // Filter orders to show "Brouillon" and "En cours" status for modification
   const draftOrders = orders.filter(order => ['Brouillon', 'En cours'].includes(order.statut));
-
-  // Filter products for search
-  const filteredProducts = products.filter(product =>
-    product.libelle_produit.toLowerCase().includes(searchProduct.toLowerCase()) ||
-    (product.code_cip && product.code_cip.toLowerCase().includes(searchProduct.toLowerCase()))
-  );
 
   // Check if order can be modified when order is selected
   useEffect(() => {
@@ -410,23 +413,43 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                 </div>
               </div>
 
-              {searchProduct && filteredProducts.length > 0 && (
+              {searchProduct && (
                 <div className="border rounded-lg p-4 mb-4 bg-muted/50">
-                  <h4 className="font-medium mb-3">Produits trouvés :</h4>
-                  <div className="space-y-2">
-                     {filteredProducts.map(product => (
-                       <div key={product.id} className="flex items-center justify-between p-2 bg-background rounded border">
-                         <div>
-                           <span className="font-medium">{product.libelle_produit}</span>
-                           <span className="text-muted-foreground ml-2">({product.code_cip || 'N/A'})</span>
-                           <Badge variant="outline" className="ml-2">{(product.prix_achat || 0).toLocaleString()} F CFA</Badge>
-                         </div>
-                         <Button size="sm" onClick={() => addOrderLine(product)}>
-                           <Plus className="h-4 w-4" />
-                         </Button>
-                       </div>
-                     ))}
-                  </div>
+                  {productsLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                      <span>Recherche en cours...</span>
+                    </div>
+                  ) : filteredProducts.length > 0 ? (
+                    <>
+                      <h4 className="font-medium mb-3">
+                        Produits trouvés : {totalCount} résultat{totalCount > 1 ? 's' : ''}
+                      </h4>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {filteredProducts.map(product => (
+                          <div key={product.id} className="flex items-center justify-between p-2 bg-background rounded border">
+                            <div>
+                              <span className="font-medium">{product.libelle_produit}</span>
+                              <span className="text-muted-foreground ml-2">({product.code_cip || 'N/A'})</span>
+                              <Badge variant="outline" className="ml-2">{(product.prix_achat || 0).toLocaleString()} F CFA</Badge>
+                            </div>
+                            <Button size="sm" onClick={() => addOrderLine(product)}>
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      {hasMore && (
+                        <Button variant="outline" className="w-full mt-3" onClick={loadMore}>
+                          Charger plus de produits
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-2">
+                      Aucun produit trouvé pour "{searchProduct}"
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>
