@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -89,32 +89,78 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   // États pour l'AlertDialog d'avertissement TVA/Centime/ASDI à zéro
   const [showZeroWarningDialog, setShowZeroWarningDialog] = useState(false);
 
-  // Calcul des totaux financiers avec ASDI
-  const calculateTotals = useMemo(() => {
+  // Calcul automatique des suggestions TVA/Centime/ASDI basé sur les catégories produit
+  const calculateAutoSuggestions = useCallback(() => {
     if (!parseResult?.lines || parseResult.lines.length === 0) {
-      return { sousTotal: 0, totalGeneral: 0 };
+      return { sousTotal: 0, autoTva: 0, autoCentime: 0, autoAsdi: 0 };
     }
 
-    let sousTotal = parseResult.lines.reduce((sum, line) => {
+    let autoTva = 0;
+    let autoCentime = 0;
+    let sousTotal = 0;
+
+    parseResult.lines.forEach(line => {
       if (validationResult) {
         const isValid = validationResult.validLines.some(vl => vl.rowNumber === line.rowNumber);
-        if (!isValid) return sum;
+        if (!isValid) return;
       }
-      
+
       const edited = editedLines.get(line.rowNumber);
+      const categoryId = edited?.categorieTarificationId ?? line.categorieTarificationId;
+      const category = priceCategories?.find(cat => cat.id === categoryId);
+      const tauxTva = category?.taux_tva || 0;
+      const tauxCentime = category?.taux_centime_additionnel || 0;
+      
       const prixAchatReel = edited?.prixAchatReel ?? line.prixAchatReel;
       const quantiteAcceptee = edited?.quantiteAcceptee ?? line.quantiteAcceptee;
-      return sum + (quantiteAcceptee * prixAchatReel);
-    }, 0);
-    
+      const lineTotalHT = quantiteAcceptee * prixAchatReel;
+      
+      sousTotal += lineTotalHT;
+      
+      // TVA seulement si taux > 0
+      if (tauxTva > 0) {
+        autoTva += lineTotalHT * (tauxTva / 100);
+      }
+      
+      // Centime calculé sur la TVA
+      if (tauxCentime > 0) {
+        const tvaLine = tauxTva > 0 ? lineTotalHT * (tauxTva / 100) : 0;
+        autoCentime += tvaLine * (tauxCentime / 100);
+      }
+    });
+
+    // Arrondir si FCFA
     if (isNoDecimalCurrency()) {
       sousTotal = Math.round(sousTotal);
+      autoTva = Math.round(autoTva);
+      autoCentime = Math.round(autoCentime);
     }
+
+    // ASDI automatique : ((Sous-total HT + TVA) × 0.42) / 100
+    let autoAsdi = ((sousTotal + autoTva) * 0.42) / 100;
+    if (isNoDecimalCurrency()) {
+      autoAsdi = Math.round(autoAsdi);
+    }
+
+    return { sousTotal, autoTva, autoCentime, autoAsdi };
+  }, [parseResult?.lines, validationResult, editedLines, priceCategories, isNoDecimalCurrency]);
+
+  // Synchroniser les calculs automatiques vers les champs modifiables
+  useEffect(() => {
+    const { autoTva, autoCentime, autoAsdi } = calculateAutoSuggestions();
+    setMontantTva(autoTva);
+    setMontantCentimeAdditionnel(autoCentime);
+    setMontantAsdi(autoAsdi);
+  }, [calculateAutoSuggestions]);
+
+  // Calcul des totaux financiers avec ASDI (utilise les valeurs modifiables)
+  const calculateTotals = useMemo(() => {
+    const { sousTotal } = calculateAutoSuggestions();
     
-    // Total TTC = Sous-total HT + TVA + Centime + ASDI
+    // Total TTC = Sous-total HT + TVA + Centime + ASDI (valeurs modifiables)
     const totalGeneral = sousTotal + montantTva + montantCentimeAdditionnel + montantAsdi;
     return { sousTotal, totalGeneral };
-  }, [parseResult?.lines, validationResult, editedLines, montantTva, montantCentimeAdditionnel, montantAsdi, isNoDecimalCurrency]);
+  }, [calculateAutoSuggestions, montantTva, montantCentimeAdditionnel, montantAsdi]);
 
   // Liste des produits avec erreur "product_not_found"
   const productNotFoundLines = useMemo(() => {
@@ -1035,7 +1081,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">4️⃣ Calculs Financiers</h3>
               <p className="text-sm text-muted-foreground">
-                Le sous-total HT est calculé automatiquement. TVA, Centime Additionnel et ASDI sont à saisir manuellement en {getCurrencySymbol()}.
+                Les montants TVA, Centime Additionnel et ASDI sont calculés automatiquement selon les catégories de tarification des produits. Vous pouvez les modifier si nécessaire.
               </p>
               
               <div className="flex justify-end">

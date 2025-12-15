@@ -197,19 +197,64 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     }));
   };
 
-  // Calculate financial totals - Sous-total HT automatique, TVA, Centime et ASDI manuels
-  const calculateTotals = () => {
-    let sousTotal = receptionLines.reduce((sum, line) => {
-      const unitPrice = line.prixAchatReel || 0;
-      return sum + (line.quantiteAcceptee * unitPrice);
-    }, 0);
-    
-    // Arrondir si devise sans décimales
+  // Calcul automatique des suggestions TVA/Centime/ASDI basé sur les catégories produit
+  const calculateAutoSuggestions = useCallback(() => {
+    let autoTva = 0;
+    let autoCentime = 0;
+    let sousTotal = 0;
+
+    receptionLines.forEach(line => {
+      const categoryId = line.categorieTarificationId;
+      const category = priceCategories?.find(cat => cat.id === categoryId);
+      const tauxTva = category?.taux_tva || 0;
+      const tauxCentime = category?.taux_centime_additionnel || 0;
+      
+      const lineTotalHT = (line.quantiteAcceptee * (line.prixAchatReel || 0));
+      sousTotal += lineTotalHT;
+      
+      // TVA seulement si taux > 0
+      if (tauxTva > 0) {
+        autoTva += lineTotalHT * (tauxTva / 100);
+      }
+      
+      // Centime calculé sur la TVA
+      if (tauxCentime > 0) {
+        const tvaLine = tauxTva > 0 ? lineTotalHT * (tauxTva / 100) : 0;
+        autoCentime += tvaLine * (tauxCentime / 100);
+      }
+    });
+
+    // Arrondir si FCFA
     if (isNoDecimalCurrency()) {
       sousTotal = Math.round(sousTotal);
+      autoTva = Math.round(autoTva);
+      autoCentime = Math.round(autoCentime);
     }
+
+    // ASDI automatique : ((Sous-total HT + TVA) × 0.42) / 100
+    let autoAsdi = ((sousTotal + autoTva) * 0.42) / 100;
+    if (isNoDecimalCurrency()) {
+      autoAsdi = Math.round(autoAsdi);
+    }
+
+    return { sousTotal, autoTva, autoCentime, autoAsdi };
+  }, [receptionLines, priceCategories, isNoDecimalCurrency]);
+
+  // Synchroniser les calculs automatiques vers les champs modifiables
+  useEffect(() => {
+    if (receptionLines.length > 0) {
+      const { autoTva, autoCentime, autoAsdi } = calculateAutoSuggestions();
+      setMontantTva(autoTva);
+      setMontantCentimeAdditionnel(autoCentime);
+      setMontantAsdi(autoAsdi);
+    }
+  }, [receptionLines, priceCategories, calculateAutoSuggestions]);
+
+  // Calculate financial totals - Sous-total HT automatique, TVA, Centime et ASDI modifiables
+  const calculateTotals = () => {
+    const { sousTotal } = calculateAutoSuggestions();
     
-    // Total TTC = Sous-total HT + TVA (manuel) + Centime (manuel) + ASDI (manuel)
+    // Total TTC = Sous-total HT + TVA (modifiable) + Centime (modifiable) + ASDI (modifiable)
     const totalGeneral = sousTotal + montantTva + montantCentimeAdditionnel + montantAsdi;
     
     return { sousTotal, tva: montantTva, centimeAdditionnel: montantCentimeAdditionnel, asdi: montantAsdi, totalGeneral };
@@ -1088,9 +1133,9 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
           <Card>
             <CardHeader>
               <CardTitle>Calculs Financiers</CardTitle>
-              <CardDescription>
-                Le sous-total HT est calculé automatiquement. TVA, Centime Additionnel et ASDI sont à saisir manuellement en {currencySymbol}.
-              </CardDescription>
+            <CardDescription>
+              Les montants TVA, Centime Additionnel et ASDI sont calculés automatiquement selon les catégories de tarification des produits. Vous pouvez les modifier si nécessaire.
+            </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex justify-end">
