@@ -10,6 +10,7 @@ interface PaginationFilters {
   dci_id?: string;
   classe_therapeutique_id?: string;
   laboratoire_id?: string;
+  categorie_tarification_id?: string;
 }
 
 export const useProductsPaginated = (
@@ -24,7 +25,8 @@ export const useProductsPaginated = (
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filters.famille_id, filters.rayon_id, filters.forme_id, 
-      filters.dci_id, filters.classe_therapeutique_id, filters.laboratoire_id]);
+      filters.dci_id, filters.classe_therapeutique_id, filters.laboratoire_id,
+      filters.categorie_tarification_id]);
 
   const query = useQuery({
     queryKey: ['products-paginated', tenantId, currentPage, pageSize, searchTerm, filters],
@@ -69,6 +71,9 @@ export const useProductsPaginated = (
       }
       if (filters.laboratoire_id && filters.laboratoire_id !== 'all') {
         queryBuilder = queryBuilder.eq('laboratoires_id', filters.laboratoire_id);
+      }
+      if (filters.categorie_tarification_id && filters.categorie_tarification_id !== 'all') {
+        queryBuilder = queryBuilder.eq('categorie_tarification_id', filters.categorie_tarification_id);
       }
 
       // Pagination
