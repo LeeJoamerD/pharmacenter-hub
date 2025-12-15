@@ -16,6 +16,7 @@ export interface OrderLine {
     libelle_produit: string;
     code_cip: string;
     famille_id: string | null;
+    categorie_tarification_id: string | null;
   };
 }
 
@@ -32,7 +33,7 @@ export const useOrderLines = (commandeId?: string) => {
         .from('lignes_commande_fournisseur')
         .select(`
           *,
-          produit:produits!produit_id(libelle_produit, code_cip, famille_id)
+          produit:produits!produit_id(libelle_produit, code_cip, famille_id, categorie_tarification_id)
         `)
         .order('created_at', { ascending: false });
 

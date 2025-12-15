@@ -258,7 +258,8 @@ export class ExcelParserService {
       invalidLines,
       errors,
       warnings,
-      productMatches: productMatches.matched
+      productMatches: productMatches.matched,
+      productCategories: productMatches.productCategories
     };
   }
 
@@ -269,6 +270,7 @@ export class ExcelParserService {
     const matched = new Map<string, string>();
     const notFound: string[] = [];
     const ambiguous = new Map<string, string[]>();
+    const productCategories = new Map<string, string | null>();
 
     try {
       const { data: user } = await supabase.auth.getUser();
@@ -290,7 +292,7 @@ export class ExcelParserService {
       // Rechercher les produits par code_cip
       const { data: produitsByCip, error: errorCip } = await (supabase
         .from('produits')
-        .select('id, libelle_produit, code_cip, code_barre_externe')
+        .select('id, libelle_produit, code_cip, code_barre_externe, categorie_tarification_id')
         .eq('tenant_id', personnel.tenant_id)
         .in('code_cip', normalizedReferences) as any);
 
@@ -299,7 +301,7 @@ export class ExcelParserService {
       // Rechercher les produits par code_barre_externe
       const { data: produitsByBarcode, error: errorBarcode } = await (supabase
         .from('produits')
-        .select('id, libelle_produit, code_cip, code_barre_externe')
+        .select('id, libelle_produit, code_cip, code_barre_externe, categorie_tarification_id')
         .eq('tenant_id', personnel.tenant_id)
         .in('code_barre_externe', normalizedReferences) as any);
 
@@ -328,16 +330,17 @@ export class ExcelParserService {
           notFound.push(ref);
         } else if (matchingProducts.length === 1) {
           matched.set(ref, matchingProducts[0].id);
+          productCategories.set(ref, matchingProducts[0].categorie_tarification_id || null);
         } else {
           ambiguous.set(ref, matchingProducts.map(p => p.id));
         }
       }
 
-      return { matched, notFound, ambiguous };
+      return { matched, notFound, ambiguous, productCategories };
     } catch (error) {
       console.error('Erreur lors du matching des produits:', error);
       references.forEach(ref => notFound.push(ref));
-      return { matched, notFound, ambiguous };
+      return { matched, notFound, ambiguous, productCategories };
     }
   }
 

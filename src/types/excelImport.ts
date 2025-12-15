@@ -45,6 +45,7 @@ export interface ValidationResult {
   errors: ValidationError[];
   warnings: ValidationWarning[];
   productMatches: Map<string, string>; // reference -> produit_id
+  productCategories: Map<string, string | null>; // reference -> categorie_tarification_id
 }
 
 export interface ValidationError {
@@ -66,6 +67,7 @@ export interface ProductMatchResult {
   matched: Map<string, string>;        // reference -> produit_id
   notFound: string[];                  // références non trouvées
   ambiguous: Map<string, string[]>;    // référence -> [produit_ids multiples]
+  productCategories: Map<string, string | null>; // reference -> categorie_tarification_id
 }
 
 export interface AutoOrderCreationResult {

@@ -190,6 +190,19 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       const result = await ExcelParserService.validateReceptionData(lines, selectedSupplierId);
       setValidationResult(result);
 
+      // Initialiser les catégories de tarification pour chaque ligne validée
+      if (result.productCategories && result.productCategories.size > 0) {
+        const newEditedLines = new Map(editedLines);
+        lines.forEach(line => {
+          const catId = result.productCategories.get(String(line.reference).trim());
+          if (catId !== undefined) {
+            const existing = newEditedLines.get(line.rowNumber) || {};
+            newEditedLines.set(line.rowNumber, { ...existing, categorieTarificationId: catId || '' });
+          }
+        });
+        setEditedLines(newEditedLines);
+      }
+
       if (result.isValid) {
         toast.success(`Validation réussie : ${result.validLines.length} lignes validées`);
       } else {
@@ -438,6 +451,29 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     return edited?.[field] !== undefined ? edited[field] : line[field];
   };
 
+  // Fonction pour recalculer le statut après modification de date
+  const recalculateLineStatusFromDate = (rowNumber: number, newDate: string) => {
+    const now = new Date();
+    const sixMonths = new Date();
+    sixMonths.setMonth(sixMonths.getMonth() + 6);
+    
+    let newStatus: 'valid' | 'expired' | 'warning' = 'valid';
+    let statusMessage = '';
+    
+    if (newDate) {
+      const expDate = new Date(newDate);
+      if (expDate < now) {
+        newStatus = 'expired';
+        statusMessage = 'Date expirée';
+      } else if (expDate < sixMonths) {
+        newStatus = 'warning';
+        statusMessage = 'Expire dans moins de 6 mois';
+      }
+    }
+    
+    return { newStatus, statusMessage };
+  };
+
   const updateLineValue = (rowNumber: number, field: keyof ExcelReceptionLine, value: any) => {
     setEditedLines(prev => {
       const newMap = new Map(prev);
@@ -447,9 +483,52 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     });
   };
 
+  // Fonction pour gérer la modification de date avec mise à jour du statut
+  const handleDateChange = (line: ExcelReceptionLine, newDate: string) => {
+    updateLineValue(line.rowNumber, 'dateExpiration', newDate);
+  };
+
   const getStatusBadge = (line: ExcelReceptionLine) => {
+    // Récupérer la date éditée si elle existe
+    const editedDate = String(getLineValue(line, 'dateExpiration') || '');
+    
+    // Recalculer le statut de la date dynamiquement
+    const now = new Date();
+    const sixMonths = new Date();
+    sixMonths.setMonth(sixMonths.getMonth() + 6);
+    
+    let dateStatus: 'valid' | 'expired' | 'warning' = 'valid';
+    if (editedDate) {
+      const expDate = new Date(editedDate);
+      if (expDate < now) {
+        dateStatus = 'expired';
+      } else if (expDate < sixMonths) {
+        dateStatus = 'warning';
+      }
+    }
+    
+    // Vérifier les erreurs originales du validationResult
     const lineError = validationResult?.errors.find(e => e.rowNumber === line.rowNumber);
     const hasWarning = validationResult?.warnings.some(w => w.rowNumber === line.rowNumber);
+
+    // Si l'erreur originale était une date expirée, mais la date a été corrigée, ignorer l'erreur
+    if (lineError && lineError.type === 'invalid_date' && dateStatus !== 'expired') {
+      // La date a été corrigée - afficher le nouveau statut
+      if (dateStatus === 'warning') {
+        return (
+          <Badge variant="secondary">
+            <AlertTriangle className="h-3 w-3 mr-1" />
+            Expire bientôt
+          </Badge>
+        );
+      }
+      return (
+        <Badge className="bg-green-100 text-green-800">
+          <CheckCircle2 className="h-3 w-3 mr-1" />
+          Valide
+        </Badge>
+      );
+    }
 
     if (lineError) {
       let errorLabel = 'Erreur';
@@ -478,6 +557,16 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       );
     }
     
+    // Vérifier si la date éditée déclenche un avertissement
+    if (dateStatus === 'warning') {
+      return (
+        <Badge variant="secondary">
+          <AlertTriangle className="h-3 w-3 mr-1" />
+          Expire bientôt
+        </Badge>
+      );
+    }
+    
     if (hasWarning) {
       return (
         <Badge variant="secondary">
@@ -488,7 +577,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     }
     
     return (
-      <Badge variant="default">
+      <Badge className="bg-green-100 text-green-800">
         <CheckCircle2 className="h-3 w-3 mr-1" />
         Valide
       </Badge>
@@ -822,8 +911,8 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                                     }
                                   }}
                                 >
-                                  <SelectTrigger className="w-36 h-8">
-                                    <SelectValue placeholder="Catégorie" />
+                                <SelectTrigger className={`w-36 h-8 ${!getLineValue(line, 'categorieTarificationId') ? 'border-destructive bg-destructive/10' : ''}`}>
+                                    <SelectValue placeholder={getLineValue(line, 'categorieTarificationId') ? undefined : 'NULL'} />
                                   </SelectTrigger>
                                   <SelectContent>
                                     {priceCategories?.map((cat) => (
@@ -880,7 +969,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                                   type="date"
                                   className="w-36 h-8"
                                   value={String(getLineValue(line, 'dateExpiration'))}
-                                  onChange={(e) => updateLineValue(line.rowNumber, 'dateExpiration', e.target.value)}
+                                  onChange={(e) => handleDateChange(line, e.target.value)}
                                 />
                               </TableCell>
                               <TableCell>
@@ -931,68 +1020,68 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
           {validationResult && validationResult.validLines.length > 0 && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">4️⃣ Calculs Financiers</h3>
+              <p className="text-sm text-muted-foreground">
+                Le sous-total HT est calculé automatiquement. TVA, Centime Additionnel et ASDI sont à saisir manuellement en {getCurrencySymbol()}.
+              </p>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
-                <div className="space-y-2">
-                  <Label>Sous-total HT</Label>
-                  <Input
-                    type="text"
-                    value={formatAmount(calculateTotals.sousTotal)}
-                    readOnly
-                    className="bg-muted font-medium"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="tva">TVA ({getCurrencySymbol()})</Label>
-                  <Input
-                    id="tva"
-                    type="number"
-                    step={getInputStep()}
-                    min="0"
-                    value={montantTva}
-                    onChange={(e) => setMontantTva(parseFloat(e.target.value) || 0)}
-                    className={montantTva === 0 ? 'border-yellow-500' : ''}
-                    placeholder="Montant TVA"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="centime">Centime Additionnel ({getCurrencySymbol()})</Label>
-                  <Input
-                    id="centime"
-                    type="number"
-                    step={getInputStep()}
-                    min="0"
-                    value={montantCentimeAdditionnel}
-                    onChange={(e) => setMontantCentimeAdditionnel(parseFloat(e.target.value) || 0)}
-                    className={montantCentimeAdditionnel === 0 ? 'border-yellow-500' : ''}
-                    placeholder="Centime additionnel"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="asdi">ASDI ({getCurrencySymbol()})</Label>
-                  <Input
-                    id="asdi"
-                    type="number"
-                    step={getInputStep()}
-                    min="0"
-                    value={montantAsdi}
-                    onChange={(e) => setMontantAsdi(parseFloat(e.target.value) || 0)}
-                    className={montantAsdi === 0 ? 'border-yellow-500' : ''}
-                    placeholder="Acompte Sur Divers Impôts"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Total TTC</Label>
-                  <Input
-                    type="text"
-                    value={formatAmount(calculateTotals.totalGeneral)}
-                    readOnly
-                    className="bg-primary/10 font-bold text-lg"
-                  />
+              <div className="flex justify-end">
+                <div className="w-96 space-y-4">
+                  {/* Sous-total HT - Calculé automatiquement */}
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Sous-total HT :</span>
+                    <span className="font-bold text-lg">{formatAmount(calculateTotals.sousTotal)}</span>
+                  </div>
+                  
+                  {/* TVA - Saisie manuelle */}
+                  <div className="flex justify-between items-center gap-4">
+                    <Label htmlFor="tva-excel" className="whitespace-nowrap">TVA ({getCurrencySymbol()}) :</Label>
+                    <Input
+                      id="tva-excel"
+                      type="number"
+                      step={getInputStep()}
+                      min="0"
+                      value={montantTva}
+                      onChange={(e) => setMontantTva(parseFloat(e.target.value) || 0)}
+                      className="w-40 text-right"
+                      placeholder="0"
+                    />
+                  </div>
+                  
+                  {/* Centime Additionnel - Saisie manuelle */}
+                  <div className="flex justify-between items-center gap-4">
+                    <Label htmlFor="centime-excel" className="whitespace-nowrap">Centime Add. ({getCurrencySymbol()}) :</Label>
+                    <Input
+                      id="centime-excel"
+                      type="number"
+                      step={getInputStep()}
+                      min="0"
+                      value={montantCentimeAdditionnel}
+                      onChange={(e) => setMontantCentimeAdditionnel(parseFloat(e.target.value) || 0)}
+                      className="w-40 text-right"
+                      placeholder="0"
+                    />
+                  </div>
+                  
+                  {/* ASDI - Saisie manuelle */}
+                  <div className="flex justify-between items-center gap-4">
+                    <Label htmlFor="asdi-excel" className="whitespace-nowrap">ASDI ({getCurrencySymbol()}) :</Label>
+                    <Input
+                      id="asdi-excel"
+                      type="number"
+                      step={getInputStep()}
+                      min="0"
+                      value={montantAsdi}
+                      onChange={(e) => setMontantAsdi(parseFloat(e.target.value) || 0)}
+                      className="w-40 text-right"
+                      placeholder="0"
+                    />
+                  </div>
+                  
+                  {/* Total TTC */}
+                  <div className="flex justify-between text-lg font-bold border-t pt-3">
+                    <span>Total TTC :</span>
+                    <span className="text-primary">{formatAmount(calculateTotals.totalGeneral)}</span>
+                  </div>
                 </div>
               </div>
               

@@ -128,7 +128,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       commentaire: '',
       prixAchatReel: line.prix_achat_unitaire_attendu || 0,
       emplacement: '',
-      categorieTarificationId: '',
+      categorieTarificationId: line.produit?.categorie_tarification_id || '',
       produitId: line.produit_id,
     }));
     setReceptionLines(lines);
@@ -975,9 +975,9 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                             }
                           }}
                         >
-                          <SelectTrigger className="w-36">
-                            <SelectValue placeholder="Catégorie" />
-                          </SelectTrigger>
+                        <SelectTrigger className={`w-36 ${!line.categorieTarificationId ? 'border-destructive bg-destructive/10' : ''}`}>
+                          <SelectValue placeholder="Catégorie" />
+                        </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">Aucune</SelectItem>
                             {priceCategories?.map((cat) => (
