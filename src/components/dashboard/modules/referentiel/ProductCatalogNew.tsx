@@ -899,7 +899,12 @@ const ProductCatalogNew = () => {
                     <Input
                       id="libelle_produit"
                       {...register("libelle_produit", { required: "Le libellé est requis" })}
-                      placeholder="Nom du produit"
+                      placeholder="NOM DU PRODUIT"
+                      className="uppercase"
+                      onChange={(e) => {
+                        e.target.value = e.target.value.toUpperCase();
+                        setValue("libelle_produit", e.target.value);
+                      }}
                     />
                     {errors.libelle_produit && (
                       <p className="text-sm text-destructive mt-1">{errors.libelle_produit.message}</p>
@@ -911,7 +916,12 @@ const ProductCatalogNew = () => {
                     <Input
                       id="code_cip"
                       {...register("code_cip", { required: "Le code CIP est requis" })}
-                      placeholder="Code CIP"
+                      placeholder="CODE CIP"
+                      className="uppercase"
+                      onChange={(e) => {
+                        e.target.value = e.target.value.toUpperCase();
+                        setValue("code_cip", e.target.value);
+                      }}
                     />
                     {errors.code_cip && (
                       <p className="text-sm text-destructive mt-1">{errors.code_cip.message}</p>
