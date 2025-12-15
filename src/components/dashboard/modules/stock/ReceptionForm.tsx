@@ -84,6 +84,11 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   const [montantTva, setMontantTva] = useState<number>(0);
   const [montantCentimeAdditionnel, setMontantCentimeAdditionnel] = useState<number>(0);
   const [montantAsdi, setMontantAsdi] = useState<number>(0);
+  
+  // Flags pour savoir si l'utilisateur a modifié manuellement les champs
+  const [userEditedTva, setUserEditedTva] = useState<boolean>(false);
+  const [userEditedCentime, setUserEditedCentime] = useState<boolean>(false);
+  const [userEditedAsdi, setUserEditedAsdi] = useState<boolean>(false);
   const [currentOrderStatus, setCurrentOrderStatus] = useState<string>('En cours');
   // Contrôle qualité
   const [emballageConforme, setEmballageConforme] = useState<boolean>(false);
@@ -147,10 +152,13 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     }));
     setReceptionLines(lines);
     
-    // Réinitialiser les montants manuels
+    // Réinitialiser les montants manuels et les flags d'édition
     setMontantTva(0);
     setMontantCentimeAdditionnel(0);
     setMontantAsdi(0);
+    setUserEditedTva(false);
+    setUserEditedCentime(false);
+    setUserEditedAsdi(false);
   }, [orderLines, orderLinesLoading]);
 
   // Effect to load details when selectedOrder changes and data is ready
@@ -241,14 +249,21 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   }, [receptionLines, priceCategories, isNoDecimalCurrency]);
 
   // Synchroniser les calculs automatiques vers les champs modifiables
+  // SEULEMENT si l'utilisateur n'a pas modifié manuellement
   useEffect(() => {
     if (receptionLines.length > 0) {
       const { autoTva, autoCentime, autoAsdi } = calculateAutoSuggestions();
-      setMontantTva(autoTva);
-      setMontantCentimeAdditionnel(autoCentime);
-      setMontantAsdi(autoAsdi);
+      if (!userEditedTva) {
+        setMontantTva(autoTva);
+      }
+      if (!userEditedCentime) {
+        setMontantCentimeAdditionnel(autoCentime);
+      }
+      if (!userEditedAsdi) {
+        setMontantAsdi(autoAsdi);
+      }
     }
-  }, [receptionLines, priceCategories, calculateAutoSuggestions]);
+  }, [receptionLines, priceCategories, calculateAutoSuggestions, userEditedTva, userEditedCentime, userEditedAsdi]);
 
   // Calculate financial totals - Sous-total HT automatique, TVA, Centime et ASDI modifiables
   const calculateTotals = () => {
@@ -1156,6 +1171,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                       onChange={(e) => {
                         const value = parseFloat(e.target.value) || 0;
                         setMontantTva(isNoDecimalCurrency() ? Math.round(value) : value);
+                        setUserEditedTva(true);
                       }}
                       className="w-40 text-right"
                       min="0"
@@ -1174,6 +1190,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                       onChange={(e) => {
                         const value = parseFloat(e.target.value) || 0;
                         setMontantCentimeAdditionnel(isNoDecimalCurrency() ? Math.round(value) : value);
+                        setUserEditedCentime(true);
                       }}
                       className="w-40 text-right"
                       min="0"
@@ -1192,6 +1209,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                       onChange={(e) => {
                         const value = parseFloat(e.target.value) || 0;
                         setMontantAsdi(isNoDecimalCurrency() ? Math.round(value) : value);
+                        setUserEditedAsdi(true);
                       }}
                       className="w-40 text-right"
                       min="0"

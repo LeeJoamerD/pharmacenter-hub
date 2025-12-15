@@ -77,6 +77,11 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const [montantCentimeAdditionnel, setMontantCentimeAdditionnel] = useState<number>(0);
   const [montantAsdi, setMontantAsdi] = useState<number>(0);
   
+  // Flags pour savoir si l'utilisateur a modifié manuellement les champs
+  const [userEditedTva, setUserEditedTva] = useState<boolean>(false);
+  const [userEditedCentime, setUserEditedCentime] = useState<boolean>(false);
+  const [userEditedAsdi, setUserEditedAsdi] = useState<boolean>(false);
+  
   // États informations complémentaires
   const [transporteur, setTransporteur] = useState('');
   const [observations, setObservations] = useState('');
@@ -146,12 +151,19 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   }, [parseResult?.lines, validationResult, editedLines, priceCategories, isNoDecimalCurrency]);
 
   // Synchroniser les calculs automatiques vers les champs modifiables
+  // SEULEMENT si l'utilisateur n'a pas modifié manuellement
   useEffect(() => {
     const { autoTva, autoCentime, autoAsdi } = calculateAutoSuggestions();
-    setMontantTva(autoTva);
-    setMontantCentimeAdditionnel(autoCentime);
-    setMontantAsdi(autoAsdi);
-  }, [calculateAutoSuggestions]);
+    if (!userEditedTva) {
+      setMontantTva(autoTva);
+    }
+    if (!userEditedCentime) {
+      setMontantCentimeAdditionnel(autoCentime);
+    }
+    if (!userEditedAsdi) {
+      setMontantAsdi(autoAsdi);
+    }
+  }, [calculateAutoSuggestions, userEditedTva, userEditedCentime, userEditedAsdi]);
 
   // Calcul des totaux financiers avec ASDI (utilise les valeurs modifiables)
   const calculateTotals = useMemo(() => {
@@ -213,6 +225,10 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     setParsing(true);
     setParseResult(null);
     setValidationResult(null);
+    // Réinitialiser les flags d'édition manuelle lors d'un nouveau fichier
+    setUserEditedTva(false);
+    setUserEditedCentime(false);
+    setUserEditedAsdi(false);
 
     try {
       const result = await ExcelParserService.parseExcelFile(file);
@@ -420,6 +436,10 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     setEmballageConforme(false);
     setTemperatureRespectee(false);
     setEtiquetageCorrect(false);
+    // Réinitialiser les flags d'édition manuelle
+    setUserEditedTva(false);
+    setUserEditedCentime(false);
+    setUserEditedAsdi(false);
   };
 
   const handleAddProductsToCatalog = async () => {
@@ -1101,7 +1121,10 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                       step={getInputStep()}
                       min="0"
                       value={montantTva}
-                      onChange={(e) => setMontantTva(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        setMontantTva(parseFloat(e.target.value) || 0);
+                        setUserEditedTva(true);
+                      }}
                       className="w-40 text-right"
                       placeholder="0"
                     />
@@ -1116,7 +1139,10 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                       step={getInputStep()}
                       min="0"
                       value={montantCentimeAdditionnel}
-                      onChange={(e) => setMontantCentimeAdditionnel(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        setMontantCentimeAdditionnel(parseFloat(e.target.value) || 0);
+                        setUserEditedCentime(true);
+                      }}
                       className="w-40 text-right"
                       placeholder="0"
                     />
@@ -1131,7 +1157,10 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                       step={getInputStep()}
                       min="0"
                       value={montantAsdi}
-                      onChange={(e) => setMontantAsdi(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        setMontantAsdi(parseFloat(e.target.value) || 0);
+                        setUserEditedAsdi(true);
+                      }}
                       className="w-40 text-right"
                       placeholder="0"
                     />
