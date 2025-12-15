@@ -1003,7 +1003,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
             <CardTitle>Détail de la Réception</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-hidden">
+              <div className="max-h-96 overflow-y-scroll">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1096,8 +1097,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                       <TableCell>
                         <Input
                           value={line.numeroLot}
-                          onChange={(e) => updateReceptionLine(line.id, 'numeroLot', e.target.value)}
-                          className="w-28"
+                          onChange={(e) => updateReceptionLine(line.id, 'numeroLot', e.target.value.toUpperCase())}
+                          className="w-28 uppercase"
                           placeholder="LOT-XXX"
                         />
                       </TableCell>
@@ -1135,6 +1136,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </div>
           </CardContent>
         </Card>

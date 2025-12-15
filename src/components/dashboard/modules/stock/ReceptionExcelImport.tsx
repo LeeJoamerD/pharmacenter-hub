@@ -916,7 +916,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
               {/* Tableau de prévisualisation */}
               {parseResult.lines.length > 0 && (
                 <div className="border rounded-lg overflow-hidden">
-                  <div className="max-h-96 overflow-auto">
+                  <div className="max-h-96 overflow-y-scroll">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1039,9 +1039,9 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                               <TableCell>
                                 <Input
                                   type="text"
-                                  className="w-24 h-8"
+                                  className="w-24 h-8 uppercase"
                                   value={String(getLineValue(line, 'numeroLot'))}
-                                  onChange={(e) => updateLineValue(line.rowNumber, 'numeroLot', e.target.value)}
+                                  onChange={(e) => updateLineValue(line.rowNumber, 'numeroLot', e.target.value.toUpperCase())}
                                 />
                               </TableCell>
                               <TableCell>
