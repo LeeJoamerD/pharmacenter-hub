@@ -9,6 +9,8 @@ import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePharmacyConnection } from '@/hooks/usePharmacyConnection';
+import { useHeroMetrics } from '@/hooks/useHeroMetrics';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 export function Hero() {
   const { user, connectedPharmacy, pharmacy, disconnectPharmacy } = useAuth();
@@ -21,6 +23,10 @@ export function Hero() {
   // Logique harmonisée : vérifier pharmacy OU connectedPharmacy
   const activePharmacy = pharmacy || connectedPharmacy;
   const isPharmacyConnected = !!activePharmacy;
+
+  // Métriques Hero avec support multi-tenant
+  const { metrics, isLoading: metricsLoading } = useHeroMetrics(isPharmacyConnected);
+  const { formatNumber } = useCurrencyFormatting();
 
   useEffect(() => {
     // Vérifier la session existante au chargement
@@ -163,7 +169,9 @@ export function Hero() {
                   ))}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  <span className="font-medium text-foreground">+500</span> pharmacies utilisent déjà PharmaSoft
+                  <span className="font-medium text-foreground">
+                    {metrics.isRealData ? metrics.pharmacyCount : '+500'}
+                  </span> pharmacies utilisent déjà PharmaSoft
                 </div>
               </div>
             </FadeIn>
@@ -191,14 +199,19 @@ export function Hero() {
               <div className="glass-card p-4 rounded-lg shadow-lg">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">Stocks</span>
-                  <span className="text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded-full">
-                    Optimal
+                  <span className={cn(
+                    "text-xs px-2 py-0.5 rounded-full",
+                    metrics.stockStatus === 'Optimal' && "bg-green-100 text-green-800",
+                    metrics.stockStatus === 'Attention' && "bg-yellow-100 text-yellow-800",
+                    metrics.stockStatus === 'Critique' && "bg-red-100 text-red-800"
+                  )}>
+                    {metrics.stockStatus}
                   </span>
                 </div>
                 <div className="flex gap-2 text-xs text-muted-foreground">
-                  <span>1,234 produits</span>
+                  <span>{formatNumber(metrics.totalProducts)} produits</span>
                   <span>•</span>
-                  <span>98% disponibilité</span>
+                  <span>{metrics.availabilityRate}% disponibilité</span>
                 </div>
               </div>
             </FadeIn>
@@ -211,9 +224,20 @@ export function Hero() {
                 <div className="text-sm font-medium mb-2">Ventes</div>
                 <div className="flex items-center gap-2">
                   <div className="w-16 h-4 bg-primary/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary w-3/4 rounded-full"></div>
+                    <div 
+                      className={cn(
+                        "h-full rounded-full",
+                        metrics.salesGrowth >= 0 ? "bg-primary" : "bg-destructive"
+                      )}
+                      style={{ width: `${Math.min(Math.abs(metrics.salesGrowth), 100)}%` }}
+                    ></div>
                   </div>
-                  <span className="text-xs font-medium">+24%</span>
+                  <span className={cn(
+                    "text-xs font-medium",
+                    metrics.salesGrowth >= 0 ? "text-green-600" : "text-red-600"
+                  )}>
+                    {metrics.salesGrowth >= 0 ? '+' : ''}{metrics.salesGrowth}%
+                  </span>
                 </div>
               </div>
             </FadeIn>
