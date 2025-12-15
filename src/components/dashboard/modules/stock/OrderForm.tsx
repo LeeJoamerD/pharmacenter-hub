@@ -9,32 +9,33 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { 
   Plus, 
-  Minus, 
   Search, 
-  Calculator, 
   Save, 
   Send,
   FileText,
   Trash2,
   ShoppingCart
 } from 'lucide-react';
-import { useProducts } from '@/hooks/useProducts';
 import { useProductsForOrders } from '@/hooks/useProductsForOrders';
 import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
-import { calculateFinancials } from '@/lib/utils';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { usePriceCategories } from '@/hooks/usePriceCategories';
 import { OrderStatusValidationService } from '@/services/orderStatusValidationService';
 
 interface OrderLine {
   id: string;
-  produit_id: string; // ID du produit pour la sauvegarde
+  produit_id: string;
   produit: string;
   reference: string;
   quantite: number;
   prixUnitaire: number;
   remise: number;
   total: number;
+  categorieTarificationId?: string;
+  tauxTva: number;
+  tauxCentime: number;
 }
 
 interface OrderFormProps {
@@ -48,13 +49,14 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
   const [searchProduct, setSearchProduct] = useState('');
   const [notes, setNotes] = useState('');
-  const [editableTva, setEditableTva] = useState<number>(18);
-  const [editableCentimeAdditionnel, setEditableCentimeAdditionnel] = useState<number>(5);
   const { toast } = useToast();
 
-  // Use real suppliers and products
+  // Hooks multi-devise et catégories de tarification
+  const { formatAmount, isNoDecimalCurrency } = useCurrencyFormatting();
+  const { categories: priceCategories } = usePriceCategories();
+
+  // Use real suppliers
   const suppliers = propSuppliers;
-  const { products } = useProducts();
   const { settings } = useSystemSettings();
 
   // Recherche débouncée pour optimiser les performances
@@ -70,14 +72,6 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
     totalCount
   } = useProductsForOrders(debouncedSearchTerm, 50);
 
-  // Initialize system settings rates
-  useEffect(() => {
-    if (settings) {
-      setEditableTva(settings.taux_tva || 18);
-      setEditableCentimeAdditionnel(settings.taux_centime_additionnel || 5);
-    }
-  }, [settings]);
-
   // Réinitialiser la recherche quand le terme de recherche change
   useEffect(() => {
     if (debouncedSearchTerm !== searchProduct) {
@@ -86,15 +80,25 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   }, [debouncedSearchTerm, resetSearch, searchProduct]);
 
   const addOrderLine = (product: any) => {
+    // Récupérer les taux de la catégorie du produit
+    const category = priceCategories?.find(cat => cat.id === product.categorie_tarification_id);
+    const tauxTva = category?.taux_tva || 0;
+    const tauxCentime = category?.taux_centime_additionnel || 0;
+
+    const baseTotal = product.prix_achat || 0;
+    
     const newLine: OrderLine = {
       id: Date.now().toString(),
-      produit_id: product.id, // Stocker l'ID du produit
+      produit_id: product.id,
       produit: product.libelle_produit,
       reference: product.code_cip || 'N/A',
       quantite: 1,
       prixUnitaire: product.prix_achat || 0,
       remise: 0,
-      total: product.prix_achat || 0
+      total: baseTotal,
+      categorieTarificationId: product.categorie_tarification_id,
+      tauxTva: tauxTva,
+      tauxCentime: tauxCentime,
     };
     setOrderLines([...orderLines, newLine]);
     setSearchProduct('');
@@ -119,9 +123,42 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
     setOrderLines(lines => lines.filter(line => line.id !== id));
   };
 
-  const sousTotalHT = orderLines.reduce((sum, line) => sum + line.total, 0);
-  const { tva, centimeAdditionnel, totalTTC: totalGeneral } = calculateFinancials(sousTotalHT, editableTva, editableCentimeAdditionnel);
-  const sousTotal = sousTotalHT;
+  // Calcul des totaux en respectant les catégories de tarification de chaque produit
+  const calculateOrderTotals = () => {
+    let sousTotalHT = 0;
+    let totalTva = 0;
+    let totalCentime = 0;
+
+    orderLines.forEach(line => {
+      // Sous-total HT de la ligne
+      sousTotalHT += line.total;
+      
+      // TVA seulement si le produit a un taux TVA > 0
+      if (line.tauxTva && line.tauxTva > 0) {
+        totalTva += line.total * (line.tauxTva / 100);
+      }
+      
+      // Centime seulement si le produit a un taux centime > 0
+      if (line.tauxCentime && line.tauxCentime > 0) {
+        // Centime calculé sur la TVA de la ligne
+        const tvaLine = line.tauxTva ? line.total * (line.tauxTva / 100) : 0;
+        totalCentime += tvaLine * (line.tauxCentime / 100);
+      }
+    });
+
+    // Arrondir si devise sans décimales (FCFA)
+    if (isNoDecimalCurrency()) {
+      sousTotalHT = Math.round(sousTotalHT);
+      totalTva = Math.round(totalTva);
+      totalCentime = Math.round(totalCentime);
+    }
+
+    const totalTTC = sousTotalHT + totalTva + totalCentime;
+
+    return { sousTotalHT, totalTva, totalCentime, totalTTC };
+  };
+
+  const { sousTotalHT, totalTva, totalCentime, totalTTC } = calculateOrderTotals();
 
   const handleSaveOrder = async (statut: string) => {
     try {
@@ -324,7 +361,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                       <div>
                         <span className="font-medium">{product.libelle_produit}</span>
                         <span className="text-muted-foreground ml-2">({product.code_cip || 'N/A'})</span>
-                        <Badge variant="outline" className="ml-2">{(product.prix_achat || 0).toLocaleString()} F CFA</Badge>
+                        <Badge variant="outline" className="ml-2">{formatAmount(product.prix_achat || 0)}</Badge>
                       </div>
                       <Button size="sm" onClick={() => addOrderLine(product)}>
                         <Plus className="h-4 w-4" />
@@ -415,7 +452,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                         />
                       </TableCell>
                       <TableCell className="font-medium">
-                        {line.total.toLocaleString()} F CFA
+                        {formatAmount(line.total)}
                       </TableCell>
                       <TableCell>
                         <Button 
@@ -438,41 +475,19 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                 <div className="w-80 space-y-3">
                   <div className="flex justify-between">
                     <span>Sous-total HT :</span>
-                    <span className="font-medium">{sousTotal.toLocaleString()} F CFA</span>
+                    <span className="font-medium">{formatAmount(sousTotalHT)}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span>TVA ({editableTva}%):</span>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        value={editableTva}
-                        onChange={(e) => setEditableTva(parseFloat(e.target.value) || 0)}
-                        className="w-16 h-8 text-right"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                      />
-                      <span>= {tva.toLocaleString()} F CFA</span>
-                    </div>
+                  <div className="flex justify-between">
+                    <span>TVA (selon catégories) :</span>
+                    <span className="font-medium">{formatAmount(totalTva)}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span>Centime Additionnel ({editableCentimeAdditionnel}%):</span>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        value={editableCentimeAdditionnel}
-                        onChange={(e) => setEditableCentimeAdditionnel(parseFloat(e.target.value) || 0)}
-                        className="w-16 h-8 text-right"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                      />
-                      <span>= {centimeAdditionnel.toLocaleString()} F CFA</span>
-                    </div>
+                  <div className="flex justify-between">
+                    <span>Centime Additionnel :</span>
+                    <span className="font-medium">{formatAmount(totalCentime)}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold border-t pt-2">
                     <span>Total TTC :</span>
-                    <span>{totalGeneral.toLocaleString()} F CFA</span>
+                    <span>{formatAmount(totalTTC)}</span>
                   </div>
                 </div>
               </div>
