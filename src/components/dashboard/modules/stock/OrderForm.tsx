@@ -22,6 +22,7 @@ import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { usePriceCategories } from '@/hooks/usePriceCategories';
+import { supabase } from '@/integrations/supabase/client';
 import { OrderStatusValidationService } from '@/services/orderStatusValidationService';
 
 interface OrderLine {
@@ -55,6 +56,54 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   const { formatAmount, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
   const { categories: priceCategories } = usePriceCategories();
   const currencySymbol = getCurrencySymbol();
+
+  // Fonction pour déterminer la classe CSS de la catégorie de tarification
+  const getCategoryColorClass = (categoryId: string | undefined): string => {
+    if (!categoryId || categoryId === 'none' || categoryId === '') {
+      return 'border-destructive bg-destructive/10'; // Rouge - catégorie manquante
+    }
+    
+    const category = priceCategories?.find(cat => cat.id === categoryId);
+    if (category && category.taux_tva > 0) {
+      return 'border-blue-500 bg-blue-50'; // Bleu - avec TVA
+    }
+    
+    return ''; // Normal - sans TVA
+  };
+
+  // Handler pour mettre à jour la catégorie de tarification
+  const handleCategoryChange = async (lineId: string, produitId: string, categoryId: string) => {
+    const catId = categoryId === 'none' ? '' : categoryId;
+    
+    // Mettre à jour localement la ligne
+    setOrderLines(lines => lines.map(line => {
+      if (line.id === lineId) {
+        const category = priceCategories?.find(cat => cat.id === catId);
+        return {
+          ...line,
+          categorieTarificationId: catId,
+          tauxTva: category?.taux_tva || 0,
+          tauxCentime: category?.taux_centime_additionnel || 0
+        };
+      }
+      return line;
+    }));
+
+    // Mettre à jour le produit dans la base de données
+    if (produitId && catId) {
+      const { error } = await supabase
+        .from('produits')
+        .update({ categorie_tarification_id: catId })
+        .eq('id', produitId);
+
+      if (!error) {
+        toast({ 
+          title: "Catégorie mise à jour", 
+          description: "La catégorie du produit a été mise à jour" 
+        });
+      }
+    }
+  };
 
   // Use real suppliers
   const suppliers = propSuppliers;
@@ -426,6 +475,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                   <TableRow>
                     <TableHead>Produit</TableHead>
                     <TableHead>Référence</TableHead>
+                    <TableHead>Cat. Tarification</TableHead>
                     <TableHead>Quantité</TableHead>
                     <TableHead>Prix Unitaire</TableHead>
                     <TableHead>Remise (%)</TableHead>
@@ -438,6 +488,24 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                     <TableRow key={line.id}>
                       <TableCell className="font-medium">{line.produit}</TableCell>
                       <TableCell>{line.reference}</TableCell>
+                      <TableCell>
+                        <Select
+                          value={line.categorieTarificationId || 'none'}
+                          onValueChange={(value) => handleCategoryChange(line.id, line.produit_id, value)}
+                        >
+                          <SelectTrigger className={`w-36 ${getCategoryColorClass(line.categorieTarificationId)}`}>
+                            <SelectValue placeholder="Catégorie" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Aucune</SelectItem>
+                            {priceCategories?.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.libelle_categorie}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
                       <TableCell>
                         <Input
                           type="number"

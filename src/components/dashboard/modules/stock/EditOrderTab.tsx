@@ -25,6 +25,7 @@ import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { usePriceCategories } from '@/hooks/usePriceCategories';
+import { supabase } from '@/integrations/supabase/client';
 import { OrderValidationService } from '@/services/orderValidationService';
 import { OrderStatusValidationService } from '@/services/orderStatusValidationService';
 
@@ -42,6 +43,7 @@ interface OrderLineWithCategory {
   quantite_commandee: number;
   prix_achat_unitaire_attendu: number;
   remise: number;
+  categorieTarificationId?: string;
   produit?: {
     libelle_produit: string;
     code_cip: string;
@@ -84,13 +86,54 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
   const { categories: priceCategories } = usePriceCategories();
   const currencySymbol = getCurrencySymbol();
 
-  // Filter orders to show "Brouillon" and "En cours" status for modification
+  // État local pour les catégories modifiées
+  const [lineCategories, setLineCategories] = useState<Record<string, string>>({});
+
+  // Fonction pour déterminer la classe CSS de la catégorie de tarification
+  const getCategoryColorClass = (categoryId: string | undefined): string => {
+    if (!categoryId || categoryId === 'none' || categoryId === '') {
+      return 'border-destructive bg-destructive/10'; // Rouge - catégorie manquante
+    }
+    
+    const category = priceCategories?.find(cat => cat.id === categoryId);
+    if (category && category.taux_tva > 0) {
+      return 'border-blue-500 bg-blue-50'; // Bleu - avec TVA
+    }
+    
+    return ''; // Normal - sans TVA
+  };
+
+  // Handler pour mettre à jour la catégorie de tarification
+  const handleCategoryChange = async (lineId: string, produitId: string, categoryId: string) => {
+    const catId = categoryId === 'none' ? '' : categoryId;
+    
+    // Mettre à jour localement
+    setLineCategories(prev => ({ ...prev, [lineId]: catId }));
+
+    // Mettre à jour le produit dans la base de données
+    if (produitId && catId) {
+      const { error } = await supabase
+        .from('produits')
+        .update({ categorie_tarification_id: catId })
+        .eq('id', produitId);
+
+      if (!error) {
+        toast({ 
+          title: "Catégorie mise à jour", 
+          description: "La catégorie du produit a été mise à jour" 
+        });
+      }
+    }
+  };
   const draftOrders = orders.filter(order => ['Brouillon', 'En cours'].includes(order.statut));
 
-  // Enrichir les lignes avec les taux de catégorie
+  // Enrichir les lignes avec les taux de catégorie (utilise lineCategories pour les catégories modifiées)
   const enrichedOrderLines: OrderLineWithCategory[] = useMemo(() => {
     return orderLines.map(line => {
-      const categoryId = line.produit?.categorie_tarification_id;
+      // Utiliser lineCategories si modifié, sinon la catégorie du produit
+      const categoryId = lineCategories[line.id] !== undefined 
+        ? lineCategories[line.id] 
+        : line.produit?.categorie_tarification_id;
       const category = priceCategories?.find(cat => cat.id === categoryId);
       const tauxTva = category?.taux_tva || 0;
       const tauxCentime = category?.taux_centime_additionnel || 0;
@@ -98,12 +141,13 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
       
       return {
         ...line,
+        categorieTarificationId: categoryId,
         tauxTva,
         tauxCentime,
         remise
       };
     });
-  }, [orderLines, priceCategories, lineRemises]);
+  }, [orderLines, priceCategories, lineRemises, lineCategories]);
 
   // Calcul des totaux avec la même logique que OrderForm
   const calculateTotals = () => {
@@ -558,6 +602,7 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                       <TableRow>
                         <TableHead>Produit</TableHead>
                         <TableHead>Référence</TableHead>
+                        <TableHead>Cat. Tarification</TableHead>
                         <TableHead>Quantité</TableHead>
                         <TableHead>Prix Unitaire</TableHead>
                         <TableHead>Remise (%)</TableHead>
@@ -572,6 +617,25 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                             {line.produit?.libelle_produit || 'Produit inconnu'}
                           </TableCell>
                           <TableCell>{line.produit?.code_cip || 'N/A'}</TableCell>
+                          <TableCell>
+                            <Select
+                              value={line.categorieTarificationId || 'none'}
+                              onValueChange={(value) => handleCategoryChange(line.id, line.produit_id, value)}
+                              disabled={!canModify}
+                            >
+                              <SelectTrigger className={`w-36 ${getCategoryColorClass(line.categorieTarificationId)}`}>
+                                <SelectValue placeholder="Catégorie" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Aucune</SelectItem>
+                                {priceCategories?.map((cat) => (
+                                  <SelectItem key={cat.id} value={cat.id}>
+                                    {cat.libelle_categorie}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
                           <TableCell>
                             <Input
                               type="number"
