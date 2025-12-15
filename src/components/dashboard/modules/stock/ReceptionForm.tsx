@@ -1003,9 +1003,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
             <CardTitle>Détail de la Réception</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border overflow-hidden">
-              <div className="max-h-96 overflow-y-scroll">
-              <Table>
+            <div className="rounded-md border max-h-96 overflow-x-scroll overflow-y-scroll">
+              <Table className="min-w-[1400px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Produit</TableHead>
@@ -1136,7 +1135,6 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                   ))}
                 </TableBody>
               </Table>
-              </div>
             </div>
           </CardContent>
         </Card>
