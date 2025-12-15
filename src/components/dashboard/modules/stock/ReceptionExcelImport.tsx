@@ -44,6 +44,20 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
 }) => {
   const { formatAmount, getInputStep, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
   const { categories: priceCategories } = usePriceCategories();
+
+  // Fonction pour déterminer la classe CSS de la catégorie de tarification
+  const getCategoryColorClass = (categoryId: string | undefined | null): string => {
+    if (!categoryId || categoryId === 'none' || categoryId === '') {
+      return 'border-destructive bg-destructive/10'; // Rouge - catégorie manquante
+    }
+    
+    const category = priceCategories?.find(cat => cat.id === categoryId);
+    if (category && category.taux_tva > 0) {
+      return 'border-blue-500 bg-blue-50'; // Bleu - avec TVA
+    }
+    
+    return ''; // Normal - sans TVA
+  };
   
   // États de base
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
@@ -911,7 +925,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                                     }
                                   }}
                                 >
-                                <SelectTrigger className={`w-36 h-8 ${!getLineValue(line, 'categorieTarificationId') ? 'border-destructive bg-destructive/10' : ''}`}>
+                                <SelectTrigger className={`w-36 h-8 ${getCategoryColorClass(getLineValue(line, 'categorieTarificationId') as string)}`}>
                                     <SelectValue placeholder={getLineValue(line, 'categorieTarificationId') ? undefined : 'NULL'} />
                                   </SelectTrigger>
                                   <SelectContent>

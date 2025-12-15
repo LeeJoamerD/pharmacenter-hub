@@ -101,6 +101,20 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   const { formatAmount, getInputStep, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
   const { categories: priceCategories } = usePriceCategories();
 
+  // Fonction pour déterminer la classe CSS de la catégorie de tarification
+  const getCategoryColorClass = (categoryId: string | undefined): string => {
+    if (!categoryId || categoryId === 'none' || categoryId === '') {
+      return 'border-destructive bg-destructive/10'; // Rouge - catégorie manquante
+    }
+    
+    const category = priceCategories?.find(cat => cat.id === categoryId);
+    if (category && category.taux_tva > 0) {
+      return 'border-blue-500 bg-blue-50'; // Bleu - avec TVA
+    }
+    
+    return ''; // Normal - sans TVA
+  };
+
   // Use real orders with appropriate statuses for reception - only "Livré" can be received
   const pendingOrders = propOrders.filter(order => 
     ['Livré'].includes(order.statut)
@@ -975,7 +989,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                             }
                           }}
                         >
-                        <SelectTrigger className={`w-36 ${!line.categorieTarificationId ? 'border-destructive bg-destructive/10' : ''}`}>
+                        <SelectTrigger className={`w-36 ${getCategoryColorClass(line.categorieTarificationId)}`}>
                           <SelectValue placeholder="Catégorie" />
                         </SelectTrigger>
                           <SelectContent>
