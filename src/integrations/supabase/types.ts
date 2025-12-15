@@ -5619,6 +5619,11 @@ export type Database = {
           date_commande: string | null
           fournisseur_id: string
           id: string
+          montant_asdi: number | null
+          montant_centime_additionnel: number | null
+          montant_ht: number | null
+          montant_ttc: number | null
+          montant_tva: number | null
           statut: string | null
           tenant_id: string
           updated_at: string
@@ -5630,6 +5635,11 @@ export type Database = {
           date_commande?: string | null
           fournisseur_id: string
           id?: string
+          montant_asdi?: number | null
+          montant_centime_additionnel?: number | null
+          montant_ht?: number | null
+          montant_ttc?: number | null
+          montant_tva?: number | null
           statut?: string | null
           tenant_id: string
           updated_at?: string
@@ -5641,6 +5651,11 @@ export type Database = {
           date_commande?: string | null
           fournisseur_id?: string
           id?: string
+          montant_asdi?: number | null
+          montant_centime_additionnel?: number | null
+          montant_ht?: number | null
+          montant_ttc?: number | null
+          montant_tva?: number | null
           statut?: string | null
           tenant_id?: string
           updated_at?: string

@@ -52,8 +52,9 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   const { toast } = useToast();
 
   // Hooks multi-devise et catégories de tarification
-  const { formatAmount, isNoDecimalCurrency } = useCurrencyFormatting();
+  const { formatAmount, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
   const { categories: priceCategories } = usePriceCategories();
+  const currencySymbol = getCurrencySymbol();
 
   // Use real suppliers
   const suppliers = propSuppliers;
@@ -153,12 +154,19 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
       totalCentime = Math.round(totalCentime);
     }
 
-    const totalTTC = sousTotalHT + totalTva + totalCentime;
+    // Calcul ASDI automatique : ((Sous-total HT + TVA) × 0.42) / 100
+    let totalAsdi = ((sousTotalHT + totalTva) * 0.42) / 100;
+    if (isNoDecimalCurrency()) {
+      totalAsdi = Math.round(totalAsdi);
+    }
 
-    return { sousTotalHT, totalTva, totalCentime, totalTTC };
+    // Total TTC = HT + TVA + Centime + ASDI
+    const totalTTC = sousTotalHT + totalTva + totalCentime + totalAsdi;
+
+    return { sousTotalHT, totalTva, totalCentime, totalAsdi, totalTTC };
   };
 
-  const { sousTotalHT, totalTva, totalCentime, totalTTC } = calculateOrderTotals();
+  const { sousTotalHT, totalTva, totalCentime, totalAsdi, totalTTC } = calculateOrderTotals();
 
   const handleSaveOrder = async (statut: string) => {
     try {
@@ -217,8 +225,14 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
         statut: finalStatus,
         date_commande: (document.getElementById('dateCommande') as HTMLInputElement)?.value || new Date().toISOString().split('T')[0],
         notes: notes,
+        // Totaux financiers à sauvegarder
+        montant_ht: sousTotalHT,
+        montant_tva: totalTva,
+        montant_centime_additionnel: totalCentime,
+        montant_asdi: totalAsdi,
+        montant_ttc: totalTTC,
         lignes: orderLines.map(line => ({
-          produit_id: line.produit_id, // Utiliser l'ID stocké directement
+          produit_id: line.produit_id,
           quantite_commandee: line.quantite,
           prix_achat_unitaire_attendu: line.prixUnitaire
         }))
@@ -472,18 +486,22 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
             {/* Totaux */}
             <div className="mt-6 border-t pt-4">
               <div className="flex justify-end">
-                <div className="w-80 space-y-3">
+                <div className="w-96 space-y-3">
                   <div className="flex justify-between">
                     <span>Sous-total HT :</span>
                     <span className="font-medium">{formatAmount(sousTotalHT)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>TVA (selon catégories) :</span>
+                    <span>TVA ({currencySymbol}) :</span>
                     <span className="font-medium">{formatAmount(totalTva)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Centime Additionnel :</span>
+                    <span>Centime Additionnel ({currencySymbol}) :</span>
                     <span className="font-medium">{formatAmount(totalCentime)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>ASDI ({currencySymbol}) :</span>
+                    <span className="font-medium">{formatAmount(totalAsdi)}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold border-t pt-2">
                     <span>Total TTC :</span>
