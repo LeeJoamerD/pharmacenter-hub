@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,8 @@ import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
-import { calculateFinancials } from '@/lib/utils';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { usePriceCategories } from '@/hooks/usePriceCategories';
 import { OrderValidationService } from '@/services/orderValidationService';
 import { OrderStatusValidationService } from '@/services/orderStatusValidationService';
 
@@ -33,6 +34,21 @@ interface EditOrderTabProps {
   onUpdateOrder: (id: string, orderData: any) => Promise<any>;
   onUpdateOrderStatus: (id: string, status: string) => Promise<any>;
   loading: boolean;
+}
+
+interface OrderLineWithCategory {
+  id: string;
+  produit_id: string;
+  quantite_commandee: number;
+  prix_achat_unitaire_attendu: number;
+  remise: number;
+  produit?: {
+    libelle_produit: string;
+    code_cip: string;
+    categorie_tarification_id?: string;
+  };
+  tauxTva: number;
+  tauxCentime: number;
 }
 
 const EditOrderTab: React.FC<EditOrderTabProps> = ({ 
@@ -49,8 +65,7 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
   const [notes, setNotes] = useState('');
   const [canModify, setCanModify] = useState(true);
   const [validationError, setValidationError] = useState('');
-  const [editableTva, setEditableTva] = useState<number>(18);
-  const [editableCentimeAdditionnel, setEditableCentimeAdditionnel] = useState<number>(5);
+  const [lineRemises, setLineRemises] = useState<Record<string, number>>({});
   
   const { toast } = useToast();
   const debouncedSearch = useDebouncedValue(searchProduct, 300);
@@ -63,9 +78,78 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
   } = useProductsForOrders(debouncedSearch, 50);
   const { settings } = useSystemSettings();
   const { orderLines, createOrderLine, updateOrderLine, deleteOrderLine, refetch } = useOrderLines(selectedOrderId);
+  
+  // Hooks multi-devise et catégories de tarification
+  const { formatAmount, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
+  const { categories: priceCategories } = usePriceCategories();
+  const currencySymbol = getCurrencySymbol();
 
   // Filter orders to show "Brouillon" and "En cours" status for modification
   const draftOrders = orders.filter(order => ['Brouillon', 'En cours'].includes(order.statut));
+
+  // Enrichir les lignes avec les taux de catégorie
+  const enrichedOrderLines: OrderLineWithCategory[] = useMemo(() => {
+    return orderLines.map(line => {
+      const categoryId = line.produit?.categorie_tarification_id;
+      const category = priceCategories?.find(cat => cat.id === categoryId);
+      const tauxTva = category?.taux_tva || 0;
+      const tauxCentime = category?.taux_centime_additionnel || 0;
+      const remise = lineRemises[line.id] || 0;
+      
+      return {
+        ...line,
+        tauxTva,
+        tauxCentime,
+        remise
+      };
+    });
+  }, [orderLines, priceCategories, lineRemises]);
+
+  // Calcul des totaux avec la même logique que OrderForm
+  const calculateTotals = () => {
+    let sousTotalHT = 0;
+    let totalTva = 0;
+    let totalCentime = 0;
+
+    enrichedOrderLines.forEach(line => {
+      const lineTotal = (line.quantite_commandee || 0) * (line.prix_achat_unitaire_attendu || 0);
+      const remiseAmount = (lineTotal * (line.remise || 0)) / 100;
+      const lineTotalAfterRemise = lineTotal - remiseAmount;
+      
+      sousTotalHT += lineTotalAfterRemise;
+      
+      // TVA seulement si le produit a un taux TVA > 0
+      if (line.tauxTva && line.tauxTva > 0) {
+        totalTva += lineTotalAfterRemise * (line.tauxTva / 100);
+      }
+      
+      // Centime seulement si le produit a un taux centime > 0
+      if (line.tauxCentime && line.tauxCentime > 0) {
+        const tvaLine = line.tauxTva ? lineTotalAfterRemise * (line.tauxTva / 100) : 0;
+        totalCentime += tvaLine * (line.tauxCentime / 100);
+      }
+    });
+
+    // Arrondir si devise sans décimales (FCFA)
+    if (isNoDecimalCurrency()) {
+      sousTotalHT = Math.round(sousTotalHT);
+      totalTva = Math.round(totalTva);
+      totalCentime = Math.round(totalCentime);
+    }
+
+    // Calcul ASDI automatique : ((Sous-total HT + TVA) × 0.42) / 100
+    let totalAsdi = ((sousTotalHT + totalTva) * 0.42) / 100;
+    if (isNoDecimalCurrency()) {
+      totalAsdi = Math.round(totalAsdi);
+    }
+
+    // Total TTC = HT + TVA + Centime + ASDI
+    const totalTTC = sousTotalHT + totalTva + totalCentime + totalAsdi;
+
+    return { sousTotalHT, totalTva, totalCentime, totalAsdi, totalTTC };
+  };
+
+  const { sousTotalHT, totalTva, totalCentime, totalAsdi, totalTTC } = calculateTotals();
 
   // Check if order can be modified when order is selected
   useEffect(() => {
@@ -107,24 +191,18 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
     checkModifyPermission();
   }, [selectedOrderId, toast]);
 
-  // Load order details when selected and initialize system settings
+  // Load order details when selected
   useEffect(() => {
     if (selectedOrderId) {
       const selectedOrder = draftOrders.find(order => order.id === selectedOrderId);
       if (selectedOrder) {
         setSelectedSupplier(selectedOrder.fournisseur_id);
         setOrderDate(selectedOrder.date_commande ? selectedOrder.date_commande.split('T')[0] : '');
-        // Notes are UI-only like in OrderForm, not persisted
         setNotes('');
+        setLineRemises({}); // Reset remises when changing order
       }
     }
-    
-    // Initialize editable rates from system settings
-    if (settings) {
-      setEditableTva(settings.taux_tva || 18);
-      setEditableCentimeAdditionnel(settings.taux_centime_additionnel || 5);
-    }
-  }, [selectedOrderId, draftOrders, settings]);
+  }, [selectedOrderId, draftOrders]);
 
   const addOrderLine = async (product: any) => {
     if (!selectedOrderId || !canModify) return;
@@ -154,28 +232,34 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
     }
   };
 
+  const handleUpdateRemise = (lineId: string, value: number) => {
+    setLineRemises(prev => ({
+      ...prev,
+      [lineId]: Math.min(100, Math.max(0, value))
+    }));
+  };
+
   const handleRemoveOrderLine = async (id: string) => {
     if (!canModify) return;
     
     try {
       await deleteOrderLine(id);
+      // Clean up remise state for deleted line
+      setLineRemises(prev => {
+        const updated = { ...prev };
+        delete updated[id];
+        return updated;
+      });
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
     }
   };
 
-  const calculateTotals = () => {
-    const sousTotal = orderLines.reduce((sum, line) => {
-      const unitPrice = line.prix_achat_unitaire_attendu || 0;
-      return sum + (line.quantite_commandee * unitPrice);
-    }, 0);
-    const centimeAdditionnel = sousTotal * (editableCentimeAdditionnel / 100);
-    const tva = (sousTotal + centimeAdditionnel) * (editableTva / 100);
-    const totalGeneral = sousTotal + centimeAdditionnel + tva;
-    return { sousTotal, centimeAdditionnel, tva, totalGeneral };
+  const getLineTotal = (line: OrderLineWithCategory): number => {
+    const lineTotal = (line.quantite_commandee || 0) * (line.prix_achat_unitaire_attendu || 0);
+    const remiseAmount = (lineTotal * (line.remise || 0)) / 100;
+    return lineTotal - remiseAmount;
   };
-
-  const { sousTotal, centimeAdditionnel, tva, totalGeneral } = calculateTotals();
 
   const handleSaveOrder = async (statut: string) => {
     if (!selectedOrderId || !canModify) return;
@@ -242,10 +326,15 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
         return;
       }
 
-      // Update order header information
+      // Update order header information with financial totals
       await onUpdateOrder(selectedOrderId, {
         fournisseur_id: selectedSupplier,
-        date_commande: orderDate
+        date_commande: orderDate,
+        montant_ht: sousTotalHT,
+        montant_tva: totalTva,
+        montant_centime_additionnel: totalCentime,
+        montant_asdi: totalAsdi,
+        montant_ttc: totalTTC,
       });
 
       // Update status if different from current
@@ -259,6 +348,7 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
           setSelectedSupplier('');
           setOrderDate('');
           setNotes('');
+          setLineRemises({});
         }
       }
         
@@ -431,7 +521,7 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                             <div>
                               <span className="font-medium">{product.libelle_produit}</span>
                               <span className="text-muted-foreground ml-2">({product.code_cip || 'N/A'})</span>
-                              <Badge variant="outline" className="ml-2">{(product.prix_achat || 0).toLocaleString()} F CFA</Badge>
+                              <Badge variant="outline" className="ml-2">{formatAmount(product.prix_achat || 0)}</Badge>
                             </div>
                             <Button size="sm" onClick={() => addOrderLine(product)}>
                               <Plus className="h-4 w-4" />
@@ -456,7 +546,7 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
           </Card>
 
           {/* Order Lines */}
-          {orderLines.length > 0 && (
+          {enrichedOrderLines.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Détail de la Commande</CardTitle>
@@ -470,12 +560,13 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                         <TableHead>Référence</TableHead>
                         <TableHead>Quantité</TableHead>
                         <TableHead>Prix Unitaire</TableHead>
+                        <TableHead>Remise (%)</TableHead>
                         <TableHead>Total</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {orderLines.map((line) => (
+                      {enrichedOrderLines.map((line) => (
                         <TableRow key={line.id}>
                           <TableCell className="font-medium">
                             {line.produit?.libelle_produit || 'Produit inconnu'}
@@ -498,8 +589,20 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                               className="w-28"
                             />
                           </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              value={line.remise}
+                              onChange={(e) => handleUpdateRemise(line.id, parseFloat(e.target.value) || 0)}
+                              className="w-20"
+                              min="0"
+                              max="100"
+                              step="1"
+                              disabled={!canModify}
+                            />
+                          </TableCell>
                           <TableCell className="font-medium">
-                            {((line.quantite_commandee || 0) * (line.prix_achat_unitaire_attendu || 0)).toLocaleString()} F CFA
+                            {formatAmount(getLineTotal(line))}
                           </TableCell>
                           <TableCell>
                             <Button 
@@ -516,49 +619,29 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                   </Table>
                 </div>
 
-                {/* Totals */}
+                {/* Totals - Design aligné sur OrderForm */}
                 <div className="mt-6 border-t pt-4">
                   <div className="flex justify-end">
-                    <div className="w-80 space-y-3">
-                      <div className="flex justify-between">
-                        <span>Sous-total HT :</span>
-                        <span className="font-medium">{sousTotal.toLocaleString()} F CFA</span>
+                    <div className="w-96 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Sous-total HT :</span>
+                        <span className="font-medium">{formatAmount(sousTotalHT)}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span>TVA ({editableTva}%):</span>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            value={editableTva}
-                            onChange={(e) => setEditableTva(parseFloat(e.target.value) || 0)}
-                            className="w-16 h-8 text-right"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            disabled={!canModify}
-                          />
-                          <span>= {tva.toLocaleString()} F CFA</span>
-                        </div>
+                        <span className="text-muted-foreground">TVA ({currencySymbol}) :</span>
+                        <span className="font-medium">{formatAmount(totalTva)}</span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span>Centime Additionnel ({editableCentimeAdditionnel}%):</span>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            value={editableCentimeAdditionnel}
-                            onChange={(e) => setEditableCentimeAdditionnel(parseFloat(e.target.value) || 0)}
-                            className="w-16 h-8 text-right"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            disabled={!canModify}
-                          />
-                          <span>= {centimeAdditionnel.toLocaleString()} F CFA</span>
-                        </div>
+                        <span className="text-muted-foreground">Centime Additionnel ({currencySymbol}) :</span>
+                        <span className="font-medium">{formatAmount(totalCentime)}</span>
                       </div>
-                      <div className="flex justify-between text-lg font-bold border-t pt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">ASDI ({currencySymbol}) :</span>
+                        <span className="font-medium">{formatAmount(totalAsdi)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-lg font-bold border-t pt-3">
                         <span>Total TTC :</span>
-                        <span>{totalGeneral.toLocaleString()} F CFA</span>
+                        <span>{formatAmount(totalTTC)}</span>
                       </div>
                     </div>
                   </div>
