@@ -110,6 +110,7 @@ const ProductCatalogNew = () => {
   const [formeFilter, setFormeFilter] = useState("all");
   const [dciFilter, setDciFilter] = useState("all");
   const [classeFilter, setClasseFilter] = useState("all");
+  const [categorieTarificationFilter, setCategorieTarificationFilter] = useState("all");
   
   // Debounce de la recherche pour éviter trop de requêtes
   const searchTerm = useDebouncedValue(searchInput, 500);
@@ -147,6 +148,7 @@ const ProductCatalogNew = () => {
       forme_id: formeFilter !== 'all' ? formeFilter : undefined,
       dci_id: dciFilter !== 'all' ? dciFilter : undefined,
       classe_therapeutique_id: classeFilter !== 'all' ? classeFilter : undefined,
+      categorie_tarification_id: categorieTarificationFilter !== 'all' ? categorieTarificationFilter : undefined,
     }
   );
 
@@ -219,6 +221,7 @@ const ProductCatalogNew = () => {
     setFormeFilter("all");
     setDciFilter("all");
     setClasseFilter("all");
+    setCategorieTarificationFilter("all");
   };
 
   const handleAddProduct = () => {
@@ -658,6 +661,20 @@ const ProductCatalogNew = () => {
               {classes.map((classe) => (
                 <SelectItem key={classe.id} value={classe.id}>
                   {classe.libelle_classe}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={categorieTarificationFilter} onValueChange={setCategorieTarificationFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Catégorie tarif." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes catégories tarif.</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.libelle_categorie}
                 </SelectItem>
               ))}
             </SelectContent>
