@@ -3,6 +3,9 @@ import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
 import { startOfMonth, subMonths, endOfMonth } from 'date-fns';
 
+// Bonus de pharmacies pour l'affichage marketing
+const PHARMACY_BONUS = 15;
+
 // Données mockées (affichées si pas de tenant connecté)
 const MOCK_DATA: HeroMetrics = {
   salesGrowth: 24,
@@ -129,7 +132,7 @@ export function useHeroMetrics(): {
           totalProducts,
           availabilityRate: Math.round(availabilityRate),
           stockStatus,
-          pharmacyCount: pharmacyCount || 0,
+          pharmacyCount: (pharmacyCount || 0) + PHARMACY_BONUS,
           isRealData: true,
         });
       } catch (error) {
