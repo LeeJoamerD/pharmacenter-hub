@@ -22,17 +22,22 @@ export interface HeroMetrics {
   isRealData: boolean;
 }
 
-export function useHeroMetrics(isPharmacyConnected: boolean): {
+export function useHeroMetrics(): {
   metrics: HeroMetrics;
   isLoading: boolean;
 } {
-  const { tenantId } = useTenant();
+  const { tenantId, isLoading: tenantLoading } = useTenant();
   const [metrics, setMetrics] = useState<HeroMetrics>(MOCK_DATA);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Si pas de pharmacie connectée ou pas de tenantId, utiliser les données mockées
-    if (!isPharmacyConnected || !tenantId) {
+    // Attendre que le tenant soit chargé
+    if (tenantLoading) {
+      return;
+    }
+
+    // Si pas de tenantId après chargement, utiliser les données mockées
+    if (!tenantId) {
       setMetrics(MOCK_DATA);
       return;
     }
@@ -136,7 +141,7 @@ export function useHeroMetrics(isPharmacyConnected: boolean): {
     };
 
     fetchMetrics();
-  }, [isPharmacyConnected, tenantId]);
+  }, [tenantId, tenantLoading]);
 
-  return { metrics, isLoading };
+  return { metrics, isLoading: isLoading || tenantLoading };
 }

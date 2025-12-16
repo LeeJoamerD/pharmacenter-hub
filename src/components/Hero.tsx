@@ -13,20 +13,34 @@ import { useHeroMetrics } from '@/hooks/useHeroMetrics';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 export function Hero() {
-  const { user, connectedPharmacy, pharmacy, disconnectPharmacy } = useAuth();
+  const { user, connectedPharmacy, pharmacy, disconnectPharmacy, createPharmacySession } = useAuth();
   // Debug hook pour suivre l'état de connexion
   usePharmacyConnection();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Logique harmonisée : vérifier pharmacy OU connectedPharmacy
-  const activePharmacy = pharmacy || connectedPharmacy;
-  const isPharmacyConnected = !!activePharmacy;
+  // Logique harmonisée : affichage basé sur connectedPharmacy ou pharmacy
+  const activePharmacy = connectedPharmacy || pharmacy;
+  const isPharmacyConnected = !!connectedPharmacy;
 
-  // Métriques Hero avec support multi-tenant
-  const { metrics, isLoading: metricsLoading } = useHeroMetrics(isPharmacyConnected);
+  // Métriques Hero avec support multi-tenant (utilise TenantContext)
+  const { metrics, isLoading: metricsLoading } = useHeroMetrics();
   const { formatNumber } = useCurrencyFormatting();
+
+  // Création automatique de session pharmacie si pharmacy existe mais pas connectedPharmacy
+  useEffect(() => {
+    if (pharmacy && !connectedPharmacy && user) {
+      console.log('HERO: Création automatique de la session pharmacie...');
+      createPharmacySession().then(({ error }) => {
+        if (error) {
+          console.error('HERO: Erreur création session pharmacie:', error);
+        } else {
+          console.log('HERO: Session pharmacie créée automatiquement');
+        }
+      });
+    }
+  }, [pharmacy, connectedPharmacy, user, createPharmacySession]);
 
   useEffect(() => {
     // Vérifier la session existante au chargement
@@ -34,8 +48,6 @@ export function Hero() {
       const { data: { session } } = await supabase.auth.getSession();
       console.log('HERO: Session initiale:', !!session?.user, 'Pharmacie via tenant:', !!pharmacy, 'Pharmacie session:', !!connectedPharmacy);
       setCurrentUser(session?.user || null);
-      
-      // Debug removed - fonction non disponible dans le schéma actuel
     };
 
     checkSession();
@@ -128,7 +140,7 @@ export function Hero() {
                           <div className="font-semibold text-base">{activePharmacy.name}</div>
                           <div className="text-sm text-muted-foreground">{activePharmacy.email}</div>
                           <div className="text-xs text-green-600 font-medium">
-                            {connectedPharmacy ? 'Session active' : 'Connecté'}
+                            Session active
                           </div>
                         </div>
                       </div>
