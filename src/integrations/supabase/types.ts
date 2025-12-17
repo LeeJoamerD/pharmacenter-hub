@@ -19644,6 +19644,10 @@ export type Database = {
         }
         Returns: Json
       }
+      create_personnel_for_user: {
+        Args: { data: Json; pharmacy_id: string }
+        Returns: Json
+      }
       create_pharmacy_session: {
         Args: {
           p_ip_address?: unknown
