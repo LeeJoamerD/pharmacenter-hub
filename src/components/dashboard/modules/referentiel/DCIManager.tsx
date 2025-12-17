@@ -77,7 +77,15 @@ const DCIManager = () => {
 
   const handleEditDCI = (dci: DCI) => {
     setEditingDCI(dci);
-    form.reset(dci);
+    form.reset({
+      nom_dci: dci.nom_dci,
+      description: dci.description || '',
+      classe_therapeutique_id: dci.classe_therapeutique_id || '',
+      contre_indications: dci.contre_indications || '',
+      effets_secondaires: dci.effets_secondaires || '',
+      posologie: dci.posologie || '',
+      produits_associes: dci.produits_associes || 0
+    });
     setIsDialogOpen(true);
   };
 
@@ -106,17 +114,20 @@ const DCIManager = () => {
 
   const onSubmit = async (data: DCI) => {
     try {
+      // Extraire uniquement les colonnes valides (exclure classes_therapeutiques qui vient du join)
+      const { classes_therapeutiques, id, ...dciData } = data;
+      
       if (editingDCI) {
         await updateDCI.mutateAsync({ 
           id: editingDCI.id, 
-          ...data 
+          ...dciData 
         });
         toast({
           title: "DCI modifiée",
           description: "La DCI a été modifiée avec succès.",
         });
       } else {
-        await createDCI.mutateAsync(data);
+        await createDCI.mutateAsync(dciData);
         toast({
           title: "DCI ajoutée",
           description: "La DCI a été ajoutée avec succès.",
