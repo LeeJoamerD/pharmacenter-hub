@@ -123,133 +123,57 @@ const UserRegister = () => {
           });
           if (error) throw error;
 
-          // Si pas de session immédiate, demander à l'utilisateur de confirmer l'email
-          if (!data.session) {
-            toast.success("Inscription réussie. Vérifiez votre email pour confirmer votre compte, puis revenez ici pour définir votre mot de passe.");
-            return;
-          }
-        } catch (e: any) {
-          // Fallbacks progressifs lorsque signUp échoue
-          const status = e?.status || 0;
-          const msg: string = e?.message || "";
+          let activeSession = data.session;
 
-          // Helper: dernier recours via Edge Function admin-create-user (service role)
-          const tryAdminCreateAndSignIn = async () => {
-            try {
-              const { data: fnData, error: fnErr } = await supabase.functions.invoke("admin-create-user", {
-                body: { email: normEmail, password }
-              });
-              if (fnErr) throw fnErr;
-
-              // Se connecter avec le compte nouvellement créé
-              const { data: signInData2, error: signInErr2 } = await supabase.auth.signInWithPassword({
-                email: normEmail,
-                password
-              });
-              if (signInErr2 || !signInData2?.session) {
-                throw signInErr2 || new Error("Impossible de se connecter après création admin");
-              }
-
-              // Créer le personnel
-              const payload = {
-                noms,
-                prenoms,
-                email: normEmail,
-                telephone: phone || "",
-                reference_agent: `AG-${Date.now()}`,
-              };
-              const { data: created3, error: cpErr3 } = await supabase.rpc("create_personnel_for_user" as any, {
-                pharmacy_id: connectedPharmacy.id,
-                data: payload as any,
-              });
-              if (cpErr3 || !(created3 as any)?.success) {
-                throw new Error((created3 as any)?.error || cpErr3?.message || "Échec de la création du profil utilisateur");
-              }
-              toast.success("Compte créé via canal sécurisé. Profil créé et connecté.");
-              navigate("/");
-              return true;
-            } catch (z: any) {
-              console.error("Admin create user fallback failed:", z);
-              return false;
-            }
-          };
-
-          // Fallback 1: Erreurs serveur récurrentes à signUp (500)
-          if (status >= 500 || /Database error/i.test(msg)) {
-            // Essayer OTP (si emails configurés)
-            const { error: otpErr } = await supabase.auth.signInWithOtp({
-              email: normEmail
-            });
-            if (!otpErr) {
-              toast.success("Un lien de confirmation vient d'être envoyé à votre email. Ouvrez-le pour valider votre compte, puis revenez terminer l'inscription.");
-              return;
-            }
-
-            // Si OTP échoue également (ex: provider email non configuré) => essayer Edge Function admin
-            const ok = await tryAdminCreateAndSignIn();
-            if (ok) return;
-
-            throw otpErr;
-          }
-
-          // Fallback 2: Utilisateur déjà existant
-          if (status === 400 && /exists|registered|already/i.test(msg)) {
-            // Tentative automatique de connexion avec le mot de passe saisi
-            const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+          // Si pas de session immédiate, tenter une connexion directe
+          // (fonctionne si "Confirm email" est désactivé dans Supabase)
+          if (!activeSession) {
+            console.log("Pas de session immédiate après signUp, tentative de connexion...");
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
               email: normEmail,
               password
             });
-            if (!signInErr && signInData?.session) {
-              // Session obtenue, créer le personnel immédiatement
-              const payload = {
-                noms,
-                prenoms,
-                email: normEmail,
-                telephone: phone || "",
-                reference_agent: `AG-${Date.now()}`,
-              };
-              const { data: created2, error: cpErr2 } = await supabase.rpc("create_personnel_for_user" as any, {
-                pharmacy_id: connectedPharmacy.id,
-                data: payload as any,
-              });
-              if (cpErr2 || !(created2 as any)?.success) {
-                throw new Error((created2 as any)?.error || cpErr2?.message || "Échec de la création du profil utilisateur");
-              }
-              toast.success("Compte existant détecté et connecté. Profil créé.");
-              navigate("/");
+            
+            if (signInError) {
+              // La connexion échoue = confirmation email probablement requise
+              console.error("Connexion impossible après signUp:", signInError.message);
+              toast.info("Un email de confirmation a été envoyé. Confirmez votre email puis connectez-vous.");
+              navigate("/user-login");
               return;
             }
-            // Sinon, rediriger vers la connexion
-            toast.info("Un compte existe déjà avec cet email. Connectez-vous ou réinitialisez votre mot de passe.");
-            navigate("/user-login");
-            return;
+            
+            activeSession = signInData.session;
           }
 
-          // Fallback 3: Tous les autres cas -> tenter Edge Function admin
-          const ok = await tryAdminCreateAndSignIn();
-          if (ok) return;
-
-          throw e;
+          // Maintenant on a une session active, créer le personnel
+          if (activeSession) {
+            const payload = {
+              noms,
+              prenoms,
+              email: normEmail,
+              telephone: phone || "",
+              reference_agent: `AG-${Date.now()}`,
+            };
+            
+            const { data: created, error: cpErr } = await supabase.rpc("create_personnel_for_user" as any, {
+              pharmacy_id: connectedPharmacy.id,
+              data: payload as any,
+            });
+            
+            if (cpErr) throw cpErr;
+            if (!(created as any)?.success) {
+              throw new Error((created as any)?.error || "Échec de la création du profil utilisateur");
+            }
+            
+            toast.success("Compte créé et connecté à la pharmacie");
+            navigate("/");
+            return;
+          }
+        } catch (innerErr: any) {
+          // Fallback: si signUp ou signIn échoue, rediriger vers login
+          console.error("Erreur lors de l'inscription:", innerErr);
+          toast.error(innerErr.message || "Erreur lors de l'inscription");
         }
-
-        // Si session directe, créer le personnel immédiatement
-        const payload = {
-          noms,
-          prenoms,
-          email: normEmail,
-          telephone: phone || "",
-          reference_agent: `AG-${Date.now()}`,
-        };
-        const { data: created, error: cpErr } = await supabase.rpc("create_personnel_for_user" as any, {
-          pharmacy_id: connectedPharmacy.id,
-          data: payload as any,
-        });
-        if (cpErr) throw cpErr;
-        if (!(created as any)?.success) {
-          throw new Error((created as any)?.error || "Échec de la création du profil utilisateur");
-        }
-        toast.success("Compte créé et connecté");
-        navigate("/");
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Erreur lors de la création du compte");
