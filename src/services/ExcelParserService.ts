@@ -10,15 +10,41 @@ import type {
   ValidationError,
   ValidationWarning
 } from '@/types/excelImport';
+import type { ExcelColumnMapping } from '@/types/excelMapping';
 
 export class ExcelParserService {
   /**
-   * Parse un fichier Excel/CSV et extrait les données de réception
+   * Convertit une lettre de colonne Excel (A-Z) en index (0-25)
    */
-  static async parseExcelFile(file: File): Promise<ParseResult> {
+  static columnLetterToIndex(letter: string): number {
+    return letter.toUpperCase().charCodeAt(0) - 65;
+  }
+
+  /**
+   * Parse un fichier Excel/CSV et extrait les données de réception
+   * @param file Fichier Excel à parser
+   * @param mapping Configuration de mapping optionnelle (si non fournie, utilise le mapping par défaut)
+   */
+  static async parseExcelFile(file: File, mapping?: ExcelColumnMapping): Promise<ParseResult> {
     const errors: ParseError[] = [];
     const lines: ExcelReceptionLine[] = [];
     let bonLivraison: string | undefined;
+
+    // Définir les index de colonnes basés sur le mapping ou les valeurs par défaut
+    const getColIndex = (field: keyof ExcelColumnMapping, defaultLetter: string): number => {
+      const letter = mapping?.[field] || defaultLetter;
+      return this.columnLetterToIndex(letter);
+    };
+
+    // Index des colonnes (par défaut ou configurés)
+    const colBonLivraison = getColIndex('bon_livraison', 'B');
+    const colCip = getColIndex('cip', 'D');
+    const colProduit = getColIndex('produit', 'E');
+    const colQteCommandee = getColIndex('quantite_commandee', 'F');
+    const colQteRecue = getColIndex('quantite_recue', 'H');
+    const colPrixAchat = getColIndex('prix_achat', 'I');
+    const colNumeroLot = getColIndex('numero_lot', 'M');
+    const colDateExpiration = getColIndex('date_expiration', 'N');
 
     try {
       const data = await file.arrayBuffer();
@@ -51,25 +77,25 @@ export class ExcelParserService {
         const rowNumber = i + 1; // Numéro de ligne Excel (1-indexed)
 
         // Récupérer le bon de livraison depuis la première ligne de données
-        if (i === 1 && row[1]) {
-          bonLivraison = String(row[1]).trim();
+        if (i === 1 && row[colBonLivraison]) {
+          bonLivraison = String(row[colBonLivraison]).trim();
         }
 
-        // Vérifier que la ligne n'est pas vide
-        if (!row || row.length === 0 || !row[3]) {
+        // Vérifier que la ligne n'est pas vide (basé sur la colonne CIP)
+        if (!row || row.length === 0 || !row[colCip]) {
           continue; // Ignorer les lignes vides
         }
 
         try {
           const line: ExcelReceptionLine = {
-            reference: this.convertScientificToString(this.cleanString(row[3])), // Colonne D (CIP/EAN13)
-            produit: this.cleanString(row[4]), // Colonne E (Libellé du produit)
-            quantiteCommandee: this.parseNumber(row[5], 0), // Colonne F
-            quantiteRecue: this.parseNumber(row[7], 0), // Colonne H
-            quantiteAcceptee: this.parseNumber(row[7], 0), // Colonne H (même valeur)
-            prixAchatReel: this.parseNumber(row[8], 0), // Colonne I
-            numeroLot: this.cleanString(row[12]), // Colonne M
-            dateExpiration: this.parseDate(row[13]), // Colonne N
+            reference: this.convertScientificToString(this.cleanString(row[colCip])),
+            produit: this.cleanString(row[colProduit]),
+            quantiteCommandee: this.parseNumber(row[colQteCommandee], 0),
+            quantiteRecue: this.parseNumber(row[colQteRecue], 0),
+            quantiteAcceptee: this.parseNumber(row[colQteRecue], 0), // Même valeur par défaut
+            prixAchatReel: this.parseNumber(row[colPrixAchat], 0),
+            numeroLot: this.cleanString(row[colNumeroLot]),
+            dateExpiration: this.parseDate(row[colDateExpiration]),
             statut: 'conforme',
             rowNumber
           };
@@ -78,7 +104,7 @@ export class ExcelParserService {
           if (!line.reference) {
             errors.push({
               rowNumber,
-              column: 'D (CIP/EAN13)',
+              column: `${mapping?.cip || 'D'} (CIP/EAN13)`,
               message: 'Référence produit manquante',
               severity: 'error'
             });
@@ -89,7 +115,7 @@ export class ExcelParserService {
           if (line.quantiteRecue <= 0) {
             errors.push({
               rowNumber,
-              column: 'H (Qté livrée)',
+              column: `${mapping?.quantite_recue || 'H'} (Qté livrée)`,
               message: 'Quantité livrée doit être supérieure à 0',
               severity: 'error'
             });

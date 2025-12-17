@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Package, AlertTriangle, DollarSign } from 'lucide-react';
+import { Package, AlertTriangle, DollarSign, FileSpreadsheet } from 'lucide-react';
 import StockGeneralConfig from '../config/StockGeneralConfig';
 import AlertsConfig from '../config/AlertsConfig';
 import PricingConfig from '../config/PricingConfig';
+import ExcelMappingConfig from '../config/ExcelMappingConfig';
 
 const StockConfigurationTab = () => {
   const [activeTab, setActiveTab] = useState('general');
@@ -30,6 +31,12 @@ const StockConfigurationTab = () => {
               <span>Tarification</span>
             </div>
           </TabsTrigger>
+          <TabsTrigger value="excel-mapping">
+            <div className="flex items-center gap-2">
+              <FileSpreadsheet className="h-4 w-4" />
+              <span>Import Excel</span>
+            </div>
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="general">
@@ -42,6 +49,10 @@ const StockConfigurationTab = () => {
         
         <TabsContent value="pricing">
           <PricingConfig />
+        </TabsContent>
+        
+        <TabsContent value="excel-mapping">
+          <ExcelMappingConfig />
         </TabsContent>
       </Tabs>
     </div>

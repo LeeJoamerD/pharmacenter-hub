@@ -17636,6 +17636,51 @@ export type Database = {
           },
         ]
       }
+      supplier_excel_mappings: {
+        Row: {
+          created_at: string
+          fournisseur_id: string
+          id: string
+          is_active: boolean | null
+          mapping_config: Json
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fournisseur_id: string
+          id?: string
+          is_active?: boolean | null
+          mapping_config?: Json
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fournisseur_id?: string
+          id?: string
+          is_active?: boolean | null
+          mapping_config?: Json
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_excel_mappings_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_excel_mappings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_comments: {
         Row: {
           author_name: string | null

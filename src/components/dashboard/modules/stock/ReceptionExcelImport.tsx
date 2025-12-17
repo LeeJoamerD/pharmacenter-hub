@@ -19,15 +19,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { FileUp, Upload, CheckCircle2, XCircle, AlertTriangle, Loader2, PlusCircle } from 'lucide-react';
+import { FileUp, Upload, CheckCircle2, XCircle, AlertTriangle, Loader2, PlusCircle, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { ExcelParserService } from '@/services/ExcelParserService';
 import { AutoOrderCreationService } from '@/services/AutoOrderCreationService';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { usePriceCategories } from '@/hooks/usePriceCategories';
+import { useSupplierExcelMappings } from '@/hooks/useSupplierExcelMappings';
 import type { ExcelReceptionLine, ParseResult, ValidationResult } from '@/types/excelImport';
 import type { Reception } from '@/hooks/useReceptions';
+import type { ExcelColumnMapping } from '@/types/excelMapping';
 
 interface ReceptionExcelImportProps {
   suppliers: any[];
@@ -44,6 +46,11 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
 }) => {
   const { formatAmount, getInputStep, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
   const { categories: priceCategories } = usePriceCategories();
+  const { getMappingBySupplier, mappings } = useSupplierExcelMappings();
+  
+  // État pour le mapping du fournisseur sélectionné
+  const [currentMapping, setCurrentMapping] = useState<ExcelColumnMapping | null>(null);
+  const [hasMappingConfig, setHasMappingConfig] = useState<boolean>(false);
 
   // Fonction pour déterminer la classe CSS de la catégorie de tarification
   const getCategoryColorClass = (categoryId: string | undefined | null): string => {
@@ -202,9 +209,48 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     o => o.statut === 'Livré' || o.statut === 'Validé'
   );
 
+  // Charger le mapping quand le fournisseur change
+  useEffect(() => {
+    const loadMapping = async () => {
+      if (!selectedSupplierId) {
+        setCurrentMapping(null);
+        setHasMappingConfig(false);
+        return;
+      }
+      
+      const mapping = await getMappingBySupplier(selectedSupplierId);
+      if (mapping) {
+        setCurrentMapping(mapping.mapping_config);
+        setHasMappingConfig(true);
+      } else {
+        setCurrentMapping(null);
+        setHasMappingConfig(false);
+      }
+    };
+    
+    loadMapping();
+  }, [selectedSupplierId, getMappingBySupplier, mappings]);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
+
+    // Vérifier qu'un fournisseur est sélectionné
+    if (!selectedSupplierId) {
+      toast.error('Veuillez d\'abord sélectionner un fournisseur');
+      e.target.value = ''; // Reset input
+      return;
+    }
+
+    // Vérifier qu'un mapping existe pour ce fournisseur
+    if (!hasMappingConfig) {
+      toast.error(
+        'Aucune configuration de mapping trouvée pour ce fournisseur. ' +
+        'Veuillez configurer le mapping dans Stock > Configuration > Import Excel.'
+      );
+      e.target.value = ''; // Reset input
+      return;
+    }
 
     const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
     if (!['xlsx', 'xls', 'csv'].includes(fileExtension || '')) {
@@ -231,7 +277,8 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     setUserEditedAsdi(false);
 
     try {
-      const result = await ExcelParserService.parseExcelFile(file);
+      // Passer le mapping au service de parsing
+      const result = await ExcelParserService.parseExcelFile(file, currentMapping || undefined);
       setParseResult(result);
 
       if (result.bonLivraison) {
@@ -689,13 +736,34 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                     <SelectValue placeholder="Sélectionner un fournisseur" />
                   </SelectTrigger>
                   <SelectContent>
-                    {suppliers.map(supplier => (
-                      <SelectItem key={supplier.id} value={supplier.id}>
-                        {supplier.nom}
-                      </SelectItem>
-                    ))}
+                    {suppliers.map(supplier => {
+                      const supplierHasMapping = mappings.some(m => m.fournisseur_id === supplier.id);
+                      return (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{supplier.nom}</span>
+                            {supplierHasMapping && (
+                              <Badge variant="secondary" className="text-[10px] h-4">
+                                <Settings className="h-2.5 w-2.5 mr-0.5" />
+                                Mapping
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
+                {selectedSupplierId && !hasMappingConfig && (
+                  <p className="text-xs text-destructive mt-1">
+                    ⚠️ Aucun mapping configuré. Allez dans Configuration &gt; Import Excel.
+                  </p>
+                )}
+                {selectedSupplierId && hasMappingConfig && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ✓ Mapping Excel configuré pour ce fournisseur
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
