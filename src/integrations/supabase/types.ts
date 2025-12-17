@@ -19704,6 +19704,20 @@ export type Database = {
           }
         | {
             Args: {
+              p_compte_credit: string
+              p_compte_debit: string
+              p_date_ecriture: string
+              p_journal_code: string
+              p_libelle: string
+              p_montant: number
+              p_reference_document?: string
+              p_tenant_id: string
+              p_type_piece?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
               p_date_ecriture: string
               p_journal_code: string
               p_libelle: string
