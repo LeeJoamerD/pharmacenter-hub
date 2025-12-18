@@ -188,10 +188,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       try {
         const sessionData = JSON.parse(savedPharmacySession);
-        console.log('AUTH: Restauration session pharmacie...');
+        console.log('AUTH: Restauration session pharmacie via Edge Function...');
         
-        const { data, error } = await supabase.rpc('validate_pharmacy_session', {
-          p_session_token: sessionData.sessionToken
+        // Utiliser l'Edge Function au lieu du RPC pour éviter le problème de cache PostgREST
+        const { data, error } = await supabase.functions.invoke('validate-pharmacy-session', {
+          body: { session_token: sessionData.sessionToken }
         });
         
         if (error) {
@@ -209,7 +210,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             sessionToken: sessionData.sessionToken
           });
         } else {
-          console.log('AUTH: Session pharmacie invalide ou expirée');
+          console.log('AUTH: Session pharmacie invalide ou expirée:', validationData?.error);
           localStorage.removeItem('pharmacy_session');
         }
       } catch (error) {
