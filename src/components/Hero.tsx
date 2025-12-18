@@ -13,34 +13,28 @@ import { useHeroMetrics } from '@/hooks/useHeroMetrics';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 export function Hero() {
-  const { user, connectedPharmacy, pharmacy, disconnectPharmacy, createPharmacySession } = useAuth();
+  const { user, connectedPharmacy, pharmacy, disconnectPharmacy } = useAuth();
   // Debug hook pour suivre l'état de connexion
   usePharmacyConnection();
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Logique harmonisée : affichage basé sur connectedPharmacy ou pharmacy
+  // Logique harmonisée : affichage basé sur connectedPharmacy AVEC sessionToken valide
   const activePharmacy = connectedPharmacy || pharmacy;
-  const isPharmacyConnected = !!connectedPharmacy;
+  // CORRECTION : isPharmacyConnected nécessite connectedPharmacy ET sessionToken valide
+  const isPharmacyConnected = !!connectedPharmacy && !!connectedPharmacy.sessionToken;
+
+  console.log('HERO: État connexion - connectedPharmacy:', !!connectedPharmacy, 
+    'sessionToken:', connectedPharmacy?.sessionToken ? connectedPharmacy.sessionToken.substring(0, 8) + '...' : 'absent',
+    'isPharmacyConnected:', isPharmacyConnected);
 
   // Métriques Hero avec support multi-tenant (utilise TenantContext)
   const { metrics, isLoading: metricsLoading } = useHeroMetrics();
   const { formatNumber } = useCurrencyFormatting();
 
-  // Création automatique de session pharmacie si pharmacy existe mais pas connectedPharmacy
-  useEffect(() => {
-    if (pharmacy && !connectedPharmacy && user) {
-      console.log('HERO: Création automatique de la session pharmacie...');
-      createPharmacySession().then(({ error }) => {
-        if (error) {
-          console.error('HERO: Erreur création session pharmacie:', error);
-        } else {
-          console.log('HERO: Session pharmacie créée automatiquement');
-        }
-      });
-    }
-  }, [pharmacy, connectedPharmacy, user, createPharmacySession]);
+  // SUPPRIMÉ : Le useEffect de création automatique de session pharmacie
+  // Cela causait la reconnexion automatique pharmacie/utilisateur non désirée
 
   useEffect(() => {
     // Vérifier la session existante au chargement

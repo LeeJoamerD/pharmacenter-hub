@@ -184,11 +184,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for connected pharmacy session in localStorage
     const restorePharmacySession = async () => {
       const savedPharmacySession = localStorage.getItem('pharmacy_session');
-      if (!savedPharmacySession) return;
+      if (!savedPharmacySession) {
+        console.log('AUTH: Aucune session pharmacie dans localStorage');
+        return;
+      }
       
       try {
         const sessionData = JSON.parse(savedPharmacySession);
-        console.log('AUTH: Restauration session pharmacie via Edge Function...');
+        console.log('AUTH: Données localStorage pharmacy_session:', JSON.stringify(sessionData));
+        
+        // NOUVEAU : Vérifier que le sessionToken existe AVANT de tenter la validation
+        if (!sessionData.sessionToken) {
+          console.log('AUTH: localStorage pharmacy_session sans sessionToken, suppression...');
+          localStorage.removeItem('pharmacy_session');
+          return;
+        }
+        
+        console.log('AUTH: Restauration session pharmacie via Edge Function, token:', sessionData.sessionToken.substring(0, 8) + '...');
         
         // Utiliser l'Edge Function au lieu du RPC pour éviter le problème de cache PostgREST
         const { data, error } = await supabase.functions.invoke('validate-pharmacy-session', {
@@ -200,6 +212,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.removeItem('pharmacy_session');
           return;
         }
+        
+        console.log('AUTH: Résultat validation Edge Function:', JSON.stringify(data));
         
         const validationData = data as { valid: boolean; pharmacy: Pharmacy; error?: string } | null;
         
