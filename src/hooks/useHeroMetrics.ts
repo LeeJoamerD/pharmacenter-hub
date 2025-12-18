@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfMonth, subMonths, endOfMonth } from 'date-fns';
 
 // Bonus de pharmacies pour l'affichage marketing
 const PHARMACY_BONUS = 15;
@@ -48,91 +47,47 @@ export function useHeroMetrics(): {
     const fetchMetrics = async () => {
       setIsLoading(true);
       try {
-        const now = new Date();
-        const currentMonthStart = startOfMonth(now);
-        const previousMonthStart = startOfMonth(subMonths(now, 1));
-        const previousMonthEnd = endOfMonth(subMonths(now, 1));
-
-        // CA mois courant
-        const { data: currentSalesData } = await supabase
-          .from('ventes')
-          .select('montant_total_ttc')
-          .eq('tenant_id', tenantId)
-          .gte('created_at', currentMonthStart.toISOString());
-        
-        // CA mois précédent
-        const { data: previousSalesData } = await supabase
-          .from('ventes')
-          .select('montant_total_ttc')
-          .eq('tenant_id', tenantId)
-          .gte('created_at', previousMonthStart.toISOString())
-          .lte('created_at', previousMonthEnd.toISOString());
-        
-        // Total produits actifs (is_active = true)
-        const { count: totalProductsCount } = await supabase
-          .from('produits')
-          .select('id', { count: 'exact', head: true })
-          .eq('tenant_id', tenantId)
-          .eq('is_active', true);
-        
-        // Produits avec stock disponible (via la vue produits_with_stock ou lots)
-        const { data: lotsData } = await supabase
-          .from('lots')
-          .select('produit_id, quantite_restante')
-          .eq('tenant_id', tenantId);
-        
-        // Calculer les produits avec stock > 0
-        const productsWithStock = new Set<string>();
-        (lotsData || []).forEach(lot => {
-          if ((lot.quantite_restante || 0) > 0 && lot.produit_id) {
-            productsWithStock.add(lot.produit_id);
-          }
+        // Utiliser le RPC SECURITY DEFINER qui fonctionne même sans auth.uid()
+        const { data, error } = await supabase.rpc('get_hero_metrics', {
+          p_tenant_id: tenantId
         });
-        
-        // Nombre total de pharmacies (global)
-        const { count: pharmacyCount } = await supabase
-          .from('pharmacies')
-          .select('id', { count: 'exact', head: true });
 
-        // Calcul de la croissance des ventes
-        const currentSales = (currentSalesData || []).reduce(
-          (sum, v) => sum + (Number(v.montant_total_ttc) || 0), 0
-        );
-        
-        const previousSales = (previousSalesData || []).reduce(
-          (sum, v) => sum + (Number(v.montant_total_ttc) || 0), 0
-        );
-        
-        let salesGrowth = 0;
-        if (previousSales > 0) {
-          salesGrowth = ((currentSales - previousSales) / previousSales) * 100;
-        } else if (currentSales > 0) {
-          salesGrowth = 100;
+        if (error) {
+          console.error('Erreur RPC get_hero_metrics:', error);
+          setMetrics(MOCK_DATA);
+          return;
         }
 
-        // Calcul du taux de disponibilité
-        const totalProducts = totalProductsCount || 0;
-        const availableProducts = productsWithStock.size;
-        
-        let availabilityRate = 0;
-        if (totalProducts > 0) {
-          availabilityRate = (availableProducts / totalProducts) * 100;
+        const metricsData = data as {
+          salesGrowth: number;
+          totalProducts: number;
+          availabilityRate: number;
+          stockStatus: string;
+          pharmacyCount: number;
+          isRealData: boolean;
+          error?: string;
+        };
+
+        if (metricsData.error) {
+          console.error('Erreur dans get_hero_metrics:', metricsData.error);
+          setMetrics(MOCK_DATA);
+          return;
         }
 
-        // Détermination du statut de stock
+        // Mapper le stockStatus au type correct
         let stockStatus: 'Optimal' | 'Attention' | 'Critique' = 'Optimal';
-        if (availabilityRate < 70) {
+        if (metricsData.stockStatus === 'Critique') {
           stockStatus = 'Critique';
-        } else if (availabilityRate < 90) {
+        } else if (metricsData.stockStatus === 'Attention') {
           stockStatus = 'Attention';
         }
 
         setMetrics({
-          salesGrowth: Math.round(salesGrowth),
-          totalProducts,
-          availabilityRate: Math.round(availabilityRate),
+          salesGrowth: metricsData.salesGrowth || 0,
+          totalProducts: metricsData.totalProducts || 0,
+          availabilityRate: metricsData.availabilityRate || 0,
           stockStatus,
-          pharmacyCount: (pharmacyCount || 0) + PHARMACY_BONUS,
+          pharmacyCount: (metricsData.pharmacyCount || 0) + PHARMACY_BONUS,
           isRealData: true,
         });
       } catch (error) {
