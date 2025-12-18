@@ -29,40 +29,31 @@ const UserRegister = () => {
   const [validation, setValidation] = useState<{ isValid: boolean; errors: string[]; policy: any } | undefined>();
   const [loading, setLoading] = useState(false);
 
-  // Récupérer la politique de mot de passe complète
+  // Récupérer la politique de mot de passe une seule fois au chargement
   useEffect(() => {
     if (connectedPharmacy) {
-      const fetchPasswordPolicy = async () => {
-        try {
-          const policy = await getPasswordPolicy();
-          console.log('📋 Politique de mot de passe récupérée:', policy);
-          setPasswordPolicy(policy);
-        } catch (error) {
-          console.error('Erreur récupération politique:', error);
-        }
-      };
-      fetchPasswordPolicy();
+      getPasswordPolicy().then(setPasswordPolicy).catch(console.error);
     }
-  }, [connectedPharmacy, getPasswordPolicy]);
+  }, [connectedPharmacy?.id]); // Dépendre uniquement de l'ID, pas de la fonction
 
-  // Validation en temps réel du mot de passe
+  // Validation en temps réel du mot de passe avec debounce
   useEffect(() => {
-    if (password) {
-      const validatePasswordRealTime = async () => {
-        try {
-          const res = await validatePassword(password);
-          setValidation(res);
-        } catch (error) {
-          console.error('Erreur validation temps réel:', error);
-        }
-      };
-      // Débouncer pour éviter trop d'appels API
-      const timer = setTimeout(validatePasswordRealTime, 300);
-      return () => clearTimeout(timer);
-    } else {
+    if (!password) {
       setValidation(undefined);
+      return;
     }
-  }, [password, validatePassword]);
+    
+    const timer = setTimeout(async () => {
+      try {
+        const res = await validatePassword(password);
+        setValidation(res);
+      } catch (error) {
+        console.error('Erreur validation:', error);
+      }
+    }, 500); // Debounce 500ms pour réduire les appels
+    
+    return () => clearTimeout(timer);
+  }, [password, connectedPharmacy?.id]); // Dépendre de l'ID, pas de la fonction
 
   // SEO
   useEffect(() => {
