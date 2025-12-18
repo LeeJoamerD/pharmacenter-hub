@@ -19916,6 +19916,7 @@ export type Database = {
         Args: { p_days?: number; p_tenant_id: string }
         Returns: Json
       }
+      get_hero_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_low_stock_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_low_stock_products:
         | { Args: { p_tenant_id: string }; Returns: Json }
