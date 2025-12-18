@@ -19648,23 +19648,14 @@ export type Database = {
         Args: { data: Json; pharmacy_id: string }
         Returns: Json
       }
-      create_pharmacy_session:
-        | {
-            Args: {
-              p_ip_address?: unknown
-              p_pharmacy_id: string
-              p_user_agent?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_ip_address?: string
-              p_pharmacy_id: string
-              p_user_agent?: string
-            }
-            Returns: Json
-          }
+      create_pharmacy_session: {
+        Args: {
+          p_ip_address?: string
+          p_pharmacy_id: string
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
       create_shelf_analysis: {
         Args: {
           p_image_url?: string
