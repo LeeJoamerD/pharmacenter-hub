@@ -296,10 +296,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (sessionError || !sessionData) {
+        console.error('AUTH: Erreur RPC create_pharmacy_session:', sessionError);
         return { error: new Error('Erreur lors de la création de la session') };
       }
 
-      const sessionResult = sessionData as { session_token: string; expires_at: string };
+      const sessionResult = sessionData as { success: boolean; session_token?: string; expires_at?: string; error?: string };
+
+      // Vérifier explicitement le succès de la création
+      if (!sessionResult.success || !sessionResult.session_token) {
+        console.error('AUTH: Échec création session pharmacie:', sessionResult.error);
+        return { error: new Error(sessionResult.error || 'Échec création session pharmacie') };
+      }
 
       const connectedPharmacyData: ConnectedPharmacy = {
         ...pharmacy,
@@ -313,6 +320,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         expiresAt: sessionResult.expires_at
       }));
 
+      console.log('AUTH: Session pharmacie créée avec succès, token:', sessionResult.session_token.substring(0, 8) + '...');
       return { error: null };
     } catch (error) {
       return { error: error as Error };
@@ -374,23 +382,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
 
           if (sessionData && !sessionError) {
-            const sessionResult = sessionData as { session_token: string; expires_at: string };
+            const sessionResult = sessionData as { success: boolean; session_token?: string; expires_at?: string; error?: string };
             
-            const connectedPharmacyData: ConnectedPharmacy = {
-              ...pharmacyData,
-              sessionToken: sessionResult.session_token
-            };
+            // Vérifier explicitement le succès
+            if (sessionResult.success && sessionResult.session_token) {
+              const connectedPharmacyData: ConnectedPharmacy = {
+                ...pharmacyData,
+                sessionToken: sessionResult.session_token
+              };
 
-            // Stocker la pharmacie connectée immédiatement
-            setConnectedPharmacy(connectedPharmacyData);
-            localStorage.setItem('pharmacy_session', JSON.stringify({
-              sessionToken: sessionResult.session_token,
-              expiresAt: sessionResult.expires_at
-            }));
+              // Stocker la pharmacie connectée immédiatement
+              setConnectedPharmacy(connectedPharmacyData);
+              localStorage.setItem('pharmacy_session', JSON.stringify({
+                sessionToken: sessionResult.session_token,
+                expiresAt: sessionResult.expires_at
+              }));
 
-            console.log('AUTH: Session pharmacie créée avec succès');
+              console.log('AUTH: Session pharmacie créée avec succès, token:', sessionResult.session_token.substring(0, 8) + '...');
+            } else {
+              console.error('AUTH: Échec création session:', sessionResult.error);
+            }
           } else {
-            console.warn('AUTH: Impossible de créer la session pharmacie:', sessionError);
+            console.error('AUTH: Impossible de créer la session pharmacie:', sessionError);
           }
         }
       }
