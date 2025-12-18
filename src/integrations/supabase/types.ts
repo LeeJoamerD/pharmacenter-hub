@@ -19648,14 +19648,23 @@ export type Database = {
         Args: { data: Json; pharmacy_id: string }
         Returns: Json
       }
-      create_pharmacy_session: {
-        Args: {
-          p_ip_address?: unknown
-          p_pharmacy_id: string
-          p_user_agent?: string
-        }
-        Returns: Json
-      }
+      create_pharmacy_session:
+        | {
+            Args: {
+              p_ip_address?: unknown
+              p_pharmacy_id: string
+              p_user_agent?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_ip_address?: string
+              p_pharmacy_id: string
+              p_user_agent?: string
+            }
+            Returns: Json
+          }
       create_shelf_analysis: {
         Args: {
           p_image_url?: string
@@ -19680,6 +19689,10 @@ export type Database = {
       determiner_niveau_urgence: {
         Args: { jours_restants: number }
         Returns: string
+      }
+      disconnect_pharmacy_session: {
+        Args: { p_session_token: string }
+        Returns: Json
       }
       discover_business_patterns: {
         Args: { p_tenant_id: string }
@@ -20376,6 +20389,10 @@ export type Database = {
       }
       validate_password_strength: {
         Args: { p_tenant_id: string; password: string }
+        Returns: Json
+      }
+      validate_pharmacy_session: {
+        Args: { p_session_token: string }
         Returns: Json
       }
     }

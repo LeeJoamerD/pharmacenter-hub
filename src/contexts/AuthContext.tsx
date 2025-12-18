@@ -182,28 +182,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     // Check for connected pharmacy session in localStorage
-    const savedPharmacySession = localStorage.getItem('pharmacy_session');
-    if (savedPharmacySession) {
+    const restorePharmacySession = async () => {
+      const savedPharmacySession = localStorage.getItem('pharmacy_session');
+      if (!savedPharmacySession) return;
+      
       try {
         const sessionData = JSON.parse(savedPharmacySession);
-        // Valider la session pharmacie
-        supabase.rpc('validate_pharmacy_session' as any, {
+        console.log('AUTH: Restauration session pharmacie...');
+        
+        const { data, error } = await supabase.rpc('validate_pharmacy_session', {
           p_session_token: sessionData.sessionToken
-        }).then(({ data, error }) => {
-          if (data && typeof data === 'object' && 'valid' in data && data.valid && !error) {
-            const validationData = data as { valid: boolean; pharmacy: any };
-            setConnectedPharmacy({
-              ...validationData.pharmacy,
-              sessionToken: sessionData.sessionToken
-            });
-          } else {
-            localStorage.removeItem('pharmacy_session');
-          }
         });
+        
+        if (error) {
+          console.error('AUTH: Erreur validation session pharmacie:', error);
+          localStorage.removeItem('pharmacy_session');
+          return;
+        }
+        
+        const validationData = data as { valid: boolean; pharmacy: Pharmacy; error?: string } | null;
+        
+        if (validationData?.valid && validationData.pharmacy) {
+          console.log('AUTH: Session pharmacie restaurée avec succès:', validationData.pharmacy.name);
+          setConnectedPharmacy({
+            ...validationData.pharmacy,
+            sessionToken: sessionData.sessionToken
+          });
+        } else {
+          console.log('AUTH: Session pharmacie invalide ou expirée');
+          localStorage.removeItem('pharmacy_session');
+        }
       } catch (error) {
+        console.error('AUTH: Erreur parsing session pharmacie:', error);
         localStorage.removeItem('pharmacy_session');
       }
-    }
+    };
+    
+    restorePharmacySession();
 
     return () => subscription.unsubscribe();
   }, []);
@@ -391,7 +406,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const disconnectPharmacy = async () => {
     if (connectedPharmacy?.sessionToken) {
       // Déconnecter la session côté serveur
-      await supabase.rpc('disconnect_pharmacy_session' as any, {
+      await supabase.rpc('disconnect_pharmacy_session', {
         p_session_token: connectedPharmacy.sessionToken
       });
     }
