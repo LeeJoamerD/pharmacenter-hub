@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.search-help]
 verify_jwt = false
+
+[functions.validate-pharmacy-session]
+verify_jwt = false
