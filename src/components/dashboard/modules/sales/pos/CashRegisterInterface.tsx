@@ -1,8 +1,9 @@
 /**
  * Composant Encaissement (Mode Séparé)
  * Gère uniquement l'encaissement des ventes en attente
+ * Restriction : seul le caissier assigné à la session peut encaisser
  */
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,10 +23,10 @@ import {
   Printer,
   Loader2,
   Receipt,
-  ShoppingCart
+  ShoppingCart,
+  ShieldAlert
 } from 'lucide-react';
 import { usePOSData } from '@/hooks/usePOSData';
-import { useCashSession } from '@/hooks/useCashSession';
 import { usePendingTransactions, PendingTransaction } from '@/hooks/usePendingTransactions';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
@@ -33,6 +34,17 @@ import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 import { printCashReceipt } from '@/utils/salesTicketPrinter';
+import { supabase } from '@/integrations/supabase/client';
+
+interface CashierSession {
+  id: string;
+  numero_session: string;
+  date_ouverture: string;
+  caisse_id: string;
+  caissier_id: string | null;
+  agent_id: string | null;
+  caisse?: { nom_caisse: string };
+}
 
 const CashRegisterInterface = () => {
   const { tenantId, currentUser } = useTenant();
@@ -41,7 +53,20 @@ const CashRegisterInterface = () => {
   const { formatAmount } = useCurrencyFormatting();
   
   const { processPayment } = usePOSData();
-  const { activeSession, hasActiveSession, isLoading: sessionLoading } = useCashSession();
+  
+  // États pour le sélecteur de session
+  const [mySessions, setMySessions] = useState<CashierSession[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('');
+  const [loadingSessions, setLoadingSessions] = useState(true);
+  
+  // Récupérer la session sélectionnée
+  const activeSession = useMemo(() => {
+    return mySessions.find(s => s.id === selectedSessionId) || null;
+  }, [mySessions, selectedSessionId]);
+  
+  const hasActiveSession = !!activeSession;
+  
+  // Charger les transactions en attente pour la session sélectionnée
   const { 
     pendingTransactions, 
     isLoading: loadingTransactions, 
@@ -60,6 +85,58 @@ const CashRegisterInterface = () => {
   const [paymentMethod, setPaymentMethod] = useState<'Espèces' | 'Carte Bancaire' | 'Mobile Money'>('Espèces');
   const [amountReceived, setAmountReceived] = useState<number>(0);
   const [paymentReference, setPaymentReference] = useState('');
+
+  // Vérifier si l'utilisateur est admin/manager (peut encaisser sur toutes les sessions)
+  const isAdminRole = useMemo(() => {
+    const adminRoles = ['Admin', 'Pharmacien Titulaire', 'Pharmacien Adjoint'];
+    return adminRoles.includes(currentUser?.role || '');
+  }, [currentUser?.role]);
+
+  // Charger les sessions où l'utilisateur est caissier assigné
+  useEffect(() => {
+    const loadMySessions = async () => {
+      if (!tenantId || !currentUser?.id) return;
+      
+      setLoadingSessions(true);
+      try {
+        let query = supabase
+          .from('sessions_caisse')
+          .select(`
+            id,
+            numero_session,
+            date_ouverture,
+            caisse_id,
+            caissier_id,
+            agent_id,
+            caisse:caisses(nom_caisse)
+          `)
+          .eq('tenant_id', tenantId)
+          .eq('statut', 'Ouverte')
+          .order('date_ouverture', { ascending: false });
+        
+        // Si pas admin, filtrer sur caissier_id ou agent_id
+        if (!isAdminRole) {
+          query = query.or(`caissier_id.eq.${currentUser.id},agent_id.eq.${currentUser.id}`);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error('Erreur chargement sessions:', error);
+        } else {
+          setMySessions((data || []) as CashierSession[]);
+          // Sélectionner automatiquement la première session
+          if (data && data.length > 0 && !selectedSessionId) {
+            setSelectedSessionId(data[0].id);
+          }
+        }
+      } finally {
+        setLoadingSessions(false);
+      }
+    };
+
+    loadMySessions();
+  }, [tenantId, currentUser?.id, isAdminRole]);
 
   // Scanner de codes-barres pour rechercher une transaction
   useEffect(() => {
@@ -181,20 +258,35 @@ const CashRegisterInterface = () => {
     }
   };
 
-  // Pas de session active
-  if (!sessionLoading && !hasActiveSession) {
+  // Chargement initial
+  if (loadingSessions) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="text-muted-foreground">Chargement des sessions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Pas de session disponible pour ce caissier
+  if (!loadingSessions && mySessions.length === 0) {
     return (
       <div className="h-full flex items-center justify-center p-6">
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle className="text-center flex items-center gap-2 justify-center">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              Session Caisse Fermée
+              <ShieldAlert className="h-5 w-5 text-destructive" />
+              {isAdminRole ? 'Aucune Session Ouverte' : 'Accès Non Autorisé'}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-muted-foreground">
-              Vous devez ouvrir une session de caisse pour effectuer des encaissements.
+              {isAdminRole 
+                ? "Aucune session de caisse n'est ouverte. Veuillez ouvrir une session pour effectuer des encaissements."
+                : "Vous n'êtes pas désigné comme caissier sur aucune session active. Contactez votre responsable pour être assigné à une caisse."
+              }
             </p>
           </CardContent>
         </Card>
@@ -206,23 +298,34 @@ const CashRegisterInterface = () => {
     <div className="h-full flex flex-col lg:flex-row gap-6">
       {/* Section Gauche - Recherche et Liste */}
       <div className="flex-1 space-y-6">
-        {/* Info session */}
-        {activeSession && (
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Session active</p>
-                  <p className="font-medium">{activeSession.numero_session}</p>
-                </div>
+        {/* Sélecteur de session */}
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex-1 min-w-[200px]">
+                <Label className="text-sm font-medium mb-1 block">Session de caisse</Label>
+                <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner une session" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mySessions.map(session => (
+                      <SelectItem key={session.id} value={session.id}>
+                        {session.numero_session} - {session.caisse?.nom_caisse || 'Caisse'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {activeSession && (
                 <Badge variant="outline" className="text-green-600 border-green-600">
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Ouverte
                 </Badge>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Recherche */}
         <Card>
