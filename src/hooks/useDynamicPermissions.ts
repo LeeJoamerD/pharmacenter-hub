@@ -35,25 +35,31 @@ export const useDynamicPermissions = (): UserPermissions => {
   const { currentUser } = useTenant();
   const { useTenantQueryWithCache } = useTenantQuery();
 
-  // Récupérer les rôles depuis la base de données
+  // Récupérer les rôles depuis la base de données (table globale)
   const { data: roles = [] } = useTenantQueryWithCache(
     ['roles'], 
     'roles', 
-    '*'
+    '*',
+    undefined,
+    { tenantScoped: false }
   );
 
-  // Récupérer les permissions depuis la base de données
+  // Récupérer les permissions depuis la base de données (table globale)
   const { data: permissions = [] } = useTenantQueryWithCache(
     ['permissions'], 
     'permissions', 
-    '*'
+    '*',
+    undefined,
+    { tenantScoped: false }
   );
 
-  // Récupérer les associations rôles-permissions
+  // Récupérer les associations rôles-permissions (table globale)
   const { data: rolePermissions = [] } = useTenantQueryWithCache(
     ['role-permissions'], 
     'roles_permissions', 
-    '*'
+    '*',
+    undefined,
+    { tenantScoped: false }
   );
 
   const userRole = currentUser?.role || 'Vendeur';
