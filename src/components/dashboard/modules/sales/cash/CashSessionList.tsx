@@ -186,7 +186,7 @@ const CashSessionList = ({ sessions, onSelectSession, onViewReport }: CashSessio
                   <div className="md:col-span-2 lg:col-span-3">
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       <User className="h-3 w-3" />
-                      Agent: {session.caissier_id} - En cours
+                      Agent: {getAgentFullName(session)} - En cours
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Ouverte depuis {Math.round((new Date().getTime() - new Date(session.date_ouverture).getTime()) / (1000 * 60 * 60))}h
