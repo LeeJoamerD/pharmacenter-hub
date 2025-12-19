@@ -109,18 +109,27 @@ export const useUpdateRolePermissions = () => {
 
       if (fetchError) throw fetchError;
 
-      // Calculer les permissions à ajouter et supprimer
-      const currentPermissionIds = (currentPermissions || [])
+      // Récupérer TOUTES les permissions existantes (actives ou non)
+      const allExistingPermissionIds = (currentPermissions || [])
+        .map((rp: RolePermission) => rp.permission_id);
+
+      // Récupérer seulement les permissions actuellement actives
+      const currentActivePermissionIds = (currentPermissions || [])
         .filter((rp: RolePermission) => rp.accorde)
         .map((rp: RolePermission) => rp.permission_id);
 
-      const toAdd = permissionIds.filter(id => !currentPermissionIds.includes(id));
-      const toRemove = currentPermissionIds.filter((id: string) => !permissionIds.includes(id));
+      // Permissions VRAIMENT nouvelles (n'existent pas du tout dans la table)
+      const toAdd = permissionIds.filter(id => !allExistingPermissionIds.includes(id));
+
+      // Permissions à activer (existent déjà mais sont désactivées)
       const toActivate = permissionIds.filter(id => {
         const existingPerm = (currentPermissions || [])
           .find((rp: RolePermission) => rp.permission_id === id);
         return existingPerm && !existingPerm.accorde;
       });
+
+      // Permissions à désactiver (actives mais retirées de la sélection)
+      const toRemove = currentActivePermissionIds.filter((id: string) => !permissionIds.includes(id));
 
       const results = [];
 
