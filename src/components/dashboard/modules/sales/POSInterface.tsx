@@ -1,11 +1,12 @@
 import React from 'react';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShoppingCart, User, CreditCard, AlertCircle, Search, Gift, PackageX, FileText, TrendingUp, Banknote, Loader2 } from 'lucide-react';
+import { useDynamicPermissions } from '@/hooks/useDynamicPermissions';
 import ProductSearch from './pos/ProductSearch';
 import ShoppingCartComponent from './pos/ShoppingCartComponent';
 import CustomerSelection from './pos/CustomerSelection';
@@ -63,6 +64,10 @@ const POSInterface = () => {
   // Paramètre de séparation Vente/Caisse
   const separateSaleAndCash = salesSettings.general.separateSaleAndCash;
   
+  // Vérification permission encaissement
+  const { canAccess } = useDynamicPermissions();
+  const canCashier = canAccess('sales.cashier');
+  
   // Hook principal POS (version optimisée sans fetch massif)
   const { 
     searchByBarcode,
@@ -81,8 +86,19 @@ const POSInterface = () => {
   const { calculatePoints, addPoints } = useLoyaltyProgram();
   const { recordTransaction } = usePOSAnalytics();
 
-  // États locaux
-  const [activeTab, setActiveTab] = useState('vente');
+  // États locaux - Définir l'onglet par défaut selon le mode
+  const [activeTab, setActiveTab] = useState(() => 
+    separateSaleAndCash ? 'vente-seule' : 'vente'
+  );
+  
+  // Synchroniser l'onglet actif quand le mode change
+  useEffect(() => {
+    if (separateSaleAndCash && activeTab === 'vente') {
+      setActiveTab('vente-seule');
+    } else if (!separateSaleAndCash && (activeTab === 'vente-seule' || activeTab === 'encaissement')) {
+      setActiveTab('vente');
+    }
+  }, [separateSaleAndCash]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<Customer>({ type: 'ordinaire' });
   const [showPayment, setShowPayment] = useState(false);
@@ -496,10 +512,12 @@ const POSInterface = () => {
               <ShoppingCart className="h-4 w-4 mr-2" />
               Vente
             </TabsTrigger>
-            <TabsTrigger value="encaissement">
-              <Banknote className="h-4 w-4 mr-2" />
-              Encaissement
-            </TabsTrigger>
+            {canCashier && (
+              <TabsTrigger value="encaissement">
+                <Banknote className="h-4 w-4 mr-2" />
+                Encaissement
+              </TabsTrigger>
+            )}
           </>
         )}
         <TabsTrigger value="retours">
