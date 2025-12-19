@@ -109,16 +109,16 @@ const POSInterface = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [loyaltyRewardApplied, setLoyaltyRewardApplied] = useState<{ id: string; discount: number } | null>(null);
 
-  // Vérifier session caisse au montage
+  // Vérifier session caisse au montage (seulement en mode non-séparé)
   useEffect(() => {
-    if (!sessionLoading && !hasActiveSession) {
+    if (!sessionLoading && !hasActiveSession && !separateSaleAndCash) {
       toast({
         title: "Session Caisse Fermée",
         description: "Veuillez ouvrir une session de caisse pour effectuer des ventes.",
         variant: "destructive"
       });
     }
-  }, [sessionLoading, hasActiveSession, toast]);
+  }, [sessionLoading, hasActiveSession, separateSaleAndCash, toast]);
 
   // Ajouter un produit au panier avec vérification stock
   const addToCart = useCallback(async (product: any, quantity: number = 1) => {
@@ -462,8 +462,8 @@ const POSInterface = () => {
     toast
   ]);
 
-  // Alerte si pas de session
-  if (!sessionLoading && !hasActiveSession) {
+  // Alerte si pas de session (seulement en mode non-séparé, car SalesOnlyInterface gère sa propre logique)
+  if (!sessionLoading && !hasActiveSession && !separateSaleAndCash) {
     return (
       <div className="h-full flex items-center justify-center p-6">
         <Card className="max-w-md">
