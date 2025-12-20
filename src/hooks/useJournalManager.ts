@@ -3,7 +3,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
 
-type Journal = Database['public']['Tables']['accounting_journals']['Row'];
+// Utiliser journaux_comptables comme source unique de vérité
+type JournalRow = Database['public']['Tables']['journaux_comptables']['Row'];
+
+// Interface mappée pour compatibilité avec le reste du code
+export interface Journal {
+  id: string;
+  tenant_id: string;
+  code: string;
+  name: string;
+  type: string;
+  description?: string | null;
+  prefixe?: string | null;
+  sequence_courante?: number | null;
+  auto_generation: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 type EcritureInsert = Database['public']['Tables']['ecritures_comptables']['Insert'];
 type EcritureUpdate = Database['public']['Tables']['ecritures_comptables']['Update'];
 type LigneInsert = Database['public']['Tables']['lignes_ecriture']['Insert'];
@@ -96,20 +114,37 @@ export const useJournalManager = (): UseJournalManagerReturn => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // Charger les journaux
+  // Charger les journaux depuis journaux_comptables
   const loadJournals = async () => {
     try {
       setIsLoadingJournals(true);
       setError(null);
       
       const { data, error: err } = await supabase
-        .from('accounting_journals')
+        .from('journaux_comptables')
         .select('*')
         .eq('is_active', true)
-        .order('code');
+        .order('code_journal');
       
       if (err) throw err;
-      setJournals(data || []);
+      
+      // Mapper vers l'interface Journal
+      const mappedJournals: Journal[] = (data || []).map((j: JournalRow) => ({
+        id: j.id,
+        tenant_id: j.tenant_id,
+        code: j.code_journal,
+        name: j.libelle_journal,
+        type: j.type_journal,
+        description: j.description,
+        prefixe: j.prefixe,
+        sequence_courante: j.sequence_courante,
+        auto_generation: j.auto_generation || false,
+        is_active: j.is_active !== false,
+        created_at: j.created_at,
+        updated_at: j.updated_at
+      }));
+      
+      setJournals(mappedJournals);
     } catch (err) {
       const error = err as Error;
       setError(error);

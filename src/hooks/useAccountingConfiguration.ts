@@ -21,13 +21,16 @@ export interface AccountingGeneralConfig {
   updated_at: string;
 }
 
+// Interface unifiée pour les journaux - mappage depuis journaux_comptables
 export interface AccountingJournal {
   id: string;
   tenant_id: string;
-  code: string;
-  name: string;
-  type: string;
+  code: string;           // mappé depuis code_journal
+  name: string;           // mappé depuis libelle_journal
+  type: string;           // mappé depuis type_journal
   description?: string;
+  prefixe?: string;
+  sequence_courante?: number;
   auto_generation: boolean;
   is_active: boolean;
   created_at: string;
@@ -123,7 +126,7 @@ export const useAccountingConfiguration = () => {
     enabled: !!tenantId
   });
 
-  // Fetch journals
+  // Fetch journals from journaux_comptables (source unique de vérité)
   const {
     data: journals = [],
     isLoading: isLoadingJournals,
@@ -132,13 +135,28 @@ export const useAccountingConfiguration = () => {
     queryKey: ['accounting-journals', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('accounting_journals')
+        .from('journaux_comptables')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('code');
+        .order('code_journal');
       
       if (error) throw error;
-      return data;
+      
+      // Mapper les colonnes vers l'interface AccountingJournal
+      return (data || []).map((journal: any) => ({
+        id: journal.id,
+        tenant_id: journal.tenant_id,
+        code: journal.code_journal,
+        name: journal.libelle_journal,
+        type: journal.type_journal,
+        description: journal.description,
+        prefixe: journal.prefixe,
+        sequence_courante: journal.sequence_courante,
+        auto_generation: journal.auto_generation || false,
+        is_active: journal.is_active !== false,
+        created_at: journal.created_at,
+        updated_at: journal.updated_at
+      })) as AccountingJournal[];
     },
     enabled: !!tenantId
   });
@@ -281,18 +299,23 @@ export const useAccountingConfiguration = () => {
 
   const saveJournalMutation = useMutation({
     mutationFn: async (journal: Partial<AccountingJournal>) => {
-      const journalWithTenant = {
-        ...journal,
+      // Mapper vers les colonnes de journaux_comptables
+      const journalData = {
         tenant_id: tenantId,
-        code: journal.code || '',
-        name: journal.name || '',
-        type: journal.type || ''
+        code_journal: journal.code || '',
+        libelle_journal: journal.name || '',
+        type_journal: journal.type || '',
+        description: journal.description,
+        prefixe: journal.prefixe,
+        sequence_courante: journal.sequence_courante,
+        auto_generation: journal.auto_generation || false,
+        is_active: journal.is_active !== false
       };
       
       if (journal.id) {
         const { data, error } = await supabase
-          .from('accounting_journals')
-          .update(journalWithTenant)
+          .from('journaux_comptables')
+          .update(journalData)
           .eq('id', journal.id)
           .select()
           .single();
@@ -301,8 +324,8 @@ export const useAccountingConfiguration = () => {
         return data;
       } else {
         const { data, error } = await supabase
-          .from('accounting_journals')
-          .insert(journalWithTenant)
+          .from('journaux_comptables')
+          .insert(journalData)
           .select()
           .single();
         
@@ -330,7 +353,7 @@ export const useAccountingConfiguration = () => {
   const deleteJournalMutation = useMutation({
     mutationFn: async (journalId: string) => {
       const { error } = await supabase
-        .from('accounting_journals')
+        .from('journaux_comptables')
         .delete()
         .eq('id', journalId);
       
