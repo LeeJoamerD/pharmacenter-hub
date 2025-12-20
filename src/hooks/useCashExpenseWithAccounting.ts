@@ -13,16 +13,16 @@ export interface ExpenseCategory {
   accountLabel: string;
 }
 
-// Catégories de dépenses prédéfinies avec correspondance comptable
+// Catégories de dépenses prédéfinies avec correspondance comptable (comptes existants dans le plan comptable)
 export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  { id: 'fournitures', label: 'Fournitures de bureau', accountNumber: '6055', accountLabel: 'Fournitures de bureau et informatiques' },
+  { id: 'fournitures', label: 'Fournitures de bureau', accountNumber: '605', accountLabel: 'Autres achats' },
   { id: 'transport', label: 'Frais de transport', accountNumber: '611', accountLabel: 'Transports sur achats' },
-  { id: 'entretien', label: 'Petit matériel / Entretien', accountNumber: '6063', accountLabel: "Fournitures d'entretien et de petit équipement" },
-  { id: 'telecom', label: 'Téléphone / Internet', accountNumber: '6261', accountLabel: 'Frais de télécommunications' },
-  { id: 'poste', label: 'Frais postaux', accountNumber: '6262', accountLabel: 'Frais postaux' },
-  { id: 'energie', label: 'Eau / Électricité', accountNumber: '6061', accountLabel: 'Fournitures non stockables - Eau' },
-  { id: 'maintenance', label: 'Maintenance / Réparations', accountNumber: '6156', accountLabel: 'Maintenance' },
-  { id: 'divers', label: 'Autres charges', accountNumber: '658', accountLabel: 'Charges diverses de gestion courante' },
+  { id: 'entretien', label: 'Petit matériel / Entretien', accountNumber: '624', accountLabel: 'Entretien, réparations et maintenance' },
+  { id: 'telecom', label: 'Téléphone / Internet', accountNumber: '626', accountLabel: 'Frais postaux et de télécommunications' },
+  { id: 'poste', label: 'Frais postaux', accountNumber: '626', accountLabel: 'Frais postaux et de télécommunications' },
+  { id: 'energie', label: 'Eau / Électricité', accountNumber: '605', accountLabel: 'Autres achats' },
+  { id: 'maintenance', label: 'Maintenance / Réparations', accountNumber: '624', accountLabel: 'Entretien, réparations et maintenance' },
+  { id: 'divers', label: 'Autres charges', accountNumber: '65', accountLabel: 'Autres charges' },
 ];
 
 export interface CashExpenseData {
