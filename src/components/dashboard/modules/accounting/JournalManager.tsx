@@ -464,7 +464,7 @@ const JournalManager = () => {
                         <TableCell>{getStatusBadge(entry.statut)}</TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
-                            {entry.statut === 'brouillon' && (
+                            {entry.statut === 'Brouillon' && (
                               <>
                                 <Button 
                                   variant="ghost" 
@@ -486,7 +486,7 @@ const JournalManager = () => {
                                 </Button>
                               </>
                             )}
-                            {entry.statut === 'valide' && (
+                            {entry.statut === 'Validé' && (
                               <Button 
                                 variant="ghost" 
                                 size="sm"
@@ -517,7 +517,7 @@ const JournalManager = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold mb-2">
-                  {entries.filter(e => e.statut === 'brouillon').length}
+                  {entries.filter(e => e.statut === 'Brouillon').length}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Écritures en cours de saisie
@@ -534,7 +534,7 @@ const JournalManager = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold mb-2">
-                  {entries.filter(e => e.statut === 'valide').length}
+                  {entries.filter(e => e.statut === 'Validé').length}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Écritures validées aujourd'hui
@@ -551,7 +551,7 @@ const JournalManager = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold mb-2">
-                  {entries.filter(e => e.statut === 'verrouille').length}
+                  {entries.filter(e => e.statut === 'Verrouillé').length}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Écritures définitives
@@ -566,7 +566,7 @@ const JournalManager = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {entries.filter(e => e.statut === 'brouillon').map(entry => (
+                {entries.filter(e => e.statut === 'Brouillon').map(entry => (
                   <div key={entry.id} className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
                       <div className="font-medium">{entry.numero_piece} - {entry.libelle}</div>
@@ -597,7 +597,7 @@ const JournalManager = () => {
                     </div>
                   </div>
                 ))}
-                {entries.filter(e => e.statut === 'brouillon').length === 0 && (
+                {entries.filter(e => e.statut === 'Brouillon').length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     Aucune écriture en attente de validation
                   </div>
