@@ -24,8 +24,10 @@ import {
   Loader2,
   Receipt,
   ShoppingCart,
-  ShieldAlert
+  ShieldAlert,
+  PackageX
 } from 'lucide-react';
+import { ReturnExchangeModal } from '../../pos/ReturnExchangeModal';
 import { usePOSData } from '@/hooks/usePOSData';
 import { usePendingTransactions, PendingTransaction } from '@/hooks/usePendingTransactions';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
@@ -85,6 +87,7 @@ const CashRegisterInterface = () => {
   const [paymentMethod, setPaymentMethod] = useState<'Espèces' | 'Carte Bancaire' | 'Mobile Money'>('Espèces');
   const [amountReceived, setAmountReceived] = useState<number>(0);
   const [paymentReference, setPaymentReference] = useState('');
+  const [showReturnModal, setShowReturnModal] = useState(false);
 
   // Vérifier si l'utilisateur est admin/manager (peut encaisser sur toutes les sessions)
   const isAdminRole = useMemo(() => {
@@ -568,6 +571,17 @@ const CashRegisterInterface = () => {
                     </>
                   )}
                 </Button>
+
+                {/* Bouton Retour / Échange */}
+                <Button 
+                  size="sm" 
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => setShowReturnModal(true)}
+                >
+                  <PackageX className="h-4 w-4 mr-2" />
+                  Retour / Échange
+                </Button>
               </CardContent>
             </Card>
           </>
@@ -583,6 +597,12 @@ const CashRegisterInterface = () => {
           </Card>
         )}
       </div>
+
+      {/* Modal Retour / Échange */}
+      <ReturnExchangeModal
+        open={showReturnModal}
+        onOpenChange={setShowReturnModal}
+      />
     </div>
   );
 };
