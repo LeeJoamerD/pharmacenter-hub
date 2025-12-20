@@ -9,7 +9,7 @@ import { Home, ShoppingCart, Package, Calculator, BarChart,
   Settings, LogOut, Pill, Shield, Bot, MessageCircle, Users, Handshake, Tag, User, Lock, 
   Clipboard, ChartBar, RefreshCw, DollarSign, CreditCard, Receipt, Briefcase, Target, 
   Building, Banknote, Smartphone, Wrench, Map, Globe, Palette, Search, TrendingUp, 
-  Eye, GraduationCap, Folder, Paperclip, Zap, TestTube, Activity, Database } from 'lucide-react';
+  Eye, GraduationCap, Folder, Paperclip, Zap, TestTube, Activity, Database, Wallet } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PERMISSIONS, ROLES } from '@/types/permissions';
 
@@ -89,6 +89,7 @@ const AppSidebar = ({
       { name: 'Analytics', icon: ChartBar },
       { name: 'Crédit', icon: Briefcase },
       { name: 'Promotions', icon: Target },
+      { name: 'Dépenses', icon: Wallet },
       { name: 'Configuration', icon: Settings }
     ],
     comptabilite: [
