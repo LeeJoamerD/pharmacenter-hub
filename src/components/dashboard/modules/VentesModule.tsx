@@ -3,15 +3,14 @@ import SalesDashboard from './sales/SalesDashboard';
 import CashManagement from './sales/CashManagement';
 import POSInterface from './sales/POSInterface';
 import EncaissementDashboard from './sales/EncaissementDashboard';
-import TransactionHistory from './sales/TransactionHistory';
 import TransactionHistoryConnected from './sales/TransactionHistoryConnected';
-import ReturnsExchanges from './sales/ReturnsExchanges';
 import ReturnsExchangesConnected from './sales/ReturnsExchangesConnected';
 import InvoiceModuleConnected from './sales/InvoiceModuleConnected';
 import SalesAnalyticsConnected from './sales/SalesAnalyticsConnected';
 import { CreditManagerConnected } from './sales/CreditManagerConnected';
 import PromotionsManagerConnected from './sales/PromotionsManagerConnected';
 import SalesConfiguration from './sales/SalesConfiguration';
+import CashExpensesManager from './sales/CashExpensesManager';
 
 interface VentesModuleProps {
   activeSubModule: string;
@@ -40,6 +39,8 @@ const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
         return <PromotionsManagerConnected />;
       case 'configuration':
         return <SalesConfiguration />;
+      case 'dépenses':
+        return <CashExpensesManager />;
       default:
         return <SalesDashboard />;
     }
