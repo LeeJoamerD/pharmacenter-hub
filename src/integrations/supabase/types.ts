@@ -8689,31 +8689,43 @@ export type Database = {
       }
       journaux_comptables: {
         Row: {
+          auto_generation: boolean | null
           code_journal: string
           created_at: string
+          description: string | null
           id: string
           is_active: boolean | null
           libelle_journal: string
+          prefixe: string | null
+          sequence_courante: number | null
           tenant_id: string
           type_journal: string
           updated_at: string
         }
         Insert: {
+          auto_generation?: boolean | null
           code_journal: string
           created_at?: string
+          description?: string | null
           id?: string
           is_active?: boolean | null
           libelle_journal: string
+          prefixe?: string | null
+          sequence_courante?: number | null
           tenant_id: string
           type_journal: string
           updated_at?: string
         }
         Update: {
+          auto_generation?: boolean | null
           code_journal?: string
           created_at?: string
+          description?: string | null
           id?: string
           is_active?: boolean | null
           libelle_journal?: string
+          prefixe?: string | null
+          sequence_courante?: number | null
           tenant_id?: string
           type_journal?: string
           updated_at?: string
