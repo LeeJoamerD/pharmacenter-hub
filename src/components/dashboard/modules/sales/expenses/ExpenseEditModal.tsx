@@ -19,10 +19,10 @@ interface ExpenseEditModalProps {
   expense: CashExpense | null;
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: { montant: number; description: string; categorie: string }) => Promise<void>;
+  onSubmit: (data: { montant: number; description: string; motif: string }) => Promise<void>;
 }
 
-const EXPENSE_CATEGORIES = [
+const EXPENSE_MOTIFS = [
   { value: 'fournitures', label: 'Fournitures de bureau' },
   { value: 'entretien', label: 'Entretien et réparations' },
   { value: 'transport', label: 'Transport et déplacement' },
@@ -41,22 +41,22 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<{
     montant: number;
     description: string;
-    categorie: string;
+    motif: string;
   }>();
 
-  const selectedCategory = watch('categorie');
+  const selectedMotif = watch('motif');
 
   useEffect(() => {
     if (expense) {
       reset({
         montant: expense.montant,
         description: expense.description || '',
-        categorie: expense.categorie || 'divers'
+        motif: expense.motif || 'divers'
       });
     }
   }, [expense, reset]);
 
-  const handleFormSubmit = async (data: { montant: number; description: string; categorie: string }) => {
+  const handleFormSubmit = async (data: { montant: number; description: string; motif: string }) => {
     await onSubmit(data);
   };
 
@@ -91,18 +91,18 @@ const ExpenseEditModal: React.FC<ExpenseEditModalProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="categorie">Catégorie *</Label>
+            <Label htmlFor="motif">Motif *</Label>
             <Select
-              value={selectedCategory}
-              onValueChange={(value) => setValue('categorie', value)}
+              value={selectedMotif}
+              onValueChange={(value) => setValue('motif', value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Sélectionner une catégorie" />
+                <SelectValue placeholder="Sélectionner un motif" />
               </SelectTrigger>
               <SelectContent>
-                {EXPENSE_CATEGORIES.map(cat => (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
+                {EXPENSE_MOTIFS.map(m => (
+                  <SelectItem key={m.value} value={m.value}>
+                    {m.label}
                   </SelectItem>
                 ))}
               </SelectContent>

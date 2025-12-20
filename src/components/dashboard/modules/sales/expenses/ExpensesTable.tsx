@@ -27,16 +27,6 @@ interface ExpensesTableProps {
   onCancel: (expense: CashExpense) => void;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  fournitures: 'Fournitures de bureau',
-  entretien: 'Entretien et réparations',
-  transport: 'Transport et déplacement',
-  charges: 'Charges diverses',
-  salaires: 'Avances sur salaires',
-  impots: 'Impôts et taxes',
-  divers: 'Dépenses diverses'
-};
-
 const ExpensesTable: React.FC<ExpensesTableProps> = ({
   expenses,
   loading,
@@ -89,7 +79,7 @@ const ExpensesTable: React.FC<ExpensesTableProps> = ({
                 {renderSortButton('date_mouvement', 'Date')}
               </TableHead>
               <TableHead>Description</TableHead>
-              <TableHead>Catégorie</TableHead>
+              <TableHead>Motif</TableHead>
               <TableHead className="text-right">
                 {renderSortButton('montant', 'Montant')}
               </TableHead>
@@ -111,7 +101,10 @@ const ExpensesTable: React.FC<ExpensesTableProps> = ({
                   className={isCancelled ? 'opacity-60 bg-muted/30' : ''}
                 >
                   <TableCell className="font-medium">
-                    {format(new Date(expense.date_mouvement), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                    {expense.date_mouvement 
+                      ? format(new Date(expense.date_mouvement), 'dd/MM/yyyy HH:mm', { locale: fr })
+                      : '-'
+                    }
                   </TableCell>
                   <TableCell>
                     <div className="max-w-[200px] truncate" title={expense.description || '-'}>
@@ -125,7 +118,7 @@ const ExpensesTable: React.FC<ExpensesTableProps> = ({
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">
-                      {expense.categorie ? CATEGORY_LABELS[expense.categorie] || expense.categorie : 'Non catégorisé'}
+                      {expense.motif || 'Non spécifié'}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right font-mono">
