@@ -19781,7 +19781,12 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
-      generate_piece_number: { Args: { p_journal_id: string }; Returns: string }
+      generate_piece_number:
+        | { Args: { p_journal_id: string }; Returns: string }
+        | {
+            Args: { p_date_piece?: string; p_journal_id: string }
+            Returns: string
+          }
       generate_pos_invoice_number: {
         Args: { p_tenant_id: string }
         Returns: string
