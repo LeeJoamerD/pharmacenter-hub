@@ -82,12 +82,12 @@ export const useCashExpenseWithAccounting = () => {
       }
 
       // 3. Créer l'écriture comptable
-      // Trouver le journal de caisse (CAI)
+      // Trouver le journal de caisse (CA) dans journaux_comptables
       const { data: journal, error: journalError } = await supabase
-        .from('accounting_journals')
+        .from('journaux_comptables')
         .select('id')
         .eq('tenant_id', tenantId)
-        .eq('code', 'CAI')
+        .eq('code_journal', 'CA')
         .eq('is_active', true)
         .single();
 
