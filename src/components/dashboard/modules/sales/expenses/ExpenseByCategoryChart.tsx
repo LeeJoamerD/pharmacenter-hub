@@ -6,17 +6,6 @@ interface ExpenseByCategoryChartProps {
   data: Record<string, number>;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  fournitures: 'Fournitures',
-  entretien: 'Entretien',
-  transport: 'Transport',
-  charges: 'Charges diverses',
-  salaires: 'Salaires',
-  impots: 'Impôts',
-  divers: 'Divers',
-  'Non catégorisé': 'Non catégorisé'
-};
-
 const COLORS = [
   'hsl(var(--chart-1))',
   'hsl(var(--chart-2))',
@@ -30,9 +19,8 @@ const COLORS = [
 
 const ExpenseByCategoryChart: React.FC<ExpenseByCategoryChartProps> = ({ data }) => {
   const chartData = Object.entries(data).map(([key, value]) => ({
-    name: CATEGORY_LABELS[key] || key,
-    value,
-    originalKey: key
+    name: key,
+    value
   }));
 
   const total = chartData.reduce((sum, item) => sum + item.value, 0);
@@ -41,7 +29,7 @@ const ExpenseByCategoryChart: React.FC<ExpenseByCategoryChartProps> = ({ data })
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Répartition par catégorie</CardTitle>
+          <CardTitle>Répartition par motif</CardTitle>
           <CardDescription>Aucune donnée disponible</CardDescription>
         </CardHeader>
         <CardContent className="h-[300px] flex items-center justify-center text-muted-foreground">
@@ -54,7 +42,7 @@ const ExpenseByCategoryChart: React.FC<ExpenseByCategoryChartProps> = ({ data })
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Répartition par catégorie</CardTitle>
+        <CardTitle>Répartition par motif</CardTitle>
         <CardDescription>
           Total: {total.toLocaleString('fr-FR')} FCFA
         </CardDescription>

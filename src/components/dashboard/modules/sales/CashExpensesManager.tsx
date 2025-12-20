@@ -48,7 +48,7 @@ const CashExpensesManager = () => {
     setCancellingExpense(expense);
   };
 
-  const handleEditSubmit = async (data: { montant: number; description: string; categorie: string }) => {
+  const handleEditSubmit = async (data: { montant: number; description: string; motif: string }) => {
     if (!editingExpense) return;
     const success = await updateExpense(editingExpense.id, data);
     if (success) {
@@ -138,7 +138,7 @@ const CashExpensesManager = () => {
           <ExpenseStatisticsCards statistics={statistics} />
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ExpenseByCategoryChart data={statistics.byCategory} />
+            <ExpenseByCategoryChart data={statistics.byMotif} />
           </div>
         </TabsContent>
       </Tabs>

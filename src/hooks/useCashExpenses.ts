@@ -6,14 +6,15 @@ import { useToast } from '@/hooks/use-toast';
 
 export interface CashExpense {
   id: string;
-  session_id: string;
+  session_caisse_id: string;
   type_mouvement: string;
   montant: number;
+  motif: string;
   description: string | null;
   reference: string | null;
-  categorie: string | null;
+  notes: string | null;
   agent_id: string | null;
-  date_mouvement: string;
+  date_mouvement: string | null;
   tenant_id: string;
   est_annule: boolean | null;
   annule_par: string | null;
@@ -42,7 +43,7 @@ export interface CashExpense {
 export interface CashExpenseFilters {
   dateFrom?: string;
   dateTo?: string;
-  category?: string;
+  motif?: string;
   agentId?: string;
   sessionStatus?: 'open' | 'closed' | 'all';
   includesCancelled?: boolean;
@@ -112,7 +113,7 @@ export const useCashExpenses = () => {
       if (error) throw error;
 
       // Récupérer les sessions pour enrichir les données
-      const sessionIds = [...new Set((data || []).map(d => d.session_id).filter(Boolean))];
+      const sessionIds = [...new Set((data || []).map(d => d.session_caisse_id).filter(Boolean))];
       const { data: sessions } = await supabase
         .from('sessions_caisse')
         .select('id, caisse_id, agent_id, statut, date_ouverture, date_fermeture')
@@ -128,7 +129,7 @@ export const useCashExpenses = () => {
       // Mapper les données
       let mappedData: CashExpense[] = (data || []).map(expense => ({
         ...expense,
-        session: sessions?.find(s => s.id === expense.session_id),
+        session: sessions?.find(s => s.id === expense.session_caisse_id),
         agent: agents?.find(a => a.id === expense.agent_id)
       }));
 
@@ -154,13 +155,13 @@ export const useCashExpenses = () => {
 
       // Filtres additionnels
       if (filters.dateFrom) {
-        mappedData = mappedData.filter(exp => exp.date_mouvement >= filters.dateFrom!);
+        mappedData = mappedData.filter(exp => exp.date_mouvement && exp.date_mouvement >= filters.dateFrom!);
       }
       if (filters.dateTo) {
-        mappedData = mappedData.filter(exp => exp.date_mouvement <= filters.dateTo! + 'T23:59:59');
+        mappedData = mappedData.filter(exp => exp.date_mouvement && exp.date_mouvement <= filters.dateTo! + 'T23:59:59');
       }
-      if (filters.category) {
-        mappedData = mappedData.filter(exp => exp.categorie === filters.category);
+      if (filters.motif) {
+        mappedData = mappedData.filter(exp => exp.motif === filters.motif);
       }
       if (filters.agentId) {
         mappedData = mappedData.filter(exp => exp.agent_id === filters.agentId);
@@ -169,7 +170,8 @@ export const useCashExpenses = () => {
         const search = filters.search.toLowerCase();
         mappedData = mappedData.filter(exp => 
           exp.description?.toLowerCase().includes(search) ||
-          exp.reference?.toLowerCase().includes(search)
+          exp.reference?.toLowerCase().includes(search) ||
+          exp.motif?.toLowerCase().includes(search)
         );
       }
 
@@ -230,7 +232,7 @@ export const useCashExpenses = () => {
   }, [currentUserRole, currentPersonnelId]);
 
   // Mettre à jour une dépense
-  const updateExpense = async (id: string, data: { montant?: number; description?: string; categorie?: string }) => {
+  const updateExpense = async (id: string, data: { montant?: number; description?: string; motif?: string }) => {
     try {
       const { error } = await supabase
         .from('mouvements_caisse')
@@ -259,7 +261,7 @@ export const useCashExpenses = () => {
   };
 
   // Annuler une dépense (soft delete)
-  const cancelExpense = async (id: string, motif: string) => {
+  const cancelExpense = async (id: string, motifAnnulation: string) => {
     try {
       const { error } = await supabase
         .from('mouvements_caisse')
@@ -267,7 +269,7 @@ export const useCashExpenses = () => {
           est_annule: true,
           annule_par: currentPersonnelId,
           date_annulation: new Date().toISOString(),
-          motif_annulation: motif
+          motif_annulation: motifAnnulation
         })
         .eq('id', id)
         .eq('tenant_id', currentTenant?.id);
@@ -300,10 +302,10 @@ export const useCashExpenses = () => {
     const totalAmount = activeExpenses.reduce((sum, e) => sum + e.montant, 0);
     const cancelledAmount = cancelledExpenses.reduce((sum, e) => sum + e.montant, 0);
     
-    const byCategory: Record<string, number> = {};
+    const byMotif: Record<string, number> = {};
     activeExpenses.forEach(e => {
-      const cat = e.categorie || 'Non catégorisé';
-      byCategory[cat] = (byCategory[cat] || 0) + e.montant;
+      const cat = e.motif || 'Non catégorisé';
+      byMotif[cat] = (byMotif[cat] || 0) + e.montant;
     });
 
     return {
@@ -311,7 +313,7 @@ export const useCashExpenses = () => {
       cancelledCount: cancelledExpenses.length,
       totalAmount,
       cancelledAmount,
-      byCategory
+      byMotif
     };
   }, [expenses]);
 

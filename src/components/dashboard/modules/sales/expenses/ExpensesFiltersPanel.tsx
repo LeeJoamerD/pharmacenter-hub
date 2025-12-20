@@ -16,7 +16,7 @@ interface ExpensesFiltersPanelProps {
   currentUserRole: string | null;
 }
 
-const EXPENSE_CATEGORIES = [
+const EXPENSE_MOTIFS = [
   { value: 'fournitures', label: 'Fournitures de bureau' },
   { value: 'entretien', label: 'Entretien et réparations' },
   { value: 'transport', label: 'Transport et déplacement' },
@@ -60,7 +60,7 @@ const ExpensesFiltersPanel: React.FC<ExpensesFiltersPanelProps> = ({
     });
   };
 
-  const hasActiveFilters = filters.dateFrom || filters.dateTo || filters.category || 
+  const hasActiveFilters = filters.dateFrom || filters.dateTo || filters.motif || 
     filters.agentId || filters.search || filters.sessionStatus !== 'all' || filters.includesCancelled;
 
   return (
@@ -124,22 +124,22 @@ const ExpensesFiltersPanel: React.FC<ExpensesFiltersPanelProps> = ({
               </div>
 
               <div>
-                <Label htmlFor="category">Catégorie</Label>
+                <Label htmlFor="motif">Motif</Label>
                 <Select
-                  value={filters.category || 'all'}
+                  value={filters.motif || 'all'}
                   onValueChange={(value) => onFiltersChange({ 
                     ...filters, 
-                    category: value === 'all' ? undefined : value 
+                    motif: value === 'all' ? undefined : value 
                   })}
                 >
-                  <SelectTrigger id="category">
-                    <SelectValue placeholder="Toutes les catégories" />
+                  <SelectTrigger id="motif">
+                    <SelectValue placeholder="Tous les motifs" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Toutes les catégories</SelectItem>
-                    {EXPENSE_CATEGORIES.map(cat => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
+                    <SelectItem value="all">Tous les motifs</SelectItem>
+                    {EXPENSE_MOTIFS.map(m => (
+                      <SelectItem key={m.value} value={m.value}>
+                        {m.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
