@@ -25,8 +25,10 @@ import {
   Receipt,
   ShoppingCart,
   ShieldAlert,
-  PackageX
+  PackageX,
+  CircleDollarSign
 } from 'lucide-react';
+import { CashExpenseModal } from '../../sales/cash/CashExpenseModal';
 import { ReturnExchangeModal } from '../../pos/ReturnExchangeModal';
 import { usePOSData } from '@/hooks/usePOSData';
 import { usePendingTransactions, PendingTransaction } from '@/hooks/usePendingTransactions';
@@ -88,6 +90,8 @@ const CashRegisterInterface = () => {
   const [amountReceived, setAmountReceived] = useState<number>(0);
   const [paymentReference, setPaymentReference] = useState('');
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [currentCashBalance, setCurrentCashBalance] = useState(0);
 
   // Vérifier si l'utilisateur est admin/manager (peut encaisser sur toutes les sessions)
   const isAdminRole = useMemo(() => {
@@ -140,6 +144,42 @@ const CashRegisterInterface = () => {
 
     loadMySessions();
   }, [tenantId, currentUser?.id, isAdminRole]);
+
+  // Calculer le solde de caisse actuel
+  useEffect(() => {
+    const fetchCashBalance = async () => {
+      if (!activeSession) {
+        setCurrentCashBalance(0);
+        return;
+      }
+      
+      try {
+        // Récupérer la somme des mouvements pour la session
+        const { data, error } = await supabase
+          .from('mouvements_caisse')
+          .select('type_mouvement, montant')
+          .eq('session_caisse_id', activeSession.id);
+        
+        if (error) throw error;
+        
+        // Calculer le solde : fond initial + entrées - sorties
+        let balance = 0;
+        (data || []).forEach(m => {
+          if (['Entrée', 'Vente', 'Fond_initial'].includes(m.type_mouvement)) {
+            balance += m.montant;
+          } else if (['Sortie', 'Dépense', 'Remboursement'].includes(m.type_mouvement)) {
+            balance -= m.montant;
+          }
+        });
+        
+        setCurrentCashBalance(balance);
+      } catch (error) {
+        console.error('Erreur calcul solde:', error);
+      }
+    };
+    
+    fetchCashBalance();
+  }, [activeSession, pendingTransactions]); // Refresh when transactions change
 
   // Scanner de codes-barres pour rechercher une transaction
   useEffect(() => {
@@ -423,15 +463,26 @@ const CashRegisterInterface = () => {
           </CardContent>
         </Card>
 
-        {/* Bouton Retour / Échange - toujours visible */}
-        <Button 
-          variant="secondary"
-          className="w-full"
-          onClick={() => setShowReturnModal(true)}
-        >
-          <PackageX className="h-4 w-4 mr-2" />
-          Retour / Échange
-        </Button>
+        {/* Boutons Retour et Dépense - toujours visibles */}
+        <div className="flex gap-2">
+          <Button 
+            variant="secondary"
+            className="flex-1"
+            onClick={() => setShowReturnModal(true)}
+          >
+            <PackageX className="h-4 w-4 mr-2" />
+            Retour / Échange
+          </Button>
+          <Button 
+            variant="destructive"
+            className="flex-1"
+            onClick={() => setShowExpenseModal(true)}
+            disabled={!hasActiveSession}
+          >
+            <CircleDollarSign className="h-4 w-4 mr-2" />
+            Dépense
+          </Button>
+        </div>
       </div>
 
       {/* Section Droite - Détails et Paiement */}
@@ -602,6 +653,19 @@ const CashRegisterInterface = () => {
         open={showReturnModal}
         onOpenChange={setShowReturnModal}
       />
+
+      {/* Modal Dépense de caisse */}
+      {hasActiveSession && activeSession && (
+        <CashExpenseModal
+          open={showExpenseModal}
+          onOpenChange={setShowExpenseModal}
+          sessionId={activeSession.id}
+          currentBalance={currentCashBalance}
+          onExpenseRecorded={() => {
+            refetchPending();
+          }}
+        />
+      )}
     </div>
   );
 };
