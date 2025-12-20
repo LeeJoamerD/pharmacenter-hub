@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ShoppingCart, User, CreditCard, AlertCircle, Search, Gift, PackageX, FileText, TrendingUp, Banknote, Loader2 } from 'lucide-react';
+import { ShoppingCart, User, CreditCard, AlertCircle, Search, Gift, PackageX, FileText, TrendingUp, Banknote, Loader2, Receipt } from 'lucide-react';
+import { CashExpenseModal } from './cash/CashExpenseModal';
 import { useDynamicPermissions } from '@/hooks/useDynamicPermissions';
 import ProductSearch from './pos/ProductSearch';
 import ShoppingCartComponent from './pos/ShoppingCartComponent';
@@ -105,6 +106,7 @@ const POSInterface = () => {
   const [showSplitPayment, setShowSplitPayment] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [currentTransaction, setCurrentTransaction] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [loyaltyRewardApplied, setLoyaltyRewardApplied] = useState<{ id: string; discount: number } | null>(null);
@@ -703,6 +705,16 @@ const POSInterface = () => {
                   <PackageX className="h-4 w-4 mr-1" />
                   Retour
                 </Button>
+                <Button 
+                  size="sm" 
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => setShowExpenseModal(true)}
+                  disabled={!hasActiveSession}
+                >
+                  <Receipt className="h-4 w-4 mr-1" />
+                  Dépense
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -803,6 +815,21 @@ const POSInterface = () => {
           });
         }}
       />
+
+      {hasActiveSession && activeSession && (
+        <CashExpenseModal
+          open={showExpenseModal}
+          onOpenChange={setShowExpenseModal}
+          sessionId={activeSession.id}
+          currentBalance={activeSession.fond_caisse_ouverture + (activeSession.montant_total_ventes || 0)}
+          onExpenseRecorded={() => {
+            toast({
+              title: 'Dépense enregistrée',
+              description: 'Le mouvement de caisse et l\'écriture comptable ont été créés'
+            });
+          }}
+        />
+      )}
     </Tabs>
   );
 };
