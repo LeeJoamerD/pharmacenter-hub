@@ -10299,12 +10299,16 @@ export type Database = {
       mouvements_caisse: {
         Row: {
           agent_id: string | null
+          annule_par: string | null
           created_at: string
+          date_annulation: string | null
           date_mouvement: string | null
           description: string | null
+          est_annule: boolean | null
           id: string
           montant: number
           motif: string
+          motif_annulation: string | null
           notes: string | null
           reference: string | null
           reference_id: string | null
@@ -10316,12 +10320,16 @@ export type Database = {
         }
         Insert: {
           agent_id?: string | null
+          annule_par?: string | null
           created_at?: string
+          date_annulation?: string | null
           date_mouvement?: string | null
           description?: string | null
+          est_annule?: boolean | null
           id?: string
           montant: number
           motif: string
+          motif_annulation?: string | null
           notes?: string | null
           reference?: string | null
           reference_id?: string | null
@@ -10333,12 +10341,16 @@ export type Database = {
         }
         Update: {
           agent_id?: string | null
+          annule_par?: string | null
           created_at?: string
+          date_annulation?: string | null
           date_mouvement?: string | null
           description?: string | null
+          est_annule?: boolean | null
           id?: string
           montant?: number
           motif?: string
+          motif_annulation?: string | null
           notes?: string | null
           reference?: string | null
           reference_id?: string | null
@@ -10352,6 +10364,13 @@ export type Database = {
           {
             foreignKeyName: "mouvements_caisse_agent_id_fkey"
             columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_caisse_annule_par_fkey"
+            columns: ["annule_par"]
             isOneToOne: false
             referencedRelation: "personnel"
             referencedColumns: ["id"]
