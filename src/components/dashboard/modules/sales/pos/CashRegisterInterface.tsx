@@ -422,6 +422,16 @@ const CashRegisterInterface = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Bouton Retour / Échange - toujours visible */}
+        <Button 
+          variant="secondary"
+          className="w-full"
+          onClick={() => setShowReturnModal(true)}
+        >
+          <PackageX className="h-4 w-4 mr-2" />
+          Retour / Échange
+        </Button>
       </div>
 
       {/* Section Droite - Détails et Paiement */}
@@ -570,17 +580,6 @@ const CashRegisterInterface = () => {
                       Confirmer le Paiement
                     </>
                   )}
-                </Button>
-
-                {/* Bouton Retour / Échange */}
-                <Button 
-                  size="sm" 
-                  variant="secondary"
-                  className="w-full"
-                  onClick={() => setShowReturnModal(true)}
-                >
-                  <PackageX className="h-4 w-4 mr-2" />
-                  Retour / Échange
                 </Button>
               </CardContent>
             </Card>
