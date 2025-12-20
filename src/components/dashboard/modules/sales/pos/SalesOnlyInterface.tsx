@@ -17,8 +17,10 @@ import {
   AlertCircle, 
   Search, 
   Printer,
-  Loader2
+  Loader2,
+  FileText
 } from 'lucide-react';
+import { PrescriptionModal } from '../../pos/PrescriptionModal';
 import ProductSearch from './ProductSearch';
 import ShoppingCartComponent from './ShoppingCartComponent';
 import CustomerSelection from './CustomerSelection';
@@ -75,6 +77,7 @@ const SalesOnlyInterface = () => {
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
   const [openSessions, setOpenSessions] = useState<OpenSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
+  const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
 
   // Charger les sessions ouvertes
   useEffect(() => {
@@ -479,12 +482,35 @@ const SalesOnlyInterface = () => {
               )}
             </Button>
             
+            {/* Bouton Ordonnance */}
+            <Button 
+              size="sm" 
+              variant="secondary"
+              className="w-full"
+              onClick={() => setShowPrescriptionModal(true)}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Ordonnance
+            </Button>
+            
             <p className="text-xs text-muted-foreground text-center">
               La vente sera enregistrée en attente d'encaissement
             </p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal Ordonnance */}
+      <PrescriptionModal
+        open={showPrescriptionModal}
+        onOpenChange={setShowPrescriptionModal}
+        onPrescriptionSaved={(id) => {
+          toast({
+            title: 'Ordonnance enregistrée',
+            description: `ID: ${id}`
+          });
+        }}
+      />
     </div>
   );
 };
