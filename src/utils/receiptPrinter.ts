@@ -20,10 +20,6 @@ interface ReceiptData {
     montant_rendu: number;
     mode_paiement: string;
   };
-    montant_paye: number;
-    montant_rendu: number;
-    mode_paiement: string;
-  };
   lignes: Array<{
     produit: { libelle_produit: string };
     quantite: number;
