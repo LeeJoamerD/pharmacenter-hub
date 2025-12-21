@@ -9543,12 +9543,15 @@ export type Database = {
           created_at: string
           id: string
           lot_id: string | null
+          montant_centime_ligne: number | null
           montant_ligne_ttc: number
+          montant_tva_ligne: number | null
           prix_unitaire_ht: number
           prix_unitaire_ttc: number
           produit_id: string
           quantite: number
           remise_ligne: number | null
+          taux_centime_additionnel: number | null
           taux_tva: number | null
           tenant_id: string
           updated_at: string
@@ -9558,12 +9561,15 @@ export type Database = {
           created_at?: string
           id?: string
           lot_id?: string | null
+          montant_centime_ligne?: number | null
           montant_ligne_ttc: number
+          montant_tva_ligne?: number | null
           prix_unitaire_ht: number
           prix_unitaire_ttc: number
           produit_id: string
           quantite: number
           remise_ligne?: number | null
+          taux_centime_additionnel?: number | null
           taux_tva?: number | null
           tenant_id: string
           updated_at?: string
@@ -9573,12 +9579,15 @@ export type Database = {
           created_at?: string
           id?: string
           lot_id?: string | null
+          montant_centime_ligne?: number | null
           montant_ligne_ttc?: number
+          montant_tva_ligne?: number | null
           prix_unitaire_ht?: number
           prix_unitaire_ttc?: number
           produit_id?: string
           quantite?: number
           remise_ligne?: number | null
+          taux_centime_additionnel?: number | null
           taux_tva?: number | null
           tenant_id?: string
           updated_at?: string
@@ -18336,6 +18345,7 @@ export type Database = {
           metadata: Json | null
           mode_paiement: Database["public"]["Enums"]["mode_paiement"] | null
           mode_paiement_secondaire: string | null
+          montant_centime_additionnel: number | null
           montant_net: number
           montant_paiement_secondaire: number | null
           montant_part_assurance: number | null
@@ -18374,6 +18384,7 @@ export type Database = {
           metadata?: Json | null
           mode_paiement?: Database["public"]["Enums"]["mode_paiement"] | null
           mode_paiement_secondaire?: string | null
+          montant_centime_additionnel?: number | null
           montant_net?: number
           montant_paiement_secondaire?: number | null
           montant_part_assurance?: number | null
@@ -18412,6 +18423,7 @@ export type Database = {
           metadata?: Json | null
           mode_paiement?: Database["public"]["Enums"]["mode_paiement"] | null
           mode_paiement_secondaire?: string | null
+          montant_centime_additionnel?: number | null
           montant_net?: number
           montant_paiement_secondaire?: number | null
           montant_part_assurance?: number | null
