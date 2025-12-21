@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useStockSettings } from '@/hooks/useStockSettings';
+import { unifiedPricingService } from '@/services/UnifiedPricingService';
 
 export interface Reception {
   id: string;
@@ -198,6 +199,94 @@ export const useReceptions = () => {
           let shouldCreateNewLot = false;
           let existingLot = null;
 
+          // Récupérer la catégorie de tarification pour calculer les prix
+          let pricingData: {
+            prix_vente_ht: number | null;
+            taux_tva: number | null;
+            montant_tva: number | null;
+            taux_centime_additionnel: number | null;
+            montant_centime_additionnel: number | null;
+            prix_vente_ttc: number | null;
+          } = {
+            prix_vente_ht: null,
+            taux_tva: null,
+            montant_tva: null,
+            taux_centime_additionnel: null,
+            montant_centime_additionnel: null,
+            prix_vente_ttc: null
+          };
+
+          // Calculer les prix de vente si catégorie et prix d'achat disponibles
+          if (ligne.categorie_tarification_id && ligne.prix_achat_reel && ligne.prix_achat_reel > 0) {
+            // Récupérer les infos de la catégorie de tarification
+            // @ts-ignore - Ignorer les erreurs de typage Supabase
+            const { data: categorieData } = await supabase
+              .from('categorie_tarification')
+              .select('coefficient_prix_vente, taux_tva, taux_centime_additionnel')
+              .eq('id', ligne.categorie_tarification_id)
+              .single();
+
+            if (categorieData) {
+              // Récupérer les paramètres système pour l'arrondi
+              // @ts-ignore - Ignorer les erreurs de typage Supabase
+              const { data: parametres } = await supabase
+                .from('parametres_systeme')
+                .select('cle_parametre, valeur_parametre')
+                .eq('tenant_id', personnel.tenant_id)
+                .in('cle_parametre', ['stock_rounding_precision', 'taxRoundingMethod', 'default_currency']);
+
+              const paramsMap: Record<string, string> = {};
+              (parametres as any[])?.forEach((p: any) => { paramsMap[p.cle_parametre] = p.valeur_parametre; });
+
+              const roundingPrecision = parseFloat(paramsMap['stock_rounding_precision'] || '25');
+              const roundingMethod = (paramsMap['taxRoundingMethod'] || 'ceil') as 'ceil' | 'floor' | 'round' | 'none';
+              const currencyCode = paramsMap['default_currency'] || 'XAF';
+
+              // Calculer les prix via UnifiedPricingService
+              const pricingResult = unifiedPricingService.calculateSalePrice({
+                prixAchat: ligne.prix_achat_reel,
+                coefficientPrixVente: categorieData.coefficient_prix_vente || 1,
+                tauxTVA: categorieData.taux_tva || 0,
+                tauxCentimeAdditionnel: categorieData.taux_centime_additionnel || 0,
+                roundingPrecision,
+                roundingMethod,
+                currencyCode
+              });
+
+              pricingData = {
+                prix_vente_ht: pricingResult.prixVenteHT,
+                taux_tva: pricingResult.tauxTVA,
+                montant_tva: pricingResult.montantTVA,
+                taux_centime_additionnel: pricingResult.tauxCentimeAdditionnel,
+                montant_centime_additionnel: pricingResult.montantCentimeAdditionnel,
+                prix_vente_ttc: pricingResult.prixVenteTTC
+              };
+
+              console.log('💰 Prix calculés pour lot:', {
+                produit_id: ligne.produit_id,
+                prix_achat: ligne.prix_achat_reel,
+                coefficient: categorieData.coefficient_prix_vente,
+                ...pricingData
+              });
+
+              // Mettre à jour aussi la table produits avec ces prix
+              const { error: produitUpdateError } = await supabase
+                .from('produits')
+                .update({
+                  prix_vente_ht: pricingData.prix_vente_ht,
+                  prix_vente_ttc: pricingData.prix_vente_ttc,
+                  taux_tva: pricingData.taux_tva,
+                  taux_centime_additionnel: pricingData.taux_centime_additionnel,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', ligne.produit_id);
+
+              if (produitUpdateError) {
+                console.warn('⚠️ Erreur mise à jour prix produit:', produitUpdateError);
+              }
+            }
+          }
+
           if (stockSettings.oneLotPerReception) {
             // Mode "1 lot par réception" : toujours créer un nouveau lot
             shouldCreateNewLot = true;
@@ -216,15 +305,28 @@ export const useReceptions = () => {
           }
 
           if (!shouldCreateNewLot && existingLot) {
-            // Mettre à jour le lot existant avec emplacement et notes si fournis
+            // Mettre à jour le lot existant avec emplacement, notes et prix si fournis
+            const updateData: Record<string, any> = {
+              quantite_restante: existingLot.quantite_restante + ligne.quantite_acceptee,
+              updated_at: new Date().toISOString()
+            };
+            
+            if (ligne.emplacement) updateData.emplacement = ligne.emplacement;
+            if (ligne.commentaire) updateData.notes = ligne.commentaire;
+            
+            // Mettre à jour les prix si calculés
+            if (pricingData.prix_vente_ttc !== null) {
+              updateData.prix_vente_ht = pricingData.prix_vente_ht;
+              updateData.taux_tva = pricingData.taux_tva;
+              updateData.montant_tva = pricingData.montant_tva;
+              updateData.taux_centime_additionnel = pricingData.taux_centime_additionnel;
+              updateData.montant_centime_additionnel = pricingData.montant_centime_additionnel;
+              updateData.prix_vente_ttc = pricingData.prix_vente_ttc;
+            }
+
             const { error: updateError } = await supabase
               .from('lots')
-              .update({
-                quantite_restante: existingLot.quantite_restante + ligne.quantite_acceptee,
-                updated_at: new Date().toISOString(),
-                ...(ligne.emplacement && { emplacement: ligne.emplacement }),
-                ...(ligne.commentaire && { notes: ligne.commentaire })
-              })
+              .update(updateData)
               .eq('id', existingLot.id);
 
             if (updateError) throw updateError;
@@ -249,25 +351,37 @@ export const useReceptions = () => {
 
             if (mouvementError) throw mouvementError;
           } else {
-            // Créer un nouveau lot (mode par défaut ou mode "1 lot par réception")
+            // Créer un nouveau lot avec les prix calculés
+            const lotInsertData: Record<string, any> = {
+              tenant_id: personnel.tenant_id,
+              produit_id: ligne.produit_id,
+              numero_lot: ligne.numero_lot,
+              date_peremption: ligne.date_expiration || null,
+              quantite_initiale: ligne.quantite_acceptee,
+              quantite_restante: ligne.quantite_acceptee,
+              prix_achat_unitaire: ligne.prix_achat_reel || 0,
+              date_reception: dateReception,
+              fournisseur_id: receptionData.fournisseur_id,
+              reception_id: reception.id,
+              emplacement: ligne.emplacement || null,
+              notes: ligne.commentaire || null,
+              categorie_tarification_id: ligne.categorie_tarification_id || null
+            };
+
+            // Ajouter les prix calculés s'ils existent
+            if (pricingData.prix_vente_ttc !== null) {
+              lotInsertData.prix_vente_ht = pricingData.prix_vente_ht;
+              lotInsertData.taux_tva = pricingData.taux_tva;
+              lotInsertData.montant_tva = pricingData.montant_tva;
+              lotInsertData.taux_centime_additionnel = pricingData.taux_centime_additionnel;
+              lotInsertData.montant_centime_additionnel = pricingData.montant_centime_additionnel;
+              lotInsertData.prix_vente_ttc = pricingData.prix_vente_ttc;
+            }
+
+            // @ts-ignore - Ignorer les erreurs de typage Supabase pour Record<string, any>
             const { data: newLot, error: lotError } = await supabase
               .from('lots')
-              .insert({
-                tenant_id: personnel.tenant_id,
-                produit_id: ligne.produit_id,
-                numero_lot: ligne.numero_lot,
-                date_peremption: ligne.date_expiration || null,
-                quantite_initiale: ligne.quantite_acceptee,
-                quantite_restante: ligne.quantite_acceptee,
-                prix_achat_unitaire: ligne.prix_achat_reel || 0,
-                date_reception: dateReception,
-                // Ajout des colonnes complètes
-                fournisseur_id: receptionData.fournisseur_id,
-                reception_id: reception.id,
-                emplacement: ligne.emplacement || null,
-                notes: ligne.commentaire || null,
-                categorie_tarification_id: ligne.categorie_tarification_id || null
-              })
+              .insert(lotInsertData as any)
               .select()
               .single();
 
