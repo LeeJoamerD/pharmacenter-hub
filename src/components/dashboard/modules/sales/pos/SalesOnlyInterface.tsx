@@ -211,6 +211,30 @@ const SalesOnlyInterface = () => {
     return cart.reduce((total, item) => total + item.total, 0);
   }, [cart]);
 
+  // Calculer le total HT (somme des prix HT × quantité)
+  const calculateTotalHT = useCallback(() => {
+    return cart.reduce((total, item) => {
+      const priceHT = item.product.prix_vente_ht || item.product.price_ht || 0;
+      return total + (priceHT * item.quantity);
+    }, 0);
+  }, [cart]);
+
+  // Calculer le montant total TVA
+  const calculateTotalTVA = useCallback(() => {
+    return cart.reduce((total, item) => {
+      const tvaMontant = item.product.tva_montant || 0;
+      return total + (tvaMontant * item.quantity);
+    }, 0);
+  }, [cart]);
+
+  // Calculer le montant total Centime Additionnel
+  const calculateTotalCentime = useCallback(() => {
+    return cart.reduce((total, item) => {
+      const centimeMontant = item.product.centime_additionnel_montant || 0;
+      return total + (centimeMontant * item.quantity);
+    }, 0);
+  }, [cart]);
+
   const calculateDiscount = useCallback(() => {
     const subtotal = calculateSubtotal();
     return customer.discountRate ? (subtotal * customer.discountRate) / 100 : 0;
@@ -470,13 +494,39 @@ const SalesOnlyInterface = () => {
             
             <Separator />
             
-            {/* Totaux */}
+            {/* Totaux avec détail TVA et Centime */}
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Sous-total:</span>
+              {/* Total HT */}
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Total HT:</span>
+                <span>{formatAmount(calculateTotalHT())}</span>
+              </div>
+              
+              {/* TVA - afficher seulement si > 0 */}
+              {calculateTotalTVA() > 0 && (
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>TVA:</span>
+                  <span>{formatAmount(calculateTotalTVA())}</span>
+                </div>
+              )}
+              
+              {/* Centime Additionnel - afficher seulement si > 0 */}
+              {calculateTotalCentime() > 0 && (
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Centime Add.:</span>
+                  <span>{formatAmount(calculateTotalCentime())}</span>
+                </div>
+              )}
+              
+              <Separator className="my-1" />
+              
+              {/* Sous-total TTC */}
+              <div className="flex justify-between text-sm font-medium">
+                <span>Sous-total TTC:</span>
                 <span>{formatAmount(calculateSubtotal())}</span>
               </div>
               
+              {/* Remise */}
               {calculateDiscount() > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span>Remise ({customer.discountRate}%):</span>
@@ -484,8 +534,9 @@ const SalesOnlyInterface = () => {
                 </div>
               )}
               
-              <Separator />
+              <Separator className="my-1" />
               
+              {/* Total à payer */}
               <div className="flex justify-between font-bold text-lg">
                 <span>Total à payer:</span>
                 <span className="text-primary">{formatAmount(calculateTotal())}</span>

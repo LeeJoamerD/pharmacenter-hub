@@ -20107,12 +20107,16 @@ export type Database = {
           category: string
           centime_additionnel_montant: number
           code_cip: string
+          date_peremption: string
           dci: string
           id: string
           libelle_produit: string
+          lot_id: string
           name: string
+          numero_lot: string
           price: number
           price_ht: number
+          prix_achat_unitaire: number
           requires_prescription: boolean
           stock: number
           taux_centime_additionnel: number
@@ -20489,12 +20493,16 @@ export type Database = {
           category: string
           centime_additionnel_montant: number
           code_cip: string
+          date_peremption: string
           dci: string
           id: string
           libelle_produit: string
+          lot_id: string
           name: string
+          numero_lot: string
           price: number
           price_ht: number
+          prix_achat_unitaire: number
           requires_prescription: boolean
           stock: number
           taux_centime_additionnel: number
