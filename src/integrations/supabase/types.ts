@@ -9883,15 +9883,21 @@ export type Database = {
           emplacement: string | null
           fournisseur_id: string | null
           id: string
+          montant_centime_additionnel: number | null
+          montant_tva: number | null
           notes: string | null
           numero_lot: string
           prix_achat_unitaire: number | null
+          prix_vente_ht: number | null
           prix_vente_suggere: number | null
+          prix_vente_ttc: number | null
           produit_id: string
           quantite_initiale: number
           quantite_restante: number
           reception_id: string | null
           statut: string | null
+          taux_centime_additionnel: number | null
+          taux_tva: number | null
           tenant_id: string
           updated_at: string
         }
@@ -9904,15 +9910,21 @@ export type Database = {
           emplacement?: string | null
           fournisseur_id?: string | null
           id?: string
+          montant_centime_additionnel?: number | null
+          montant_tva?: number | null
           notes?: string | null
           numero_lot: string
           prix_achat_unitaire?: number | null
+          prix_vente_ht?: number | null
           prix_vente_suggere?: number | null
+          prix_vente_ttc?: number | null
           produit_id: string
           quantite_initiale: number
           quantite_restante: number
           reception_id?: string | null
           statut?: string | null
+          taux_centime_additionnel?: number | null
+          taux_tva?: number | null
           tenant_id: string
           updated_at?: string
         }
@@ -9925,15 +9937,21 @@ export type Database = {
           emplacement?: string | null
           fournisseur_id?: string | null
           id?: string
+          montant_centime_additionnel?: number | null
+          montant_tva?: number | null
           notes?: string | null
           numero_lot?: string
           prix_achat_unitaire?: number | null
+          prix_vente_ht?: number | null
           prix_vente_suggere?: number | null
+          prix_vente_ttc?: number | null
           produit_id?: string
           quantite_initiale?: number
           quantite_restante?: number
           reception_id?: string | null
           statut?: string | null
+          taux_centime_additionnel?: number | null
+          taux_tva?: number | null
           tenant_id?: string
           updated_at?: string
         }
