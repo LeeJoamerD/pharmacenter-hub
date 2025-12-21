@@ -70,6 +70,25 @@ export const usePOSData = () => {
     skipPayment: boolean = false
   ): Promise<VenteResult> => {
     try {
+      // 0. Vérification de stock AVANT de créer la vente
+      for (const item of transactionData.cart) {
+        const { data: lots, error: stockError } = await supabase
+          .from('lots')
+          .select('quantite_restante')
+          .eq('tenant_id', tenantId)
+          .eq('produit_id', item.product.id)
+          .gt('quantite_restante', 0);
+        
+        if (stockError) {
+          throw new Error(`Erreur vérification stock: ${stockError.message}`);
+        }
+        
+        const totalStock = (lots || []).reduce((sum, lot) => sum + lot.quantite_restante, 0);
+        if (totalStock < item.quantity) {
+          throw new Error(`Stock insuffisant pour "${item.product.name || item.product.libelle_produit}". Disponible: ${totalStock}, Demandé: ${item.quantity}`);
+        }
+      }
+
       // 1. Générer numéro de facture
       const numeroFacture = await generateInvoiceNumber(tenantId);
 

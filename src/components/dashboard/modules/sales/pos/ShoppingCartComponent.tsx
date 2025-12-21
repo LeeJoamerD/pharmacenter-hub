@@ -88,9 +88,11 @@ const ShoppingCartComponent = ({
                 <Input
                   type="number"
                   min="1"
+                  max={item.product.stock}
                   value={item.quantity}
                   onChange={(e) => {
-                    const quantity = parseInt(e.target.value) || 1;
+                    const inputQty = parseInt(e.target.value) || 1;
+                    const quantity = Math.min(inputQty, item.product.stock);
                     onUpdateQuantity(item.product.id, quantity);
                   }}
                   className="w-16 h-8 text-center"
