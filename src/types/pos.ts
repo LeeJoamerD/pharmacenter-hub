@@ -9,9 +9,20 @@ export interface POSProduct {
   libelle_produit: string;
   dci?: string;
   code_cip?: string;
+  
+  // Prix depuis la table produits (source de vérité)
+  prix_vente_ht: number;
+  prix_vente_ttc: number;
+  taux_tva: number;
+  tva_montant: number;
+  taux_centime_additionnel: number;
+  centime_additionnel_montant: number;
+  
+  // Alias pour compatibilité (à déprécier)
   price: number;
   price_ht: number;
   tva_rate: number;
+  
   stock: number;
   category: string;
   requiresPrescription: boolean;

@@ -49,23 +49,39 @@ export const usePOSProductsPaginated = (
         };
       }
 
-      // Transform RPC result to POSProduct format (using new column names from types)
+      // Transform RPC result to POSProduct format
       const totalCount = data[0]?.total_count || 0;
-      const products: POSProduct[] = data.map(row => ({
-        id: row.id,
-        tenant_id: row.tenant_id,
-        name: row.name || row.libelle_produit,
-        libelle_produit: row.libelle_produit,
-        dci: row.dci,
-        code_cip: row.code_cip,
-        price: Number(row.price),
-        price_ht: Number(row.price_ht),
-        tva_rate: Number(row.tva_rate),
-        stock: Number(row.stock),
-        category: row.category || 'Non catégorisé',
-        requiresPrescription: row.requires_prescription || false,
-        lots: [] // Lots chargés à la demande
-      }));
+      const products: POSProduct[] = data.map(row => {
+        const prixTTC = Number(row.price) || 0;
+        const prixHT = Number(row.price_ht) || 0;
+        // tva_rate contient le montant TVA, pas le taux - on calcule le taux si prixHT > 0
+        const tvaMontant = Number(row.tva_rate) || 0;
+        const tauxTVA = prixHT > 0 ? Math.round((tvaMontant / prixHT) * 100) : 0;
+        
+        return {
+          id: row.id,
+          tenant_id: row.tenant_id,
+          name: row.name || row.libelle_produit,
+          libelle_produit: row.libelle_produit,
+          dci: row.dci,
+          code_cip: row.code_cip,
+          // Prix depuis la table produits (source de vérité)
+          prix_vente_ht: prixHT,
+          prix_vente_ttc: prixTTC,
+          taux_tva: tauxTVA,
+          tva_montant: tvaMontant,
+          taux_centime_additionnel: 0, // Sera mis à jour par migration RPC
+          centime_additionnel_montant: 0,
+          // Alias pour compatibilité
+          price: prixTTC,
+          price_ht: prixHT,
+          tva_rate: tauxTVA,
+          stock: Number(row.stock),
+          category: row.category || 'Non catégorisé',
+          requiresPrescription: row.requires_prescription || false,
+          lots: [] // Lots chargés à la demande
+        };
+      });
 
       return {
         products,
