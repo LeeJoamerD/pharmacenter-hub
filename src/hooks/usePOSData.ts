@@ -9,6 +9,7 @@ import { POSProduct, TransactionData, VenteResult } from '@/types/pos';
 import { updateStockAfterSale } from '@/utils/stockUpdater';
 import { generateInvoiceNumber } from '@/utils/invoiceGenerator';
 import { generateSaleAccountingEntries, isAutoAccountingEnabled } from '@/services/AccountingEntriesService';
+import { unifiedPricingService } from '@/services/UnifiedPricingService';
 
 export const usePOSData = () => {
   const { tenantId, currentUser } = useTenant();
@@ -117,13 +118,13 @@ export const usePOSData = () => {
         const tauxTVA = product.taux_tva || 0;
         const tauxCentime = product.taux_centime_additionnel || 0;
         
-        // Si pas de prix HT et produit soumis à TVA, calculer
+        // Si pas de prix HT et produit soumis à TVA, utiliser le service centralisé pour calculer
         if (prixHT === 0 && prixTTC > 0 && tauxTVA > 0) {
-          // Calcul inverse : HT = TTC / (1 + TVA% + Centime%)
+          // Calcul inverse via le service centralisé
           const diviseur = 1 + (tauxTVA / 100) + (tauxCentime / 100);
-          prixHT = Math.round(prixTTC / diviseur);
-          tvaMontant = Math.round(prixHT * tauxTVA / 100);
-          centimeMontant = Math.round(prixHT * tauxCentime / 100);
+          prixHT = unifiedPricingService.roundForCurrency(prixTTC / diviseur);
+          tvaMontant = unifiedPricingService.roundForCurrency(prixHT * tauxTVA / 100);
+          centimeMontant = unifiedPricingService.roundForCurrency(tvaMontant * tauxCentime / 100);
         } else if (prixHT === 0 && prixTTC > 0) {
           // Produit exonéré de TVA : HT = TTC
           prixHT = prixTTC;
@@ -241,12 +242,12 @@ export const usePOSData = () => {
         const tauxTVA = product.taux_tva || 0;
         const tauxCentime = product.taux_centime_additionnel || 0;
         
-        // Si pas de prix HT et produit soumis à TVA, calculer
+        // Si pas de prix HT et produit soumis à TVA, utiliser le service centralisé pour calculer
         if (prixHT === 0 && prixTTC > 0 && tauxTVA > 0) {
           const diviseur = 1 + (tauxTVA / 100) + (tauxCentime / 100);
-          prixHT = Math.round(prixTTC / diviseur);
-          tvaMontant = Math.round(prixHT * tauxTVA / 100);
-          centimeMontant = Math.round(prixHT * tauxCentime / 100);
+          prixHT = unifiedPricingService.roundForCurrency(prixTTC / diviseur);
+          tvaMontant = unifiedPricingService.roundForCurrency(prixHT * tauxTVA / 100);
+          centimeMontant = unifiedPricingService.roundForCurrency(tvaMontant * tauxCentime / 100);
         } else if (prixHT === 0 && prixTTC > 0) {
           prixHT = prixTTC;
         }

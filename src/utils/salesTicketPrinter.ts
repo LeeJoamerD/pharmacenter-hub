@@ -1,6 +1,7 @@
 /**
  * Générateur de tickets de vente (mode séparé - sans encaissement)
  * Inclut un code-barres pour faciliter l'encaissement ultérieur
+ * Affiche le détail TVA et Centime Additionnel
  */
 import jsPDF from 'jspdf';
 // @ts-ignore - bwip-js types
@@ -10,6 +11,11 @@ interface SalesTicketData {
   vente: {
     numero_vente: string;
     date_vente: string;
+    montant_total_ht?: number;
+    montant_tva?: number;
+    taux_tva?: number;
+    montant_centime_additionnel?: number;
+    taux_centime_additionnel?: number;
     montant_total_ttc: number;
     montant_net: number;
     remise_globale: number;
@@ -17,8 +23,10 @@ interface SalesTicketData {
   lignes: Array<{
     produit: { libelle_produit: string };
     quantite: number;
+    prix_unitaire_ht?: number;
     prix_unitaire_ttc: number;
     montant_ligne_ttc: number;
+    taux_tva?: number;
   }>;
   pharmacyInfo: {
     name: string;
@@ -33,6 +41,11 @@ interface CashReceiptData {
   vente: {
     numero_vente: string;
     date_vente: string;
+    montant_total_ht?: number;
+    montant_tva?: number;
+    taux_tva?: number;
+    montant_centime_additionnel?: number;
+    taux_centime_additionnel?: number;
     montant_net: number;
     montant_paye: number;
     montant_rendu: number;
@@ -68,11 +81,12 @@ async function generateBarcodeBase64(text: string): Promise<string> {
 
 /**
  * Imprime un ticket de vente (sans encaissement)
+ * Affiche le détail HT, TVA, Centime Additionnel et TTC
  */
 export async function printSalesTicket(data: SalesTicketData): Promise<string> {
   const doc = new jsPDF({
     unit: 'mm',
-    format: [80, 250] // Ticket thermique 80mm, plus long pour le code-barres
+    format: [80, 270] // Ticket thermique 80mm, plus long pour les détails et code-barres
   });
 
   let y = 10;
@@ -158,20 +172,42 @@ export async function printSalesTicket(data: SalesTicketData): Promise<string> {
     y += 5;
   });
 
-  // Totaux
+  // Totaux détaillés
   doc.line(5, y, 75, y);
   y += 4;
   
-  doc.text(`Sous-total:`, 5, y);
+  // Sous-total HT
+  doc.text(`Sous-total HT:`, 5, y);
+  doc.text(`${(data.vente.montant_total_ht || 0).toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  y += 4;
+
+  // TVA détaillée
+  const tauxTva = data.vente.taux_tva || 18;
+  doc.text(`TVA (${tauxTva}%):`, 5, y);
+  doc.text(`${(data.vente.montant_tva || 0).toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  y += 4;
+
+  // Centime Additionnel détaillé (si présent)
+  if (data.vente.montant_centime_additionnel && data.vente.montant_centime_additionnel > 0) {
+    const tauxCentime = data.vente.taux_centime_additionnel || 5;
+    doc.text(`Centime Add. (${tauxCentime}%):`, 5, y);
+    doc.text(`${data.vente.montant_centime_additionnel.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+    y += 4;
+  }
+
+  // Sous-total TTC
+  doc.text(`Sous-total TTC:`, 5, y);
   doc.text(`${data.vente.montant_total_ttc.toLocaleString()} FCFA`, 75, y, { align: 'right' });
   y += 4;
 
+  // Remise (si présente)
   if (data.vente.remise_globale > 0) {
     doc.text(`Remise:`, 5, y);
     doc.text(`-${data.vente.remise_globale.toLocaleString()} FCFA`, 75, y, { align: 'right' });
     y += 4;
   }
 
+  // Total à payer
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text(`À PAYER:`, 5, y);
@@ -217,11 +253,12 @@ export async function printSalesTicket(data: SalesTicketData): Promise<string> {
 
 /**
  * Imprime un reçu de caisse (après encaissement)
+ * Affiche le détail HT, TVA, Centime Additionnel si disponible
  */
 export async function printCashReceipt(data: CashReceiptData): Promise<string> {
   const doc = new jsPDF({
     unit: 'mm',
-    format: [80, 120] // Ticket court pour le reçu
+    format: [80, 140] // Ticket court pour le reçu, légèrement plus long pour les détails
   });
 
   let y = 10;
@@ -275,6 +312,29 @@ export async function printCashReceipt(data: CashReceiptData): Promise<string> {
   // Séparateur
   doc.line(5, y, 75, y);
   y += 5;
+
+  // Détails TVA si disponibles
+  if (data.vente.montant_total_ht && data.vente.montant_tva) {
+    doc.setFontSize(8);
+    doc.text(`Montant HT:`, 5, y);
+    doc.text(`${data.vente.montant_total_ht.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+    y += 4;
+
+    const tauxTva = data.vente.taux_tva || 18;
+    doc.text(`TVA (${tauxTva}%):`, 5, y);
+    doc.text(`${data.vente.montant_tva.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+    y += 4;
+
+    if (data.vente.montant_centime_additionnel && data.vente.montant_centime_additionnel > 0) {
+      const tauxCentime = data.vente.taux_centime_additionnel || 5;
+      doc.text(`Centime Add. (${tauxCentime}%):`, 5, y);
+      doc.text(`${data.vente.montant_centime_additionnel.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+      y += 4;
+    }
+
+    doc.line(5, y, 75, y);
+    y += 4;
+  }
 
   // Montants
   doc.setFontSize(10);

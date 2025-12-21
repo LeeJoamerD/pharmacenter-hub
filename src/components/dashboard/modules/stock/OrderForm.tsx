@@ -24,6 +24,9 @@ import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { usePriceCategories } from '@/hooks/usePriceCategories';
 import { supabase } from '@/integrations/supabase/client';
 import { OrderStatusValidationService } from '@/services/orderStatusValidationService';
+import { unifiedPricingService } from '@/services/UnifiedPricingService';
+import { useStockSettings } from '@/hooks/useStockSettings';
+import { useSalesSettings } from '@/hooks/useSalesSettings';
 
 interface OrderLine {
   id: string;
@@ -108,6 +111,12 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   // Use real suppliers
   const suppliers = propSuppliers;
   const { settings } = useSystemSettings();
+  const { settings: stockSettings } = useStockSettings();
+  const { settings: salesSettings } = useSalesSettings();
+  
+  // Paramètres d'arrondi depuis le service centralisé
+  const roundingPrecision = stockSettings?.rounding_precision || 25;
+  const roundingMethod = (salesSettings?.tax?.taxRoundingMethod as 'ceil' | 'floor' | 'round' | 'none') || 'ceil';
 
   // Recherche débouncée pour optimiser les performances
   const debouncedSearchTerm = useDebouncedValue(searchProduct, 300);
@@ -174,6 +183,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   };
 
   // Calcul des totaux en respectant les catégories de tarification de chaque produit
+  // Utilise le service centralisé pour l'arrondi de précision
   const calculateOrderTotals = () => {
     let sousTotalHT = 0;
     let totalTva = 0;
@@ -189,25 +199,21 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
       }
       
       // Centime seulement si le produit a un taux centime > 0
+      // Formule officielle : Centime = TVA × (Taux Centime / 100)
       if (line.tauxCentime && line.tauxCentime > 0) {
-        // Centime calculé sur la TVA de la ligne
         const tvaLine = line.tauxTva ? line.total * (line.tauxTva / 100) : 0;
         totalCentime += tvaLine * (line.tauxCentime / 100);
       }
     });
 
-    // Arrondir si devise sans décimales (FCFA)
-    if (isNoDecimalCurrency()) {
-      sousTotalHT = Math.round(sousTotalHT);
-      totalTva = Math.round(totalTva);
-      totalCentime = Math.round(totalCentime);
-    }
+    // Arrondir avec le service centralisé (précision et méthode configurées)
+    sousTotalHT = unifiedPricingService.roundToNearest(sousTotalHT, roundingPrecision, roundingMethod);
+    totalTva = unifiedPricingService.roundToNearest(totalTva, roundingPrecision, roundingMethod);
+    totalCentime = unifiedPricingService.roundToNearest(totalCentime, roundingPrecision, roundingMethod);
 
     // Calcul ASDI automatique : ((Sous-total HT + TVA) × 0.42) / 100
     let totalAsdi = ((sousTotalHT + totalTva) * 0.42) / 100;
-    if (isNoDecimalCurrency()) {
-      totalAsdi = Math.round(totalAsdi);
-    }
+    totalAsdi = unifiedPricingService.roundToNearest(totalAsdi, roundingPrecision, roundingMethod);
 
     // Total TTC = HT + TVA + Centime + ASDI
     const totalTTC = sousTotalHT + totalTva + totalCentime + totalAsdi;
