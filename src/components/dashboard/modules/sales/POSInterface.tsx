@@ -688,44 +688,48 @@ const POSInterface = () => {
                 Paiement Fractionné
               </Button>
 
-              <div className="flex gap-2">
-                <Button 
-                  size="sm" 
-                  variant="secondary"
-                  className="flex-1"
-                  onClick={() => setShowPrescriptionModal(true)}
-                >
-                  <FileText className="h-4 w-4 mr-1" />
-                  Ordonnance
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="secondary"
-                  className="flex-1"
-                  onClick={() => setShowReturnModal(true)}
-                >
-                  <PackageX className="h-4 w-4 mr-1" />
-                  Retour
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowDemandModal(true)}
-                >
-                  <ClipboardList className="h-4 w-4 mr-1" />
-                  Demandé
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="destructive"
-                  className="flex-1"
-                  onClick={() => setShowExpenseModal(true)}
-                  disabled={!hasActiveSession}
-                >
-                  <Receipt className="h-4 w-4 mr-1" />
-                  Dépense
-                </Button>
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => setShowPrescriptionModal(true)}
+                  >
+                    <FileText className="h-4 w-4 mr-1" />
+                    Ordonnance
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => setShowExpenseModal(true)}
+                    disabled={!hasActiveSession}
+                  >
+                    <Receipt className="h-4 w-4 mr-1" />
+                    Dépense
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => setShowReturnModal(true)}
+                  >
+                    <PackageX className="h-4 w-4 mr-1" />
+                    Retour
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setShowDemandModal(true)}
+                  >
+                    <ClipboardList className="h-4 w-4 mr-1" />
+                    Produit Demandé
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>

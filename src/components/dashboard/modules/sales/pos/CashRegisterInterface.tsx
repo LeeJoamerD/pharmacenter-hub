@@ -467,32 +467,36 @@ const CashRegisterInterface = () => {
         </Card>
 
         {/* Boutons Retour, Demandé et Dépense - toujours visibles */}
-        <div className="flex gap-2">
-          <Button 
-            variant="secondary"
-            className="flex-1"
-            onClick={() => setShowReturnModal(true)}
-          >
-            <PackageX className="h-4 w-4 mr-2" />
-            Retour
-          </Button>
-          <Button 
-            variant="outline"
-            className="flex-1"
-            onClick={() => setShowDemandModal(true)}
-          >
-            <ClipboardList className="h-4 w-4 mr-2" />
-            Demandé
-          </Button>
-          <Button 
-            variant="destructive"
-            className="flex-1"
-            onClick={() => setShowExpenseModal(true)}
-            disabled={!hasActiveSession}
-          >
-            <CircleDollarSign className="h-4 w-4 mr-2" />
-            Dépense
-          </Button>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Button 
+              variant="secondary"
+              className="flex-1"
+              onClick={() => setShowReturnModal(true)}
+            >
+              <PackageX className="h-4 w-4 mr-2" />
+              Retour
+            </Button>
+            <Button 
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowDemandModal(true)}
+            >
+              <ClipboardList className="h-4 w-4 mr-2" />
+              Produit Demandé
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              variant="destructive"
+              className="flex-1"
+              onClick={() => setShowExpenseModal(true)}
+              disabled={!hasActiveSession}
+            >
+              <CircleDollarSign className="h-4 w-4 mr-2" />
+              Dépense
+            </Button>
+          </div>
         </div>
       </div>
 
