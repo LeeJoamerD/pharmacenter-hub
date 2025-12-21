@@ -16,6 +16,9 @@ import { useOrderLines } from '@/hooks/useOrderLines';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { OrderPDFService } from '@/services/OrderPDFService';
 import { useToast } from '@/hooks/use-toast';
+import { unifiedPricingService } from '@/services/UnifiedPricingService';
+import { useStockSettings } from '@/hooks/useStockSettings';
+import { useSalesSettings } from '@/hooks/useSalesSettings';
 
 interface OrderDetailsProps {
   order: any;
@@ -25,6 +28,8 @@ interface OrderDetailsProps {
 const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
   const { orderLines, loading: loadingLines } = useOrderLines();
   const { settings } = useSystemSettings();
+  const { settings: stockSettings } = useStockSettings();
+  const { settings: salesSettings } = useSalesSettings();
   const { toast } = useToast();
   const [calculatedTotals, setCalculatedTotals] = useState({
     subtotalHT: 0,
@@ -34,9 +39,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
     totalQuantity: 0
   });
 
-  // Get dynamic rates from system settings
-  const tauxTVA = settings?.taux_tva ? parseFloat(settings.taux_tva.toString()) / 100 : 0.18;
-  const tauxCentimeAdditionnel = settings?.taux_centime_additionnel ? parseFloat(settings.taux_centime_additionnel.toString()) / 100 : 0.05;
+  // Get dynamic rates from system settings (en pourcentage)
+  const tauxTVA = settings?.taux_tva ? parseFloat(settings.taux_tva.toString()) : 18;
+  const tauxCentimeAdditionnel = settings?.taux_centime_additionnel ? parseFloat(settings.taux_centime_additionnel.toString()) : 5;
+  
+  // Paramètres d'arrondi depuis le service centralisé
+  const roundingPrecision = stockSettings?.rounding_precision || 25;
+  const roundingMethod = (salesSettings?.tax?.taxRoundingMethod as 'ceil' | 'floor' | 'round' | 'none') || 'ceil';
 
   useEffect(() => {
     // Order lines are automatically loaded, no need to fetch manually
@@ -51,20 +60,29 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
         return sum + (lineTotal - (lineTotal * remise));
       }, 0);
       
-      const centimeAdditionnel = subtotalHT * tauxCentimeAdditionnel;
-      const tva = (subtotalHT + centimeAdditionnel) * tauxTVA;
-      const totalTTC = subtotalHT + centimeAdditionnel + tva;
+      // Formules officielles via le service centralisé :
+      // TVA = HT × (Taux TVA / 100)
+      const tva = subtotalHT * (tauxTVA / 100);
+      // Centime Additionnel = TVA × (Taux Centime / 100)
+      const centimeAdditionnel = tva * (tauxCentimeAdditionnel / 100);
+      
+      // Appliquer l'arrondi de précision
+      const roundedSubtotalHT = unifiedPricingService.roundToNearest(subtotalHT, roundingPrecision, roundingMethod);
+      const roundedTva = unifiedPricingService.roundToNearest(tva, roundingPrecision, roundingMethod);
+      const roundedCentime = unifiedPricingService.roundToNearest(centimeAdditionnel, roundingPrecision, roundingMethod);
+      
+      const totalTTC = roundedSubtotalHT + roundedTva + roundedCentime;
       const totalQuantity = orderLines.reduce((sum, line) => sum + (line.quantite_commandee || 0), 0);
 
       setCalculatedTotals({
-        subtotalHT,
-        centimeAdditionnel,
-        tva,
+        subtotalHT: roundedSubtotalHT,
+        centimeAdditionnel: roundedCentime,
+        tva: roundedTva,
         totalTTC,
         totalQuantity
       });
     }
-  }, [orderLines, tauxTVA, tauxCentimeAdditionnel]);
+  }, [orderLines, tauxTVA, tauxCentimeAdditionnel, roundingPrecision, roundingMethod]);
 
   const getStatusColor = (statut: string) => {
     switch (statut) {

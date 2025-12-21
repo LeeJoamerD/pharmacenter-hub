@@ -1,5 +1,6 @@
 /**
  * Générateur de tickets de caisse
+ * Affiche le détail TVA et Centime Additionnel
  */
 import jsPDF from 'jspdf';
 
@@ -7,6 +8,11 @@ interface ReceiptData {
   vente: {
     numero_vente: string;
     date_vente: string;
+    montant_total_ht?: number;
+    montant_tva?: number;
+    taux_tva?: number;
+    montant_centime_additionnel?: number;
+    taux_centime_additionnel?: number;
     montant_total_ttc: number;
     montant_net: number;
     remise_globale: number;
@@ -14,11 +20,17 @@ interface ReceiptData {
     montant_rendu: number;
     mode_paiement: string;
   };
+    montant_paye: number;
+    montant_rendu: number;
+    mode_paiement: string;
+  };
   lignes: Array<{
     produit: { libelle_produit: string };
     quantite: number;
+    prix_unitaire_ht?: number;
     prix_unitaire_ttc: number;
     montant_ligne_ttc: number;
+    taux_tva?: number;
   }>;
   pharmacyInfo: {
     name: string;
@@ -31,7 +43,7 @@ interface ReceiptData {
 export async function printReceipt(data: ReceiptData): Promise<string> {
   const doc = new jsPDF({
     unit: 'mm',
-    format: [80, 200] // Ticket thermique 80mm
+    format: [80, 220] // Ticket thermique 80mm, plus long pour les détails
   });
 
   let y = 10;
@@ -102,26 +114,49 @@ export async function printReceipt(data: ReceiptData): Promise<string> {
     y += 5;
   });
 
-  // Totaux
+  // Totaux détaillés
   doc.line(5, y, 75, y);
   y += 4;
   
-  doc.text(`Sous-total:`, 5, y);
+  // Sous-total HT
+  doc.text(`Sous-total HT:`, 5, y);
+  doc.text(`${(data.vente.montant_total_ht || 0).toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  y += 4;
+
+  // TVA détaillée
+  const tauxTva = data.vente.taux_tva || 18;
+  doc.text(`TVA (${tauxTva}%):`, 5, y);
+  doc.text(`${(data.vente.montant_tva || 0).toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  y += 4;
+
+  // Centime Additionnel détaillé (si présent)
+  if (data.vente.montant_centime_additionnel && data.vente.montant_centime_additionnel > 0) {
+    const tauxCentime = data.vente.taux_centime_additionnel || 5;
+    doc.text(`Centime Add. (${tauxCentime}%):`, 5, y);
+    doc.text(`${data.vente.montant_centime_additionnel.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+    y += 4;
+  }
+
+  // Sous-total TTC
+  doc.text(`Sous-total TTC:`, 5, y);
   doc.text(`${data.vente.montant_total_ttc.toLocaleString()} FCFA`, 75, y, { align: 'right' });
   y += 4;
 
+  // Remise (si présente)
   if (data.vente.remise_globale > 0) {
     doc.text(`Remise:`, 5, y);
     doc.text(`-${data.vente.remise_globale.toLocaleString()} FCFA`, 75, y, { align: 'right' });
     y += 4;
   }
 
+  // Total à payer
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text(`TOTAL:`, 5, y);
+  doc.text(`NET A PAYER:`, 5, y);
   doc.text(`${data.vente.montant_net.toLocaleString()} FCFA`, 75, y, { align: 'right' });
   y += 6;
 
+  // Paiement
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.text(`Payé:`, 5, y);
