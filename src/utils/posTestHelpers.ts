@@ -10,6 +10,13 @@ import { POSProduct, CartItemWithLot, CustomerInfo } from '@/types/pos';
  */
 export function generateTestProduct(overrides?: Partial<POSProduct>): POSProduct {
   const id = Math.random().toString(36).substring(7);
+  const prixHT = Math.floor(Math.random() * 80) + 8;
+  const tauxTVA = 18;
+  const tauxCentime = 1;
+  const tvaMontant = Math.round(prixHT * tauxTVA / 100);
+  const centimeMontant = Math.round(prixHT * tauxCentime / 100);
+  const prixTTC = prixHT + tvaMontant + centimeMontant;
+  
   return {
     id,
     tenant_id: 'test-tenant',
@@ -17,9 +24,17 @@ export function generateTestProduct(overrides?: Partial<POSProduct>): POSProduct
     libelle_produit: `Produit Test ${id}`,
     dci: 'DCI Test',
     code_cip: `${Math.floor(Math.random() * 9000000000000) + 1000000000000}`,
-    price: Math.floor(Math.random() * 100) + 10,
-    price_ht: Math.floor(Math.random() * 80) + 8,
-    tva_rate: 20,
+    // Prix depuis la table produits (source de vérité)
+    prix_vente_ht: prixHT,
+    prix_vente_ttc: prixTTC,
+    taux_tva: tauxTVA,
+    tva_montant: tvaMontant,
+    taux_centime_additionnel: tauxCentime,
+    centime_additionnel_montant: centimeMontant,
+    // Alias compatibilité
+    price: prixTTC,
+    price_ht: prixHT,
+    tva_rate: tauxTVA,
     stock: Math.floor(Math.random() * 100) + 10,
     category: 'Test',
     requiresPrescription: false,

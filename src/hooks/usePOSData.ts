@@ -29,6 +29,12 @@ export const usePOSData = () => {
     if (!data || data.length === 0) return null;
 
     const product = data[0];
+    const prixTTC = Number(product.price) || 0;
+    const prixHT = Number(product.price_ht) || 0;
+    // tva_rate contient le montant TVA, pas le taux - on calcule le taux si prixHT > 0
+    const tvaMontant = Number(product.tva_rate) || 0;
+    const tauxTVA = prixHT > 0 ? Math.round((tvaMontant / prixHT) * 100) : 0;
+    
     return {
       id: product.id,
       tenant_id: product.tenant_id,
@@ -36,9 +42,17 @@ export const usePOSData = () => {
       libelle_produit: product.libelle_produit,
       dci: product.dci,
       code_cip: product.code_cip,
-      price: Number(product.price) || 0,
-      price_ht: Number(product.price_ht) || 0,
-      tva_rate: Number(product.tva_rate) || 0,
+      // Prix depuis la table produits (source de vérité)
+      prix_vente_ht: prixHT,
+      prix_vente_ttc: prixTTC,
+      taux_tva: tauxTVA,
+      tva_montant: tvaMontant,
+      taux_centime_additionnel: 0, // Sera mis à jour par migration RPC
+      centime_additionnel_montant: 0,
+      // Alias compatibilité
+      price: prixTTC,
+      price_ht: prixHT,
+      tva_rate: tauxTVA,
       stock: Number(product.stock) || 0,
       category: product.category || 'Autre',
       requiresPrescription: product.requires_prescription || false,
@@ -92,16 +106,45 @@ export const usePOSData = () => {
       // 1. Générer numéro de facture
       const numeroFacture = await generateInvoiceNumber(tenantId);
 
-      // 2. Calculer les montants
+      // 2. Calculer les montants en utilisant les données produits comme source de vérité
+      // Logique: Prioriser prix_vente_ht, tva_montant, centime_additionnel depuis produits
+      // Si manquants et produit soumis à TVA, calculer depuis le TTC
+      let montantHT = 0;
+      let montantTVA = 0;
+      let montantCentimeAdditionnel = 0;
+      
+      for (const item of transactionData.cart) {
+        const product = item.product;
+        let prixHT = product.prix_vente_ht || 0;
+        let tvaMontant = product.tva_montant || 0;
+        let centimeMontant = product.centime_additionnel_montant || 0;
+        const prixTTC = product.prix_vente_ttc || product.price || item.unitPrice;
+        const tauxTVA = product.taux_tva || 0;
+        const tauxCentime = product.taux_centime_additionnel || 0;
+        
+        // Si pas de prix HT et produit soumis à TVA, calculer
+        if (prixHT === 0 && prixTTC > 0 && tauxTVA > 0) {
+          // Calcul inverse : HT = TTC / (1 + TVA% + Centime%)
+          const diviseur = 1 + (tauxTVA / 100) + (tauxCentime / 100);
+          prixHT = Math.round(prixTTC / diviseur);
+          tvaMontant = Math.round(prixHT * tauxTVA / 100);
+          centimeMontant = Math.round(prixHT * tauxCentime / 100);
+        } else if (prixHT === 0 && prixTTC > 0) {
+          // Produit exonéré de TVA : HT = TTC
+          prixHT = prixTTC;
+        }
+        
+        montantHT += prixHT * item.quantity;
+        // Centime Additionnel uniquement sur produits soumis à TVA
+        if (tauxTVA > 0) {
+          montantTVA += tvaMontant * item.quantity;
+          montantCentimeAdditionnel += centimeMontant * item.quantity;
+        }
+      }
+      
       const subtotal = transactionData.cart.reduce((sum, item) => sum + item.total, 0);
       const remise = subtotal * (transactionData.customer.discount_rate / 100);
       const montantNet = subtotal - remise;
-      
-      const montantHT = transactionData.cart.reduce((sum, item) => {
-        const htItem = item.unitPrice / (1 + (item.product.tva_rate / 100));
-        return sum + (htItem * item.quantity);
-      }, 0);
-      const montantTVA = montantNet - montantHT;
 
       // 3. Créer client si nécessaire
       let clientId = transactionData.customer.id;
@@ -193,19 +236,35 @@ export const usePOSData = () => {
         }
       }
 
-      // 7. Insérer les lignes de vente
+      // 7. Insérer les lignes de vente avec calcul correct des prix
       const lignesVente = transactionData.cart.map(item => {
-        const htUnitaire = item.unitPrice / (1 + (item.product.tva_rate / 100));
+        const product = item.product;
+        let prixHT = product.prix_vente_ht || 0;
+        let tvaMontant = product.tva_montant || 0;
+        let centimeMontant = product.centime_additionnel_montant || 0;
+        const prixTTC = product.prix_vente_ttc || product.price || item.unitPrice;
+        const tauxTVA = product.taux_tva || 0;
+        const tauxCentime = product.taux_centime_additionnel || 0;
+        
+        // Si pas de prix HT et produit soumis à TVA, calculer
+        if (prixHT === 0 && prixTTC > 0 && tauxTVA > 0) {
+          const diviseur = 1 + (tauxTVA / 100) + (tauxCentime / 100);
+          prixHT = Math.round(prixTTC / diviseur);
+          tvaMontant = Math.round(prixHT * tauxTVA / 100);
+          centimeMontant = Math.round(prixHT * tauxCentime / 100);
+        } else if (prixHT === 0 && prixTTC > 0) {
+          prixHT = prixTTC;
+        }
         
         return {
           tenant_id: tenantId,
           vente_id: vente.id,
-          produit_id: item.product.id,
+          produit_id: product.id,
           lot_id: item.lot?.id,
           quantite: item.quantity,
-          prix_unitaire_ht: htUnitaire,
-          prix_unitaire_ttc: item.unitPrice,
-          taux_tva: item.product.tva_rate,
+          prix_unitaire_ht: prixHT,
+          prix_unitaire_ttc: prixTTC,
+          taux_tva: tauxTVA,
           remise_ligne: item.discount || 0,
           montant_ligne_ttc: item.total
         };
