@@ -35,6 +35,13 @@ export interface LotInfo {
   quantite_restante: number;
   date_peremption: Date;
   prix_achat_unitaire: number;
+  // Prix calculés depuis le lot (source de vérité pour la vente)
+  prix_vente_ht?: number;
+  prix_vente_ttc?: number;
+  taux_tva?: number;
+  montant_tva?: number;
+  taux_centime_additionnel?: number;
+  montant_centime_additionnel?: number;
 }
 
 export interface TransactionData {

@@ -249,6 +249,30 @@ const POSInterface = () => {
     return cart.reduce((total, item) => total + item.total, 0);
   }, [cart]);
 
+  // Calculer le total HT
+  const calculateTotalHT = useCallback(() => {
+    return cart.reduce((total, item) => {
+      const priceHT = item.product.prix_vente_ht || item.product.price_ht || 0;
+      return total + (priceHT * item.quantity);
+    }, 0);
+  }, [cart]);
+
+  // Calculer le montant total TVA
+  const calculateTotalTVA = useCallback(() => {
+    return cart.reduce((total, item) => {
+      const tvaMontant = item.product.tva_montant || 0;
+      return total + (tvaMontant * item.quantity);
+    }, 0);
+  }, [cart]);
+
+  // Calculer le montant total Centime Additionnel
+  const calculateTotalCentime = useCallback(() => {
+    return cart.reduce((total, item) => {
+      const centimeMontant = item.product.centime_additionnel_montant || 0;
+      return total + (centimeMontant * item.quantity);
+    }, 0);
+  }, [cart]);
+
   const calculateDiscount = useCallback(() => {
     const subtotal = calculateSubtotal();
     let discount = customer.discountRate ? (subtotal * customer.discountRate) / 100 : 0;

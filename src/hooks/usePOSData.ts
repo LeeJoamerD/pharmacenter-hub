@@ -8,6 +8,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { POSProduct, TransactionData, VenteResult } from '@/types/pos';
 import { updateStockAfterSale } from '@/utils/stockUpdater';
 import { generateInvoiceNumber } from '@/utils/invoiceGenerator';
+import { generateSaleAccountingEntries, isAutoAccountingEnabled } from '@/services/AccountingEntriesService';
 
 export const usePOSData = () => {
   const { tenantId, currentUser } = useTenant();
@@ -294,6 +295,25 @@ export const usePOSData = () => {
 
       if (mouvementError) {
         console.error('Erreur mouvements stock:', mouvementError);
+      }
+
+      // 10. Générer les écritures comptables automatiquement (si configuré)
+      try {
+        const autoAccountingEnabled = await isAutoAccountingEnabled(tenantId);
+        if (autoAccountingEnabled && !skipPayment) {
+          await generateSaleAccountingEntries({
+            venteId: vente.id,
+            numeroVente: numeroFacture,
+            tenantId,
+            montantHT,
+            montantTVA,
+            montantCentimeAdditionnel,
+            montantTTC: subtotal,
+            modePaiement: transactionData.payment.method
+          });
+        }
+      } catch (accountingError) {
+        console.error('Erreur écritures comptables (non bloquante):', accountingError);
       }
 
       return {
