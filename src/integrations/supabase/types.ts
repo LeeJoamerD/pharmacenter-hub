@@ -20087,6 +20087,7 @@ export type Database = {
         }
         Returns: {
           category: string
+          centime_additionnel_montant: number
           code_cip: string
           dci: string
           id: string
@@ -20096,9 +20097,11 @@ export type Database = {
           price_ht: number
           requires_prescription: boolean
           stock: number
+          taux_centime_additionnel: number
+          taux_tva: number
           tenant_id: string
           total_count: number
-          tva_rate: number
+          tva_montant: number
         }[]
       }
       get_product_lots: {
@@ -20466,6 +20469,7 @@ export type Database = {
         Args: { p_barcode: string; p_tenant_id: string }
         Returns: {
           category: string
+          centime_additionnel_montant: number
           code_cip: string
           dci: string
           id: string
@@ -20475,8 +20479,10 @@ export type Database = {
           price_ht: number
           requires_prescription: boolean
           stock: number
+          taux_centime_additionnel: number
+          taux_tva: number
           tenant_id: string
-          tva_rate: number
+          tva_montant: number
         }[]
       }
       start_ai_model_training: {
