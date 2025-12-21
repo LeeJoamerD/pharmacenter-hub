@@ -18,9 +18,11 @@ import {
   Search, 
   Printer,
   Loader2,
-  FileText
+  FileText,
+  ClipboardList
 } from 'lucide-react';
 import { PrescriptionModal } from '../../pos/PrescriptionModal';
+import ProductDemandModal from '../../pos/ProductDemandModal';
 import ProductSearch from './ProductSearch';
 import ShoppingCartComponent from './ShoppingCartComponent';
 import CustomerSelection from './CustomerSelection';
@@ -78,7 +80,7 @@ const SalesOnlyInterface = () => {
   const [openSessions, setOpenSessions] = useState<OpenSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
-
+  const [showDemandModal, setShowDemandModal] = useState(false);
   // Charger les sessions ouvertes
   useEffect(() => {
     const loadOpenSessions = async () => {
@@ -492,6 +494,17 @@ const SalesOnlyInterface = () => {
               <FileText className="h-4 w-4 mr-2" />
               Ordonnance
             </Button>
+
+            {/* Bouton Produit Demandé */}
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="w-full"
+              onClick={() => setShowDemandModal(true)}
+            >
+              <ClipboardList className="h-4 w-4 mr-2" />
+              Produit Demandé
+            </Button>
             
             <p className="text-xs text-muted-foreground text-center">
               La vente sera enregistrée en attente d'encaissement
@@ -510,6 +523,12 @@ const SalesOnlyInterface = () => {
             description: `ID: ${id}`
           });
         }}
+      />
+
+      {/* Modal Produit Demandé */}
+      <ProductDemandModal
+        open={showDemandModal}
+        onOpenChange={setShowDemandModal}
       />
     </div>
   );

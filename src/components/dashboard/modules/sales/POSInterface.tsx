@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ShoppingCart, User, CreditCard, AlertCircle, Search, Gift, PackageX, FileText, TrendingUp, Banknote, Loader2, Receipt } from 'lucide-react';
+import { ShoppingCart, User, CreditCard, AlertCircle, Search, Gift, PackageX, FileText, TrendingUp, Banknote, Loader2, Receipt, ClipboardList } from 'lucide-react';
 import { CashExpenseModal } from './cash/CashExpenseModal';
 import { useDynamicPermissions } from '@/hooks/useDynamicPermissions';
 import ProductSearch from './pos/ProductSearch';
@@ -19,6 +19,7 @@ import { LoyaltyPanel } from '../pos/LoyaltyPanel';
 import { PrescriptionModal } from '../pos/PrescriptionModal';
 import { SplitPaymentDialog } from '../pos/SplitPaymentDialog';
 import { POSAnalyticsDashboard } from '../pos/POSAnalyticsDashboard';
+import ProductDemandModal from '../pos/ProductDemandModal';
 import POSBarcodeActions from './pos/POSBarcodeActions';
 import { usePOSData } from '@/hooks/usePOSData';
 import { useCashSession } from '@/hooks/useCashSession';
@@ -107,6 +108,7 @@ const POSInterface = () => {
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showDemandModal, setShowDemandModal] = useState(false);
   const [currentTransaction, setCurrentTransaction] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [loyaltyRewardApplied, setLoyaltyRewardApplied] = useState<{ id: string; discount: number } | null>(null);
@@ -707,6 +709,15 @@ const POSInterface = () => {
                 </Button>
                 <Button 
                   size="sm" 
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowDemandModal(true)}
+                >
+                  <ClipboardList className="h-4 w-4 mr-1" />
+                  Demandé
+                </Button>
+                <Button 
+                  size="sm" 
                   variant="destructive"
                   className="flex-1"
                   onClick={() => setShowExpenseModal(true)}
@@ -830,6 +841,11 @@ const POSInterface = () => {
           }}
         />
       )}
+
+      <ProductDemandModal
+        open={showDemandModal}
+        onOpenChange={setShowDemandModal}
+      />
     </Tabs>
   );
 };

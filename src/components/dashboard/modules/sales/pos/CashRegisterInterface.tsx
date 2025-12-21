@@ -26,10 +26,12 @@ import {
   ShoppingCart,
   ShieldAlert,
   PackageX,
-  CircleDollarSign
+  CircleDollarSign,
+  ClipboardList
 } from 'lucide-react';
 import { CashExpenseModal } from '../../sales/cash/CashExpenseModal';
 import { ReturnExchangeModal } from '../../pos/ReturnExchangeModal';
+import ProductDemandModal from '../../pos/ProductDemandModal';
 import { usePOSData } from '@/hooks/usePOSData';
 import { usePendingTransactions, PendingTransaction } from '@/hooks/usePendingTransactions';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
@@ -91,6 +93,7 @@ const CashRegisterInterface = () => {
   const [paymentReference, setPaymentReference] = useState('');
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showDemandModal, setShowDemandModal] = useState(false);
   const [currentCashBalance, setCurrentCashBalance] = useState(0);
 
   // Vérifier si l'utilisateur est admin/manager (peut encaisser sur toutes les sessions)
@@ -463,7 +466,7 @@ const CashRegisterInterface = () => {
           </CardContent>
         </Card>
 
-        {/* Boutons Retour et Dépense - toujours visibles */}
+        {/* Boutons Retour, Demandé et Dépense - toujours visibles */}
         <div className="flex gap-2">
           <Button 
             variant="secondary"
@@ -471,7 +474,15 @@ const CashRegisterInterface = () => {
             onClick={() => setShowReturnModal(true)}
           >
             <PackageX className="h-4 w-4 mr-2" />
-            Retour / Échange
+            Retour
+          </Button>
+          <Button 
+            variant="outline"
+            className="flex-1"
+            onClick={() => setShowDemandModal(true)}
+          >
+            <ClipboardList className="h-4 w-4 mr-2" />
+            Demandé
           </Button>
           <Button 
             variant="destructive"
@@ -666,6 +677,12 @@ const CashRegisterInterface = () => {
           }}
         />
       )}
+
+      {/* Modal Produit Demandé */}
+      <ProductDemandModal
+        open={showDemandModal}
+        onOpenChange={setShowDemandModal}
+      />
     </div>
   );
 };
