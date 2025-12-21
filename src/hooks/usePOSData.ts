@@ -29,12 +29,6 @@ export const usePOSData = () => {
     if (!data || data.length === 0) return null;
 
     const product = data[0];
-    const prixTTC = Number(product.price) || 0;
-    const prixHT = Number(product.price_ht) || 0;
-    // tva_rate contient le montant TVA, pas le taux - on calcule le taux si prixHT > 0
-    const tvaMontant = Number(product.tva_rate) || 0;
-    const tauxTVA = prixHT > 0 ? Math.round((tvaMontant / prixHT) * 100) : 0;
-    
     return {
       id: product.id,
       tenant_id: product.tenant_id,
@@ -43,16 +37,16 @@ export const usePOSData = () => {
       dci: product.dci,
       code_cip: product.code_cip,
       // Prix depuis la table produits (source de vérité)
-      prix_vente_ht: prixHT,
-      prix_vente_ttc: prixTTC,
-      taux_tva: tauxTVA,
-      tva_montant: tvaMontant,
-      taux_centime_additionnel: 0, // Sera mis à jour par migration RPC
-      centime_additionnel_montant: 0,
+      prix_vente_ht: Number(product.price_ht) || 0,
+      prix_vente_ttc: Number(product.price) || 0,
+      taux_tva: Number(product.taux_tva) || 0,
+      tva_montant: Number(product.tva_montant) || 0,
+      taux_centime_additionnel: Number(product.taux_centime_additionnel) || 0,
+      centime_additionnel_montant: Number(product.centime_additionnel_montant) || 0,
       // Alias compatibilité
-      price: prixTTC,
-      price_ht: prixHT,
-      tva_rate: tauxTVA,
+      price: Number(product.price) || 0,
+      price_ht: Number(product.price_ht) || 0,
+      tva_rate: Number(product.taux_tva) || 0,
       stock: Number(product.stock) || 0,
       category: product.category || 'Autre',
       requiresPrescription: product.requires_prescription || false,
