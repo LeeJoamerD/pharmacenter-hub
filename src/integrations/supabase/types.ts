@@ -6617,6 +6617,85 @@ export type Database = {
           },
         ]
       }
+      demandes_produits_clients: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          derniere_demande: string | null
+          id: string
+          nombre_demandes: number
+          notes: string | null
+          produit_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          derniere_demande?: string | null
+          id?: string
+          nombre_demandes?: number
+          notes?: string | null
+          produit_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          derniere_demande?: string | null
+          id?: string
+          nombre_demandes?: number
+          notes?: string | null
+          produit_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demandes_produits_clients_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_produits_clients_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_produits_clients_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_produits_clients_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_produits_with_famille"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_produits_clients_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+          {
+            foreignKeyName: "demandes_produits_clients_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_categories: {
         Row: {
           color: string | null
