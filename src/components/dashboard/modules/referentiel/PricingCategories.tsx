@@ -6,15 +6,17 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
-import { Plus, Search, Edit, Trash2, FileText } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, FileText, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useQueryClient } from '@tanstack/react-query';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { calculateFinancials } from '@/lib/utils';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { useUnifiedPricingParams } from '@/hooks/useUnifiedPricingParams';
+import { unifiedPricingService } from '@/services/UnifiedPricingService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 interface PricingCategory {
@@ -31,7 +33,8 @@ interface PricingCategory {
 const PricingCategories = () => {
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
   const queryClient = useQueryClient();
-  const { formatNumber, getCurrencySymbol, getInputStep, isNoDecimalCurrency } = useCurrencyFormatting();
+  const { formatNumber, getCurrencySymbol, getInputStep, isNoDecimalCurrency, formatPercentage } = useCurrencyFormatting();
+  const { params: pricingParams } = useUnifiedPricingParams();
 
   // Fetch categories from database
   const { data: categories = [], isLoading, error } = useTenantQueryWithCache(
@@ -115,13 +118,14 @@ const PricingCategories = () => {
   const [editingCategory, setEditingCategory] = useState<PricingCategory | null>(null);
   const { toast } = useToast();
 
-  // --- ÉTATS POUR LE SIMULATEUR (AJOUTÉS) ---
+  // --- ÉTATS POUR LE SIMULATEUR ---
   const [simulationPurchasePrice, setSimulationPurchasePrice] = useState<number | string>('');
   const [selectedSimulationCategoryId, setSelectedSimulationCategoryId] = useState<string | null>(null);
   const [simulatedSalePriceHT, setSimulatedSalePriceHT] = useState(0);
   const [simulatedTVA, setSimulatedTVA] = useState(0);
   const [simulatedCentimeAdditionnel, setSimulatedCentimeAdditionnel] = useState(0);
   const [simulatedSalePriceTTC, setSimulatedSalePriceTTC] = useState(0);
+  const [simulatedArrondissement, setSimulatedArrondissement] = useState(0);
 
 
   const form = useForm<Partial<PricingCategory>>({
@@ -137,20 +141,29 @@ const PricingCategories = () => {
     category.libelle_categorie.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // --- LOGIQUE DE CALCUL POUR LE SIMULATEUR (CORRIGÉE AVEC UTILITAIRE) ---
+  // --- LOGIQUE DE CALCUL POUR LE SIMULATEUR (UTILISE LE SERVICE UNIFIÉ) ---
   useEffect(() => {
     if (simulationPurchasePrice && selectedSimulationCategoryId) {
       const category = categories.find(cat => cat.id === selectedSimulationCategoryId);
       const purchasePrice = typeof simulationPurchasePrice === 'string' ? parseFloat(simulationPurchasePrice) : simulationPurchasePrice;
 
-      if (category && !isNaN(purchasePrice)) {
-        const ht = purchasePrice * category.coefficient_prix_vente;
-        const { tva, centimeAdditionnel, totalTTC: ttc } = calculateFinancials(ht, category.taux_tva, category.taux_centime_additionnel);
+      if (category && !isNaN(purchasePrice) && purchasePrice > 0) {
+        // Utiliser le service de prix unifié avec tous les paramètres
+        const result = unifiedPricingService.calculateSalePrice({
+          prixAchat: purchasePrice,
+          coefficientPrixVente: category.coefficient_prix_vente,
+          tauxTVA: category.taux_tva,
+          tauxCentimeAdditionnel: category.taux_centime_additionnel,
+          roundingPrecision: pricingParams.roundingPrecision,
+          roundingMethod: pricingParams.taxRoundingMethod,
+          currencyCode: pricingParams.currencyCode
+        });
 
-        setSimulatedSalePriceHT(ht);
-        setSimulatedTVA(tva);
-        setSimulatedCentimeAdditionnel(centimeAdditionnel);
-        setSimulatedSalePriceTTC(ttc);
+        setSimulatedSalePriceHT(result.prixVenteHT);
+        setSimulatedTVA(result.montantTVA);
+        setSimulatedCentimeAdditionnel(result.montantCentimeAdditionnel);
+        setSimulatedSalePriceTTC(result.prixVenteTTC);
+        setSimulatedArrondissement(result.arrondissementApplique);
       }
     } else {
         // Reset values if inputs are cleared
@@ -158,8 +171,9 @@ const PricingCategories = () => {
         setSimulatedTVA(0);
         setSimulatedCentimeAdditionnel(0);
         setSimulatedSalePriceTTC(0);
+        setSimulatedArrondissement(0);
     }
-  }, [simulationPurchasePrice, selectedSimulationCategoryId, categories]);
+  }, [simulationPurchasePrice, selectedSimulationCategoryId, categories, pricingParams]);
 
 
   const handleAddCategory = () => {
@@ -371,16 +385,33 @@ const PricingCategories = () => {
             </Table>
           )}
 
-          {/* --- BLOC SIMULATEUR (DÉPLACÉ ET FONCTIONNEL) --- */}
+          {/* --- BLOC SIMULATEUR AVEC ARRONDI DE PRÉCISION --- */}
           <div className="mt-8">
             <Separator />
             <div className="space-y-4 mt-6">
-                <h3 className="text-lg font-medium">Calcul du Prix de Vente (Simulation)</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-medium">Calcul du Prix de Vente (Simulation)</h3>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        <p className="text-xs">
+                          <strong>Paramètres appliqués:</strong><br/>
+                          • Précision d'arrondi: {pricingParams.roundingPrecision}<br/>
+                          • Méthode: {pricingParams.taxRoundingMethod === 'ceil' ? 'Supérieur' : pricingParams.taxRoundingMethod === 'floor' ? 'Inférieur' : 'Au plus proche'}<br/>
+                          • Devise: {pricingParams.currencyCode}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <p className="text-sm text-muted-foreground">
                     Entrez un prix d'achat et sélectionnez une catégorie pour simuler le calcul du prix de vente.
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
-                    <div className="space-y-2 md:col-span-1 lg:col-span-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 items-end">
+                    <div className="space-y-2">
                         <Label htmlFor="simulation_purchase_price">Prix d'achat ({getCurrencySymbol()})</Label>
                         <Input
                             id="simulation_purchase_price"
@@ -392,7 +423,7 @@ const PricingCategories = () => {
                             className="w-full"
                         />
                     </div>
-                    <div className="space-y-2 md:col-span-2 lg:col-span-1">
+                    <div className="space-y-2">
                         <Label htmlFor="simulation_category">Catégorie</Label>
                         <Select
                             value={selectedSimulationCategoryId || ''}
@@ -411,20 +442,29 @@ const PricingCategories = () => {
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="simulated_sale_price_ht">Prix vente HT ({getCurrencySymbol()})</Label>
+                        <Label htmlFor="simulated_sale_price_ht">Prix HT ({getCurrencySymbol()})</Label>
                         <Input id="simulated_sale_price_ht" value={formatNumber(simulatedSalePriceHT)} readOnly className="w-full bg-muted" />
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="simulated_tva">Montant TVA ({getCurrencySymbol()})</Label>
+                        <Label htmlFor="simulated_tva">TVA ({getCurrencySymbol()})</Label>
                         <Input id="simulated_tva" value={formatNumber(simulatedTVA)} readOnly className="w-full bg-muted" />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="simulated_centime_additionnel">Centime add. ({getCurrencySymbol()})</Label>
+                        <Label htmlFor="simulated_centime_additionnel">Centime ({getCurrencySymbol()})</Label>
                         <Input id="simulated_centime_additionnel" value={formatNumber(simulatedCentimeAdditionnel)} readOnly className="w-full bg-muted" />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="simulated_sale_price_ttc" className="font-bold">Prix vente TTC ({getCurrencySymbol()})</Label>
-                        <Input id="simulated_sale_price_ttc" value={formatNumber(simulatedSalePriceTTC)} readOnly className="w-full bg-muted font-bold text-base" />
+                        <Label htmlFor="simulated_arrondissement">Arrondi ({getCurrencySymbol()})</Label>
+                        <Input 
+                          id="simulated_arrondissement" 
+                          value={simulatedArrondissement >= 0 ? `+${formatNumber(simulatedArrondissement)}` : formatNumber(simulatedArrondissement)} 
+                          readOnly 
+                          className={`w-full bg-muted ${simulatedArrondissement !== 0 ? 'text-amber-600 font-medium' : ''}`} 
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="simulated_sale_price_ttc" className="font-bold">Prix TTC ({getCurrencySymbol()})</Label>
+                        <Input id="simulated_sale_price_ttc" value={formatNumber(simulatedSalePriceTTC)} readOnly className="w-full bg-muted font-bold text-base border-primary" />
                     </div>
                 </div>
             </div>
