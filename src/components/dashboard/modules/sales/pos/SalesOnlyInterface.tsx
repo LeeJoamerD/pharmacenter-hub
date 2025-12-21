@@ -177,6 +177,21 @@ const SalesOnlyInterface = () => {
       setCart(prev => prev.filter(item => item.product.id !== productId));
       return;
     }
+    
+    // Vérifier le stock disponible
+    const item = cart.find(i => i.product.id === productId);
+    if (!item) return;
+    
+    const maxStock = item.product.stock;
+    if (quantity > maxStock) {
+      toast({
+        title: "Stock insuffisant",
+        description: `Maximum disponible: ${maxStock} unités`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setCart(prev =>
       prev.map(item =>
         item.product.id === productId
@@ -184,7 +199,7 @@ const SalesOnlyInterface = () => {
           : item
       )
     );
-  }, []);
+  }, [cart, toast]);
 
   const removeFromCart = useCallback((productId: number) => {
     setCart(prev => prev.filter(item => item.product.id !== productId));
@@ -221,6 +236,19 @@ const SalesOnlyInterface = () => {
     if (!selectedSession) {
       toast({ title: "Session invalide", variant: "destructive" });
       return;
+    }
+
+    // Vérification finale du stock avant validation
+    for (const item of cart) {
+      const hasStock = await checkStock(item.product.id, item.quantity);
+      if (!hasStock) {
+        toast({
+          title: "Stock insuffisant",
+          description: `Stock insuffisant pour "${item.product.name}". Veuillez ajuster la quantité.`,
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     setIsSaving(true);
