@@ -448,8 +448,8 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
                           value={order.statut}
                           onValueChange={(value) => handleStatusUpdate(order.id, value)}
                         >
-                          <SelectTrigger className="w-fit">
-                            <Badge className={`${getStatusColor(order.statut)} flex items-center gap-1`}>
+                          <SelectTrigger className="w-fit border-0 bg-transparent p-0 h-auto focus:ring-0 focus:ring-offset-0">
+                            <Badge className={`${getStatusColor(order.statut)} flex items-center gap-1 cursor-pointer`}>
                               {getStatusIcon(order.statut)}
                               {order.statut}
                             </Badge>
