@@ -42,7 +42,7 @@ export const EmployeeTable = ({ employees, onEdit, onDelete }: EmployeeTableProp
             <TableRow key={employee.id}>
               <TableCell className="font-medium">
                 <div className="flex items-center">
-                  <Users className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <Users className="mr-2 h-4 w-4 text-blue-500" />
                   {employee.noms}
                 </div>
               </TableCell>
