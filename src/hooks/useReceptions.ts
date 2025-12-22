@@ -196,6 +196,25 @@ export const useReceptions = () => {
 
         // Gérer les lots pour les quantités acceptées
         if (ligne.quantite_acceptee > 0) {
+          // Générer automatiquement le numéro de lot si paramètre activé et numéro vide
+          let numeroLot = ligne.numero_lot;
+          if (!numeroLot && stockSettings.auto_generate_lots) {
+            const productCode = ligne.produit_id.slice(0, 8).toUpperCase();
+            const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+            const sequence = Date.now().toString().slice(-4);
+            numeroLot = `LOT-${productCode}-${dateStr}-${sequence}`;
+            console.log('🔢 Numéro de lot auto-généré dans useReceptions:', numeroLot);
+          }
+
+          // Vérifier que le numéro est présent si obligatoire
+          if (!numeroLot && stockSettings.requireLotNumbers) {
+            throw new Error(`Numéro de lot requis pour le produit. Activez la génération automatique ou saisissez manuellement.`);
+          }
+
+          // Si toujours pas de numéro, utiliser un générique
+          if (!numeroLot) {
+            numeroLot = `LOT-${ligne.produit_id.slice(0, 4)}-${Date.now()}`;
+          }
           let shouldCreateNewLot = false;
           let existingLot = null;
 
@@ -291,13 +310,13 @@ export const useReceptions = () => {
             // Mode "1 lot par réception" : toujours créer un nouveau lot
             shouldCreateNewLot = true;
           } else {
-            // Mode par défaut : vérifier si le lot existe déjà
+            // Mode par défaut : vérifier si le lot existe déjà (utiliser numeroLot au lieu de ligne.numero_lot)
             const { data: lotData } = await supabase
               .from('lots')
               .select('id, quantite_restante')
               .eq('tenant_id', personnel.tenant_id)
               .eq('produit_id', ligne.produit_id)
-              .eq('numero_lot', ligne.numero_lot)
+              .eq('numero_lot', numeroLot)
               .maybeSingle();
             
             existingLot = lotData;
@@ -351,11 +370,11 @@ export const useReceptions = () => {
 
             if (mouvementError) throw mouvementError;
           } else {
-            // Créer un nouveau lot avec les prix calculés
+            // Créer un nouveau lot avec les prix calculés (utiliser numeroLot au lieu de ligne.numero_lot)
             const lotInsertData: Record<string, any> = {
               tenant_id: personnel.tenant_id,
               produit_id: ligne.produit_id,
-              numero_lot: ligne.numero_lot,
+              numero_lot: numeroLot,
               date_peremption: ligne.date_expiration || null,
               quantite_initiale: ligne.quantite_acceptee,
               quantite_restante: ligne.quantite_acceptee,
