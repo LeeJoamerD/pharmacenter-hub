@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Plus, Search, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 
@@ -209,7 +209,12 @@ const FamilyManager = () => {
             <TableBody>
                {filteredFamilies.map((family) => (
                  <TableRow key={family.id}>
-                   <TableCell>{family.libelle_famille}</TableCell>
+                   <TableCell>
+                     <div className="flex items-center gap-2">
+                       <Layers className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                       <span>{family.libelle_famille}</span>
+                     </div>
+                   </TableCell>
                    <TableCell>{family.description || '-'}</TableCell>
                    <TableCell className="text-right">
                     <Button
@@ -225,6 +230,7 @@ const FamilyManager = () => {
                       size="sm"
                       onClick={() => handleDeleteFamily(family.id)}
                       disabled={deleteMutation.isPending}
+                      className="text-red-500 hover:text-red-600"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

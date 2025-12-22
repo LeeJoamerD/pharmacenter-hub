@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Stethoscope } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useTenantQuery } from "@/hooks/useTenantQuery";
 import { useToast } from "@/hooks/use-toast";
@@ -225,7 +225,10 @@ export const TherapeuticClassManager: React.FC = () => {
                 filteredClasses.map((therapeuticClass: TherapeuticClass) => (
                   <TableRow key={therapeuticClass.id}>
                     <TableCell className="font-medium">
-                      {therapeuticClass.libelle_classe}
+                      <div className="flex items-center gap-2">
+                        <Stethoscope className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        <span>{therapeuticClass.libelle_classe}</span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">
@@ -249,6 +252,7 @@ export const TherapeuticClassManager: React.FC = () => {
                           size="sm"
                           onClick={() => handleDeleteClass(therapeuticClass.id)}
                           disabled={deleteMutation.isPending}
+                          className="text-red-500 hover:text-red-600"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

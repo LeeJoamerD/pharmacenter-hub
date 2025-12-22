@@ -356,7 +356,12 @@ const PricingCategories = () => {
                 ) : (
                   filteredCategories.map((category) => (
                     <TableRow key={category.id}>
-                      <TableCell className="font-medium">{category.libelle_categorie}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                          <span>{category.libelle_categorie}</span>
+                        </div>
+                      </TableCell>
                       <TableCell>{category.taux_tva?.toFixed(2)}%</TableCell>
                       <TableCell>{category.taux_centime_additionnel?.toFixed(2)}%</TableCell>
                       <TableCell>{category.coefficient_prix_vente?.toFixed(2)}</TableCell>
@@ -373,6 +378,7 @@ const PricingCategories = () => {
                             variant="outline"
                             size="icon"
                             onClick={() => handleDeleteCategory(category.id)}
+                            className="text-red-500 hover:text-red-600"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

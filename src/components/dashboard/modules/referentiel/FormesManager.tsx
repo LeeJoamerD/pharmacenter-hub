@@ -275,7 +275,12 @@ const FormesManager = () => {
                 ) : (
                   filteredFormes.map((forme) => (
                      <TableRow key={forme.id}>
-                       <TableCell className="font-medium">{forme.libelle_forme}</TableCell>
+                       <TableCell className="font-medium">
+                         <div className="flex items-center gap-2">
+                           <Pill className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                           <span>{forme.libelle_forme}</span>
+                         </div>
+                       </TableCell>
                        <TableCell className="text-muted-foreground">
                          {forme.description || 'Aucune description'}
                        </TableCell>
@@ -295,6 +300,7 @@ const FormesManager = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => handleDeleteForme(forme.id)}
+                            className="text-red-500 hover:text-red-600"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

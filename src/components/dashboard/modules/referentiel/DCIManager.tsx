@@ -313,7 +313,12 @@ const DCIManager = () => {
               ) : (
                 filteredDCIs.map((dci: DCI) => (
                   <TableRow key={dci.id}>
-                    <TableCell className="font-medium">{dci.nom_dci}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Pill className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        <span>{dci.nom_dci}</span>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge variant="secondary">{dci.classes_therapeutiques?.libelle_classe || '-'}</Badge>
                     </TableCell>
@@ -334,6 +339,7 @@ const DCIManager = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDeleteDCI(dci.id)}
+                          className="text-red-500 hover:text-red-600"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
