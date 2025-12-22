@@ -400,6 +400,25 @@ export const usePOSData = () => {
         console.error('Erreur création mouvement caisse:', mouvementError);
       }
 
+      // 4. Générer les écritures comptables automatiquement (si configuré)
+      try {
+        const autoAccountingEnabled = await isAutoAccountingEnabled(tenantId);
+        if (autoAccountingEnabled) {
+          await generateSaleAccountingEntries({
+            venteId,
+            numeroVente: vente.numero_vente,
+            tenantId,
+            montantHT: Number(vente.montant_total_ht) || 0,
+            montantTVA: Number(vente.montant_tva) || 0,
+            montantCentimeAdditionnel: 0, // Non stocké dans la vente, sera calculé si nécessaire
+            montantTTC: Number(vente.montant_total_ttc) || paymentData.amount_received,
+            modePaiement: paymentData.method
+          });
+        }
+      } catch (accountingError) {
+        console.error('Erreur écritures comptables (non bloquante):', accountingError);
+      }
+
       return { success: true };
 
     } catch (error: any) {
