@@ -40,20 +40,27 @@ export async function generateSaleAccountingEntries(data: VenteEcritureData): Pr
       montantHT,
       montantTVA,
       montantCentimeAdditionnel,
-      montantTTC
+      montantTTC,
+      modePaiement
     } = data;
+
+    // Déterminer le bon event_type selon le mode de paiement
+    // vente_comptant pour paiements immédiats, vente_client pour crédit
+    const eventType = modePaiement === 'Espèces' || modePaiement === 'Carte Bancaire' || modePaiement === 'Mobile Money' || modePaiement === 'Carte'
+      ? 'vente_comptant'
+      : 'vente_client';
 
     // Récupérer les comptes comptables par défaut pour les ventes
     const { data: defaultAccounts, error: accountsError } = await supabase
       .from('accounting_default_accounts')
       .select('*')
       .eq('tenant_id', tenantId)
-      .eq('event_type', 'vente')
+      .eq('event_type', eventType)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (accountsError || !defaultAccounts) {
-      console.log('⚠️ Pas de configuration comptable par défaut pour les ventes, écritures non générées');
+      console.log(`⚠️ Pas de configuration comptable par défaut pour ${eventType}, écritures non générées`);
       return false;
     }
 
@@ -64,7 +71,7 @@ export async function generateSaleAccountingEntries(data: VenteEcritureData): Pr
       .eq('tenant_id', tenantId)
       .eq('code', defaultAccounts.journal_code)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (journalError || !journal) {
       console.log('⚠️ Journal comptable non trouvé, écritures non générées');
@@ -77,7 +84,7 @@ export async function generateSaleAccountingEntries(data: VenteEcritureData): Pr
       .select('id')
       .eq('tenant_id', tenantId)
       .eq('statut', 'En cours')
-      .single();
+      .maybeSingle();
 
     if (exerciceError || !exercice) {
       console.log('⚠️ Aucun exercice comptable en cours, écritures non générées');
@@ -223,7 +230,7 @@ export async function isAutoAccountingEnabled(tenantId: string): Promise<boolean
       .from('accounting_general_config')
       .select('auto_calcul_tva')
       .eq('tenant_id', tenantId)
-      .single();
+      .maybeSingle();
 
     if (error || !data) {
       return false;
