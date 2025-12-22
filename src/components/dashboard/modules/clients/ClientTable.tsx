@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, User } from 'lucide-react';
 import { Client } from './types';
 
 interface ClientTableProps {
@@ -40,8 +40,11 @@ export const ClientTable = ({ clients, onEdit, onDelete }: ClientTableProps) => 
           <TableBody>
             {clients.map((client) => (
               <TableRow key={client.id}>
-                <TableCell className="font-medium">
+              <TableCell className="font-medium">
+                <div className="flex items-center">
+                  <User className="mr-2 h-4 w-4 text-blue-500" />
                   {client.nom_complet || 'N/A'}
+                </div>
                 </TableCell>
                 <TableCell>
                   <Badge variant={client.type_client === 'Ordinaire' ? 'default' : 'secondary'}>
@@ -74,6 +77,7 @@ export const ClientTable = ({ clients, onEdit, onDelete }: ClientTableProps) => 
                         variant="ghost"
                         size="sm"
                         onClick={() => onDelete(client.id)}
+                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
