@@ -3,13 +3,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Zap } from 'lucide-react';
 import { ExcelInventoryImportService } from '@/services/ExcelInventoryImportService';
 import type { InventoryParseResult, InventoryValidationResult } from '@/types/inventoryImport';
 import { useTenant } from '@/contexts/TenantContext';
+import { useStockSettings } from '@/hooks/useStockSettings';
 
 export const InventoryExcelImport = () => {
   const { tenantId } = useTenant();
+  const { settings: stockSettings } = useStockSettings();
   const [file, setFile] = useState<File | null>(null);
   const [parseResult, setParseResult] = useState<InventoryParseResult | null>(null);
   const [validationResult, setValidationResult] = useState<InventoryValidationResult | null>(null);
@@ -25,7 +27,10 @@ export const InventoryExcelImport = () => {
 
     try {
       toast.info('Lecture du fichier Excel...');
-      const result = await ExcelInventoryImportService.parseInventoryFile(selectedFile);
+      const result = await ExcelInventoryImportService.parseInventoryFile(selectedFile, {
+        auto_generate_lots: stockSettings.auto_generate_lots,
+        requireLotNumbers: stockSettings.requireLotNumbers
+      });
       setParseResult(result);
 
       if (result.success) {
@@ -105,6 +110,12 @@ export const InventoryExcelImport = () => {
         <CardTitle className="flex items-center gap-2">
           <FileSpreadsheet className="h-5 w-5" />
           Import Inventaire Excel
+          {stockSettings.auto_generate_lots && (
+            <span className="flex items-center gap-1 text-xs font-normal text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+              <Zap className="h-3 w-3" />
+              Lots auto
+            </span>
+          )}
         </CardTitle>
         <CardDescription>
           Importez un fichier Excel d'inventaire. Le système recherchera les produits par nom.

@@ -12,11 +12,30 @@ import type {
   InventoryImportResult
 } from '@/types/inventoryImport';
 
+export interface StockSettingsForImport {
+  auto_generate_lots: boolean;
+  requireLotNumbers: boolean;
+}
+
 export class ExcelInventoryImportService {
   /**
-   * Parse un fichier Excel d'inventaire
+   * Génère un numéro de lot automatique
    */
-  static async parseInventoryFile(file: File): Promise<InventoryParseResult> {
+  private static generateLotNumber(productName: string, rowIndex: number): string {
+    const productRef = productName.slice(0, 8).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const timestamp = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+    const sequence = rowIndex.toString().padStart(3, '0');
+    return `LOT-${productRef || 'PROD'}-${timestamp}-${sequence}`;
+  }
+  /**
+   * Parse un fichier Excel d'inventaire
+   * @param file - Le fichier Excel à parser
+   * @param stockSettings - Les paramètres de stock (optionnel, pour la génération auto des lots)
+   */
+  static async parseInventoryFile(
+    file: File, 
+    stockSettings?: StockSettingsForImport
+  ): Promise<InventoryParseResult> {
     const errors: InventoryParseError[] = [];
     const lines: ExcelInventoryLine[] = [];
 
@@ -77,14 +96,23 @@ export class ExcelInventoryImportService {
             continue;
           }
 
+          // Gérer le numéro de lot selon les paramètres
           if (!line.numeroLot) {
-            errors.push({
-              rowNumber,
-              column: 'RubNumLot',
-              message: 'Numéro de lot manquant',
-              severity: 'error'
-            });
-            continue;
+            if (stockSettings?.auto_generate_lots) {
+              // Générer automatiquement le numéro de lot
+              line.numeroLot = this.generateLotNumber(line.nomProduit, i);
+              console.log(`🔢 Lot auto-généré pour ligne ${rowNumber}: ${line.numeroLot}`);
+            } else if (stockSettings?.requireLotNumbers !== false) {
+              // Si pas de génération auto et lots requis (ou settings non fournis), erreur
+              errors.push({
+                rowNumber,
+                column: 'RubNumLot',
+                message: 'Numéro de lot manquant',
+                severity: 'error'
+              });
+              continue;
+            }
+            // Si requireLotNumbers === false et pas d'auto-génération, on laisse vide
           }
 
           lines.push(line);
