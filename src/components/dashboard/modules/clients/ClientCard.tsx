@@ -19,7 +19,7 @@ export const ClientCard = ({ clients, onEdit, onDelete }: ClientCardProps) => {
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
+                <User className="h-4 w-4 text-blue-500" />
                 <h3 className="font-medium truncate">
                   {client.nom_complet || 'N/A'}
                 </h3>
@@ -67,7 +67,7 @@ export const ClientCard = ({ clients, onEdit, onDelete }: ClientCardProps) => {
                   variant="outline"
                   size="sm"
                   onClick={() => onDelete(client.id)}
-                  className="flex-1"
+                  className="flex-1 text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
                 >
                   <Trash2 className="h-3 w-3 mr-1" />
                   Supprimer
