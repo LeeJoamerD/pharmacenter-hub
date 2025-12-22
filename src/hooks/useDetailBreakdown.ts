@@ -169,24 +169,10 @@ export const useDetailBreakdown = () => {
       let detailLotId: string;
 
       if (existingDetailLot) {
-        // Lot détail existe - Mettre à jour
-        const nouvelleQuantite = existingDetailLot.quantite_restante + detailProduct.quantite_unites_details_source;
-        
-        const { error: updateError } = await supabase
-          .from('lots')
-          .update({
-            quantite_restante: nouvelleQuantite,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingDetailLot.id);
-
-        if (updateError) {
-          throw new Error(`Erreur lors de la mise à jour du lot détail: ${updateError.message}`);
-        }
-
+        // Lot détail existe - La RPC met à jour la quantité automatiquement
         detailLotId = existingDetailLot.id;
 
-        // Enregistrer le mouvement d'entrée pour le lot détail
+        // Enregistrer le mouvement d'entrée - LA RPC MET À JOUR LA QUANTITÉ
         await StockUpdateService.recordStockMovement({
           produit_id: detailProduct.id,
           lot_id: detailLotId,
@@ -205,7 +191,7 @@ export const useDetailBreakdown = () => {
         });
 
       } else {
-        // Créer un nouveau lot détail
+        // Créer un nouveau lot détail avec quantité à 0 (la RPC ajoutera la quantité)
         const { data: newLot, error: createError } = await supabase
           .from('lots')
           .insert({
@@ -213,7 +199,7 @@ export const useDetailBreakdown = () => {
             produit_id: detailProduct.id,
             numero_lot: numeroLotDetail,
             quantite_initiale: detailProduct.quantite_unites_details_source,
-            quantite_restante: detailProduct.quantite_unites_details_source,
+            quantite_restante: 0, // Commence à 0, la RPC ajoutera la quantité
             date_peremption: lotSource.date_peremption,
             date_fabrication: lotSource.date_fabrication,
             fournisseur_id: lotSource.fournisseur_id
@@ -227,7 +213,7 @@ export const useDetailBreakdown = () => {
 
         detailLotId = newLot.id;
 
-        // Enregistrer le mouvement d'entrée pour le nouveau lot
+        // Enregistrer le mouvement d'entrée - LA RPC MET À JOUR LA QUANTITÉ
         await StockUpdateService.recordStockMovement({
           produit_id: detailProduct.id,
           lot_id: detailLotId,
