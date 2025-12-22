@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { useStockSettings } from '@/hooks/useStockSettings';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProducts } from '@/hooks/useProducts';
@@ -101,6 +102,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   
   const { orderLines, loading: orderLinesLoading } = useOrderLines(selectedOrder);
   const { settings } = useSystemSettings();
+  const { settings: stockSettings } = useStockSettings();
   const { products } = useProducts();
   const { user } = useAuth();
   const { formatAmount, getInputStep, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
@@ -130,26 +132,43 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     datePrevue: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   }));
 
+  // Fonction pour générer un numéro de lot automatique
+  const generateLotNumber = useCallback((productRef: string, index: number) => {
+    const timestamp = new Date().toISOString().slice(2, 10).replace(/-/g, ''); // YYMMDD format
+    const sequence = (index + 1).toString().padStart(3, '0');
+    return `LOT-${productRef.slice(0, 8).toUpperCase()}-${timestamp}-${sequence}`;
+  }, []);
+
   // Load order details from real data - only when data is ready
   const loadOrderDetails = useCallback((orderId: string) => {
     if (orderLinesLoading || !orderId) return;
 
-    const lines: ReceptionLine[] = orderLines.map(line => ({
-      id: line.id,
-      produit: line.produit?.libelle_produit || 'Produit inconnu',
-      reference: line.produit?.code_cip || 'N/A',
-      quantiteCommandee: line.quantite_commandee,
-      quantiteRecue: line.quantite_commandee, // Default to commanded quantity
-      quantiteAcceptee: line.quantite_commandee,
-      numeroLot: '',
-      dateExpiration: '',
-      statut: 'conforme',
-      commentaire: '',
-      prixAchatReel: line.prix_achat_unitaire_attendu || 0,
-      emplacement: '',
-      categorieTarificationId: line.produit?.categorie_tarification_id || '',
-      produitId: line.produit_id,
-    }));
+    const lines: ReceptionLine[] = orderLines.map((line, index) => {
+      // Générer automatiquement le numéro de lot si le paramètre est activé
+      let numeroLot = '';
+      if (stockSettings.auto_generate_lots) {
+        const productRef = line.produit?.code_cip || 'PROD';
+        numeroLot = generateLotNumber(productRef, index);
+        console.log('🔢 Lot auto-généré au chargement:', numeroLot);
+      }
+
+      return {
+        id: line.id,
+        produit: line.produit?.libelle_produit || 'Produit inconnu',
+        reference: line.produit?.code_cip || 'N/A',
+        quantiteCommandee: line.quantite_commandee,
+        quantiteRecue: line.quantite_commandee, // Default to commanded quantity
+        quantiteAcceptee: line.quantite_commandee,
+        numeroLot: numeroLot,
+        dateExpiration: '',
+        statut: 'conforme',
+        commentaire: '',
+        prixAchatReel: line.prix_achat_unitaire_attendu || 0,
+        emplacement: '',
+        categorieTarificationId: line.produit?.categorie_tarification_id || '',
+        produitId: line.produit_id,
+      };
+    });
     setReceptionLines(lines);
     
     // Réinitialiser les montants manuels et les flags d'édition
@@ -159,7 +178,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     setUserEditedTva(false);
     setUserEditedCentime(false);
     setUserEditedAsdi(false);
-  }, [orderLines, orderLinesLoading]);
+  }, [orderLines, orderLinesLoading, stockSettings.auto_generate_lots, generateLotNumber]);
 
   // Effect to load details when selectedOrder changes and data is ready
   useEffect(() => {
@@ -190,13 +209,15 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
           updatedLine.statut = 'non-conforme';
         }
         
-        // Auto-generate lot number if not provided and quantity accepted > 0
+        // Auto-generate lot number ONLY if setting is enabled and quantity accepted > 0
         if (field === 'quantiteAcceptee' && updatedLine.quantiteAcceptee > 0 && !updatedLine.numeroLot) {
-          const orderData = pendingOrders.find(o => o.id === selectedOrder);
-          const productRef = updatedLine.reference || 'UNK';
-          const timestamp = new Date().toISOString().slice(2, 10).replace(/-/g, ''); // YYMMDD format
-          const sequence = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-          updatedLine.numeroLot = `LOT-${productRef}-${timestamp}-${sequence}`;
+          // Générer uniquement si le paramètre auto_generate_lots est activé
+          if (stockSettings.auto_generate_lots) {
+            const productRef = updatedLine.reference || 'UNK';
+            const lineIndex = receptionLines.findIndex(l => l.id === id);
+            updatedLine.numeroLot = generateLotNumber(productRef, lineIndex);
+            console.log('🔢 Lot auto-généré à la modification:', updatedLine.numeroLot);
+          }
         }
         
         return updatedLine;
