@@ -715,7 +715,7 @@ const ProductCatalogNew = () => {
                   <TableRow key={product.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <Pill className="h-4 w-4 text-muted-foreground" />
+                          <Pill className="h-4 w-4 text-blue-500" />
                           <div>
                             <div className="font-medium">
                               {product.libelle_produit}
@@ -792,6 +792,7 @@ const ProductCatalogNew = () => {
                           size="sm"
                           onClick={() => handleDeleteProduct(product)}
                           title="Supprimer"
+                          className="text-red-500 hover:text-red-600"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

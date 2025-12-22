@@ -243,7 +243,12 @@ const RayonManager = () => {
                 ) : (
                   filteredRayons.map((rayon) => (
                     <TableRow key={rayon.id}>
-                      <TableCell className="font-medium">{rayon.libelle_rayon}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Tags className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                          <span>{rayon.libelle_rayon}</span>
+                        </div>
+                      </TableCell>
                       <TableCell>{rayon.description || '-'}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
@@ -258,6 +263,7 @@ const RayonManager = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => handleDeleteRayon(rayon.id)}
+                            className="text-red-500 hover:text-red-600"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
