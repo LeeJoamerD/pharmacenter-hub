@@ -182,7 +182,7 @@ export async function generateBankTransactionEntry(data: BankTransactionEcriture
         libelle: libelle || `Transaction bancaire ${reference || ''}`.trim(),
         reference_type: 'transaction_bancaire',
         reference_id: transactionId,
-        statut: 'brouillon',
+        statut: 'Brouillon',
         is_auto_generated: true
       })
       .select()
