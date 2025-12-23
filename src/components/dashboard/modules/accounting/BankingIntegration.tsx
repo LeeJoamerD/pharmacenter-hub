@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -31,9 +31,15 @@ import {
   FileText,
   Trash2,
   Edit,
-  Calculator
+  Calculator,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { useBankingManager } from '@/hooks/useBankingManager';
+import { useTransactionsPaginated, TransactionFilters } from '@/hooks/useTransactionsPaginated';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useRegionalSettings } from '@/hooks/useRegionalSettings';
 import BankAccountDialog from '@/components/accounting/BankAccountDialog';
@@ -41,8 +47,10 @@ import BankTransactionDialog from '@/components/accounting/BankTransactionDialog
 import ReconciliationDialog from '@/components/accounting/ReconciliationDialog';
 import CommitmentDialog from '@/components/accounting/CommitmentDialog';
 import CategorizationRuleDialog from '@/components/accounting/CategorizationRuleDialog';
+import TransactionDetailDialog from '@/components/accounting/TransactionDetailDialog';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const BankingIntegration = () => {
   const [activeTab, setActiveTab] = useState('comptes');
@@ -50,8 +58,19 @@ const BankingIntegration = () => {
   
   // Filters
   const [accountFilter, setAccountFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'matched' | 'unmatched'>('all');
   const [transactionSearch, setTransactionSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  
+  // Pagination & Sorting
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const [sortColumn, setSortColumn] = useState('date_transaction');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
+  // Debounce search
+  const debouncedSearch = useDebounce(transactionSearch, 300);
   
   // Dialogs
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
@@ -59,6 +78,7 @@ const BankingIntegration = () => {
   const [reconciliationDialogOpen, setReconciliationDialogOpen] = useState(false);
   const [commitmentDialogOpen, setCommitmentDialogOpen] = useState(false);
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
+  const [transactionDetailOpen, setTransactionDetailOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [selectedReconciliation, setSelectedReconciliation] = useState<any>(null);
@@ -101,6 +121,28 @@ const BankingIntegration = () => {
     generateBankJournalPDF,
     getBanksList
   } = useBankingManager();
+
+  // Paginated transactions hook
+  const transactionFilters: TransactionFilters = useMemo(() => ({
+    page: currentPage,
+    limit: pageSize,
+    search: debouncedSearch,
+    accountId: accountFilter,
+    status: statusFilter,
+    sortColumn,
+    sortDirection,
+    dateFrom,
+    dateTo
+  }), [currentPage, pageSize, debouncedSearch, accountFilter, statusFilter, sortColumn, sortDirection, dateFrom, dateTo]);
+
+  const {
+    transactions: paginatedTransactions,
+    totalCount,
+    totalPages,
+    isLoading: loadingPaginatedTransactions,
+    deleteTransaction,
+    reconcileTransaction
+  } = useTransactionsPaginated(transactionFilters);
 
   const { formatAmount, getCurrencySymbol, getCurrencyCode } = useCurrencyFormatting();
   const { currency } = useRegionalSettings();
@@ -227,6 +269,46 @@ const BankingIntegration = () => {
       await createTransaction.mutateAsync(data);
     }
     setTransactionDialogOpen(false);
+    setTransactionDetailOpen(false);
+  };
+
+  const handleViewTransaction = (transaction: any) => {
+    setSelectedTransaction(transaction);
+    setTransactionDetailOpen(true);
+  };
+
+  const handleEditTransaction = (transaction: any) => {
+    setSelectedTransaction(transaction);
+    setTransactionDialogOpen(true);
+  };
+
+  const handleDeleteTransaction = async (transactionId: string) => {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette transaction ?')) {
+      await deleteTransaction.mutateAsync(transactionId);
+      setTransactionDetailOpen(false);
+    }
+  };
+
+  const handleReconcileTransaction = async (transactionId: string) => {
+    await reconcileTransaction.mutateAsync(transactionId);
+    setTransactionDetailOpen(false);
+  };
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+    setCurrentPage(0); // Reset to first page on sort change
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-1" /> 
+      : <ArrowDown className="h-4 w-4 ml-1" />;
   };
 
   const handleCreateReconciliation = () => {
@@ -478,7 +560,12 @@ const BankingIntegration = () => {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Transactions Récentes</CardTitle>
-                <CardDescription>Dernières opérations synchronisées</CardDescription>
+                <CardDescription>
+                  {totalCount > 0 
+                    ? `${totalCount} transaction${totalCount > 1 ? 's' : ''} au total`
+                    : 'Dernières opérations synchronisées'
+                  }
+                </CardDescription>
               </div>
               <Button onClick={handleCreateTransaction}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -487,14 +574,38 @@ const BankingIntegration = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {/* Filtres */}
                 <div className="flex gap-4 flex-wrap">
                   <Input 
-                    placeholder="Rechercher..." 
+                    placeholder="Rechercher par libellé..." 
                     className="w-64"
                     value={transactionSearch}
-                    onChange={(e) => setTransactionSearch(e.target.value)}
+                    onChange={(e) => {
+                      setTransactionSearch(e.target.value);
+                      setCurrentPage(0);
+                    }}
                   />
-                  <Select value={accountFilter} onValueChange={setAccountFilter}>
+                  <Input 
+                    type="date" 
+                    className="w-40"
+                    value={dateFrom}
+                    onChange={(e) => {
+                      setDateFrom(e.target.value);
+                      setCurrentPage(0);
+                    }}
+                    placeholder="Date début"
+                  />
+                  <Input 
+                    type="date" 
+                    className="w-40"
+                    value={dateTo}
+                    onChange={(e) => {
+                      setDateTo(e.target.value);
+                      setCurrentPage(0);
+                    }}
+                    placeholder="Date fin"
+                  />
+                  <Select value={accountFilter} onValueChange={(v) => { setAccountFilter(v); setCurrentPage(0); }}>
                     <SelectTrigger className="w-48">
                       <SelectValue placeholder="Filtrer par compte" />
                     </SelectTrigger>
@@ -507,7 +618,7 @@ const BankingIntegration = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as 'all' | 'matched' | 'unmatched'); setCurrentPage(0); }}>
                     <SelectTrigger className="w-48">
                       <SelectValue placeholder="Filtrer par statut" />
                     </SelectTrigger>
@@ -523,78 +634,177 @@ const BankingIntegration = () => {
                   </Button>
                 </div>
 
-                {loadingTransactions ? (
+                {loadingPaginatedTransactions ? (
                   <div className="text-center py-8 text-muted-foreground">Chargement des transactions...</div>
-                ) : filteredTransactions.length === 0 ? (
+                ) : paginatedTransactions.length === 0 ? (
                   <div className="text-center py-8">
                     <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                     <p className="text-muted-foreground">Aucune transaction trouvée</p>
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Compte</TableHead>
-                        <TableHead>Montant</TableHead>
-                        <TableHead>Centime Add.</TableHead>
-                        <TableHead>Catégorie</TableHead>
-                        <TableHead>Statut</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredTransactions.map((transaction: any) => (
-                        <TableRow key={transaction.id}>
-                          <TableCell>
-                            {transaction.date_transaction 
-                              ? format(new Date(transaction.date_transaction), 'dd/MM/yyyy', { locale: fr })
-                              : '-'
-                            }
-                          </TableCell>
-                          <TableCell className="max-w-xs truncate">{transaction.libelle}</TableCell>
-                          <TableCell className="text-sm">
-                            {transaction.compte?.nom_compte || '-'}
-                          </TableCell>
-                          <TableCell className={`font-semibold ${
-                            transaction.type_transaction === 'credit' ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {transaction.type_transaction === 'credit' ? '+' : '-'}
-                            {formatAmount(Math.abs(transaction.montant || 0))}
-                          </TableCell>
-                          <TableCell>
-                            {transaction.montant_centime_additionnel ? (
-                              <Badge variant="secondary" className="text-xs">
-                                <Calculator className="h-3 w-3 mr-1" />
-                                {formatAmount(transaction.montant_centime_additionnel)}
-                              </Badge>
-                            ) : '-'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{transaction.categorie || 'Non catégorisé'}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={transaction.statut_rapprochement === 'Rapproché' ? 'default' : 'destructive'}>
-                              {transaction.statut_rapprochement || 'À rapprocher'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              {transaction.statut_rapprochement !== 'Rapproché' && (
-                                <Button variant="ghost" size="sm">
-                                  <Link className="h-4 w-4" />
-                                </Button>
-                              )}
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50 select-none"
+                            onClick={() => handleSort('date_transaction')}
+                          >
+                            <div className="flex items-center">
+                              Date {getSortIcon('date_transaction')}
                             </div>
-                          </TableCell>
+                          </TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50 select-none"
+                            onClick={() => handleSort('libelle')}
+                          >
+                            <div className="flex items-center">
+                              Description {getSortIcon('libelle')}
+                            </div>
+                          </TableHead>
+                          <TableHead>Compte</TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50 select-none"
+                            onClick={() => handleSort('montant')}
+                          >
+                            <div className="flex items-center">
+                              Montant {getSortIcon('montant')}
+                            </div>
+                          </TableHead>
+                          <TableHead>Centime Add.</TableHead>
+                          <TableHead>Catégorie</TableHead>
+                          <TableHead 
+                            className="cursor-pointer hover:bg-muted/50 select-none"
+                            onClick={() => handleSort('statut_rapprochement')}
+                          >
+                            <div className="flex items-center">
+                              Statut {getSortIcon('statut_rapprochement')}
+                            </div>
+                          </TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedTransactions.map((transaction: any) => (
+                          <TableRow key={transaction.id}>
+                            <TableCell>
+                              {transaction.date_transaction 
+                                ? format(new Date(transaction.date_transaction), 'dd/MM/yyyy', { locale: fr })
+                                : '-'
+                              }
+                            </TableCell>
+                            <TableCell className="max-w-xs truncate" title={transaction.libelle}>
+                              {transaction.libelle}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {transaction.compte?.nom_compte || '-'}
+                            </TableCell>
+                            <TableCell className={`font-semibold ${
+                              transaction.type_transaction === 'credit' ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {transaction.type_transaction === 'credit' ? '+' : '-'}
+                              {formatAmount(Math.abs(transaction.montant || 0))}
+                            </TableCell>
+                            <TableCell>
+                              {transaction.montant_centime_additionnel ? (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Calculator className="h-3 w-3 mr-1" />
+                                  {formatAmount(transaction.montant_centime_additionnel)}
+                                </Badge>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{transaction.categorie || 'Non catégorisé'}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={transaction.statut_rapprochement === 'Rapproché' ? 'default' : 'destructive'}>
+                                {transaction.statut_rapprochement || 'À rapprocher'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => handleViewTransaction(transaction)}
+                                  title="Voir les détails"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => handleEditTransaction(transaction)}
+                                  title="Modifier"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                {transaction.statut_rapprochement !== 'Rapproché' && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => handleReconcileTransaction(transaction.id)}
+                                    title="Rapprocher"
+                                  >
+                                    <Link className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => handleDeleteTransaction(transaction.id)}
+                                  title="Supprimer"
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+
+                    {/* Pagination */}
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <div className="text-sm text-muted-foreground">
+                        Affichage de {currentPage * pageSize + 1} à {Math.min((currentPage + 1) * pageSize, totalCount)} sur {totalCount} transaction{totalCount > 1 ? 's' : ''}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(0); }}>
+                          <SelectTrigger className="w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          disabled={currentPage === 0}
+                          onClick={() => setCurrentPage(p => p - 1)}
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Précédent
+                        </Button>
+                        <span className="text-sm px-2">
+                          Page {currentPage + 1} sur {totalPages || 1}
+                        </span>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          disabled={currentPage + 1 >= totalPages}
+                          onClick={() => setCurrentPage(p => p + 1)}
+                        >
+                          Suivant
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             </CardContent>
@@ -1208,6 +1418,18 @@ const BankingIntegration = () => {
         onOpenChange={setRuleDialogOpen}
         onSubmit={handleRuleSubmit}
         rule={selectedRule}
+      />
+
+      <TransactionDetailDialog
+        open={transactionDetailOpen}
+        onOpenChange={setTransactionDetailOpen}
+        transaction={selectedTransaction}
+        onEdit={() => {
+          setTransactionDetailOpen(false);
+          handleEditTransaction(selectedTransaction);
+        }}
+        onReconcile={() => selectedTransaction && handleReconcileTransaction(selectedTransaction.id)}
+        onDelete={() => selectedTransaction && handleDeleteTransaction(selectedTransaction.id)}
       />
     </div>
   );
