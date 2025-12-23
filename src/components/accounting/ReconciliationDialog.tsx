@@ -20,12 +20,13 @@ const ReconciliationDialog = ({ open, onOpenChange, onSubmit, reconciliation, ba
   const { register, handleSubmit, reset, setValue, watch } = useForm({
     defaultValues: reconciliation || {
       compte_bancaire_id: '',
-      date_rapprochement: new Date().toISOString().split('T')[0],
-      periode_debut: '',
-      periode_fin: '',
-      solde_releve: 0,
-      solde_comptable: 0,
-      ecart: 0,
+      numero_rapprochement: '',
+      date_debut: '',
+      date_fin: new Date().toISOString().split('T')[0],
+      solde_releve_debut: 0,
+      solde_releve_fin: 0,
+      solde_comptable_debut: 0,
+      solde_comptable_fin: 0,
       statut: 'En cours',
       notes: ''
     }
@@ -41,12 +42,13 @@ const ReconciliationDialog = ({ open, onOpenChange, onSubmit, reconciliation, ba
     } else {
       reset({
         compte_bancaire_id: '',
-        date_rapprochement: new Date().toISOString().split('T')[0],
-        periode_debut: '',
-        periode_fin: '',
-        solde_releve: 0,
-        solde_comptable: 0,
-        ecart: 0,
+        numero_rapprochement: '',
+        date_debut: '',
+        date_fin: new Date().toISOString().split('T')[0],
+        solde_releve_debut: 0,
+        solde_releve_fin: 0,
+        solde_comptable_debut: 0,
+        solde_comptable_fin: 0,
         statut: 'En cours',
         notes: ''
       });
@@ -54,7 +56,21 @@ const ReconciliationDialog = ({ open, onOpenChange, onSubmit, reconciliation, ba
   }, [reconciliation, setValue, reset]);
 
   const handleFormSubmit = (data: any) => {
-    data.ecart = (data.solde_releve || 0) - (data.solde_comptable || 0);
+    // Generate numero_rapprochement if not provided
+    if (!data.numero_rapprochement) {
+      data.numero_rapprochement = `RAP-${Date.now()}`;
+    }
+    
+    // Calculate ecart
+    data.ecart = (data.solde_releve_fin || 0) - (data.solde_comptable_fin || 0);
+    data.ecart_non_justifie = data.ecart;
+    data.ecart_justifie = 0;
+    
+    // Initialize transaction counters
+    data.nb_transactions_rapprochees = 0;
+    data.nb_transactions_non_rapprochees = 0;
+    data.nb_transactions_suspectes = 0;
+    
     onSubmit(data);
     onOpenChange(false);
   };
@@ -63,7 +79,7 @@ const ReconciliationDialog = ({ open, onOpenChange, onSubmit, reconciliation, ba
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{reconciliation ? 'Modifier le Rapprochement' : 'Nouveau Rapprochement'}</DialogTitle>
+          <DialogTitle>{reconciliation ? 'Modifier le Rapprochement' : 'Nouveau Rapprochement Bancaire'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           <div>
@@ -81,30 +97,56 @@ const ReconciliationDialog = ({ open, onOpenChange, onSubmit, reconciliation, ba
               </SelectContent>
             </Select>
           </div>
+          
+          <div>
+            <Label>Numéro de Rapprochement</Label>
+            <Input {...register('numero_rapprochement')} placeholder="RAP-2024-001 (auto-généré si vide)" />
+          </div>
+          
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Période Début</Label>
-              <Input type="date" {...register('periode_debut')} />
+              <Label>Date Début</Label>
+              <Input type="date" {...register('date_debut')} />
             </div>
             <div>
-              <Label>Période Fin</Label>
-              <Input type="date" {...register('periode_fin')} />
+              <Label>Date Fin</Label>
+              <Input type="date" {...register('date_fin')} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Solde Relevé Bancaire</Label>
-              <Input type="number" step={getInputStep()} {...register('solde_releve', { valueAsNumber: true })} />
-            </div>
-            <div>
-              <Label>Solde Comptable</Label>
-              <Input type="number" step={getInputStep()} {...register('solde_comptable', { valueAsNumber: true })} />
+          
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-muted-foreground">Soldes de Début</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Relevé Bancaire</Label>
+                <Input type="number" step={getInputStep()} {...register('solde_releve_debut', { valueAsNumber: true })} />
+              </div>
+              <div>
+                <Label>Comptable</Label>
+                <Input type="number" step={getInputStep()} {...register('solde_comptable_debut', { valueAsNumber: true })} />
+              </div>
             </div>
           </div>
+          
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-muted-foreground">Soldes de Fin</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Relevé Bancaire</Label>
+                <Input type="number" step={getInputStep()} {...register('solde_releve_fin', { valueAsNumber: true })} />
+              </div>
+              <div>
+                <Label>Comptable</Label>
+                <Input type="number" step={getInputStep()} {...register('solde_comptable_fin', { valueAsNumber: true })} />
+              </div>
+            </div>
+          </div>
+          
           <div>
             <Label>Notes</Label>
             <Textarea {...register('notes')} placeholder="Observations..." />
           </div>
+          
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
             <Button type="submit">{reconciliation ? 'Mettre à jour' : 'Créer'}</Button>
