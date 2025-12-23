@@ -103,6 +103,7 @@ const BankingIntegration = () => {
     reconciliations,
     loadingReconciliations,
     createReconciliation,
+    updateReconciliation,
     categorizationRules,
     createCategorizationRule,
     updateCategorizationRule,
@@ -339,8 +340,15 @@ const BankingIntegration = () => {
   };
 
   const handleReconciliationSubmit = async (data: any) => {
-    await createReconciliation.mutateAsync(data);
+    if (data.id) {
+      // Update existing reconciliation
+      await updateReconciliation.mutateAsync(data);
+    } else {
+      // Create new reconciliation
+      await createReconciliation.mutateAsync(data);
+    }
     setReconciliationDialogOpen(false);
+    setSelectedReconciliation(null);
   };
 
   const handleAutoReconcile = async () => {
