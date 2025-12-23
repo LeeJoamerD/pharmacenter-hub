@@ -89,6 +89,9 @@ export interface TVADeclaration {
   tva_collectee: number;
   tva_deductible: number;
   tva_a_payer: number;
+  centime_additionnel_collecte: number;
+  centime_additionnel_deductible: number;
+  centime_additionnel_a_payer: number;
   statut: string;
   created_at: string;
   updated_at: string;
@@ -98,6 +101,10 @@ export interface VATSummary {
   vatCollected: number;
   vatDeductible: number;
   vatDue: number;
+  centimeCollected: number;
+  centimeDeductible: number;
+  centimeDue: number;
+  centimeRate: number;
   averageRate: number;
   salesHT: number;
   purchasesHT: number;
@@ -508,10 +515,13 @@ export const useFiscalManagement = () => {
       const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
       const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString();
 
-      // Ventes du mois
+      // Récupérer le taux de centime additionnel depuis les paramètres régionaux
+      const centimeRate = regionalParams?.taux_centime_additionnel || 5.0;
+
+      // Ventes du mois - inclure le centime additionnel collecté
       const { data: ventes, error: ventesError } = await supabase
         .from('ventes')
-        .select('montant_total_ttc, montant_total_ht')
+        .select('montant_total_ttc, montant_total_ht, montant_centime_additionnel')
         .eq('tenant_id', tenantId)
         .gte('date_vente', startOfMonth)
         .lte('date_vente', endOfMonth);
@@ -519,7 +529,6 @@ export const useFiscalManagement = () => {
       if (ventesError) throw ventesError;
 
       // Achats du mois - récupérer via lignes_reception_fournisseur
-      // Utiliser prix_achat_unitaire_reel (colonne correcte) et filtrer côté client
       const { data: lignesReception, error: achatsError } = await supabase
         .from('lignes_reception_fournisseur')
         .select('prix_achat_unitaire_reel, quantite_recue, tenant_id, reception_id, receptions_fournisseurs(date_reception)')
@@ -537,25 +546,39 @@ export const useFiscalManagement = () => {
       const salesHT = ventes?.reduce((sum, v) => sum + (v.montant_total_ht || 0), 0) || 0;
       const salesTTC = ventes?.reduce((sum, v) => sum + (v.montant_total_ttc || 0), 0) || 0;
       const vatCollected = salesTTC - salesHT;
+      
+      // Centime Additionnel collecté depuis les ventes (ou calculé à partir de la TVA collectée)
+      const centimeCollectedFromSales = ventes?.reduce((sum, v) => sum + (v.montant_centime_additionnel || 0), 0) || 0;
+      const centimeCollected = centimeCollectedFromSales > 0 
+        ? centimeCollectedFromSales 
+        : vatCollected * (centimeRate / 100);
 
       const purchasesHT = filteredReceptions.reduce((sum, l: any) => sum + ((l.prix_achat_unitaire_reel || 0) * (l.quantite_recue || 0)), 0);
       const vatDeductible = purchasesHT * (getVATRate('standard') / 100);
+      
+      // Centime Additionnel déductible (calculé à partir de la TVA déductible)
+      const centimeDeductible = vatDeductible * (centimeRate / 100);
 
       const vatDue = vatCollected - vatDeductible;
+      const centimeDue = centimeCollected - centimeDeductible;
       const averageRate = salesHT > 0 ? (vatCollected / salesHT) * 100 : 0;
 
-      // Arrondir les valeurs pour éviter les erreurs de virgule flottante (ex: 175061.69999999998)
+      // Arrondir les valeurs pour éviter les erreurs de virgule flottante
       return {
         vatCollected: Math.round(vatCollected),
         vatDeductible: Math.round(vatDeductible),
         vatDue: Math.round(vatDue),
+        centimeCollected: Math.round(centimeCollected),
+        centimeDeductible: Math.round(centimeDeductible),
+        centimeDue: Math.round(centimeDue),
+        centimeRate,
         averageRate,
         salesHT: Math.round(salesHT),
         purchasesHT: Math.round(purchasesHT),
       };
     },
-    enabled: !!tenantId,
-    retry: 1, // Réduire les tentatives en cas d'erreur
+    enabled: !!tenantId && !!regionalParams,
+    retry: 1,
   });
 
   // ==================== ANALYTICS TAX ====================
@@ -598,59 +621,72 @@ export const useFiscalManagement = () => {
     const devise = regionalParams?.devise_principale || 'XAF';
     const pays = regionalParams?.pays || 'Congo-Brazzaville';
     const systeme = regionalParams?.systeme_comptable || 'OHADA';
+    const centimeRate = regionalParams?.taux_centime_additionnel || 5.0;
     
     doc.setFontSize(16);
-    doc.text('Journal TVA', 14, 20);
+    doc.text('Journal TVA et Centime Additionnel', 14, 20);
     doc.setFontSize(9);
     doc.text(`Pays: ${pays} | Système: ${systeme} | Devise: ${devise}`, 14, 28);
-    doc.text(`Période: ${new Date().toLocaleDateString()}`, 14, 35);
+    doc.text(`Période: ${new Date().toLocaleDateString()} | Taux Centime Add.: ${centimeRate}%`, 14, 35);
     
     const tableData = declarations.map(d => [
       d.periode,
       formatAmount(d.tva_collectee),
       formatAmount(d.tva_deductible),
       formatAmount(d.tva_a_payer),
+      formatAmount(d.centime_additionnel_collecte || 0),
+      formatAmount(d.centime_additionnel_deductible || 0),
+      formatAmount(d.centime_additionnel_a_payer || 0),
+      formatAmount((d.tva_a_payer || 0) + (d.centime_additionnel_a_payer || 0)),
       d.statut,
     ]);
 
     autoTable(doc, {
       startY: 42,
-      head: [['Période', 'TVA Collectée', 'TVA Déductible', 'TVA à Payer', 'Statut']],
+      head: [['Période', 'TVA Coll.', 'TVA Déd.', 'TVA à Payer', 'Cent. Coll.', 'Cent. Déd.', 'Cent. à Payer', 'Total', 'Statut']],
       body: tableData,
+      styles: { fontSize: 7 },
+      headStyles: { fontSize: 7 },
     });
 
     // Footer avec mentions légales
-    const pageCount = (doc as any).internal.getNumberOfPages();
     doc.setFontSize(8);
+    const mentionCentime = `Centime Additionnel conforme à la législation de la République du Congo (${centimeRate}% sur la TVA)`;
+    doc.text(mentionCentime, 14, doc.internal.pageSize.height - 18);
     doc.text(regionalParams?.mention_legale_footer || '', 14, doc.internal.pageSize.height - 10);
 
-    doc.save('journal_tva.pdf');
-    toast.success('Journal TVA généré');
+    doc.save('journal_tva_centime.pdf');
+    toast.success('Journal TVA et Centime Additionnel généré');
   };
 
   const generateEtatTVAExcel = () => {
     const devise = regionalParams?.devise_principale || 'XAF';
     const pays = regionalParams?.pays || 'Congo-Brazzaville';
+    const centimeRate = regionalParams?.taux_centime_additionnel || 5.0;
     
     const wsData = [
-      [`État TVA - ${pays}`, '', '', '', ''],
-      [`Devise: ${devise}`, '', '', '', ''],
+      [`État TVA et Centime Additionnel - ${pays}`, '', '', '', '', '', '', '', ''],
+      [`Devise: ${devise} | Taux Centime Additionnel: ${centimeRate}%`, '', '', '', '', '', '', '', ''],
       [],
-      ['Période', 'TVA Collectée', 'TVA Déductible', 'TVA à Payer', 'Statut'],
+      ['Période', 'TVA Collectée', 'TVA Déductible', 'TVA à Payer', 'Centime Collecté', 'Centime Déductible', 'Centime à Payer', 'Total à Payer', 'Statut'],
       ...declarations.map(d => [
         d.periode,
         d.tva_collectee,
         d.tva_deductible,
         d.tva_a_payer,
+        d.centime_additionnel_collecte || 0,
+        d.centime_additionnel_deductible || 0,
+        d.centime_additionnel_a_payer || 0,
+        (d.tva_a_payer || 0) + (d.centime_additionnel_a_payer || 0),
         d.statut,
       ]),
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'État TVA');
-    XLSX.writeFile(wb, 'etat_tva.xlsx');
-    toast.success('État TVA généré');
+    XLSX.utils.book_append_sheet(wb, ws, 'État TVA + Centime');
+    XLSX.writeFile(wb, 'etat_tva_centime.xlsx');
+    toast.success('État TVA et Centime Additionnel généré');
   };
 
   const generateAnnexeFiscalePDF = () => {
@@ -658,6 +694,7 @@ export const useFiscalManagement = () => {
     const devise = regionalParams?.devise_principale || 'XAF';
     const pays = regionalParams?.pays || 'Congo-Brazzaville';
     const systeme = regionalParams?.systeme_comptable || 'OHADA';
+    const centimeRate = regionalParams?.taux_centime_additionnel || 5.0;
     
     doc.setFontSize(16);
     doc.text('Annexe Fiscale', 14, 20);
@@ -665,8 +702,9 @@ export const useFiscalManagement = () => {
     doc.text(`Année: ${new Date().getFullYear()}`, 14, 28);
     doc.setFontSize(9);
     doc.text(`Pays: ${pays} | Système: ${systeme} | Devise: ${devise}`, 14, 35);
+    doc.text(`Taux Centime Additionnel: ${centimeRate}% (sur la TVA)`, 14, 42);
     
-    doc.text('Taux TVA Configurés:', 14, 48);
+    doc.text('Taux TVA Configurés:', 14, 55);
     const tauxData = tauxTVA.map(t => [
       t.nom_taux,
       t.taux_pourcentage + '%',
@@ -675,7 +713,7 @@ export const useFiscalManagement = () => {
     ]);
 
     autoTable(doc, {
-      startY: 53,
+      startY: 60,
       head: [['Nom', 'Taux', 'Type', 'Statut']],
       body: tauxData,
     });

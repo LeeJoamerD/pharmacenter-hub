@@ -13581,6 +13581,7 @@ export type Database = {
           seuil_franchise_tva: number | null
           seuil_regime_simplifie: number | null
           systeme_comptable: string
+          taux_centime_additionnel: number | null
           taux_tva_reduits: Json
           taux_tva_standard: number
           tenant_id: string
@@ -13606,6 +13607,7 @@ export type Database = {
           seuil_franchise_tva?: number | null
           seuil_regime_simplifie?: number | null
           systeme_comptable?: string
+          taux_centime_additionnel?: number | null
           taux_tva_reduits?: Json
           taux_tva_standard?: number
           tenant_id: string
@@ -13631,6 +13633,7 @@ export type Database = {
           seuil_franchise_tva?: number | null
           seuil_regime_simplifie?: number | null
           systeme_comptable?: string
+          taux_centime_additionnel?: number | null
           taux_tva_reduits?: Json
           taux_tva_standard?: number
           tenant_id?: string
@@ -18138,6 +18141,9 @@ export type Database = {
       }
       tva_declaration: {
         Row: {
+          centime_additionnel_a_payer: number | null
+          centime_additionnel_collecte: number | null
+          centime_additionnel_deductible: number | null
           created_at: string
           exercice_id: string
           id: string
@@ -18150,6 +18156,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          centime_additionnel_a_payer?: number | null
+          centime_additionnel_collecte?: number | null
+          centime_additionnel_deductible?: number | null
           created_at?: string
           exercice_id: string
           id?: string
@@ -18162,6 +18171,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          centime_additionnel_a_payer?: number | null
+          centime_additionnel_collecte?: number | null
+          centime_additionnel_deductible?: number | null
           created_at?: string
           exercice_id?: string
           id?: string
