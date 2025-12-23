@@ -50,11 +50,14 @@ import CategorizationRuleDialog from '@/components/accounting/CategorizationRule
 import TransactionDetailDialog from '@/components/accounting/TransactionDetailDialog';
 import { isReconciled, formatReconciliationStatus, TRANSACTION_STATUS } from '@/constants/transactionStatus';
 import TransactionCategoryDialog from '@/components/accounting/TransactionCategoryDialog';
+import BankStatementImportDialog from '@/components/accounting/BankStatementImportDialog';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useToast } from '@/hooks/use-toast';
 
 const BankingIntegration = () => {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('comptes');
   const [syncInProgress, setSyncInProgress] = useState(false);
   
@@ -88,6 +91,8 @@ const BankingIntegration = () => {
   const [selectedCommitment, setSelectedCommitment] = useState<any>(null);
   const [selectedRule, setSelectedRule] = useState<any>(null);
   const [transactionForCategory, setTransactionForCategory] = useState<any>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [autoReconcileInProgress, setAutoReconcileInProgress] = useState(false);
 
   // Hooks
   const {
@@ -355,15 +360,52 @@ const BankingIntegration = () => {
     const unmatched = transactions.filter((t: any) => !isReconciled(t.statut_rapprochement));
     
     if (unmatched.length === 0) {
-      alert("Toutes les transactions sont déjà rapprochées");
+      toast({ 
+        title: "Rapprochement terminé", 
+        description: "Toutes les transactions sont déjà rapprochées" 
+      });
       return;
     }
     
-    alert(`${unmatched.length} transaction(s) identifiée(s) pour rapprochement automatique. Cette fonctionnalité sera disponible prochainement.`);
+    const confirmed = window.confirm(
+      `Voulez-vous rapprocher automatiquement ${unmatched.length} transaction(s) ?\n\nUne écriture comptable sera générée pour chaque transaction.`
+    );
+    
+    if (!confirmed) return;
+    
+    setAutoReconcileInProgress(true);
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const transaction of unmatched) {
+      try {
+        await reconcileTransaction.mutateAsync({ 
+          id: transaction.id, 
+          generateAccounting: true 
+        });
+        successCount++;
+      } catch (error) {
+        errorCount++;
+        console.error('Erreur rapprochement:', transaction.id, error);
+      }
+    }
+    
+    setAutoReconcileInProgress(false);
+    
+    toast({ 
+      title: "Rapprochement automatique terminé", 
+      description: `${successCount} transaction(s) rapprochée(s)${errorCount > 0 ? `, ${errorCount} erreur(s)` : ''}` 
+    });
   };
 
   const handleImportStatement = () => {
-    alert("L'import de relevés bancaires sera disponible prochainement");
+    setImportDialogOpen(true);
+  };
+
+  const handleImportTransactions = async (transactionsToImport: any[]) => {
+    for (const transaction of transactionsToImport) {
+      await createTransaction.mutateAsync(transaction);
+    }
   };
 
   const handleViewReconciliation = (reconciliation: any) => {
@@ -1535,6 +1577,13 @@ const BankingIntegration = () => {
         onOpenChange={setCategoryDialogOpen}
         onSubmit={handleCategorySubmit}
         transaction={transactionForCategory}
+      />
+
+      <BankStatementImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        bankAccounts={bankAccounts}
+        onImport={handleImportTransactions}
       />
     </div>
   );
