@@ -5,7 +5,7 @@ import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
 export interface TauxTVA {
@@ -613,7 +613,7 @@ export const useFiscalManagement = () => {
       d.statut,
     ]);
 
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: 42,
       head: [['Période', 'TVA Collectée', 'TVA Déductible', 'TVA à Payer', 'Statut']],
       body: tableData,
@@ -674,7 +674,7 @@ export const useFiscalManagement = () => {
       t.est_actif ? 'Actif' : 'Inactif',
     ]);
 
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: 53,
       head: [['Nom', 'Taux', 'Type', 'Statut']],
       body: tauxData,

@@ -12,6 +12,8 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { TVADeclaration, ObligationFiscale } from '@/hooks/useFiscalManagement';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { 
   FileText, 
@@ -40,6 +42,8 @@ const FiscalManagement = () => {
   const [tvaDialogOpen, setTvaDialogOpen] = useState(false);
   const [declarationDialogOpen, setDeclarationDialogOpen] = useState(false);
   const [editingTaux, setEditingTaux] = useState<any>(null);
+  const [selectedDeclaration, setSelectedDeclaration] = useState<TVADeclaration | null>(null);
+  const [selectedObligation, setSelectedObligation] = useState<ObligationFiscale | null>(null);
 
   const {
     tauxTVA,
@@ -321,7 +325,7 @@ const FiscalManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedDeclaration(declaration)}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="sm" onClick={generateJournalTVAPDF}>
@@ -377,7 +381,7 @@ const FiscalManagement = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedObligation(obligation)}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button
@@ -548,6 +552,90 @@ const FiscalManagement = () => {
         onSave={(data) => createDeclaration.mutate(data)}
         vatSummary={vatSummary}
       />
+
+      {/* Dialog Voir Déclaration */}
+      <Dialog open={!!selectedDeclaration} onOpenChange={() => setSelectedDeclaration(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Détail de la Déclaration TVA</DialogTitle>
+            <DialogDescription>Période: {selectedDeclaration?.periode}</DialogDescription>
+          </DialogHeader>
+          {selectedDeclaration && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">TVA Collectée</Label>
+                  <p className="text-lg font-semibold">{formatAmount(selectedDeclaration.tva_collectee)}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">TVA Déductible</Label>
+                  <p className="text-lg font-semibold">{formatAmount(selectedDeclaration.tva_deductible)}</p>
+                </div>
+              </div>
+              <Separator />
+              <div>
+                <Label className="text-muted-foreground">TVA à Payer</Label>
+                <p className="text-2xl font-bold text-primary">{formatAmount(selectedDeclaration.tva_a_payer)}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-muted-foreground">Statut:</Label>
+                <Badge variant={getStatusColor(selectedDeclaration.statut)}>{selectedDeclaration.statut}</Badge>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Créée le</Label>
+                <p>{new Date(selectedDeclaration.created_at).toLocaleDateString()}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Voir Obligation */}
+      <Dialog open={!!selectedObligation} onOpenChange={() => setSelectedObligation(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Détail de l'Obligation Fiscale</DialogTitle>
+            <DialogDescription>{selectedObligation?.type_obligation}</DialogDescription>
+          </DialogHeader>
+          {selectedObligation && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Fréquence</Label>
+                  <p className="font-semibold">{selectedObligation.frequence}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Statut</Label>
+                  <Badge variant={getStatusColor(selectedObligation.statut)}>{selectedObligation.statut}</Badge>
+                </div>
+              </div>
+              <Separator />
+              <div>
+                <Label className="text-muted-foreground">Prochaine Échéance</Label>
+                <p className="text-lg font-semibold">{new Date(selectedObligation.prochaine_echeance).toLocaleDateString()}</p>
+              </div>
+              {selectedObligation.description && (
+                <div>
+                  <Label className="text-muted-foreground">Description</Label>
+                  <p className="text-sm">{selectedObligation.description}</p>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <Label className="text-muted-foreground">Rappel Email:</Label>
+                <Badge variant={selectedObligation.rappel_email ? 'default' : 'secondary'}>
+                  {selectedObligation.rappel_email ? 'Activé' : 'Désactivé'}
+                </Badge>
+              </div>
+              {selectedObligation.rappel_email && (
+                <div>
+                  <Label className="text-muted-foreground">Rappel</Label>
+                  <p className="text-sm">{selectedObligation.rappel_jours_avant} jours avant l'échéance</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
