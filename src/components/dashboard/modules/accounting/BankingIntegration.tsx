@@ -344,9 +344,23 @@ const BankingIntegration = () => {
   };
 
   const handleAutoReconcile = async () => {
-    // Auto-match transactions based on amount and date
     const unmatched = transactions.filter((t: any) => !isReconciled(t.statut_rapprochement));
-    // In real implementation, would match with accounting entries
+    
+    if (unmatched.length === 0) {
+      alert("Toutes les transactions sont déjà rapprochées");
+      return;
+    }
+    
+    alert(`${unmatched.length} transaction(s) identifiée(s) pour rapprochement automatique. Cette fonctionnalité sera disponible prochainement.`);
+  };
+
+  const handleImportStatement = () => {
+    alert("L'import de relevés bancaires sera disponible prochainement");
+  };
+
+  const handleViewReconciliation = (reconciliation: any) => {
+    setSelectedReconciliation(reconciliation);
+    setReconciliationDialogOpen(true);
   };
 
   const handleCreateCommitment = () => {
@@ -936,7 +950,7 @@ const BankingIntegration = () => {
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Rapprochement Auto
                 </Button>
-                <Button variant="outline">
+                <Button variant="outline" onClick={handleImportStatement}>
                   <Upload className="h-4 w-4 mr-2" />
                   Importer Relevé
                 </Button>
@@ -998,7 +1012,7 @@ const BankingIntegration = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" onClick={() => handleViewReconciliation(recon)}>
                             <Eye className="h-4 w-4" />
                           </Button>
                         </TableCell>
