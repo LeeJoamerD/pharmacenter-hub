@@ -153,6 +153,7 @@ const FiscalManagement = () => {
 
         {/* ==================== ONGLET TVA ==================== */}
         <TabsContent value="tva" className="space-y-4">
+          {/* Cartes TVA */}
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -206,11 +207,65 @@ const FiscalManagement = () => {
             </Card>
           </div>
 
+          {/* Cartes Centime Additionnel */}
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card className="border-secondary/50">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Centime Add. Collecté</CardTitle>
+                <TrendingUp className="h-4 w-4 text-secondary-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-secondary-foreground">
+                  {formatAmount(vatSummary?.centimeCollected || 0)}
+                </div>
+                <p className="text-xs text-muted-foreground">{vatSummary?.centimeRate || regionalParams?.taux_centime_additionnel || 5}% sur TVA</p>
+              </CardContent>
+            </Card>
+            <Card className="border-secondary/50">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Centime Add. Déductible</CardTitle>
+                <Receipt className="h-4 w-4 text-secondary-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-secondary-foreground">
+                  {formatAmount(vatSummary?.centimeDeductible || 0)}
+                </div>
+                <p className="text-xs text-muted-foreground">{devise} ce mois</p>
+              </CardContent>
+            </Card>
+            <Card className="border-secondary/50">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Centime Add. à Payer</CardTitle>
+                <DollarSign className="h-4 w-4 text-secondary-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-secondary-foreground">
+                  {formatAmount(vatSummary?.centimeDue || 0)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {vatSummary && vatSummary.centimeDue < 0 ? 'Crédit' : 'À payer'}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-primary/50 bg-primary/5">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total à Payer</CardTitle>
+                <DollarSign className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-primary">
+                  {formatAmount((vatSummary?.vatDue || 0) + (vatSummary?.centimeDue || 0))}
+                </div>
+                <p className="text-xs text-muted-foreground">TVA + Centime Add.</p>
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Calcul TVA du Mois</CardTitle>
-                <CardDescription>Résumé automatique des opérations TVA</CardDescription>
+                <CardTitle>Calcul TVA et Centime du Mois</CardTitle>
+                <CardDescription>Résumé automatique des opérations TVA et Centime Additionnel</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
@@ -222,6 +277,10 @@ const FiscalManagement = () => {
                     <span>TVA Collectée</span>
                     <span className="font-medium">{formatAmount(vatSummary?.vatCollected || 0)}</span>
                   </div>
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span className="text-sm">↳ Centime Add. Collecté ({vatSummary?.centimeRate || regionalParams?.taux_centime_additionnel || 5}%)</span>
+                    <span className="font-medium text-sm">{formatAmount(vatSummary?.centimeCollected || 0)}</span>
+                  </div>
                   <Separator />
                   <div className="flex justify-between items-center">
                     <span>Achats HT</span>
@@ -231,10 +290,23 @@ const FiscalManagement = () => {
                     <span>TVA Déductible</span>
                     <span className="font-medium">{formatAmount(vatSummary?.vatDeductible || 0)}</span>
                   </div>
+                  <div className="flex justify-between items-center text-muted-foreground">
+                    <span className="text-sm">↳ Centime Add. Déductible ({vatSummary?.centimeRate || regionalParams?.taux_centime_additionnel || 5}%)</span>
+                    <span className="font-medium text-sm">{formatAmount(vatSummary?.centimeDeductible || 0)}</span>
+                  </div>
                   <Separator />
-                  <div className="flex justify-between items-center font-bold">
+                  <div className="flex justify-between items-center">
                     <span>TVA à Payer</span>
-                    <span className="text-primary">{formatAmount(vatSummary?.vatDue || 0)}</span>
+                    <span className="font-medium">{formatAmount(vatSummary?.vatDue || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Centime Add. à Payer</span>
+                    <span className="font-medium">{formatAmount(vatSummary?.centimeDue || 0)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between items-center font-bold bg-primary/10 p-2 rounded">
+                    <span>Total à Payer</span>
+                    <span className="text-primary">{formatAmount((vatSummary?.vatDue || 0) + (vatSummary?.centimeDue || 0))}</span>
                   </div>
                 </div>
               </CardContent>
@@ -297,55 +369,67 @@ const FiscalManagement = () => {
           <Card>
             <CardHeader>
               <CardTitle>Déclarations Fiscales</CardTitle>
-              <CardDescription>Suivi et gestion des déclarations obligatoires</CardDescription>
+              <CardDescription>Suivi des déclarations TVA et Centime Additionnel</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Période</TableHead>
-                    <TableHead>TVA Collectée</TableHead>
-                    <TableHead>TVA Déductible</TableHead>
-                    <TableHead>À Payer</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {declarations.map((declaration) => (
-                    <TableRow key={declaration.id}>
-                      <TableCell className="font-medium">{declaration.periode}</TableCell>
-                      <TableCell>{formatAmount(declaration.tva_collectee)}</TableCell>
-                      <TableCell>{formatAmount(declaration.tva_deductible)}</TableCell>
-                      <TableCell className="font-semibold">{formatAmount(declaration.tva_a_payer)}</TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusColor(declaration.statut)}>
-                          {declaration.statut}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => setSelectedDeclaration(declaration)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={generateJournalTVAPDF}>
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          {declaration.statut === 'Brouillon' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => updateDeclaration.mutate({ id: declaration.id, statut: 'Déposée' })}
-                            >
-                              <Upload className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Période</TableHead>
+                      <TableHead>TVA Collectée</TableHead>
+                      <TableHead>TVA Déductible</TableHead>
+                      <TableHead>TVA à Payer</TableHead>
+                      <TableHead>Cent. Collecté</TableHead>
+                      <TableHead>Cent. Déductible</TableHead>
+                      <TableHead>Cent. à Payer</TableHead>
+                      <TableHead className="font-bold">Total</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {declarations.map((declaration) => (
+                      <TableRow key={declaration.id}>
+                        <TableCell className="font-medium">{declaration.periode}</TableCell>
+                        <TableCell>{formatAmount(declaration.tva_collectee)}</TableCell>
+                        <TableCell>{formatAmount(declaration.tva_deductible)}</TableCell>
+                        <TableCell>{formatAmount(declaration.tva_a_payer)}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatAmount(declaration.centime_additionnel_collecte || 0)}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatAmount(declaration.centime_additionnel_deductible || 0)}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatAmount(declaration.centime_additionnel_a_payer || 0)}</TableCell>
+                        <TableCell className="font-bold text-primary">
+                          {formatAmount((declaration.tva_a_payer || 0) + (declaration.centime_additionnel_a_payer || 0))}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusColor(declaration.statut)}>
+                            {declaration.statut}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedDeclaration(declaration)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={generateJournalTVAPDF}>
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            {declaration.statut === 'Brouillon' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => updateDeclaration.mutate({ id: declaration.id, statut: 'Déposée' })}
+                              >
+                                <Upload className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -555,35 +639,66 @@ const FiscalManagement = () => {
 
       {/* Dialog Voir Déclaration */}
       <Dialog open={!!selectedDeclaration} onOpenChange={() => setSelectedDeclaration(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Détail de la Déclaration TVA</DialogTitle>
+            <DialogTitle>Détail de la Déclaration TVA et Centime Additionnel</DialogTitle>
             <DialogDescription>Période: {selectedDeclaration?.periode}</DialogDescription>
           </DialogHeader>
           {selectedDeclaration && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">TVA Collectée</Label>
-                  <p className="text-lg font-semibold">{formatAmount(selectedDeclaration.tva_collectee)}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground">TVA Déductible</Label>
-                  <p className="text-lg font-semibold">{formatAmount(selectedDeclaration.tva_deductible)}</p>
+              {/* TVA */}
+              <div>
+                <h4 className="font-medium mb-2">TVA</h4>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Collectée</Label>
+                    <p className="font-semibold">{formatAmount(selectedDeclaration.tva_collectee)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Déductible</Label>
+                    <p className="font-semibold">{formatAmount(selectedDeclaration.tva_deductible)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">À Payer</Label>
+                    <p className="font-semibold">{formatAmount(selectedDeclaration.tva_a_payer)}</p>
+                  </div>
                 </div>
               </div>
               <Separator />
+              {/* Centime Additionnel */}
               <div>
-                <Label className="text-muted-foreground">TVA à Payer</Label>
-                <p className="text-2xl font-bold text-primary">{formatAmount(selectedDeclaration.tva_a_payer)}</p>
+                <h4 className="font-medium mb-2">Centime Additionnel <Badge variant="secondary" className="ml-2">{regionalParams?.taux_centime_additionnel || 5}%</Badge></h4>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Collecté</Label>
+                    <p className="font-semibold">{formatAmount(selectedDeclaration.centime_additionnel_collecte || 0)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Déductible</Label>
+                    <p className="font-semibold">{formatAmount(selectedDeclaration.centime_additionnel_deductible || 0)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">À Payer</Label>
+                    <p className="font-semibold">{formatAmount(selectedDeclaration.centime_additionnel_a_payer || 0)}</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-muted-foreground">Statut:</Label>
-                <Badge variant={getStatusColor(selectedDeclaration.statut)}>{selectedDeclaration.statut}</Badge>
+              <Separator />
+              {/* Total */}
+              <div className="bg-primary/10 p-3 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Total à Payer</span>
+                  <span className="text-2xl font-bold text-primary">
+                    {formatAmount((selectedDeclaration.tva_a_payer || 0) + (selectedDeclaration.centime_additionnel_a_payer || 0))}
+                  </span>
+                </div>
               </div>
-              <div>
-                <Label className="text-muted-foreground">Créée le</Label>
-                <p>{new Date(selectedDeclaration.created_at).toLocaleDateString()}</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label className="text-muted-foreground">Statut:</Label>
+                  <Badge variant={getStatusColor(selectedDeclaration.statut)}>{selectedDeclaration.statut}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">Créée le {new Date(selectedDeclaration.created_at).toLocaleDateString()}</p>
               </div>
             </div>
           )}
