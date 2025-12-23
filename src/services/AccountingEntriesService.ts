@@ -108,7 +108,7 @@ export async function generateSaleAccountingEntries(data: VenteEcritureData): Pr
         libelle: `Vente ${numeroVente}`,
         reference_type: 'vente',
         reference_id: venteId,
-        statut: 'brouillon',
+        statut: 'Brouillon',
         is_auto_generated: true
       })
       .select()
