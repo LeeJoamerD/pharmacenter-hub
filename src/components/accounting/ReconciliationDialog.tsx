@@ -27,7 +27,7 @@ const ReconciliationDialog = ({ open, onOpenChange, onSubmit, reconciliation, ba
       solde_releve_fin: 0,
       solde_comptable_debut: 0,
       solde_comptable_fin: 0,
-      statut: 'En cours',
+        statut: 'en_cours',
       notes: ''
     }
   });
@@ -49,7 +49,7 @@ const ReconciliationDialog = ({ open, onOpenChange, onSubmit, reconciliation, ba
         solde_releve_fin: 0,
         solde_comptable_debut: 0,
         solde_comptable_fin: 0,
-        statut: 'En cours',
+        statut: 'en_cours',
         notes: ''
       });
     }
