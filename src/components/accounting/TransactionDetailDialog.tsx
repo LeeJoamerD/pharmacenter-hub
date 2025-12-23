@@ -27,6 +27,7 @@ import {
   Hash
 } from 'lucide-react';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { isReconciled as checkIsReconciled, formatReconciliationStatus } from '@/constants/transactionStatus';
 
 interface TransactionDetailDialogProps {
   open: boolean;
@@ -49,7 +50,7 @@ const TransactionDetailDialog: React.FC<TransactionDetailDialogProps> = ({
 
   if (!transaction) return null;
 
-  const isReconciled = transaction.statut_rapprochement === 'Rapproché';
+  const isReconciled = checkIsReconciled(transaction.statut_rapprochement);
   const isCredit = transaction.type_transaction === 'credit';
 
   return (
@@ -176,7 +177,7 @@ const TransactionDetailDialog: React.FC<TransactionDetailDialogProps> = ({
                 Statut de rapprochement
               </div>
               <Badge variant={isReconciled ? 'default' : 'destructive'}>
-                {transaction.statut_rapprochement || 'À rapprocher'}
+                {formatReconciliationStatus(transaction.statut_rapprochement)}
               </Badge>
             </div>
           </div>

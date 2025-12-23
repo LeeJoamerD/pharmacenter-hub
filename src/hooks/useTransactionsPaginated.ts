@@ -9,6 +9,7 @@ import {
   hasExistingEntry,
   BankTransactionEcritureData 
 } from "@/services/BankTransactionAccountingService";
+import { TRANSACTION_STATUS, isReconciled } from "@/constants/transactionStatus";
 
 type BankTransaction = Database['public']['Tables']['transactions_bancaires']['Row'];
 
@@ -51,9 +52,9 @@ export const useTransactionsPaginated = (filters: TransactionFilters) => {
       }
 
       if (filters.status === 'matched') {
-        queryBuilder = queryBuilder.eq('statut_rapprochement', 'Rapproché');
+        queryBuilder = queryBuilder.eq('statut_rapprochement', TRANSACTION_STATUS.RAPPROCHE);
       } else if (filters.status === 'unmatched') {
-        queryBuilder = queryBuilder.neq('statut_rapprochement', 'Rapproché');
+        queryBuilder = queryBuilder.neq('statut_rapprochement', TRANSACTION_STATUS.RAPPROCHE);
       }
 
       if (filters.search && filters.search.trim()) {
@@ -147,7 +148,7 @@ export const useTransactionsPaginated = (filters: TransactionFilters) => {
 
       // Mettre à jour la catégorie si fournie
       const updateData: any = { 
-        statut_rapprochement: 'Rapproché',
+        statut_rapprochement: TRANSACTION_STATUS.RAPPROCHE,
         date_rapprochement: new Date().toISOString()
       };
       
