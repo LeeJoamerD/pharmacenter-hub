@@ -48,6 +48,7 @@ import ReconciliationDialog from '@/components/accounting/ReconciliationDialog';
 import CommitmentDialog from '@/components/accounting/CommitmentDialog';
 import CategorizationRuleDialog from '@/components/accounting/CategorizationRuleDialog';
 import TransactionDetailDialog from '@/components/accounting/TransactionDetailDialog';
+import TransactionCategoryDialog from '@/components/accounting/TransactionCategoryDialog';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -79,11 +80,13 @@ const BankingIntegration = () => {
   const [commitmentDialogOpen, setCommitmentDialogOpen] = useState(false);
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
   const [transactionDetailOpen, setTransactionDetailOpen] = useState(false);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<any>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [selectedReconciliation, setSelectedReconciliation] = useState<any>(null);
   const [selectedCommitment, setSelectedCommitment] = useState<any>(null);
   const [selectedRule, setSelectedRule] = useState<any>(null);
+  const [transactionForCategory, setTransactionForCategory] = useState<any>(null);
 
   // Hooks
   const {
@@ -141,7 +144,8 @@ const BankingIntegration = () => {
     totalPages,
     isLoading: loadingPaginatedTransactions,
     deleteTransaction,
-    reconcileTransaction
+    reconcileTransaction,
+    categorizeTransaction
   } = useTransactionsPaginated(transactionFilters);
 
   const { formatAmount, getCurrencySymbol, getCurrencyCode } = useCurrencyFormatting();
@@ -289,9 +293,26 @@ const BankingIntegration = () => {
     }
   };
 
-  const handleReconcileTransaction = async (transactionId: string) => {
-    await reconcileTransaction.mutateAsync(transactionId);
+  const handleReconcileTransaction = async (transactionId: string, categorie?: string) => {
+    await reconcileTransaction.mutateAsync({ id: transactionId, generateAccounting: true, categorie });
     setTransactionDetailOpen(false);
+  };
+
+  const handleCategorizeTransaction = (transaction: any) => {
+    setTransactionForCategory(transaction);
+    setCategoryDialogOpen(true);
+  };
+
+  const handleCategorySubmit = async (data: { categorie: string; generateAccounting: boolean }) => {
+    if (transactionForCategory) {
+      await categorizeTransaction.mutateAsync({
+        id: transactionForCategory.id,
+        categorie: data.categorie,
+        generateAccounting: data.generateAccounting
+      });
+    }
+    setCategoryDialogOpen(false);
+    setTransactionForCategory(null);
   };
 
   const handleSort = (column: string) => {
@@ -1430,6 +1451,13 @@ const BankingIntegration = () => {
         }}
         onReconcile={() => selectedTransaction && handleReconcileTransaction(selectedTransaction.id)}
         onDelete={() => selectedTransaction && handleDeleteTransaction(selectedTransaction.id)}
+      />
+
+      <TransactionCategoryDialog
+        open={categoryDialogOpen}
+        onOpenChange={setCategoryDialogOpen}
+        onSubmit={handleCategorySubmit}
+        transaction={transactionForCategory}
       />
     </div>
   );
