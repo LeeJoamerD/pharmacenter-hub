@@ -93,10 +93,10 @@ const FiscalManagement = () => {
     switch (status) {
       case 'Conforme':
       case 'Payée':
-      case 'Déclarée':
+      case 'Déposée':
       case 'Traité':
         return 'default';
-      case 'En cours':
+      case 'Brouillon':
       case 'Planifié':
         return 'secondary';
       case 'En attente':
@@ -327,11 +327,11 @@ const FiscalManagement = () => {
                           <Button variant="ghost" size="sm" onClick={generateJournalTVAPDF}>
                             <Download className="h-4 w-4" />
                           </Button>
-                          {declaration.statut === 'En cours' && (
+                          {declaration.statut === 'Brouillon' && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => updateDeclaration.mutate({ id: declaration.id, statut: 'Déclarée' })}
+                              onClick={() => updateDeclaration.mutate({ id: declaration.id, statut: 'Déposée' })}
                             >
                               <Upload className="h-4 w-4" />
                             </Button>

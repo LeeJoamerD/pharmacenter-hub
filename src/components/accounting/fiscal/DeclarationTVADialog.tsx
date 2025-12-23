@@ -55,7 +55,7 @@ export const DeclarationTVADialog = ({ open, onOpenChange, onSave, vatSummary }:
       tva_collectee: vatSummary?.vatCollected || 0,
       tva_deductible: vatSummary?.vatDeductible || 0,
       tva_a_payer: vatSummary?.vatDue || 0,
-      statut: 'En cours',
+      statut: 'Brouillon',
     },
   });
 
