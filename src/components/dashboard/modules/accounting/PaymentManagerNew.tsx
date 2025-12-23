@@ -129,7 +129,7 @@ const PaymentManagerNew = () => {
 
         {/* ONGLET PAIEMENTS */}
         <TabsContent value="paiements" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-4 mb-6">
+          <div className="grid gap-4 md:grid-cols-5 mb-6">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Total Encaissé</CardTitle>
@@ -172,6 +172,20 @@ const PaymentManagerNew = () => {
                   {formatAmount(stats.totalMobileMoney)}
                 </div>
                 <p className="text-xs text-muted-foreground">{getDevise()}</p>
+              </CardContent>
+            </Card>
+            {/* Nouvelle carte Centime Additionnel */}
+            <Card className="border-amber-200 bg-amber-50/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-amber-700">Centime Add. Perçu</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-600">
+                  {formatAmount((stats as any).totalCentimeAdditionnel || 0)}
+                </div>
+                <p className="text-xs text-amber-600/70">
+                  5% collecté
+                </p>
               </CardContent>
             </Card>
           </div>

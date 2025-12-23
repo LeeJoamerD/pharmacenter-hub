@@ -67,7 +67,21 @@ const ChartOfAccounts = () => {
   const filteredAccounts = accountsTree.filter(account => {
     const matchesSearch = account.libelle.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          account.code.includes(searchTerm);
-    const matchesClass = selectedClass === 'all' || account.classe.toString() === selectedClass;
+    
+    // Filtre spécial pour les comptes fiscaux et centime additionnel
+    let matchesClass = false;
+    if (selectedClass === 'all') {
+      matchesClass = true;
+    } else if (selectedClass === 'fiscal') {
+      // Comptes fiscaux: TVA (443x, 445x) incluant centime additionnel
+      matchesClass = account.code.startsWith('443') || account.code.startsWith('445');
+    } else if (selectedClass === 'centime') {
+      // Comptes centime additionnel spécifiquement (4458, 4459)
+      matchesClass = account.code.startsWith('4458') || account.code.startsWith('4459');
+    } else {
+      matchesClass = account.classe.toString() === selectedClass;
+    }
+    
     return matchesSearch && matchesClass;
   });
 
@@ -170,6 +184,14 @@ const ChartOfAccounts = () => {
                 <span className="font-medium">{account.libelle}</span>
                 {account.analytique && <Badge variant="secondary">Analytique</Badge>}
                 {account.rapprochement && <Badge variant="secondary">Rapprochement</Badge>}
+                {/* Badge Centime Additionnel pour comptes 4458/4459 */}
+                {(account.code.startsWith('4458') || account.code.startsWith('4459')) && (
+                  <Badge variant="default" className="bg-amber-500 text-white">Centime Add.</Badge>
+                )}
+                {/* Badge Fiscal pour comptes TVA (443x, 445x) */}
+                {(account.code.startsWith('443') || account.code.startsWith('445')) && !account.code.startsWith('4458') && !account.code.startsWith('4459') && (
+                  <Badge variant="outline" className="border-blue-500 text-blue-600">Fiscal</Badge>
+                )}
               </div>
               <div className="flex space-x-4 text-sm text-muted-foreground">
                 <span>Débit: {formatAmount(account.solde_debiteur)}</span>
@@ -454,12 +476,14 @@ const ChartOfAccounts = () => {
                   </div>
                 </div>
                 <Select value={selectedClass} onValueChange={setSelectedClass}>
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className="w-[250px]">
                     <Filter className="mr-2 h-4 w-4" />
                     <SelectValue placeholder="Filtrer par classe" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Toutes les classes</SelectItem>
+                    <SelectItem value="fiscal">🏛️ Comptes fiscaux (TVA/Centime)</SelectItem>
+                    <SelectItem value="centime">📊 Centime Additionnel (4458/4459)</SelectItem>
                     {accountingClasses.map(cls => (
                       <SelectItem key={cls.classe} value={cls.classe.toString()}>
                         Classe {cls.classe}

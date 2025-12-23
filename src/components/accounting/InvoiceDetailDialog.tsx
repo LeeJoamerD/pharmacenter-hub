@@ -276,6 +276,13 @@ export const InvoiceDetailDialog: React.FC<InvoiceDetailDialogProps> = ({
                     <span>TVA</span>
                     <span className="font-medium">{invoice.montant_tva.toFixed(2)} FCFA</span>
                   </div>
+                  {/* Centime Additionnel - affiché si présent */}
+                  {(invoice as any).montant_centime_additionnel && (invoice as any).montant_centime_additionnel > 0 && (
+                    <div className="flex justify-between text-sm text-amber-600">
+                      <span>Centime Additionnel ({(invoice as any).taux_centime_additionnel || 5}%)</span>
+                      <span className="font-medium">{((invoice as any).montant_centime_additionnel || 0).toFixed(2)} FCFA</span>
+                    </div>
+                  )}
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total TTC</span>
