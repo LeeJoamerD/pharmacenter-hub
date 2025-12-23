@@ -521,20 +521,26 @@ export const useFiscalManagement = () => {
       if (ventesError) throw ventesError;
 
       // Achats du mois - récupérer via lignes_reception_fournisseur
+      // Utiliser prix_achat_unitaire_reel (colonne correcte) et filtrer côté client
       const { data: lignesReception, error: achatsError } = await supabase
         .from('lignes_reception_fournisseur')
-        .select('prix_achat_unitaire, quantite_recue, receptions_fournisseurs!inner(tenant_id, date_reception)')
-        .eq('receptions_fournisseurs.tenant_id', tenantId)
-        .gte('receptions_fournisseurs.date_reception', startOfMonth)
-        .lte('receptions_fournisseurs.date_reception', endOfMonth);
+        .select('prix_achat_unitaire_reel, quantite_recue, tenant_id, reception_id, receptions_fournisseurs(date_reception)')
+        .eq('tenant_id', tenantId);
 
       if (achatsError) throw achatsError;
+
+      // Filtrer par date côté client pour éviter les erreurs de relation PostgREST
+      const filteredReceptions = lignesReception?.filter((l: any) => {
+        const dateReception = l.receptions_fournisseurs?.date_reception;
+        if (!dateReception) return false;
+        return dateReception >= startOfMonth && dateReception <= endOfMonth;
+      }) || [];
 
       const salesHT = ventes?.reduce((sum, v) => sum + (v.montant_total_ht || 0), 0) || 0;
       const salesTTC = ventes?.reduce((sum, v) => sum + (v.montant_total_ttc || 0), 0) || 0;
       const vatCollected = salesTTC - salesHT;
 
-      const purchasesHT = lignesReception?.reduce((sum, l: any) => sum + ((l.prix_achat_unitaire || 0) * (l.quantite_recue || 0)), 0) || 0;
+      const purchasesHT = filteredReceptions.reduce((sum, l: any) => sum + ((l.prix_achat_unitaire_reel || 0) * (l.quantite_recue || 0)), 0);
       const vatDeductible = purchasesHT * (getVATRate('standard') / 100);
 
       const vatDue = vatCollected - vatDeductible;
@@ -550,6 +556,7 @@ export const useFiscalManagement = () => {
       };
     },
     enabled: !!tenantId,
+    retry: 1, // Réduire les tentatives en cas d'erreur
   });
 
   // ==================== ANALYTICS TAX ====================
