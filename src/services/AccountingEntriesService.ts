@@ -78,12 +78,12 @@ export async function generateSaleAccountingEntries(data: VenteEcritureData): Pr
       return false;
     }
 
-    // Récupérer l'exercice comptable en cours
+    // Récupérer l'exercice comptable en cours (statut 'En cours' ou 'Ouvert')
     const { data: exercice, error: exerciceError } = await supabase
       .from('exercices_comptables')
       .select('id')
       .eq('tenant_id', tenantId)
-      .eq('statut', 'En cours')
+      .in('statut', ['En cours', 'Ouvert'])
       .maybeSingle();
 
     if (exerciceError || !exercice) {
