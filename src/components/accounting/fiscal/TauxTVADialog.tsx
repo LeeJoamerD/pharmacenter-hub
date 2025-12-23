@@ -21,6 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useForm } from 'react-hook-form';
 import { TauxTVA } from '@/hooks/useFiscalManagement';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 interface TauxTVADialogProps {
   open: boolean;
@@ -30,6 +31,8 @@ interface TauxTVADialogProps {
 }
 
 export const TauxTVADialog = ({ open, onOpenChange, onSave, defaultValues }: TauxTVADialogProps) => {
+  const { getInputStep } = useCurrencyFormatting();
+  
   const { register, handleSubmit, reset, watch, setValue } = useForm({
     defaultValues: defaultValues || {
       nom_taux: '',
@@ -78,6 +81,8 @@ export const TauxTVADialog = ({ open, onOpenChange, onSave, defaultValues }: Tau
                 id="taux_pourcentage"
                 type="number"
                 step="0.01"
+                min="0"
+                max="100"
                 {...register('taux_pourcentage', { required: true, valueAsNumber: true })}
               />
             </div>

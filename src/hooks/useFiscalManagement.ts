@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
-import { useCurrency } from '@/contexts/CurrencyContext';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
@@ -106,7 +106,7 @@ export interface VATSummary {
 export const useFiscalManagement = () => {
   const { tenantId } = useTenant();
   const queryClient = useQueryClient();
-  const { formatPrice, currentCurrency, changeCurrency } = useCurrency();
+  const { formatAmount, formatNumber, formatPercentage, getInputStep, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
   const { settings } = useGlobalSystemSettings();
 
   // ==================== PARAMÈTRES RÉGIONAUX ====================
@@ -144,10 +144,8 @@ export const useFiscalManagement = () => {
     enabled: !!tenantId,
   });
 
-  // Fonctions utilitaires
-  const formatAmount = (amount: number): string => {
-    return formatPrice(amount);
-  };
+  // Fonctions utilitaires - utiliser celles du hook centralisé
+  // formatAmount, formatNumber, formatPercentage viennent de useCurrencyFormatting
 
   const getVATRate = (type: 'standard' | 'reduit' | 'super_reduit' = 'standard'): number => {
     if (!regionalParams) return 18.0;
@@ -546,13 +544,14 @@ export const useFiscalManagement = () => {
       const vatDue = vatCollected - vatDeductible;
       const averageRate = salesHT > 0 ? (vatCollected / salesHT) * 100 : 0;
 
+      // Arrondir les valeurs pour éviter les erreurs de virgule flottante (ex: 175061.69999999998)
       return {
-        vatCollected,
-        vatDeductible,
-        vatDue,
+        vatCollected: Math.round(vatCollected),
+        vatDeductible: Math.round(vatDeductible),
+        vatDue: Math.round(vatDue),
         averageRate,
-        salesHT,
-        purchasesHT,
+        salesHT: Math.round(salesHT),
+        purchasesHT: Math.round(purchasesHT),
       };
     },
     enabled: !!tenantId,
@@ -739,6 +738,11 @@ export const useFiscalManagement = () => {
     regionalParams,
     loadingRegionalParams,
     formatAmount,
+    formatNumber,
+    formatPercentage,
+    getInputStep,
+    isNoDecimalCurrency,
+    getCurrencySymbol,
     getVATRate,
   };
 };

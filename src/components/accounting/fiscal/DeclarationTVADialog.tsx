@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useForm } from 'react-hook-form';
 import { TVADeclaration, VATSummary } from '@/hooks/useFiscalManagement';
-import { useCurrency } from '@/contexts/CurrencyContext';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useTenant } from '@/contexts/TenantContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,9 +27,9 @@ interface DeclarationTVADialogProps {
 }
 
 export const DeclarationTVADialog = ({ open, onOpenChange, onSave, vatSummary }: DeclarationTVADialogProps) => {
-  const { currentCurrency } = useCurrency();
+  const { formatNumber, getInputStep, getCurrencySymbol, isNoDecimalCurrency } = useCurrencyFormatting();
   const { tenantId } = useTenant();
-  const devise = currentCurrency.code;
+  const devise = getCurrencySymbol();
   
   // Récupérer l'exercice actif (statut = 'Ouvert')
   const { data: activeExercice, isLoading: loadingExercice } = useQuery({
@@ -66,21 +66,28 @@ export const DeclarationTVADialog = ({ open, onOpenChange, onSave, vatSummary }:
     }
   }, [activeExercice, setValue]);
 
-  // Mettre à jour les valeurs TVA quand vatSummary change
+  // Mettre à jour les valeurs TVA quand vatSummary change (arrondir pour les devises sans décimales)
   useEffect(() => {
     if (vatSummary) {
-      setValue('tva_collectee', vatSummary.vatCollected || 0);
-      setValue('tva_deductible', vatSummary.vatDeductible || 0);
-      setValue('tva_a_payer', vatSummary.vatDue || 0);
+      const roundValue = (val: number) => isNoDecimalCurrency() ? Math.round(val) : val;
+      setValue('tva_collectee', roundValue(vatSummary.vatCollected || 0));
+      setValue('tva_deductible', roundValue(vatSummary.vatDeductible || 0));
+      setValue('tva_a_payer', roundValue(vatSummary.vatDue || 0));
     }
-  }, [vatSummary, setValue]);
+  }, [vatSummary, setValue, isNoDecimalCurrency]);
 
   const onSubmit = (data: any) => {
     // Convertir periode de YYYY-MM à YYYY-MM-01
+    // Arrondir les valeurs pour les devises sans décimales
+    const roundValue = (val: number) => isNoDecimalCurrency() ? Math.round(val) : val;
+    
     const formattedData = {
       ...data,
       periode: `${data.periode}-01`,
       exercice_id: activeExercice?.id || data.exercice_id,
+      tva_collectee: roundValue(data.tva_collectee),
+      tva_deductible: roundValue(data.tva_deductible),
+      tva_a_payer: roundValue(data.tva_a_payer),
     };
     onSave(formattedData);
     onOpenChange(false);
@@ -128,27 +135,42 @@ export const DeclarationTVADialog = ({ open, onOpenChange, onSave, vatSummary }:
               <Input
                 id="tva_collectee"
                 type="number"
-                step="0.01"
+                step={getInputStep()}
                 {...register('tva_collectee', { required: true, valueAsNumber: true })}
               />
+              {vatSummary && (
+                <p className="text-xs text-muted-foreground">
+                  Valeur calculée : {formatNumber(vatSummary.vatCollected || 0)} {devise}
+                </p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="tva_deductible">TVA Déductible ({devise})</Label>
               <Input
                 id="tva_deductible"
                 type="number"
-                step="0.01"
+                step={getInputStep()}
                 {...register('tva_deductible', { required: true, valueAsNumber: true })}
               />
+              {vatSummary && (
+                <p className="text-xs text-muted-foreground">
+                  Valeur calculée : {formatNumber(vatSummary.vatDeductible || 0)} {devise}
+                </p>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="tva_a_payer">TVA à Payer ({devise})</Label>
               <Input
                 id="tva_a_payer"
                 type="number"
-                step="0.01"
+                step={getInputStep()}
                 {...register('tva_a_payer', { required: true, valueAsNumber: true })}
               />
+              {vatSummary && (
+                <p className="text-xs text-muted-foreground">
+                  Valeur calculée : {formatNumber(vatSummary.vatDue || 0)} {devise}
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
