@@ -1,11 +1,20 @@
 import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { BankAccount } from '@/hooks/usePaymentManager';
 import { Badge } from '@/components/ui/badge';
 
+// Generic type for bank accounts from either usePaymentManager or useBankingManager
+interface GenericBankAccount {
+  id: string;
+  nom_compte: string;
+  numero_compte: string;
+  solde_actuel: number;
+  devise: string;
+  est_actif: boolean;
+}
+
 interface BankAccountSelectorProps {
-  accounts: BankAccount[];
+  accounts: GenericBankAccount[];
   value?: string;
   onChange: (value: string) => void;
   label?: string;

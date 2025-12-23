@@ -654,8 +654,8 @@ const PaymentManagerNew = () => {
       <BankTransactionDialog
         open={transactionDialog}
         onOpenChange={setTransactionDialog}
-        onSubmit={(data) => createBankTransaction(data)}
-        bankAccounts={bankAccounts}
+        onSubmit={(data) => createBankTransaction(data as any)}
+        bankAccounts={bankAccounts as any}
       />
 
       <PaymentScheduleDialog
