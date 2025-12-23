@@ -5,6 +5,7 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { toast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
 import { generateTransactionReference } from "@/services/TransactionReferenceService";
+import { generateBankTransactionEntry, BankTransactionEcritureData } from "@/services/BankTransactionAccountingService";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -266,10 +267,35 @@ export const useBankingManager = () => {
         .single();
       
       if (error) throw error;
+
+      // Générer l'écriture comptable automatiquement si une catégorie est renseignée
+      if (data && data.categorie) {
+        const ecritureData: BankTransactionEcritureData = {
+          transactionId: data.id,
+          tenantId,
+          compteBancaireId: data.compte_bancaire_id,
+          montant: data.montant,
+          typeTransaction: data.type_transaction as 'credit' | 'debit',
+          categorie: data.categorie,
+          libelle: data.libelle,
+          dateTransaction: data.date_transaction,
+          reference: data.reference
+        };
+        
+        try {
+          await generateBankTransactionEntry(ecritureData);
+          console.log('✅ Écriture comptable générée automatiquement à la création');
+        } catch (err) {
+          console.warn('⚠️ Impossible de générer l\'écriture comptable:', err);
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bank-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["bank-transactions-paginated"] });
+      queryClient.invalidateQueries({ queryKey: ["accounting-entries"] });
       toast({ title: "Transaction créée" });
     },
   });
