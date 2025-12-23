@@ -124,10 +124,18 @@ const FiscalManagement = () => {
             TVA, déclarations fiscales et conformité réglementaire
           </p>
           {regionalParams && (
-            <div className="flex gap-2 mt-2">
+            <div className="flex gap-2 mt-2 flex-wrap">
               <Badge variant="outline">{regionalParams.pays}</Badge>
               <Badge variant="outline">{regionalParams.systeme_comptable}</Badge>
               <Badge variant="outline">{devise}</Badge>
+              <Badge variant="secondary">TVA: {regionalParams.taux_tva_standard}%</Badge>
+              <Badge variant="secondary">Centime: {regionalParams.taux_centime_additionnel}%</Badge>
+              {parametresFiscaux && (
+                <>
+                  <Badge>Régime: {parametresFiscaux.regime_tva}</Badge>
+                  <Badge>Fréq.: {parametresFiscaux.frequence_declaration}</Badge>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -445,10 +453,45 @@ const FiscalManagement = () => {
 
         {/* ==================== ONGLET OBLIGATIONS ==================== */}
         <TabsContent value="obligations" className="space-y-4">
+          {/* Alertes d'échéances proches basées sur les paramètres fiscaux */}
+          {parametresFiscaux?.alerte_echeances && (
+            (() => {
+              const joursAvant = parametresFiscaux?.jours_alerte_avant_echeance || 7;
+              const dateAlerte = new Date();
+              dateAlerte.setDate(dateAlerte.getDate() + joursAvant);
+              
+              const obligationsProches = obligations.filter(o => 
+                new Date(o.prochaine_echeance) <= dateAlerte && o.statut !== 'Traité'
+              );
+              
+              if (obligationsProches.length > 0) {
+                return (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>{obligationsProches.length} obligation(s)</strong> arrivent à échéance dans les {joursAvant} prochains jours. 
+                      {parametresFiscaux?.email_alertes && (
+                        <span className="text-muted-foreground"> (Alertes email activées: {parametresFiscaux.email_alertes})</span>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                );
+              }
+              return null;
+            })()
+          )}
+          
+          {/* Résumé des paramètres utilisés */}
+          <div className="flex gap-2 flex-wrap">
+            <Badge variant="outline">Fréquence: {parametresFiscaux?.frequence_declaration || 'Non définie'}</Badge>
+            <Badge variant="outline">Échéance mensuelle: Jour {regionalParams?.jour_echeance_mensuelle || 15}</Badge>
+            <Badge variant="outline">Échéance trimestrielle: Jour {regionalParams?.jour_echeance_trimestrielle || 20}</Badge>
+          </div>
+          
           <Card>
             <CardHeader>
               <CardTitle>Obligations Fiscales</CardTitle>
-              <CardDescription>Suivi des obligations fiscales</CardDescription>
+              <CardDescription>Suivi des obligations fiscales selon la fréquence {parametresFiscaux?.frequence_declaration || ''}</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -457,37 +500,48 @@ const FiscalManagement = () => {
                     <TableHead>Type</TableHead>
                     <TableHead>Fréquence</TableHead>
                     <TableHead>Échéance</TableHead>
+                    <TableHead>Jours restants</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {obligations.map((obligation) => (
-                    <TableRow key={obligation.id}>
-                      <TableCell className="font-medium">{obligation.type_obligation}</TableCell>
-                      <TableCell>{obligation.frequence}</TableCell>
-                      <TableCell>{new Date(obligation.prochaine_echeance).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusColor(obligation.statut)}>
-                          {obligation.statut}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => setSelectedObligation(obligation)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => updateObligation.mutate({ id: obligation.id, statut: 'Traité' })}
-                          >
-                            <CheckCircle2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {obligations.map((obligation) => {
+                    const joursRestants = Math.ceil((new Date(obligation.prochaine_echeance).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                    const isUrgent = joursRestants <= (parametresFiscaux?.jours_alerte_avant_echeance || 7);
+                    
+                    return (
+                      <TableRow key={obligation.id} className={isUrgent && obligation.statut !== 'Traité' ? 'bg-destructive/5' : ''}>
+                        <TableCell className="font-medium">{obligation.type_obligation}</TableCell>
+                        <TableCell>{obligation.frequence}</TableCell>
+                        <TableCell>{new Date(obligation.prochaine_echeance).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge variant={joursRestants <= 0 ? 'destructive' : joursRestants <= 7 ? 'secondary' : 'outline'}>
+                            {joursRestants <= 0 ? 'Dépassée' : `${joursRestants} jour(s)`}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusColor(obligation.statut)}>
+                            {obligation.statut}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedObligation(obligation)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => updateObligation.mutate({ id: obligation.id, statut: 'Traité' })}
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
@@ -576,19 +630,20 @@ const FiscalManagement = () => {
 
         {/* ==================== ONGLET PARAMÈTRES ==================== */}
         <TabsContent value="parametres" className="space-y-4">
+          {/* Section 1: Paramètres Généraux */}
           <Card>
             <CardHeader>
-              <CardTitle>Paramètres Fiscaux</CardTitle>
+              <CardTitle>Paramètres Généraux</CardTitle>
               <CardDescription>
-                Configuration des paramètres généraux
+                Configuration des paramètres fiscaux de base
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="grid gap-2">
                   <Label htmlFor="regime_tva">Régime TVA</Label>
                   <Select
-                    defaultValue={parametresFiscaux?.regime_tva}
+                    value={parametresFiscaux?.regime_tva || 'Normal'}
                     onValueChange={(value) => updateParametresFiscaux.mutate({ regime_tva: value as any })}
                   >
                     <SelectTrigger>
@@ -604,7 +659,7 @@ const FiscalManagement = () => {
                 <div className="grid gap-2">
                   <Label htmlFor="frequence_declaration">Fréquence Déclaration</Label>
                   <Select
-                    defaultValue={parametresFiscaux?.frequence_declaration}
+                    value={parametresFiscaux?.frequence_declaration || 'Mensuelle'}
                     onValueChange={(value) => updateParametresFiscaux.mutate({ frequence_declaration: value as any })}
                   >
                     <SelectTrigger>
@@ -625,7 +680,145 @@ const FiscalManagement = () => {
                     onBlur={(e) => updateParametresFiscaux.mutate({ numero_tva: e.target.value })}
                   />
                 </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="email_alertes">Email pour alertes</Label>
+                  <Input
+                    id="email_alertes"
+                    type="email"
+                    placeholder="alerts@pharmacie.com"
+                    defaultValue={parametresFiscaux?.email_alertes || ''}
+                    onBlur={(e) => updateParametresFiscaux.mutate({ email_alertes: e.target.value })}
+                  />
+                </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 2: Configuration des Alertes */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuration des Alertes</CardTitle>
+              <CardDescription>
+                Paramétrez les notifications et rappels fiscaux
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="alerte_echeances"
+                    checked={parametresFiscaux?.alerte_echeances ?? true}
+                    onCheckedChange={(checked) => updateParametresFiscaux.mutate({ alerte_echeances: !!checked })}
+                  />
+                  <Label htmlFor="alerte_echeances" className="cursor-pointer">Alerte échéances fiscales</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="alerte_seuil_tva"
+                    checked={parametresFiscaux?.alerte_seuil_tva ?? false}
+                    onCheckedChange={(checked) => updateParametresFiscaux.mutate({ alerte_seuil_tva: !!checked })}
+                  />
+                  <Label htmlFor="alerte_seuil_tva" className="cursor-pointer">Alerte seuil TVA dépassé</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="alerte_reglementations"
+                    checked={parametresFiscaux?.alerte_reglementations ?? false}
+                    onCheckedChange={(checked) => updateParametresFiscaux.mutate({ alerte_reglementations: !!checked })}
+                  />
+                  <Label htmlFor="alerte_reglementations" className="cursor-pointer">Alerte nouvelles réglementations</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="rapport_mensuel_auto"
+                    checked={parametresFiscaux?.rapport_mensuel_auto ?? false}
+                    onCheckedChange={(checked) => updateParametresFiscaux.mutate({ rapport_mensuel_auto: !!checked })}
+                  />
+                  <Label htmlFor="rapport_mensuel_auto" className="cursor-pointer">Rapport mensuel automatique</Label>
+                </div>
+              </div>
+              <Separator />
+              <div className="grid gap-2 max-w-xs">
+                <Label htmlFor="jours_alerte">Jours avant échéance pour alerte</Label>
+                <Input
+                  id="jours_alerte"
+                  type="number"
+                  min={1}
+                  max={30}
+                  defaultValue={parametresFiscaux?.jours_alerte_avant_echeance || 7}
+                  onBlur={(e) => updateParametresFiscaux.mutate({ jours_alerte_avant_echeance: parseInt(e.target.value) || 7 })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Délai d'alerte avant les échéances fiscales (1-30 jours)
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 3: Paramètres Régionaux (lecture seule) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Paramètres Régionaux</CardTitle>
+              <CardDescription>
+                Configuration fiscale régionale (lecture seule - définie par le pays)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {loadingRegionalParams ? (
+                <p className="text-muted-foreground">Chargement...</p>
+              ) : regionalParams ? (
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="p-3 border rounded-lg">
+                    <Label className="text-xs text-muted-foreground">Pays</Label>
+                    <p className="font-medium">{regionalParams.pays} ({regionalParams.code_pays})</p>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <Label className="text-xs text-muted-foreground">Devise principale</Label>
+                    <p className="font-medium">{regionalParams.devise_principale}</p>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <Label className="text-xs text-muted-foreground">Système comptable</Label>
+                    <p className="font-medium">{regionalParams.systeme_comptable}</p>
+                  </div>
+                  <div className="p-3 border rounded-lg bg-primary/5">
+                    <Label className="text-xs text-muted-foreground">Taux TVA Standard</Label>
+                    <p className="font-bold text-primary">{regionalParams.taux_tva_standard}%</p>
+                  </div>
+                  <div className="p-3 border rounded-lg bg-secondary/5">
+                    <Label className="text-xs text-muted-foreground">Taux Centime Additionnel</Label>
+                    <p className="font-bold text-secondary-foreground">{regionalParams.taux_centime_additionnel}%</p>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <Label className="text-xs text-muted-foreground">Autorité fiscale</Label>
+                    <p className="font-medium text-sm">{regionalParams.autorite_fiscale}</p>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <Label className="text-xs text-muted-foreground">Échéance mensuelle</Label>
+                    <p className="font-medium">Jour {regionalParams.jour_echeance_mensuelle}</p>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <Label className="text-xs text-muted-foreground">Échéance trimestrielle</Label>
+                    <p className="font-medium">Jour {regionalParams.jour_echeance_trimestrielle}</p>
+                  </div>
+                  <div className="p-3 border rounded-lg">
+                    <Label className="text-xs text-muted-foreground">Régime fiscal par défaut</Label>
+                    <p className="font-medium">{regionalParams.regime_fiscal}</p>
+                  </div>
+                </div>
+              ) : (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Aucun paramètre régional configuré. Veuillez contacter l'administrateur.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {regionalParams?.mention_legale_footer && (
+                <div className="mt-4 p-3 bg-muted rounded-lg">
+                  <Label className="text-xs text-muted-foreground">Mention légale</Label>
+                  <p className="text-sm">{regionalParams.mention_legale_footer}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
