@@ -1150,8 +1150,8 @@ const BankingIntegration = () => {
                   <Input 
                     id="threshold-critical" 
                     type="number"
-                    defaultValue={parameters?.seuil_critique_xaf || regionalParams?.seuil_alerte_critique || 500000}
-                    onBlur={(e) => handleUpdateParameters('seuil_critique_xaf', parseFloat(e.target.value))}
+                    defaultValue={parameters?.seuil_alerte_critique_xaf || regionalParams?.seuil_alerte_critique || 500000}
+                    onBlur={(e) => handleUpdateParameters('seuil_alerte_critique_xaf', parseFloat(e.target.value))}
                   />
                 </div>
                 <div>

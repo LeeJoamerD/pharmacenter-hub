@@ -6,16 +6,39 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
-import { BankTransaction } from '@/hooks/usePaymentManager';
 import BankAccountSelector from './BankAccountSelector';
-import { BankAccount } from '@/hooks/usePaymentManager';
+
+// Generic types to support both usePaymentManager and useBankingManager
+interface GenericBankAccount {
+  id: string;
+  nom_compte: string;
+  numero_compte: string;
+  solde_actuel: number;
+  devise: string;
+  est_actif: boolean;
+}
+
+interface TransactionFormData {
+  compte_bancaire_id?: string;
+  reference?: string;
+  reference_externe?: string;
+  date_transaction?: string;
+  date_valeur?: string;
+  type_transaction?: string;
+  montant?: number;
+  libelle?: string;
+  description?: string;
+  categorie?: string;
+  notes?: string;
+  statut_rapprochement?: string;
+}
 
 interface BankTransactionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: Partial<BankTransaction>) => void;
-  transaction?: BankTransaction | null;
-  bankAccounts: BankAccount[];
+  onSubmit: (data: TransactionFormData) => void;
+  transaction?: TransactionFormData | null;
+  bankAccounts: GenericBankAccount[];
 }
 
 const BankTransactionDialog: React.FC<BankTransactionDialogProps> = ({
@@ -25,7 +48,7 @@ const BankTransactionDialog: React.FC<BankTransactionDialogProps> = ({
   transaction,
   bankAccounts,
 }) => {
-  const { register, handleSubmit, watch, setValue } = useForm<Partial<BankTransaction>>({
+  const { register, handleSubmit, watch, setValue } = useForm<TransactionFormData>({
     defaultValues: transaction || {
       type_transaction: 'credit',
       statut_rapprochement: 'non_rapproche',
@@ -37,7 +60,7 @@ const BankTransactionDialog: React.FC<BankTransactionDialogProps> = ({
   const typeTransaction = watch('type_transaction');
   const compteBancaireId = watch('compte_bancaire_id');
 
-  const handleFormSubmit = (data: Partial<BankTransaction>) => {
+  const handleFormSubmit = (data: TransactionFormData) => {
     onSubmit(data);
     onOpenChange(false);
   };
