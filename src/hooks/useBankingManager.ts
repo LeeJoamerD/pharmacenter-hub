@@ -67,32 +67,71 @@ export const useBankingManager = () => {
 
   // ========== REGIONAL PARAMETERS ==========
 
+  // Default regional params for fallback
+  const defaultRegionalParams: BankingRegionalParams = {
+    id: '',
+    tenant_id: tenantId || '',
+    pays: 'Congo-Brazzaville',
+    code_pays: 'CG',
+    devise_principale: 'XAF',
+    format_rib: '23_digits',
+    longueur_rib: 23,
+    format_iban: 'CG + 25 digits',
+    banque_centrale: 'BEAC',
+    format_import_defaut: 'CSV_BEAC',
+    liste_banques: [
+      { code: '10001', name: 'UBA CONGO' },
+      { code: '10002', name: 'BGFI BANK CONGO' },
+      { code: '10003', name: 'ECOBANK CONGO' },
+      { code: '10004', name: 'LCB BANK' },
+      { code: '10005', name: 'CRÉDIT DU CONGO' }
+    ],
+    validation_regex_rib: '^\\d{23}$',
+    validation_regex_iban: '^CG\\d{25}$',
+    mention_legale_footer: 'Conforme aux normes BEAC - République du Congo',
+    seuil_alerte_bas: 500000,
+    seuil_alerte_critique: 100000,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
   const { data: regionalParams, isLoading: loadingRegionalParams } = useQuery({
     queryKey: ["banking-regional-params", tenantId],
     queryFn: async () => {
-      if (!tenantId) return null;
+      if (!tenantId) return defaultRegionalParams;
       
       const { data, error } = await supabase
         .from("parametres_regionaux_bancaires")
         .select("*")
         .eq("tenant_id", tenantId)
-        .single();
+        .maybeSingle();
       
-      if (error) {
-        // Create default if not exists
-        await supabase.rpc(
-          'init_banking_params_for_tenant',
-          { p_tenant_id: tenantId, p_country_code: 'CG' }
-        );
-        
-        // Fetch again
-        const { data: createdData } = await supabase
-          .from("parametres_regionaux_bancaires")
-          .select("*")
-          .eq("tenant_id", tenantId)
-          .single();
-        
-        return createdData as BankingRegionalParams;
+      // Si erreur autre que "pas de données", on log et retourne les valeurs par défaut
+      if (error && error.code !== 'PGRST116') {
+        console.warn("Erreur fetch regional params:", error);
+        return defaultRegionalParams;
+      }
+      
+      // Si pas de données, tenter d'initialiser via RPC
+      if (!data) {
+        try {
+          await supabase.rpc(
+            'init_banking_params_for_tenant',
+            { p_tenant_id: tenantId, p_country_code: 'CG' }
+          );
+          
+          // Refetch après init
+          const { data: createdData } = await supabase
+            .from("parametres_regionaux_bancaires")
+            .select("*")
+            .eq("tenant_id", tenantId)
+            .maybeSingle();
+          
+          return (createdData as BankingRegionalParams) || defaultRegionalParams;
+        } catch (rpcError) {
+          console.warn("Erreur init params régionaux:", rpcError);
+          return defaultRegionalParams;
+        }
       }
       
       return data as BankingRegionalParams;
@@ -512,18 +551,73 @@ export const useBankingManager = () => {
 
   // ========== BANKING PARAMETERS ==========
 
-  const { data: parameters } = useQuery({
+  // Default banking parameters for fallback
+  const defaultBankingParams: Partial<BankingParameters> = {
+    tenant_id: tenantId || '',
+    synchronisation_auto: true,
+    frequence_sync: 'Quotidien',
+    rapprochement_auto: false,
+    tolerance_rapprochement_jours: 3,
+    tolerance_rapprochement_montant_xaf: 100,
+    alertes_actives: true,
+    seuil_alerte_bas_xaf: 500000,
+    seuil_alerte_critique_xaf: 100000,
+    format_import_defaut: 'CSV_BEAC',
+    devise_principale: 'XAF',
+    code_pays: 'CG'
+  };
+
+  const { data: parameters, isLoading: loadingParameters } = useQuery({
     queryKey: ["banking-parameters", tenantId],
     queryFn: async () => {
-      if (!tenantId) return null;
+      if (!tenantId) return defaultBankingParams as BankingParameters;
       
       const { data, error } = await supabase
         .from("parametres_bancaires")
         .select("*")
         .eq("tenant_id", tenantId)
-        .single();
+        .maybeSingle();
       
-      if (error) throw error;
+      // Si erreur autre que "pas de données"
+      if (error && error.code !== 'PGRST116') {
+        console.warn("Erreur fetch parametres bancaires:", error);
+        return defaultBankingParams as BankingParameters;
+      }
+      
+      // Si pas de données, créer les paramètres par défaut
+      if (!data) {
+        try {
+          const { data: createdData, error: createError } = await supabase
+            .from("parametres_bancaires")
+            .insert([{
+              tenant_id: tenantId,
+              synchronisation_auto: true,
+              frequence_sync: 'Quotidien',
+              rapprochement_auto: false,
+              tolerance_rapprochement_jours: 3,
+              tolerance_rapprochement_montant_xaf: 100,
+              alertes_actives: true,
+              seuil_alerte_bas_xaf: 500000,
+              seuil_alerte_critique_xaf: 100000,
+              format_import_defaut: 'CSV_BEAC',
+              devise_principale: 'XAF',
+              code_pays: 'CG'
+            }])
+            .select()
+            .single();
+          
+          if (createError) {
+            console.warn("Erreur création paramètres bancaires:", createError);
+            return defaultBankingParams as BankingParameters;
+          }
+          
+          return createdData;
+        } catch (insertError) {
+          console.warn("Exception création paramètres bancaires:", insertError);
+          return defaultBankingParams as BankingParameters;
+        }
+      }
+      
       return data;
     },
     enabled: !!tenantId,
