@@ -82,8 +82,15 @@ const BankTransactionDialog: React.FC<BankTransactionDialogProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="reference">Référence *</Label>
-              <Input id="reference" {...register('reference', { required: true })} />
+              <Label htmlFor="reference">Référence</Label>
+              <Input 
+                id="reference" 
+                {...register('reference')} 
+                placeholder="Auto-généré si vide"
+              />
+              <p className="text-xs text-muted-foreground">
+                Laissez vide pour générer automatiquement (TRX-YYYYMM-NNNNN)
+              </p>
             </div>
 
             <div className="space-y-2">
