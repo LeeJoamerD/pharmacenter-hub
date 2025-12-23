@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
 import { generateTransactionReference } from "@/services/TransactionReferenceService";
 import { generateBankTransactionEntry, BankTransactionEcritureData } from "@/services/BankTransactionAccountingService";
+import { TRANSACTION_STATUS, isReconciled } from "@/constants/transactionStatus";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -765,7 +766,7 @@ export const useBankingManager = () => {
    */
   const getReconciliationRate = (): number => {
     if (transactions.length === 0) return 0;
-    const rapprochees = transactions.filter((t: any) => t.statut_rapprochement === 'Rapproché').length;
+    const rapprochees = transactions.filter((t: any) => isReconciled(t.statut_rapprochement)).length;
     return Math.round((rapprochees / transactions.length) * 100);
   };
 
@@ -782,7 +783,7 @@ export const useBankingManager = () => {
       [`Montant (${currency})`]: t.montant,
       'Type': t.type_transaction,
       'Catégorie': t.categorie || 'N/A',
-      'Rapproché': t.statut_rapprochement === 'Rapproché' ? 'Oui' : 'Non'
+      'Rapproché': isReconciled(t.statut_rapprochement) ? 'Oui' : 'Non'
     })));
     
     const wb = XLSX.utils.book_new();

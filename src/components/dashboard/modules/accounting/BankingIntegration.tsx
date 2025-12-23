@@ -48,6 +48,7 @@ import ReconciliationDialog from '@/components/accounting/ReconciliationDialog';
 import CommitmentDialog from '@/components/accounting/CommitmentDialog';
 import CategorizationRuleDialog from '@/components/accounting/CategorizationRuleDialog';
 import TransactionDetailDialog from '@/components/accounting/TransactionDetailDialog';
+import { isReconciled, formatReconciliationStatus, TRANSACTION_STATUS } from '@/constants/transactionStatus';
 import TransactionCategoryDialog from '@/components/accounting/TransactionCategoryDialog';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -167,7 +168,7 @@ const BankingIntegration = () => {
       .reduce((sum: number, t: any) => sum + Math.abs(t.montant || 0), 0);
     
     const pendingReconciliations = transactions.filter(
-      (t: any) => t.statut_rapprochement !== 'Rapproché'
+      (t: any) => !isReconciled(t.statut_rapprochement)
     ).length;
 
     const connectedAccounts = bankAccounts.filter((a: any) => a.est_actif).length;
@@ -220,8 +221,8 @@ const BankingIntegration = () => {
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t: any) => {
       if (accountFilter !== 'all' && t.compte_bancaire_id !== accountFilter) return false;
-      if (statusFilter === 'matched' && t.statut_rapprochement !== 'Rapproché') return false;
-      if (statusFilter === 'unmatched' && t.statut_rapprochement === 'Rapproché') return false;
+      if (statusFilter === 'matched' && !isReconciled(t.statut_rapprochement)) return false;
+      if (statusFilter === 'unmatched' && isReconciled(t.statut_rapprochement)) return false;
       if (transactionSearch && !t.libelle?.toLowerCase().includes(transactionSearch.toLowerCase())) return false;
       return true;
     });
@@ -344,7 +345,7 @@ const BankingIntegration = () => {
 
   const handleAutoReconcile = async () => {
     // Auto-match transactions based on amount and date
-    const unmatched = transactions.filter((t: any) => t.statut_rapprochement !== 'Rapproché');
+    const unmatched = transactions.filter((t: any) => !isReconciled(t.statut_rapprochement));
     // In real implementation, would match with accounting entries
   };
 
@@ -738,8 +739,8 @@ const BankingIntegration = () => {
                               <Badge variant="outline">{transaction.categorie || 'Non catégorisé'}</Badge>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={transaction.statut_rapprochement === 'Rapproché' ? 'default' : 'destructive'}>
-                                {transaction.statut_rapprochement || 'À rapprocher'}
+                              <Badge variant={isReconciled(transaction.statut_rapprochement) ? 'default' : 'destructive'}>
+                                {formatReconciliationStatus(transaction.statut_rapprochement)}
                               </Badge>
                             </TableCell>
                             <TableCell>
@@ -760,7 +761,7 @@ const BankingIntegration = () => {
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
-                                {transaction.statut_rapprochement !== 'Rapproché' && (
+                                {!isReconciled(transaction.statut_rapprochement) && (
                                   <Button 
                                     variant="ghost" 
                                     size="sm"
@@ -842,7 +843,7 @@ const BankingIntegration = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {transactions.filter((t: any) => t.statut_rapprochement === 'Rapproché').length}
+                  {transactions.filter((t: any) => isReconciled(t.statut_rapprochement)).length}
                 </div>
                 <Progress value={stats.reconciliationRate} className="mt-2" />
                 <p className="text-xs text-muted-foreground mt-2">{stats.reconciliationRate}% du total</p>
