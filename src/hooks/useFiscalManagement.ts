@@ -509,7 +509,7 @@ export const useFiscalManagement = () => {
   });
 
   // ==================== CALCUL TVA AUTOMATIQUE ====================
-  const { data: vatSummary, isLoading: loadingVAT } = useQuery({
+  const { data: vatSummary, isLoading: loadingVAT, refetch: refetchVAT } = useQuery({
     queryKey: ['vat_summary', tenantId],
     queryFn: async (): Promise<VATSummary> => {
       const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
@@ -763,6 +763,7 @@ export const useFiscalManagement = () => {
     // VAT Summary
     vatSummary,
     loadingVAT,
+    refetchVAT,
 
     // Analytics
     taxAnalytics,

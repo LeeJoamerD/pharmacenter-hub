@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -68,6 +69,7 @@ const FiscalManagement = () => {
     capaciteArchivage,
     vatSummary,
     loadingVAT,
+    refetchVAT,
     taxAnalytics,
     generateJournalTVAPDF,
     generateEtatTVAExcel,
@@ -130,9 +132,16 @@ const FiscalManagement = () => {
           )}
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" disabled={loadingVAT}>
+          <Button 
+            variant="outline" 
+            disabled={loadingVAT}
+            onClick={async () => {
+              await refetchVAT();
+              toast.success('TVA et Centime Additionnel recalculés avec succès');
+            }}
+          >
             <Calculator className="h-4 w-4 mr-2" />
-            Recalculer TVA
+            {loadingVAT ? 'Recalcul en cours...' : 'Recalculer TVA'}
           </Button>
           <Button onClick={() => setDeclarationDialogOpen(true)}>
             <FileText className="h-4 w-4 mr-2" />
