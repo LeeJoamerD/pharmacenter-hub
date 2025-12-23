@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -10,11 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { 
   Banknote, 
   RefreshCw, 
@@ -22,7 +19,6 @@ import {
   AlertTriangle, 
   Download, 
   Upload, 
-  Calendar, 
   CreditCard, 
   TrendingUp, 
   TrendingDown,
@@ -33,186 +29,308 @@ import {
   Unlink,
   Settings,
   FileText,
-  PieChart
+  Trash2,
+  Edit,
+  Calculator
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useBankingManager } from '@/hooks/useBankingManager';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { useRegionalSettings } from '@/hooks/useRegionalSettings';
+import BankAccountDialog from '@/components/accounting/BankAccountDialog';
+import BankTransactionDialog from '@/components/accounting/BankTransactionDialog';
+import ReconciliationDialog from '@/components/accounting/ReconciliationDialog';
+import CommitmentDialog from '@/components/accounting/CommitmentDialog';
+import CategorizationRuleDialog from '@/components/accounting/CategorizationRuleDialog';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 const BankingIntegration = () => {
   const [activeTab, setActiveTab] = useState('comptes');
   const [syncInProgress, setSyncInProgress] = useState(false);
-  const { toast } = useToast();
+  
+  // Filters
+  const [accountFilter, setAccountFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [transactionSearch, setTransactionSearch] = useState('');
+  
+  // Dialogs
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false);
+  const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
+  const [reconciliationDialogOpen, setReconciliationDialogOpen] = useState(false);
+  const [commitmentDialogOpen, setCommitmentDialogOpen] = useState(false);
+  const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<any>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [selectedReconciliation, setSelectedReconciliation] = useState<any>(null);
+  const [selectedCommitment, setSelectedCommitment] = useState<any>(null);
+  const [selectedRule, setSelectedRule] = useState<any>(null);
 
-  // Mock data for bank accounts
-  const bankAccounts = [
-    { 
-      id: 1, 
-      name: 'Compte Principal BCEAO', 
-      bank: 'BCEAO', 
-      number: '****1234', 
-      type: 'Courant',
-      balance: 2850000,
-      lastSync: '2024-12-10 14:30',
-      status: 'Connecté',
-      currency: 'FCFA'
-    },
-    { 
-      id: 2, 
-      name: 'Compte Épargne UBA', 
-      bank: 'UBA Côte d\'Ivoire', 
-      number: '****5678', 
-      type: 'Épargne',
-      balance: 1200000,
-      lastSync: '2024-12-10 12:15',
-      status: 'Connecté',
-      currency: 'FCFA'
-    },
-    { 
-      id: 3, 
-      name: 'Compte USD Ecobank', 
-      bank: 'Ecobank', 
-      number: '****9012', 
-      type: 'Devise',
-      balance: 5420,
-      lastSync: '2024-12-09 16:45',
-      status: 'Erreur',
-      currency: 'USD'
-    }
-  ];
+  // Hooks
+  const {
+    bankAccounts,
+    loadingAccounts,
+    createBankAccount,
+    updateBankAccount,
+    deleteBankAccount,
+    transactions,
+    loadingTransactions,
+    createTransaction,
+    updateTransaction,
+    reconciliations,
+    loadingReconciliations,
+    createReconciliation,
+    categorizationRules,
+    createCategorizationRule,
+    updateCategorizationRule,
+    deleteCategorizationRule,
+    forecasts,
+    createForecast,
+    commitments,
+    createCommitment,
+    updateCommitment,
+    alerts,
+    createAlert,
+    resolveAlert,
+    parameters,
+    updateParameters,
+    regionalParams,
+    getTotalBalance,
+    getReconciliationRate,
+    exportTransactionsExcel,
+    generateBankJournalPDF,
+    getBanksList
+  } = useBankingManager();
 
-  // Mock data for transactions
-  const transactions = [
-    { 
-      id: 1, 
-      date: '2024-12-10', 
-      description: 'Virement Client Pharmacie Central', 
-      amount: 450000, 
-      type: 'Crédit',
-      category: 'Ventes',
-      matched: true,
-      account: 'BCEAO ****1234'
-    },
-    { 
-      id: 2, 
-      date: '2024-12-10', 
-      description: 'Paiement Fournisseur COPHARMED', 
-      amount: -280000, 
-      type: 'Débit',
-      category: 'Achats',
-      matched: true,
-      account: 'BCEAO ****1234'
-    },
-    { 
-      id: 3, 
-      date: '2024-12-09', 
-      description: 'Frais bancaires mensuels', 
-      amount: -15000, 
-      type: 'Débit',
-      category: 'Frais bancaires',
-      matched: false,
-      account: 'BCEAO ****1234'
-    },
-    { 
-      id: 4, 
-      date: '2024-12-09', 
-      description: 'Virement inconnu', 
-      amount: 125000, 
-      type: 'Crédit',
-      category: 'Non catégorisé',
-      matched: false,
-      account: 'UBA ****5678'
-    }
-  ];
+  const { formatAmount, getCurrencySymbol, getCurrencyCode } = useCurrencyFormatting();
+  const { currency } = useRegionalSettings();
 
-  // Mock data for cash flow forecast
-  const cashFlowData = [
-    { month: 'Jan', entrees: 2800000, sorties: 2200000, solde: 600000 },
-    { month: 'Fév', entrees: 3200000, sorties: 2400000, solde: 800000 },
-    { month: 'Mar', entrees: 2900000, sorties: 2300000, solde: 600000 },
-    { month: 'Avr', entrees: 3400000, sorties: 2600000, solde: 800000 },
-    { month: 'Mai', entrees: 3100000, sorties: 2500000, solde: 600000 },
-    { month: 'Juin', entrees: 3300000, sorties: 2700000, solde: 600000 }
-  ];
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const todayTransactions = transactions.filter((t: any) => 
+      t.date_transaction?.startsWith(today)
+    );
+    
+    const totalCredits = transactions
+      .filter((t: any) => t.type_transaction === 'credit')
+      .reduce((sum: number, t: any) => sum + (t.montant || 0), 0);
+    
+    const totalDebits = transactions
+      .filter((t: any) => t.type_transaction === 'debit')
+      .reduce((sum: number, t: any) => sum + Math.abs(t.montant || 0), 0);
+    
+    const pendingReconciliations = transactions.filter(
+      (t: any) => t.statut_rapprochement !== 'Rapproché'
+    ).length;
 
-  // Mock data for reconciliation
-  const reconciliationItems = [
-    { id: 1, date: '2024-12-10', bankTransaction: 'Virement 450000 FCFA', bookEntry: 'Facture FC-2024-1205', difference: 0, status: 'Rapproché' },
-    { id: 2, date: '2024-12-10', bankTransaction: 'Paiement 280000 FCFA', bookEntry: 'Facture FF-2024-0892', difference: 0, status: 'Rapproché' },
-    { id: 3, date: '2024-12-09', bankTransaction: 'Frais 15000 FCFA', bookEntry: 'Non trouvé', difference: 15000, status: 'À rapprocher' },
-    { id: 4, date: '2024-12-09', bankTransaction: 'Non trouvé', bookEntry: 'Écriture diverse 125000 FCFA', difference: -125000, status: 'À rapprocher' }
-  ];
+    const connectedAccounts = bankAccounts.filter((a: any) => a.est_actif).length;
+    const errorAccounts = bankAccounts.filter((a: any) => !a.est_actif).length;
 
+    // Centime additionnel calculations
+    const totalCentimeAdditionnel = transactions
+      .filter((t: any) => t.montant_centime_additionnel)
+      .reduce((sum: number, t: any) => sum + (t.montant_centime_additionnel || 0), 0);
+
+    return {
+      totalBalance: getTotalBalance(),
+      connectedAccounts,
+      errorAccounts,
+      todayTransactions: todayTransactions.length,
+      totalCredits,
+      totalDebits,
+      netFlow: totalCredits - totalDebits,
+      pendingReconciliations,
+      reconciliationRate: getReconciliationRate(),
+      totalCentimeAdditionnel
+    };
+  }, [bankAccounts, transactions, getTotalBalance, getReconciliationRate]);
+
+  // Cash flow data for charts
+  const cashFlowData = useMemo(() => {
+    const months: { [key: string]: { entrees: number; sorties: number; solde: number } } = {};
+    
+    transactions.forEach((t: any) => {
+      if (!t.date_transaction) return;
+      const monthKey = format(new Date(t.date_transaction), 'MMM', { locale: fr });
+      if (!months[monthKey]) {
+        months[monthKey] = { entrees: 0, sorties: 0, solde: 0 };
+      }
+      if (t.type_transaction === 'credit') {
+        months[monthKey].entrees += t.montant || 0;
+      } else {
+        months[monthKey].sorties += Math.abs(t.montant || 0);
+      }
+      months[monthKey].solde = months[monthKey].entrees - months[monthKey].sorties;
+    });
+
+    return Object.entries(months).map(([month, data]) => ({
+      month,
+      ...data
+    }));
+  }, [transactions]);
+
+  // Filtered transactions
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((t: any) => {
+      if (accountFilter !== 'all' && t.compte_bancaire_id !== accountFilter) return false;
+      if (statusFilter === 'matched' && t.statut_rapprochement !== 'Rapproché') return false;
+      if (statusFilter === 'unmatched' && t.statut_rapprochement === 'Rapproché') return false;
+      if (transactionSearch && !t.libelle?.toLowerCase().includes(transactionSearch.toLowerCase())) return false;
+      return true;
+    });
+  }, [transactions, accountFilter, statusFilter, transactionSearch]);
+
+  // Handlers
   const handleSyncAccounts = async () => {
     setSyncInProgress(true);
-    toast({
-      title: "Synchronisation en cours",
-      description: "Mise à jour des comptes bancaires..."
-    });
-    
-    // Simulate sync process
+    // Simulate sync - in real implementation, would call bank API
     setTimeout(() => {
       setSyncInProgress(false);
-      toast({
-        title: "Synchronisation terminée",
-        description: "Tous les comptes ont été mis à jour avec succès."
-      });
-    }, 3000);
+    }, 2000);
   };
 
-  const handleAutoReconcile = () => {
-    toast({
-      title: "Rapprochement automatique lancé",
-      description: "Analyse des transactions en cours..."
-    });
+  const handleCreateAccount = () => {
+    setSelectedAccount(null);
+    setAccountDialogOpen(true);
   };
 
-  const handleConnectBank = () => {
-    toast({
-      title: "Configuration bancaire",
-      description: "Interface de connexion bancaire ouverte."
-    });
+  const handleEditAccount = (account: any) => {
+    setSelectedAccount(account);
+    setAccountDialogOpen(true);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Connecté':
-      case 'Rapproché':
-        return 'default';
-      case 'En cours':
-        return 'secondary';
-      case 'Erreur':
-      case 'À rapprocher':
-        return 'destructive';
-      default:
-        return 'secondary';
+  const handleDeleteAccount = async (accountId: string) => {
+    if (confirm('Êtes-vous sûr de vouloir supprimer ce compte bancaire ?')) {
+      await deleteBankAccount.mutateAsync(accountId);
     }
   };
 
-  const getTotalBalance = () => {
-    return bankAccounts.reduce((sum, account) => {
-      if (account.currency === 'FCFA') {
-        return sum + account.balance;
-      } else {
-        // Convert USD to FCFA (approximate rate)
-        return sum + (account.balance * 610);
-      }
-    }, 0);
+  const handleAccountSubmit = async (data: any) => {
+    if (selectedAccount) {
+      await updateBankAccount.mutateAsync({ id: selectedAccount.id, ...data });
+    } else {
+      await createBankAccount.mutateAsync(data);
+    }
+    setAccountDialogOpen(false);
   };
+
+  const handleCreateTransaction = () => {
+    setSelectedTransaction(null);
+    setTransactionDialogOpen(true);
+  };
+
+  const handleTransactionSubmit = async (data: any) => {
+    if (selectedTransaction) {
+      await updateTransaction.mutateAsync({ id: selectedTransaction.id, ...data });
+    } else {
+      await createTransaction.mutateAsync(data);
+    }
+    setTransactionDialogOpen(false);
+  };
+
+  const handleCreateReconciliation = () => {
+    setSelectedReconciliation(null);
+    setReconciliationDialogOpen(true);
+  };
+
+  const handleReconciliationSubmit = async (data: any) => {
+    await createReconciliation.mutateAsync(data);
+    setReconciliationDialogOpen(false);
+  };
+
+  const handleAutoReconcile = async () => {
+    // Auto-match transactions based on amount and date
+    const unmatched = transactions.filter((t: any) => t.statut_rapprochement !== 'Rapproché');
+    // In real implementation, would match with accounting entries
+  };
+
+  const handleCreateCommitment = () => {
+    setSelectedCommitment(null);
+    setCommitmentDialogOpen(true);
+  };
+
+  const handleEditCommitment = (commitment: any) => {
+    setSelectedCommitment(commitment);
+    setCommitmentDialogOpen(true);
+  };
+
+  const handleCommitmentSubmit = async (data: any) => {
+    if (selectedCommitment) {
+      await updateCommitment.mutateAsync({ id: selectedCommitment.id, ...data });
+    } else {
+      await createCommitment.mutateAsync(data);
+    }
+    setCommitmentDialogOpen(false);
+  };
+
+  const handleCreateRule = () => {
+    setSelectedRule(null);
+    setRuleDialogOpen(true);
+  };
+
+  const handleEditRule = (rule: any) => {
+    setSelectedRule(rule);
+    setRuleDialogOpen(true);
+  };
+
+  const handleRuleSubmit = async (data: any) => {
+    if (selectedRule) {
+      await updateCategorizationRule.mutateAsync({ id: selectedRule.id, ...data });
+    } else {
+      await createCategorizationRule.mutateAsync(data);
+    }
+    setRuleDialogOpen(false);
+  };
+
+  const handleDeleteRule = async (ruleId: string) => {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette règle ?')) {
+      await deleteCategorizationRule.mutateAsync(ruleId);
+    }
+  };
+
+  const handleResolveAlert = async (alertId: string) => {
+    await resolveAlert.mutateAsync(alertId);
+  };
+
+  const handleExportExcel = () => {
+    exportTransactionsExcel(filteredTransactions);
+  };
+
+  const handleUpdateParameters = async (key: string, value: any) => {
+    await updateParameters.mutateAsync({ [key]: value });
+  };
+
+  const getStatusBadge = (status: string | boolean) => {
+    if (status === true || status === 'Connecté' || status === 'Rapproché') {
+      return <Badge variant="default">Actif</Badge>;
+    }
+    if (status === false || status === 'Erreur') {
+      return <Badge variant="destructive">Erreur</Badge>;
+    }
+    return <Badge variant="secondary">{String(status)}</Badge>;
+  };
+
+  const centimeRate = regionalParams?.seuil_alerte_bas ? 1 : 1; // Get from fiscal params if available
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-2xl font-bold tracking-tight">Intégration Bancaire</h3>
           <p className="text-muted-foreground">
-            Synchronisation bancaire et gestion de trésorerie
+            Synchronisation bancaire et gestion de trésorerie • {regionalParams?.pays || 'Multi-localités'}
           </p>
         </div>
         <div className="flex gap-2">
+          <Badge variant="outline" className="px-3 py-1">
+            {getCurrencyCode()}
+          </Badge>
           <Button onClick={handleSyncAccounts} disabled={syncInProgress} variant="outline">
             <RefreshCw className={`h-4 w-4 mr-2 ${syncInProgress ? 'animate-spin' : ''}`} />
             {syncInProgress ? 'Synchronisation...' : 'Synchroniser'}
           </Button>
-          <Button onClick={handleConnectBank}>
+          <Button onClick={handleCreateAccount}>
             <Plus className="h-4 w-4 mr-2" />
             Connecter Banque
           </Button>
@@ -229,6 +347,7 @@ const BankingIntegration = () => {
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
         </TabsList>
 
+        {/* ==================== COMPTES TAB ==================== */}
         <TabsContent value="comptes" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
@@ -237,8 +356,8 @@ const BankingIntegration = () => {
                 <Banknote className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{getTotalBalance().toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">FCFA (équivalent)</p>
+                <div className="text-2xl font-bold">{formatAmount(stats.totalBalance)}</div>
+                <p className="text-xs text-muted-foreground">{getCurrencyCode()} (équivalent)</p>
               </CardContent>
             </Card>
             <Card>
@@ -247,8 +366,10 @@ const BankingIntegration = () => {
                 <Link className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">3</div>
-                <p className="text-xs text-success">2 actifs, 1 erreur</p>
+                <div className="text-2xl font-bold">{bankAccounts.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  {stats.connectedAccounts} actif{stats.connectedAccounts > 1 ? 's' : ''}, {stats.errorAccounts} erreur{stats.errorAccounts > 1 ? 's' : ''}
+                </p>
               </CardContent>
             </Card>
             <Card>
@@ -257,8 +378,8 @@ const BankingIntegration = () => {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">12</div>
-                <p className="text-xs text-success">+5 vs hier</p>
+                <div className="text-2xl font-bold">{stats.todayTransactions}</div>
+                <p className="text-xs text-muted-foreground">opérations</p>
               </CardContent>
             </Card>
             <Card>
@@ -267,7 +388,7 @@ const BankingIntegration = () => {
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">85%</div>
+                <div className="text-2xl font-bold">{stats.reconciliationRate}%</div>
                 <p className="text-xs text-muted-foreground">Taux de rapprochement</p>
               </CardContent>
             </Card>
@@ -279,86 +400,113 @@ const BankingIntegration = () => {
               <CardDescription>État de la synchronisation avec vos banques</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Compte</TableHead>
-                    <TableHead>Banque</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Solde</TableHead>
-                    <TableHead>Dernière Sync</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bankAccounts.map((account) => (
-                    <TableRow key={account.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{account.name}</p>
-                          <p className="text-sm text-muted-foreground">{account.number}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>{account.bank}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{account.type}</Badge>
-                      </TableCell>
-                      <TableCell className="font-semibold">
-                        {account.balance.toLocaleString()} {account.currency}
-                      </TableCell>
-                      <TableCell className="text-sm">{account.lastSync}</TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusColor(account.status)}>
-                          {account.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                          {account.status === 'Erreur' && (
-                            <Button variant="ghost" size="sm">
-                              <RefreshCw className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
+              {loadingAccounts ? (
+                <div className="text-center py-8 text-muted-foreground">Chargement des comptes...</div>
+              ) : bankAccounts.length === 0 ? (
+                <div className="text-center py-8">
+                  <Banknote className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Aucun compte bancaire configuré</p>
+                  <Button className="mt-4" onClick={handleCreateAccount}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter un compte
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Compte</TableHead>
+                      <TableHead>Banque</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Solde</TableHead>
+                      <TableHead>Dernière Sync</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {bankAccounts.map((account: any) => (
+                      <TableRow key={account.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{account.nom_compte}</p>
+                            <p className="text-sm text-muted-foreground">{account.numero_compte}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{account.banque}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{account.type_compte || 'Courant'}</Badge>
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          {formatAmount(account.solde_actuel || 0)}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {account.derniere_sync 
+                            ? format(new Date(account.derniere_sync), 'dd/MM/yyyy HH:mm', { locale: fr })
+                            : 'Jamais'
+                          }
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(account.est_actif)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handleEditAccount(account)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleEditAccount(account)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteAccount(account.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ==================== TRANSACTIONS TAB ==================== */}
         <TabsContent value="transactions" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Transactions Récentes</CardTitle>
-              <CardDescription>Dernières opérations synchronisées</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Transactions Récentes</CardTitle>
+                <CardDescription>Dernières opérations synchronisées</CardDescription>
+              </div>
+              <Button onClick={handleCreateTransaction}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nouvelle Transaction
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex gap-4">
-                  <Select>
+                <div className="flex gap-4 flex-wrap">
+                  <Input 
+                    placeholder="Rechercher..." 
+                    className="w-64"
+                    value={transactionSearch}
+                    onChange={(e) => setTransactionSearch(e.target.value)}
+                  />
+                  <Select value={accountFilter} onValueChange={setAccountFilter}>
                     <SelectTrigger className="w-48">
                       <SelectValue placeholder="Filtrer par compte" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tous les comptes</SelectItem>
-                      {bankAccounts.map((account) => (
-                        <SelectItem key={account.id} value={account.id.toString()}>
-                          {account.bank} {account.number}
+                      {bankAccounts.map((account: any) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.banque} - {account.nom_compte}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Select>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-48">
                       <SelectValue placeholder="Filtrer par statut" />
                     </SelectTrigger>
@@ -368,62 +516,91 @@ const BankingIntegration = () => {
                       <SelectItem value="unmatched">Non rapprochées</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={handleExportExcel}>
                     <Download className="h-4 w-4 mr-2" />
-                    Exporter
+                    Exporter Excel
                   </Button>
                 </div>
 
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Compte</TableHead>
-                      <TableHead>Montant</TableHead>
-                      <TableHead>Catégorie</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {transactions.map((transaction) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell>{transaction.date}</TableCell>
-                        <TableCell className="max-w-xs truncate">{transaction.description}</TableCell>
-                        <TableCell className="text-sm">{transaction.account}</TableCell>
-                        <TableCell className={`font-semibold ${transaction.amount > 0 ? 'text-success' : 'text-destructive'}`}>
-                          {transaction.amount > 0 ? '+' : ''}{transaction.amount.toLocaleString()} FCFA
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{transaction.category}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={transaction.matched ? 'default' : 'destructive'}>
-                            {transaction.matched ? 'Rapprochée' : 'À rapprocher'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="sm">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {!transaction.matched && (
-                              <Button variant="ghost" size="sm">
-                                <Link className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
+                {loadingTransactions ? (
+                  <div className="text-center py-8 text-muted-foreground">Chargement des transactions...</div>
+                ) : filteredTransactions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">Aucune transaction trouvée</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Compte</TableHead>
+                        <TableHead>Montant</TableHead>
+                        <TableHead>Centime Add.</TableHead>
+                        <TableHead>Catégorie</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTransactions.map((transaction: any) => (
+                        <TableRow key={transaction.id}>
+                          <TableCell>
+                            {transaction.date_transaction 
+                              ? format(new Date(transaction.date_transaction), 'dd/MM/yyyy', { locale: fr })
+                              : '-'
+                            }
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">{transaction.libelle}</TableCell>
+                          <TableCell className="text-sm">
+                            {transaction.compte?.nom_compte || '-'}
+                          </TableCell>
+                          <TableCell className={`font-semibold ${
+                            transaction.type_transaction === 'credit' ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {transaction.type_transaction === 'credit' ? '+' : '-'}
+                            {formatAmount(Math.abs(transaction.montant || 0))}
+                          </TableCell>
+                          <TableCell>
+                            {transaction.montant_centime_additionnel ? (
+                              <Badge variant="secondary" className="text-xs">
+                                <Calculator className="h-3 w-3 mr-1" />
+                                {formatAmount(transaction.montant_centime_additionnel)}
+                              </Badge>
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{transaction.categorie || 'Non catégorisé'}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={transaction.statut_rapprochement === 'Rapproché' ? 'default' : 'destructive'}>
+                              {transaction.statut_rapprochement || 'À rapprocher'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              {transaction.statut_rapprochement !== 'Rapproché' && (
+                                <Button variant="ghost" size="sm">
+                                  <Link className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ==================== RAPPROCHEMENT TAB ==================== */}
         <TabsContent value="rapprochement" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
@@ -432,9 +609,11 @@ const BankingIntegration = () => {
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">45</div>
-                <Progress value={85} className="mt-2" />
-                <p className="text-xs text-muted-foreground mt-2">85% du total</p>
+                <div className="text-2xl font-bold">
+                  {transactions.filter((t: any) => t.statut_rapprochement === 'Rapproché').length}
+                </div>
+                <Progress value={stats.reconciliationRate} className="mt-2" />
+                <p className="text-xs text-muted-foreground mt-2">{stats.reconciliationRate}% du total</p>
               </CardContent>
             </Card>
             <Card>
@@ -443,7 +622,7 @@ const BankingIntegration = () => {
                 <AlertTriangle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">8</div>
+                <div className="text-2xl font-bold">{stats.pendingReconciliations}</div>
                 <p className="text-xs text-destructive">Éléments en attente</p>
               </CardContent>
             </Card>
@@ -453,94 +632,171 @@ const BankingIntegration = () => {
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">140,000</div>
-                <p className="text-xs text-muted-foreground">FCFA à justifier</p>
+                <div className="text-2xl font-bold">{formatAmount(0)}</div>
+                <p className="text-xs text-muted-foreground">À justifier</p>
               </CardContent>
             </Card>
           </div>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Rapprochement Bancaire</CardTitle>
-              <CardDescription>Correspondance entre relevés bancaires et écritures comptables</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Rapprochement Bancaire</CardTitle>
+                <CardDescription>Correspondance entre relevés bancaires et écritures comptables</CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleAutoReconcile}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Rapprochement Auto
+                </Button>
+                <Button variant="outline">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importer Relevé
+                </Button>
+                <Button variant="outline" onClick={handleCreateReconciliation}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nouveau
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <Button onClick={handleAutoReconcile}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Rapprochement Auto
-                  </Button>
-                  <Button variant="outline">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Importer Relevé
-                  </Button>
+              {loadingReconciliations ? (
+                <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+              ) : reconciliations.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Aucun rapprochement enregistré</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Utilisez le rapprochement automatique ou importez un relevé bancaire
+                  </p>
                 </div>
-
+              ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
-                      <TableHead>Transaction Bancaire</TableHead>
-                      <TableHead>Écriture Comptable</TableHead>
+                      <TableHead>Compte</TableHead>
+                      <TableHead>Période</TableHead>
+                      <TableHead>Solde Banque</TableHead>
+                      <TableHead>Solde Comptable</TableHead>
                       <TableHead>Écart</TableHead>
                       <TableHead>Statut</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {reconciliationItems.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.date}</TableCell>
-                        <TableCell className="max-w-xs truncate">{item.bankTransaction}</TableCell>
-                        <TableCell className="max-w-xs truncate">{item.bookEntry}</TableCell>
-                        <TableCell className={`font-semibold ${item.difference === 0 ? '' : 'text-destructive'}`}>
-                          {item.difference === 0 ? '-' : `${item.difference.toLocaleString()} FCFA`}
+                    {reconciliations.map((recon: any) => (
+                      <TableRow key={recon.id}>
+                        <TableCell>
+                          {recon.date_rapprochement 
+                            ? format(new Date(recon.date_rapprochement), 'dd/MM/yyyy', { locale: fr })
+                            : '-'
+                          }
+                        </TableCell>
+                        <TableCell>{recon.compte?.nom_compte || '-'}</TableCell>
+                        <TableCell>
+                          {recon.periode_debut && recon.periode_fin 
+                            ? `${format(new Date(recon.periode_debut), 'dd/MM', { locale: fr })} - ${format(new Date(recon.periode_fin), 'dd/MM', { locale: fr })}`
+                            : '-'
+                          }
+                        </TableCell>
+                        <TableCell>{formatAmount(recon.solde_releve || 0)}</TableCell>
+                        <TableCell>{formatAmount(recon.solde_comptable || 0)}</TableCell>
+                        <TableCell className={`font-semibold ${(recon.ecart || 0) !== 0 ? 'text-destructive' : ''}`}>
+                          {(recon.ecart || 0) === 0 ? '-' : formatAmount(recon.ecart)}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={getStatusColor(item.status)}>
-                            {item.status}
+                          <Badge variant={recon.statut === 'Validé' ? 'default' : 'secondary'}>
+                            {recon.statut || 'En cours'}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="sm">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {item.status === 'À rapprocher' && (
-                              <Button variant="ghost" size="sm">
-                                <Link className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ==================== TRESORERIE TAB ==================== */}
         <TabsContent value="tresorerie" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Trésorerie Actuelle</CardTitle>
+                <Banknote className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatAmount(stats.totalBalance)}</div>
+                <p className="text-xs text-muted-foreground">Solde consolidé</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Entrées</CardTitle>
+                <TrendingUp className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">+{formatAmount(stats.totalCredits)}</div>
+                <p className="text-xs text-muted-foreground">Ce mois</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Sorties</CardTitle>
+                <TrendingDown className="h-4 w-4 text-red-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">-{formatAmount(stats.totalDebits)}</div>
+                <p className="text-xs text-muted-foreground">Ce mois</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Centime Add. Perçu</CardTitle>
+                <Calculator className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatAmount(stats.totalCentimeAdditionnel)}</div>
+                <p className="text-xs text-muted-foreground">Total collecté</p>
+              </CardContent>
+            </Card>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle>Position de Trésorerie</CardTitle>
               <CardDescription>Vue consolidée des flux de trésorerie</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <AreaChart data={cashFlowData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => `${value.toLocaleString()} FCFA`} />
-                  <Area type="monotone" dataKey="entrees" stackId="1" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.6} name="Entrées" />
-                  <Area type="monotone" dataKey="sorties" stackId="2" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive))" fillOpacity={0.6} name="Sorties" />
-                  <Line type="monotone" dataKey="solde" stroke="hsl(var(--accent))" strokeWidth={3} name="Solde Net" />
-                </AreaChart>
-              </ResponsiveContainer>
+              {cashFlowData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={400}>
+                  <AreaChart data={cashFlowData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`} />
+                    <Tooltip 
+                      formatter={(value: number) => formatAmount(value)}
+                      labelFormatter={(label) => `Mois: ${label}`}
+                    />
+                    <Area type="monotone" dataKey="entrees" stackId="1" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.6} name="Entrées" />
+                    <Area type="monotone" dataKey="sorties" stackId="2" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive))" fillOpacity={0.6} name="Sorties" />
+                    <Line type="monotone" dataKey="solde" stroke="hsl(var(--accent))" strokeWidth={3} name="Solde Net" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <TrendingUp className="h-12 w-12 mx-auto mb-4" />
+                  <p>Aucune donnée de trésorerie disponible</p>
+                  <p className="text-sm mt-2">Les graphiques s'afficheront une fois les transactions enregistrées</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -554,28 +810,26 @@ const BankingIntegration = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center p-3 border rounded-lg">
                     <div className="flex items-center space-x-3">
-                      <TrendingUp className="h-5 w-5 text-success" />
+                      <TrendingUp className="h-5 w-5 text-green-600" />
                       <div>
                         <p className="font-medium">Entrées de Trésorerie</p>
                         <p className="text-sm text-muted-foreground">Ce mois</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-lg text-success">+3,300,000</p>
-                      <p className="text-sm text-muted-foreground">FCFA</p>
+                      <p className="font-bold text-lg text-green-600">+{formatAmount(stats.totalCredits)}</p>
                     </div>
                   </div>
                   <div className="flex justify-between items-center p-3 border rounded-lg">
                     <div className="flex items-center space-x-3">
-                      <TrendingDown className="h-5 w-5 text-destructive" />
+                      <TrendingDown className="h-5 w-5 text-red-600" />
                       <div>
                         <p className="font-medium">Sorties de Trésorerie</p>
                         <p className="text-sm text-muted-foreground">Ce mois</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-lg text-destructive">-2,700,000</p>
-                      <p className="text-sm text-muted-foreground">FCFA</p>
+                      <p className="font-bold text-lg text-red-600">-{formatAmount(stats.totalDebits)}</p>
                     </div>
                   </div>
                   <Separator />
@@ -585,8 +839,9 @@ const BankingIntegration = () => {
                       <p className="text-sm text-muted-foreground">Résultat mensuel</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-xl text-primary">+600,000</p>
-                      <p className="text-sm text-muted-foreground">FCFA</p>
+                      <p className={`font-bold text-xl ${stats.netFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {stats.netFlow >= 0 ? '+' : ''}{formatAmount(stats.netFlow)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -600,32 +855,45 @@ const BankingIntegration = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <Alert>
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Position Saine:</strong> Trésorerie supérieure au seuil minimal (2M FCFA)
-                    </AlertDescription>
-                  </Alert>
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Attention:</strong> Compte USD en erreur de synchronisation
-                    </AlertDescription>
-                  </Alert>
+                  {alerts.length === 0 ? (
+                    <Alert>
+                      <CheckCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        <strong>Position Saine:</strong> Aucune alerte active
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    alerts.map((alert: any) => (
+                      <Alert key={alert.id} variant={alert.niveau === 'Critique' ? 'destructive' : 'default'}>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="flex justify-between items-center">
+                          <div>
+                            <strong>{alert.type_alerte}:</strong> {alert.message}
+                          </div>
+                          <Button size="sm" variant="ghost" onClick={() => handleResolveAlert(alert.id)}>
+                            Résoudre
+                          </Button>
+                        </AlertDescription>
+                      </Alert>
+                    ))
+                  )}
+                  
                   <div className="p-3 border rounded-lg">
                     <h4 className="font-medium mb-2">Seuils Configurés</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span>Seuil d'alerte bas:</span>
-                        <span className="font-medium">1,000,000 FCFA</span>
+                        <span className="font-medium">{formatAmount(regionalParams?.seuil_alerte_bas || 1000000)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Seuil critique:</span>
-                        <span className="font-medium">500,000 FCFA</span>
+                        <span className="font-medium">{formatAmount(regionalParams?.seuil_alerte_critique || 500000)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Trésorerie actuelle:</span>
-                        <span className="font-bold text-success">4,050,000 FCFA</span>
+                        <span className={`font-bold ${stats.totalBalance >= (regionalParams?.seuil_alerte_bas || 1000000) ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatAmount(stats.totalBalance)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -635,6 +903,7 @@ const BankingIntegration = () => {
           </div>
         </TabsContent>
 
+        {/* ==================== PREVISIONS TAB ==================== */}
         <TabsContent value="previsions" className="space-y-4">
           <Card>
             <CardHeader>
@@ -642,105 +911,124 @@ const BankingIntegration = () => {
               <CardDescription>Projections basées sur l'historique et les engagements</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={cashFlowData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => `${value.toLocaleString()} FCFA`} />
-                  <Line type="monotone" dataKey="solde" stroke="hsl(var(--primary))" strokeWidth={2} name="Solde Réel" />
-                  <Line type="monotone" dataKey="entrees" stroke="hsl(var(--secondary))" strokeWidth={2} strokeDasharray="5 5" name="Prévision" />
-                </LineChart>
-              </ResponsiveContainer>
+              {cashFlowData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart data={cashFlowData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`} />
+                    <Tooltip 
+                      formatter={(value: number) => formatAmount(value)}
+                      labelFormatter={(label) => `Mois: ${label}`}
+                    />
+                    <Line type="monotone" dataKey="solde" stroke="hsl(var(--primary))" strokeWidth={2} name="Solde Réel" />
+                    <Line type="monotone" dataKey="entrees" stroke="hsl(var(--secondary))" strokeWidth={2} strokeDasharray="5 5" name="Prévision" />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <TrendingUp className="h-12 w-12 mx-auto mb-4" />
+                  <p>Aucune donnée de prévision disponible</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
-              <CardHeader>
-                <CardTitle>Scénarios Prévisionnels</CardTitle>
-                <CardDescription>Analyse de différents scénarios</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Scénarios Prévisionnels</CardTitle>
+                  <CardDescription>Analyse de différents scénarios</CardDescription>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium text-success">Scénario Optimiste</h4>
-                      <Badge variant="default">+15%</Badge>
+                  {forecasts.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Aucun scénario configuré</p>
+                      <Button className="mt-4" variant="outline" onClick={() => createForecast.mutate({
+                        periode_debut: new Date().toISOString().split('T')[0],
+                        periode_fin: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        solde_initial_xaf: stats.totalBalance,
+                        solde_final_previsionnel_xaf: stats.totalBalance * 1.05
+                      })}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Créer un scénario
+                      </Button>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">Croissance soutenue des ventes</p>
-                    <div className="flex justify-between">
-                      <span>Trésorerie fin mois:</span>
-                      <span className="font-bold">4,650,000 FCFA</span>
-                    </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium">Scénario Réaliste</h4>
-                      <Badge variant="secondary">Stable</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">Maintien du niveau actuel</p>
-                    <div className="flex justify-between">
-                      <span>Trésorerie fin mois:</span>
-                      <span className="font-bold">4,050,000 FCFA</span>
-                    </div>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium text-destructive">Scénario Pessimiste</h4>
-                      <Badge variant="destructive">-10%</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">Baisse temporaire d'activité</p>
-                    <div className="flex justify-between">
-                      <span>Trésorerie fin mois:</span>
-                      <span className="font-bold">3,450,000 FCFA</span>
-                    </div>
-                  </div>
+                  ) : (
+                    forecasts.map((forecast: any) => (
+                      <div key={forecast.id} className="p-3 border rounded-lg">
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className={`font-medium ${
+                            forecast.type_scenario === 'Optimiste' ? 'text-green-600' :
+                            forecast.type_scenario === 'Pessimiste' ? 'text-red-600' : ''
+                          }`}>
+                            {forecast.nom_scenario}
+                          </h4>
+                          <Badge variant={
+                            forecast.type_scenario === 'Optimiste' ? 'default' :
+                            forecast.type_scenario === 'Pessimiste' ? 'destructive' : 'secondary'
+                          }>
+                            {forecast.type_scenario}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">{forecast.description || 'Aucune description'}</p>
+                        <div className="flex justify-between">
+                          <span>Trésorerie prévue:</span>
+                          <span className="font-bold">{formatAmount(forecast.solde_prevu || 0)}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Engagements à Venir</CardTitle>
-                <CardDescription>Échéances et flux prévisibles</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Engagements à Venir</CardTitle>
+                  <CardDescription>Échéances et flux prévisibles</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleCreateCommitment}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter
+                </Button>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex justify-between items-center p-2 border rounded">
-                    <div>
-                      <p className="font-medium">Salaires Décembre</p>
-                      <p className="text-sm text-muted-foreground">28/12/2024</p>
+                  {commitments.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Aucun engagement enregistré</p>
                     </div>
-                    <span className="font-bold text-destructive">-850,000 FCFA</span>
-                  </div>
-                  <div className="flex justify-between items-center p-2 border rounded">
-                    <div>
-                      <p className="font-medium">Règlement Fournisseurs</p>
-                      <p className="text-sm text-muted-foreground">31/12/2024</p>
-                    </div>
-                    <span className="font-bold text-destructive">-1,200,000 FCFA</span>
-                  </div>
-                  <div className="flex justify-between items-center p-2 border rounded">
-                    <div>
-                      <p className="font-medium">Encaissement Clients</p>
-                      <p className="text-sm text-muted-foreground">05/01/2025</p>
-                    </div>
-                    <span className="font-bold text-success">+2,100,000 FCFA</span>
-                  </div>
-                  <div className="flex justify-between items-center p-2 border rounded">
-                    <div>
-                      <p className="font-medium">TVA à Payer</p>
-                      <p className="text-sm text-muted-foreground">15/01/2025</p>
-                    </div>
-                    <span className="font-bold text-destructive">-165,000 FCFA</span>
-                  </div>
+                  ) : (
+                    commitments.slice(0, 5).map((commitment: any) => (
+                      <div key={commitment.id} className="flex justify-between items-center p-2 border rounded cursor-pointer hover:bg-muted/50" onClick={() => handleEditCommitment(commitment)}>
+                        <div>
+                          <p className="font-medium">{commitment.libelle}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {commitment.date_echeance 
+                              ? format(new Date(commitment.date_echeance), 'dd/MM/yyyy', { locale: fr })
+                              : '-'
+                            }
+                          </p>
+                        </div>
+                        <span className={`font-bold ${commitment.type_engagement === 'Recette' ? 'text-green-600' : 'text-red-600'}`}>
+                          {commitment.type_engagement === 'Recette' ? '+' : '-'}
+                          {formatAmount(commitment.montant || 0)}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
+        {/* ==================== CONFIGURATION TAB ==================== */}
         <TabsContent value="configuration" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
@@ -758,21 +1046,33 @@ const BankingIntegration = () => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Label>Synchronisation automatique</Label>
-                    <Switch />
+                    <Switch 
+                      checked={parameters?.synchronisation_auto || false}
+                      onCheckedChange={(checked) => handleUpdateParameters('synchronisation_auto', checked)}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <Label>Rapprochement auto</Label>
-                    <Switch />
+                    <Switch 
+                      checked={parameters?.rapprochement_auto || false}
+                      onCheckedChange={(checked) => handleUpdateParameters('rapprochement_auto', checked)}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <Label>Alertes trésorerie</Label>
-                    <Switch />
+                    <Switch 
+                      checked={parameters?.alertes_actives || false}
+                      onCheckedChange={(checked) => handleUpdateParameters('alertes_actives', checked)}
+                    />
                   </div>
                 </div>
                 <Separator />
                 <div>
                   <Label htmlFor="sync-frequency">Fréquence de synchronisation</Label>
-                  <Select>
+                  <Select 
+                    value={parameters?.frequence_sync || 'daily'}
+                    onValueChange={(value) => handleUpdateParameters('frequence_sync', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner" />
                     </SelectTrigger>
@@ -788,35 +1088,43 @@ const BankingIntegration = () => {
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Règles de Catégorisation</CardTitle>
-                <CardDescription>Automatisation du classement des transactions</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Règles de Catégorisation</CardTitle>
+                  <CardDescription>Automatisation du classement des transactions</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleCreateRule}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter
+                </Button>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <p className="font-medium">Virements fournisseurs</p>
-                      <Button variant="ghost" size="sm">Modifier</Button>
+                  {categorizationRules.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Aucune règle configurée</p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Si libellé contient "COPHARMED" → Catégorie "Achats"
-                    </p>
-                  </div>
-                  <div className="p-3 border rounded-lg">
-                    <div className="flex justify-between items-center mb-2">
-                      <p className="font-medium">Frais bancaires</p>
-                      <Button variant="ghost" size="sm">Modifier</Button>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Si libellé contient "FRAIS" → Catégorie "Frais bancaires"
-                    </p>
-                  </div>
+                  ) : (
+                    categorizationRules.map((rule: any) => (
+                      <div key={rule.id} className="p-3 border rounded-lg">
+                        <div className="flex justify-between items-center mb-2">
+                          <p className="font-medium">{rule.nom_regle}</p>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handleEditRule(rule)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteRule(rule.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Si {rule.champ_condition} contient "{rule.valeur_condition}" → Catégorie "{rule.categorie_cible}"
+                        </p>
+                      </div>
+                    ))
+                  )}
                 </div>
-                <Button variant="outline" className="w-full">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ajouter Règle
-                </Button>
               </CardContent>
             </Card>
           </div>
@@ -829,22 +1137,77 @@ const BankingIntegration = () => {
             <CardContent>
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
-                  <Label htmlFor="threshold-low">Seuil d'alerte bas (FCFA)</Label>
-                  <Input id="threshold-low" defaultValue="1000000" />
+                  <Label htmlFor="threshold-low">Seuil d'alerte bas ({getCurrencyCode()})</Label>
+                  <Input 
+                    id="threshold-low" 
+                    type="number"
+                    defaultValue={parameters?.seuil_alerte_bas_xaf || regionalParams?.seuil_alerte_bas || 1000000}
+                    onBlur={(e) => handleUpdateParameters('seuil_alerte_bas_xaf', parseFloat(e.target.value))}
+                  />
                 </div>
                 <div>
-                  <Label htmlFor="threshold-critical">Seuil critique (FCFA)</Label>
-                  <Input id="threshold-critical" defaultValue="500000" />
+                  <Label htmlFor="threshold-critical">Seuil critique ({getCurrencyCode()})</Label>
+                  <Input 
+                    id="threshold-critical" 
+                    type="number"
+                    defaultValue={parameters?.seuil_critique_xaf || regionalParams?.seuil_alerte_critique || 500000}
+                    onBlur={(e) => handleUpdateParameters('seuil_critique_xaf', parseFloat(e.target.value))}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="alert-email">Email d'alerte</Label>
-                  <Input id="alert-email" type="email" placeholder="tresorier@pharmacie.com" />
+                  <Input 
+                    id="alert-email" 
+                    type="email" 
+                    defaultValue={parameters?.emails_alertes?.[0] || ''}
+                    placeholder="tresorier@pharmacie.com"
+                    onBlur={(e) => handleUpdateParameters('emails_alertes', [e.target.value])}
+                  />
                 </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* ==================== DIALOGS ==================== */}
+      <BankAccountDialog
+        open={accountDialogOpen}
+        onOpenChange={setAccountDialogOpen}
+        onSubmit={handleAccountSubmit}
+        account={selectedAccount}
+      />
+
+      <BankTransactionDialog
+        open={transactionDialogOpen}
+        onOpenChange={setTransactionDialogOpen}
+        onSubmit={handleTransactionSubmit}
+        transaction={selectedTransaction}
+        bankAccounts={bankAccounts}
+      />
+
+      <ReconciliationDialog
+        open={reconciliationDialogOpen}
+        onOpenChange={setReconciliationDialogOpen}
+        onSubmit={handleReconciliationSubmit}
+        reconciliation={selectedReconciliation}
+        bankAccounts={bankAccounts}
+      />
+
+      <CommitmentDialog
+        open={commitmentDialogOpen}
+        onOpenChange={setCommitmentDialogOpen}
+        onSubmit={handleCommitmentSubmit}
+        commitment={selectedCommitment}
+        bankAccounts={bankAccounts}
+      />
+
+      <CategorizationRuleDialog
+        open={ruleDialogOpen}
+        onOpenChange={setRuleDialogOpen}
+        onSubmit={handleRuleSubmit}
+        rule={selectedRule}
+      />
     </div>
   );
 };
