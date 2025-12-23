@@ -27,12 +27,13 @@ const ReconciliationDialog = ({ open, onOpenChange, onSubmit, reconciliation, ba
       solde_releve_fin: 0,
       solde_comptable_debut: 0,
       solde_comptable_fin: 0,
-        statut: 'en_cours',
+      statut: 'en_cours',
       notes: ''
     }
   });
 
   const { getInputStep } = useCurrencyFormatting();
+  const isEditMode = !!reconciliation?.id;
 
   React.useEffect(() => {
     if (reconciliation) {
@@ -56,6 +57,11 @@ const ReconciliationDialog = ({ open, onOpenChange, onSubmit, reconciliation, ba
   }, [reconciliation, setValue, reset]);
 
   const handleFormSubmit = (data: any) => {
+    // Remove joined/computed fields that don't exist in the table
+    delete data.compte;
+    delete data.created_at;
+    delete data.updated_at;
+    
     // Generate numero_rapprochement if not provided
     if (!data.numero_rapprochement) {
       data.numero_rapprochement = `RAP-${Date.now()}`;
@@ -66,10 +72,17 @@ const ReconciliationDialog = ({ open, onOpenChange, onSubmit, reconciliation, ba
     data.ecart_non_justifie = data.ecart;
     data.ecart_justifie = 0;
     
-    // Initialize transaction counters
-    data.nb_transactions_rapprochees = 0;
-    data.nb_transactions_non_rapprochees = 0;
-    data.nb_transactions_suspectes = 0;
+    // Only initialize counters for new reconciliations
+    if (!isEditMode) {
+      data.nb_transactions_rapprochees = 0;
+      data.nb_transactions_non_rapprochees = 0;
+      data.nb_transactions_suspectes = 0;
+    }
+    
+    // If status is being set to 'valide', set validation date
+    if (data.statut === 'valide' && !data.date_validation) {
+      data.date_validation = new Date().toISOString();
+    }
     
     onSubmit(data);
     onOpenChange(false);
@@ -142,6 +155,21 @@ const ReconciliationDialog = ({ open, onOpenChange, onSubmit, reconciliation, ba
             </div>
           </div>
           
+          <div>
+            <Label>Statut</Label>
+            <Select onValueChange={(value) => setValue('statut', value)} defaultValue={watch('statut') || 'en_cours'}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en_cours">En cours</SelectItem>
+                <SelectItem value="valide">Validé</SelectItem>
+                <SelectItem value="cloture">Clôturé</SelectItem>
+                <SelectItem value="annule">Annulé</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div>
             <Label>Notes</Label>
             <Textarea {...register('notes')} placeholder="Observations..." />

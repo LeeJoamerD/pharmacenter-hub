@@ -360,6 +360,27 @@ export const useBankingManager = () => {
     },
   });
 
+  const updateReconciliation = useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<BankReconciliation> & { id: string }) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
+      const { data, error } = await supabase
+        .from("rapprochements_bancaires")
+        .update(updates)
+        .eq("id", id)
+        .eq("tenant_id", tenantId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bank-reconciliations"] });
+      toast({ title: "Rapprochement mis à jour" });
+    },
+  });
+
   // ========== CATEGORIZATION RULES ==========
 
   const { data: categorizationRules = [] } = useQuery({
@@ -867,6 +888,7 @@ export const useBankingManager = () => {
     reconciliations,
     loadingReconciliations,
     createReconciliation,
+    updateReconciliation,
     
     // Categorization Rules
     categorizationRules,
