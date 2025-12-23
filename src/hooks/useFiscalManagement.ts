@@ -429,9 +429,9 @@ export const useFiscalManagement = () => {
         .from('parametres_fiscaux')
         .select('*')
         .eq('tenant_id', tenantId)
-        .single();
+        .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       return data as ParametresFiscaux | null;
     },
     enabled: !!tenantId,
