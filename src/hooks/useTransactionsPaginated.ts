@@ -3,6 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/contexts/TenantContext";
 import { toast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
+import { 
+  generateBankTransactionEntry, 
+  deleteTransactionEntry,
+  hasExistingEntry,
+  BankTransactionEcritureData 
+} from "@/services/BankTransactionAccountingService";
 
 type BankTransaction = Database['public']['Tables']['transactions_bancaires']['Row'];
 
@@ -89,10 +95,13 @@ export const useTransactionsPaginated = (filters: TransactionFilters) => {
     enabled: !!tenantId,
   });
 
-  // Mutation pour supprimer une transaction
+  // Mutation pour supprimer une transaction (et son écriture comptable si elle existe)
   const deleteTransaction = useMutation({
     mutationFn: async (id: string) => {
       if (!tenantId) throw new Error("No tenant ID");
+
+      // Supprimer d'abord l'écriture comptable liée si elle existe
+      await deleteTransactionEntry(id, tenantId);
 
       const { error } = await supabase
         .from("transactions_bancaires")
@@ -105,6 +114,7 @@ export const useTransactionsPaginated = (filters: TransactionFilters) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bank-transactions-paginated"] });
       queryClient.invalidateQueries({ queryKey: ["bank-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["accounting-entries"] });
       toast({ title: "Transaction supprimée avec succès" });
     },
     onError: (error) => {
@@ -116,28 +126,71 @@ export const useTransactionsPaginated = (filters: TransactionFilters) => {
     }
   });
 
-  // Mutation pour rapprocher une transaction
+  // Mutation pour rapprocher une transaction et générer l'écriture comptable
   const reconcileTransaction = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, generateAccounting = true, categorie }: { 
+      id: string; 
+      generateAccounting?: boolean;
+      categorie?: string;
+    }) => {
       if (!tenantId) throw new Error("No tenant ID");
+
+      // Récupérer la transaction pour générer l'écriture
+      const { data: transaction, error: fetchError } = await supabase
+        .from("transactions_bancaires")
+        .select("*")
+        .eq("id", id)
+        .eq("tenant_id", tenantId)
+        .single();
+
+      if (fetchError || !transaction) throw fetchError || new Error("Transaction non trouvée");
+
+      // Mettre à jour la catégorie si fournie
+      const updateData: any = { 
+        statut_rapprochement: 'Rapproché',
+        date_rapprochement: new Date().toISOString()
+      };
+      
+      if (categorie) {
+        updateData.categorie = categorie;
+      }
 
       const { data, error } = await supabase
         .from("transactions_bancaires")
-        .update({ 
-          statut_rapprochement: 'Rapproché',
-          date_rapprochement: new Date().toISOString()
-        })
+        .update(updateData)
         .eq("id", id)
         .eq("tenant_id", tenantId)
         .select()
         .single();
 
       if (error) throw error;
+
+      // Générer l'écriture comptable si demandé
+      if (generateAccounting) {
+        const ecritureData: BankTransactionEcritureData = {
+          transactionId: id,
+          tenantId,
+          compteBancaireId: transaction.compte_bancaire_id,
+          montant: transaction.montant,
+          typeTransaction: transaction.type_transaction as 'credit' | 'debit',
+          categorie: categorie || transaction.categorie,
+          libelle: transaction.libelle,
+          dateTransaction: transaction.date_transaction,
+          reference: transaction.reference_externe
+        };
+
+        const generated = await generateBankTransactionEntry(ecritureData);
+        if (generated) {
+          console.log('✅ Écriture comptable générée au rapprochement');
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bank-transactions-paginated"] });
       queryClient.invalidateQueries({ queryKey: ["bank-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["accounting-entries"] });
       toast({ title: "Transaction rapprochée avec succès" });
     },
     onError: (error) => {
@@ -149,6 +202,79 @@ export const useTransactionsPaginated = (filters: TransactionFilters) => {
     }
   });
 
+  // Mutation pour catégoriser une transaction et générer l'écriture
+  const categorizeTransaction = useMutation({
+    mutationFn: async ({ id, categorie, generateAccounting = true }: { 
+      id: string; 
+      categorie: string;
+      generateAccounting?: boolean;
+    }) => {
+      if (!tenantId) throw new Error("No tenant ID");
+
+      // Récupérer la transaction
+      const { data: transaction, error: fetchError } = await supabase
+        .from("transactions_bancaires")
+        .select("*")
+        .eq("id", id)
+        .eq("tenant_id", tenantId)
+        .single();
+
+      if (fetchError || !transaction) throw fetchError || new Error("Transaction non trouvée");
+
+      // Mettre à jour la catégorie
+      const { data, error } = await supabase
+        .from("transactions_bancaires")
+        .update({ categorie })
+        .eq("id", id)
+        .eq("tenant_id", tenantId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Générer l'écriture comptable si demandé
+      if (generateAccounting) {
+        const ecritureData: BankTransactionEcritureData = {
+          transactionId: id,
+          tenantId,
+          compteBancaireId: transaction.compte_bancaire_id,
+          montant: transaction.montant,
+          typeTransaction: transaction.type_transaction as 'credit' | 'debit',
+          categorie,
+          libelle: transaction.libelle,
+          dateTransaction: transaction.date_transaction,
+          reference: transaction.reference_externe
+        };
+
+        const generated = await generateBankTransactionEntry(ecritureData);
+        if (generated) {
+          console.log('✅ Écriture comptable générée à la catégorisation');
+        }
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bank-transactions-paginated"] });
+      queryClient.invalidateQueries({ queryKey: ["bank-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["accounting-entries"] });
+      toast({ title: "Transaction catégorisée avec succès" });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Erreur lors de la catégorisation", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  // Vérifier si une transaction a une écriture comptable
+  const checkHasAccountingEntry = async (transactionId: string): Promise<boolean> => {
+    if (!tenantId) return false;
+    return await hasExistingEntry(transactionId, tenantId);
+  };
+
   return {
     ...query,
     transactions: query.data?.data || [],
@@ -157,5 +283,7 @@ export const useTransactionsPaginated = (filters: TransactionFilters) => {
     currentPage: query.data?.currentPage || 0,
     deleteTransaction,
     reconcileTransaction,
+    categorizeTransaction,
+    checkHasAccountingEntry,
   };
 };
