@@ -446,7 +446,7 @@ const BankingIntegration = () => {
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="comptes">Comptes</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="rapprochement">Rapprochement</TabsTrigger>
+          <TabsTrigger value="rapprochement">Rapprochement bancaire</TabsTrigger>
           <TabsTrigger value="tresorerie">Trésorerie</TabsTrigger>
           <TabsTrigger value="previsions">Prévisions</TabsTrigger>
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
@@ -578,6 +578,43 @@ const BankingIntegration = () => {
 
         {/* ==================== TRANSACTIONS TAB ==================== */}
         <TabsContent value="transactions" className="space-y-4">
+          {/* Cartes de statistiques de rapprochement */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Éléments Rapprochés</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {transactions.filter((t: any) => isReconciled(t.statut_rapprochement)).length}
+                </div>
+                <Progress value={stats.reconciliationRate} className="mt-2" />
+                <p className="text-xs text-muted-foreground mt-2">{stats.reconciliationRate}% du total</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">À Rapprocher</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-600">{stats.pendingReconciliations}</div>
+                <p className="text-xs text-destructive">Éléments en attente</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Écart Total</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatAmount(0)}</div>
+                <p className="text-xs text-muted-foreground">À justifier</p>
+              </CardContent>
+            </Card>
+          </div>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -833,40 +870,57 @@ const BankingIntegration = () => {
           </Card>
         </TabsContent>
 
-        {/* ==================== RAPPROCHEMENT TAB ==================== */}
+        {/* ==================== RAPPROCHEMENT BANCAIRE TAB ==================== */}
         <TabsContent value="rapprochement" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
+          {/* Statistiques des sessions de rapprochement */}
+          <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Éléments Rapprochés</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Sessions Totales</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{reconciliations.length}</div>
+                <p className="text-xs text-muted-foreground">Sessions de rapprochement</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Sessions Validées</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {reconciliations.filter((r: any) => r.statut === 'Validé').length}
+                </div>
+                <p className="text-xs text-muted-foreground">Rapprochements confirmés</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">En Attente</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-600">
+                  {reconciliations.filter((r: any) => r.statut !== 'Validé').length}
+                </div>
+                <p className="text-xs text-muted-foreground">À valider</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Dernier Rapprochement</CardTitle>
+                <RefreshCw className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {transactions.filter((t: any) => isReconciled(t.statut_rapprochement)).length}
+                  {reconciliations.length > 0 && reconciliations[0]?.date_fin
+                    ? format(new Date(reconciliations[0].date_fin), 'dd/MM/yyyy', { locale: fr })
+                    : '-'
+                  }
                 </div>
-                <Progress value={stats.reconciliationRate} className="mt-2" />
-                <p className="text-xs text-muted-foreground mt-2">{stats.reconciliationRate}% du total</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">À Rapprocher</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.pendingReconciliations}</div>
-                <p className="text-xs text-destructive">Éléments en attente</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Écart Total</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatAmount(0)}</div>
-                <p className="text-xs text-muted-foreground">À justifier</p>
+                <p className="text-xs text-muted-foreground">Date de la dernière session</p>
               </CardContent>
             </Card>
           </div>
