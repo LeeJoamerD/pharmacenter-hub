@@ -162,9 +162,17 @@ export const useBankingManager = () => {
     mutationFn: async (account: Partial<BankAccountInsert>) => {
       if (!tenantId) throw new Error("No tenant ID");
       
+      // Initialiser solde_actuel avec solde_initial à la création
+      const accountData = {
+        ...account,
+        tenant_id: tenantId,
+        solde_actuel: account.solde_initial || 0,
+        solde_rapproche: 0
+      } as BankAccountInsert;
+      
       const { data, error } = await supabase
         .from("comptes_bancaires")
-        .insert([{ ...account, tenant_id: tenantId } as BankAccountInsert])
+        .insert([accountData])
         .select()
         .single();
       
@@ -678,13 +686,38 @@ export const useBankingManager = () => {
   };
 
   /**
+   * Calcule le solde réel d'un compte : solde_initial + somme des transactions
+   */
+  const calculateAccountBalance = (accountId: string): number => {
+    const account = bankAccounts.find(a => a.id === accountId);
+    if (!account) return 0;
+    
+    const soldeInitial = account.solde_initial || 0;
+    
+    const accountTransactions = transactions.filter(
+      (t: any) => t.compte_bancaire_id === accountId
+    );
+    
+    const transactionsSum = accountTransactions.reduce((sum: number, t: any) => {
+      if (t.type_transaction === 'credit') {
+        return sum + (t.montant || 0);
+      } else {
+        return sum - Math.abs(t.montant || 0);
+      }
+    }, 0);
+    
+    return soldeInitial + transactionsSum;
+  };
+
+  /**
    * Calculate total balance in main currency
    */
   const getTotalBalance = (): number => {
     const mainCurrency = regionalParams?.devise_principale || 'XAF';
     return bankAccounts.reduce((sum, account) => {
-      if (account.devise === mainCurrency) {
-        return sum + (account.solde_actuel || 0);
+      const accountDevise = account.devise || 'XAF';
+      if (accountDevise === mainCurrency || accountDevise === 'FCFA') {
+        return sum + calculateAccountBalance(account.id);
       }
       return sum;
     }, 0);
@@ -827,6 +860,7 @@ export const useBankingManager = () => {
     validateIBAN,
     formatAmount,
     getTotalBalance,
+    calculateAccountBalance,
     getReconciliationRate,
     exportTransactionsExcel,
     generateBankJournalPDF,

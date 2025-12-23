@@ -95,6 +95,7 @@ const BankingIntegration = () => {
     updateParameters,
     regionalParams,
     getTotalBalance,
+    calculateAccountBalance,
     getReconciliationRate,
     exportTransactionsExcel,
     generateBankJournalPDF,
@@ -438,7 +439,7 @@ const BankingIntegration = () => {
                           <Badge variant="outline">{account.type_compte || 'Courant'}</Badge>
                         </TableCell>
                         <TableCell className="font-semibold">
-                          {formatAmount(account.solde_actuel || 0)}
+                          {formatAmount(calculateAccountBalance(account.id))}
                         </TableCell>
                         <TableCell className="text-sm">
                           {account.derniere_sync 
