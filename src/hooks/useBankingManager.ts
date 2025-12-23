@@ -4,6 +4,7 @@ import { useTenant } from "@/contexts/TenantContext";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { toast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
+import { generateTransactionReference } from "@/services/TransactionReferenceService";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
@@ -248,9 +249,19 @@ export const useBankingManager = () => {
     mutationFn: async (transaction: Partial<BankTransactionInsert>) => {
       if (!tenantId) throw new Error("No tenant ID");
       
+      // Générer automatiquement la référence si non fournie
+      let reference = transaction.reference;
+      if (!reference || reference.trim() === '') {
+        reference = await generateTransactionReference(tenantId);
+      }
+      
       const { data, error } = await supabase
         .from("transactions_bancaires")
-        .insert([{ ...transaction, tenant_id: tenantId } as BankTransactionInsert])
+        .insert([{ 
+          ...transaction, 
+          reference,
+          tenant_id: tenantId 
+        } as BankTransactionInsert])
         .select()
         .single();
       
