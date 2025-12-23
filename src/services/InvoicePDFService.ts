@@ -8,6 +8,8 @@ interface ExportResult {
 interface RegionalInvoiceParams {
   symbole_devise?: string;
   libelle_tva?: string;
+  libelle_centime_additionnel?: string;
+  taux_centime_additionnel?: number;
   separateur_milliers?: string;
   separateur_decimal?: string;
   position_symbole_devise?: string;
@@ -19,6 +21,12 @@ interface RegionalInvoiceParams {
   numero_tva?: string;
   telephone_societe?: string;
   email_societe?: string;
+}
+
+// Extended Invoice interface for PDF generation
+interface InvoiceWithCentime extends Invoice {
+  montant_centime_additionnel?: number;
+  taux_centime_additionnel?: number;
 }
 
 export class InvoicePDFService {
@@ -351,6 +359,12 @@ export class InvoicePDFService {
         <span>${tvaLabel}:</span>
         <span>${formatAmount(invoice.montant_tva)}</span>
       </div>
+      ${((invoice as InvoiceWithCentime).montant_centime_additionnel && (invoice as InvoiceWithCentime).montant_centime_additionnel! > 0) ? `
+      <div class="total-row tax" style="color: #d97706;">
+        <span>${regionalParams?.libelle_centime_additionnel || 'Centime Additionnel'} (${(invoice as InvoiceWithCentime).taux_centime_additionnel || regionalParams?.taux_centime_additionnel || 5}%):</span>
+        <span>${formatAmount((invoice as InvoiceWithCentime).montant_centime_additionnel || 0)}</span>
+      </div>
+      ` : ''}
       <div class="total-row grand">
         <span>TOTAL TTC:</span>
         <span>${formatAmount(invoice.montant_ttc)}</span>

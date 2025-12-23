@@ -453,6 +453,62 @@ const AnalyticalAccounting = () => {
 
         {/* ONGLET RENTABILITÉ */}
         <TabsContent value="rentabilite" className="space-y-4">
+          {/* KPIs Rentabilité avec Centime Additionnel */}
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Chiffre d'Affaires</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {formatAmount(profitabilityData.reduce((sum, p) => sum + p.chiffre_affaires, 0))}
+                </div>
+                <p className="text-xs text-muted-foreground">{profitabilityData.length} produits vendus</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Marge Totale</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {formatAmount(profitabilityData.reduce((sum, p) => sum + p.marge_brute, 0))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Taux moyen: {profitabilityData.length > 0 
+                    ? (profitabilityData.reduce((sum, p) => sum + p.taux_marge, 0) / profitabilityData.length).toFixed(1) 
+                    : 0}%
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-400">TVA Collectée</CardTitle>
+                <Calculator className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  {formatAmount(profitabilityData.reduce((sum, p) => sum + (p.montant_tva || 0), 0))}
+                </div>
+                <p className="text-xs text-blue-600/70">Sur ventes</p>
+              </CardContent>
+            </Card>
+            <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-amber-700 dark:text-amber-400">Centime Add. Collecté</CardTitle>
+                <Calculator className="h-4 w-4 text-amber-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-600">
+                  {formatAmount(profitabilityData.reduce((sum, p) => sum + (p.montant_centime_additionnel || 0), 0))}
+                </div>
+                <p className="text-xs text-amber-600/70">5% sur TVA</p>
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
@@ -554,6 +610,7 @@ const AnalyticalAccounting = () => {
                     <TableHead className="text-right">Chiffre d'Affaires</TableHead>
                     <TableHead className="text-right">Coûts Directs</TableHead>
                     <TableHead className="text-right">Marge Brute</TableHead>
+                    <TableHead className="text-right text-amber-600">Centime Add.</TableHead>
                     <TableHead className="text-right">Taux de Marge</TableHead>
                     <TableHead>Performance</TableHead>
                   </TableRow>
@@ -561,7 +618,7 @@ const AnalyticalAccounting = () => {
                 <TableBody>
                   {paginatedProfitability.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                         Aucune donnée de rentabilité. Les données sont calculées à partir des ventes.
                       </TableCell>
                     </TableRow>
@@ -573,6 +630,9 @@ const AnalyticalAccounting = () => {
                         <TableCell className="text-right">{formatAmount(item.chiffre_affaires)}</TableCell>
                         <TableCell className="text-right">{formatAmount(item.cout_achat)}</TableCell>
                         <TableCell className="text-right">{formatAmount(item.marge_brute)}</TableCell>
+                        <TableCell className="text-right text-amber-600">
+                          {formatAmount(item.montant_centime_additionnel || 0)}
+                        </TableCell>
                         <TableCell className="text-right">{item.taux_marge.toFixed(1)}%</TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">

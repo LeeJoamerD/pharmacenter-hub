@@ -291,56 +291,94 @@ const JournalManager = () => {
                         <TableHead>Libellé</TableHead>
                         <TableHead>Débit</TableHead>
                         <TableHead>Crédit</TableHead>
+                        <TableHead>Type</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {newEntry.lines.map(line => (
-                        <TableRow key={line.id}>
-                          <TableCell>{line.compte_code}</TableCell>
-                          <TableCell>{line.libelle}</TableCell>
-                          <TableCell>{line.debit.toLocaleString()}</TableCell>
-                          <TableCell>{line.credit.toLocaleString()}</TableCell>
-                          <TableCell>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => removeLineFromEntry(line.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {newEntry.lines.map(line => {
+                        // Détection du type fiscal basé sur le code compte
+                        const isCentimeAccount = line.compte_code?.startsWith('4458') || line.compte_code?.startsWith('4459');
+                        const isTVAAccount = (line.compte_code?.startsWith('443') || line.compte_code?.startsWith('445')) && !isCentimeAccount;
+                        
+                        return (
+                          <TableRow key={line.id}>
+                            <TableCell>{line.compte_code}</TableCell>
+                            <TableCell>{line.libelle}</TableCell>
+                            <TableCell>{line.debit.toLocaleString()}</TableCell>
+                            <TableCell>{line.credit.toLocaleString()}</TableCell>
+                            <TableCell>
+                              {isCentimeAccount && <Badge className="bg-amber-500 text-white text-xs">Centime Add.</Badge>}
+                              {isTVAAccount && <Badge variant="outline" className="border-blue-500 text-blue-600 text-xs">TVA</Badge>}
+                            </TableCell>
+                            <TableCell>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => removeLineFromEntry(line.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 )}
 
                 {/* Équilibre */}
                 {newEntry.lines && newEntry.lines.length > 0 && (
-                  <div className="mt-4 p-3 bg-muted rounded-lg">
+                  <div className="mt-4 p-3 bg-muted rounded-lg space-y-2">
                     {(() => {
                       const balance = calculateBalance(newEntry.lines);
+                      
+                      // Calculer les totaux TVA et Centime Additionnel
+                      const totalTVA = newEntry.lines
+                        .filter(l => (l.compte_code?.startsWith('443') || l.compte_code?.startsWith('445')) && !l.compte_code?.startsWith('4458') && !l.compte_code?.startsWith('4459'))
+                        .reduce((sum, l) => sum + (l.credit || 0) - (l.debit || 0), 0);
+                      
+                      const totalCentime = newEntry.lines
+                        .filter(l => l.compte_code?.startsWith('4458') || l.compte_code?.startsWith('4459'))
+                        .reduce((sum, l) => sum + (l.credit || 0) - (l.debit || 0), 0);
+                      
                       return (
-                        <div className="flex justify-between items-center">
-                          <div className="flex space-x-4">
-                            <span>Total Débit: {balance.totalDebit.toLocaleString()}</span>
-                            <span>Total Crédit: {balance.totalCredit.toLocaleString()}</span>
+                        <>
+                          <div className="flex justify-between items-center">
+                            <div className="flex space-x-4">
+                              <span>Total Débit: {balance.totalDebit.toLocaleString()}</span>
+                              <span>Total Crédit: {balance.totalCredit.toLocaleString()}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {balance.isBalanced ? (
+                                <>
+                                  <Check className="h-4 w-4 text-green-600" />
+                                  <span className="text-green-600">Équilibré</span>
+                                </>
+                              ) : (
+                                <>
+                                  <AlertCircle className="h-4 w-4 text-red-600" />
+                                  <span className="text-red-600">Déséquilibré</span>
+                                </>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            {balance.isBalanced ? (
-                              <>
-                                <Check className="h-4 w-4 text-green-600" />
-                                <span className="text-green-600">Équilibré</span>
-                              </>
-                            ) : (
-                              <>
-                                <AlertCircle className="h-4 w-4 text-red-600" />
-                                <span className="text-red-600">Déséquilibré</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
+                          {/* Affichage des totaux fiscaux */}
+                          {(totalTVA !== 0 || totalCentime !== 0) && (
+                            <div className="flex space-x-6 pt-2 border-t text-sm">
+                              {totalTVA !== 0 && (
+                                <span className="text-blue-600">
+                                  TVA: {totalTVA.toLocaleString()} FCFA
+                                </span>
+                              )}
+                              {totalCentime !== 0 && (
+                                <span className="text-amber-600">
+                                  Centime Add.: {totalCentime.toLocaleString()} FCFA
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </>
                       );
                     })()}
                   </div>

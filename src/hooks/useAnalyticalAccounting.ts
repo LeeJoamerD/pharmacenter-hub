@@ -142,6 +142,9 @@ export interface ProfitabilityData {
   marge_brute: number;
   taux_marge: number;
   derniere_vente?: string;
+  // Centime Additionnel
+  montant_tva?: number;
+  montant_centime_additionnel?: number;
 }
 
 export interface CostCenterPerformance {
