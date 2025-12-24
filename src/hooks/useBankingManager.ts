@@ -497,6 +497,45 @@ export const useBankingManager = () => {
     },
   });
 
+  const updateForecast = useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<TreasuryForecast> & { id: string }) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
+      const { data, error } = await supabase
+        .from("previsions_tresorerie")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("tenant_id", tenantId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["treasury-forecasts"] });
+      toast({ title: "Scénario mis à jour" });
+    },
+  });
+
+  const deleteForecast = useMutation({
+    mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error("No tenant ID");
+      
+      const { error } = await supabase
+        .from("previsions_tresorerie")
+        .delete()
+        .eq("id", id)
+        .eq("tenant_id", tenantId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["treasury-forecasts"] });
+      toast({ title: "Scénario supprimé" });
+    },
+  });
+
   // ========== TREASURY COMMITMENTS ==========
 
   const { data: commitments = [] } = useQuery({
@@ -899,6 +938,8 @@ export const useBankingManager = () => {
     // Treasury Forecasts
     forecasts,
     createForecast,
+    updateForecast,
+    deleteForecast,
     
     // Treasury Commitments
     commitments,
