@@ -1292,21 +1292,23 @@ const BankingIntegration = () => {
                   <CardTitle>Scénarios Prévisionnels</CardTitle>
                   <CardDescription>Analyse de différents scénarios</CardDescription>
                 </div>
+                <Button variant="outline" size="sm" onClick={() => createForecast.mutate({
+                  periode_debut: new Date().toISOString().split('T')[0],
+                  periode_fin: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                  solde_initial_xaf: stats.totalBalance,
+                  solde_final_previsionnel_xaf: stats.totalBalance * 1.05
+                })}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nouveau
+                </Button>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {forecasts.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
+                      <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p>Aucun scénario configuré</p>
-                      <Button className="mt-4" variant="outline" onClick={() => createForecast.mutate({
-                        periode_debut: new Date().toISOString().split('T')[0],
-                        periode_fin: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                        solde_initial_xaf: stats.totalBalance,
-                        solde_final_previsionnel_xaf: stats.totalBalance * 1.05
-                      })}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Créer un scénario
-                      </Button>
+                      <p className="text-sm">Cliquez sur "Nouveau" pour créer un scénario</p>
                     </div>
                   ) : (
                     forecasts.map((forecast: any) => (
@@ -1366,8 +1368,7 @@ const BankingIntegration = () => {
                             }
                           </p>
                         </div>
-                        <span className={`font-bold ${commitment.type_engagement === 'Recette' ? 'text-green-600' : 'text-red-600'}`}>
-                          {commitment.type_engagement === 'Recette' ? '+' : '-'}
+                        <span className="font-bold text-foreground">
                           {formatAmount(commitment.montant_xaf || 0)}
                         </span>
                       </div>
