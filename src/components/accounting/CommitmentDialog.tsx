@@ -20,11 +20,11 @@ const CommitmentDialog = ({ open, onOpenChange, onSubmit, commitment, bankAccoun
   const { register, handleSubmit, reset, setValue, watch } = useForm({
     defaultValues: commitment || {
       libelle: '',
-      type_engagement: 'Dépense',
+      type_engagement: 'Autres',
       montant_xaf: 0,
       date_echeance: '',
       compte_bancaire_id: '',
-      statut: 'En attente',
+      statut: 'Prévu',
       notes: ''
     }
   });
@@ -39,11 +39,11 @@ const CommitmentDialog = ({ open, onOpenChange, onSubmit, commitment, bankAccoun
     } else {
       reset({
         libelle: '',
-        type_engagement: 'Dépense',
+        type_engagement: 'Autres',
         montant_xaf: 0,
         date_echeance: '',
         compte_bancaire_id: '',
-        statut: 'En attente',
+        statut: 'Prévu',
         notes: ''
       });
     }
@@ -74,42 +74,60 @@ const CommitmentDialog = ({ open, onOpenChange, onSubmit, commitment, bankAccoun
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Type</Label>
+              <Label>Type d'engagement</Label>
               <Select onValueChange={(value) => setValue('type_engagement', value)} defaultValue={watch('type_engagement')}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Recette">Recette (Entrée)</SelectItem>
-                  <SelectItem value="Dépense">Dépense (Sortie)</SelectItem>
+                  <SelectItem value="Salaires">Salaires</SelectItem>
+                  <SelectItem value="Fournisseurs">Fournisseurs</SelectItem>
+                  <SelectItem value="Charges sociales">Charges sociales</SelectItem>
+                  <SelectItem value="Impôts BEAC">Impôts BEAC</SelectItem>
+                  <SelectItem value="Loyers">Loyers</SelectItem>
+                  <SelectItem value="Autres">Autres</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Montant</Label>
+              <Label>Montant (XAF)</Label>
               <Input type="number" step={getInputStep()} {...register('montant_xaf', { valueAsNumber: true, required: true })} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Date d'Échéance</Label>
-              <Input type="date" {...register('date_echeance', { required: true })} />
-            </div>
-            <div>
-              <Label>Compte Bancaire</Label>
-              <Select onValueChange={(value) => setValue('compte_bancaire_id', value)} defaultValue={watch('compte_bancaire_id')}>
+              <Label>Statut</Label>
+              <Select onValueChange={(value) => setValue('statut', value)} defaultValue={watch('statut')}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {bankAccounts.map((account: any) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.nom_compte}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="Prévu">Prévu</SelectItem>
+                  <SelectItem value="Confirmé">Confirmé</SelectItem>
+                  <SelectItem value="Payé">Payé</SelectItem>
+                  <SelectItem value="Annulé">Annulé</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Date d'Échéance</Label>
+              <Input type="date" {...register('date_echeance', { required: true })} />
+            </div>
+          </div>
+          <div>
+            <Label>Compte Bancaire</Label>
+            <Select onValueChange={(value) => setValue('compte_bancaire_id', value)} defaultValue={watch('compte_bancaire_id')}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un compte" />
+              </SelectTrigger>
+              <SelectContent>
+                {bankAccounts.map((account: any) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.nom_compte}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
             <Label>Notes</Label>
