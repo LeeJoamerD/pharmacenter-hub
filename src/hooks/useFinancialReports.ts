@@ -354,7 +354,7 @@ export function useFinancialReports(selectedExerciceId?: string) {
         const compte = ligne.compte;
         if (!compte) return;
         
-        const solde = (ligne.montant_debit || 0) - (ligne.montant_credit || 0);
+        const solde = (ligne.debit || 0) - (ligne.credit || 0);
         
         if (compteBalances.has(compte.numero_compte)) {
           compteBalances.get(compte.numero_compte)!.solde += solde;
@@ -526,8 +526,8 @@ export function useFinancialReports(selectedExerciceId?: string) {
         // Pour les charges (6), le montant est au débit
         // Pour les produits (7), le montant est au crédit
         const montant = classe === '6' 
-          ? (ligne.montant_debit || 0) - (ligne.montant_credit || 0)
-          : (ligne.montant_credit || 0) - (ligne.montant_debit || 0);
+          ? (ligne.debit || 0) - (ligne.credit || 0)
+          : (ligne.credit || 0) - (ligne.debit || 0);
         
         if (compteMap.has(compte.numero_compte)) {
           compteMap.get(compte.numero_compte)!.montant += montant;
@@ -632,7 +632,7 @@ export function useFinancialReports(selectedExerciceId?: string) {
 
       const dotationsAmortissements = (amortData || [])
         .filter((ligne: any) => ligne.compte?.numero_compte?.startsWith('681'))
-        .reduce((sum: number, ligne: any) => sum + (ligne.montant_debit || 0), 0);
+        .reduce((sum: number, ligne: any) => sum + (ligne.debit || 0), 0);
 
       // Variation BFR simplified
       const actifCirculant = balanceSheet.actif.circulant.reduce((sum, item) => sum + item.montant_n, 0);
@@ -660,13 +660,13 @@ export function useFinancialReports(selectedExerciceId?: string) {
       const acquisitionsImmobilisations = (amortData || [])
         .filter((ligne: any) => {
           const num = ligne.compte?.numero_compte;
-          return num?.charAt(0) === '2' && !num?.startsWith('28') && !num?.startsWith('29') && ligne.montant_debit > 0;
+          return num?.charAt(0) === '2' && !num?.startsWith('28') && !num?.startsWith('29') && ligne.debit > 0;
         })
-        .reduce((sum: number, ligne: any) => sum + (ligne.montant_debit || 0), 0);
+        .reduce((sum: number, ligne: any) => sum + (ligne.debit || 0), 0);
       
       const cessionsImmobilisations = (amortData || [])
         .filter((ligne: any) => ligne.compte?.numero_compte?.startsWith('82'))
-        .reduce((sum: number, ligne: any) => sum + (ligne.montant_credit || 0), 0);
+        .reduce((sum: number, ligne: any) => sum + (ligne.credit || 0), 0);
 
       const fluxInvestissement = {
         acquisitionsImmobilisations: -acquisitionsImmobilisations,
@@ -680,16 +680,16 @@ export function useFinancialReports(selectedExerciceId?: string) {
 
       // Flux de financement
       const empruntsObtenus = (amortData || [])
-        .filter((ligne: any) => ligne.compte?.numero_compte?.startsWith('16') && ligne.montant_credit > 0)
-        .reduce((sum: number, ligne: any) => sum + (ligne.montant_credit || 0), 0);
+        .filter((ligne: any) => ligne.compte?.numero_compte?.startsWith('16') && ligne.credit > 0)
+        .reduce((sum: number, ligne: any) => sum + (ligne.credit || 0), 0);
       
       const remboursementsEmprunts = (amortData || [])
-        .filter((ligne: any) => ligne.compte?.numero_compte?.startsWith('16') && ligne.montant_debit > 0)
-        .reduce((sum: number, ligne: any) => sum + (ligne.montant_debit || 0), 0);
+        .filter((ligne: any) => ligne.compte?.numero_compte?.startsWith('16') && ligne.debit > 0)
+        .reduce((sum: number, ligne: any) => sum + (ligne.debit || 0), 0);
 
       const dividendesVerses = (amortData || [])
         .filter((ligne: any) => ligne.compte?.numero_compte?.startsWith('46'))
-        .reduce((sum: number, ligne: any) => sum + (ligne.montant_debit || 0), 0);
+        .reduce((sum: number, ligne: any) => sum + (ligne.debit || 0), 0);
 
       const fluxFinancement = {
         empruntsObtenus,
@@ -787,8 +787,8 @@ export function useFinancialReports(selectedExerciceId?: string) {
             });
           }
           const prov = provisionsMap.get(code)!;
-          prov.dotation += ligne.montant_credit || 0;
-          prov.reprise += ligne.montant_debit || 0;
+          prov.dotation += ligne.credit || 0;
+          prov.reprise += ligne.debit || 0;
           prov.montantFin = prov.montantDebut + prov.dotation - prov.reprise;
         });
 
