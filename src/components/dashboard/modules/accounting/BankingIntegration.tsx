@@ -1368,7 +1368,7 @@ const BankingIntegration = () => {
                         </div>
                         <span className={`font-bold ${commitment.type_engagement === 'Recette' ? 'text-green-600' : 'text-red-600'}`}>
                           {commitment.type_engagement === 'Recette' ? '+' : '-'}
-                          {formatAmount(commitment.montant || 0)}
+                          {formatAmount(commitment.montant_xaf || 0)}
                         </span>
                       </div>
                     ))
