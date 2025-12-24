@@ -8,17 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useForm } from 'react-hook-form';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
-interface ForecastScenarioData {
-  nom_scenario: string;
+export interface ForecastScenarioData {
   type_scenario: string;
-  description?: string;
   coefficient_ajustement: number;
   periode_debut?: string;
   periode_fin?: string;
-  solde_initial: number;
-  entrees_prevues: number;
-  sorties_prevues: number;
-  solde_prevu: number;
+  solde_initial_xaf: number;
+  entrees_prevues_xaf: number;
+  sorties_prevues_xaf: number;
+  solde_final_previsionnel_xaf: number;
   notes?: string;
 }
 
@@ -42,30 +40,28 @@ const ForecastScenarioDialog: React.FC<ForecastScenarioDialogProps> = ({
   
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<ForecastScenarioData>({
     defaultValues: {
-      nom_scenario: '',
       type_scenario: 'Réaliste',
-      description: '',
       coefficient_ajustement: 1,
       periode_debut: '',
       periode_fin: '',
-      solde_initial: 0,
-      entrees_prevues: 0,
-      sorties_prevues: 0,
-      solde_prevu: 0,
+      solde_initial_xaf: 0,
+      entrees_prevues_xaf: 0,
+      sorties_prevues_xaf: 0,
+      solde_final_previsionnel_xaf: 0,
       notes: ''
     }
   });
 
-  // Watch values to calculate solde_prevu
-  const soldeInitial = watch('solde_initial') || 0;
-  const entreesPrevues = watch('entrees_prevues') || 0;
-  const sortiesPrevues = watch('sorties_prevues') || 0;
+  // Watch values to calculate solde_final_previsionnel_xaf
+  const soldeInitial = watch('solde_initial_xaf') || 0;
+  const entreesPrevues = watch('entrees_prevues_xaf') || 0;
+  const sortiesPrevues = watch('sorties_prevues_xaf') || 0;
   const coefficient = watch('coefficient_ajustement') || 1;
 
-  // Auto-calculate solde_prevu
+  // Auto-calculate solde_final_previsionnel_xaf
   useEffect(() => {
     const soldePrevu = (soldeInitial + entreesPrevues - sortiesPrevues) * coefficient;
-    setValue('solde_prevu', Math.round(soldePrevu));
+    setValue('solde_final_previsionnel_xaf', Math.round(soldePrevu));
   }, [soldeInitial, entreesPrevues, sortiesPrevues, coefficient, setValue]);
 
   // Reset form when dialog opens/closes or scenario changes
@@ -73,30 +69,26 @@ const ForecastScenarioDialog: React.FC<ForecastScenarioDialogProps> = ({
     if (open) {
       if (scenario) {
         reset({
-          nom_scenario: scenario.nom_scenario || '',
           type_scenario: scenario.type_scenario || 'Réaliste',
-          description: scenario.description || '',
           coefficient_ajustement: scenario.coefficient_ajustement || 1,
           periode_debut: scenario.periode_debut || '',
           periode_fin: scenario.periode_fin || '',
-          solde_initial: scenario.solde_initial || 0,
-          entrees_prevues: scenario.entrees_prevues || 0,
-          sorties_prevues: scenario.sorties_prevues || 0,
-          solde_prevu: scenario.solde_prevu || 0,
+          solde_initial_xaf: scenario.solde_initial_xaf || 0,
+          entrees_prevues_xaf: scenario.entrees_prevues_xaf || 0,
+          sorties_prevues_xaf: scenario.sorties_prevues_xaf || 0,
+          solde_final_previsionnel_xaf: scenario.solde_final_previsionnel_xaf || 0,
           notes: scenario.notes || ''
         });
       } else {
         reset({
-          nom_scenario: '',
           type_scenario: 'Réaliste',
-          description: '',
           coefficient_ajustement: 1,
           periode_debut: '',
           periode_fin: '',
-          solde_initial: 0,
-          entrees_prevues: 0,
-          sorties_prevues: 0,
-          solde_prevu: 0,
+          solde_initial_xaf: 0,
+          entrees_prevues_xaf: 0,
+          sorties_prevues_xaf: 0,
+          solde_final_previsionnel_xaf: 0,
           notes: ''
         });
       }
@@ -127,18 +119,6 @@ const ForecastScenarioDialog: React.FC<ForecastScenarioDialogProps> = ({
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="nom_scenario">Nom du scénario *</Label>
-              <Input
-                id="nom_scenario"
-                {...register('nom_scenario', { required: 'Nom requis' })}
-                placeholder="Ex: Prévision Q1 2025"
-              />
-              {errors.nom_scenario && (
-                <p className="text-sm text-destructive">{errors.nom_scenario.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="type_scenario">Type de scénario *</Label>
               <Select
                 value={watch('type_scenario')}
@@ -154,16 +134,16 @@ const ForecastScenarioDialog: React.FC<ForecastScenarioDialogProps> = ({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              {...register('description')}
-              placeholder="Décrivez les hypothèses de ce scénario..."
-              rows={2}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="coefficient_ajustement">Coefficient d'ajustement</Label>
+              <Input
+                id="coefficient_ajustement"
+                type="number"
+                step="0.01"
+                {...register('coefficient_ajustement', { valueAsNumber: true })}
+                placeholder="1.00"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -187,54 +167,42 @@ const ForecastScenarioDialog: React.FC<ForecastScenarioDialogProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="solde_initial">Solde initial ({currencyCode})</Label>
+              <Label htmlFor="solde_initial_xaf">Solde initial ({currencyCode})</Label>
               <Input
-                id="solde_initial"
+                id="solde_initial_xaf"
                 type="number"
-                {...register('solde_initial', { valueAsNumber: true })}
+                {...register('solde_initial_xaf', { valueAsNumber: true })}
                 placeholder="0"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="coefficient_ajustement">Coefficient d'ajustement</Label>
+              <Label htmlFor="entrees_prevues_xaf">Entrées prévues ({currencyCode})</Label>
               <Input
-                id="coefficient_ajustement"
+                id="entrees_prevues_xaf"
                 type="number"
-                step="0.01"
-                {...register('coefficient_ajustement', { valueAsNumber: true })}
-                placeholder="1.00"
+                {...register('entrees_prevues_xaf', { valueAsNumber: true })}
+                placeholder="0"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="entrees_prevues">Entrées prévues ({currencyCode})</Label>
-              <Input
-                id="entrees_prevues"
-                type="number"
-                {...register('entrees_prevues', { valueAsNumber: true })}
-                placeholder="0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="sorties_prevues">Sorties prévues ({currencyCode})</Label>
-              <Input
-                id="sorties_prevues"
-                type="number"
-                {...register('sorties_prevues', { valueAsNumber: true })}
-                placeholder="0"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="sorties_prevues_xaf">Sorties prévues ({currencyCode})</Label>
+            <Input
+              id="sorties_prevues_xaf"
+              type="number"
+              {...register('sorties_prevues_xaf', { valueAsNumber: true })}
+              placeholder="0"
+            />
           </div>
 
           <div className="p-3 bg-muted rounded-lg">
             <div className="flex justify-between items-center">
               <Label>Solde prévisionnel calculé</Label>
               <span className={`text-lg font-bold ${
-                watch('solde_prevu') >= 0 ? 'text-green-600' : 'text-red-600'
+                watch('solde_final_previsionnel_xaf') >= 0 ? 'text-green-600' : 'text-red-600'
               }`}>
-                {new Intl.NumberFormat('fr-FR').format(watch('solde_prevu'))} {currencyCode}
+                {new Intl.NumberFormat('fr-FR').format(watch('solde_final_previsionnel_xaf'))} {currencyCode}
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
