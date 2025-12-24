@@ -1320,12 +1320,26 @@ const BankingIntegration = () => {
                           }`}>
                             {forecast.nom_scenario}
                           </h4>
-                          <Badge variant={
-                            forecast.type_scenario === 'Optimiste' ? 'default' :
-                            forecast.type_scenario === 'Pessimiste' ? 'destructive' : 'secondary'
-                          }>
-                            {forecast.type_scenario}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={
+                              forecast.type_scenario === 'Optimiste' ? 'default' :
+                              forecast.type_scenario === 'Pessimiste' ? 'destructive' : 'secondary'
+                            }>
+                              {forecast.type_scenario}
+                            </Badge>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                              toast({ description: "Fonctionnalité de modification à venir" });
+                            }}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                              if (confirm("Supprimer ce scénario ?")) {
+                                toast({ description: "Fonctionnalité de suppression à venir" });
+                              }
+                            }}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
                         <p className="text-sm text-muted-foreground mb-2">{forecast.description || 'Aucune description'}</p>
                         <div className="flex justify-between">
@@ -1360,7 +1374,16 @@ const BankingIntegration = () => {
                     commitments.slice(0, 5).map((commitment: any) => (
                       <div key={commitment.id} className="flex justify-between items-center p-2 border rounded cursor-pointer hover:bg-muted/50" onClick={() => handleEditCommitment(commitment)}>
                         <div>
-                          <p className="font-medium">{commitment.libelle}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">{commitment.libelle}</p>
+                            <Badge variant={
+                              commitment.statut === 'Payé' ? 'default' :
+                              commitment.statut === 'Confirmé' ? 'secondary' :
+                              commitment.statut === 'Annulé' ? 'destructive' : 'outline'
+                            }>
+                              {commitment.statut || 'Prévu'}
+                            </Badge>
+                          </div>
                           <p className="text-sm text-muted-foreground">
                             {commitment.date_echeance 
                               ? format(new Date(commitment.date_echeance), 'dd/MM/yyyy', { locale: fr })
