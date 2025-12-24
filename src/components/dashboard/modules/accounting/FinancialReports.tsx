@@ -1,440 +1,112 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { FileText, Download, TrendingUp, TrendingDown, Calculator, BarChart3, PieChart, FileSpreadsheet, Calendar, Filter, Eye, Printer } from 'lucide-react';
-import { useToast } from "@/hooks/use-toast";
-
-interface BalanceSheetItem {
-  code: string;
-  libelle: string;
-  montant_n: number;
-  montant_n1: number;
-  type: 'actif' | 'passif';
-  section: 'immobilise' | 'circulant' | 'tresorerie' | 'capitaux_propres' | 'provisions' | 'dettes';
-}
-
-interface IncomeStatementItem {
-  code: string;
-  libelle: string;
-  montant_n: number;
-  montant_n1: number;
-  type: 'charge' | 'produit';
-  nature: 'exploitation' | 'financier' | 'exceptionnel';
-}
-
-interface CashFlowItem {
-  libelle: string;
-  montant: number;
-  type: 'exploitation' | 'investissement' | 'financement';
-}
+import { FileText, Download, TrendingUp, TrendingDown, Calculator, BarChart3, PieChart, FileSpreadsheet, Eye, Printer, Loader2, Coins } from 'lucide-react';
+import { useFinancialReports } from '@/hooks/useFinancialReports';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import AmortizationTableDialog from '@/components/accounting/AmortizationTableDialog';
+import ProvisionsTableDialog from '@/components/accounting/ProvisionsTableDialog';
+import CreancesTableDialog from '@/components/accounting/CreancesTableDialog';
+import DettesTableDialog from '@/components/accounting/DettesTableDialog';
 
 const FinancialReports = () => {
-  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('bilan');
-  const [selectedPeriod, setSelectedPeriod] = useState('2024');
-  const [comparisonPeriod, setComparisonPeriod] = useState('2023');
+  const [selectedExerciceId, setSelectedExerciceId] = useState<string | undefined>();
   const [showDetails, setShowDetails] = useState(false);
+  
+  // Dialog states
+  const [amortDialogOpen, setAmortDialogOpen] = useState(false);
+  const [provisionsDialogOpen, setProvisionsDialogOpen] = useState(false);
+  const [creancesDialogOpen, setCreancesDialogOpen] = useState(false);
+  const [dettesDialogOpen, setDettesDialogOpen] = useState(false);
 
-  // Données du bilan (exemple conforme OHADA)
-  const [balanceSheet] = useState<BalanceSheetItem[]>([
-    // ACTIF IMMOBILISE
-    {
-      code: '21',
-      libelle: 'Immobilisations incorporelles',
-      montant_n: 2500000,
-      montant_n1: 2000000,
-      type: 'actif',
-      section: 'immobilise'
-    },
-    {
-      code: '22',
-      libelle: 'Terrains',
-      montant_n: 15000000,
-      montant_n1: 15000000,
-      type: 'actif',
-      section: 'immobilise'
-    },
-    {
-      code: '23',
-      libelle: 'Bâtiments',
-      montant_n: 25000000,
-      montant_n1: 20000000,
-      type: 'actif',
-      section: 'immobilise'
-    },
-    {
-      code: '24',
-      libelle: 'Matériel',
-      montant_n: 8500000,
-      montant_n1: 7200000,
-      type: 'actif',
-      section: 'immobilise'
-    },
-    // ACTIF CIRCULANT
-    {
-      code: '31',
-      libelle: 'Stocks de médicaments',
-      montant_n: 12000000,
-      montant_n1: 10500000,
-      type: 'actif',
-      section: 'circulant'
-    },
-    {
-      code: '411',
-      libelle: 'Clients',
-      montant_n: 4500000,
-      montant_n1: 3800000,
-      type: 'actif',
-      section: 'circulant'
-    },
-    {
-      code: '485',
-      libelle: 'Créances diverses',
-      montant_n: 1200000,
-      montant_n1: 950000,
-      type: 'actif',
-      section: 'circulant'
-    },
-    // TRESORERIE ACTIF
-    {
-      code: '52',
-      libelle: 'Banques',
-      montant_n: 3200000,
-      montant_n1: 2800000,
-      type: 'actif',
-      section: 'tresorerie'
-    },
-    {
-      code: '53',
-      libelle: 'Caisses',
-      montant_n: 800000,
-      montant_n1: 650000,
-      type: 'actif',
-      section: 'tresorerie'
-    },
-    // CAPITAUX PROPRES
-    {
-      code: '101',
-      libelle: 'Capital social',
-      montant_n: 20000000,
-      montant_n1: 20000000,
-      type: 'passif',
-      section: 'capitaux_propres'
-    },
-    {
-      code: '106',
-      libelle: 'Réserves',
-      montant_n: 15000000,
-      montant_n1: 12000000,
-      type: 'passif',
-      section: 'capitaux_propres'
-    },
-    {
-      code: '12',
-      libelle: 'Résultat de l\'exercice',
-      montant_n: 8500000,
-      montant_n1: 6200000,
-      type: 'passif',
-      section: 'capitaux_propres'
-    },
-    // DETTES
-    {
-      code: '16',
-      libelle: 'Emprunts',
-      montant_n: 18000000,
-      montant_n1: 20000000,
-      type: 'passif',
-      section: 'dettes'
-    },
-    {
-      code: '401',
-      libelle: 'Fournisseurs',
-      montant_n: 6200000,
-      montant_n1: 5800000,
-      type: 'passif',
-      section: 'dettes'
-    },
-    {
-      code: '43',
-      libelle: 'Sécurité sociale',
-      montant_n: 1200000,
-      montant_n1: 1100000,
-      type: 'passif',
-      section: 'dettes'
-    },
-    {
-      code: '44',
-      libelle: 'État et collectivités',
-      montant_n: 2800000,
-      montant_n1: 2400000,
-      type: 'passif',
-      section: 'dettes'
-    }
-  ]);
+  const { formatAmount, getCurrencySymbol } = useCurrencyFormatting();
+  const currency = getCurrencySymbol();
 
-  // Données du compte de résultat
-  const [incomeStatement] = useState<IncomeStatementItem[]>([
-    // PRODUITS D'EXPLOITATION
-    {
-      code: '701',
-      libelle: 'Ventes de médicaments',
-      montant_n: 85000000,
-      montant_n1: 78000000,
-      type: 'produit',
-      nature: 'exploitation'
-    },
-    {
-      code: '706',
-      libelle: 'Services rendus',
-      montant_n: 12000000,
-      montant_n1: 10500000,
-      type: 'produit',
-      nature: 'exploitation'
-    },
-    // CHARGES D'EXPLOITATION
-    {
-      code: '601',
-      libelle: 'Achats de médicaments',
-      montant_n: 45000000,
-      montant_n1: 42000000,
-      type: 'charge',
-      nature: 'exploitation'
-    },
-    {
-      code: '605',
-      libelle: 'Autres achats',
-      montant_n: 3500000,
-      montant_n1: 3200000,
-      type: 'charge',
-      nature: 'exploitation'
-    },
-    {
-      code: '61',
-      libelle: 'Transport',
-      montant_n: 2800000,
-      montant_n1: 2600000,
-      type: 'charge',
-      nature: 'exploitation'
-    },
-    {
-      code: '63',
-      libelle: 'Services extérieurs',
-      montant_n: 8500000,
-      montant_n1: 7800000,
-      type: 'charge',
-      nature: 'exploitation'
-    },
-    {
-      code: '64',
-      libelle: 'Impôts et taxes',
-      montant_n: 4200000,
-      montant_n1: 3900000,
-      type: 'charge',
-      nature: 'exploitation'
-    },
-    {
-      code: '66',
-      libelle: 'Charges de personnel',
-      montant_n: 18000000,
-      montant_n1: 16500000,
-      type: 'charge',
-      nature: 'exploitation'
-    },
-    {
-      code: '681',
-      libelle: 'Dotations amortissements',
-      montant_n: 3200000,
-      montant_n1: 2800000,
-      type: 'charge',
-      nature: 'exploitation'
-    },
-    // PRODUITS FINANCIERS
-    {
-      code: '77',
-      libelle: 'Revenus financiers',
-      montant_n: 450000,
-      montant_n1: 380000,
-      type: 'produit',
-      nature: 'financier'
-    },
-    // CHARGES FINANCIERES
-    {
-      code: '67',
-      libelle: 'Charges financières',
-      montant_n: 1800000,
-      montant_n1: 2100000,
-      type: 'charge',
-      nature: 'financier'
-    }
-  ]);
+  const {
+    exercices,
+    currentExercice,
+    balanceSheet,
+    incomeStatement,
+    cashFlowStatement,
+    financialAnnexes,
+    financialRatios,
+    isLoading,
+    exportBalanceSheetPDF,
+    exportBalanceSheetExcel,
+    exportIncomeStatementPDF,
+    exportIncomeStatementExcel,
+    exportCashFlowPDF,
+    exportCashFlowExcel,
+    exportRatiosPDF,
+    exportAnnexesPDF,
+    exportAnnexesExcel,
+  } = useFinancialReports(selectedExerciceId);
 
-  // Flux de trésorerie
-  const [cashFlow] = useState<CashFlowItem[]>([
-    // EXPLOITATION
-    { libelle: 'Résultat net', montant: 8500000, type: 'exploitation' },
-    { libelle: 'Amortissements', montant: 3200000, type: 'exploitation' },
-    { libelle: 'Variation stocks', montant: -1500000, type: 'exploitation' },
-    { libelle: 'Variation clients', montant: -700000, type: 'exploitation' },
-    { libelle: 'Variation fournisseurs', montant: 400000, type: 'exploitation' },
-    // INVESTISSEMENT
-    { libelle: 'Acquisition immobilisations', montant: -6800000, type: 'investissement' },
-    { libelle: 'Cession immobilisations', montant: 200000, type: 'investissement' },
-    // FINANCEMENT
-    { libelle: 'Remboursement emprunts', montant: -2000000, type: 'financement' },
-    { libelle: 'Dividendes versés', montant: -3000000, type: 'financement' }
-  ]);
+  // Calculer les totaux du bilan
+  const balanceTotals = balanceSheet ? {
+    actifImmobilise: balanceSheet.actif.immobilise.reduce((sum, item) => sum + item.montant_n, 0),
+    actifCirculant: balanceSheet.actif.circulant.reduce((sum, item) => sum + item.montant_n, 0),
+    tresorerieActif: balanceSheet.actif.tresorerie.reduce((sum, item) => sum + item.montant_n, 0),
+    totalActif: balanceSheet.actif.total,
+    capitauxPropres: balanceSheet.passif.capitauxPropres.reduce((sum, item) => sum + item.montant_n, 0),
+    dettes: balanceSheet.passif.dettes.reduce((sum, item) => sum + item.montant_n, 0),
+    totalPassif: balanceSheet.passif.total,
+  } : null;
 
-  const calculateBalanceSheetTotals = () => {
-    const actifImmobilise = balanceSheet
-      .filter(item => item.type === 'actif' && item.section === 'immobilise')
-      .reduce((sum, item) => sum + item.montant_n, 0);
-    
-    const actifCirculant = balanceSheet
-      .filter(item => item.type === 'actif' && item.section === 'circulant')
-      .reduce((sum, item) => sum + item.montant_n, 0);
-    
-    const tresorerieActif = balanceSheet
-      .filter(item => item.type === 'actif' && item.section === 'tresorerie')
-      .reduce((sum, item) => sum + item.montant_n, 0);
-    
-    const capitauxPropres = balanceSheet
-      .filter(item => item.type === 'passif' && item.section === 'capitaux_propres')
-      .reduce((sum, item) => sum + item.montant_n, 0);
-    
-    const dettes = balanceSheet
-      .filter(item => item.type === 'passif' && item.section === 'dettes')
-      .reduce((sum, item) => sum + item.montant_n, 0);
+  // Calculer les totaux du compte de résultat
+  const incomeResults = incomeStatement ? {
+    produitsExploitation: incomeStatement.produits.exploitation.reduce((sum, item) => sum + item.montant_n, 0),
+    chargesExploitation: incomeStatement.charges.exploitation.reduce((sum, item) => sum + item.montant_n, 0),
+    resultatExploitation: incomeStatement.resultatExploitation,
+    produitsFinanciers: incomeStatement.produits.financiers.reduce((sum, item) => sum + item.montant_n, 0),
+    chargesFinanciers: incomeStatement.charges.financiers.reduce((sum, item) => sum + item.montant_n, 0),
+    resultatFinancier: incomeStatement.resultatFinancier,
+    resultatNet: incomeStatement.resultatNet,
+    centimeAdditionnel: incomeStatement.centimeAdditionnel,
+  } : null;
 
-    const totalActif = actifImmobilise + actifCirculant + tresorerieActif;
-    const totalPassif = capitauxPropres + dettes;
+  // Calculer les totaux des flux de trésorerie
+  const cashFlowTotals = cashFlowStatement ? {
+    fluxExploitation: cashFlowStatement.fluxExploitation.total,
+    fluxInvestissement: cashFlowStatement.fluxInvestissement.total,
+    fluxFinancement: cashFlowStatement.fluxFinancement.total,
+    variationTresorerie: cashFlowStatement.variationTresorerie,
+    tresorerieDebut: cashFlowStatement.tresorerieDebut,
+    tresorerieFin: cashFlowStatement.tresorerieFin,
+  } : null;
 
-    return {
-      actifImmobilise,
-      actifCirculant,
-      tresorerieActif,
-      totalActif,
-      capitauxPropres,
-      dettes,
-      totalPassif
-    };
-  };
-
-  const calculateIncomeStatement = () => {
-    const produitsExploitation = incomeStatement
-      .filter(item => item.type === 'produit' && item.nature === 'exploitation')
-      .reduce((sum, item) => sum + item.montant_n, 0);
-    
-    const chargesExploitation = incomeStatement
-      .filter(item => item.type === 'charge' && item.nature === 'exploitation')
-      .reduce((sum, item) => sum + item.montant_n, 0);
-    
-    const produitsFinanciers = incomeStatement
-      .filter(item => item.type === 'produit' && item.nature === 'financier')
-      .reduce((sum, item) => sum + item.montant_n, 0);
-    
-    const chargesFinancieres = incomeStatement
-      .filter(item => item.type === 'charge' && item.nature === 'financier')
-      .reduce((sum, item) => sum + item.montant_n, 0);
-
-    const resultatExploitation = produitsExploitation - chargesExploitation;
-    const resultatFinancier = produitsFinanciers - chargesFinancieres;
-    const resultatNet = resultatExploitation + resultatFinancier;
-
-    return {
-      produitsExploitation,
-      chargesExploitation,
-      resultatExploitation,
-      produitsFinanciers,
-      chargesFinancieres,
-      resultatFinancier,
-      resultatNet
-    };
-  };
-
-  const calculateCashFlowTotals = () => {
-    const fluxExploitation = cashFlow
-      .filter(item => item.type === 'exploitation')
-      .reduce((sum, item) => sum + item.montant, 0);
-    
-    const fluxInvestissement = cashFlow
-      .filter(item => item.type === 'investissement')
-      .reduce((sum, item) => sum + item.montant, 0);
-    
-    const fluxFinancement = cashFlow
-      .filter(item => item.type === 'financement')
-      .reduce((sum, item) => sum + item.montant, 0);
-
-    const variationTresorerie = fluxExploitation + fluxInvestissement + fluxFinancement;
-
-    return {
-      fluxExploitation,
-      fluxInvestissement,
-      fluxFinancement,
-      variationTresorerie
-    };
-  };
-
-  const calculateRatios = () => {
-    const totals = calculateBalanceSheetTotals();
-    const income = calculateIncomeStatement();
-    
-    const ratioLiquidite = totals.actifCirculant / totals.dettes;
-    const ratioEndettement = totals.dettes / totals.totalPassif;
-    const ratioAutonomie = totals.capitauxPropres / totals.totalPassif;
-    const margeExploitation = (income.resultatExploitation / income.produitsExploitation) * 100;
-    const margeNette = (income.resultatNet / income.produitsExploitation) * 100;
-    const rentabiliteCapitaux = (income.resultatNet / totals.capitauxPropres) * 100;
-
-    return {
-      ratioLiquidite,
-      ratioEndettement,
-      ratioAutonomie,
-      margeExploitation,
-      margeNette,
-      rentabiliteCapitaux
-    };
-  };
-
-  const exportToExcel = (reportType: string) => {
-    toast({
-      title: "Export en cours",
-      description: `Export ${reportType} vers Excel initialisé`
-    });
-  };
-
-  const printReport = (reportType: string) => {
-    window.print();
-    toast({
-      title: "Impression",
-      description: `Rapport ${reportType} envoyé vers l'imprimante`
-    });
-  };
-
-  const balanceTotals = calculateBalanceSheetTotals();
-  const incomeResults = calculateIncomeStatement();
-  const cashFlowTotals = calculateCashFlowTotals();
-  const ratios = calculateRatios();
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Chargement des états financiers...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">États Financiers OHADA</h2>
         <div className="flex space-x-2">
-          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue />
+          <Select 
+            value={selectedExerciceId || currentExercice?.id || ''} 
+            onValueChange={setSelectedExerciceId}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Sélectionner un exercice" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="2024">2024</SelectItem>
-              <SelectItem value="2023">2023</SelectItem>
-              <SelectItem value="2022">2022</SelectItem>
+              {exercices?.map((ex) => (
+                <SelectItem key={ex.id} value={ex.id}>
+                  {ex.libelle} {ex.statut === 'Ouvert' && <Badge variant="secondary" className="ml-1">Actif</Badge>}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button variant="outline" onClick={() => setShowDetails(!showDetails)}>
@@ -453,624 +125,603 @@ const FinancialReports = () => {
           <TabsTrigger value="annexes">États Annexes</TabsTrigger>
         </TabsList>
 
+        {/* BILAN */}
         <TabsContent value="bilan" className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Bilan Comptable OHADA</h3>
             <div className="flex space-x-2">
-              <Button variant="outline" size="sm" onClick={() => exportToExcel('Bilan')}>
+              <Button variant="outline" size="sm" onClick={exportBalanceSheetExcel}>
                 <Download className="mr-2 h-4 w-4" />
                 Excel
               </Button>
-              <Button variant="outline" size="sm" onClick={() => printReport('Bilan')}>
+              <Button variant="outline" size="sm" onClick={exportBalanceSheetPDF}>
                 <Printer className="mr-2 h-4 w-4" />
-                Imprimer
+                PDF
               </Button>
             </div>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* ACTIF */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-center">ACTIF</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Postes</TableHead>
-                      <TableHead className="text-right">{selectedPeriod}</TableHead>
-                      <TableHead className="text-right">{comparisonPeriod}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow className="font-semibold bg-muted/50">
-                      <TableCell>ACTIF IMMOBILISE</TableCell>
-                      <TableCell className="text-right">{balanceTotals.actifImmobilise.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">
-                        {balanceSheet
-                          .filter(item => item.type === 'actif' && item.section === 'immobilise')
-                          .reduce((sum, item) => sum + item.montant_n1, 0)
-                          .toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                    {balanceSheet
-                      .filter(item => item.type === 'actif' && item.section === 'immobilise')
-                      .map(item => (
+          {balanceTotals && balanceSheet ? (
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* ACTIF */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-center">ACTIF</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Postes</TableHead>
+                        <TableHead className="text-right">Montant ({currency})</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow className="font-semibold bg-muted/50">
+                        <TableCell>ACTIF IMMOBILISE</TableCell>
+                        <TableCell className="text-right">{formatAmount(balanceTotals.actifImmobilise)}</TableCell>
+                      </TableRow>
+                      {showDetails && balanceSheet.actif.immobilise.map(item => (
                         <TableRow key={item.code}>
-                          <TableCell className="pl-6">{item.libelle}</TableCell>
-                          <TableCell className="text-right">{item.montant_n.toLocaleString()}</TableCell>
-                          <TableCell className="text-right">{item.montant_n1.toLocaleString()}</TableCell>
+                          <TableCell className="pl-6">{item.code} - {item.libelle}</TableCell>
+                          <TableCell className="text-right">{formatAmount(item.montant_n)}</TableCell>
                         </TableRow>
                       ))}
-                    
-                    <TableRow className="font-semibold bg-muted/50">
-                      <TableCell>ACTIF CIRCULANT</TableCell>
-                      <TableCell className="text-right">{balanceTotals.actifCirculant.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">
-                        {balanceSheet
-                          .filter(item => item.type === 'actif' && item.section === 'circulant')
-                          .reduce((sum, item) => sum + item.montant_n1, 0)
-                          .toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                    {balanceSheet
-                      .filter(item => item.type === 'actif' && item.section === 'circulant')
-                      .map(item => (
+                      
+                      <TableRow className="font-semibold bg-muted/50">
+                        <TableCell>ACTIF CIRCULANT</TableCell>
+                        <TableCell className="text-right">{formatAmount(balanceTotals.actifCirculant)}</TableCell>
+                      </TableRow>
+                      {showDetails && balanceSheet.actif.circulant.map(item => (
                         <TableRow key={item.code}>
-                          <TableCell className="pl-6">{item.libelle}</TableCell>
-                          <TableCell className="text-right">{item.montant_n.toLocaleString()}</TableCell>
-                          <TableCell className="text-right">{item.montant_n1.toLocaleString()}</TableCell>
+                          <TableCell className="pl-6">{item.code} - {item.libelle}</TableCell>
+                          <TableCell className="text-right">{formatAmount(item.montant_n)}</TableCell>
                         </TableRow>
                       ))}
-                    
-                    <TableRow className="font-semibold bg-muted/50">
-                      <TableCell>TRESORERIE-ACTIF</TableCell>
-                      <TableCell className="text-right">{balanceTotals.tresorerieActif.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">
-                        {balanceSheet
-                          .filter(item => item.type === 'actif' && item.section === 'tresorerie')
-                          .reduce((sum, item) => sum + item.montant_n1, 0)
-                          .toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                    {balanceSheet
-                      .filter(item => item.type === 'actif' && item.section === 'tresorerie')
-                      .map(item => (
+                      
+                      <TableRow className="font-semibold bg-muted/50">
+                        <TableCell>TRESORERIE-ACTIF</TableCell>
+                        <TableCell className="text-right">{formatAmount(balanceTotals.tresorerieActif)}</TableCell>
+                      </TableRow>
+                      {showDetails && balanceSheet.actif.tresorerie.map(item => (
                         <TableRow key={item.code}>
-                          <TableCell className="pl-6">{item.libelle}</TableCell>
-                          <TableCell className="text-right">{item.montant_n.toLocaleString()}</TableCell>
-                          <TableCell className="text-right">{item.montant_n1.toLocaleString()}</TableCell>
+                          <TableCell className="pl-6">{item.code} - {item.libelle}</TableCell>
+                          <TableCell className="text-right">{formatAmount(item.montant_n)}</TableCell>
                         </TableRow>
                       ))}
-                    
-                    <TableRow className="font-bold border-t-2">
-                      <TableCell>TOTAL ACTIF</TableCell>
-                      <TableCell className="text-right">{balanceTotals.totalActif.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">
-                        {balanceSheet.reduce((sum, item) => 
-                          item.type === 'actif' ? sum + item.montant_n1 : sum, 0
-                        ).toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                      
+                      <TableRow className="font-bold border-t-2">
+                        <TableCell>TOTAL ACTIF</TableCell>
+                        <TableCell className="text-right">{formatAmount(balanceTotals.totalActif)}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
 
-            {/* PASSIF */}
+              {/* PASSIF */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-center">PASSIF</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Postes</TableHead>
+                        <TableHead className="text-right">Montant ({currency})</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow className="font-semibold bg-muted/50">
+                        <TableCell>CAPITAUX PROPRES</TableCell>
+                        <TableCell className="text-right">{formatAmount(balanceTotals.capitauxPropres)}</TableCell>
+                      </TableRow>
+                      {showDetails && balanceSheet.passif.capitauxPropres.map(item => (
+                        <TableRow key={item.code}>
+                          <TableCell className="pl-6">{item.code} - {item.libelle}</TableCell>
+                          <TableCell className="text-right">{formatAmount(item.montant_n)}</TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      <TableRow className="font-semibold bg-muted/50">
+                        <TableCell>DETTES</TableCell>
+                        <TableCell className="text-right">{formatAmount(balanceTotals.dettes)}</TableCell>
+                      </TableRow>
+                      {showDetails && balanceSheet.passif.dettes.map(item => (
+                        <TableRow key={item.code}>
+                          <TableCell className="pl-6">{item.code} - {item.libelle}</TableCell>
+                          <TableCell className="text-right">{formatAmount(item.montant_n)}</TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      <TableRow className="font-bold border-t-2">
+                        <TableCell>TOTAL PASSIF</TableCell>
+                        <TableCell className="text-right">{formatAmount(balanceTotals.totalPassif)}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
             <Card>
-              <CardHeader>
-                <CardTitle className="text-center">PASSIF</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Postes</TableHead>
-                      <TableHead className="text-right">{selectedPeriod}</TableHead>
-                      <TableHead className="text-right">{comparisonPeriod}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    <TableRow className="font-semibold bg-muted/50">
-                      <TableCell>CAPITAUX PROPRES</TableCell>
-                      <TableCell className="text-right">{balanceTotals.capitauxPropres.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">
-                        {balanceSheet
-                          .filter(item => item.type === 'passif' && item.section === 'capitaux_propres')
-                          .reduce((sum, item) => sum + item.montant_n1, 0)
-                          .toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                    {balanceSheet
-                      .filter(item => item.type === 'passif' && item.section === 'capitaux_propres')
-                      .map(item => (
-                        <TableRow key={item.code}>
-                          <TableCell className="pl-6">{item.libelle}</TableCell>
-                          <TableCell className="text-right">{item.montant_n.toLocaleString()}</TableCell>
-                          <TableCell className="text-right">{item.montant_n1.toLocaleString()}</TableCell>
-                        </TableRow>
-                      ))}
-                    
-                    <TableRow className="font-semibold bg-muted/50">
-                      <TableCell>DETTES</TableCell>
-                      <TableCell className="text-right">{balanceTotals.dettes.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">
-                        {balanceSheet
-                          .filter(item => item.type === 'passif' && item.section === 'dettes')
-                          .reduce((sum, item) => sum + item.montant_n1, 0)
-                          .toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                    {balanceSheet
-                      .filter(item => item.type === 'passif' && item.section === 'dettes')
-                      .map(item => (
-                        <TableRow key={item.code}>
-                          <TableCell className="pl-6">{item.libelle}</TableCell>
-                          <TableCell className="text-right">{item.montant_n.toLocaleString()}</TableCell>
-                          <TableCell className="text-right">{item.montant_n1.toLocaleString()}</TableCell>
-                        </TableRow>
-                      ))}
-                    
-                    <TableRow className="font-bold border-t-2">
-                      <TableCell>TOTAL PASSIF</TableCell>
-                      <TableCell className="text-right">{balanceTotals.totalPassif.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">
-                        {balanceSheet.reduce((sum, item) => 
-                          item.type === 'passif' ? sum + item.montant_n1 : sum, 0
-                        ).toLocaleString()}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Aucune donnée de bilan disponible pour cet exercice
               </CardContent>
             </Card>
-          </div>
+          )}
         </TabsContent>
 
+        {/* COMPTE DE RESULTAT */}
         <TabsContent value="resultat" className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Compte de Résultat OHADA</h3>
             <div className="flex space-x-2">
-              <Button variant="outline" size="sm" onClick={() => exportToExcel('Compte de Résultat')}>
+              <Button variant="outline" size="sm" onClick={exportIncomeStatementExcel}>
                 <Download className="mr-2 h-4 w-4" />
                 Excel
               </Button>
-              <Button variant="outline" size="sm" onClick={() => printReport('Compte de Résultat')}>
+              <Button variant="outline" size="sm" onClick={exportIncomeStatementPDF}>
                 <Printer className="mr-2 h-4 w-4" />
-                Imprimer
+                PDF
               </Button>
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3 mb-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Chiffre d'Affaires</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {incomeResults.produitsExploitation.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">FCFA</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Résultat d'Exploitation</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${incomeResults.resultatExploitation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {incomeResults.resultatExploitation.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">FCFA</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Résultat Net</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${incomeResults.resultatNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {incomeResults.resultatNet.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">FCFA</p>
-              </CardContent>
-            </Card>
-          </div>
+          {incomeResults && incomeStatement ? (
+            <>
+              <div className="grid gap-4 md:grid-cols-4 mb-6">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Chiffre d'Affaires</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">
+                      {formatAmount(incomeResults.produitsExploitation)}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Résultat d'Exploitation</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${incomeResults.resultatExploitation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatAmount(incomeResults.resultatExploitation)}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Résultat Net</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${incomeResults.resultatNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatAmount(incomeResults.resultatNet)}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-amber-200 bg-amber-50 dark:bg-amber-900/20">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium flex items-center gap-1">
+                      <Coins className="h-4 w-4 text-amber-600" />
+                      Centime Additionnel
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-amber-600">
+                      {formatAmount(incomeResults.centimeAdditionnel)}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Postes</TableHead>
-                    <TableHead className="text-right">{selectedPeriod}</TableHead>
-                    <TableHead className="text-right">{comparisonPeriod}</TableHead>
-                    <TableHead className="text-right">Évolution</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow className="font-semibold bg-green-50">
-                    <TableCell>PRODUITS D'EXPLOITATION</TableCell>
-                    <TableCell className="text-right">{incomeResults.produitsExploitation.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">
-                      {incomeStatement
-                        .filter(item => item.type === 'produit' && item.nature === 'exploitation')
-                        .reduce((sum, item) => sum + item.montant_n1, 0)
-                        .toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant="default">
-                        +{(((incomeResults.produitsExploitation / 
-                          incomeStatement
-                            .filter(item => item.type === 'produit' && item.nature === 'exploitation')
-                            .reduce((sum, item) => sum + item.montant_n1, 0)) - 1) * 100).toFixed(1)}%
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                  {incomeStatement
-                    .filter(item => item.type === 'produit' && item.nature === 'exploitation')
-                    .map(item => (
-                      <TableRow key={item.code}>
-                        <TableCell className="pl-6">{item.libelle}</TableCell>
-                        <TableCell className="text-right">{item.montant_n.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">{item.montant_n1.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">
-                          {item.montant_n1 > 0 && (
-                            <span className={((item.montant_n / item.montant_n1) - 1) >= 0 ? 'text-green-600' : 'text-red-600'}>
-                              {((item.montant_n / item.montant_n1) - 1) >= 0 ? '+' : ''}
-                              {(((item.montant_n / item.montant_n1) - 1) * 100).toFixed(1)}%
-                            </span>
-                          )}
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Postes</TableHead>
+                        <TableHead className="text-right">Montant ({currency})</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow className="font-semibold bg-green-50 dark:bg-green-900/20">
+                        <TableCell>PRODUITS D'EXPLOITATION</TableCell>
+                        <TableCell className="text-right">{formatAmount(incomeResults.produitsExploitation)}</TableCell>
+                      </TableRow>
+                      {showDetails && incomeStatement.produits.exploitation.map(item => (
+                        <TableRow key={item.code}>
+                          <TableCell className="pl-6">{item.code} - {item.libelle}</TableCell>
+                          <TableCell className="text-right">{formatAmount(item.montant_n)}</TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      <TableRow className="font-semibold bg-red-50 dark:bg-red-900/20">
+                        <TableCell>CHARGES D'EXPLOITATION</TableCell>
+                        <TableCell className="text-right">({formatAmount(incomeResults.chargesExploitation)})</TableCell>
+                      </TableRow>
+                      {showDetails && incomeStatement.charges.exploitation.map(item => (
+                        <TableRow key={item.code}>
+                          <TableCell className="pl-6">{item.code} - {item.libelle}</TableCell>
+                          <TableCell className="text-right">({formatAmount(item.montant_n)})</TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      <TableRow className="font-bold bg-blue-50 dark:bg-blue-900/20">
+                        <TableCell>RESULTAT D'EXPLOITATION</TableCell>
+                        <TableCell className={`text-right ${incomeResults.resultatExploitation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatAmount(incomeResults.resultatExploitation)}
                         </TableCell>
                       </TableRow>
-                    ))}
-                  
-                  <TableRow className="font-semibold bg-red-50">
-                    <TableCell>CHARGES D'EXPLOITATION</TableCell>
-                    <TableCell className="text-right">({incomeResults.chargesExploitation.toLocaleString()})</TableCell>
-                    <TableCell className="text-right">
-                      ({incomeStatement
-                        .filter(item => item.type === 'charge' && item.nature === 'exploitation')
-                        .reduce((sum, item) => sum + item.montant_n1, 0)
-                        .toLocaleString()})
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant="secondary">
-                        +{(((incomeResults.chargesExploitation / 
-                          incomeStatement
-                            .filter(item => item.type === 'charge' && item.nature === 'exploitation')
-                            .reduce((sum, item) => sum + item.montant_n1, 0)) - 1) * 100).toFixed(1)}%
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                  {incomeStatement
-                    .filter(item => item.type === 'charge' && item.nature === 'exploitation')
-                    .map(item => (
-                      <TableRow key={item.code}>
-                        <TableCell className="pl-6">{item.libelle}</TableCell>
-                        <TableCell className="text-right">({item.montant_n.toLocaleString()})</TableCell>
-                        <TableCell className="text-right">({item.montant_n1.toLocaleString()})</TableCell>
-                        <TableCell className="text-right">
-                          {item.montant_n1 > 0 && (
-                            <span className={((item.montant_n / item.montant_n1) - 1) >= 0 ? 'text-red-600' : 'text-green-600'}>
-                              {((item.montant_n / item.montant_n1) - 1) >= 0 ? '+' : ''}
-                              {(((item.montant_n / item.montant_n1) - 1) * 100).toFixed(1)}%
-                            </span>
-                          )}
+
+                      <TableRow className="font-semibold">
+                        <TableCell>RESULTAT FINANCIER</TableCell>
+                        <TableCell className={`text-right ${incomeResults.resultatFinancier >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatAmount(incomeResults.resultatFinancier)}
                         </TableCell>
                       </TableRow>
-                    ))}
-                  
-                  <TableRow className="font-bold bg-blue-50">
-                    <TableCell>RESULTAT D'EXPLOITATION</TableCell>
-                    <TableCell className={`text-right ${incomeResults.resultatExploitation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {incomeResults.resultatExploitation.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {(incomeStatement
-                        .filter(item => item.type === 'produit' && item.nature === 'exploitation')
-                        .reduce((sum, item) => sum + item.montant_n1, 0) -
-                      incomeStatement
-                        .filter(item => item.type === 'charge' && item.nature === 'exploitation')
-                        .reduce((sum, item) => sum + item.montant_n1, 0)).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant="default">
-                        <TrendingUp className="mr-1 h-3 w-3" />
-                        Amélioration
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                  
-                  <TableRow className="font-bold border-t-2">
-                    <TableCell>RESULTAT NET</TableCell>
-                    <TableCell className={`text-right ${incomeResults.resultatNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {incomeResults.resultatNet.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      6200000
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant="default">
-                        +37.1%
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                      
+                      <TableRow className="font-bold border-t-2">
+                        <TableCell>RESULTAT NET</TableCell>
+                        <TableCell className={`text-right ${incomeResults.resultatNet >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatAmount(incomeResults.resultatNet)}
+                        </TableCell>
+                      </TableRow>
+
+                      <TableRow className="bg-amber-50 dark:bg-amber-900/20">
+                        <TableCell className="font-medium flex items-center gap-2">
+                          <Coins className="h-4 w-4 text-amber-600" />
+                          CENTIME ADDITIONNEL COLLECTE
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-amber-600">
+                          {formatAmount(incomeResults.centimeAdditionnel)}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Aucune donnée de compte de résultat disponible pour cet exercice
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
+        {/* FLUX DE TRESORERIE */}
         <TabsContent value="tresorerie" className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Tableau des Flux de Trésorerie</h3>
             <div className="flex space-x-2">
-              <Button variant="outline" size="sm" onClick={() => exportToExcel('Flux de Trésorerie')}>
+              <Button variant="outline" size="sm" onClick={exportCashFlowExcel}>
                 <Download className="mr-2 h-4 w-4" />
                 Excel
               </Button>
-              <Button variant="outline" size="sm" onClick={() => printReport('Flux de Trésorerie')}>
+              <Button variant="outline" size="sm" onClick={exportCashFlowPDF}>
                 <Printer className="mr-2 h-4 w-4" />
-                Imprimer
+                PDF
               </Button>
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3 mb-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Flux d'Exploitation</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${cashFlowTotals.fluxExploitation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {cashFlowTotals.fluxExploitation.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">FCFA</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Flux d'Investissement</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${cashFlowTotals.fluxInvestissement >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {cashFlowTotals.fluxInvestissement.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">FCFA</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Variation Trésorerie</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${cashFlowTotals.variationTresorerie >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {cashFlowTotals.variationTresorerie.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">FCFA</p>
-              </CardContent>
-            </Card>
-          </div>
+          {cashFlowTotals && cashFlowStatement ? (
+            <>
+              <div className="grid gap-4 md:grid-cols-4 mb-6">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Flux d'Exploitation</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${cashFlowTotals.fluxExploitation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatAmount(cashFlowTotals.fluxExploitation)}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Flux d'Investissement</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${cashFlowTotals.fluxInvestissement >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatAmount(cashFlowTotals.fluxInvestissement)}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Flux de Financement</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${cashFlowTotals.fluxFinancement >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatAmount(cashFlowTotals.fluxFinancement)}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Variation Trésorerie</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className={`text-2xl font-bold ${cashFlowTotals.variationTresorerie >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatAmount(cashFlowTotals.variationTresorerie)}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Flux de Trésorerie</TableHead>
-                    <TableHead className="text-right">Montant</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow className="font-semibold bg-green-50">
-                    <TableCell>FLUX DE TRESORERIE D'EXPLOITATION</TableCell>
-                    <TableCell className="text-right font-bold">{cashFlowTotals.fluxExploitation.toLocaleString()}</TableCell>
-                  </TableRow>
-                  {cashFlow
-                    .filter(item => item.type === 'exploitation')
-                    .map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="pl-6">{item.libelle}</TableCell>
-                        <TableCell className={`text-right ${item.montant >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {item.montant.toLocaleString()}
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Flux de Trésorerie</TableHead>
+                        <TableHead className="text-right">Montant ({currency})</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow className="font-semibold bg-green-50 dark:bg-green-900/20">
+                        <TableCell>FLUX DE TRESORERIE D'EXPLOITATION</TableCell>
+                        <TableCell className="text-right font-bold">{formatAmount(cashFlowTotals.fluxExploitation)}</TableCell>
+                      </TableRow>
+                      {cashFlowStatement.fluxExploitation.details.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="pl-6">{item.libelle}</TableCell>
+                          <TableCell className={`text-right ${item.montant >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatAmount(item.montant)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      <TableRow className="font-semibold bg-blue-50 dark:bg-blue-900/20">
+                        <TableCell>FLUX DE TRESORERIE D'INVESTISSEMENT</TableCell>
+                        <TableCell className="text-right font-bold">{formatAmount(cashFlowTotals.fluxInvestissement)}</TableCell>
+                      </TableRow>
+                      {cashFlowStatement.fluxInvestissement.details.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="pl-6">{item.libelle}</TableCell>
+                          <TableCell className={`text-right ${item.montant >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatAmount(item.montant)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      <TableRow className="font-semibold bg-orange-50 dark:bg-orange-900/20">
+                        <TableCell>FLUX DE TRESORERIE DE FINANCEMENT</TableCell>
+                        <TableCell className="text-right font-bold">{formatAmount(cashFlowTotals.fluxFinancement)}</TableCell>
+                      </TableRow>
+                      {cashFlowStatement.fluxFinancement.details.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="pl-6">{item.libelle}</TableCell>
+                          <TableCell className={`text-right ${item.montant >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatAmount(item.montant)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      <TableRow className="font-bold border-t-2">
+                        <TableCell>VARIATION DE TRESORERIE</TableCell>
+                        <TableCell className={`text-right ${cashFlowTotals.variationTresorerie >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatAmount(cashFlowTotals.variationTresorerie)}
                         </TableCell>
                       </TableRow>
-                    ))}
-                  
-                  <TableRow className="font-semibold bg-blue-50">
-                    <TableCell>FLUX DE TRESORERIE D'INVESTISSEMENT</TableCell>
-                    <TableCell className="text-right font-bold">{cashFlowTotals.fluxInvestissement.toLocaleString()}</TableCell>
-                  </TableRow>
-                  {cashFlow
-                    .filter(item => item.type === 'investissement')
-                    .map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="pl-6">{item.libelle}</TableCell>
-                        <TableCell className={`text-right ${item.montant >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {item.montant.toLocaleString()}
-                        </TableCell>
+                      <TableRow>
+                        <TableCell>Trésorerie début d'exercice</TableCell>
+                        <TableCell className="text-right">{formatAmount(cashFlowTotals.tresorerieDebut)}</TableCell>
                       </TableRow>
-                    ))}
-                  
-                  <TableRow className="font-semibold bg-orange-50">
-                    <TableCell>FLUX DE TRESORERIE DE FINANCEMENT</TableCell>
-                    <TableCell className="text-right font-bold">{cashFlowTotals.fluxFinancement.toLocaleString()}</TableCell>
-                  </TableRow>
-                  {cashFlow
-                    .filter(item => item.type === 'financement')
-                    .map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="pl-6">{item.libelle}</TableCell>
-                        <TableCell className={`text-right ${item.montant >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {item.montant.toLocaleString()}
-                        </TableCell>
+                      <TableRow className="font-semibold">
+                        <TableCell>Trésorerie fin d'exercice</TableCell>
+                        <TableCell className="text-right">{formatAmount(cashFlowTotals.tresorerieFin)}</TableCell>
                       </TableRow>
-                    ))}
-                  
-                  <TableRow className="font-bold border-t-2">
-                    <TableCell>VARIATION DE TRESORERIE</TableCell>
-                    <TableCell className={`text-right ${cashFlowTotals.variationTresorerie >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {cashFlowTotals.variationTresorerie.toLocaleString()}
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Aucune donnée de flux de trésorerie disponible pour cet exercice
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
+        {/* RATIOS */}
         <TabsContent value="ratios" className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Analyse par Ratios Financiers</h3>
-            <Button variant="outline" size="sm" onClick={() => exportToExcel('Ratios')}>
+            <Button variant="outline" size="sm" onClick={exportRatiosPDF}>
               <Download className="mr-2 h-4 w-4" />
-              Excel
+              PDF
             </Button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Calculator className="h-5 w-5 text-blue-600" />
-                  <span>Liquidité Générale</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold mb-2">{ratios.ratioLiquidite.toFixed(2)}</div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Actif Circulant / Dettes CT
-                </p>
-                <Badge variant={ratios.ratioLiquidite >= 1.5 ? "default" : "destructive"}>
-                  {ratios.ratioLiquidite >= 1.5 ? "Bon" : "Attention"}
-                </Badge>
-              </CardContent>
-            </Card>
+          {financialRatios ? (
+            <>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Calculator className="h-5 w-5 text-blue-600" />
+                      <span>Liquidité Générale</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold mb-2">{financialRatios.ratioLiquidite.toFixed(2)}</div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Actif Circulant / Dettes CT (Seuil: {financialRatios.seuilLiquidite})
+                    </p>
+                    <Badge variant={financialRatios.ratioLiquidite >= financialRatios.seuilLiquidite ? "default" : "destructive"}>
+                      {financialRatios.ratioLiquidite >= financialRatios.seuilLiquidite ? "Bon" : "Attention"}
+                    </Badge>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <TrendingDown className="h-5 w-5 text-orange-600" />
-                  <span>Endettement</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold mb-2">{(ratios.ratioEndettement * 100).toFixed(1)}%</div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Dettes / Total Passif
-                </p>
-                <Badge variant={ratios.ratioEndettement <= 0.6 ? "default" : "destructive"}>
-                  {ratios.ratioEndettement <= 0.6 ? "Normal" : "Élevé"}
-                </Badge>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <TrendingDown className="h-5 w-5 text-orange-600" />
+                      <span>Endettement</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold mb-2">{financialRatios.ratioEndettement.toFixed(1)}%</div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Dettes / Total Passif (Seuil: {financialRatios.seuilEndettement}%)
+                    </p>
+                    <Badge variant={financialRatios.ratioEndettement <= financialRatios.seuilEndettement ? "default" : "destructive"}>
+                      {financialRatios.ratioEndettement <= financialRatios.seuilEndettement ? "Normal" : "Élevé"}
+                    </Badge>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <PieChart className="h-5 w-5 text-green-600" />
-                  <span>Autonomie Financière</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold mb-2">{(ratios.ratioAutonomie * 100).toFixed(1)}%</div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Capitaux Propres / Total Passif
-                </p>
-                <Badge variant={ratios.ratioAutonomie >= 0.4 ? "default" : "secondary"}>
-                  {ratios.ratioAutonomie >= 0.4 ? "Bon" : "Moyen"}
-                </Badge>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <PieChart className="h-5 w-5 text-green-600" />
+                      <span>Autonomie Financière</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold mb-2">{financialRatios.ratioAutonomie.toFixed(1)}%</div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Capitaux Propres / Total Passif (Seuil: {financialRatios.seuilAutonomie}%)
+                    </p>
+                    <Badge variant={financialRatios.ratioAutonomie >= financialRatios.seuilAutonomie ? "default" : "secondary"}>
+                      {financialRatios.ratioAutonomie >= financialRatios.seuilAutonomie ? "Bon" : "Moyen"}
+                    </Badge>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <BarChart3 className="h-5 w-5 text-purple-600" />
-                  <span>Marge d'Exploitation</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold mb-2">{ratios.margeExploitation.toFixed(1)}%</div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Résultat Expl. / CA
-                </p>
-                <Badge variant={ratios.margeExploitation >= 10 ? "default" : "secondary"}>
-                  {ratios.margeExploitation >= 10 ? "Excellent" : "Normal"}
-                </Badge>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <BarChart3 className="h-5 w-5 text-purple-600" />
+                      <span>Marge d'Exploitation</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold mb-2">{financialRatios.margeExploitation.toFixed(1)}%</div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Résultat Expl. / CA (Seuil: {financialRatios.seuilMargeExploitation}%)
+                    </p>
+                    <Badge variant={financialRatios.margeExploitation >= financialRatios.seuilMargeExploitation ? "default" : "secondary"}>
+                      {financialRatios.margeExploitation >= financialRatios.seuilMargeExploitation ? "Excellent" : "Normal"}
+                    </Badge>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <TrendingUp className="h-5 w-5 text-green-600" />
-                  <span>Marge Nette</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold mb-2">{ratios.margeNette.toFixed(1)}%</div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Résultat Net / CA
-                </p>
-                <Badge variant={ratios.margeNette >= 5 ? "default" : "secondary"}>
-                  {ratios.margeNette >= 5 ? "Très Bon" : "Correct"}
-                </Badge>
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <TrendingUp className="h-5 w-5 text-green-600" />
+                      <span>Marge Nette</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold mb-2">{financialRatios.margeNette.toFixed(1)}%</div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Résultat Net / CA (Seuil: {financialRatios.seuilMargeNette}%)
+                    </p>
+                    <Badge variant={financialRatios.margeNette >= financialRatios.seuilMargeNette ? "default" : "secondary"}>
+                      {financialRatios.margeNette >= financialRatios.seuilMargeNette ? "Très Bon" : "Correct"}
+                    </Badge>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Calculator className="h-5 w-5 text-blue-600" />
-                  <span>Rentabilité Capitaux</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold mb-2">{ratios.rentabiliteCapitaux.toFixed(1)}%</div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Résultat Net / Capitaux Propres
-                </p>
-                <Badge variant={ratios.rentabiliteCapitaux >= 15 ? "default" : "secondary"}>
-                  {ratios.rentabiliteCapitaux >= 15 ? "Excellent" : "Bien"}
-                </Badge>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Analyse et Recommandations</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                  <h4 className="font-semibold text-green-800 mb-2">Points Forts</h4>
-                  <ul className="space-y-1 text-sm text-green-700">
-                    <li>• Excellente marge d'exploitation de {ratios.margeExploitation.toFixed(1)}%</li>
-                    <li>• Forte rentabilité des capitaux propres ({ratios.rentabiliteCapitaux.toFixed(1)}%)</li>
-                    <li>• Ratio de liquidité satisfaisant ({ratios.ratioLiquidite.toFixed(2)})</li>
-                  </ul>
-                </div>
-                
-                <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
-                  <h4 className="font-semibold text-orange-800 mb-2">Points d'Attention</h4>
-                  <ul className="space-y-1 text-sm text-orange-700">
-                    <li>• Surveiller l'évolution du niveau d'endettement</li>
-                    <li>• Optimiser la gestion des stocks (variation importante)</li>
-                    <li>• Suivre les délais de paiement clients</li>
-                  </ul>
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Calculator className="h-5 w-5 text-blue-600" />
+                      <span>Rentabilité Capitaux</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold mb-2">{financialRatios.rentabiliteCapitaux.toFixed(1)}%</div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Résultat Net / Capitaux Propres (Seuil: {financialRatios.seuilRentabilite}%)
+                    </p>
+                    <Badge variant={financialRatios.rentabiliteCapitaux >= financialRatios.seuilRentabilite ? "default" : "secondary"}>
+                      {financialRatios.rentabiliteCapitaux >= financialRatios.seuilRentabilite ? "Excellent" : "Bien"}
+                    </Badge>
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
-          </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Analyse et Recommandations</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">Points Forts</h4>
+                      <ul className="space-y-1 text-sm text-green-700 dark:text-green-300">
+                        {financialRatios.ratioLiquidite >= financialRatios.seuilLiquidite && (
+                          <li>• Ratio de liquidité satisfaisant ({financialRatios.ratioLiquidite.toFixed(2)})</li>
+                        )}
+                        {financialRatios.margeExploitation >= financialRatios.seuilMargeExploitation && (
+                          <li>• Bonne marge d'exploitation ({financialRatios.margeExploitation.toFixed(1)}%)</li>
+                        )}
+                        {financialRatios.rentabiliteCapitaux >= financialRatios.seuilRentabilite && (
+                          <li>• Forte rentabilité des capitaux ({financialRatios.rentabiliteCapitaux.toFixed(1)}%)</li>
+                        )}
+                        {financialRatios.ratioAutonomie >= financialRatios.seuilAutonomie && (
+                          <li>• Bonne autonomie financière ({financialRatios.ratioAutonomie.toFixed(1)}%)</li>
+                        )}
+                      </ul>
+                    </div>
+                    
+                    <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                      <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-2">Points d'Attention</h4>
+                      <ul className="space-y-1 text-sm text-orange-700 dark:text-orange-300">
+                        {financialRatios.ratioLiquidite < financialRatios.seuilLiquidite && (
+                          <li>• Améliorer le ratio de liquidité (actuel: {financialRatios.ratioLiquidite.toFixed(2)})</li>
+                        )}
+                        {financialRatios.ratioEndettement > financialRatios.seuilEndettement && (
+                          <li>• Réduire le niveau d'endettement (actuel: {financialRatios.ratioEndettement.toFixed(1)}%)</li>
+                        )}
+                        {financialRatios.margeNette < financialRatios.seuilMargeNette && (
+                          <li>• Améliorer la marge nette (actuel: {financialRatios.margeNette.toFixed(1)}%)</li>
+                        )}
+                        <li>• Surveiller l'évolution du BFR</li>
+                        <li>• Optimiser les délais de paiement clients/fournisseurs</li>
+                      </ul>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Données insuffisantes pour calculer les ratios financiers
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
+        {/* ETATS ANNEXES */}
         <TabsContent value="annexes" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold">États Annexes OHADA</h3>
+            <div className="flex space-x-2">
+              <Button variant="outline" size="sm" onClick={exportAnnexesExcel}>
+                <Download className="mr-2 h-4 w-4" />
+                Excel
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportAnnexesPDF}>
+                <Printer className="mr-2 h-4 w-4" />
+                PDF
+              </Button>
+            </div>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
@@ -1080,10 +731,12 @@ const FinancialReports = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center p-3 border rounded-lg">
                     <div>
-                      <div className="font-medium">Tableau d'Amortissements</div>
-                      <div className="text-sm text-muted-foreground">Détail des amortissements par poste</div>
+                      <div className="font-medium">Tableau des Amortissements</div>
+                      <div className="text-sm text-muted-foreground">
+                        {financialAnnexes?.amortissements.items.length || 0} immobilisations
+                      </div>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => setAmortDialogOpen(true)}>
                       <FileSpreadsheet className="mr-2 h-4 w-4" />
                       Voir
                     </Button>
@@ -1092,9 +745,11 @@ const FinancialReports = () => {
                   <div className="flex justify-between items-center p-3 border rounded-lg">
                     <div>
                       <div className="font-medium">Tableau des Provisions</div>
-                      <div className="text-sm text-muted-foreground">Provisions constituées et reprises</div>
+                      <div className="text-sm text-muted-foreground">
+                        {financialAnnexes?.provisions.items.length || 0} provisions
+                      </div>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => setProvisionsDialogOpen(true)}>
                       <FileSpreadsheet className="mr-2 h-4 w-4" />
                       Voir
                     </Button>
@@ -1103,9 +758,11 @@ const FinancialReports = () => {
                   <div className="flex justify-between items-center p-3 border rounded-lg">
                     <div>
                       <div className="font-medium">État des Créances</div>
-                      <div className="text-sm text-muted-foreground">Analyse par échéance</div>
+                      <div className="text-sm text-muted-foreground">
+                        {financialAnnexes?.creancesClients.items.length || 0} créances - {formatAmount(financialAnnexes?.creancesClients.totalCreances || 0)}
+                      </div>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => setCreancesDialogOpen(true)}>
                       <FileSpreadsheet className="mr-2 h-4 w-4" />
                       Voir
                     </Button>
@@ -1114,9 +771,11 @@ const FinancialReports = () => {
                   <div className="flex justify-between items-center p-3 border rounded-lg">
                     <div>
                       <div className="font-medium">État des Dettes</div>
-                      <div className="text-sm text-muted-foreground">Analyse par échéance et nature</div>
+                      <div className="text-sm text-muted-foreground">
+                        {financialAnnexes?.dettesFournisseurs.items.length || 0} dettes - {formatAmount(financialAnnexes?.dettesFournisseurs.totalDettes || 0)}
+                      </div>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => setDettesDialogOpen(true)}>
                       <FileSpreadsheet className="mr-2 h-4 w-4" />
                       Voir
                     </Button>
@@ -1134,10 +793,11 @@ const FinancialReports = () => {
                   <div className="p-3 border rounded-lg">
                     <div className="font-medium mb-2">Méthodes Comptables</div>
                     <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Amortissement linéaire</li>
-                      <li>• Évaluation stocks FIFO</li>
-                      <li>• Provisions au cas par cas</li>
-                      <li>• Créances en valeur nominale</li>
+                      <li>• Système comptable: OHADA révisé</li>
+                      <li>• Amortissement: Méthode linéaire</li>
+                      <li>• Évaluation stocks: FIFO/PEPS</li>
+                      <li>• Provisions: Règles prudentielles</li>
+                      <li>• Créances: Valeur nominale nette</li>
                     </ul>
                   </div>
                   
@@ -1151,9 +811,9 @@ const FinancialReports = () => {
                   <div className="p-3 border rounded-lg">
                     <div className="font-medium mb-2">Engagements Hors Bilan</div>
                     <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Cautions bancaires: 2.500.000 FCFA</li>
-                      <li>• Engagements de crédit-bail: 0 FCFA</li>
-                      <li>• Autres engagements: 0 FCFA</li>
+                      <li>• Cautions bancaires: À renseigner</li>
+                      <li>• Engagements de crédit-bail: À renseigner</li>
+                      <li>• Autres engagements: À renseigner</li>
                     </ul>
                   </div>
                 </div>
@@ -1162,6 +822,55 @@ const FinancialReports = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs pour les annexes */}
+      {financialAnnexes && (
+        <>
+          <AmortizationTableDialog
+            open={amortDialogOpen}
+            onOpenChange={setAmortDialogOpen}
+            items={financialAnnexes.amortissements.items}
+            totalValeurBrute={financialAnnexes.amortissements.totalValeurBrute}
+            totalAmortissements={financialAnnexes.amortissements.totalAmortissements}
+            totalValeurNette={financialAnnexes.amortissements.totalValeurNette}
+            totalDotation={financialAnnexes.amortissements.totalDotation}
+            onExportPDF={exportAnnexesPDF}
+            onExportExcel={exportAnnexesExcel}
+          />
+
+          <ProvisionsTableDialog
+            open={provisionsDialogOpen}
+            onOpenChange={setProvisionsDialogOpen}
+            items={financialAnnexes.provisions.items}
+            totalDebut={financialAnnexes.provisions.totalDebut}
+            totalDotations={financialAnnexes.provisions.totalDotations}
+            totalReprises={financialAnnexes.provisions.totalReprises}
+            totalFin={financialAnnexes.provisions.totalFin}
+          />
+
+          <CreancesTableDialog
+            open={creancesDialogOpen}
+            onOpenChange={setCreancesDialogOpen}
+            items={financialAnnexes.creancesClients.items}
+            totalCreances={financialAnnexes.creancesClients.totalCreances}
+            totalEchu={financialAnnexes.creancesClients.totalEchu}
+            totalNonEchu={financialAnnexes.creancesClients.totalNonEchu}
+            tauxRecouvrement={financialAnnexes.creancesClients.tauxRecouvrement}
+            parTranche={financialAnnexes.creancesClients.parTranche}
+          />
+
+          <DettesTableDialog
+            open={dettesDialogOpen}
+            onOpenChange={setDettesDialogOpen}
+            items={financialAnnexes.dettesFournisseurs.items}
+            totalDettes={financialAnnexes.dettesFournisseurs.totalDettes}
+            totalEchu={financialAnnexes.dettesFournisseurs.totalEchu}
+            totalNonEchu={financialAnnexes.dettesFournisseurs.totalNonEchu}
+            delaiMoyenPaiement={financialAnnexes.dettesFournisseurs.delaiMoyenPaiement}
+            parTranche={financialAnnexes.dettesFournisseurs.parTranche}
+          />
+        </>
+      )}
     </div>
   );
 };

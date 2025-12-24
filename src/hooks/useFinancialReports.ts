@@ -834,12 +834,8 @@ export function useFinancialReports(selectedExerciceId?: string) {
       // Get dettes fournisseurs
       const { data: dettesData } = await supabase
         .from('receptions_fournisseurs')
-        .select(`
-          *,
-          fournisseur:fournisseurs(nom)
-        `)
-        .eq('tenant_id', tenantId)
-        .in('statut_paiement', ['non_paye', 'partiel']);
+        .select('*, fournisseur:fournisseurs(nom)')
+        .eq('tenant_id', tenantId) as any;
 
       const dettesItems: DetteFournisseurItem[] = (dettesData || []).map((d: any) => {
         const dateEcheance = new Date(d.date_echeance || d.date_reception);
