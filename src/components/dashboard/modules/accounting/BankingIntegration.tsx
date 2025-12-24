@@ -46,6 +46,7 @@ import BankAccountDialog from '@/components/accounting/BankAccountDialog';
 import BankTransactionDialog from '@/components/accounting/BankTransactionDialog';
 import ReconciliationDialog from '@/components/accounting/ReconciliationDialog';
 import CommitmentDialog from '@/components/accounting/CommitmentDialog';
+import ForecastScenarioDialog from '@/components/accounting/ForecastScenarioDialog';
 import CategorizationRuleDialog from '@/components/accounting/CategorizationRuleDialog';
 import TransactionDetailDialog from '@/components/accounting/TransactionDetailDialog';
 import { isReconciled, formatReconciliationStatus, TRANSACTION_STATUS } from '@/constants/transactionStatus';
@@ -93,6 +94,9 @@ const BankingIntegration = () => {
   const [transactionForCategory, setTransactionForCategory] = useState<any>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [autoReconcileInProgress, setAutoReconcileInProgress] = useState(false);
+  const [scenarioDialogOpen, setScenarioDialogOpen] = useState(false);
+  const [selectedScenario, setSelectedScenario] = useState<any>(null);
+  const [scenarioSaving, setScenarioSaving] = useState(false);
 
   // Hooks
   const {
@@ -115,6 +119,8 @@ const BankingIntegration = () => {
     deleteCategorizationRule,
     forecasts,
     createForecast,
+    updateForecast,
+    deleteForecast,
     commitments,
     createCommitment,
     updateCommitment,
@@ -430,6 +436,44 @@ const BankingIntegration = () => {
       await createCommitment.mutateAsync(data);
     }
     setCommitmentDialogOpen(false);
+  };
+
+  // Scenario handlers
+  const handleCreateScenario = () => {
+    setSelectedScenario(null);
+    setScenarioDialogOpen(true);
+  };
+
+  const handleEditScenario = (forecast: any) => {
+    setSelectedScenario(forecast);
+    setScenarioDialogOpen(true);
+  };
+
+  const handleDeleteScenario = async (id: string) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer ce scénario prévisionnel ?")) {
+      try {
+        await deleteForecast.mutateAsync(id);
+      } catch (error) {
+        toast({ variant: "destructive", description: "Erreur lors de la suppression du scénario" });
+      }
+    }
+  };
+
+  const handleScenarioSubmit = async (data: any) => {
+    setScenarioSaving(true);
+    try {
+      if (selectedScenario) {
+        await updateForecast.mutateAsync({ id: selectedScenario.id, ...data });
+      } else {
+        await createForecast.mutateAsync(data);
+      }
+      setScenarioDialogOpen(false);
+      setSelectedScenario(null);
+    } catch (error) {
+      toast({ variant: "destructive", description: "Erreur lors de l'enregistrement du scénario" });
+    } finally {
+      setScenarioSaving(false);
+    }
   };
 
   const handleCreateRule = () => {
@@ -1292,12 +1336,7 @@ const BankingIntegration = () => {
                   <CardTitle>Scénarios Prévisionnels</CardTitle>
                   <CardDescription>Analyse de différents scénarios</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => createForecast.mutate({
-                  periode_debut: new Date().toISOString().split('T')[0],
-                  periode_fin: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                  solde_initial_xaf: stats.totalBalance,
-                  solde_final_previsionnel_xaf: stats.totalBalance * 1.05
-                })}>
+                <Button variant="outline" size="sm" onClick={handleCreateScenario}>
                   <Plus className="h-4 w-4 mr-2" />
                   Nouveau
                 </Button>
@@ -1327,15 +1366,15 @@ const BankingIntegration = () => {
                             }>
                               {forecast.type_scenario}
                             </Badge>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                              toast({ description: "Fonctionnalité de modification à venir" });
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditScenario(forecast);
                             }}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                              if (confirm("Supprimer ce scénario ?")) {
-                                toast({ description: "Fonctionnalité de suppression à venir" });
-                              }
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteScenario(forecast.id);
                             }}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -1608,6 +1647,14 @@ const BankingIntegration = () => {
         onOpenChange={setImportDialogOpen}
         bankAccounts={bankAccounts}
         onImport={handleImportTransactions}
+      />
+
+      <ForecastScenarioDialog
+        open={scenarioDialogOpen}
+        onOpenChange={setScenarioDialogOpen}
+        scenario={selectedScenario}
+        onSave={handleScenarioSubmit}
+        isLoading={scenarioSaving}
       />
     </div>
   );
