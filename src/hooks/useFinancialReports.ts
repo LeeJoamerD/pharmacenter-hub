@@ -799,7 +799,7 @@ export function useFinancialReports(selectedExerciceId?: string) {
         .from('factures')
         .select(`
           *,
-          client:clients(nom, prenom)
+          client:clients(nom_complet)
         `)
         .eq('tenant_id', tenantId)
         .eq('type', 'client')
@@ -819,7 +819,7 @@ export function useFinancialReports(selectedExerciceId?: string) {
 
         return {
           id: f.id,
-          client: f.client ? `${f.client.nom || ''} ${f.client.prenom || ''}`.trim() : 'Client inconnu',
+          client: f.client?.nom_complet || 'Client inconnu',
           numeroFacture: f.numero_facture || '',
           montantTotal: f.montant_ttc || 0,
           montantEchu: joursRetard > 0 ? montantRestant : 0,
