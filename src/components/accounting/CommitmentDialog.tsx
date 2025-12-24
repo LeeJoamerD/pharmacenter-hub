@@ -1,6 +1,6 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,11 +21,11 @@ const CommitmentDialog = ({ open, onOpenChange, onSubmit, commitment, bankAccoun
     defaultValues: commitment || {
       libelle: '',
       type_engagement: 'Dépense',
-      montant: 0,
+      montant_xaf: 0,
       date_echeance: '',
       compte_bancaire_id: '',
       statut: 'En attente',
-      description: ''
+      notes: ''
     }
   });
 
@@ -40,16 +40,20 @@ const CommitmentDialog = ({ open, onOpenChange, onSubmit, commitment, bankAccoun
       reset({
         libelle: '',
         type_engagement: 'Dépense',
-        montant: 0,
+        montant_xaf: 0,
         date_echeance: '',
         compte_bancaire_id: '',
         statut: 'En attente',
-        description: ''
+        notes: ''
       });
     }
   }, [commitment, setValue, reset]);
 
   const handleFormSubmit = (data: any) => {
+    // Remove any fields that shouldn't be sent to the database
+    delete data.compte;
+    delete data.created_at;
+    delete data.updated_at;
     onSubmit(data);
     onOpenChange(false);
   };
@@ -59,6 +63,9 @@ const CommitmentDialog = ({ open, onOpenChange, onSubmit, commitment, bankAccoun
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{commitment ? 'Modifier l\'Engagement' : 'Nouvel Engagement'}</DialogTitle>
+          <DialogDescription>
+            {commitment ? 'Modifiez les détails de l\'engagement' : 'Créez un nouvel engagement de trésorerie'}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           <div>
@@ -80,7 +87,7 @@ const CommitmentDialog = ({ open, onOpenChange, onSubmit, commitment, bankAccoun
             </div>
             <div>
               <Label>Montant</Label>
-              <Input type="number" step={getInputStep()} {...register('montant', { valueAsNumber: true, required: true })} />
+              <Input type="number" step={getInputStep()} {...register('montant_xaf', { valueAsNumber: true, required: true })} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -105,8 +112,8 @@ const CommitmentDialog = ({ open, onOpenChange, onSubmit, commitment, bankAccoun
             </div>
           </div>
           <div>
-            <Label>Description</Label>
-            <Textarea {...register('description')} placeholder="Détails..." />
+            <Label>Notes</Label>
+            <Textarea {...register('notes')} placeholder="Détails..." />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
