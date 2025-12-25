@@ -7800,6 +7800,107 @@ export type Database = {
           },
         ]
       }
+      factures_importees: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date_facture: string
+          devise: string | null
+          fichier_original: string | null
+          fournisseur_id: string | null
+          fournisseur_nom: string | null
+          id: string
+          lignes: Json | null
+          metadata: Json | null
+          montant_ht: number | null
+          montant_ttc: number | null
+          montant_tva: number | null
+          notes: string | null
+          numero_facture: string
+          source_import: string | null
+          statut: string | null
+          tenant_id: string
+          updated_at: string
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date_facture: string
+          devise?: string | null
+          fichier_original?: string | null
+          fournisseur_id?: string | null
+          fournisseur_nom?: string | null
+          id?: string
+          lignes?: Json | null
+          metadata?: Json | null
+          montant_ht?: number | null
+          montant_ttc?: number | null
+          montant_tva?: number | null
+          notes?: string | null
+          numero_facture: string
+          source_import?: string | null
+          statut?: string | null
+          tenant_id: string
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date_facture?: string
+          devise?: string | null
+          fichier_original?: string | null
+          fournisseur_id?: string | null
+          fournisseur_nom?: string | null
+          id?: string
+          lignes?: Json | null
+          metadata?: Json | null
+          montant_ht?: number | null
+          montant_ttc?: number | null
+          montant_tva?: number | null
+          notes?: string | null
+          numero_facture?: string
+          source_import?: string | null
+          statut?: string | null
+          tenant_id?: string
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "factures_importees_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "factures_importees_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "factures_importees_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "factures_importees_validated_by_fkey"
+            columns: ["validated_by"]
+            isOneToOne: false
+            referencedRelation: "personnel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       famille_produit: {
         Row: {
           created_at: string
