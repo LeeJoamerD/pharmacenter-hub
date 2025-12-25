@@ -7445,6 +7445,35 @@ export type Database = {
           },
         ]
       }
+      encryption_keys: {
+        Row: {
+          created_at: string
+          fournisseur_import_key: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fournisseur_import_key: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fournisseur_import_key?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encryption_keys_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       engagements_tresorerie: {
         Row: {
           compte_bancaire_id: string | null
@@ -19937,6 +19966,10 @@ export type Database = {
         Returns: string
       }
       debug_user_connection_state: { Args: never; Returns: Json }
+      decrypt_fournisseur_password: {
+        Args: { p_cipher_text: string; p_tenant_id: string }
+        Returns: string
+      }
       detect_accounting_anomalies: {
         Args: { p_tenant_id: string }
         Returns: number
@@ -19953,6 +19986,10 @@ export type Database = {
       discover_business_patterns: {
         Args: { p_tenant_id: string }
         Returns: number
+      }
+      encrypt_fournisseur_password: {
+        Args: { p_plain: string; p_tenant_id: string }
+        Returns: string
       }
       execute_ai_workflow: {
         Args: {
@@ -20180,6 +20217,10 @@ export type Database = {
         Returns: Json
       }
       get_forecast_metrics: { Args: { p_tenant_id: string }; Returns: Json }
+      get_fournisseur_import_key: {
+        Args: { p_tenant_id: string }
+        Returns: string
+      }
       get_help_metrics: {
         Args: { p_days?: number; p_tenant_id: string }
         Returns: Json
