@@ -7802,6 +7802,7 @@ export type Database = {
       }
       factures_importees: {
         Row: {
+          centime_additionnel: number | null
           created_at: string
           created_by: string | null
           date_facture: string
@@ -7825,6 +7826,7 @@ export type Database = {
           validated_by: string | null
         }
         Insert: {
+          centime_additionnel?: number | null
           created_at?: string
           created_by?: string | null
           date_facture: string
@@ -7848,6 +7850,7 @@ export type Database = {
           validated_by?: string | null
         }
         Update: {
+          centime_additionnel?: number | null
           created_at?: string
           created_by?: string | null
           date_facture?: string
