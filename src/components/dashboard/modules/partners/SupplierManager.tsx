@@ -6,7 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Edit, Trash2, Truck, Phone, MessageCircle, AtSign } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Search, Edit, Trash2, Truck, Phone, MessageCircle, AtSign, Globe, User, Lock, Eye, EyeOff, Bot } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -21,6 +23,9 @@ const fournisseurSchema = z.object({
   telephone_whatsapp: z.string().optional(),
   email: z.string().email("Email invalide").optional().or(z.literal("")),
   niu: z.string().optional(),
+  url_fournisseur_import: z.string().url("URL invalide").optional().or(z.literal("")),
+  id_fournisseur_import: z.string().optional(),
+  mp_fournisseur_import: z.string().optional(),
 });
 
 type Fournisseur = Database['public']['Tables']['fournisseurs']['Row'];
@@ -30,6 +35,7 @@ const SupplierManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFournisseur, setEditingFournisseur] = useState<Fournisseur | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
 
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
@@ -71,7 +77,10 @@ const SupplierManager = () => {
     telephone_appel: '',
     telephone_whatsapp: '',
     email: '',
-    niu: ''
+    niu: '',
+    url_fournisseur_import: '',
+    id_fournisseur_import: '',
+    mp_fournisseur_import: '',
   }), []);
 
   const form = useForm<FournisseurInsert>({
@@ -101,7 +110,10 @@ const SupplierManager = () => {
       telephone_appel: fournisseur.telephone_appel || '',
       telephone_whatsapp: fournisseur.telephone_whatsapp || '',
       email: fournisseur.email || '',
-      niu: fournisseur.niu || ''
+      niu: fournisseur.niu || '',
+      url_fournisseur_import: fournisseur.url_fournisseur_import || '',
+      id_fournisseur_import: fournisseur.id_fournisseur_import || '',
+      mp_fournisseur_import: fournisseur.mp_fournisseur_import || '',
     });
     setIsDialogOpen(true);
   }, [form]);
@@ -113,8 +125,14 @@ const SupplierManager = () => {
   const handleDialogClose = useCallback(() => {
     setIsDialogOpen(false);
     setEditingFournisseur(null);
+    setShowPassword(false);
     form.reset(defaultValues);
   }, [form, defaultValues]);
+
+  // Check if supplier has Browse AI credentials configured
+  const hasBrowseAIConfig = (fournisseur: Fournisseur) => {
+    return Boolean(fournisseur.url_fournisseur_import && fournisseur.id_fournisseur_import);
+  };
 
   return (
     <div className="space-y-6">
@@ -136,7 +154,7 @@ const SupplierManager = () => {
                   Nouveau Fournisseur
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-3xl">
+              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
                     {editingFournisseur ? 'Modifier le fournisseur' : 'Nouveau fournisseur'}
@@ -254,7 +272,100 @@ const SupplierManager = () => {
                       )}
                     />
 
-                    <div className="flex justify-end gap-2">
+                    {/* Section Browse AI Import Configuration */}
+                    <div className="pt-4">
+                      <Separator className="mb-4" />
+                      <div className="flex items-center gap-2 mb-4">
+                        <Bot className="h-5 w-5 text-primary" />
+                        <h3 className="text-lg font-semibold">Configuration Import Browse AI</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Ces informations permettent au robot Browse AI de se connecter au portail du fournisseur pour récupérer automatiquement les factures.
+                      </p>
+                      
+                      <div className="grid grid-cols-1 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="url_fournisseur_import"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="flex items-center gap-2">
+                                <Globe className="h-4 w-4" />
+                                URL du portail fournisseur
+                              </FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="url"
+                                  placeholder="https://portail.fournisseur.com/login" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="id_fournisseur_import"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="flex items-center gap-2">
+                                  <User className="h-4 w-4" />
+                                  Identifiant de connexion
+                                </FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    placeholder="Votre identifiant" 
+                                    {...field} 
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="mp_fournisseur_import"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="flex items-center gap-2">
+                                  <Lock className="h-4 w-4" />
+                                  Mot de passe
+                                </FormLabel>
+                                <FormControl>
+                                  <div className="relative">
+                                    <Input 
+                                      type={showPassword ? "text" : "password"}
+                                      placeholder="Votre mot de passe" 
+                                      {...field} 
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                      onClick={() => setShowPassword(!showPassword)}
+                                    >
+                                      {showPassword ? (
+                                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                      ) : (
+                                        <Eye className="h-4 w-4 text-muted-foreground" />
+                                      )}
+                                    </Button>
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-4">
                       <Button 
                         type="button" 
                         variant="outline" 
@@ -294,13 +405,14 @@ const SupplierManager = () => {
                 <TableHead>Fournisseur</TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Adresse</TableHead>
+                <TableHead>Import</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8">
+                  <TableCell colSpan={5} className="text-center py-8">
                     Chargement...
                   </TableCell>
                 </TableRow>
@@ -344,6 +456,16 @@ const SupplierManager = () => {
                       <div className="text-sm text-muted-foreground max-w-xs truncate">
                         {fournisseur.adresse || 'Non renseignée'}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {hasBrowseAIConfig(fournisseur) ? (
+                        <Badge variant="secondary" className="flex items-center gap-1 w-fit">
+                          <Bot className="h-3 w-3" />
+                          Configuré
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">

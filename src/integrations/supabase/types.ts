@@ -8116,6 +8116,8 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          id_fournisseur_import: string | null
+          mp_fournisseur_import: string | null
           niu: string | null
           nom: string
           statut: string | null
@@ -8123,12 +8125,15 @@ export type Database = {
           telephone_whatsapp: string | null
           tenant_id: string
           updated_at: string
+          url_fournisseur_import: string | null
         }
         Insert: {
           adresse?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          id_fournisseur_import?: string | null
+          mp_fournisseur_import?: string | null
           niu?: string | null
           nom: string
           statut?: string | null
@@ -8136,12 +8141,15 @@ export type Database = {
           telephone_whatsapp?: string | null
           tenant_id: string
           updated_at?: string
+          url_fournisseur_import?: string | null
         }
         Update: {
           adresse?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          id_fournisseur_import?: string | null
+          mp_fournisseur_import?: string | null
           niu?: string | null
           nom?: string
           statut?: string | null
@@ -8149,6 +8157,7 @@ export type Database = {
           telephone_whatsapp?: string | null
           tenant_id?: string
           updated_at?: string
+          url_fournisseur_import?: string | null
         }
         Relationships: [
           {
