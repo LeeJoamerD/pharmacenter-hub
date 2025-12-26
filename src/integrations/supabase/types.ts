@@ -19991,6 +19991,7 @@ export type Database = {
         Args: { p_plain: string; p_tenant_id: string }
         Returns: string
       }
+      ensure_encryption_key: { Args: { p_tenant_id: string }; Returns: string }
       execute_ai_workflow: {
         Args: {
           p_tenant_id: string
