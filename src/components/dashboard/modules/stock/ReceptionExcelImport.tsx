@@ -19,7 +19,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { FileUp, Upload, CheckCircle2, XCircle, AlertTriangle, Loader2, PlusCircle, Settings } from 'lucide-react';
+import { FileUp, Upload, CheckCircle2, XCircle, AlertTriangle, Loader2, PlusCircle, Settings, Bot } from 'lucide-react';
+import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { ExcelParserService } from '@/services/ExcelParserService';
@@ -47,6 +48,10 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const { formatAmount, getInputStep, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
   const { categories: priceCategories } = usePriceCategories();
   const { getMappingBySupplier, mappings } = useSupplierExcelMappings();
+  const { tenantId } = useTenant();
+  
+  // État pour le bouton Robot Site Fournisseur
+  const [launchingRobot, setLaunchingRobot] = useState(false);
   
   // État pour le mapping du fournisseur sélectionné
   const [currentMapping, setCurrentMapping] = useState<ExcelColumnMapping | null>(null);
@@ -230,6 +235,48 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     
     loadMapping();
   }, [selectedSupplierId, getMappingBySupplier, mappings]);
+
+  // Fonction pour lancer le robot Site Fournisseur
+  const handleLaunchSupplierRobot = async () => {
+    if (!selectedSupplierId) {
+      toast.error('Veuillez d\'abord sélectionner un fournisseur');
+      return;
+    }
+
+    const supplier = suppliers.find(s => s.id === selectedSupplierId);
+    const fournisseurNom = supplier?.nom || '';
+
+    if (!tenantId) {
+      toast.error('Impossible de déterminer le tenant. Reconnectez-vous.');
+      return;
+    }
+
+    setLaunchingRobot(true);
+
+    try {
+      const response = await fetch('https://eo31vjq9o5zpsr2.m.pipedream.net', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tenant_id: tenantId,
+          fournisseur_nom: fournisseurNom,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success('Le robot Site Fournisseur a été lancé avec succès. Vos factures apparaîtront dans quelques minutes.');
+      } else {
+        toast.error('Impossible de lancer l\'importation. Veuillez vérifier votre connexion ou vos accès.');
+      }
+    } catch (error) {
+      console.error('Erreur lors du lancement du robot:', error);
+      toast.error('Impossible de lancer l\'importation. Veuillez vérifier votre connexion ou vos accès.');
+    } finally {
+      setLaunchingRobot(false);
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -812,6 +859,28 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                 placeholder="Remarques sur la réception..."
                 rows={2}
               />
+            </div>
+
+            {/* Bouton Robot Site Fournisseur */}
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                onClick={handleLaunchSupplierRobot}
+                disabled={launchingRobot || !selectedSupplierId}
+                className="w-full md:w-auto"
+              >
+                {launchingRobot ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Lancement en cours...
+                  </>
+                ) : (
+                  <>
+                    <Bot className="h-4 w-4 mr-2" />
+                    Importer depuis le Site du Fournisseur
+                  </>
+                )}
+              </Button>
             </div>
           </div>
 
