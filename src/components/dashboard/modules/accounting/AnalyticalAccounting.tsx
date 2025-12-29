@@ -152,8 +152,15 @@ const AnalyticalAccounting = () => {
       product: item.produit_nom.length > 12 ? item.produit_nom.substring(0, 12) + '...' : item.produit_nom,
       revenue: item.chiffre_affaires,
       costs: item.cout_achat,
-      margin: item.marge_brute,
+      marque: item.marge_brute, // Marge brute = base du taux de marque
+      tauxMarge: item.taux_marge,
+      tauxMarque: item.taux_marque || 0,
     }));
+  }, [profitabilityData]);
+
+  // Calcul du total marge brute pour affichage
+  const totalMargeBrute = useMemo(() => {
+    return profitabilityData.reduce((sum, p) => sum + p.marge_brute, 0);
   }, [profitabilityData]);
 
   const budgetChartData = useMemo(() => {
@@ -453,8 +460,8 @@ const AnalyticalAccounting = () => {
 
         {/* ONGLET RENTABILITÉ */}
         <TabsContent value="rentabilite" className="space-y-4">
-          {/* KPIs Rentabilité avec Centime Additionnel */}
-          <div className="grid gap-4 md:grid-cols-4">
+          {/* KPIs Rentabilité avec TVA et Centime Additionnel */}
+          <div className="grid gap-4 md:grid-cols-5">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Chiffre d'Affaires</CardTitle>
@@ -465,6 +472,18 @@ const AnalyticalAccounting = () => {
                   {formatAmount(profitabilityData.reduce((sum, p) => sum + p.chiffre_affaires, 0))}
                 </div>
                 <p className="text-xs text-muted-foreground">{profitabilityData.length} produits vendus</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">TVA Collectée</CardTitle>
+                <Calculator className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {formatAmount(profitabilityData.reduce((sum, p) => sum + (p.montant_tva || 0), 0))}
+                </div>
+                <p className="text-xs text-muted-foreground">Total TVA sur ventes</p>
               </CardContent>
             </Card>
             <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20">
@@ -488,6 +507,7 @@ const AnalyticalAccounting = () => {
                     : '0.0'}%
                 </div>
                 <p className="text-xs text-green-600/70">Pondéré par CA</p>
+                <p className="text-sm font-semibold text-green-700 mt-1">{formatAmount(totalMargeBrute)}</p>
               </CardContent>
             </Card>
             <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
@@ -511,6 +531,7 @@ const AnalyticalAccounting = () => {
                     : '0.0'}%
                 </div>
                 <p className="text-xs text-blue-600/70">Pondéré par CA</p>
+                <p className="text-sm font-semibold text-blue-700 mt-1">{formatAmount(totalMargeBrute)}</p>
               </CardContent>
             </Card>
             <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
@@ -531,7 +552,7 @@ const AnalyticalAccounting = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Analyse de Rentabilité par Produit</CardTitle>
-                <CardDescription>Marges et contribution par ligne de produits</CardDescription>
+                <CardDescription>CA, Coûts, Marque (valeur) et Taux (Marge vert, Marque bleu)</CardDescription>
               </CardHeader>
               <CardContent>
                 {profitabilityChartData.length === 0 ? (
@@ -543,12 +564,20 @@ const AnalyticalAccounting = () => {
                     <BarChart data={profitabilityChartData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="product" fontSize={10} />
-                      <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(value: number) => formatAmount(value)} />
+                      <YAxis yAxisId="left" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                      <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `${v}%`} />
+                      <Tooltip 
+                        formatter={(value: number, name: string) => {
+                          if (name.includes('%')) return `${value.toFixed(1)}%`;
+                          return formatAmount(value);
+                        }} 
+                      />
                       <Legend />
-                      <Bar dataKey="revenue" fill="hsl(var(--primary))" name="CA" />
-                      <Bar dataKey="costs" fill="hsl(var(--muted))" name="Coûts" />
-                      <Bar dataKey="margin" fill="hsl(var(--chart-2))" name="Marge" />
+                      <Bar yAxisId="left" dataKey="revenue" fill="hsl(var(--primary))" name="CA" />
+                      <Bar yAxisId="left" dataKey="costs" fill="#FDA4AF" name="Coûts" />
+                      <Bar yAxisId="left" dataKey="marque" fill="hsl(var(--chart-2))" name="Marque (valeur)" />
+                      <Bar yAxisId="right" dataKey="tauxMarge" fill="#22C55E" name="Tx Marge %" />
+                      <Bar yAxisId="right" dataKey="tauxMarque" fill="#3B82F6" name="Tx Marque %" />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -557,8 +586,8 @@ const AnalyticalAccounting = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Répartition des Marges</CardTitle>
-                <CardDescription>Contribution par catégorie de produits</CardDescription>
+                <CardTitle>Répartition des Marques et Taux</CardTitle>
+                <CardDescription>Contribution par produit</CardDescription>
               </CardHeader>
               <CardContent>
                 {profitabilityChartData.length === 0 ? (
@@ -566,25 +595,50 @@ const AnalyticalAccounting = () => {
                     Aucune donnée disponible
                   </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={profitabilityChartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        dataKey="margin"
-                        nameKey="product"
-                      >
-                        {profitabilityChartData.map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => formatAmount(value)} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-center font-medium mb-2 text-blue-600">Répartition Marques</p>
+                      <ResponsiveContainer width="100%" height={130}>
+                        <PieChart>
+                          <Pie
+                            data={profitabilityChartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            outerRadius={50}
+                            dataKey="marque"
+                            nameKey="product"
+                          >
+                            {profitabilityChartData.map((_, index) => (
+                              <Cell key={`cell-marque-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value: number) => formatAmount(value)} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div>
+                      <p className="text-xs text-center font-medium mb-2 text-green-600">Répartition Tx Marge</p>
+                      <ResponsiveContainer width="100%" height={130}>
+                        <PieChart>
+                          <Pie
+                            data={profitabilityChartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            outerRadius={50}
+                            dataKey="tauxMarge"
+                            nameKey="product"
+                          >
+                            {profitabilityChartData.map((_, index) => (
+                              <Cell key={`cell-marge-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>
