@@ -20532,15 +20532,15 @@ export type Database = {
       }
       preview_inventaire_items_count: {
         Args: {
-          p_filtres_categorie?: string[]
+          p_cyclique_jours?: number
+          p_filtres_emplacement?: string[]
           p_filtres_fournisseur?: string[]
-          p_filtres_zone?: string[]
-          p_seuil_stock_max?: number
-          p_seuil_stock_min?: number
+          p_filtres_peremption_jours?: number
+          p_filtres_rayon?: string[]
           p_tenant_id: string
-          p_type_inventaire?: string
+          p_type_inventaire: string
         }
-        Returns: Json
+        Returns: number
       }
       process_vision_detection: {
         Args: {
