@@ -20459,7 +20459,10 @@ export type Database = {
       }
       init_inventaire_items:
         | { Args: { p_session_id: string }; Returns: Json }
-        | { Args: { p_session_id: string; p_tenant_id: string }; Returns: Json }
+        | {
+            Args: { p_session_id: string; p_tenant_id?: string }
+            Returns: Json
+          }
       init_invoice_params_for_tenant: {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: undefined
@@ -20529,15 +20532,15 @@ export type Database = {
       }
       preview_inventaire_items_count: {
         Args: {
-          p_cyclique_jours?: number
-          p_filtres_emplacement?: string[]
+          p_filtres_categorie?: string[]
           p_filtres_fournisseur?: string[]
-          p_filtres_peremption_jours?: number
-          p_filtres_rayon?: string[]
+          p_filtres_zone?: string[]
+          p_seuil_stock_max?: number
+          p_seuil_stock_min?: number
           p_tenant_id: string
-          p_type_inventaire: string
+          p_type_inventaire?: string
         }
-        Returns: number
+        Returns: Json
       }
       process_vision_detection: {
         Args: {
