@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,10 +29,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MultiSelect, type Option as MultiSelectOption } from "@/components/ui/multi-select";
 import { usePersonnelQuery } from "@/hooks/useTenantQuery";
-import { Plus, Search, Calendar, CheckCircle, Clock, XCircle, Play, Square, Eye, Edit, Users, Trash2, Pause } from "lucide-react";
+import { Plus, Search, CheckCircle, Clock, XCircle, Play, Square, Eye, Edit, Users, Trash2, Pause, Package, AlertTriangle, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useInventorySessions, InventorySession } from "@/hooks/useInventorySessions";
+import { useInventorySessions, InventorySession, CreateSessionData } from "@/hooks/useInventorySessions";
+import { useInventoryFilters } from "@/hooks/useInventoryFilters";
 
 interface InventorySessionsProps {
   onViewSession?: (sessionId: string) => void;
@@ -45,16 +46,28 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<InventorySession | null>(null);
-  const [newSession, setNewSession] = useState({
+  
+  // État du formulaire de création
+  const [newSession, setNewSession] = useState<CreateSessionData>({
     nom: "",
     description: "",
     type: "complet",
     responsable: "",
     participants: [],
-    secteurs: [""],
+    secteurs: [],
+    filtresRayon: [],
+    filtresFournisseur: [],
+    filtresEmplacement: [],
+    filtresPeremptionJours: undefined,
+    cycliqueJours: 30,
   });
 
+  // Prévisualisation
+  const [previewCount, setPreviewCount] = useState<number | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+
   const { sessions, loading, createSession, startSession, stopSession, suspendSession, resumeSession, updateSession, deleteSession } = useInventorySessions();
+  const { rayons, fournisseurs, emplacements, previewItemsCount } = useInventoryFilters();
 
   // Options de participants depuis la liste du personnel
   const { data: personnelList } = usePersonnelQuery();
@@ -62,6 +75,55 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
     value: `${p.prenoms} ${p.noms}`,
     label: `${p.prenoms} ${p.noms}`,
   }));
+
+  // Options pour les multi-selects
+  const rayonOptions: MultiSelectOption[] = rayons.map(r => ({
+    value: r.id,
+    label: r.libelle,
+  }));
+
+  const fournisseurOptions: MultiSelectOption[] = fournisseurs.map(f => ({
+    value: f.id,
+    label: f.nom,
+  }));
+
+  const emplacementOptions: MultiSelectOption[] = emplacements.map(e => ({
+    value: e.value,
+    label: e.label,
+  }));
+
+  // Prévisualisation automatique quand les filtres changent
+  useEffect(() => {
+    const loadPreview = async () => {
+      if (!isCreateDialogOpen) return;
+      
+      setIsLoadingPreview(true);
+      const result = await previewItemsCount(
+        newSession.type,
+        newSession.filtresRayon,
+        newSession.filtresFournisseur,
+        newSession.filtresEmplacement,
+        newSession.filtresPeremptionJours,
+        newSession.cycliqueJours
+      );
+      if (result.success) {
+        setPreviewCount(result.count);
+      }
+      setIsLoadingPreview(false);
+    };
+
+    const timeoutId = setTimeout(loadPreview, 300);
+    return () => clearTimeout(timeoutId);
+  }, [
+    isCreateDialogOpen,
+    newSession.type,
+    newSession.filtresRayon,
+    newSession.filtresFournisseur,
+    newSession.filtresEmplacement,
+    newSession.filtresPeremptionJours,
+    newSession.cycliqueJours,
+    previewItemsCount
+  ]);
 
   const handleViewSession = (sessionId: string) => {
     if (onViewSession) {
@@ -114,16 +176,22 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
 
   const handleCreateSession = async () => {
     try {
-      await createSession({
-        nom: newSession.nom,
-        description: newSession.description,
-        type: newSession.type,
-        responsable: newSession.responsable,
-        participants: newSession.participants.filter((p) => p.trim() !== ""),
-        secteurs: newSession.secteurs.filter((s) => s.trim() !== ""),
-      });
+      await createSession(newSession);
       setIsCreateDialogOpen(false);
-      setNewSession({ nom: "", description: "", type: "complet", responsable: "", participants: [], secteurs: [""] });
+      setNewSession({
+        nom: "",
+        description: "",
+        type: "complet",
+        responsable: "",
+        participants: [],
+        secteurs: [],
+        filtresRayon: [],
+        filtresFournisseur: [],
+        filtresEmplacement: [],
+        filtresPeremptionJours: undefined,
+        cycliqueJours: 30,
+      });
+      setPreviewCount(null);
     } catch (error) {
       console.error("Erreur création session:", error);
     }
@@ -132,6 +200,7 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
   if (loading) {
     return <div className="flex justify-center p-8">Chargement des sessions...</div>;
   }
+
   const getStatusIcon = (statut: string) => {
     switch (statut) {
       case "planifiee":
@@ -256,12 +325,13 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                   Nouvelle Session
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px]">
+              <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Créer une Session d'Inventaire</DialogTitle>
-                  <DialogDescription>Configurez une nouvelle session d'inventaire</DialogDescription>
+                  <DialogDescription>Configurez une nouvelle session d'inventaire avec les critères de sélection</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
+                  {/* Nom */}
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="nom" className="text-right">
                       Nom
@@ -274,24 +344,177 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                       onChange={(e) => setNewSession((prev) => ({ ...prev, nom: e.target.value }))}
                     />
                   </div>
+
+                  {/* Type d'inventaire */}
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="type" className="text-right">
                       Type
                     </Label>
                     <Select
                       value={newSession.type}
-                      onValueChange={(value) => setNewSession((prev) => ({ ...prev, type: value }))}
+                      onValueChange={(value) => setNewSession((prev) => ({ 
+                        ...prev, 
+                        type: value,
+                        // Réinitialiser les filtres lors du changement de type
+                        filtresRayon: [],
+                        filtresFournisseur: [],
+                        filtresEmplacement: [],
+                        filtresPeremptionJours: undefined,
+                      }))}
                     >
                       <SelectTrigger className="col-span-3">
                         <SelectValue placeholder="Type d'inventaire" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="complet">Complet</SelectItem>
-                        <SelectItem value="partiel">Partiel</SelectItem>
-                        <SelectItem value="cyclique">Cyclique</SelectItem>
+                        <SelectItem value="complet">
+                          <div className="flex items-center gap-2">
+                            <Package className="h-4 w-4" />
+                            <span>Complet - Tous les produits en stock</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="partiel">
+                          <div className="flex items-center gap-2">
+                            <Package className="h-4 w-4" />
+                            <span>Partiel - Filtré par critères</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="cyclique">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            <span>Cyclique - Produits non inventoriés récemment</span>
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Affichage de la prévisualisation */}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <div className="col-span-1"></div>
+                    <div className="col-span-3">
+                      {isLoadingPreview ? (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Calcul du nombre de produits...</span>
+                        </div>
+                      ) : previewCount !== null ? (
+                        <div className={`flex items-center gap-2 p-2 rounded-md ${previewCount === 0 ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
+                          {previewCount === 0 ? (
+                            <>
+                              <AlertTriangle className="h-4 w-4" />
+                              <span className="font-medium">Aucun produit ne correspond aux critères sélectionnés</span>
+                            </>
+                          ) : (
+                            <>
+                              <Package className="h-4 w-4" />
+                              <span className="font-medium">{previewCount} produit(s) seront inclus dans cette session</span>
+                            </>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Filtres pour inventaire PARTIEL */}
+                  {newSession.type === "partiel" && (
+                    <>
+                      <div className="col-span-4 border-t pt-4 mt-2">
+                        <h4 className="font-medium text-sm text-muted-foreground mb-3">Critères de filtrage (optionnels)</h4>
+                      </div>
+
+                      {/* Filtre par Rayon */}
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right">Rayons</Label>
+                        <div className="col-span-3">
+                          <MultiSelect
+                            options={rayonOptions}
+                            selected={newSession.filtresRayon || []}
+                            onSelectedChange={(selected) => setNewSession((prev) => ({ ...prev, filtresRayon: selected }))}
+                            placeholder="Tous les rayons"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Filtre par Fournisseur */}
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right">Fournisseurs</Label>
+                        <div className="col-span-3">
+                          <MultiSelect
+                            options={fournisseurOptions}
+                            selected={newSession.filtresFournisseur || []}
+                            onSelectedChange={(selected) => setNewSession((prev) => ({ ...prev, filtresFournisseur: selected }))}
+                            placeholder="Tous les fournisseurs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Filtre par Emplacement */}
+                      {emplacementOptions.length > 0 && (
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label className="text-right">Emplacements</Label>
+                          <div className="col-span-3">
+                            <MultiSelect
+                              options={emplacementOptions}
+                              selected={newSession.filtresEmplacement || []}
+                              onSelectedChange={(selected) => setNewSession((prev) => ({ ...prev, filtresEmplacement: selected }))}
+                              placeholder="Tous les emplacements"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Filtre par Date de péremption */}
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right">Péremption dans</Label>
+                        <div className="col-span-3 flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="Ex: 90"
+                            value={newSession.filtresPeremptionJours || ""}
+                            onChange={(e) => setNewSession((prev) => ({ 
+                              ...prev, 
+                              filtresPeremptionJours: e.target.value ? parseInt(e.target.value) : undefined 
+                            }))}
+                            className="w-24"
+                          />
+                          <span className="text-muted-foreground">jours (laisser vide pour ignorer)</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Paramètre pour inventaire CYCLIQUE */}
+                  {newSession.type === "cyclique" && (
+                    <>
+                      <div className="col-span-4 border-t pt-4 mt-2">
+                        <h4 className="font-medium text-sm text-muted-foreground mb-3">Paramètres cyclique</h4>
+                      </div>
+
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label className="text-right">Inventorié depuis plus de</Label>
+                        <div className="col-span-3 flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min="1"
+                            value={newSession.cycliqueJours || 30}
+                            onChange={(e) => setNewSession((prev) => ({ 
+                              ...prev, 
+                              cycliqueJours: parseInt(e.target.value) || 30 
+                            }))}
+                            className="w-24"
+                          />
+                          <span className="text-muted-foreground">jours (ou jamais inventorié)</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="col-span-4 border-t pt-4 mt-2">
+                    <h4 className="font-medium text-sm text-muted-foreground mb-3">Informations de la session</h4>
+                  </div>
+
+                  {/* Responsable */}
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="responsable" className="text-right">
                       Responsable
@@ -304,6 +527,8 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                       onChange={(e) => setNewSession((prev) => ({ ...prev, responsable: e.target.value }))}
                     />
                   </div>
+
+                  {/* Participants */}
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="participants" className="text-right">
                       Participants
@@ -317,18 +542,8 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="secteurs" className="text-right">
-                      Secteurs
-                    </Label>
-                    <Textarea
-                      id="secteurs"
-                      className="col-span-3"
-                      placeholder="Secteurs à inventorier (un par ligne)"
-                      value={newSession.secteurs.join("\n")}
-                      onChange={(e) => setNewSession((prev) => ({ ...prev, secteurs: e.target.value.split("\n") }))}
-                    />
-                  </div>
+
+                  {/* Description */}
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="description" className="text-right">
                       Description
@@ -343,7 +558,11 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="submit" onClick={handleCreateSession}>
+                  <Button 
+                    type="submit" 
+                    onClick={handleCreateSession}
+                    disabled={!newSession.nom || previewCount === 0}
+                  >
                     Créer Session
                   </Button>
                 </DialogFooter>
@@ -377,7 +596,7 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                       <Select
                         value={editingSession.type}
                         onValueChange={(value) =>
-                          setEditingSession((prev) => (prev ? { ...prev, type: value as any } : null))
+                          setEditingSession((prev) => (prev ? { ...prev, type: value as InventorySession["type"] } : null))
                         }
                       >
                         <SelectTrigger className="col-span-3">
@@ -417,20 +636,6 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                           placeholder="Sélectionner les participants"
                         />
                       </div>
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="edit-secteurs" className="text-right">
-                        Secteurs
-                      </Label>
-                      <Textarea
-                        id="edit-secteurs"
-                        className="col-span-3"
-                        placeholder="Secteurs (un par ligne)"
-                        value={editingSession.secteurs.join("\n")}
-                        onChange={(e) =>
-                          setEditingSession((prev) => (prev ? { ...prev, secteurs: e.target.value.split("\n") } : null))
-                        }
-                      />
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="edit-description" className="text-right">
@@ -519,6 +724,11 @@ const InventorySessions: React.FC<InventorySessionsProps> = ({ onViewSession }) 
                         <div className="text-sm text-muted-foreground truncate max-w-[200px]">
                           {session.description}
                         </div>
+                        {session.produitsTotal > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            {session.produitsComptes}/{session.produitsTotal} produits
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>{getTypeBadge(session.type)}</TableCell>
