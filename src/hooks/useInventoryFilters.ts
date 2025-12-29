@@ -89,7 +89,7 @@ export const useInventoryFilters = () => {
     try {
       const { data, error } = await supabase.rpc("preview_inventaire_items_count", {
         p_tenant_id: tenantId,
-        p_type: type,
+        p_type_inventaire: type,
         p_filtres_rayon: filtresRayon && filtresRayon.length > 0 ? filtresRayon : null,
         p_filtres_fournisseur: filtresFournisseur && filtresFournisseur.length > 0 ? filtresFournisseur : null,
         p_filtres_emplacement: filtresEmplacement && filtresEmplacement.length > 0 ? filtresEmplacement : null,
@@ -99,7 +99,8 @@ export const useInventoryFilters = () => {
 
       if (error) throw error;
       
-      return data as { success: boolean; count: number; type?: string; error?: string };
+      // La fonction SQL retourne un INTEGER directement
+      return { success: true, count: (data as number) || 0 };
     } catch (error) {
       console.error("Erreur prévisualisation:", error);
       return { success: false, count: 0 };
