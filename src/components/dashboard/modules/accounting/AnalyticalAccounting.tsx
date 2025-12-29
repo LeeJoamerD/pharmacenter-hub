@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
-import { Plus, Building2, Target, TrendingUp, Calculator, FileBarChart, AlertTriangle, DollarSign, Loader2, Edit, Trash2, Check, FileSpreadsheet, FileText, RefreshCw } from 'lucide-react';
+import { Plus, Building2, Target, TrendingUp, Calculator, FileBarChart, AlertTriangle, DollarSign, Loader2, Edit, Trash2, Check, FileSpreadsheet, FileText, RefreshCw, Info, Percent } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAnalyticalAccounting, CostCenter, Budget, ChargeAllocation, AllocationLine, AllocationCoefficient } from '@/hooks/useAnalyticalAccounting';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
@@ -467,32 +467,50 @@ const AnalyticalAccounting = () => {
                 <p className="text-xs text-muted-foreground">{profitabilityData.length} produits vendus</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Marge Totale</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium text-green-700 dark:text-green-400 flex items-center gap-1">
+                  Taux de Marge Moyen
+                  <span className="cursor-help" title="Taux de Marge = (CA - Coût) / Coût × 100. Gain relatif au coût d'achat.">
+                    <Info className="h-3 w-3" />
+                  </span>
+                </CardTitle>
+                <Percent className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {formatAmount(profitabilityData.reduce((sum, p) => sum + p.marge_brute, 0))}
+                <div className="text-2xl font-bold text-green-600">
+                  {profitabilityData.length > 0 
+                    ? (() => {
+                        const totalCA = profitabilityData.reduce((sum, p) => sum + p.chiffre_affaires, 0);
+                        const weightedMarge = profitabilityData.reduce((sum, p) => sum + (p.taux_marge * p.chiffre_affaires), 0);
+                        return totalCA > 0 ? (weightedMarge / totalCA).toFixed(1) : '0.0';
+                      })()
+                    : '0.0'}%
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Taux moyen: {profitabilityData.length > 0 
-                    ? (profitabilityData.reduce((sum, p) => sum + p.taux_marge, 0) / profitabilityData.length).toFixed(1) 
-                    : 0}%
-                </p>
+                <p className="text-xs text-green-600/70">Pondéré par CA</p>
               </CardContent>
             </Card>
             <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-400">TVA Collectée</CardTitle>
-                <Calculator className="h-4 w-4 text-blue-500" />
+                <CardTitle className="text-sm font-medium text-blue-700 dark:text-blue-400 flex items-center gap-1">
+                  Taux de Marque Moyen
+                  <span className="cursor-help" title="Taux de Marque = (CA - Coût) / CA × 100. Part de marge dans le prix de vente.">
+                    <Info className="h-3 w-3" />
+                  </span>
+                </CardTitle>
+                <Percent className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">
-                  {formatAmount(profitabilityData.reduce((sum, p) => sum + (p.montant_tva || 0), 0))}
+                  {profitabilityData.length > 0 
+                    ? (() => {
+                        const totalCA = profitabilityData.reduce((sum, p) => sum + p.chiffre_affaires, 0);
+                        const weightedMarque = profitabilityData.reduce((sum, p) => sum + ((p.taux_marque || 0) * p.chiffre_affaires), 0);
+                        return totalCA > 0 ? (weightedMarque / totalCA).toFixed(1) : '0.0';
+                      })()
+                    : '0.0'}%
                 </div>
-                <p className="text-xs text-blue-600/70">Sur ventes</p>
+                <p className="text-xs text-blue-600/70">Pondéré par CA</p>
               </CardContent>
             </Card>
             <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
@@ -607,43 +625,70 @@ const AnalyticalAccounting = () => {
                   <TableRow>
                     <TableHead>Produit</TableHead>
                     <TableHead>Famille</TableHead>
-                    <TableHead className="text-right">Chiffre d'Affaires</TableHead>
-                    <TableHead className="text-right">Coûts Directs</TableHead>
-                    <TableHead className="text-right">Marge Brute</TableHead>
-                    <TableHead className="text-right text-amber-600">Centime Add.</TableHead>
-                    <TableHead className="text-right">Taux de Marge</TableHead>
+                    <TableHead className="text-right">CA</TableHead>
+                    <TableHead className="text-right">Coûts</TableHead>
+                    <TableHead className="text-right">Marge</TableHead>
+                    <TableHead className="text-right text-green-600" title="Taux de Marge = (CA - Coût) / Coût × 100">
+                      <span className="flex items-center justify-end gap-1">
+                        Tx Marge <Info className="h-3 w-3" />
+                      </span>
+                    </TableHead>
+                    <TableHead className="text-right text-blue-600" title="Taux de Marque = (CA - Coût) / CA × 100">
+                      <span className="flex items-center justify-end gap-1">
+                        Tx Marque <Info className="h-3 w-3" />
+                      </span>
+                    </TableHead>
                     <TableHead>Performance</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedProfitability.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                         Aucune donnée de rentabilité. Les données sont calculées à partir des ventes.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    paginatedProfitability.map((item) => (
-                      <TableRow key={item.produit_id}>
-                        <TableCell className="font-medium">{item.produit_nom}</TableCell>
-                        <TableCell>{item.famille}</TableCell>
-                        <TableCell className="text-right">{formatAmount(item.chiffre_affaires)}</TableCell>
-                        <TableCell className="text-right">{formatAmount(item.cout_achat)}</TableCell>
-                        <TableCell className="text-right">{formatAmount(item.marge_brute)}</TableCell>
-                        <TableCell className="text-right text-amber-600">
-                          {formatAmount(item.montant_centime_additionnel || 0)}
-                        </TableCell>
-                        <TableCell className="text-right">{item.taux_marge.toFixed(1)}%</TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-2">
-                            <Progress value={Math.min(item.taux_marge, 100)} className="w-16" />
-                            <Badge variant={item.taux_marge > 40 ? 'default' : item.taux_marge > 25 ? 'secondary' : 'destructive'}>
-                              {item.taux_marge > 40 ? 'Excellent' : item.taux_marge > 25 ? 'Bon' : 'Faible'}
+                    paginatedProfitability.map((item) => {
+                      // Couleurs pour Taux de Marge (vert)
+                      const getTauxMargeClass = (taux: number) => {
+                        if (taux >= 50) return 'text-green-700 bg-green-100 dark:bg-green-900/30 font-semibold';
+                        if (taux >= 30) return 'text-green-600';
+                        if (taux >= 15) return 'text-amber-600';
+                        return 'text-red-600';
+                      };
+                      // Couleurs pour Taux de Marque (bleu)
+                      const getTauxMarqueClass = (taux: number) => {
+                        if (taux >= 35) return 'text-blue-700 bg-blue-100 dark:bg-blue-900/30 font-semibold';
+                        if (taux >= 25) return 'text-blue-600';
+                        if (taux >= 15) return 'text-blue-400';
+                        return 'text-gray-500';
+                      };
+                      const tauxMarque = item.taux_marque || 0;
+                      
+                      return (
+                        <TableRow key={item.produit_id}>
+                          <TableCell className="font-medium max-w-[200px] truncate" title={item.produit_nom}>
+                            {item.produit_nom}
+                          </TableCell>
+                          <TableCell>{item.famille}</TableCell>
+                          <TableCell className="text-right">{formatAmount(item.chiffre_affaires)}</TableCell>
+                          <TableCell className="text-right">{formatAmount(item.cout_achat)}</TableCell>
+                          <TableCell className="text-right">{formatAmount(item.marge_brute)}</TableCell>
+                          <TableCell className={`text-right rounded px-2 ${getTauxMargeClass(item.taux_marge)}`}>
+                            {item.taux_marge.toFixed(1)}%
+                          </TableCell>
+                          <TableCell className={`text-right rounded px-2 ${getTauxMarqueClass(tauxMarque)}`}>
+                            {tauxMarque.toFixed(1)}%
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={tauxMarque >= 35 ? 'default' : tauxMarque >= 20 ? 'secondary' : 'destructive'}>
+                              {tauxMarque >= 35 ? 'Excellent' : tauxMarque >= 20 ? 'Bon' : 'Faible'}
                             </Badge>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>

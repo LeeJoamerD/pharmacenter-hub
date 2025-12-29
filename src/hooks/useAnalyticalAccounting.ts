@@ -140,7 +140,8 @@ export interface ProfitabilityData {
   quantite_vendue: number;
   cout_achat: number;
   marge_brute: number;
-  taux_marge: number;
+  taux_marge: number;      // (CA - Coût) / Coût × 100 - Gain sur coût d'achat
+  taux_marque: number;     // (CA - Coût) / CA × 100 - Part de marge dans le CA
   derniere_vente?: string;
   // Centime Additionnel
   montant_tva?: number;

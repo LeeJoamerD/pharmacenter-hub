@@ -20337,6 +20337,7 @@ export type Database = {
           produit_nom: string
           quantite_vendue: number
           taux_marge: number
+          taux_marque: number
           tenant_id: string
         }[]
       }
