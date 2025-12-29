@@ -20536,9 +20536,9 @@ export type Database = {
           p_filtres_peremption_jours?: number
           p_filtres_rayon?: string[]
           p_tenant_id: string
-          p_type: string
+          p_type_inventaire: string
         }
-        Returns: Json
+        Returns: number
       }
       process_vision_detection: {
         Args: {
