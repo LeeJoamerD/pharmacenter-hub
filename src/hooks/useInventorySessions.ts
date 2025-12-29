@@ -19,6 +19,26 @@ export interface InventorySession {
   produitsComptes: number;
   produitsTotal: number;
   ecarts: number;
+  // Nouveaux champs de filtrage
+  filtresRayon?: string[];
+  filtresFournisseur?: string[];
+  filtresEmplacement?: string[];
+  filtresPeremptionJours?: number;
+  cycliqueJours?: number;
+}
+
+export interface CreateSessionData {
+  nom: string;
+  description: string;
+  type: string;
+  responsable: string;
+  participants: string[];
+  secteurs?: string[];
+  filtresRayon?: string[];
+  filtresFournisseur?: string[];
+  filtresEmplacement?: string[];
+  filtresPeremptionJours?: number;
+  cycliqueJours?: number;
 }
 
 export const useInventorySessions = () => {
@@ -53,8 +73,8 @@ export const useInventorySessions = () => {
           dateCreation: new Date(session.created_at),
           dateDebut: session.date_debut ? new Date(session.date_debut) : undefined,
           dateFin: session.date_fin ? new Date(session.date_fin) : undefined,
-          statut: (session.statut || "planifiee") as any,
-          type: (session.type || "complet") as any,
+          statut: (session.statut || "planifiee") as InventorySession["statut"],
+          type: (session.type || "complet") as InventorySession["type"],
           responsable: session.responsable || "Non assigné",
           participants: session.participants || [],
           secteurs: session.secteurs || [],
@@ -62,6 +82,12 @@ export const useInventorySessions = () => {
           produitsComptes: session.produits_comptes || 0,
           produitsTotal: session.produits_total || 0,
           ecarts: session.ecarts || 0,
+          // Nouveaux champs de filtrage
+          filtresRayon: (session as any).filtres_rayon || [],
+          filtresFournisseur: (session as any).filtres_fournisseur || [],
+          filtresEmplacement: (session as any).filtres_emplacement || [],
+          filtresPeremptionJours: (session as any).filtres_peremption_jours,
+          cycliqueJours: (session as any).cyclique_jours || 30,
         })) || [];
 
       setSessions(mappedSessions);
@@ -74,7 +100,7 @@ export const useInventorySessions = () => {
   }, [tenantId]);
 
   const createSession = useCallback(
-    async (sessionData: any) => {
+    async (sessionData: CreateSessionData) => {
       try {
         if (!tenantId) {
           toast.error("Aucun tenant trouvé");
@@ -93,24 +119,36 @@ export const useInventorySessions = () => {
           return;
         }
 
-        // Créer la session d'inventaire
+        // Créer la session d'inventaire avec les nouveaux filtres
+        const insertData: any = {
+          tenant_id: tenantId,
+          nom: sessionData.nom,
+          description: sessionData.description,
+          type: sessionData.type,
+          responsable: sessionData.responsable,
+          participants: sessionData.participants,
+          secteurs: sessionData.secteurs || [],
+          agent_id: personnelData.id,
+          statut: "planifiee",
+          progression: 0,
+          produits_comptes: 0,
+          produits_total: 0,
+          ecarts: 0,
+        };
+
+        // Ajouter les filtres selon le type
+        if (sessionData.type === "partiel") {
+          insertData.filtres_rayon = sessionData.filtresRayon || [];
+          insertData.filtres_fournisseur = sessionData.filtresFournisseur || [];
+          insertData.filtres_emplacement = sessionData.filtresEmplacement || [];
+          insertData.filtres_peremption_jours = sessionData.filtresPeremptionJours || null;
+        } else if (sessionData.type === "cyclique") {
+          insertData.cyclique_jours = sessionData.cycliqueJours || 30;
+        }
+
         const { data: sessionInserted, error } = await supabase
           .from("inventaire_sessions")
-          .insert({
-            tenant_id: tenantId,
-            nom: sessionData.nom,
-            description: sessionData.description,
-            type: sessionData.type,
-            responsable: sessionData.responsable,
-            participants: sessionData.participants,
-            secteurs: sessionData.secteurs,
-            agent_id: personnelData.id,
-            statut: "planifiee",
-            progression: 0,
-            produits_comptes: 0,
-            produits_total: 0,
-            ecarts: 0,
-          })
+          .insert(insertData)
           .select()
           .single();
 

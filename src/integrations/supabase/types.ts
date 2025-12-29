@@ -8831,11 +8831,16 @@ export type Database = {
         Row: {
           agent_id: string
           created_at: string
+          cyclique_jours: number | null
           date_creation: string | null
           date_debut: string | null
           date_fin: string | null
           description: string | null
           ecarts: number | null
+          filtres_emplacement: string[] | null
+          filtres_fournisseur: string[] | null
+          filtres_peremption_jours: number | null
+          filtres_rayon: string[] | null
           id: string
           nom: string | null
           participants: string[] | null
@@ -8852,11 +8857,16 @@ export type Database = {
         Insert: {
           agent_id: string
           created_at?: string
+          cyclique_jours?: number | null
           date_creation?: string | null
           date_debut?: string | null
           date_fin?: string | null
           description?: string | null
           ecarts?: number | null
+          filtres_emplacement?: string[] | null
+          filtres_fournisseur?: string[] | null
+          filtres_peremption_jours?: number | null
+          filtres_rayon?: string[] | null
           id?: string
           nom?: string | null
           participants?: string[] | null
@@ -8873,11 +8883,16 @@ export type Database = {
         Update: {
           agent_id?: string
           created_at?: string
+          cyclique_jours?: number | null
           date_creation?: string | null
           date_debut?: string | null
           date_fin?: string | null
           description?: string | null
           ecarts?: number | null
+          filtres_emplacement?: string[] | null
+          filtres_fournisseur?: string[] | null
+          filtres_peremption_jours?: number | null
+          filtres_rayon?: string[] | null
           id?: string
           nom?: string | null
           participants?: string[] | null
@@ -20442,9 +20457,10 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: undefined
       }
-      init_inventaire_items:
-        | { Args: { p_session_id: string }; Returns: Json }
-        | { Args: { p_session_id: string; p_tenant_id: string }; Returns: Json }
+      init_inventaire_items: {
+        Args: { p_session_id: string; p_tenant_id: string }
+        Returns: Json
+      }
       init_invoice_params_for_tenant: {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: undefined
@@ -20510,6 +20526,18 @@ export type Database = {
       }
       network_update_security_settings: {
         Args: { settings: Json; target_tenant_id: string }
+        Returns: Json
+      }
+      preview_inventaire_items_count: {
+        Args: {
+          p_cyclique_jours?: number
+          p_filtres_emplacement?: string[]
+          p_filtres_fournisseur?: string[]
+          p_filtres_peremption_jours?: number
+          p_filtres_rayon?: string[]
+          p_tenant_id: string
+          p_type: string
+        }
         Returns: Json
       }
       process_vision_detection: {
