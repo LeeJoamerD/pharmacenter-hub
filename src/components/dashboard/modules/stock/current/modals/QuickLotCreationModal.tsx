@@ -29,7 +29,7 @@ const QuickLotCreationModal = ({
     quantite_initiale: 0,
     date_fabrication: '',
     date_peremption: '',
-    prix_achat: 0
+    prix_achat_unitaire: 0
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -62,7 +62,7 @@ const QuickLotCreationModal = ({
           quantite_restante: formData.quantite_initiale,
           date_fabrication: formData.date_fabrication || null,
           date_peremption: formData.date_peremption || null,
-          prix_achat: formData.prix_achat || 0
+          prix_achat_unitaire: formData.prix_achat_unitaire || 0
         })
         .select()
         .single();
@@ -96,7 +96,7 @@ const QuickLotCreationModal = ({
         quantite_initiale: 0,
         date_fabrication: '',
         date_peremption: '',
-        prix_achat: 0
+        prix_achat_unitaire: 0
       });
 
       onSuccess?.();
@@ -181,8 +181,8 @@ const QuickLotCreationModal = ({
               type="number"
               min={0}
               step="0.01"
-              value={formData.prix_achat || ''}
-              onChange={(e) => setFormData({ ...formData, prix_achat: parseFloat(e.target.value) || 0 })}
+              value={formData.prix_achat_unitaire || ''}
+              onChange={(e) => setFormData({ ...formData, prix_achat_unitaire: parseFloat(e.target.value) || 0 })}
             />
           </div>
 
