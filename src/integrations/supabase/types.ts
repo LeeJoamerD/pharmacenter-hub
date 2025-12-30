@@ -20675,9 +20675,9 @@ export type Database = {
       }
       search_lots_paginated: {
         Args: {
-          p_current_page?: number
+          p_page?: number
           p_page_size?: number
-          p_search_term?: string
+          p_search?: string
           p_sort_by?: string
           p_sort_order?: string
           p_status_filter?: string
