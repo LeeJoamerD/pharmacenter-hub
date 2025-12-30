@@ -21,8 +21,8 @@ export const LotTracker = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [pageSize, setPageSize] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortBy, setSortBy] = useState("date_peremption");
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortBy, setSortBy] = useState("date_entree");
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isDetailBreakdownDialogOpen, setIsDetailBreakdownDialogOpen] = useState(false);
@@ -75,8 +75,8 @@ export const LotTracker = () => {
   const handleReset = () => {
     setSearchTerm("");
     setStatusFilter("all");
-    setSortBy("date_peremption");
-    setSortOrder("asc");
+    setSortBy("date_entree");
+    setSortOrder("desc");
     setPageSize(100);
     setCurrentPage(1);
     toast({
@@ -234,6 +234,7 @@ export const LotTracker = () => {
               <SelectValue placeholder="Trier par" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="date_entree">Date d'entrée</SelectItem>
               <SelectItem value="date_peremption">Date péremption</SelectItem>
               <SelectItem value="numero_lot">Numéro lot</SelectItem>
               <SelectItem value="produit">Produit</SelectItem>
@@ -386,6 +387,15 @@ export const LotTracker = () => {
                   </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50" 
+                    onClick={() => handleSort('date_entree')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Date Entrée
+                      {sortBy === 'date_entree' && <ArrowUpDown className="h-4 w-4" />}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover:bg-muted/50" 
                     onClick={() => handleSort('date_peremption')}
                   >
                     <div className="flex items-center gap-2">
@@ -401,7 +411,7 @@ export const LotTracker = () => {
               <TableBody>
                 {isInitialLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={8} className="text-center py-8">
                       <div className="flex items-center justify-center gap-2 text-muted-foreground">
                         <Loader2 className="h-5 w-5 animate-spin" />
                         Chargement des lots...
@@ -410,7 +420,7 @@ export const LotTracker = () => {
                   </TableRow>
                 ) : lots.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       Aucun lot trouvé{debouncedSearchTerm ? ` pour "${debouncedSearchTerm}"` : ''}
                     </TableCell>
                   </TableRow>
@@ -453,6 +463,15 @@ export const LotTracker = () => {
                             {Math.round((lot.quantite_restante / lot.quantite_initiale) * 100)}%
                           </div>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {lot.date_reception ? (
+                          <div>{format(new Date(lot.date_reception), 'dd/MM/yyyy', { locale: fr })}</div>
+                        ) : (
+                          <div className="text-muted-foreground">
+                            {format(new Date(lot.created_at), 'dd/MM/yyyy', { locale: fr })}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         {lot.date_peremption ? (
