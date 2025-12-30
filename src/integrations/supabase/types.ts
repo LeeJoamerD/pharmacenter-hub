@@ -20673,18 +20673,48 @@ export type Database = {
           view_count: number
         }[]
       }
-      search_lots_paginated: {
-        Args: {
-          p_current_page?: number
-          p_page_size?: number
-          p_search_term?: string
-          p_sort_by?: string
-          p_sort_order?: string
-          p_status_filter?: string
-          p_tenant_id: string
-        }
-        Returns: Json
-      }
+      search_lots_paginated:
+        | {
+            Args: {
+              p_current_page?: number
+              p_page_size?: number
+              p_search_term?: string
+              p_sort_by?: string
+              p_sort_order?: string
+              p_status_filter?: string
+              p_tenant_id: string
+            }
+            Returns: {
+              created_at: string
+              date_peremption: string
+              date_reception: string
+              emplacement: string
+              id: string
+              niveau_detail: number
+              numero_lot: string
+              prix_achat: number
+              produit_code_cip: string
+              produit_detail: Json
+              produit_id: string
+              produit_libelle: string
+              quantite_initiale: number
+              quantite_restante: number
+              statut: string
+              total_count: number
+            }[]
+          }
+        | {
+            Args: {
+              p_current_page?: number
+              p_page_size?: number
+              p_search_term?: string
+              p_sort_by?: string
+              p_sort_order?: string
+              p_status_filter?: string
+              p_tenant_id: string
+            }
+            Returns: Json
+          }
       search_product_by_barcode: {
         Args: { p_barcode: string; p_tenant_id: string }
         Returns: {
