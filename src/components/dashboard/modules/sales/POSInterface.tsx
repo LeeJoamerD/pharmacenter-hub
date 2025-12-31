@@ -431,6 +431,9 @@ const POSInterface = () => {
                 vente: {
                   numero_vente: venteDetails.numero_vente,
                   date_vente: venteDetails.date_vente,
+                  montant_total_ht: calculateTotalHT(),
+                  montant_tva: calculateTotalTVA(),
+                  montant_centime_additionnel: calculateTotalCentime(),
                   montant_total_ttc: venteDetails.montant_total_ttc,
                   montant_net: venteDetails.montant_net,
                   remise_globale: venteDetails.remise_globale,
@@ -683,11 +686,37 @@ const POSInterface = () => {
             
             {/* Totaux */}
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Sous-total:</span>
+              {/* Total HT */}
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Total HT:</span>
+                <span>{formatAmount(calculateTotalHT())}</span>
+              </div>
+              
+              {/* TVA - afficher seulement si > 0 */}
+              {calculateTotalTVA() > 0 && (
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>TVA:</span>
+                  <span>{formatAmount(calculateTotalTVA())}</span>
+                </div>
+              )}
+              
+              {/* Centime Additionnel - afficher seulement si > 0 */}
+              {calculateTotalCentime() > 0 && (
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Centime Add.:</span>
+                  <span>{formatAmount(calculateTotalCentime())}</span>
+                </div>
+              )}
+              
+              <Separator className="my-1" />
+              
+              {/* Sous-total TTC */}
+              <div className="flex justify-between text-sm font-medium">
+                <span>Sous-total TTC:</span>
                 <span>{formatAmount(calculateSubtotal())}</span>
               </div>
               
+              {/* Remise */}
               {calculateDiscount() > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
                   <span>Remise ({customer.discountRate}%):</span>
@@ -695,10 +724,11 @@ const POSInterface = () => {
                 </div>
               )}
               
-              <Separator />
+              <Separator className="my-1" />
               
+              {/* Total à payer */}
               <div className="flex justify-between font-bold text-lg">
-                <span>Total:</span>
+                <span>Total à payer:</span>
                 <span className="text-primary">{formatAmount(calculateTotal())}</span>
               </div>
             </div>
