@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { formatCurrencyAmount } from './currencyFormatter';
 
 export interface AdvancedReceiptData {
   // Transaction de base
@@ -67,6 +68,7 @@ export interface AdvancedReceiptData {
   };
   
   agent?: string;
+  currencySymbol?: string;
 }
 
 export async function printAdvancedReceipt(data: AdvancedReceiptData): Promise<string> {
@@ -76,10 +78,10 @@ export async function printAdvancedReceipt(data: AdvancedReceiptData): Promise<s
     format: [80, 297] // Largeur thermique 80mm, hauteur auto
   });
 
+  const currency = data.currencySymbol || 'FCFA';
   let yPos = 10;
   const leftMargin = 5;
   const pageWidth = 80;
-  const contentWidth = pageWidth - (leftMargin * 2);
 
   // En-tête Pharmacie
   doc.setFontSize(12);
@@ -178,12 +180,12 @@ export async function printAdvancedReceipt(data: AdvancedReceiptData): Promise<s
     doc.text(productName, leftMargin, yPos);
     yPos += 4;
     
-    // Quantité x Prix = Total
-    const qtyLine = `${item.quantite} x ${item.prix_unitaire.toFixed(2)} = ${item.total.toFixed(2)}`;
+    // Quantité x Prix = Total - utiliser le formatage correct
+    const qtyLine = `${item.quantite} x ${formatCurrencyAmount(item.prix_unitaire, currency)} = ${formatCurrencyAmount(item.total, currency)}`;
     doc.text(qtyLine, leftMargin + 2, yPos);
     
     if (item.remise && item.remise > 0) {
-      doc.text(`(-${item.remise.toFixed(2)})`, pageWidth - leftMargin - 15, yPos);
+      doc.text(`(-${formatCurrencyAmount(item.remise, currency)})`, pageWidth - leftMargin - 15, yPos);
     }
     yPos += 5;
   });
@@ -192,26 +194,26 @@ export async function printAdvancedReceipt(data: AdvancedReceiptData): Promise<s
   doc.line(leftMargin, yPos, pageWidth - leftMargin, yPos);
   yPos += 5;
 
-  // Totaux
+  // Totaux - utiliser le formatage correct
   doc.setFontSize(8);
   doc.text('Sous-total:', leftMargin, yPos);
-  doc.text(`${data.sous_total.toFixed(2)}`, pageWidth - leftMargin, yPos, { align: 'right' });
+  doc.text(formatCurrencyAmount(data.sous_total, currency), pageWidth - leftMargin, yPos, { align: 'right' });
   yPos += 4;
 
   if (data.remise_totale > 0) {
     doc.text('Remise:', leftMargin, yPos);
-    doc.text(`-${data.remise_totale.toFixed(2)}`, pageWidth - leftMargin, yPos, { align: 'right' });
+    doc.text(`-${formatCurrencyAmount(data.remise_totale, currency)}`, pageWidth - leftMargin, yPos, { align: 'right' });
     yPos += 4;
   }
 
   doc.text('TVA:', leftMargin, yPos);
-  doc.text(`${data.tva.toFixed(2)}`, pageWidth - leftMargin, yPos, { align: 'right' });
+  doc.text(formatCurrencyAmount(data.tva, currency), pageWidth - leftMargin, yPos, { align: 'right' });
   yPos += 5;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.text('TOTAL TTC:', leftMargin, yPos);
-  doc.text(`${data.total_ttc.toFixed(2)}`, pageWidth - leftMargin, yPos, { align: 'right' });
+  doc.text(formatCurrencyAmount(data.total_ttc, currency), pageWidth - leftMargin, yPos, { align: 'right' });
   yPos += 6;
 
   doc.line(leftMargin, yPos, pageWidth - leftMargin, yPos);
@@ -226,7 +228,7 @@ export async function printAdvancedReceipt(data: AdvancedReceiptData): Promise<s
 
   data.paiements.forEach(paiement => {
     doc.text(`  ${paiement.methode}:`, leftMargin, yPos);
-    doc.text(`${paiement.montant.toFixed(2)}`, pageWidth - leftMargin, yPos, { align: 'right' });
+    doc.text(formatCurrencyAmount(paiement.montant, currency), pageWidth - leftMargin, yPos, { align: 'right' });
     yPos += 4;
     if (paiement.reference) {
       doc.setFontSize(7);
@@ -240,7 +242,7 @@ export async function printAdvancedReceipt(data: AdvancedReceiptData): Promise<s
     yPos += 2;
     doc.setFont('helvetica', 'bold');
     doc.text('Rendu:', leftMargin, yPos);
-    doc.text(`${data.montant_rendu.toFixed(2)}`, pageWidth - leftMargin, yPos, { align: 'right' });
+    doc.text(formatCurrencyAmount(data.montant_rendu, currency), pageWidth - leftMargin, yPos, { align: 'right' });
     yPos += 4;
   }
 
@@ -249,7 +251,7 @@ export async function printAdvancedReceipt(data: AdvancedReceiptData): Promise<s
     yPos += 2;
     doc.setFont('helvetica', 'bold');
     doc.text('Montant remboursé:', leftMargin, yPos);
-    doc.text(`${data.retour.montant_rembourse.toFixed(2)}`, pageWidth - leftMargin, yPos, { align: 'right' });
+    doc.text(formatCurrencyAmount(data.retour.montant_rembourse, currency), pageWidth - leftMargin, yPos, { align: 'right' });
     yPos += 4;
   }
 

@@ -6,6 +6,7 @@
 import jsPDF from 'jspdf';
 // @ts-ignore - bwip-js types
 import bwipjs from 'bwip-js';
+import { formatCurrencyAmount } from './currencyFormatter';
 
 interface SalesTicketData {
   vente: {
@@ -35,6 +36,7 @@ interface SalesTicketData {
   };
   agentName?: string;
   sessionNumero?: string;
+  currencySymbol?: string;
 }
 
 interface CashReceiptData {
@@ -57,6 +59,7 @@ interface CashReceiptData {
     telephone?: string;
   };
   agentName?: string;
+  currencySymbol?: string;
 }
 
 /**
@@ -89,6 +92,7 @@ export async function printSalesTicket(data: SalesTicketData): Promise<string> {
     format: [80, 270] // Ticket thermique 80mm, plus long pour les détails et code-barres
   });
 
+  const currency = data.currencySymbol || 'FCFA';
   let y = 10;
 
   // Bandeau "À ENCAISSER"
@@ -166,8 +170,8 @@ export async function printSalesTicket(data: SalesTicketData): Promise<string> {
       y += 4;
     }
     
-    // Quantité et prix
-    const lineText = `${ligne.quantite} x ${ligne.prix_unitaire_ttc.toLocaleString()} = ${ligne.montant_ligne_ttc.toLocaleString()} FCFA`;
+    // Quantité et prix - utiliser le formatage correct
+    const lineText = `${ligne.quantite} x ${formatCurrencyAmount(ligne.prix_unitaire_ttc, currency)} = ${formatCurrencyAmount(ligne.montant_ligne_ttc, currency)}`;
     doc.text(lineText, 10, y);
     y += 5;
   });
@@ -178,32 +182,31 @@ export async function printSalesTicket(data: SalesTicketData): Promise<string> {
   
   // Sous-total HT
   doc.text(`Sous-total HT:`, 5, y);
-  doc.text(`${(data.vente.montant_total_ht || 0).toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  doc.text(formatCurrencyAmount(data.vente.montant_total_ht || 0, currency), 75, y, { align: 'right' });
   y += 4;
 
   // TVA détaillée
   const tauxTva = data.vente.taux_tva || 18;
   doc.text(`TVA (${tauxTva}%):`, 5, y);
-  doc.text(`${(data.vente.montant_tva || 0).toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  doc.text(formatCurrencyAmount(data.vente.montant_tva || 0, currency), 75, y, { align: 'right' });
   y += 4;
 
-  // Centime Additionnel détaillé (si présent)
-  if (data.vente.montant_centime_additionnel && data.vente.montant_centime_additionnel > 0) {
-    const tauxCentime = data.vente.taux_centime_additionnel || 5;
-    doc.text(`Centime Add. (${tauxCentime}%):`, 5, y);
-    doc.text(`${data.vente.montant_centime_additionnel.toLocaleString()} FCFA`, 75, y, { align: 'right' });
-    y += 4;
-  }
+  // Centime Additionnel détaillé - toujours afficher
+  const tauxCentime = data.vente.taux_centime_additionnel || 5;
+  const montantCentime = data.vente.montant_centime_additionnel || 0;
+  doc.text(`Centime Add. (${tauxCentime}%):`, 5, y);
+  doc.text(formatCurrencyAmount(montantCentime, currency), 75, y, { align: 'right' });
+  y += 4;
 
   // Sous-total TTC
   doc.text(`Sous-total TTC:`, 5, y);
-  doc.text(`${data.vente.montant_total_ttc.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  doc.text(formatCurrencyAmount(data.vente.montant_total_ttc, currency), 75, y, { align: 'right' });
   y += 4;
 
   // Remise (si présente)
   if (data.vente.remise_globale > 0) {
     doc.text(`Remise:`, 5, y);
-    doc.text(`-${data.vente.remise_globale.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+    doc.text(`-${formatCurrencyAmount(data.vente.remise_globale, currency)}`, 75, y, { align: 'right' });
     y += 4;
   }
 
@@ -211,7 +214,7 @@ export async function printSalesTicket(data: SalesTicketData): Promise<string> {
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text(`À PAYER:`, 5, y);
-  doc.text(`${data.vente.montant_net.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  doc.text(formatCurrencyAmount(data.vente.montant_net, currency), 75, y, { align: 'right' });
   y += 8;
 
   // Code-barres
@@ -258,9 +261,10 @@ export async function printSalesTicket(data: SalesTicketData): Promise<string> {
 export async function printCashReceipt(data: CashReceiptData): Promise<string> {
   const doc = new jsPDF({
     unit: 'mm',
-    format: [80, 140] // Ticket court pour le reçu, légèrement plus long pour les détails
+    format: [80, 160] // Ticket court pour le reçu, légèrement plus long pour les détails
   });
 
+  const currency = data.currencySymbol || 'FCFA';
   let y = 10;
 
   // Bandeau "REÇU DE PAIEMENT"
@@ -313,44 +317,45 @@ export async function printCashReceipt(data: CashReceiptData): Promise<string> {
   doc.line(5, y, 75, y);
   y += 5;
 
-  // Détails TVA si disponibles
-  if (data.vente.montant_total_ht && data.vente.montant_tva) {
-    doc.setFontSize(8);
-    doc.text(`Montant HT:`, 5, y);
-    doc.text(`${data.vente.montant_total_ht.toLocaleString()} FCFA`, 75, y, { align: 'right' });
-    y += 4;
+  // Détails TVA - toujours afficher si disponibles
+  doc.setFontSize(8);
+  
+  // Montant HT
+  doc.text(`Montant HT:`, 5, y);
+  doc.text(formatCurrencyAmount(data.vente.montant_total_ht || 0, currency), 75, y, { align: 'right' });
+  y += 4;
 
-    const tauxTva = data.vente.taux_tva || 18;
-    doc.text(`TVA (${tauxTva}%):`, 5, y);
-    doc.text(`${data.vente.montant_tva.toLocaleString()} FCFA`, 75, y, { align: 'right' });
-    y += 4;
+  // TVA
+  const tauxTva = data.vente.taux_tva || 18;
+  doc.text(`TVA (${tauxTva}%):`, 5, y);
+  doc.text(formatCurrencyAmount(data.vente.montant_tva || 0, currency), 75, y, { align: 'right' });
+  y += 4;
 
-    if (data.vente.montant_centime_additionnel && data.vente.montant_centime_additionnel > 0) {
-      const tauxCentime = data.vente.taux_centime_additionnel || 5;
-      doc.text(`Centime Add. (${tauxCentime}%):`, 5, y);
-      doc.text(`${data.vente.montant_centime_additionnel.toLocaleString()} FCFA`, 75, y, { align: 'right' });
-      y += 4;
-    }
+  // Centime Additionnel - toujours afficher
+  const tauxCentime = data.vente.taux_centime_additionnel || 5;
+  const montantCentime = data.vente.montant_centime_additionnel || 0;
+  doc.text(`Centime Add. (${tauxCentime}%):`, 5, y);
+  doc.text(formatCurrencyAmount(montantCentime, currency), 75, y, { align: 'right' });
+  y += 4;
 
-    doc.line(5, y, 75, y);
-    y += 4;
-  }
+  doc.line(5, y, 75, y);
+  y += 4;
 
   // Montants
   doc.setFontSize(10);
-  doc.text(`Montant:`, 5, y);
-  doc.text(`${data.vente.montant_net.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  doc.text(`Montant TTC:`, 5, y);
+  doc.text(formatCurrencyAmount(data.vente.montant_net, currency), 75, y, { align: 'right' });
   y += 5;
 
   doc.setFont('helvetica', 'bold');
   doc.text(`Payé:`, 5, y);
-  doc.text(`${data.vente.montant_paye.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  doc.text(formatCurrencyAmount(data.vente.montant_paye, currency), 75, y, { align: 'right' });
   y += 5;
 
   if (data.vente.montant_rendu > 0) {
     doc.setFont('helvetica', 'normal');
     doc.text(`Rendu:`, 5, y);
-    doc.text(`${data.vente.montant_rendu.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+    doc.text(formatCurrencyAmount(data.vente.montant_rendu, currency), 75, y, { align: 'right' });
     y += 5;
   }
 

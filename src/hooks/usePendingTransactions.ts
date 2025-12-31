@@ -11,6 +11,9 @@ export interface PendingTransaction {
   date_vente: string;
   montant_net: number;
   montant_total_ttc: number;
+  montant_total_ht?: number;
+  montant_tva?: number;
+  montant_centime_additionnel?: number;
   remise_globale: number;
   client?: {
     id: string;
@@ -46,6 +49,9 @@ export const usePendingTransactions = (sessionId?: string) => {
           date_vente,
           montant_net,
           montant_total_ttc,
+          montant_total_ht,
+          montant_tva,
+          montant_centime_additionnel,
           remise_globale,
           client:clients(id, nom_complet, type_client),
           lignes_ventes!lignes_ventes_vente_id_fkey(
@@ -85,6 +91,9 @@ export const usePendingTransactions = (sessionId?: string) => {
         date_vente,
         montant_net,
         montant_total_ttc,
+        montant_total_ht,
+        montant_tva,
+        montant_centime_additionnel,
         remise_globale,
         session_caisse_id,
         statut,

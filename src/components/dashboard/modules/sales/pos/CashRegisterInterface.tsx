@@ -261,6 +261,11 @@ const CashRegisterInterface = () => {
               vente: {
                 numero_vente: selectedTransaction.numero_vente,
                 date_vente: selectedTransaction.date_vente,
+                montant_total_ht: selectedTransaction.montant_total_ht || 0,
+                montant_tva: selectedTransaction.montant_tva || 0,
+                taux_tva: 18,
+                montant_centime_additionnel: selectedTransaction.montant_centime_additionnel || 0,
+                taux_centime_additionnel: 5,
                 montant_net: selectedTransaction.montant_net,
                 montant_paye: amountReceived,
                 montant_rendu: calculateChange(),

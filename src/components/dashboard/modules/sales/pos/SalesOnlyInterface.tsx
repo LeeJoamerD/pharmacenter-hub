@@ -322,6 +322,11 @@ const SalesOnlyInterface = () => {
               vente: {
                 numero_vente: result.numero_facture,
                 date_vente: new Date().toISOString(),
+                montant_total_ht: calculateTotalHT(),
+                montant_tva: calculateTotalTVA(),
+                taux_tva: 18,
+                montant_centime_additionnel: calculateTotalCentime(),
+                taux_centime_additionnel: 5,
                 montant_total_ttc: calculateSubtotal(),
                 montant_net: calculateTotal(),
                 remise_globale: calculateDiscount()
