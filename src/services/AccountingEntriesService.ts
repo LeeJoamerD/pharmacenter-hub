@@ -119,16 +119,16 @@ export async function generateSaleAccountingEntries(data: VenteEcritureData): Pr
       return false;
     }
 
-    // Récupérer les comptes comptables nécessaires
+    // Récupérer les comptes comptables nécessaires depuis plan_comptable
     const compteNumeros = [
       defaultAccounts.compte_debit_numero,
       defaultAccounts.compte_credit_numero,
-      '4457', // TVA collectée
+      '4451', // TVA à décaisser (collectée)
       '4458'  // Centime additionnel
     ];
 
     const { data: comptes, error: comptesError } = await supabase
-      .from('comptes_comptables')
+      .from('plan_comptable')
       .select('id, numero_compte')
       .eq('tenant_id', tenantId)
       .in('numero_compte', compteNumeros);
@@ -174,7 +174,7 @@ export async function generateSaleAccountingEntries(data: VenteEcritureData): Pr
     }
 
     // Ligne 3: Crédit TVA Collectée
-    const compteTvaId = comptesMap['4457'];
+    const compteTvaId = comptesMap['4451'];
     if (montantTVA > 0 && compteTvaId) {
       lignes.push({
         tenant_id: tenantId,
