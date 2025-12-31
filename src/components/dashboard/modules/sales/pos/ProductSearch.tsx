@@ -31,6 +31,10 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
     // Récupérer les lots à la demande pour ce produit
     const lots = await getProductLots(product.id);
     onAddToCart({ ...product, lots });
+    
+    // Réinitialiser la recherche après ajout au panier
+    setSearchInput('');
+    setCurrentPage(1);
   };
 
   // Afficher un message si pas assez de caractères
