@@ -10,6 +10,15 @@
 const NO_DECIMAL_CURRENCIES = ['XAF', 'XOF', 'FCFA'];
 
 /**
+ * Normalise les espaces pour compatibilité PDF (jsPDF)
+ * Remplace les espaces insécables Unicode (U+202F, U+00A0) par des espaces ASCII standard
+ * Cela évite que jsPDF affiche "/" au lieu d'espaces
+ */
+const normalizePdfSpaces = (str: string): string => {
+  return str.replace(/[\u202F\u00A0]/g, ' ');
+};
+
+/**
  * Formate un montant avec le symbole de devise
  * Utilise l'espace comme séparateur de milliers (format français)
  * - XAF/XOF/FCFA : arrondi, sans décimales (ex: "7 441 FCFA")
@@ -24,13 +33,15 @@ export const formatCurrencyAmount = (
                       NO_DECIMAL_CURRENCIES.includes(currencySymbol.toUpperCase());
   
   if (isNoDecimal) {
-    return `${Math.round(validAmount).toLocaleString('fr-FR')} ${currencySymbol}`;
+    const formatted = normalizePdfSpaces(Math.round(validAmount).toLocaleString('fr-FR'));
+    return `${formatted} ${currencySymbol}`;
   }
   
-  return `${validAmount.toLocaleString('fr-FR', { 
+  const formatted = normalizePdfSpaces(validAmount.toLocaleString('fr-FR', { 
     minimumFractionDigits: 2, 
     maximumFractionDigits: 2 
-  })} ${currencySymbol}`;
+  }));
+  return `${formatted} ${currencySymbol}`;
 };
 
 /**
@@ -47,13 +58,13 @@ export const formatNumber = (
                       NO_DECIMAL_CURRENCIES.includes(currencyCode.toUpperCase());
   
   if (isNoDecimal) {
-    return Math.round(validAmount).toLocaleString('fr-FR');
+    return normalizePdfSpaces(Math.round(validAmount).toLocaleString('fr-FR'));
   }
   
-  return validAmount.toLocaleString('fr-FR', { 
+  return normalizePdfSpaces(validAmount.toLocaleString('fr-FR', { 
     minimumFractionDigits: 2, 
     maximumFractionDigits: 2 
-  });
+  }));
 };
 
 /**
