@@ -3,6 +3,7 @@
  * Affiche le détail TVA et Centime Additionnel
  */
 import jsPDF from 'jspdf';
+import { formatCurrencyAmount } from './currencyFormatter';
 
 interface ReceiptData {
   vente: {
@@ -34,6 +35,7 @@ interface ReceiptData {
     telephone?: string;
   };
   agentName?: string;
+  currencySymbol?: string;
 }
 
 export async function printReceipt(data: ReceiptData): Promise<string> {
@@ -42,6 +44,7 @@ export async function printReceipt(data: ReceiptData): Promise<string> {
     format: [80, 220] // Ticket thermique 80mm, plus long pour les détails
   });
 
+  const currency = data.currencySymbol || 'FCFA';
   let y = 10;
 
   // En-tête avec PharmaSoft
@@ -104,8 +107,8 @@ export async function printReceipt(data: ReceiptData): Promise<string> {
       y += 4;
     }
     
-    // Quantité et prix
-    const lineText = `${ligne.quantite} x ${ligne.prix_unitaire_ttc.toLocaleString()} = ${ligne.montant_ligne_ttc.toLocaleString()} FCFA`;
+    // Quantité et prix - utiliser le formatage correct
+    const lineText = `${ligne.quantite} x ${formatCurrencyAmount(ligne.prix_unitaire_ttc, currency)} = ${formatCurrencyAmount(ligne.montant_ligne_ttc, currency)}`;
     doc.text(lineText, 10, y);
     y += 5;
   });
@@ -116,32 +119,31 @@ export async function printReceipt(data: ReceiptData): Promise<string> {
   
   // Sous-total HT
   doc.text(`Sous-total HT:`, 5, y);
-  doc.text(`${(data.vente.montant_total_ht || 0).toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  doc.text(formatCurrencyAmount(data.vente.montant_total_ht || 0, currency), 75, y, { align: 'right' });
   y += 4;
 
   // TVA détaillée
   const tauxTva = data.vente.taux_tva || 18;
   doc.text(`TVA (${tauxTva}%):`, 5, y);
-  doc.text(`${(data.vente.montant_tva || 0).toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  doc.text(formatCurrencyAmount(data.vente.montant_tva || 0, currency), 75, y, { align: 'right' });
   y += 4;
 
-  // Centime Additionnel détaillé (si présent)
-  if (data.vente.montant_centime_additionnel && data.vente.montant_centime_additionnel > 0) {
-    const tauxCentime = data.vente.taux_centime_additionnel || 5;
-    doc.text(`Centime Add. (${tauxCentime}%):`, 5, y);
-    doc.text(`${data.vente.montant_centime_additionnel.toLocaleString()} FCFA`, 75, y, { align: 'right' });
-    y += 4;
-  }
+  // Centime Additionnel détaillé - toujours afficher si données fournies
+  const tauxCentime = data.vente.taux_centime_additionnel || 5;
+  const montantCentime = data.vente.montant_centime_additionnel || 0;
+  doc.text(`Centime Add. (${tauxCentime}%):`, 5, y);
+  doc.text(formatCurrencyAmount(montantCentime, currency), 75, y, { align: 'right' });
+  y += 4;
 
   // Sous-total TTC
   doc.text(`Sous-total TTC:`, 5, y);
-  doc.text(`${data.vente.montant_total_ttc.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  doc.text(formatCurrencyAmount(data.vente.montant_total_ttc, currency), 75, y, { align: 'right' });
   y += 4;
 
   // Remise (si présente)
   if (data.vente.remise_globale > 0) {
     doc.text(`Remise:`, 5, y);
-    doc.text(`-${data.vente.remise_globale.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+    doc.text(`-${formatCurrencyAmount(data.vente.remise_globale, currency)}`, 75, y, { align: 'right' });
     y += 4;
   }
 
@@ -149,19 +151,19 @@ export async function printReceipt(data: ReceiptData): Promise<string> {
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.text(`NET A PAYER:`, 5, y);
-  doc.text(`${data.vente.montant_net.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  doc.text(formatCurrencyAmount(data.vente.montant_net, currency), 75, y, { align: 'right' });
   y += 6;
 
   // Paiement
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.text(`Payé:`, 5, y);
-  doc.text(`${data.vente.montant_paye.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+  doc.text(formatCurrencyAmount(data.vente.montant_paye, currency), 75, y, { align: 'right' });
   y += 4;
 
   if (data.vente.montant_rendu > 0) {
     doc.text(`Rendu:`, 5, y);
-    doc.text(`${data.vente.montant_rendu.toLocaleString()} FCFA`, 75, y, { align: 'right' });
+    doc.text(formatCurrencyAmount(data.vente.montant_rendu, currency), 75, y, { align: 'right' });
     y += 4;
   }
 
