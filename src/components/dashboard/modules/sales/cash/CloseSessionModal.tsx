@@ -38,12 +38,46 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
   const [montantTheorique, setMontantTheorique] = useState(0);
   const [isCalculating, setIsCalculating] = useState(false);
   
+  // États pour les totaux entrées/sorties
+  const [totalEntrees, setTotalEntrees] = useState(0);
+  const [totalSorties, setTotalSorties] = useState(0);
+  
   // États pour les transactions en attente
   const [pendingTransactions, setPendingTransactions] = useState<PendingTransaction[]>([]);
   const [pendingTotal, setPendingTotal] = useState(0);
   const [isCheckingPending, setIsCheckingPending] = useState(false);
   const [showPendingWarning, setShowPendingWarning] = useState(false);
   const [forceClose, setForceClose] = useState(false);
+
+  // Calculer les totaux entrées/sorties depuis mouvements_caisse
+  const calculateSessionTotals = async (sessionId: string) => {
+    try {
+      const { data: movements, error } = await supabase
+        .from('mouvements_caisse')
+        .select('type_mouvement, montant')
+        .eq('tenant_id', tenantId)
+        .eq('session_caisse_id', sessionId);
+
+      if (error) throw error;
+
+      // Calculer Total Entrées = Ventes + Entrées
+      const ventes = movements?.filter(m => m.type_mouvement === 'Vente')
+        .reduce((sum, m) => sum + (m.montant || 0), 0) || 0;
+      const entrees = movements?.filter(m => m.type_mouvement === 'Entrée')
+        .reduce((sum, m) => sum + (m.montant || 0), 0) || 0;
+      
+      // Calculer Total Sorties = Sorties + Dépenses
+      const sorties = movements?.filter(m => m.type_mouvement === 'Sortie')
+        .reduce((sum, m) => sum + (m.montant || 0), 0) || 0;
+      const depenses = movements?.filter(m => m.type_mouvement === 'Dépense')
+        .reduce((sum, m) => sum + (m.montant || 0), 0) || 0;
+
+      setTotalEntrees(ventes + entrees);
+      setTotalSorties(sorties + depenses);
+    } catch (error) {
+      console.error('Erreur calcul totaux session:', error);
+    }
+  };
 
   // Charger le montant théorique et vérifier les transactions en attente
   useEffect(() => {
@@ -56,6 +90,9 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
         })
         .finally(() => setIsCalculating(false));
 
+      // Calculer les totaux Entrées/Sorties
+      calculateSessionTotals(session.id);
+
       // Vérifier les transactions en attente
       setIsCheckingPending(true);
       checkPendingTransactions(session.id);
@@ -65,6 +102,8 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
     if (!open) {
       setShowPendingWarning(false);
       setForceClose(false);
+      setTotalEntrees(0);
+      setTotalSorties(0);
     }
   }, [session, open, getSessionBalance]);
 
@@ -194,6 +233,14 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
             <div className="flex justify-between">
               <span className="text-sm text-muted-foreground">Fond de caisse</span>
               <span className="font-medium">{formatPrice(session?.fond_caisse_ouverture || 0)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-green-600">Total Entrées (Ventes + Entrées)</span>
+              <span className="font-medium text-green-600">{formatPrice(totalEntrees)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-red-600">Total Sorties (Sorties + Dépenses)</span>
+              <span className="font-medium text-red-600">{formatPrice(totalSorties)}</span>
             </div>
           </div>
 
