@@ -64,17 +64,17 @@ export async function generateSaleAccountingEntries(data: VenteEcritureData): Pr
       return false;
     }
 
-    // Récupérer le journal des ventes
+    // Récupérer le journal des ventes depuis journaux_comptables (table liée à ecritures_comptables)
     const { data: journal, error: journalError } = await supabase
-      .from('accounting_journals')
-      .select('id, code')
+      .from('journaux_comptables')
+      .select('id, code_journal')
       .eq('tenant_id', tenantId)
-      .eq('code', defaultAccounts.journal_code)
+      .eq('code_journal', defaultAccounts.journal_code)
       .eq('is_active', true)
       .maybeSingle();
 
     if (journalError || !journal) {
-      console.log('⚠️ Journal comptable non trouvé, écritures non générées');
+      console.log(`⚠️ Journal comptable non trouvé pour code_journal='${defaultAccounts.journal_code}', écritures non générées`);
       return false;
     }
 
