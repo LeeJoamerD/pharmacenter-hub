@@ -59,12 +59,12 @@ export const useLotsPaginated = (params: LotsPaginatedParams): LotsPaginatedResu
       const { data, error } = await supabase
         .rpc('search_lots_paginated', {
           p_tenant_id: tenantId,
-          p_search_term: searchTerm || null,
+          p_search: searchTerm || null,
           p_status_filter: statusFilter,
           p_sort_by: sortBy,
           p_sort_order: sortOrder,
           p_page_size: pageSize,
-          p_current_page: currentPage
+          p_page: currentPage
         });
 
       if (error) throw error;
