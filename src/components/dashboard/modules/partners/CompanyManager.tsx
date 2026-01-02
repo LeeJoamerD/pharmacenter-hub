@@ -238,14 +238,17 @@ const Societes = () => {
                        <FormField control={form.control} name="assureur_id" render={({ field }) => (
                          <FormItem>
                            <FormLabel>Assureur (optionnel)</FormLabel>
-                           <Select onValueChange={(value) => field.onChange(value === '' ? null : value)} value={field.value || ""}>
+                           <Select 
+                             onValueChange={(value) => field.onChange(value === '__none__' ? null : value)} 
+                             value={field.value || '__none__'}
+                           >
                              <FormControl>
                                <SelectTrigger>
                                  <SelectValue placeholder="Aucun assureur" />
                                </SelectTrigger>
                              </FormControl>
                              <SelectContent>
-                               <SelectItem value="">Aucun assureur</SelectItem>
+                               <SelectItem value="__none__">Aucun assureur</SelectItem>
                                {assureurs.map((assureur: Assureur) => (
                                  <SelectItem key={assureur.id} value={assureur.id}>
                                    {assureur.libelle_assureur}
