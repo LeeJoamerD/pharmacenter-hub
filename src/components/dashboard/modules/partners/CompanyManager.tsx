@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useForm } from 'react-hook-form';
-import { Plus, Search, Edit, Trash2, Building, Phone, MessageCircle, AtSign } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Building, Phone, MessageCircle, AtSign, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useQueryClient } from '@tanstack/react-query';
@@ -23,9 +24,11 @@ interface Societe {
   email: string;
   limite_dette: number;
   niu: string;
-  assureur_id: string;
+  assureur_id: string | null;
   taux_couverture_agent: number;
   taux_couverture_ayant_droit: number;
+  taux_remise_automatique: number;
+  peut_prendre_bon: boolean;
   created_at: string;
 }
 
@@ -58,6 +61,9 @@ const Societes = () => {
       limite_dette: 0,
       taux_couverture_agent: 0,
       taux_couverture_ayant_droit: 0,
+      taux_remise_automatique: 0,
+      peut_prendre_bon: true,
+      assureur_id: null,
     },
   });
 
@@ -120,12 +126,6 @@ const Societes = () => {
 
   // Gestion de la soumission du formulaire
   const onSubmit = (data: Partial<Societe>) => {
-    // Validation obligatoire de l'assureur
-    if (!data.assureur_id) {
-        toast({ title: "Erreur", description: "Veuillez sélectionner un assureur.", variant: "destructive" });
-        return;
-    }
-
     const finalData = {
         libelle_societe: data.libelle_societe,
         niu: data.niu,
@@ -134,9 +134,11 @@ const Societes = () => {
         telephone_whatsapp: data.telephone_whatsapp,
         email: data.email,
         limite_dette: data.limite_dette || 0,
-        assureur_id: data.assureur_id,
+        assureur_id: data.assureur_id || null,
         taux_couverture_agent: data.taux_couverture_agent || 0,
         taux_couverture_ayant_droit: data.taux_couverture_ayant_droit || 0,
+        taux_remise_automatique: data.taux_remise_automatique || 0,
+        peut_prendre_bon: data.peut_prendre_bon !== false,
     };
 
     if (editingSociete) {
@@ -171,13 +173,21 @@ const Societes = () => {
         limite_dette: 0,
         taux_couverture_agent: 0,
         taux_couverture_ayant_droit: 0,
+        taux_remise_automatique: 0,
+        peut_prendre_bon: true,
+        assureur_id: null,
     });
     setIsDialogOpen(true);
   };
 
   const handleEdit = (societe: Societe) => {
     setEditingSociete(societe);
-    form.reset(societe);
+    form.reset({
+      ...societe,
+      assureur_id: societe.assureur_id || null,
+      taux_remise_automatique: societe.taux_remise_automatique || 0,
+      peut_prendre_bon: societe.peut_prendre_bon !== false,
+    });
     setIsDialogOpen(true);
   };
 
@@ -208,7 +218,7 @@ const Societes = () => {
                   Ajouter une Société
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-3xl">
+              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingSociete ? 'Modifier la Société' : 'Ajouter une nouvelle Société'}</DialogTitle>
                   <DialogDescription>
@@ -216,91 +226,143 @@ const Societes = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4 py-4">
-                    <FormField control={form.control} name="libelle_societe" render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>Nom de la société *</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                     <FormField control={form.control} name="assureur_id" render={({ field }) => (
-                       <FormItem>
-                         <FormLabel>Assureur *</FormLabel>
-                         <Select onValueChange={field.onChange} value={field.value || ""}>
-                           <FormControl>
-                             <SelectTrigger>
-                               <SelectValue placeholder="Sélectionner un assureur" />
-                             </SelectTrigger>
-                           </FormControl>
-                           <SelectContent>
-                             {assureurs.map((assureur: Assureur) => (
-                               <SelectItem key={assureur.id} value={assureur.id}>
-                                 {assureur.libelle_assureur}
-                               </SelectItem>
-                             ))}
-                           </SelectContent>
-                         </Select>
-                         <FormMessage />
-                       </FormItem>
-                     )} />
-                     <FormField control={form.control} name="niu" render={({ field }) => (
-                       <FormItem>
-                         <FormLabel>NIU</FormLabel>
-                         <FormControl><Input {...field} /></FormControl>
-                         <FormMessage />
-                       </FormItem>
-                     )} />
-                    <FormField control={form.control} name="telephone_appel" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Téléphone principal *</FormLabel>
-                        <FormControl><Input {...field} type="tel" /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="telephone_whatsapp" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Téléphone WhatsApp</FormLabel>
-                        <FormControl><Input {...field} type="tel" /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="email" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl><Input {...field} type="email" /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="limite_dette" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
-                        <FormControl><Input {...field} type="number" step={getInputStep()} placeholder={isNoDecimalCurrency() ? "0" : "0.00"} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="taux_couverture_agent" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Taux couverture agent (%)</FormLabel>
-                        <FormControl><Input {...field} type="number" onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="taux_couverture_ayant_droit" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Taux couverture ayant droit (%)</FormLabel>
-                        <FormControl><Input {...field} type="number" onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="adresse" render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>Adresse</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                     <DialogFooter className="col-span-2 mt-4">
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField control={form.control} name="libelle_societe" render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Nom de la société *</FormLabel>
+                          <FormControl><Input {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                       <FormField control={form.control} name="assureur_id" render={({ field }) => (
+                         <FormItem>
+                           <FormLabel>Assureur (optionnel)</FormLabel>
+                           <Select onValueChange={(value) => field.onChange(value === '' ? null : value)} value={field.value || ""}>
+                             <FormControl>
+                               <SelectTrigger>
+                                 <SelectValue placeholder="Aucun assureur" />
+                               </SelectTrigger>
+                             </FormControl>
+                             <SelectContent>
+                               <SelectItem value="">Aucun assureur</SelectItem>
+                               {assureurs.map((assureur: Assureur) => (
+                                 <SelectItem key={assureur.id} value={assureur.id}>
+                                   {assureur.libelle_assureur}
+                                 </SelectItem>
+                               ))}
+                             </SelectContent>
+                           </Select>
+                           <FormMessage />
+                         </FormItem>
+                       )} />
+                       <FormField control={form.control} name="niu" render={({ field }) => (
+                         <FormItem>
+                           <FormLabel>NIU</FormLabel>
+                           <FormControl><Input {...field} /></FormControl>
+                           <FormMessage />
+                         </FormItem>
+                       )} />
+                      <FormField control={form.control} name="telephone_appel" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Téléphone principal *</FormLabel>
+                          <FormControl><Input {...field} type="tel" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="telephone_whatsapp" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Téléphone WhatsApp</FormLabel>
+                          <FormControl><Input {...field} type="tel" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="email" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl><Input {...field} type="email" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="limite_dette" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
+                          <FormControl><Input {...field} type="number" step={getInputStep()} placeholder={isNoDecimalCurrency() ? "0" : "0.00"} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="taux_couverture_agent" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Taux couverture agent (%)</FormLabel>
+                          <FormControl><Input {...field} type="number" onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="taux_couverture_ayant_droit" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Taux couverture ayant droit (%)</FormLabel>
+                          <FormControl><Input {...field} type="number" onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="adresse" render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Adresse</FormLabel>
+                          <FormControl><Input {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+
+                    {/* Bloc Infos Compte Client */}
+                    <Card className="border-primary/20">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          Infos Compte Client
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField control={form.control} name="taux_remise_automatique" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Taux remise automatique (%)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0"
+                                  max="100"
+                                  placeholder="0" 
+                                  {...field}
+                                  value={field.value || 0}
+                                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                                />
+                              </FormControl>
+                              <FormDescription>Remise appliquée automatiquement au point de vente</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <FormField control={form.control} name="peut_prendre_bon" render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value !== false}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Peut prendre des produits en bon</FormLabel>
+                                <FormDescription>
+                                  Autoriser les achats à crédit au point de vente
+                                </FormDescription>
+                              </div>
+                            </FormItem>
+                          )} />
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                     <DialogFooter className="mt-4">
                         <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
                         <Button type="submit">{editingSociete ? 'Modifier' : 'Ajouter'}</Button>
                     </DialogFooter>
@@ -322,6 +384,7 @@ const Societes = () => {
                         <TableHead>Contacts</TableHead>
                         <TableHead>Adresse</TableHead>
                         <TableHead>Limite dette</TableHead>
+                        <TableHead>Remise</TableHead>
                         <TableHead>Actions</TableHead>
                     </TableRow>
                     </TableHeader>
@@ -367,6 +430,7 @@ const Societes = () => {
                           </div>
                         </TableCell>
                         <TableCell>{formatAmount(societe.limite_dette || 0)}</TableCell>
+                        <TableCell>{societe.taux_remise_automatique || 0}%</TableCell>
                         <TableCell>
                             <div className="flex space-x-2">
                             <Button variant="outline" size="icon" onClick={() => handleEdit(societe)}>

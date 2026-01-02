@@ -149,11 +149,11 @@ export const usePOSData = () => {
           .from('clients')
           .insert({
             tenant_id: tenantId,
-            type_client: transactionData.customer.type === 'assure' ? 'Assuré' : 'Ordinaire',
+            type_client: 'Conventionné', // Type par défaut pour nouveaux clients au POS
             nom_complet: transactionData.customer.name,
             telephone: transactionData.customer.phone,
             statut: 'Actif'
-          })
+          } as any)
           .select()
           .single();
         

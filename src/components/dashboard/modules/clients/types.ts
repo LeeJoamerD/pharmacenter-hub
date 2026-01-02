@@ -9,7 +9,7 @@ export const clientFormSchema = z.object({
   nom_complet: z.string().min(1, "Le nom complet est requis"),
   telephone: z.string().min(1, "Le téléphone est requis"),
   adresse: z.string().optional(),
-  type_client: z.enum(['Ordinaire', 'Assuré', 'Conventionné', 'Entreprise', 'Personnel']).optional(),
+  type_client: z.enum(['Ordinaire', 'Conventionné', 'Entreprise', 'Personnel']).optional(),
   taux_remise_automatique: z.number().min(0).max(100).default(0),
 });
 
