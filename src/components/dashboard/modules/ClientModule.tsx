@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, Grid, List, BarChart, Users } from 'lucide-react';
+import { Search, Grid, List, BarChart, Users, Info } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,6 +14,7 @@ import ClientAnalytics from './clients/ClientAnalytics';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { Client, ClientFormData, clientFormSchema } from './clients/types';
 import { toast } from 'sonner';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 const ClientModule = () => {
@@ -45,20 +45,7 @@ const ClientModule = () => {
   console.log('Clients data:', clients);
   console.log('Is loading:', isLoading);
 
-  // Mutations
-  const createMutation = useTenantMutation('clients', 'insert', {
-    onSuccess: () => {
-      toast.success('Client créé avec succès');
-      setIsDialogOpen(false);
-      form.reset();
-      refetch();
-    },
-    onError: (error) => {
-      toast.error('Erreur lors de la création du client');
-      console.error(error);
-    }
-  });
-
+  // Mutations - uniquement pour les clients "Ordinaire" (legacy)
   const updateMutation = useTenantMutation('clients', 'update', {
     onSuccess: () => {
       toast.success('Client modifié avec succès');
@@ -97,13 +84,13 @@ const ClientModule = () => {
   const handleSubmit = (data: ClientFormData) => {
     try {
       if (editingClient) {
+        // Seuls les clients "Ordinaire" peuvent être modifiés ici
+        if (editingClient.type_client !== 'Ordinaire') {
+          toast.error('Ce type de client ne peut être modifié que depuis son module d\'origine');
+          return;
+        }
         updateMutation.mutate({ 
           id: editingClient.id, 
-          ...data,
-          type_client: 'Ordinaire'
-        });
-      } else {
-        createMutation.mutate({
           ...data,
           type_client: 'Ordinaire'
         });
@@ -115,6 +102,17 @@ const ClientModule = () => {
   };
 
   const handleEdit = (client: Client) => {
+    // Vérifier si le client peut être modifié ici
+    if (client.type_client !== 'Ordinaire') {
+      const moduleMap: Record<string, string> = {
+        'Personnel': 'Administration > Personnel > Employés',
+        'Entreprise': 'Administration > Partenaires > Sociétés',
+        'Conventionné': 'Administration > Partenaires > Conventionnés'
+      };
+      toast.info(`Ce client de type "${client.type_client}" doit être modifié depuis le module ${moduleMap[client.type_client as string] || 'correspondant'}`);
+      return;
+    }
+    
     setEditingClient(client);
     form.reset({
       nom_complet: client.nom_complet || '',
@@ -126,6 +124,11 @@ const ClientModule = () => {
   };
 
   const handleDelete = (id: string) => {
+    const client = clients.find((c: Client) => c.id === id);
+    if (client && client.type_client !== 'Ordinaire') {
+      toast.error('Seuls les clients de type "Ordinaire" peuvent être supprimés depuis ce module');
+      return;
+    }
     if (confirm('Êtes-vous sûr de vouloir supprimer ce client ?')) {
       deleteMutation.mutate({ id });
     }
@@ -203,23 +206,24 @@ const ClientModule = () => {
                     Consultez et gérez tous vos clients
                   </CardDescription>
                 </div>
-                <Button onClick={() => {
-                  setEditingClient(null);
-                  form.reset({
-                    nom_complet: '',
-                    telephone: '',
-                    adresse: '',
-                    taux_remise_automatique: 0,
-                  });
-                  setIsDialogOpen(true);
-                }}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nouveau Client
-                </Button>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {/* Message informatif */}
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>Création de clients</AlertTitle>
+                  <AlertDescription>
+                    Les comptes clients sont créés automatiquement depuis les modules :
+                    <ul className="list-disc list-inside mt-2 text-sm">
+                      <li><strong>Personnel</strong> : Administration → Personnel → Employés</li>
+                      <li><strong>Entreprise</strong> : Administration → Partenaires → Sociétés</li>
+                      <li><strong>Conventionné</strong> : Administration → Partenaires → Conventionnés</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+
                 {/* Barre de recherche et filtres */}
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2 flex-1">
@@ -257,7 +261,7 @@ const ClientModule = () => {
                 </div>
 
                 {/* Statistiques */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <Card>
                     <CardContent className="p-4">
                       <div className="text-2xl font-bold">{clients.length}</div>
@@ -266,18 +270,26 @@ const ClientModule = () => {
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-green-600">
-                        {clients.filter((c: Client) => (c.taux_remise_automatique || 0) > 0).length}
+                      <div className="text-2xl font-bold text-blue-600">
+                        {clients.filter((c: Client) => c.type_client === 'Conventionné').length}
                       </div>
-                      <p className="text-sm text-muted-foreground">Avec remise</p>
+                      <p className="text-sm text-muted-foreground">Conventionnés</p>
                     </CardContent>
                   </Card>
                   <Card>
                     <CardContent className="p-4">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {clients.filter((c: Client) => (c.taux_remise_automatique || 0) === 0).length}
+                      <div className="text-2xl font-bold text-purple-600">
+                        {clients.filter((c: Client) => c.type_client === 'Entreprise').length}
                       </div>
-                      <p className="text-sm text-muted-foreground">Sans remise</p>
+                      <p className="text-sm text-muted-foreground">Entreprises</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-2xl font-bold text-green-600">
+                        {clients.filter((c: Client) => c.type_client === 'Personnel').length}
+                      </div>
+                      <p className="text-sm text-muted-foreground">Personnel</p>
                     </CardContent>
                   </Card>
                 </div>

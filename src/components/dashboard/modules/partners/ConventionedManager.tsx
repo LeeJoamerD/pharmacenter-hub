@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Edit, Trash2, UserCheck, Phone, MessageCircle, AtSign } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Search, Edit, Trash2, UserCheck, Phone, MessageCircle, AtSign, CreditCard } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,6 +16,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import type { Database } from '@/integrations/supabase/types';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+
+interface Assureur {
+  id: string;
+  libelle_assureur: string;
+}
 
 const conventionneSchema = z.object({
   noms: z.string().min(1, "Le nom est requis"),
@@ -27,6 +34,9 @@ const conventionneSchema = z.object({
   taux_ticket_moderateur: z.number().min(0).max(100, "Le taux doit être entre 0 et 100").optional(),
   caution: z.number().min(0, "La caution ne peut être négative").optional(),
   taux_remise_automatique: z.number().min(0).max(100, "Le taux doit être entre 0 et 100").optional(),
+  // Nouveaux champs
+  assureur_id: z.string().optional().or(z.literal('')),
+  peut_prendre_bon: z.boolean().optional(),
 });
 
 type Conventionne = Database['public']['Tables']['conventionnes']['Row'];
@@ -46,6 +56,15 @@ const ConventionedManager = () => {
     '*',
     undefined,
     { orderBy: { column: 'noms', ascending: true } }
+  );
+
+  // Récupération des assureurs
+  const { data: assureurs = [] } = useTenantQueryWithCache(
+    ['assureurs'],
+    'assureurs',
+    'id, libelle_assureur',
+    {},
+    { orderBy: { column: 'libelle_assureur', ascending: true } }
   );
 
   // Mutations
@@ -92,7 +111,9 @@ const ConventionedManager = () => {
     niu: '',
     taux_ticket_moderateur: 0,
     caution: 0,
-    taux_remise_automatique: 0
+    taux_remise_automatique: 0,
+    assureur_id: '',
+    peut_prendre_bon: true
   }), []);
 
   const form = useForm<ConventionneInsert>({
@@ -107,10 +128,15 @@ const ConventionedManager = () => {
   );
 
   const onSubmit = useCallback((data: ConventionneInsert) => {
+    const submitData = {
+      ...data,
+      assureur_id: data.assureur_id || null,
+      peut_prendre_bon: data.peut_prendre_bon !== false
+    };
     if (editingConventionne) {
-      updateMutation.mutate({ ...data, id: editingConventionne.id });
+      updateMutation.mutate({ ...submitData, id: editingConventionne.id });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(submitData);
     }
   }, [editingConventionne, updateMutation, createMutation]);
 
@@ -127,7 +153,9 @@ const ConventionedManager = () => {
       niu: conventionne.niu || '',
       taux_ticket_moderateur: conventionne.taux_ticket_moderateur || 0,
       caution: conventionne.caution || 0,
-      taux_remise_automatique: conventionne.taux_remise_automatique || 0
+      taux_remise_automatique: conventionne.taux_remise_automatique || 0,
+      assureur_id: (conventionne as any).assureur_id || '',
+      peut_prendre_bon: (conventionne as any).peut_prendre_bon !== false
     });
     setIsDialogOpen(true);
   }, [form]);
@@ -381,6 +409,65 @@ const ConventionedManager = () => {
                         </FormItem>
                       )}
                     />
+
+                    {/* Bloc Infos Compte Client */}
+                    <Card className="border-primary/20">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          Infos Compte Client
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="assureur_id"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Assureur (optionnel)</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value || ''}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Aucun assureur" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="">Aucun assureur</SelectItem>
+                                    {assureurs.map((assureur: Assureur) => (
+                                      <SelectItem key={assureur.id} value={assureur.id}>
+                                        {assureur.libelle_assureur}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="peut_prendre_bon"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value !== false}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <div className="space-y-1 leading-none">
+                                  <FormLabel>Peut prendre des produits en bon</FormLabel>
+                                  <FormDescription>
+                                    Autoriser les achats à crédit au point de vente
+                                  </FormDescription>
+                                </div>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
 
                     <div className="flex justify-end gap-2">
                       <Button 

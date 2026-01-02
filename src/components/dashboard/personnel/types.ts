@@ -59,7 +59,20 @@ export const employeeSchema = z.object({
   statut_contractuel: z.string()
     .optional()
     .or(z.literal(''))
-    .transform(val => val === "" ? undefined : val)
+    .transform(val => val === "" ? undefined : val),
+  // Infos Compte Client
+  assureur_id: z.string()
+    .optional()
+    .or(z.literal(''))
+    .transform(val => val === "" ? undefined : val),
+  taux_remise_automatique: z.number()
+    .min(0, "Le taux de remise doit être positif")
+    .max(100, "Le taux de remise ne peut pas dépasser 100%")
+    .default(0),
+  limite_dette: z.number()
+    .min(0, "La limite de dette doit être positive")
+    .default(0),
+  peut_prendre_bon: z.boolean().default(true)
 });
 
 export type EmployeeFormData = z.infer<typeof employeeSchema>;
@@ -88,6 +101,11 @@ export interface Employee {
   role?: string;
   is_active?: boolean;
   reference_agent?: string;
+  // Infos Compte Client
+  assureur_id?: string;
+  taux_remise_automatique?: number;
+  limite_dette?: number;
+  peut_prendre_bon?: boolean;
 }
 
 export const leaveRequestSchema = z.object({

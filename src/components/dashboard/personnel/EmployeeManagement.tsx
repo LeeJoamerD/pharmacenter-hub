@@ -103,7 +103,12 @@ export const EmployeeManagement = () => {
       situation_familiale: '',
       nombre_enfants: 0,
       numero_cnss: '',
-      statut_contractuel: ''
+      statut_contractuel: '',
+      // Infos Compte Client
+      assureur_id: '',
+      taux_remise_automatique: 0,
+      limite_dette: 0,
+      peut_prendre_bon: true
     }
   });
 
@@ -118,7 +123,12 @@ export const EmployeeManagement = () => {
         profession: data.profession || null,
         photo_identite: data.photo_identite || null,
         numero_cnss: data.numero_cnss || null,
-        salaire_base: data.salaire_base || null
+        salaire_base: data.salaire_base || null,
+        // Infos Compte Client
+        assureur_id: data.assureur_id || null,
+        taux_remise_automatique: data.taux_remise_automatique || 0,
+        limite_dette: data.limite_dette || 0,
+        peut_prendre_bon: data.peut_prendre_bon !== false
       };
 
       if (editingEmployee) {
@@ -162,7 +172,12 @@ export const EmployeeManagement = () => {
       situation_familiale: employee.situation_familiale || '',
       nombre_enfants: employee.nombre_enfants || 0,
       numero_cnss: employee.numero_cnss || '',
-      statut_contractuel: employee.statut_contractuel || ''
+      statut_contractuel: employee.statut_contractuel || '',
+      // Infos Compte Client
+      assureur_id: employee.assureur_id || '',
+      taux_remise_automatique: employee.taux_remise_automatique || 0,
+      limite_dette: employee.limite_dette || 0,
+      peut_prendre_bon: employee.peut_prendre_bon !== false
     });
     setIsDialogOpen(true);
   };
@@ -193,7 +208,12 @@ export const EmployeeManagement = () => {
       situation_familiale: '',
       nombre_enfants: 0,
       numero_cnss: '',
-      statut_contractuel: ''
+      statut_contractuel: '',
+      // Infos Compte Client
+      assureur_id: '',
+      taux_remise_automatique: 0,
+      limite_dette: 0,
+      peut_prendre_bon: true
     });
   };
 
@@ -267,7 +287,12 @@ export const EmployeeManagement = () => {
                    situation_familiale: '',
                    nombre_enfants: 0,
                    numero_cnss: '',
-                   statut_contractuel: ''
+                   statut_contractuel: '',
+                   // Infos Compte Client
+                   assureur_id: '',
+                   taux_remise_automatique: 0,
+                   limite_dette: 0,
+                   peut_prendre_bon: true
                  });
                }}>
                 <Plus className="w-4 h-4 mr-2" />

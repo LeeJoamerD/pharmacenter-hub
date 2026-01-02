@@ -5024,6 +5024,7 @@ export type Database = {
         Row: {
           adresse: string | null
           allergies: Json | null
+          assureur_id: string | null
           chronic_conditions: Json | null
           contact_email: string | null
           contact_fonction: string | null
@@ -5047,6 +5048,7 @@ export type Database = {
           numero_police: string | null
           numero_registre_commerce: string | null
           personnel_id: string | null
+          peut_prendre_bon: boolean | null
           plafond_annuel: number | null
           plafond_mensuel: number | null
           raison_sociale: string | null
@@ -5064,6 +5066,7 @@ export type Database = {
         Insert: {
           adresse?: string | null
           allergies?: Json | null
+          assureur_id?: string | null
           chronic_conditions?: Json | null
           contact_email?: string | null
           contact_fonction?: string | null
@@ -5087,6 +5090,7 @@ export type Database = {
           numero_police?: string | null
           numero_registre_commerce?: string | null
           personnel_id?: string | null
+          peut_prendre_bon?: boolean | null
           plafond_annuel?: number | null
           plafond_mensuel?: number | null
           raison_sociale?: string | null
@@ -5104,6 +5108,7 @@ export type Database = {
         Update: {
           adresse?: string | null
           allergies?: Json | null
+          assureur_id?: string | null
           chronic_conditions?: Json | null
           contact_email?: string | null
           contact_fonction?: string | null
@@ -5127,6 +5132,7 @@ export type Database = {
           numero_police?: string | null
           numero_registre_commerce?: string | null
           personnel_id?: string | null
+          peut_prendre_bon?: boolean | null
           plafond_annuel?: number | null
           plafond_mensuel?: number | null
           raison_sociale?: string | null
@@ -5142,6 +5148,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "clients_assureur_id_fkey"
+            columns: ["assureur_id"]
+            isOneToOne: false
+            referencedRelation: "assureurs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "clients_conventionne_id_fkey"
             columns: ["conventionne_id"]
@@ -6436,6 +6449,7 @@ export type Database = {
       conventionnes: {
         Row: {
           adresse: string | null
+          assureur_id: string | null
           caution: number | null
           created_at: string
           email: string | null
@@ -6443,6 +6457,7 @@ export type Database = {
           limite_dette: number | null
           niu: string | null
           noms: string
+          peut_prendre_bon: boolean | null
           taux_remise_automatique: number | null
           taux_ticket_moderateur: number | null
           telephone_appel: string | null
@@ -6453,6 +6468,7 @@ export type Database = {
         }
         Insert: {
           adresse?: string | null
+          assureur_id?: string | null
           caution?: number | null
           created_at?: string
           email?: string | null
@@ -6460,6 +6476,7 @@ export type Database = {
           limite_dette?: number | null
           niu?: string | null
           noms: string
+          peut_prendre_bon?: boolean | null
           taux_remise_automatique?: number | null
           taux_ticket_moderateur?: number | null
           telephone_appel?: string | null
@@ -6470,6 +6487,7 @@ export type Database = {
         }
         Update: {
           adresse?: string | null
+          assureur_id?: string | null
           caution?: number | null
           created_at?: string
           email?: string | null
@@ -6477,6 +6495,7 @@ export type Database = {
           limite_dette?: number | null
           niu?: string | null
           noms?: string
+          peut_prendre_bon?: boolean | null
           taux_remise_automatique?: number | null
           taux_ticket_moderateur?: number | null
           telephone_appel?: string | null
@@ -6485,7 +6504,15 @@ export type Database = {
           updated_at?: string
           ville?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "conventionnes_assureur_id_fkey"
+            columns: ["assureur_id"]
+            isOneToOne: false
+            referencedRelation: "assureurs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cross_tenant_permissions: {
         Row: {
@@ -14206,6 +14233,7 @@ export type Database = {
       personnel: {
         Row: {
           adresse: string | null
+          assureur_id: string | null
           auth_user_id: string | null
           created_at: string
           date_naissance: string | null
@@ -14219,6 +14247,7 @@ export type Database = {
           nombre_enfants: number | null
           noms: string
           numero_cnss: string | null
+          peut_prendre_bon: boolean | null
           photo_identite: string | null
           prenoms: string
           profession: string | null
@@ -14231,6 +14260,7 @@ export type Database = {
           statut_contractuel:
             | Database["public"]["Enums"]["statut_contractuel"]
             | null
+          taux_remise_automatique: number | null
           telephone_appel: string | null
           telephone_whatsapp: string | null
           tenant_id: string
@@ -14238,6 +14268,7 @@ export type Database = {
         }
         Insert: {
           adresse?: string | null
+          assureur_id?: string | null
           auth_user_id?: string | null
           created_at?: string
           date_naissance?: string | null
@@ -14251,6 +14282,7 @@ export type Database = {
           nombre_enfants?: number | null
           noms: string
           numero_cnss?: string | null
+          peut_prendre_bon?: boolean | null
           photo_identite?: string | null
           prenoms: string
           profession?: string | null
@@ -14263,6 +14295,7 @@ export type Database = {
           statut_contractuel?:
             | Database["public"]["Enums"]["statut_contractuel"]
             | null
+          taux_remise_automatique?: number | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
           tenant_id: string
@@ -14270,6 +14303,7 @@ export type Database = {
         }
         Update: {
           adresse?: string | null
+          assureur_id?: string | null
           auth_user_id?: string | null
           created_at?: string
           date_naissance?: string | null
@@ -14283,6 +14317,7 @@ export type Database = {
           nombre_enfants?: number | null
           noms?: string
           numero_cnss?: string | null
+          peut_prendre_bon?: boolean | null
           photo_identite?: string | null
           prenoms?: string
           profession?: string | null
@@ -14295,12 +14330,20 @@ export type Database = {
           statut_contractuel?:
             | Database["public"]["Enums"]["statut_contractuel"]
             | null
+          taux_remise_automatique?: number | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
           tenant_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "personnel_assureur_id_fkey"
+            columns: ["assureur_id"]
+            isOneToOne: false
+            referencedRelation: "assureurs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "personnel_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -17483,15 +17526,17 @@ export type Database = {
       societes: {
         Row: {
           adresse: string | null
-          assureur_id: string
+          assureur_id: string | null
           created_at: string
           email: string | null
           id: string
           libelle_societe: string
           limite_dette: number | null
           niu: string | null
+          peut_prendre_bon: boolean | null
           taux_couverture_agent: number | null
           taux_couverture_ayant_droit: number | null
+          taux_remise_automatique: number | null
           telephone_appel: string | null
           telephone_whatsapp: string | null
           tenant_id: string
@@ -17499,15 +17544,17 @@ export type Database = {
         }
         Insert: {
           adresse?: string | null
-          assureur_id: string
+          assureur_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
           libelle_societe: string
           limite_dette?: number | null
           niu?: string | null
+          peut_prendre_bon?: boolean | null
           taux_couverture_agent?: number | null
           taux_couverture_ayant_droit?: number | null
+          taux_remise_automatique?: number | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
           tenant_id: string
@@ -17515,15 +17562,17 @@ export type Database = {
         }
         Update: {
           adresse?: string | null
-          assureur_id?: string
+          assureur_id?: string | null
           created_at?: string
           email?: string | null
           id?: string
           libelle_societe?: string
           limite_dette?: number | null
           niu?: string | null
+          peut_prendre_bon?: boolean | null
           taux_couverture_agent?: number | null
           taux_couverture_ayant_droit?: number | null
+          taux_remise_automatique?: number | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
           tenant_id?: string
@@ -20776,12 +20825,7 @@ export type Database = {
         | "Annulée"
         | "Remboursée"
         | "Finalisée"
-      type_client:
-        | "Ordinaire"
-        | "Assuré"
-        | "Conventionné"
-        | "Entreprise"
-        | "Personnel"
+      type_client: "Ordinaire" | "Conventionné" | "Entreprise" | "Personnel"
       type_session_enum: "Matin" | "Midi" | "Soir"
       type_vente: "Comptant" | "Crédit" | "Assurance"
     }
@@ -20948,13 +20992,7 @@ export const Constants = {
         "Remboursée",
         "Finalisée",
       ],
-      type_client: [
-        "Ordinaire",
-        "Assuré",
-        "Conventionné",
-        "Entreprise",
-        "Personnel",
-      ],
+      type_client: ["Ordinaire", "Conventionné", "Entreprise", "Personnel"],
       type_session_enum: ["Matin", "Midi", "Soir"],
       type_vente: ["Comptant", "Crédit", "Assurance"],
     },
