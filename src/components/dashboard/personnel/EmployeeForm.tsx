@@ -494,6 +494,55 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                     )}
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="taux_agent"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Taux Agent (%)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            placeholder="0"
+                            {...field}
+                            value={field.value || 0}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormDescription>Taux de prise en charge pour l'agent</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="taux_ayant_droit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Taux Ayant Droit (%)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            placeholder="0"
+                            {...field}
+                            value={field.value || 0}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormDescription>Taux de prise en charge pour les ayants droit</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>

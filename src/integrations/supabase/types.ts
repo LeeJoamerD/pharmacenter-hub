@@ -5055,6 +5055,8 @@ export type Database = {
           secteur_activite: string | null
           societe_id: string | null
           statut: Database["public"]["Enums"]["statut_client"] | null
+          taux_agent: number | null
+          taux_ayant_droit: number | null
           taux_couverture: number | null
           taux_remise_automatique: number | null
           telephone: string | null
@@ -5097,6 +5099,8 @@ export type Database = {
           secteur_activite?: string | null
           societe_id?: string | null
           statut?: Database["public"]["Enums"]["statut_client"] | null
+          taux_agent?: number | null
+          taux_ayant_droit?: number | null
           taux_couverture?: number | null
           taux_remise_automatique?: number | null
           telephone?: string | null
@@ -5139,6 +5143,8 @@ export type Database = {
           secteur_activite?: string | null
           societe_id?: string | null
           statut?: Database["public"]["Enums"]["statut_client"] | null
+          taux_agent?: number | null
+          taux_ayant_droit?: number | null
           taux_couverture?: number | null
           taux_remise_automatique?: number | null
           telephone?: string | null
@@ -14260,6 +14266,8 @@ export type Database = {
           statut_contractuel:
             | Database["public"]["Enums"]["statut_contractuel"]
             | null
+          taux_agent: number | null
+          taux_ayant_droit: number | null
           taux_remise_automatique: number | null
           telephone_appel: string | null
           telephone_whatsapp: string | null
@@ -14295,6 +14303,8 @@ export type Database = {
           statut_contractuel?:
             | Database["public"]["Enums"]["statut_contractuel"]
             | null
+          taux_agent?: number | null
+          taux_ayant_droit?: number | null
           taux_remise_automatique?: number | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
@@ -14330,6 +14340,8 @@ export type Database = {
           statut_contractuel?:
             | Database["public"]["Enums"]["statut_contractuel"]
             | null
+          taux_agent?: number | null
+          taux_ayant_droit?: number | null
           taux_remise_automatique?: number | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
