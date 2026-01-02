@@ -108,7 +108,9 @@ export const EmployeeManagement = () => {
       assureur_id: '',
       taux_remise_automatique: 0,
       limite_dette: 0,
-      peut_prendre_bon: true
+      peut_prendre_bon: true,
+      taux_agent: 0,
+      taux_ayant_droit: 0
     }
   });
 
@@ -128,7 +130,9 @@ export const EmployeeManagement = () => {
         assureur_id: data.assureur_id || null,
         taux_remise_automatique: data.taux_remise_automatique || 0,
         limite_dette: data.limite_dette || 0,
-        peut_prendre_bon: data.peut_prendre_bon !== false
+        peut_prendre_bon: data.peut_prendre_bon !== false,
+        taux_agent: data.taux_agent || 0,
+        taux_ayant_droit: data.taux_ayant_droit || 0
       };
 
       if (editingEmployee) {
@@ -177,7 +181,9 @@ export const EmployeeManagement = () => {
       assureur_id: employee.assureur_id || '',
       taux_remise_automatique: employee.taux_remise_automatique || 0,
       limite_dette: employee.limite_dette || 0,
-      peut_prendre_bon: employee.peut_prendre_bon !== false
+      peut_prendre_bon: employee.peut_prendre_bon !== false,
+      taux_agent: employee.taux_agent || 0,
+      taux_ayant_droit: employee.taux_ayant_droit || 0
     });
     setIsDialogOpen(true);
   };
@@ -213,7 +219,9 @@ export const EmployeeManagement = () => {
       assureur_id: '',
       taux_remise_automatique: 0,
       limite_dette: 0,
-      peut_prendre_bon: true
+      peut_prendre_bon: true,
+      taux_agent: 0,
+      taux_ayant_droit: 0
     });
   };
 
@@ -292,7 +300,9 @@ export const EmployeeManagement = () => {
                    assureur_id: '',
                    taux_remise_automatique: 0,
                    limite_dette: 0,
-                   peut_prendre_bon: true
+                   peut_prendre_bon: true,
+                   taux_agent: 0,
+                   taux_ayant_droit: 0
                  });
                }}>
                 <Plus className="w-4 h-4 mr-2" />

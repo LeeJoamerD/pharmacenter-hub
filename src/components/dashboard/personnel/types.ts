@@ -72,7 +72,15 @@ export const employeeSchema = z.object({
   limite_dette: z.number()
     .min(0, "La limite de dette doit être positive")
     .default(0),
-  peut_prendre_bon: z.boolean().default(true)
+  peut_prendre_bon: z.boolean().default(true),
+  taux_agent: z.number()
+    .min(0, "Le taux doit être positif")
+    .max(100, "Le taux ne peut pas dépasser 100%")
+    .default(0),
+  taux_ayant_droit: z.number()
+    .min(0, "Le taux doit être positif")
+    .max(100, "Le taux ne peut pas dépasser 100%")
+    .default(0)
 });
 
 export type EmployeeFormData = z.infer<typeof employeeSchema>;
@@ -106,6 +114,8 @@ export interface Employee {
   taux_remise_automatique?: number;
   limite_dette?: number;
   peut_prendre_bon?: boolean;
+  taux_agent?: number;
+  taux_ayant_droit?: number;
 }
 
 export const leaveRequestSchema = z.object({
