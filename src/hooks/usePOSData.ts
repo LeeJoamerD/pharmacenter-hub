@@ -138,9 +138,11 @@ export const usePOSData = () => {
         }
         
         montantHT += prixHT * item.quantity;
-        // Centime Additionnel uniquement sur produits soumis à TVA
-        if (tauxTVA > 0) {
+        // Ajouter TVA/Centime si montants > 0 (peu importe si tauxTVA est NULL/0 en base)
+        if (tvaMontant > 0) {
           montantTVA += tvaMontant * item.quantity;
+        }
+        if (centimeMontant > 0) {
           montantCentimeAdditionnel += centimeMontant * item.quantity;
         }
       }
@@ -300,6 +302,10 @@ export const usePOSData = () => {
           centimeMontant = unifiedPricingService.roundForCurrency(tvaMontant * tauxCentime / 100);
         }
         
+        // Reconstituer le taux TVA si absent mais montant présent
+        const tauxTVAEffectif = tauxTVA > 0 ? tauxTVA : (prixHT > 0 && tvaMontant > 0 ? Math.round((tvaMontant / prixHT) * 10000) / 100 : 0);
+        const tauxCentimeEffectif = tauxCentime > 0 ? tauxCentime : (tvaMontant > 0 && centimeMontant > 0 ? Math.round((centimeMontant / tvaMontant) * 10000) / 100 : 0);
+        
         return {
           tenant_id: tenantId,
           vente_id: vente.id,
@@ -308,9 +314,12 @@ export const usePOSData = () => {
           quantite: item.quantity,
           prix_unitaire_ht: prixHT,
           prix_unitaire_ttc: prixTTC,
-          taux_tva: tauxTVA,
+          taux_tva: tauxTVAEffectif,
+          taux_centime_additionnel: tauxCentimeEffectif,
           remise_ligne: item.discount || 0,
-          montant_ligne_ttc: item.total
+          montant_ligne_ttc: item.total,
+          montant_tva_ligne: tvaMontant * item.quantity,
+          montant_centime_ligne: centimeMontant * item.quantity
         };
       });
 
