@@ -227,6 +227,20 @@ export const useReturnsExchanges = () => {
   // Créer un retour
   const createReturnMutation = useMutation({
     mutationFn: async (returnData: CreateReturnData) => {
+      // Vérifier qu'il n'y a pas déjà un retour en cours pour cette vente
+      const { data: existingReturns } = await supabase
+        .from('retours')
+        .select('id, numero_retour, statut')
+        .eq('tenant_id', tenantId!)
+        .eq('vente_origine_id', returnData.vente_origine_id)
+        .in('statut', ['En attente', 'Approuvé']);
+      
+      if (existingReturns && existingReturns.length > 0) {
+        throw new Error(
+          `Un retour existe déjà pour cette transaction (${existingReturns[0].numero_retour} - ${existingReturns[0].statut})`
+        );
+      }
+
       // Générer numéro retour
       const today = new Date();
       const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
@@ -298,7 +312,12 @@ export const useReturnsExchanges = () => {
       decision: 'Approuvé' | 'Rejeté';
       validatorId: string;
     }) => {
-      const { error } = await supabase
+      // Vérifier que validatorId n'est pas vide
+      if (!validatorId) {
+        throw new Error('Utilisateur non identifié. Veuillez vous reconnecter.');
+      }
+
+      const { data, error } = await supabase
         .from('retours')
         .update({
           statut: decision,
@@ -306,9 +325,18 @@ export const useReturnsExchanges = () => {
           date_validation: new Date().toISOString(),
         })
         .eq('id', id)
-        .eq('tenant_id', tenantId);
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
 
       if (error) throw error;
+      
+      // Vérifier que l'UPDATE a bien fonctionné
+      if (!data) {
+        throw new Error('Impossible de valider le retour. Vérifiez vos permissions.');
+      }
+      
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['returns', tenantId] });

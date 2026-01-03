@@ -215,11 +215,17 @@ const ReturnsExchangesConnected = () => {
   };
 
   const handleApproval = async (returnId: string, decision: 'Approuvé' | 'Rejeté', notes?: string) => {
+    // Vérifier que l'utilisateur est connecté
+    if (!currentUser?.id) {
+      toast.error('Utilisateur non identifié. Veuillez vous reconnecter.');
+      return;
+    }
+
     try {
       await validateReturn({
         id: returnId,
         decision,
-        validatorId: currentUser?.id || ''
+        validatorId: currentUser.id
       });
       toast.success(`Retour ${decision.toLowerCase()}`);
     } catch (error: any) {
