@@ -53,13 +53,14 @@ export function generateTestProducts(count: number): POSProduct[] {
 /**
  * Générer un client de test
  */
-export function generateTestCustomer(type: 'ordinaire' | 'assure' | 'particulier' = 'ordinaire'): CustomerInfo {
+export function generateTestCustomer(type: 'Ordinaire' | 'Conventionné' | 'Entreprise' | 'Personnel' = 'Ordinaire'): CustomerInfo {
   return {
     type,
     name: `Client Test ${Math.random().toString(36).substring(7)}`,
     phone: `06${Math.floor(Math.random() * 90000000) + 10000000}`,
-    discount_rate: type === 'particulier' ? 10 : 0,
-    insurance: type === 'assure' ? {
+    discount_rate: type !== 'Ordinaire' ? 10 : 0,
+    taux_remise_automatique: type !== 'Ordinaire' ? 10 : 0,
+    insurance: type === 'Conventionné' ? {
       company: 'Assurance Test',
       number: `ASS${Math.floor(Math.random() * 10000)}`,
       coverage_rate: 70
@@ -171,7 +172,7 @@ export function validateCart(cart: CartItemWithLot[]): { valid: boolean; errors:
  */
 export function generateTestTransaction() {
   const cart = generateTestCart();
-  const customer = generateTestCustomer('particulier');
+  const customer = generateTestCustomer('Conventionné');
   const totals = calculateCartTotals(cart);
   
   return {

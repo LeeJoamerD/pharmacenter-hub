@@ -32,7 +32,7 @@ import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
-import { TransactionData, CartItemWithLot } from '@/types/pos';
+import { TransactionData, CartItemWithLot, CustomerInfo, CustomerType } from '@/types/pos';
 import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 import { printSalesTicket } from '@/utils/salesTicketPrinter';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,16 +43,6 @@ interface CartItem {
   unitPrice: number;
   discount?: number;
   total: number;
-}
-
-interface Customer {
-  id?: string;
-  type: 'ordinaire' | 'assure' | 'particulier';
-  name?: string;
-  phone?: string;
-  insuranceNumber?: string;
-  insuranceCompany?: string;
-  discountRate?: number;
 }
 
 interface OpenSession {
@@ -73,7 +63,7 @@ const SalesOnlyInterface = () => {
 
   // États
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [customer, setCustomer] = useState<Customer>({ type: 'ordinaire' });
+  const [customer, setCustomer] = useState<CustomerInfo>({ type: 'Ordinaire', discount_rate: 0 });
   const [isSaving, setIsSaving] = useState(false);
   const [autoPrintTicket, setAutoPrintTicket] = useState(true);
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
@@ -237,8 +227,9 @@ const SalesOnlyInterface = () => {
 
   const calculateDiscount = useCallback(() => {
     const subtotal = calculateSubtotal();
-    return customer.discountRate ? (subtotal * customer.discountRate) / 100 : 0;
-  }, [calculateSubtotal, customer.discountRate]);
+    const discountRate = customer.discount_rate ?? customer.taux_remise_automatique ?? 0;
+    return discountRate ? (subtotal * discountRate) / 100 : 0;
+  }, [calculateSubtotal, customer.discount_rate, customer.taux_remise_automatique]);
 
   const calculateTotal = useCallback(() => {
     return calculateSubtotal() - calculateDiscount();
@@ -288,12 +279,20 @@ const SalesOnlyInterface = () => {
           type: customer.type,
           name: customer.name,
           phone: customer.phone,
-          insurance: customer.type === 'assure' ? {
-            company: customer.insuranceCompany!,
-            number: customer.insuranceNumber!,
-            coverage_rate: 70
-          } : undefined,
-          discount_rate: customer.discountRate || 0
+          assureur_id: customer.assureur_id,
+          assureur_libelle: customer.assureur_libelle,
+          taux_remise_automatique: customer.taux_remise_automatique,
+          taux_agent: customer.taux_agent,
+          taux_ayant_droit: customer.taux_ayant_droit,
+          limite_credit: customer.limite_credit,
+          peut_prendre_bon: customer.peut_prendre_bon,
+          taux_ticket_moderateur: customer.taux_ticket_moderateur,
+          caution: customer.caution,
+          utiliser_caution: customer.utiliser_caution,
+          societe_id: customer.societe_id,
+          personnel_id: customer.personnel_id,
+          insurance: customer.insurance,
+          discount_rate: customer.discount_rate ?? customer.taux_remise_automatique ?? 0
         },
         payment: {
           method: 'Espèces', // Sera mis à jour à l'encaissement
@@ -363,7 +362,7 @@ const SalesOnlyInterface = () => {
 
         // Reset
         clearCart();
-        setCustomer({ type: 'ordinaire' });
+        setCustomer({ type: 'Ordinaire', discount_rate: 0 });
       } else {
         throw new Error(result.error || 'Erreur lors de la sauvegarde');
       }
@@ -534,7 +533,7 @@ const SalesOnlyInterface = () => {
               {/* Remise */}
               {calculateDiscount() > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
-                  <span>Remise ({customer.discountRate}%):</span>
+                  <span>Remise ({customer.discount_rate ?? customer.taux_remise_automatique ?? 0}%):</span>
                   <span>-{formatAmount(calculateDiscount())}</span>
                 </div>
               )}
