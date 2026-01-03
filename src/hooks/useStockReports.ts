@@ -50,15 +50,18 @@ export const useStockReports = (
       // Calculer les sorties sur la période pour le taux de rotation
       const { data: sorties, error: sortiesError } = await supabase
         .from('stock_mouvements')
-        .select('quantite, date_mouvement')
+        .select('quantite, date_mouvement, type_mouvement')
         .eq('tenant_id', tenantId)
-        .in('type_mouvement', ['Sortie', 'Vente'])
         .gte('date_mouvement', current.startDate.toISOString())
         .lt('date_mouvement', current.endDate.toISOString());
 
       if (sortiesError) throw sortiesError;
 
-      const totalSorties = sorties?.reduce((sum, m) => sum + Math.abs(m.quantite), 0) || 0;
+      // Filtrer les sorties avec casse insensible
+      const totalSorties = sorties?.filter(m => 
+        ['sortie', 'vente'].includes(m.type_mouvement?.toLowerCase() || '')
+      ).reduce((sum, m) => sum + Math.abs(m.quantite), 0) || 0;
+
       const stockMoyen = (metrics?.totalValue || 0) > 0 ? (metrics?.availableProducts || 1) : 1;
       const tauxRotation = stockMoyen > 0 ? (totalSorties / stockMoyen) * 12 : 0;
 
@@ -77,14 +80,27 @@ export const useStockReports = (
 
       if (peremptionsError) throw peremptionsError;
 
-      // Calculer les variations (période précédente)
-      const { data: previousMetricsRaw } = await supabase
-        .rpc('calculate_stock_metrics', { p_tenant_id: tenantId });
+      // Calculer la valeur du stock à la période précédente via les mouvements avec lots
+      const { data: mouvementsPeriode } = await supabase
+        .from('stock_mouvements')
+        .select('quantite, type_mouvement, lot:lots!stock_mouvements_lot_id_fkey(prix_achat_unitaire)')
+        .eq('tenant_id', tenantId)
+        .gte('date_mouvement', previous.startDate.toISOString())
+        .lt('date_mouvement', previous.endDate.toISOString());
 
-      const previousMetrics = previousMetricsRaw as any;
+      // Calculer la variation réelle basée sur les mouvements de la période précédente
+      const valeurMouvementsPrecedents = (mouvementsPeriode as any[] || []).reduce((sum, m) => {
+        const isEntree = ['entrée', 'réception', 'ajustement positif'].includes(m.type_mouvement?.toLowerCase() || '');
+        const isSortie = ['sortie', 'vente', 'ajustement négatif', 'péremption'].includes(m.type_mouvement?.toLowerCase() || '');
+        const prixUnitaire = m.lot?.prix_achat_unitaire || 0;
+        const valeur = Math.abs(m.quantite) * prixUnitaire;
+        return sum + (isEntree ? valeur : isSortie ? -valeur : 0);
+      }, 0) || 0;
 
-      const valeurVariation = previousMetrics && (previousMetrics?.totalValue || 0) > 0
-        ? (((metrics?.totalValue || 0) - (previousMetrics?.totalValue || 0)) / (previousMetrics?.totalValue || 1)) * 100
+      const valeurStockActuel = metrics?.totalValue || 0;
+      const valeurStockPrecedent = valeurStockActuel - valeurMouvementsPrecedents;
+      const valeurVariation = valeurStockPrecedent > 0
+        ? ((valeurStockActuel - valeurStockPrecedent) / valeurStockPrecedent) * 100
         : 0;
 
       const kpis: StockKPI = {
@@ -119,7 +135,8 @@ export const useStockReports = (
           stock_faible,
           stock_limite,
           prix_achat,
-          famille_produit!fk_produits_famille_id(libelle_famille)
+          famille_produit!fk_produits_famille_id(libelle_famille),
+          rayon!fk_produits_rayon_id(libelle_rayon)
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
@@ -131,7 +148,7 @@ export const useStockReports = (
       const grouped: Record<string, any> = {};
       
       produits?.forEach((p: any) => {
-        const famille = p.famille_produit?.libelle_famille || 'Autre';
+        const famille = p.famille_produit?.libelle_famille || p.rayon?.libelle_rayon || 'Non catégorisé';
         
         // Filtrer par catégorie si nécessaire
         if (selectedCategoryFilter && famille !== selectedCategoryFilter) {
@@ -206,20 +223,40 @@ export const useStockReports = (
           id,
           libelle_produit,
           stock_actuel,
+          stock_critique,
+          stock_faible,
           stock_limite,
-          famille_produit!fk_produits_famille_id(libelle_famille)
+          famille_produit!fk_produits_famille_id(libelle_famille),
+          rayon!fk_produits_rayon_id(libelle_rayon)
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
-        .order('stock_limite', { ascending: true })
-        .limit(20);
+        .order('stock_actuel', { ascending: true })
+        .limit(50);
 
       if (error) throw error;
+
+      // Récupérer les dates d'expiration pour ces produits
+      const productIds = produits?.map(p => p.id) || [];
+      const { data: lotsExpiration } = await supabase
+        .from('lots')
+        .select('produit_id, date_peremption')
+        .in('produit_id', productIds)
+        .gt('quantite_restante', 0)
+        .order('date_peremption', { ascending: true });
+
+      // Mapper l'expiration la plus proche à chaque produit
+      const expirationMap = new Map<string, string>();
+      lotsExpiration?.forEach(lot => {
+        if (!expirationMap.has(lot.produit_id)) {
+          expirationMap.set(lot.produit_id, lot.date_peremption);
+        }
+      });
 
       const critical: CriticalStockItem[] = [];
 
       produits?.forEach((p: any) => {
-        const famille = p.famille_produit?.libelle_famille || 'Autre';
+        const famille = p.famille_produit?.libelle_famille || p.rayon?.libelle_rayon || 'Non catégorisé';
         
         // Filtrer par catégorie
         if (selectedCategoryFilter && famille !== selectedCategoryFilter) {
@@ -227,23 +264,24 @@ export const useStockReports = (
         }
 
         const stock_actuel = p.stock_actuel || 0;
-        const stock_limite = p.stock_limite || 10;
+        const stock_critique = p.stock_critique || 2;
+        const stock_faible = p.stock_faible || 5;
         
-        let statut: 'critique' | 'attention' = 'normal' as any;
-        if (stock_actuel === 0 || stock_actuel <= stock_limite * 0.3) {
+        let statut: 'critique' | 'attention' | null = null;
+        if (stock_actuel === 0 || stock_actuel <= stock_critique) {
           statut = 'critique';
-        } else if (stock_actuel <= stock_limite) {
+        } else if (stock_actuel <= stock_faible) {
           statut = 'attention';
         }
 
-        if (statut === 'critique' || statut === 'attention') {
+        if (statut) {
           critical.push({
             produit_id: p.id,
             produit: p.libelle_produit,
             stock_actuel,
-            stock_limite,
+            stock_limite: p.stock_limite || 10,
             statut,
-            expiration: null, // Pas de jointure lots pour expiration ici
+            expiration: expirationMap.get(p.id) || null,
             famille
           });
         }
@@ -335,18 +373,20 @@ export const useStockReports = (
         dates.push(date);
       }
 
-      // Récupérer tous les mouvements de la période
-      const { data: mouvements, error } = await supabase
+      // Récupérer tous les mouvements de la période avec lot pour le prix
+      const { data: mouvementsRaw, error } = await supabase
         .from('stock_mouvements')
-        .select('date_mouvement, type_mouvement, quantite')
+        .select('date_mouvement, type_mouvement, quantite, lot:lots!stock_mouvements_lot_id_fkey(prix_achat_unitaire)')
         .eq('tenant_id', tenantId)
         .gte('date_mouvement', current.startDate.toISOString())
         .lt('date_mouvement', current.endDate.toISOString());
 
       if (error) throw error;
 
-      // Récupérer la valorisation du stock au début de la période
-      const { data: lotsDebut, error: lotsError } = await supabase
+      const mouvements = mouvementsRaw as any[] || [];
+
+      // Récupérer la valorisation du stock actuelle
+      const { data: lotsActuels, error: lotsError } = await supabase
         .from('lots')
         .select('quantite_restante, prix_achat_unitaire')
         .eq('tenant_id', tenantId)
@@ -354,38 +394,59 @@ export const useStockReports = (
 
       if (lotsError) throw lotsError;
 
-      const valorisationInitiale = lotsDebut?.reduce((sum, lot) => 
+      const valorisationActuelle = lotsActuels?.reduce((sum, lot) => 
         sum + (lot.quantite_restante * (lot.prix_achat_unitaire || 0)), 0
       ) || 0;
 
+      // Calculer la valorisation initiale en soustrayant les mouvements de la période
+      const totalMouvementsValeur = mouvements.reduce((sum, m) => {
+        const isEntree = ['entrée', 'réception', 'ajustement positif'].includes(m.type_mouvement?.toLowerCase() || '');
+        const isSortie = ['sortie', 'vente', 'ajustement négatif', 'péremption'].includes(m.type_mouvement?.toLowerCase() || '');
+        const prixUnitaire = m.lot?.prix_achat_unitaire || 0;
+        const valeur = Math.abs(m.quantite) * prixUnitaire;
+        return sum + (isEntree ? valeur : isSortie ? -valeur : 0);
+      }, 0);
+
+      const valorisationInitiale = valorisationActuelle - totalMouvementsValeur;
+
       // Regrouper les mouvements par jour
-      const history: MovementData[] = dates.map((date, index) => {
+      let valorisationCumulative = valorisationInitiale;
+      const history: MovementData[] = dates.map((date) => {
         const dateStr = date.toISOString().split('T')[0];
         const displayDate = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
 
-        const mouvementsJour = mouvements?.filter(m => 
-          m.date_mouvement.startsWith(dateStr)
-        ) || [];
+        const mouvementsJour = mouvements.filter(m => 
+          m.date_mouvement?.startsWith(dateStr)
+        );
 
+        // Casse insensible pour les types de mouvements
         const entrees = mouvementsJour
-          .filter(m => ['Entrée', 'Réception', 'Ajustement positif'].includes(m.type_mouvement))
+          .filter(m => ['entrée', 'réception', 'ajustement positif'].includes(m.type_mouvement?.toLowerCase() || ''))
           .reduce((sum, m) => sum + Math.abs(m.quantite), 0);
 
         const sorties = mouvementsJour
-          .filter(m => ['Sortie', 'Vente', 'Ajustement négatif', 'Péremption'].includes(m.type_mouvement))
+          .filter(m => ['sortie', 'vente', 'ajustement négatif', 'péremption'].includes(m.type_mouvement?.toLowerCase() || ''))
           .reduce((sum, m) => sum + Math.abs(m.quantite), 0);
 
         const solde = entrees - sorties;
 
-        // Estimer la valorisation (simplifiée)
-        const valorisation = Math.round(valorisationInitiale * (1 + (index * 0.001)));
+        // Valorisation réelle basée sur les mouvements du jour
+        const valeurMouvementsJour = mouvementsJour.reduce((sum, m) => {
+          const isEntree = ['entrée', 'réception', 'ajustement positif'].includes(m.type_mouvement?.toLowerCase() || '');
+          const isSortie = ['sortie', 'vente', 'ajustement négatif', 'péremption'].includes(m.type_mouvement?.toLowerCase() || '');
+          const prixUnitaire = m.lot?.prix_achat_unitaire || 0;
+          const valeur = Math.abs(m.quantite) * prixUnitaire;
+          return sum + (isEntree ? valeur : isSortie ? -valeur : 0);
+        }, 0);
+        
+        valorisationCumulative += valeurMouvementsJour;
 
         return {
           date: displayDate,
           entrees,
           sorties,
           solde,
-          valorisation
+          valorisation: Math.round(valorisationCumulative)
         };
       });
 
