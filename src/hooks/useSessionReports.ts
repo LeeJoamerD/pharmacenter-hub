@@ -74,16 +74,48 @@ export const useSessionReports = () => {
     setError(null);
     
     try {
+      // Use sessions_caisse directly to avoid type issues with views
       const { data, error } = await supabase
-        .from('v_rapport_session_complet')
-        .select('*')
-        .eq('session_id', sessionId)
+        .from('sessions_caisse')
+        .select('*, caisses(nom_caisse, code_caisse)')
+        .eq('id', sessionId)
         .eq('tenant_id', tenantId)
         .maybeSingle();
 
       if (error) throw error;
 
-      return data as SessionReport;
+      if (!data) return null;
+      
+      const caisse = data.caisses as { nom_caisse: string; code_caisse: string } | null;
+      
+      // Map the data to our SessionReport interface
+      return {
+        session_id: data.id,
+        tenant_id: data.tenant_id,
+        numero_session: data.numero_session || '',
+        type_session: (data.type_session as TypeSession) || 'Matin',
+        date_session: data.date_session || '',
+        statut: data.statut || 'ouverte',
+        nom_caisse: caisse?.nom_caisse,
+        code_caisse: caisse?.code_caisse,
+        fond_caisse_ouverture: data.fond_caisse_ouverture || 0,
+        fond_caisse_fermeture: data.fond_caisse_fermeture,
+        montant_theorique_fermeture: data.montant_theorique_fermeture,
+        ecart: data.ecart,
+        date_ouverture: data.date_ouverture || '',
+        date_fermeture: data.date_fermeture,
+        nombre_ventes: 0,
+        total_ventes: 0,
+        montant_moyen_vente: 0,
+        total_especes: 0,
+        total_carte: 0,
+        total_mobile: 0,
+        total_cheque: 0,
+        total_virement: 0,
+        total_entrees: 0,
+        total_sorties: 0,
+        nombre_articles_vendus: 0
+      } as SessionReport;
     } catch (err) {
       console.error('Erreur récupération rapport session:', err);
       const message = 'Erreur lors de la récupération du rapport';
@@ -113,22 +145,34 @@ export const useSessionReports = () => {
         .eq('tenant_id', tenantId);
 
       if (date) {
-        query = query.eq('date_session', date);
+        query = query.eq('date_journee', date);
       }
 
       if (caisseId) {
-        query = query.eq('caisse_id', caisseId);
+        query = query.eq('caisse_nom', caisseId);
       }
 
       if (typeSession) {
-        query = query.eq('type_session', typeSession);
+        query = query.eq('type_caisse', typeSession);
       }
 
-      const { data, error } = await query.order('date_session', { ascending: false });
+      const { data, error } = await query.order('date_journee', { ascending: false });
 
       if (error) throw error;
 
-      return (data || []) as CaisseTypeReport[];
+      // Map the view data to our CaisseTypeReport interface
+      return (data || []).map(row => ({
+        caisse_id: row.caisse_nom || '',
+        tenant_id: row.tenant_id,
+        nom_caisse: row.caisse_nom || '',
+        code_caisse: row.caisse_nom || '',
+        type_session: row.type_caisse as TypeSession,
+        date_session: row.date_journee,
+        nombre_sessions: row.nombre_sessions || 0,
+        total_ventes: row.total_encaissements || 0,
+        nombre_ventes: 0,
+        montant_moyen_vente: 0
+      })) as CaisseTypeReport[];
     } catch (err) {
       console.error('Erreur récupération rapports par caisse:', err);
       const message = 'Erreur lors de la récupération des rapports';
@@ -154,12 +198,25 @@ export const useSessionReports = () => {
         .from('v_resume_journalier')
         .select('*')
         .eq('tenant_id', tenantId)
-        .eq('date_session', targetDate)
+        .eq('date_journee', targetDate)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
 
-      return data as DailyReport | null;
+      if (!data) return null;
+      
+      // Map the view data to our DailyReport interface
+      return {
+        tenant_id: data.tenant_id,
+        date_session: data.date_journee || targetDate,
+        nombre_sessions_ouvertes: data.nombre_sessions || 0,
+        nombre_caisses_actives: data.nombre_mouvements || 0,
+        total_ventes_journee: data.total_encaissements || 0,
+        nombre_ventes_journee: data.nombre_mouvements || 0,
+        total_matin: 0,
+        total_midi: 0,
+        total_soir: 0
+      } as DailyReport;
     } catch (err) {
       console.error('Erreur récupération résumé journalier:', err);
       const message = 'Erreur lors de la récupération du résumé journalier';
