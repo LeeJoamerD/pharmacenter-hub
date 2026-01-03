@@ -287,8 +287,8 @@ export function useSystemIntegrations() {
         .from('parametres_integrations_regionaux')
         .select('*')
         .eq('tenant_id', tenantId)
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
+        .maybeSingle();
+      if (error) throw error;
       return data as RegionalParameters | null;
     },
     enabled: !!tenantId,
