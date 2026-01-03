@@ -115,10 +115,11 @@ export const useStockReports = (
         .select(`
           id,
           stock_actuel,
+          stock_critique,
+          stock_faible,
           stock_limite,
-          stock_alerte,
           prix_achat,
-          famille_produit!inner(libelle_famille)
+          famille_produit!fk_produits_famille_id(libelle_famille)
         `)
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
@@ -142,8 +143,9 @@ export const useStockReports = (
             categorie: famille,
             nb_produits: 0,
             stock_actuel: 0,
+            stock_critique_sum: 0,
+            stock_faible_sum: 0,
             stock_limite_sum: 0,
-            stock_alerte_sum: 0,
             valorisation: 0,
             count: 0
           };
@@ -151,8 +153,9 @@ export const useStockReports = (
 
         grouped[famille].nb_produits++;
         grouped[famille].count++;
+        grouped[famille].stock_critique_sum += p.stock_critique || 2;
+        grouped[famille].stock_faible_sum += p.stock_faible || 5;
         grouped[famille].stock_limite_sum += p.stock_limite || 10;
-        grouped[famille].stock_alerte_sum += p.stock_alerte || 20;
 
         // Calculer stock actuel et valorisation
         const stock_actuel = p.stock_actuel || 0;

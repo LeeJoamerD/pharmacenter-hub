@@ -101,10 +101,10 @@ const StockReports = () => {
     }
   };
 
-  const getStockStatus = (actuel: number, minimum: number, maximum: number) => {
-    if (actuel < minimum) return { status: 'critique', color: 'text-red-600', bg: 'bg-red-50' };
-    if (actuel < minimum * 1.2) return { status: 'attention', color: 'text-orange-600', bg: 'bg-orange-50' };
-    if (actuel > maximum) return { status: 'surstock', color: 'text-blue-600', bg: 'bg-blue-50' };
+  const getStockStatus = (actuel: number, critique: number, faible: number, limite: number) => {
+    if (actuel === 0 || actuel <= critique) return { status: 'critique', color: 'text-red-600', bg: 'bg-red-50' };
+    if (actuel <= faible) return { status: 'attention', color: 'text-orange-600', bg: 'bg-orange-50' };
+    if (actuel > limite) return { status: 'surstock', color: 'text-blue-600', bg: 'bg-blue-50' };
     return { status: 'normal', color: 'text-green-600', bg: 'bg-green-50' };
   };
 
@@ -285,7 +285,7 @@ const StockReports = () => {
               ) : (
                 <div className="space-y-6">
                   {stockLevels.map((item, index) => {
-                    const status = getStockStatus(item.stock_actuel, item.stock_critique, item.stock_faible);
+                    const status = getStockStatus(item.stock_actuel, item.stock_critique, item.stock_faible, item.stock_limite);
                     
                     return (
                       <div key={index} className="space-y-3">
