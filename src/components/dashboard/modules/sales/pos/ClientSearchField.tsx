@@ -1,6 +1,7 @@
 /**
  * Composant de recherche client avec pagination optimisée
  * Limite 1000 résultats côté Supabase, affichage paginé par 50
+ * @version 1.0.0 - Nouveau composant pour recherche client POS
  */
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Input } from '@/components/ui/input';

@@ -1,6 +1,7 @@
 /**
  * Composant de sélection du type client et recherche client
  * Design compact avec dropdown pour changer de type
+ * @version 2.0.0 - Refonte complète avec nouveaux types clients
  */
 import React, { useState, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
