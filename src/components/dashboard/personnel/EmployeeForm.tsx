@@ -396,6 +396,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Ligne 1: Assureur + Taux remise */}
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -449,52 +450,8 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                     )}
                   />
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="limite_dette"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            min="0"
-                            step={getInputStep()}
-                            placeholder={isNoDecimalCurrency() ? "0" : "0.00"}
-                            {...field}
-                            value={field.value || 0}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                          />
-                        </FormControl>
-                        <FormDescription>Montant maximum de crédit autorisé</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="peut_prendre_bon"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value !== false}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel>Peut prendre des produits en bon</FormLabel>
-                          <FormDescription>
-                            Autoriser les achats à crédit au point de vente
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                </div>
 
+                {/* Ligne 2: Taux Agent + Taux Ayant Droit */}
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -539,6 +496,52 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                         </FormControl>
                         <FormDescription>Taux de prise en charge pour les ayants droit</FormDescription>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                {/* Ligne 3: Limite dette + Peut prendre bon */}
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="limite_dette"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            step={getInputStep()}
+                            placeholder={isNoDecimalCurrency() ? "0" : "0.00"}
+                            {...field}
+                            value={field.value || 0}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormDescription>Montant maximum de crédit autorisé</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="peut_prendre_bon"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value !== false}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>Peut prendre des produits en bon</FormLabel>
+                          <FormDescription>
+                            Autoriser les achats à crédit au point de vente
+                          </FormDescription>
+                        </div>
                       </FormItem>
                     )}
                   />

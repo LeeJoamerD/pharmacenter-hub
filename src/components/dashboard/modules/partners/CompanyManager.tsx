@@ -235,30 +235,6 @@ const Societes = () => {
                           <FormMessage />
                         </FormItem>
                       )} />
-                       <FormField control={form.control} name="assureur_id" render={({ field }) => (
-                         <FormItem>
-                           <FormLabel>Assureur (optionnel)</FormLabel>
-                           <Select 
-                             onValueChange={(value) => field.onChange(value === '__none__' ? null : value)} 
-                             value={field.value || '__none__'}
-                           >
-                             <FormControl>
-                               <SelectTrigger>
-                                 <SelectValue placeholder="Aucun assureur" />
-                               </SelectTrigger>
-                             </FormControl>
-                             <SelectContent>
-                               <SelectItem value="__none__">Aucun assureur</SelectItem>
-                               {assureurs.map((assureur: Assureur) => (
-                                 <SelectItem key={assureur.id} value={assureur.id}>
-                                   {assureur.libelle_assureur}
-                                 </SelectItem>
-                               ))}
-                             </SelectContent>
-                           </Select>
-                           <FormMessage />
-                         </FormItem>
-                       )} />
                        <FormField control={form.control} name="niu" render={({ field }) => (
                          <FormItem>
                            <FormLabel>NIU</FormLabel>
@@ -287,27 +263,6 @@ const Societes = () => {
                           <FormMessage />
                         </FormItem>
                       )} />
-                      <FormField control={form.control} name="limite_dette" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
-                          <FormControl><Input {...field} type="number" step={getInputStep()} placeholder={isNoDecimalCurrency() ? "0" : "0.00"} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name="taux_couverture_agent" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Taux couverture agent (%)</FormLabel>
-                          <FormControl><Input {...field} type="number" onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name="taux_couverture_ayant_droit" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Taux couverture ayant droit (%)</FormLabel>
-                          <FormControl><Input {...field} type="number" onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
                       <FormField control={form.control} name="adresse" render={({ field }) => (
                         <FormItem className="col-span-2">
                           <FormLabel>Adresse</FormLabel>
@@ -326,10 +281,35 @@ const Societes = () => {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
+                        {/* Ligne 1: Assureur + Taux remise */}
                         <div className="grid grid-cols-2 gap-4">
+                          <FormField control={form.control} name="assureur_id" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Assureur (optionnel)</FormLabel>
+                              <Select 
+                                onValueChange={(value) => field.onChange(value === '__none__' ? null : value)} 
+                                value={field.value || '__none__'}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Aucun assureur" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="__none__">Aucun assureur</SelectItem>
+                                  {assureurs.map((assureur: Assureur) => (
+                                    <SelectItem key={assureur.id} value={assureur.id}>
+                                      {assureur.libelle_assureur}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
                           <FormField control={form.control} name="taux_remise_automatique" render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Taux remise automatique (%)</FormLabel>
+                              <FormLabel>Taux de remise automatique (%)</FormLabel>
                               <FormControl>
                                 <Input 
                                   type="number" 
@@ -342,6 +322,68 @@ const Societes = () => {
                                 />
                               </FormControl>
                               <FormDescription>Remise appliquée automatiquement au point de vente</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                        </div>
+
+                        {/* Ligne 2: Taux Agent + Taux Ayant Droit */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField control={form.control} name="taux_couverture_agent" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Taux Agent (%)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0"
+                                  max="100"
+                                  placeholder="0"
+                                  {...field}
+                                  value={field.value || 0}
+                                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                                />
+                              </FormControl>
+                              <FormDescription>Taux de prise en charge pour l'agent</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <FormField control={form.control} name="taux_couverture_ayant_droit" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Taux Ayant Droit (%)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0"
+                                  max="100"
+                                  placeholder="0"
+                                  {...field}
+                                  value={field.value || 0}
+                                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                                />
+                              </FormControl>
+                              <FormDescription>Taux de prise en charge pour les ayants droit</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                        </div>
+
+                        {/* Ligne 3: Limite dette + Peut prendre bon */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField control={form.control} name="limite_dette" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0"
+                                  step={getInputStep()} 
+                                  placeholder={isNoDecimalCurrency() ? "0" : "0.00"} 
+                                  {...field}
+                                  value={field.value || 0}
+                                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                                />
+                              </FormControl>
+                              <FormDescription>Montant maximum de crédit autorisé</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )} />
