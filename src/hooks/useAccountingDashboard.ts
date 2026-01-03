@@ -275,9 +275,9 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
         .from('ventes')
         .select(`
           *,
-          partenaires (
+          clients (
             nom_complet,
-            type_partenaire
+            type_client
           )
         `)
         .eq('tenant_id', tenantId)
@@ -317,25 +317,23 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
     queryFn: async () => {
       // Écritures non validées
       const { count: nonValidees } = await supabase
-        .from('ecritures_comptables' as any)
+        .from('ecritures_comptables')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
-        .eq('statut_validation', 'Brouillon');
+        .eq('statut', 'Brouillon');
 
-      // Écritures non lettrées (simplification: compter lignes sans lettrage)
+      // Écritures non lettrées - simplification (compter lignes du tenant)
       const { count: nonLettrees } = await supabase
-        .from('lignes_ecriture' as any)
-        .select('ecritures_comptables!inner(tenant_id)', { count: 'exact', head: true })
-        .eq('ecritures_comptables.tenant_id', tenantId)
-        .is('lettrage', null);
+        .from('lignes_ecriture')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId);
 
-      // Rapprochements bancaires en attente (simplification)
+      // Rapprochements bancaires en attente
       const { count: rapprochements } = await supabase
-        .from('ecritures_comptables' as any)
+        .from('ecritures_comptables')
         .select('*', { count: 'exact', head: true })
         .eq('tenant_id', tenantId)
-        .eq('type_piece', 'BC')
-        .eq('statut_validation', 'Brouillon');
+        .eq('statut', 'Brouillon');
 
       return {
         nonValidees: nonValidees || 0,
@@ -351,10 +349,10 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
     queryKey: ['alertes-dashboard', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('alertes_tresorerie' as any)
+        .from('alertes_tresorerie')
         .select('*')
         .eq('tenant_id', tenantId)
-        .eq('est_resolue', false)
+        .neq('statut', 'Résolu')
         .order('created_at', { ascending: false })
         .limit(5);
 
