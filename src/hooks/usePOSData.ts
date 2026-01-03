@@ -118,16 +118,23 @@ export const usePOSData = () => {
         const tauxTVA = product.taux_tva || 0;
         const tauxCentime = product.taux_centime_additionnel || 0;
         
-        // Si pas de prix HT et produit soumis à TVA, utiliser le service centralisé pour calculer
+        // Si pas de prix HT et produit soumis à TVA, calculer depuis TTC
         if (prixHT === 0 && prixTTC > 0 && tauxTVA > 0) {
-          // Calcul inverse via le service centralisé
           const diviseur = 1 + (tauxTVA / 100) + (tauxCentime / 100);
           prixHT = unifiedPricingService.roundForCurrency(prixTTC / diviseur);
-          tvaMontant = unifiedPricingService.roundForCurrency(prixHT * tauxTVA / 100);
-          centimeMontant = unifiedPricingService.roundForCurrency(tvaMontant * tauxCentime / 100);
         } else if (prixHT === 0 && prixTTC > 0) {
           // Produit exonéré de TVA : HT = TTC
           prixHT = prixTTC;
+        }
+        
+        // FALLBACK: Si tvaMontant = 0 mais tauxTVA > 0 et prixHT > 0, calculer la TVA
+        if (tvaMontant === 0 && tauxTVA > 0 && prixHT > 0) {
+          tvaMontant = unifiedPricingService.roundForCurrency(prixHT * tauxTVA / 100);
+        }
+        
+        // FALLBACK: Si centimeMontant = 0 mais tauxCentime > 0 et tvaMontant > 0, calculer le centime
+        if (centimeMontant === 0 && tauxCentime > 0 && tvaMontant > 0) {
+          centimeMontant = unifiedPricingService.roundForCurrency(tvaMontant * tauxCentime / 100);
         }
         
         montantHT += prixHT * item.quantity;
@@ -275,14 +282,22 @@ export const usePOSData = () => {
         const tauxTVA = product.taux_tva || 0;
         const tauxCentime = product.taux_centime_additionnel || 0;
         
-        // Si pas de prix HT et produit soumis à TVA, utiliser le service centralisé pour calculer
+        // Si pas de prix HT et produit soumis à TVA, calculer depuis TTC
         if (prixHT === 0 && prixTTC > 0 && tauxTVA > 0) {
           const diviseur = 1 + (tauxTVA / 100) + (tauxCentime / 100);
           prixHT = unifiedPricingService.roundForCurrency(prixTTC / diviseur);
-          tvaMontant = unifiedPricingService.roundForCurrency(prixHT * tauxTVA / 100);
-          centimeMontant = unifiedPricingService.roundForCurrency(tvaMontant * tauxCentime / 100);
         } else if (prixHT === 0 && prixTTC > 0) {
           prixHT = prixTTC;
+        }
+        
+        // FALLBACK: calculer TVA si manquante
+        if (tvaMontant === 0 && tauxTVA > 0 && prixHT > 0) {
+          tvaMontant = unifiedPricingService.roundForCurrency(prixHT * tauxTVA / 100);
+        }
+        
+        // FALLBACK: calculer centime si manquant
+        if (centimeMontant === 0 && tauxCentime > 0 && tvaMontant > 0) {
+          centimeMontant = unifiedPricingService.roundForCurrency(tvaMontant * tauxCentime / 100);
         }
         
         return {
