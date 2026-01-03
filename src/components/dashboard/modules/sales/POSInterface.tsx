@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ShoppingCart, User, CreditCard, AlertCircle, Search, Gift, PackageX, FileText, TrendingUp, Banknote, Loader2, Receipt, ClipboardList } from 'lucide-react';
+import { ShoppingCart, User, CreditCard, AlertCircle, Search, Gift, PackageX, FileText, TrendingUp, Banknote, Loader2, Receipt, ClipboardList, ShieldCheck } from 'lucide-react';
 import { CashExpenseModal } from './cash/CashExpenseModal';
 import { useDynamicPermissions } from '@/hooks/useDynamicPermissions';
 import ProductSearch from './pos/ProductSearch';
@@ -29,6 +29,8 @@ import { useRegionalSettings } from '@/hooks/useRegionalSettings';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
+import { usePOSCalculations } from '@/hooks/usePOSCalculations';
+import { useClientDebt, useCanAddDebt } from '@/hooks/useClientDebt';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionData, CartItemWithLot, CustomerInfo, CustomerType } from '@/types/pos';
@@ -263,22 +265,22 @@ const POSInterface = () => {
     }, 0);
   }, [cart]);
 
+  // Utiliser le hook de calcul centralisé
+  const calculations = usePOSCalculations(cart, customer);
+
+  // Vérifier la dette du client
+  const { totalDette } = useClientDebt(customer.id, customer.limite_credit ?? 0);
+  const { canAddDebt } = useCanAddDebt(customer.id, customer.limite_credit ?? 0, 0);
+
   const calculateDiscount = useCallback(() => {
-    const subtotal = calculateSubtotal();
-    const discountRate = customer.discount_rate ?? customer.taux_remise_automatique ?? 0;
-    let discount = discountRate ? (subtotal * discountRate) / 100 : 0;
-    
-    // Ajouter réduction fidélité si appliquée
-    if (loyaltyRewardApplied) {
-      discount += loyaltyRewardApplied.discount;
-    }
-    
-    return discount;
-  }, [calculateSubtotal, customer.discount_rate, customer.taux_remise_automatique, loyaltyRewardApplied]);
+    // Utiliser le montant de remise calculé par le hook
+    return calculations.montantRemise;
+  }, [calculations.montantRemise]);
 
   const calculateTotal = useCallback(() => {
-    return calculateSubtotal() - calculateDiscount();
-  }, [calculateSubtotal, calculateDiscount]);
+    // Utiliser le total à payer calculé par le hook
+    return calculations.totalAPayer;
+  }, [calculations.totalAPayer]);
 
   const handleProcessPayment = useCallback(() => {
     if (cart.length === 0) return;
@@ -352,10 +354,12 @@ const POSInterface = () => {
         payment: {
           method: paymentData.method === 'cash' ? 'Espèces' : 
                   paymentData.method === 'card' ? 'Carte' :
-                  paymentData.method === 'mobile' ? 'Mobile Money' : 'Assurance',
+                  paymentData.method === 'mobile' ? 'Mobile Money' :
+                  paymentData.method === 'caution' ? 'Espèces' : // Caution = considéré comme espèces déjà payées
+                  paymentData.method === 'insurance' ? 'Assurance' : 'Assurance',
           amount_received: paymentData.amountReceived,
           change: paymentData.change,
-          reference: paymentData.reference
+          reference: paymentData.method === 'caution' ? 'PAIEMENT_PAR_CAUTION' : paymentData.reference
         },
         session_caisse_id: activeSession.id,
         caisse_id: activeSession.caisse_id,
@@ -365,6 +369,31 @@ const POSInterface = () => {
       const result = await saveTransaction(transactionData);
 
       if (result.success) {
+        // Si paiement par caution, débiter la caution du client
+        if (paymentData.method === 'caution' && customer.id) {
+          try {
+            const montantCaution = paymentData.calculations?.montantCautionUtilisee || calculateTotal();
+            const nouvelleCaution = Math.max(0, (customer.caution ?? 0) - montantCaution);
+            
+            await supabase
+              .from('clients')
+              .update({ caution: nouvelleCaution })
+              .eq('id', customer.id);
+            
+            toast({
+              title: "Caution débitée",
+              description: `${formatAmount(montantCaution)} débité de la caution du client`,
+            });
+          } catch (cautionError) {
+            console.error('Erreur débit caution:', cautionError);
+            toast({
+              title: "Attention",
+              description: "Vente enregistrée mais erreur lors du débit de la caution",
+              variant: "destructive"
+            });
+          }
+        }
+
         // Enregistrer points fidélité si client a un ID
         if (customer.id && customer.type !== 'Ordinaire') {
           const pointsGagnes = calculatePoints(calculateTotal());
@@ -390,7 +419,8 @@ const POSInterface = () => {
               montant: calculateTotal(),
               mode_paiement: paymentData.method === 'cash' ? 'especes' : 
                             paymentData.method === 'card' ? 'carte' :
-                            paymentData.method === 'mobile' ? 'mobile' : 'assurance',
+                            paymentData.method === 'mobile' ? 'mobile' : 
+                            paymentData.method === 'caution' ? 'especes' : 'assurance',
               nombre_articles: cart.reduce((sum, item) => sum + item.quantity, 0),
               client_fidelite: !!customer.id,
               points_distribues: customer.id ? calculatePoints(calculateTotal()) : 0
@@ -683,27 +713,27 @@ const POSInterface = () => {
             
             <Separator />
             
-            {/* Totaux */}
+            {/* Totaux avec calculs avancés */}
             <div className="space-y-2">
               {/* Total HT */}
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Total HT:</span>
-                <span>{formatAmount(calculateTotalHT())}</span>
+                <span>{formatAmount(calculations.totalHT)}</span>
               </div>
               
               {/* TVA - afficher seulement si > 0 */}
-              {calculateTotalTVA() > 0 && (
+              {calculations.montantTVA > 0 && (
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>TVA:</span>
-                  <span>{formatAmount(calculateTotalTVA())}</span>
+                  <span>{formatAmount(calculations.montantTVA)}</span>
                 </div>
               )}
               
               {/* Centime Additionnel - afficher seulement si > 0 */}
-              {calculateTotalCentime() > 0 && (
+              {calculations.montantCentime > 0 && (
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>Centime Add.:</span>
-                  <span>{formatAmount(calculateTotalCentime())}</span>
+                  <span>{formatAmount(calculations.montantCentime)}</span>
                 </div>
               )}
               
@@ -712,14 +742,39 @@ const POSInterface = () => {
               {/* Sous-total TTC */}
               <div className="flex justify-between text-sm font-medium">
                 <span>Sous-total TTC:</span>
-                <span>{formatAmount(calculateSubtotal())}</span>
+                <span>{formatAmount(calculations.sousTotalTTC)}</span>
               </div>
               
-              {/* Remise */}
-              {calculateDiscount() > 0 && (
+              {/* Couverture Assurance */}
+              {calculations.estAssure && calculations.partAssurance > 0 && (
+                <>
+                  <div className="flex justify-between text-sm text-orange-600">
+                    <span className="flex items-center gap-1">
+                      <ShieldCheck className="h-3 w-3" />
+                      Couverture Assurance ({calculations.tauxCouverture}%):
+                    </span>
+                    <span>-{formatAmount(calculations.partAssurance)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-medium">
+                    <span>Part Client:</span>
+                    <span>{formatAmount(calculations.partClient)}</span>
+                  </div>
+                </>
+              )}
+              
+              {/* Ticket Modérateur (si non assuré) */}
+              {!calculations.estAssure && calculations.montantTicketModerateur > 0 && (
+                <div className="flex justify-between text-sm text-blue-600">
+                  <span>Ticket modérateur ({calculations.tauxTicketModerateur}%):</span>
+                  <span>-{formatAmount(calculations.montantTicketModerateur)}</span>
+                </div>
+              )}
+              
+              {/* Remise automatique */}
+              {calculations.montantRemise > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
-                  <span>Remise ({customer.discount_rate ?? customer.taux_remise_automatique ?? 0}%):</span>
-                  <span>-{formatAmount(calculateDiscount())}</span>
+                  <span>Remise ({calculations.tauxRemise}%):</span>
+                  <span>-{formatAmount(calculations.montantRemise)}</span>
                 </div>
               )}
               
@@ -728,7 +783,7 @@ const POSInterface = () => {
               {/* Total à payer */}
               <div className="flex justify-between font-bold text-lg">
                 <span>Total à payer:</span>
-                <span className="text-primary">{formatAmount(calculateTotal())}</span>
+                <span className="text-primary">{formatAmount(calculations.totalAPayer)}</span>
               </div>
             </div>
             
@@ -818,6 +873,8 @@ const POSInterface = () => {
           open={showSplitPayment}
           onOpenChange={setShowSplitPayment}
           totalAmount={currentTransaction.total}
+          cartItems={cart}
+          customer={customer}
           onPaymentComplete={(payments) => {
             handlePaymentComplete({ 
               method: 'split',
