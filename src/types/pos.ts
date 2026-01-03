@@ -62,17 +62,38 @@ export interface CartItemWithLot {
   lot?: LotInfo;
 }
 
+export type CustomerType = 'Ordinaire' | 'Conventionné' | 'Entreprise' | 'Personnel';
+
 export interface CustomerInfo {
   id?: string;
-  type: 'ordinaire' | 'assure' | 'particulier';
+  type: CustomerType;
   name?: string;
   phone?: string;
+  email?: string;
+  // Informations d'assurance
+  assureur_id?: string;
+  assureur_libelle?: string;
   insurance?: {
     company: string;
     number: string;
     coverage_rate: number;
   };
-  discount_rate: number;
+  // Taux et remises - discount_rate optionnel avec défaut 0
+  discount_rate?: number;
+  taux_remise_automatique?: number;
+  taux_agent?: number;
+  taux_ayant_droit?: number;
+  taux_ticket_moderateur?: number;
+  // Crédit et caution
+  limite_credit?: number;
+  peut_prendre_bon?: boolean;
+  caution?: number;
+  utiliser_caution?: boolean; // Choix utilisateur pour utiliser la caution
+  // Références pour facturation future
+  societe_id?: string;
+  personnel_id?: string;
+  // Alias pour compatibilité
+  discountRate?: number;
 }
 
 export interface PaymentInfo {

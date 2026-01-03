@@ -31,7 +31,7 @@ import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
-import { TransactionData, CartItemWithLot } from '@/types/pos';
+import { TransactionData, CartItemWithLot, CustomerInfo, CustomerType } from '@/types/pos';
 import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 import { printReceipt } from '@/utils/receiptPrinter';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,16 +43,6 @@ export interface CartItem {
   unitPrice: number;
   discount?: number;
   total: number;
-}
-
-export interface Customer {
-  id?: string;
-  type: 'ordinaire' | 'assure' | 'particulier';
-  name?: string;
-  phone?: string;
-  insuranceNumber?: string;
-  insuranceCompany?: string;
-  discountRate?: number;
 }
 
 const POSInterface = () => {
@@ -102,7 +92,7 @@ const POSInterface = () => {
     }
   }, [separateSaleAndCash]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [customer, setCustomer] = useState<Customer>({ type: 'ordinaire' });
+  const [customer, setCustomer] = useState<CustomerInfo>({ type: 'Ordinaire', discount_rate: 0 });
   const [showPayment, setShowPayment] = useState(false);
   const [showSplitPayment, setShowSplitPayment] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -275,7 +265,8 @@ const POSInterface = () => {
 
   const calculateDiscount = useCallback(() => {
     const subtotal = calculateSubtotal();
-    let discount = customer.discountRate ? (subtotal * customer.discountRate) / 100 : 0;
+    const discountRate = customer.discount_rate ?? customer.taux_remise_automatique ?? 0;
+    let discount = discountRate ? (subtotal * discountRate) / 100 : 0;
     
     // Ajouter réduction fidélité si appliquée
     if (loyaltyRewardApplied) {
@@ -283,7 +274,7 @@ const POSInterface = () => {
     }
     
     return discount;
-  }, [calculateSubtotal, customer.discountRate, loyaltyRewardApplied]);
+  }, [calculateSubtotal, customer.discount_rate, customer.taux_remise_automatique, loyaltyRewardApplied]);
 
   const calculateTotal = useCallback(() => {
     return calculateSubtotal() - calculateDiscount();
@@ -343,12 +334,20 @@ const POSInterface = () => {
           type: customer.type,
           name: customer.name,
           phone: customer.phone,
-          insurance: customer.type === 'assure' ? {
-            company: customer.insuranceCompany!,
-            number: customer.insuranceNumber!,
-            coverage_rate: 70
-          } : undefined,
-          discount_rate: customer.discountRate || 0
+          assureur_id: customer.assureur_id,
+          assureur_libelle: customer.assureur_libelle,
+          taux_remise_automatique: customer.taux_remise_automatique,
+          taux_agent: customer.taux_agent,
+          taux_ayant_droit: customer.taux_ayant_droit,
+          limite_credit: customer.limite_credit,
+          peut_prendre_bon: customer.peut_prendre_bon,
+          taux_ticket_moderateur: customer.taux_ticket_moderateur,
+          caution: customer.caution,
+          utiliser_caution: customer.utiliser_caution,
+          societe_id: customer.societe_id,
+          personnel_id: customer.personnel_id,
+          insurance: customer.insurance,
+          discount_rate: customer.discount_rate ?? customer.taux_remise_automatique ?? 0
         },
         payment: {
           method: paymentData.method === 'cash' ? 'Espèces' : 
@@ -367,7 +366,7 @@ const POSInterface = () => {
 
       if (result.success) {
         // Enregistrer points fidélité si client a un ID
-        if (customer.id && customer.type !== 'ordinaire') {
+        if (customer.id && customer.type !== 'Ordinaire') {
           const pointsGagnes = calculatePoints(calculateTotal());
           try {
             await addPoints({
@@ -479,7 +478,7 @@ const POSInterface = () => {
         }
 
         clearCart();
-        setCustomer({ type: 'ordinaire' });
+        setCustomer({ type: 'Ordinaire', discount_rate: 0 });
         setLoyaltyRewardApplied(null);
         setShowPayment(false);
         setShowSplitPayment(false);
@@ -719,7 +718,7 @@ const POSInterface = () => {
               {/* Remise */}
               {calculateDiscount() > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
-                  <span>Remise ({customer.discountRate}%):</span>
+                  <span>Remise ({customer.discount_rate ?? customer.taux_remise_automatique ?? 0}%):</span>
                   <span>-{formatAmount(calculateDiscount())}</span>
                 </div>
               )}
