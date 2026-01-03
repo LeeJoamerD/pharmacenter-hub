@@ -14247,6 +14247,7 @@ export type Database = {
           adresse: string | null
           assureur_id: string | null
           auth_user_id: string | null
+          caution: number | null
           created_at: string
           date_naissance: string | null
           date_recrutement: string | null
@@ -14275,6 +14276,7 @@ export type Database = {
           taux_agent: number | null
           taux_ayant_droit: number | null
           taux_remise_automatique: number | null
+          taux_ticket_moderateur: number | null
           telephone_appel: string | null
           telephone_whatsapp: string | null
           tenant_id: string
@@ -14284,6 +14286,7 @@ export type Database = {
           adresse?: string | null
           assureur_id?: string | null
           auth_user_id?: string | null
+          caution?: number | null
           created_at?: string
           date_naissance?: string | null
           date_recrutement?: string | null
@@ -14312,6 +14315,7 @@ export type Database = {
           taux_agent?: number | null
           taux_ayant_droit?: number | null
           taux_remise_automatique?: number | null
+          taux_ticket_moderateur?: number | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
           tenant_id: string
@@ -14321,6 +14325,7 @@ export type Database = {
           adresse?: string | null
           assureur_id?: string | null
           auth_user_id?: string | null
+          caution?: number | null
           created_at?: string
           date_naissance?: string | null
           date_recrutement?: string | null
@@ -14349,6 +14354,7 @@ export type Database = {
           taux_agent?: number | null
           taux_ayant_droit?: number | null
           taux_remise_automatique?: number | null
+          taux_ticket_moderateur?: number | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
           tenant_id?: string
@@ -17545,6 +17551,7 @@ export type Database = {
         Row: {
           adresse: string | null
           assureur_id: string | null
+          caution: number | null
           created_at: string
           email: string | null
           id: string
@@ -17555,6 +17562,7 @@ export type Database = {
           taux_couverture_agent: number | null
           taux_couverture_ayant_droit: number | null
           taux_remise_automatique: number | null
+          taux_ticket_moderateur: number | null
           telephone_appel: string | null
           telephone_whatsapp: string | null
           tenant_id: string
@@ -17563,6 +17571,7 @@ export type Database = {
         Insert: {
           adresse?: string | null
           assureur_id?: string | null
+          caution?: number | null
           created_at?: string
           email?: string | null
           id?: string
@@ -17573,6 +17582,7 @@ export type Database = {
           taux_couverture_agent?: number | null
           taux_couverture_ayant_droit?: number | null
           taux_remise_automatique?: number | null
+          taux_ticket_moderateur?: number | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
           tenant_id: string
@@ -17581,6 +17591,7 @@ export type Database = {
         Update: {
           adresse?: string | null
           assureur_id?: string | null
+          caution?: number | null
           created_at?: string
           email?: string | null
           id?: string
@@ -17591,6 +17602,7 @@ export type Database = {
           taux_couverture_agent?: number | null
           taux_couverture_ayant_droit?: number | null
           taux_remise_automatique?: number | null
+          taux_ticket_moderateur?: number | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
           tenant_id?: string

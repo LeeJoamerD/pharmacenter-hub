@@ -546,6 +546,54 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                     )}
                   />
                 </div>
+
+                {/* Ligne 4: Taux ticket modérateur + Caution actuelle */}
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="taux_ticket_moderateur"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Taux ticket modérateur (%)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min="0"
+                            max="100"
+                            placeholder="0"
+                            {...field}
+                            value={field.value || 0}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormDescription>Part payée comptant par le client non assuré lors d'un achat en bon</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="caution"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valeur Caution Actuelle ({getCurrencySymbol()})</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step={getInputStep()}
+                            placeholder={isNoDecimalCurrency() ? "0" : "0.00"}
+                            {...field}
+                            value={field.value || 0}
+                            readOnly
+                            className="bg-muted cursor-not-allowed"
+                          />
+                        </FormControl>
+                        <FormDescription>Montant de la caution actuelle (non modifiable)</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>

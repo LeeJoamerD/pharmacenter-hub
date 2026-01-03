@@ -110,7 +110,9 @@ export const EmployeeManagement = () => {
       limite_dette: 0,
       peut_prendre_bon: true,
       taux_agent: 0,
-      taux_ayant_droit: 0
+      taux_ayant_droit: 0,
+      taux_ticket_moderateur: 0,
+      caution: 0
     }
   });
 
@@ -132,7 +134,9 @@ export const EmployeeManagement = () => {
         limite_dette: data.limite_dette || 0,
         peut_prendre_bon: data.peut_prendre_bon !== false,
         taux_agent: data.taux_agent || 0,
-        taux_ayant_droit: data.taux_ayant_droit || 0
+        taux_ayant_droit: data.taux_ayant_droit || 0,
+        taux_ticket_moderateur: data.taux_ticket_moderateur || 0,
+        caution: data.caution || 0
       };
 
       if (editingEmployee) {
@@ -183,7 +187,9 @@ export const EmployeeManagement = () => {
       limite_dette: employee.limite_dette || 0,
       peut_prendre_bon: employee.peut_prendre_bon !== false,
       taux_agent: employee.taux_agent || 0,
-      taux_ayant_droit: employee.taux_ayant_droit || 0
+      taux_ayant_droit: employee.taux_ayant_droit || 0,
+      taux_ticket_moderateur: employee.taux_ticket_moderateur || 0,
+      caution: employee.caution || 0
     });
     setIsDialogOpen(true);
   };
@@ -221,7 +227,9 @@ export const EmployeeManagement = () => {
       limite_dette: 0,
       peut_prendre_bon: true,
       taux_agent: 0,
-      taux_ayant_droit: 0
+      taux_ayant_droit: 0,
+      taux_ticket_moderateur: 0,
+      caution: 0
     });
   };
 
@@ -302,7 +310,9 @@ export const EmployeeManagement = () => {
                    limite_dette: 0,
                    peut_prendre_bon: true,
                    taux_agent: 0,
-                   taux_ayant_droit: 0
+                   taux_ayant_droit: 0,
+                   taux_ticket_moderateur: 0,
+                   caution: 0
                  });
                }}>
                 <Plus className="w-4 h-4 mr-2" />
