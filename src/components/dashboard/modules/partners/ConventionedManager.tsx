@@ -315,87 +315,6 @@ const ConventionedManager = () => {
                         )}
                       />
 
-                      <FormField
-                        control={form.control}
-                        name="limite_dette"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step={getInputStep()}
-                                placeholder={isNoDecimalCurrency() ? "0" : "0.00"} 
-                                {...field}
-                                onChange={e => field.onChange(Number(e.target.value))}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="caution"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Caution ({getCurrencySymbol()})</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step={getInputStep()}
-                                placeholder={isNoDecimalCurrency() ? "0" : "0.00"} 
-                                {...field}
-                                onChange={e => field.onChange(Number(e.target.value))}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="taux_ticket_moderateur"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Taux ticket modérateur (%)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                placeholder="0" 
-                                min="0" 
-                                max="100"
-                                {...field}
-                                onChange={e => field.onChange(Number(e.target.value))}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="taux_remise_automatique"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Taux remise automatique (%)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                placeholder="0" 
-                                min="0" 
-                                max="100"
-                                {...field}
-                                onChange={e => field.onChange(Number(e.target.value))}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
                     </div>
 
                     <FormField
@@ -564,6 +483,56 @@ const ConventionedManager = () => {
                                     Autoriser les achats à crédit au point de vente
                                   </FormDescription>
                                 </div>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        {/* Ligne 4: Taux ticket modérateur + Caution actuelle */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="taux_ticket_moderateur"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Taux ticket modérateur (%)</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    min="0"
+                                    max="100"
+                                    placeholder="0"
+                                    {...field}
+                                    value={field.value || 0}
+                                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                                  />
+                                </FormControl>
+                                <FormDescription>
+                                  Part payée comptant par le client non assuré lors d'un achat en bon
+                                </FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="caution"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Valeur Caution Actuelle ({getCurrencySymbol()})</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    step={getInputStep()} 
+                                    placeholder={isNoDecimalCurrency() ? "0" : "0.00"} 
+                                    {...field}
+                                    value={field.value || 0}
+                                    readOnly
+                                    className="bg-muted cursor-not-allowed"
+                                  />
+                                </FormControl>
+                                <FormDescription>Montant de la caution actuelle (non modifiable)</FormDescription>
+                                <FormMessage />
                               </FormItem>
                             )}
                           />
