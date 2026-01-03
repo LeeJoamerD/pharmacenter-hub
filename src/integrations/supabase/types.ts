@@ -5025,6 +5025,7 @@ export type Database = {
           adresse: string | null
           allergies: Json | null
           assureur_id: string | null
+          caution: number | null
           chronic_conditions: Json | null
           contact_email: string | null
           contact_fonction: string | null
@@ -5059,6 +5060,7 @@ export type Database = {
           taux_ayant_droit: number | null
           taux_couverture: number | null
           taux_remise_automatique: number | null
+          taux_ticket_moderateur: number | null
           telephone: string | null
           telephone_whatsapp: string | null
           tenant_id: string
@@ -5069,6 +5071,7 @@ export type Database = {
           adresse?: string | null
           allergies?: Json | null
           assureur_id?: string | null
+          caution?: number | null
           chronic_conditions?: Json | null
           contact_email?: string | null
           contact_fonction?: string | null
@@ -5103,6 +5106,7 @@ export type Database = {
           taux_ayant_droit?: number | null
           taux_couverture?: number | null
           taux_remise_automatique?: number | null
+          taux_ticket_moderateur?: number | null
           telephone?: string | null
           telephone_whatsapp?: string | null
           tenant_id: string
@@ -5113,6 +5117,7 @@ export type Database = {
           adresse?: string | null
           allergies?: Json | null
           assureur_id?: string | null
+          caution?: number | null
           chronic_conditions?: Json | null
           contact_email?: string | null
           contact_fonction?: string | null
@@ -5147,6 +5152,7 @@ export type Database = {
           taux_ayant_droit?: number | null
           taux_couverture?: number | null
           taux_remise_automatique?: number | null
+          taux_ticket_moderateur?: number | null
           telephone?: string | null
           telephone_whatsapp?: string | null
           tenant_id?: string
