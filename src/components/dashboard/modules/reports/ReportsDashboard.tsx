@@ -23,19 +23,25 @@ import {
   Star,
   Clock,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Loader2
 } from 'lucide-react';
-// import { useSalesMetrics } from '@/hooks/useSalesMetrics';
-// import { useStockMetrics } from '@/hooks/useStockMetrics';
+import { useReportsDashboard } from '@/hooks/useReportsDashboard';
 import { useToast } from '@/hooks/use-toast';
 
 const ReportsDashboard = () => {
   const { toast } = useToast();
-  const [selectedPeriod, setSelectedPeriod] = useState('month');
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month' | 'quarter' | 'year'>('month');
   
-  // const salesMetrics = useSalesMetrics();
-  // const stockMetrics = useStockMetrics();
+  const { 
+    metrics, 
+    recentReports, 
+    favoriteReports, 
+    activity, 
+    moduleUsage, 
+    isLoading, 
+    refetch 
+  } = useReportsDashboard(selectedPeriod);
 
   const reportGroups = [
     { id: 'ventes', name: 'Ventes', icon: BarChart3, color: 'text-blue-600', bgColor: 'bg-blue-50', reports: 25 },
@@ -52,69 +58,19 @@ const ReportsDashboard = () => {
     { id: 'configuration', name: 'Configuration', icon: Cog, color: 'text-slate-600', bgColor: 'bg-slate-50', reports: 4 }
   ];
 
-  const dashboardMetrics = [
-    {
-      title: 'CA Aujourd\'hui',
-      value: '2 850 000',
-      unit: 'FCFA',
-      change: '+12.5%',
-      trend: 'up',
-      icon: DollarSign,
-      color: 'text-green-600'
-    },
-    {
-      title: 'Stock Critique',
-      value: '23',
-      unit: 'produits',
-      change: '-5 produits',
-      trend: 'down',
-      icon: Package,
-      color: 'text-orange-600'
-    },
-    {
-      title: 'Clients Actifs',
-      value: '1 547',
-      unit: 'clients',
-      change: '+8.2%',
-      trend: 'up',
-      icon: Users,
-      color: 'text-blue-600'
-    },
-    {
-      title: 'Taux Conformité',
-      value: '98.5',
-      unit: '%',
-      change: 'Stable',
-      trend: 'stable',
-      icon: Target,
-      color: 'text-green-600'
-    }
-  ];
-
-  const recentReports = [
-    { name: 'Rapport Ventes Journalier', date: 'Aujourd\'hui 08:30', status: 'completed', format: 'PDF' },
-    { name: 'Analyse Stock Critique', date: 'Hier 18:45', status: 'completed', format: 'Excel' },
-    { name: 'KPI Dashboard Mensuel', date: 'Hier 16:20', status: 'completed', format: 'PDF' },
-    { name: 'Rapport Conformité', date: '29/01 14:30', status: 'pending', format: 'PDF' },
-    { name: 'Analyse Clients VIP', date: '28/01 11:15', status: 'completed', format: 'Excel' }
-  ];
-
-  const favoriteReports = [
-    { name: 'Dashboard Exécutif', category: 'BI', frequency: 'Quotidien' },
-    { name: 'Ventes par Produit', category: 'Ventes', frequency: 'Hebdomadaire' },
-    { name: 'Alertes Stock', category: 'Stock', frequency: 'Temps réel' },
-    { name: 'Registre Stupéfiants', category: 'Réglementaire', frequency: 'Mensuel' }
-  ];
+  const iconMap: Record<string, any> = {
+    DollarSign,
+    Package,
+    Users,
+    Target
+  };
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      toast({
-        title: "Données actualisées",
-        description: "Le tableau de bord a été mis à jour avec les dernières données",
-      });
-    }, 2000);
+    refetch();
+    toast({
+      title: "Données actualisées",
+      description: "Le tableau de bord a été mis à jour avec les dernières données",
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -135,6 +91,9 @@ const ReportsDashboard = () => {
     }
   };
 
+  const metricsIcons = [DollarSign, Package, Users, Target];
+  const metricsColors = ['text-green-600', 'text-orange-600', 'text-blue-600', 'text-green-600'];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -145,7 +104,7 @@ const ReportsDashboard = () => {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+          <Select value={selectedPeriod} onValueChange={(v: any) => setSelectedPeriod(v)}>
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
@@ -159,12 +118,12 @@ const ReportsDashboard = () => {
           </Select>
           <Button 
             onClick={handleRefresh}
-            disabled={isRefreshing}
+            disabled={isLoading}
             variant="outline"
             className="animate-fade-in"
           >
-            {isRefreshing ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
@@ -174,13 +133,13 @@ const ReportsDashboard = () => {
 
       {/* Métriques principales */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {dashboardMetrics.map((metric, index) => {
-          const IconComponent = metric.icon;
+        {metrics.map((metric, index) => {
+          const IconComponent = metricsIcons[index];
           return (
             <Card key={index} className="hover-scale animate-fade-in">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
-                <IconComponent className={`h-4 w-4 ${metric.color}`} />
+                <IconComponent className={`h-4 w-4 ${metricsColors[index]}`} />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -224,19 +183,19 @@ const ReportsDashboard = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Rapports générés</span>
-                    <span className="font-bold">247</span>
+                    <span className="font-bold">{activity.totalGenerated}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Exports PDF</span>
-                    <span className="font-bold">189</span>
+                    <span className="font-bold">{activity.pdfExports}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Exports Excel</span>
-                    <span className="font-bold">128</span>
+                    <span className="font-bold">{activity.excelExports}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Rapports programmés</span>
-                    <span className="font-bold">23</span>
+                    <span className="font-bold">{activity.scheduledReports}</span>
                   </div>
                 </div>
               </CardContent>
