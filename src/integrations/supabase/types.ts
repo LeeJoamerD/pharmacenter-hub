@@ -6464,6 +6464,8 @@ export type Database = {
           niu: string | null
           noms: string
           peut_prendre_bon: boolean | null
+          taux_couverture_agent: number | null
+          taux_couverture_ayant_droit: number | null
           taux_remise_automatique: number | null
           taux_ticket_moderateur: number | null
           telephone_appel: string | null
@@ -6483,6 +6485,8 @@ export type Database = {
           niu?: string | null
           noms: string
           peut_prendre_bon?: boolean | null
+          taux_couverture_agent?: number | null
+          taux_couverture_ayant_droit?: number | null
           taux_remise_automatique?: number | null
           taux_ticket_moderateur?: number | null
           telephone_appel?: string | null
@@ -6502,6 +6506,8 @@ export type Database = {
           niu?: string | null
           noms?: string
           peut_prendre_bon?: boolean | null
+          taux_couverture_agent?: number | null
+          taux_couverture_ayant_droit?: number | null
           taux_remise_automatique?: number | null
           taux_ticket_moderateur?: number | null
           telephone_appel?: string | null
