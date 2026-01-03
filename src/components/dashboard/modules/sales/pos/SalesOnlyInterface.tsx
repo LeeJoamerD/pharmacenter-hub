@@ -19,7 +19,9 @@ import {
   Printer,
   Loader2,
   FileText,
-  ClipboardList
+  ClipboardList,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { PrescriptionModal } from '../../pos/PrescriptionModal';
 import ProductDemandModal from '../../pos/ProductDemandModal';
@@ -30,6 +32,8 @@ import POSBarcodeActions from './POSBarcodeActions';
 import { usePOSData } from '@/hooks/usePOSData';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
+import { usePOSCalculations } from '@/hooks/usePOSCalculations';
+import { useClientDebt, useCanAddDebt } from '@/hooks/useClientDebt';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionData, CartItemWithLot, CustomerInfo, CustomerType } from '@/types/pos';
@@ -225,15 +229,20 @@ const SalesOnlyInterface = () => {
     }, 0);
   }, [cart]);
 
+  // Utiliser le hook de calcul centralisé
+  const calculations = usePOSCalculations(cart, customer);
+
+  // Vérifier la dette du client
+  const { totalDette } = useClientDebt(customer.id, customer.limite_credit ?? 0);
+  const { canAddDebt } = useCanAddDebt(customer.id, customer.limite_credit ?? 0, 0);
+
   const calculateDiscount = useCallback(() => {
-    const subtotal = calculateSubtotal();
-    const discountRate = customer.discount_rate ?? customer.taux_remise_automatique ?? 0;
-    return discountRate ? (subtotal * discountRate) / 100 : 0;
-  }, [calculateSubtotal, customer.discount_rate, customer.taux_remise_automatique]);
+    return calculations.montantRemise;
+  }, [calculations.montantRemise]);
 
   const calculateTotal = useCallback(() => {
-    return calculateSubtotal() - calculateDiscount();
-  }, [calculateSubtotal, calculateDiscount]);
+    return calculations.totalAPayer;
+  }, [calculations.totalAPayer]);
 
   // Valider la vente (sans encaissement)
   const handleValidateSale = useCallback(async () => {
@@ -498,27 +507,27 @@ const SalesOnlyInterface = () => {
             
             <Separator />
             
-            {/* Totaux avec détail TVA et Centime */}
+            {/* Totaux avec détail TVA, Centime et calculs avancés */}
             <div className="space-y-2">
               {/* Total HT */}
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Total HT:</span>
-                <span>{formatAmount(calculateTotalHT())}</span>
+                <span>{formatAmount(calculations.totalHT)}</span>
               </div>
               
               {/* TVA - afficher seulement si > 0 */}
-              {calculateTotalTVA() > 0 && (
+              {calculations.montantTVA > 0 && (
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>TVA:</span>
-                  <span>{formatAmount(calculateTotalTVA())}</span>
+                  <span>{formatAmount(calculations.montantTVA)}</span>
                 </div>
               )}
               
               {/* Centime Additionnel - afficher seulement si > 0 */}
-              {calculateTotalCentime() > 0 && (
+              {calculations.montantCentime > 0 && (
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>Centime Add.:</span>
-                  <span>{formatAmount(calculateTotalCentime())}</span>
+                  <span>{formatAmount(calculations.montantCentime)}</span>
                 </div>
               )}
               
@@ -527,14 +536,39 @@ const SalesOnlyInterface = () => {
               {/* Sous-total TTC */}
               <div className="flex justify-between text-sm font-medium">
                 <span>Sous-total TTC:</span>
-                <span>{formatAmount(calculateSubtotal())}</span>
+                <span>{formatAmount(calculations.sousTotalTTC)}</span>
               </div>
+
+              {/* Couverture Assurance */}
+              {calculations.estAssure && calculations.partAssurance > 0 && (
+                <>
+                  <div className="flex justify-between text-sm text-orange-600">
+                    <span className="flex items-center gap-1">
+                      <ShieldCheck className="h-3 w-3" />
+                      Couverture Assurance ({calculations.tauxCouverture}%):
+                    </span>
+                    <span>-{formatAmount(calculations.partAssurance)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-medium">
+                    <span>Part Client:</span>
+                    <span>{formatAmount(calculations.partClient)}</span>
+                  </div>
+                </>
+              )}
+              
+              {/* Ticket Modérateur (si non assuré) */}
+              {!calculations.estAssure && calculations.montantTicketModerateur > 0 && (
+                <div className="flex justify-between text-sm text-blue-600">
+                  <span>Ticket modérateur ({calculations.tauxTicketModerateur}%):</span>
+                  <span>-{formatAmount(calculations.montantTicketModerateur)}</span>
+                </div>
+              )}
               
               {/* Remise */}
-              {calculateDiscount() > 0 && (
+              {calculations.montantRemise > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
-                  <span>Remise ({customer.discount_rate ?? customer.taux_remise_automatique ?? 0}%):</span>
-                  <span>-{formatAmount(calculateDiscount())}</span>
+                  <span>Remise ({calculations.tauxRemise}%):</span>
+                  <span>-{formatAmount(calculations.montantRemise)}</span>
                 </div>
               )}
               
@@ -543,7 +577,7 @@ const SalesOnlyInterface = () => {
               {/* Total à payer */}
               <div className="flex justify-between font-bold text-lg">
                 <span>Total à payer:</span>
-                <span className="text-primary">{formatAmount(calculateTotal())}</span>
+                <span className="text-primary">{formatAmount(calculations.totalAPayer)}</span>
               </div>
             </div>
             

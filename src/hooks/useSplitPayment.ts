@@ -3,7 +3,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export interface PaymentMethod {
   id: string;
-  method: 'Espèces' | 'Carte' | 'Mobile Money' | 'Assurance';
+  method: 'Espèces' | 'Carte' | 'Mobile Money' | 'Assurance' | 'Caution';
   amount: number;
   reference?: string;
 }
@@ -19,11 +19,12 @@ export const useSplitPayment = () => {
   ]);
 
   // Méthodes de paiement disponibles
-  const availableMethods: Array<'Espèces' | 'Carte' | 'Mobile Money' | 'Assurance'> = [
+  const availableMethods: Array<'Espèces' | 'Carte' | 'Mobile Money' | 'Assurance' | 'Caution'> = [
     'Espèces',
     'Carte',
     'Mobile Money',
     'Assurance',
+    'Caution',
   ];
 
   // Ajouter un mode de paiement
