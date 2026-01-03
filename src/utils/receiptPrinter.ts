@@ -20,6 +20,15 @@ interface ReceiptData {
     montant_paye: number;
     montant_rendu: number;
     mode_paiement: string;
+    // Champs assurance
+    taux_couverture_assurance?: number;
+    montant_part_assurance?: number;
+    montant_part_patient?: number;
+    // Ticket modérateur et remise
+    taux_ticket_moderateur?: number;
+    montant_ticket_moderateur?: number;
+    taux_remise_automatique?: number;
+    montant_remise_automatique?: number;
   };
   lignes: Array<{
     produit: { libelle_produit: string };
@@ -29,6 +38,11 @@ interface ReceiptData {
     montant_ligne_ttc: number;
     taux_tva?: number;
   }>;
+  client?: {
+    nom: string;
+    type: string;
+    assureur?: string;
+  };
   pharmacyInfo: {
     name: string;
     adresse?: string;
@@ -140,14 +154,60 @@ export async function printReceipt(data: ReceiptData): Promise<string> {
   doc.text(formatCurrencyAmount(data.vente.montant_total_ttc, currency), 75, y, { align: 'right' });
   y += 4;
 
-  // Remise (si présente)
-  if (data.vente.remise_globale > 0) {
+  // Informations client et assurance
+  if (data.client) {
+    y += 2;
+    doc.line(5, y, 75, y);
+    y += 4;
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Client: ${data.client.nom}`, 5, y);
+    y += 4;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Type: ${data.client.type}`, 5, y);
+    y += 4;
+    
+    // Assureur si présent
+    if (data.client.assureur && (data.vente.taux_couverture_assurance ?? 0) > 0) {
+      doc.text(`Assureur: ${data.client.assureur} (${data.vente.taux_couverture_assurance}%)`, 5, y);
+      y += 4;
+      
+      // Couverture Assurance
+      doc.text(`Couverture Assurance:`, 5, y);
+      doc.text(`-${formatCurrencyAmount(data.vente.montant_part_assurance || 0, currency)}`, 75, y, { align: 'right' });
+      y += 4;
+      
+      // Part Client
+      doc.text(`Part Client:`, 5, y);
+      doc.text(formatCurrencyAmount(data.vente.montant_part_patient || data.vente.montant_total_ttc, currency), 75, y, { align: 'right' });
+      y += 4;
+    }
+  }
+
+  // Ticket modérateur (si non assuré)
+  if ((data.vente.montant_ticket_moderateur ?? 0) > 0) {
+    doc.text(`Ticket modérateur (${data.vente.taux_ticket_moderateur}%):`, 5, y);
+    doc.text(`-${formatCurrencyAmount(data.vente.montant_ticket_moderateur || 0, currency)}`, 75, y, { align: 'right' });
+    y += 4;
+  }
+
+  // Remise automatique
+  if ((data.vente.montant_remise_automatique ?? 0) > 0) {
+    doc.text(`Remise (${data.vente.taux_remise_automatique}%):`, 5, y);
+    doc.text(`-${formatCurrencyAmount(data.vente.montant_remise_automatique || 0, currency)}`, 75, y, { align: 'right' });
+    y += 4;
+  }
+
+  // Remise legacy (si pas de remise automatique mais remise_globale > 0)
+  if (data.vente.remise_globale > 0 && !(data.vente.montant_remise_automatique)) {
     doc.text(`Remise:`, 5, y);
     doc.text(`-${formatCurrencyAmount(data.vente.remise_globale, currency)}`, 75, y, { align: 'right' });
     y += 4;
   }
 
   // Total à payer
+  doc.line(5, y, 75, y);
+  y += 4;
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.text(`NET A PAYER:`, 5, y);

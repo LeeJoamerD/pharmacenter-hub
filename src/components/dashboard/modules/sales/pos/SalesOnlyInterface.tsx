@@ -330,14 +330,23 @@ const SalesOnlyInterface = () => {
               vente: {
                 numero_vente: result.numero_facture,
                 date_vente: new Date().toISOString(),
-                montant_total_ht: calculateTotalHT(),
-                montant_tva: calculateTotalTVA(),
+                montant_total_ht: calculations.totalHT,
+                montant_tva: calculations.montantTVA,
                 taux_tva: 18,
-                montant_centime_additionnel: calculateTotalCentime(),
+                montant_centime_additionnel: calculations.montantCentime,
                 taux_centime_additionnel: 5,
-                montant_total_ttc: calculateSubtotal(),
-                montant_net: calculateTotal(),
-                remise_globale: calculateDiscount()
+                montant_total_ttc: calculations.sousTotalTTC,
+                montant_net: calculations.totalAPayer,
+                remise_globale: calculations.montantRemise + calculations.montantTicketModerateur,
+                // Champs assurance
+                taux_couverture_assurance: calculations.tauxCouverture,
+                montant_part_assurance: calculations.partAssurance,
+                montant_part_patient: calculations.partClient,
+                // Ticket modérateur et remise
+                taux_ticket_moderateur: calculations.tauxTicketModerateur,
+                montant_ticket_moderateur: calculations.montantTicketModerateur,
+                taux_remise_automatique: calculations.tauxRemise,
+                montant_remise_automatique: calculations.montantRemise
               },
               lignes: cart.map(item => ({
                 produit: { libelle_produit: item.product.name || item.product.libelle_produit },
@@ -345,6 +354,11 @@ const SalesOnlyInterface = () => {
                 prix_unitaire_ttc: item.unitPrice,
                 montant_ligne_ttc: item.total
               })),
+              client: customer.name ? {
+                nom: customer.name,
+                type: customer.type,
+                assureur: customer.assureur_libelle
+              } : undefined,
               pharmacyInfo: {
                 name: pharmacyInfo.name,
                 adresse: pharmacyInfo.address,

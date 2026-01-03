@@ -266,11 +266,21 @@ const CashRegisterInterface = () => {
                 taux_tva: 18,
                 montant_centime_additionnel: selectedTransaction.montant_centime_additionnel || 0,
                 taux_centime_additionnel: 5,
+                montant_total_ttc: selectedTransaction.montant_total_ttc,
+                taux_couverture_assurance: selectedTransaction.taux_couverture_assurance,
+                montant_part_assurance: selectedTransaction.montant_part_assurance,
+                montant_part_patient: selectedTransaction.montant_part_patient,
+                remise_globale: selectedTransaction.remise_globale,
                 montant_net: selectedTransaction.montant_net,
                 montant_paye: amountReceived,
                 montant_rendu: calculateChange(),
                 mode_paiement: paymentMethod
               },
+              client: selectedTransaction.client ? {
+                nom: selectedTransaction.client.nom_complet,
+                type: selectedTransaction.client.type_client,
+                assureur: selectedTransaction.client.assureur?.libelle_assureur
+              } : undefined,
               pharmacyInfo: {
                 name: pharmacyInfo.name,
                 adresse: pharmacyInfo.address,
@@ -451,9 +461,16 @@ const CashRegisterInterface = () => {
                             {new Date(transaction.date_vente).toLocaleString('fr-CG')}
                           </p>
                           {transaction.client && (
-                            <p className="text-xs text-muted-foreground">
-                              Client: {transaction.client.nom_complet}
-                            </p>
+                            <div className="flex flex-col gap-0.5">
+                              <p className="text-xs text-muted-foreground">
+                                Client: {transaction.client.nom_complet}
+                              </p>
+                              {transaction.client.assureur && (
+                                <Badge variant="secondary" className="text-xs w-fit">
+                                  {transaction.client.assureur.libelle_assureur}
+                                </Badge>
+                              )}
+                            </div>
                           )}
                         </div>
                         <div className="text-right">
@@ -536,17 +553,65 @@ const CashRegisterInterface = () => {
 
                 <Separator className="my-4" />
 
-                <div className="space-y-2">
+                {/* Affichage détaillé des calculs */}
+                <div className="space-y-2 text-sm">
+                  {/* Montants de base */}
                   <div className="flex justify-between">
-                    <span>Sous-total:</span>
+                    <span>Total HT:</span>
+                    <span>{formatAmount(selectedTransaction.montant_total_ht || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>TVA (18%):</span>
+                    <span>{formatAmount(selectedTransaction.montant_tva || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Centime Add.:</span>
+                    <span>{formatAmount(selectedTransaction.montant_centime_additionnel || 0)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between">
+                    <span>Sous-total TTC:</span>
                     <span>{formatAmount(selectedTransaction.montant_total_ttc)}</span>
                   </div>
-                  {selectedTransaction.remise_globale > 0 && (
+
+                  {/* Couverture Assurance (si client assuré) */}
+                  {(selectedTransaction.taux_couverture_assurance ?? 0) > 0 && (
+                    <>
+                      <div className="flex justify-between text-blue-600">
+                        <span>Couverture Assurance ({selectedTransaction.taux_couverture_assurance}%):</span>
+                        <span>-{formatAmount(selectedTransaction.montant_part_assurance || 0)}</span>
+                      </div>
+                      <div className="flex justify-between text-blue-600">
+                        <span>Part Client:</span>
+                        <span>{formatAmount(selectedTransaction.montant_part_patient || selectedTransaction.montant_total_ttc)}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Ticket modérateur (depuis metadata) */}
+                  {(selectedTransaction.metadata?.client_info?.montant_ticket_moderateur ?? 0) > 0 && (
+                    <div className="flex justify-between text-orange-600">
+                      <span>Ticket modérateur ({selectedTransaction.metadata?.client_info?.taux_ticket_moderateur}%):</span>
+                      <span>-{formatAmount(selectedTransaction.metadata?.client_info?.montant_ticket_moderateur || 0)}</span>
+                    </div>
+                  )}
+
+                  {/* Remise automatique (depuis metadata) */}
+                  {(selectedTransaction.metadata?.client_info?.montant_remise_automatique ?? 0) > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Remise ({selectedTransaction.metadata?.client_info?.taux_remise_automatique}%):</span>
+                      <span>-{formatAmount(selectedTransaction.metadata?.client_info?.montant_remise_automatique || 0)}</span>
+                    </div>
+                  )}
+
+                  {/* Remise globale legacy (si pas de metadata mais remise_globale > 0) */}
+                  {selectedTransaction.remise_globale > 0 && !(selectedTransaction.metadata?.client_info?.montant_remise_automatique) && (
                     <div className="flex justify-between text-green-600">
                       <span>Remise:</span>
                       <span>-{formatAmount(selectedTransaction.remise_globale)}</span>
                     </div>
                   )}
+
                   <Separator />
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total à encaisser:</span>

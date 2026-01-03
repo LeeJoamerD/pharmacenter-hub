@@ -164,16 +164,34 @@ export const usePOSData = () => {
         }
       }
 
-      // 4. Calculer parts assurance
+      // 4. Calculer parts assurance - Utiliser les données client au lieu du mode de paiement
       let montantPartAssurance = 0;
       let montantPartPatient = montantNet;
       let tauxCouverture = 0;
       
-      if (transactionData.payment.method === 'Assurance' && transactionData.customer.insurance) {
-        tauxCouverture = transactionData.customer.insurance.coverage_rate;
-        montantPartAssurance = montantNet * (tauxCouverture / 100);
+      // Un client est assuré s'il a un assureur_id ET un taux_agent > 0
+      const customerData = transactionData.customer;
+      const estAssure = !!(customerData.assureur_id && (customerData.taux_agent ?? 0) > 0);
+      
+      if (estAssure) {
+        tauxCouverture = customerData.taux_agent || 0;
+        montantPartAssurance = Math.round(montantNet * tauxCouverture / 100);
         montantPartPatient = montantNet - montantPartAssurance;
       }
+      
+      // Calculer le ticket modérateur (si non assuré)
+      const tauxTicketModerateur = !estAssure ? (customerData.taux_ticket_moderateur ?? 0) : 0;
+      const montantTicketModerateur = tauxTicketModerateur > 0 
+        ? Math.round(montantPartPatient * tauxTicketModerateur / 100) 
+        : 0;
+      
+      // Calculer la remise automatique
+      const tauxRemiseAuto = customerData.taux_remise_automatique ?? customerData.discount_rate ?? 0;
+      const baseRemise = montantPartPatient - montantTicketModerateur;
+      const montantRemiseAuto = tauxRemiseAuto > 0 ? Math.round(baseRemise * tauxRemiseAuto / 100) : 0;
+      
+      // Total final à payer par le client
+      const totalAPayer = Math.max(0, montantPartPatient - montantTicketModerateur - montantRemiseAuto);
 
       // 5. Insérer la vente - Statut "En cours" si skipPayment, sinon "Validée"
       const venteData: any = {
@@ -183,8 +201,8 @@ export const usePOSData = () => {
         montant_total_ht: montantHT,
         montant_tva: montantTVA,
         montant_total_ttc: subtotal,
-        remise_globale: remise,
-        montant_net: montantNet,
+        remise_globale: montantRemiseAuto + montantTicketModerateur, // Total réductions
+        montant_net: totalAPayer, // Le montant final après toutes les réductions
         montant_paye: skipPayment ? 0 : transactionData.payment.amount_received,
         montant_rendu: skipPayment ? 0 : transactionData.payment.change,
         mode_paiement: skipPayment ? null : transactionData.payment.method,
@@ -195,7 +213,21 @@ export const usePOSData = () => {
         session_caisse_id: transactionData.session_caisse_id,
         caisse_id: transactionData.caisse_id,
         metadata: {
-          payment_reference: transactionData.payment.reference
+          payment_reference: transactionData.payment.reference,
+          client_info: {
+            assureur_id: customerData.assureur_id,
+            assureur_libelle: customerData.assureur_libelle,
+            taux_agent: customerData.taux_agent,
+            taux_ayant_droit: customerData.taux_ayant_droit,
+            taux_ticket_moderateur: tauxTicketModerateur,
+            montant_ticket_moderateur: montantTicketModerateur,
+            taux_remise_automatique: tauxRemiseAuto,
+            montant_remise_automatique: montantRemiseAuto,
+            societe_id: customerData.societe_id,
+            personnel_id: customerData.personnel_id,
+            caution: customerData.caution,
+            utiliser_caution: customerData.utiliser_caution
+          }
         }
       };
 
