@@ -426,14 +426,14 @@ const ConventionedManager = () => {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Assureur (optionnel)</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value || ''}>
+                <Select onValueChange={(val) => field.onChange(val === "__none__" ? "" : val)} value={field.value || "__none__"}>
                                   <FormControl>
                                     <SelectTrigger>
                                       <SelectValue placeholder="Aucun assureur" />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    <SelectItem value="">Aucun assureur</SelectItem>
+                                    <SelectItem value="__none__">Aucun assureur</SelectItem>
                                     {assureurs.map((assureur: Assureur) => (
                                       <SelectItem key={assureur.id} value={assureur.id}>
                                         {assureur.libelle_assureur}
