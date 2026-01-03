@@ -80,6 +80,13 @@ export const employeeSchema = z.object({
   taux_ayant_droit: z.number()
     .min(0, "Le taux doit être positif")
     .max(100, "Le taux ne peut pas dépasser 100%")
+    .default(0),
+  taux_ticket_moderateur: z.number()
+    .min(0, "Le taux doit être positif")
+    .max(100, "Le taux ne peut pas dépasser 100%")
+    .default(0),
+  caution: z.number()
+    .min(0, "La caution doit être positive")
     .default(0)
 });
 
@@ -116,6 +123,8 @@ export interface Employee {
   peut_prendre_bon?: boolean;
   taux_agent?: number;
   taux_ayant_droit?: number;
+  taux_ticket_moderateur?: number;
+  caution?: number;
 }
 
 export const leaveRequestSchema = z.object({

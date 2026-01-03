@@ -29,6 +29,8 @@ interface Societe {
   taux_couverture_ayant_droit: number;
   taux_remise_automatique: number;
   peut_prendre_bon: boolean;
+  taux_ticket_moderateur: number;
+  caution: number;
   created_at: string;
 }
 
@@ -64,6 +66,8 @@ const Societes = () => {
       taux_remise_automatique: 0,
       peut_prendre_bon: true,
       assureur_id: null,
+      taux_ticket_moderateur: 0,
+      caution: 0,
     },
   });
 
@@ -139,6 +143,8 @@ const Societes = () => {
         taux_couverture_ayant_droit: data.taux_couverture_ayant_droit || 0,
         taux_remise_automatique: data.taux_remise_automatique || 0,
         peut_prendre_bon: data.peut_prendre_bon !== false,
+        taux_ticket_moderateur: data.taux_ticket_moderateur || 0,
+        caution: data.caution || 0,
     };
 
     if (editingSociete) {
@@ -176,6 +182,8 @@ const Societes = () => {
         taux_remise_automatique: 0,
         peut_prendre_bon: true,
         assureur_id: null,
+        taux_ticket_moderateur: 0,
+        caution: 0,
     });
     setIsDialogOpen(true);
   };
@@ -187,6 +195,8 @@ const Societes = () => {
       assureur_id: societe.assureur_id || null,
       taux_remise_automatique: societe.taux_remise_automatique || 0,
       peut_prendre_bon: societe.peut_prendre_bon !== false,
+      taux_ticket_moderateur: societe.taux_ticket_moderateur || 0,
+      caution: societe.caution || 0,
     });
     setIsDialogOpen(true);
   };
@@ -401,6 +411,46 @@ const Societes = () => {
                                   Autoriser les achats à crédit au point de vente
                                 </FormDescription>
                               </div>
+                            </FormItem>
+                          )} />
+                        </div>
+
+                        {/* Ligne 4: Taux ticket modérateur + Caution actuelle */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField control={form.control} name="taux_ticket_moderateur" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Taux ticket modérateur (%)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0"
+                                  max="100"
+                                  placeholder="0"
+                                  {...field}
+                                  value={field.value || 0}
+                                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                                />
+                              </FormControl>
+                              <FormDescription>Part payée comptant par le client non assuré lors d'un achat en bon</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <FormField control={form.control} name="caution" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Valeur Caution Actuelle ({getCurrencySymbol()})</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  step={getInputStep()} 
+                                  placeholder={isNoDecimalCurrency() ? "0" : "0.00"} 
+                                  {...field}
+                                  value={field.value || 0}
+                                  readOnly
+                                  className="bg-muted cursor-not-allowed"
+                                />
+                              </FormControl>
+                              <FormDescription>Montant de la caution actuelle (non modifiable)</FormDescription>
+                              <FormMessage />
                             </FormItem>
                           )} />
                         </div>
