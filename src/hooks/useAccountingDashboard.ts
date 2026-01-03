@@ -220,8 +220,8 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
           *,
           plan_comptable (
             id,
-            code,
-            libelle,
+            numero_compte,
+            libelle_compte,
             type_compte,
             classe
           )
@@ -240,6 +240,10 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
   const { data: ecritures, isLoading: ecrituresLoading } = useQuery({
     queryKey: ['ecritures-dashboard', tenantId, startDate, endDate],
     queryFn: async () => {
+      // Dates formatées en YYYY-MM-DD pour champ date
+      const rangeStart = format(startOfMonth(subMonths(new Date(), 5)), 'yyyy-MM-dd');
+      const rangeEnd = endDate;
+      
       const { data, error } = await supabase
         .from('ecritures_comptables')
         .select(`
@@ -248,16 +252,16 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
             *,
             plan_comptable (
               id,
-              code,
-              libelle,
+              numero_compte,
+              libelle_compte,
               classe,
               type_compte
             )
           )
         `)
         .eq('tenant_id', tenantId)
-        .gte('date_ecriture', startOfMonth(subMonths(new Date(), 5)).toISOString())
-        .lte('date_ecriture', endDate)
+        .gte('date_ecriture', rangeStart)
+        .lte('date_ecriture', rangeEnd)
         .order('date_ecriture', { ascending: true })
         .limit(10000); // ✅ Limite explicite pour éviter la pagination Supabase
 
@@ -281,7 +285,7 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
           )
         `)
         .eq('tenant_id', tenantId)
-        .gte('date_vente', startOfYear(new Date()).toISOString())
+        .gte('date_vente', format(startOfYear(new Date()), 'yyyy-MM-dd'))
         .lte('date_vente', endDate)
         .order('date_vente', { ascending: true })
         .limit(20000); // ✅ Limite explicite pour éviter la pagination Supabase
@@ -406,9 +410,10 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
         if (isAfter(ecritureDate, monthStart) && isBefore(ecritureDate, monthEnd)) {
           ecriture.lignes_ecriture?.forEach((ligne: any) => {
             const classe = ligne.plan_comptable?.classe;
-            if (classe === '7') {
+            // classe est un integer (7 = produits, 6 = charges)
+            if (classe === 7) {
               recettes += ligne.credit || 0;
-            } else if (classe === '6') {
+            } else if (classe === 6) {
               depenses += ligne.debit || 0;
             }
           });
@@ -440,7 +445,7 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
     };
 
     balances.forEach((balance: any) => {
-      const code = balance.plan_comptable?.code || '';
+      const code = balance.plan_comptable?.numero_compte || '';
       const prefix = code.substring(0, 2);
       
       if (categories[prefix]) {
