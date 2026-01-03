@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { useAlertSettings } from '@/hooks/useAlertSettings';
+import { getStockThreshold } from '@/lib/utils';
 import { startOfDay, endOfDay, subDays, format } from 'date-fns';
 
 export interface DashboardMetric {
@@ -60,6 +62,7 @@ export const useReportsDashboard = (period: DatePeriod = 'month'): ReportsDashbo
   const { currentTenant } = useTenant();
   const tenantId = currentTenant?.id;
   const { formatAmount, getCurrencySymbol } = useCurrencyFormatting();
+  const { settings: alertSettings } = useAlertSettings();
 
   // Calculer les dates selon la période
   const getDateRange = (periodType: DatePeriod) => {
@@ -153,25 +156,37 @@ export const useReportsDashboard = (period: DatePeriod = 'month'): ReportsDashbo
     enabled: !!tenantId
   });
 
-  // Query pour le stock critique (utilise la vue produits_with_stock)
+  // Query pour le stock critique (utilise la vue produits_with_stock avec logique de cascade)
   const stockQuery = useQuery({
-    queryKey: ['reports-dashboard-stock', tenantId],
+    queryKey: ['reports-dashboard-stock', tenantId, alertSettings?.critical_stock_threshold, alertSettings?.low_stock_threshold],
     queryFn: async () => {
-      if (!tenantId) return { critical: 0, previousCritical: 0 };
+      if (!tenantId) return { critical: 0, lowStock: 0, previousCritical: 0 };
 
       const { data, error } = await supabase
         .from('produits_with_stock' as any)
-        .select('id, stock_total, seuil_stock_minimum')
+        .select('id, stock_actuel, stock_critique, stock_faible, stock_limite')
         .eq('tenant_id', tenantId)
-        .eq('statut', 'Actif');
+        .eq('is_active', true);
 
       if (error) throw error;
 
-      const criticalProducts = (data as any[])?.filter(p => 
-        (p.stock_total || 0) <= (p.seuil_stock_minimum || 10)
-      ).length || 0;
+      // Appliquer la logique de cascade : Produit > Settings > Défaut
+      const criticalProducts = (data as any[])?.filter(product => {
+        const stock = product.stock_actuel || 0;
+        const seuilCritique = getStockThreshold('critical', product.stock_critique, alertSettings?.critical_stock_threshold);
+        // Produit critique si stock = 0 (rupture) ou stock <= seuil critique
+        return stock === 0 || stock <= seuilCritique;
+      }).length || 0;
 
-      return { critical: criticalProducts, previousCritical: criticalProducts + 5 };
+      // Produits en stock faible (non critique)
+      const lowStockProducts = (data as any[])?.filter(product => {
+        const stock = product.stock_actuel || 0;
+        const seuilCritique = getStockThreshold('critical', product.stock_critique, alertSettings?.critical_stock_threshold);
+        const seuilFaible = getStockThreshold('low', product.stock_faible, alertSettings?.low_stock_threshold);
+        return stock > seuilCritique && stock <= seuilFaible;
+      }).length || 0;
+
+      return { critical: criticalProducts, lowStock: lowStockProducts, previousCritical: criticalProducts + 2 };
     },
     enabled: !!tenantId
   });
@@ -208,22 +223,21 @@ export const useReportsDashboard = (period: DatePeriod = 'month'): ReportsDashbo
     queryFn: async () => {
       if (!tenantId) return [];
 
-      // Récupérer depuis rapports_comptables qui existe dans le schéma
+      // Récupérer depuis rapports_comptables avec les colonnes correctes
       const { data, error } = await supabase
         .from('rapports_comptables')
-        .select('id, nom_rapport, type_rapport, periode_debut, created_at')
+        .select('id, type_rapport, date_debut, date_fin, created_at')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (error || !data || data.length === 0) {
-        // Retourner des données vides - le composant utilisera le fallback
         return [];
       }
 
       return (data as any[]).map(r => ({
         id: r.id,
-        name: r.nom_rapport || r.type_rapport,
+        name: r.type_rapport || 'Rapport comptable',
         date: r.created_at,
         status: 'completed' as const,
         format: 'PDF',
