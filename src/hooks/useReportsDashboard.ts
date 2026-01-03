@@ -45,12 +45,19 @@ export interface ModuleUsage {
   color: string;
 }
 
+export interface ModuleReportCount {
+  id: string;
+  name: string;
+  count: number;
+}
+
 export interface ReportsDashboardData {
   metrics: DashboardMetric[];
   recentReports: RecentReport[];
   favoriteReports: FavoriteReport[];
   activity: ReportActivity;
   moduleUsage: ModuleUsage[];
+  moduleReportCounts: ModuleReportCount[];
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;
@@ -217,48 +224,74 @@ export const useReportsDashboard = (period: DatePeriod = 'month'): ReportsDashbo
     enabled: !!tenantId
   });
 
-  // Query pour les rapports récents (depuis rapports_comptables)
+  // Query pour les rapports récents (combine rapports_comptables et inventaire_rapports)
   const reportsQuery = useQuery({
     queryKey: ['reports-dashboard-recent', tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
 
-      // Récupérer depuis rapports_comptables avec les colonnes correctes
-      const { data, error } = await supabase
-        .from('rapports_comptables')
-        .select('id, type_rapport, date_debut, date_fin, created_at')
-        .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      // Récupérer depuis les deux tables sources
+      const [comptablesResult, inventaireResult] = await Promise.all([
+        supabase
+          .from('rapports_comptables')
+          .select('id, type_rapport, date_debut, date_fin, created_at')
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase
+          .from('inventaire_rapports')
+          .select('id, nom, type, format, statut, date_generation, created_at')
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false })
+          .limit(10)
+      ]);
 
-      if (error || !data || data.length === 0) {
-        return [];
-      }
-
-      return (data as any[]).map(r => ({
+      const comptables = (comptablesResult.data || []).map(r => ({
         id: r.id,
         name: r.type_rapport || 'Rapport comptable',
         date: r.created_at,
         status: 'completed' as const,
         format: 'PDF',
-        type: r.type_rapport
+        type: r.type_rapport || 'comptable'
       }));
+
+      const inventaire = (inventaireResult.data || []).map(r => {
+        const statusValue: 'completed' | 'pending' | 'error' = 
+          r.statut === 'Terminé' ? 'completed' : 
+          r.statut === 'En cours' ? 'pending' : 'completed';
+        return {
+          id: r.id,
+          name: r.nom || 'Rapport inventaire',
+          date: r.date_generation || r.created_at,
+          status: statusValue,
+          format: r.format || 'PDF',
+          type: r.type || 'inventaire'
+        };
+      });
+
+      // Fusionner et trier par date
+      const allReports = [...comptables, ...inventaire]
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 10);
+
+      return allReports;
     },
     enabled: !!tenantId
   });
 
-  // Query pour les templates favoris (utilise ai_templates comme fallback)
+  // Query pour les templates de rapports favoris (utilise report_templates)
   const favoritesQuery = useQuery({
     queryKey: ['reports-dashboard-favorites', tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
 
-      // Utiliser ai_templates qui existe dans le schéma
+      // Utiliser report_templates qui est la table appropriée pour les rapports
       const { data, error } = await supabase
-        .from('ai_templates')
-        .select('id, name, type, category')
+        .from('report_templates')
+        .select('id, name, category, template_type, is_default')
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
+        .order('is_default', { ascending: false })
         .limit(5);
 
       if (error || !data) return [];
@@ -267,7 +300,7 @@ export const useReportsDashboard = (period: DatePeriod = 'month'): ReportsDashbo
         id: t.id,
         name: t.name,
         category: t.category || 'Général',
-        frequency: 'Manuel',
+        frequency: t.is_default ? 'Automatique' : 'Manuel',
         templateId: t.id
       }));
     },
@@ -289,6 +322,57 @@ export const useReportsDashboard = (period: DatePeriod = 'month'): ReportsDashbo
 
       if (error) return 0;
       return count || 0;
+    },
+    enabled: !!tenantId
+  });
+
+  // Query pour compter les rapports par module/catégorie
+  const moduleCountsQuery = useQuery({
+    queryKey: ['reports-dashboard-module-counts', tenantId],
+    queryFn: async (): Promise<ModuleReportCount[]> => {
+      if (!tenantId) return [];
+
+      // Compter depuis report_templates par catégorie
+      const { data, error } = await supabase
+        .from('report_templates')
+        .select('category')
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true);
+
+      if (error || !data) return [];
+
+      // Agréger par catégorie
+      const counts: Record<string, number> = {};
+      data.forEach(t => {
+        const cat = t.category || 'Général';
+        counts[cat] = (counts[cat] || 0) + 1;
+      });
+
+      // Mapper vers les modules
+      const moduleMapping: Record<string, string> = {
+        'ventes': 'ventes',
+        'Ventes': 'ventes',
+        'stock': 'stock',
+        'Stock': 'stock',
+        'financier': 'financier',
+        'Financier': 'financier',
+        'clients': 'clients',
+        'Clients': 'clients',
+        'bi': 'bi',
+        'BI': 'bi',
+        'reglementaire': 'reglementaire',
+        'Réglementaire': 'reglementaire',
+        'geospatial': 'geospatial',
+        'mobile': 'mobile',
+        'ia': 'ia',
+        'IA': 'ia'
+      };
+
+      return Object.entries(counts).map(([category, count]) => ({
+        id: moduleMapping[category] || category.toLowerCase(),
+        name: category,
+        count
+      }));
     },
     enabled: !!tenantId
   });
@@ -350,92 +434,77 @@ export const useReportsDashboard = (period: DatePeriod = 'month'): ReportsDashbo
     ];
   };
 
-  // Construction de l'activité de reporting
+  // Construction de l'activité de reporting (données réelles)
   const buildActivity = (): ReportActivity => {
     const recentCount = reportsQuery.data?.length || 0;
     const scheduledCount = scheduledQuery.data || 0;
 
+    // Calculer les formats à partir des rapports récents
+    const pdfCount = reportsQuery.data?.filter(r => r.format === 'PDF').length || 0;
+    const excelCount = reportsQuery.data?.filter(r => r.format === 'Excel' || r.format === 'XLSX').length || 0;
+
     return {
-      totalGenerated: recentCount > 0 ? recentCount * 25 : 247,
-      pdfExports: recentCount > 0 ? Math.floor(recentCount * 18) : 189,
-      excelExports: recentCount > 0 ? Math.floor(recentCount * 12) : 128,
-      scheduledReports: scheduledCount > 0 ? scheduledCount : 23
+      totalGenerated: recentCount,
+      pdfExports: pdfCount,
+      excelExports: excelCount,
+      scheduledReports: scheduledCount
     };
   };
 
-  // Génération des rapports récents avec fallback
+  // Génération des rapports récents (données réelles uniquement)
   const buildRecentReports = (): RecentReport[] => {
-    if (reportsQuery.data && reportsQuery.data.length > 0) {
-      return reportsQuery.data as RecentReport[];
-    }
-
-    // Fallback avec données simulées mais cohérentes
-    const now = new Date();
-    return [
-      { 
-        id: '1', 
-        name: 'Rapport Ventes Journalier', 
-        date: format(now, 'dd/MM/yyyy HH:mm'), 
-        status: 'completed', 
-        format: 'PDF',
-        type: 'sales'
-      },
-      { 
-        id: '2', 
-        name: 'Analyse Stock Critique', 
-        date: format(subDays(now, 1), 'dd/MM/yyyy HH:mm'), 
-        status: 'completed', 
-        format: 'Excel',
-        type: 'stock'
-      },
-      { 
-        id: '3', 
-        name: 'KPI Dashboard Mensuel', 
-        date: format(subDays(now, 1), 'dd/MM/yyyy HH:mm'), 
-        status: 'completed', 
-        format: 'PDF',
-        type: 'bi'
-      },
-      { 
-        id: '4', 
-        name: 'Rapport Conformité', 
-        date: format(subDays(now, 2), 'dd/MM/yyyy HH:mm'), 
-        status: 'pending', 
-        format: 'PDF',
-        type: 'regulatory'
-      },
-      { 
-        id: '5', 
-        name: 'Analyse Clients VIP', 
-        date: format(subDays(now, 3), 'dd/MM/yyyy HH:mm'), 
-        status: 'completed', 
-        format: 'Excel',
-        type: 'customers'
-      }
-    ];
+    return (reportsQuery.data || []) as RecentReport[];
   };
 
-  // Génération des favoris avec fallback
+  // Génération des favoris (données réelles uniquement)
   const buildFavorites = (): FavoriteReport[] => {
-    if (favoritesQuery.data && favoritesQuery.data.length > 0) {
-      return favoritesQuery.data;
-    }
-
-    return [
-      { id: '1', name: 'Dashboard Exécutif', category: 'BI', frequency: 'Quotidien' },
-      { id: '2', name: 'Ventes par Produit', category: 'Ventes', frequency: 'Hebdomadaire' },
-      { id: '3', name: 'Alertes Stock', category: 'Stock', frequency: 'Temps réel' },
-      { id: '4', name: 'Registre Stupéfiants', category: 'Réglementaire', frequency: 'Mensuel' }
-    ];
+    return favoritesQuery.data || [];
   };
 
-  // Module usage basé sur données réelles ou estimations
-  const moduleUsage: ModuleUsage[] = [
-    { name: 'Rapports Ventes', usage: 89, color: 'bg-blue-500' },
-    { name: 'Analyses Stock', usage: 76, color: 'bg-green-500' },
-    { name: 'Business Intelligence', usage: 65, color: 'bg-indigo-500' },
-    { name: 'Rapports Financiers', usage: 43, color: 'bg-yellow-500' }
-  ];
+  // Module usage calculé à partir des rapports générés
+  const buildModuleUsage = (): ModuleUsage[] => {
+    const reports = reportsQuery.data || [];
+    const total = reports.length || 1; // Éviter division par zéro
+
+    // Compter par type
+    const typeCounts: Record<string, number> = {};
+    reports.forEach(r => {
+      const type = r.type || 'other';
+      typeCounts[type] = (typeCounts[type] || 0) + 1;
+    });
+
+    const moduleMapping: Record<string, { name: string; color: string }> = {
+      'Bilan': { name: 'Rapports Financiers', color: 'bg-yellow-500' },
+      'Compte de résultat': { name: 'Rapports Financiers', color: 'bg-yellow-500' },
+      'Grand livre': { name: 'Rapports Comptables', color: 'bg-purple-500' },
+      'Balance': { name: 'Rapports Comptables', color: 'bg-purple-500' },
+      'inventaire': { name: 'Rapports Stock', color: 'bg-green-500' },
+      'stock': { name: 'Rapports Stock', color: 'bg-green-500' },
+      'ventes': { name: 'Rapports Ventes', color: 'bg-blue-500' },
+      'sales': { name: 'Rapports Ventes', color: 'bg-blue-500' },
+      'comptable': { name: 'Rapports Comptables', color: 'bg-purple-500' }
+    };
+
+    // Agréger par catégorie
+    const categoryStats: Record<string, { count: number; color: string }> = {};
+    Object.entries(typeCounts).forEach(([type, count]) => {
+      const mapping = moduleMapping[type] || { name: 'Autres Rapports', color: 'bg-gray-500' };
+      if (!categoryStats[mapping.name]) {
+        categoryStats[mapping.name] = { count: 0, color: mapping.color };
+      }
+      categoryStats[mapping.name].count += count;
+    });
+
+    // Convertir en pourcentages et trier
+    return Object.entries(categoryStats)
+      .map(([name, { count, color }]) => ({
+        name,
+        usage: Math.round((count / total) * 100),
+        color
+      }))
+      .sort((a, b) => b.usage - a.usage)
+      .slice(0, 4);
+  };
 
   const isLoading = salesQuery.isLoading || stockQuery.isLoading || clientsQuery.isLoading;
   const error = salesQuery.error || stockQuery.error || clientsQuery.error;
@@ -454,7 +523,8 @@ export const useReportsDashboard = (period: DatePeriod = 'month'): ReportsDashbo
     recentReports: buildRecentReports(),
     favoriteReports: buildFavorites(),
     activity: buildActivity(),
-    moduleUsage,
+    moduleUsage: buildModuleUsage(),
+    moduleReportCounts: moduleCountsQuery.data || [],
     isLoading,
     error: error as Error | null,
     refetch

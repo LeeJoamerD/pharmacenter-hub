@@ -38,24 +38,31 @@ const ReportsDashboard = () => {
     recentReports, 
     favoriteReports, 
     activity, 
-    moduleUsage, 
+    moduleUsage,
+    moduleReportCounts,
     isLoading, 
     refetch 
   } = useReportsDashboard(selectedPeriod);
 
+  // Configuration des modules avec compteurs dynamiques
+  const getModuleCount = (moduleId: string) => {
+    const found = moduleReportCounts.find(m => m.id === moduleId);
+    return found?.count || 0;
+  };
+
   const reportGroups = [
-    { id: 'ventes', name: 'Ventes', icon: BarChart3, color: 'text-blue-600', bgColor: 'bg-blue-50', reports: 25 },
-    { id: 'stock', name: 'Stock', icon: Package, color: 'text-green-600', bgColor: 'bg-green-50', reports: 18 },
-    { id: 'financier', name: 'Financier', icon: DollarSign, color: 'text-yellow-600', bgColor: 'bg-yellow-50', reports: 15 },
-    { id: 'clients', name: 'Clients', icon: Users, color: 'text-purple-600', bgColor: 'bg-purple-50', reports: 12 },
-    { id: 'bi', name: 'Business Intelligence', icon: Target, color: 'text-indigo-600', bgColor: 'bg-indigo-50', reports: 20 },
-    { id: 'reglementaire', name: 'Réglementaire', icon: FileText, color: 'text-red-600', bgColor: 'bg-red-50', reports: 8 },
-    { id: 'geospatial', name: 'Géospatial', icon: MapPin, color: 'text-orange-600', bgColor: 'bg-orange-50', reports: 10 },
-    { id: 'mobile', name: 'Mobile', icon: Smartphone, color: 'text-pink-600', bgColor: 'bg-pink-50', reports: 6 },
-    { id: 'ia', name: 'IA/Prédictif', icon: Brain, color: 'text-cyan-600', bgColor: 'bg-cyan-50', reports: 14 },
-    { id: 'generateur', name: 'Générateur', icon: Settings, color: 'text-gray-600', bgColor: 'bg-gray-50', reports: 5 },
-    { id: 'comparatif', name: 'Comparatif', icon: TrendingUp, color: 'text-emerald-600', bgColor: 'bg-emerald-50', reports: 9 },
-    { id: 'configuration', name: 'Configuration', icon: Cog, color: 'text-slate-600', bgColor: 'bg-slate-50', reports: 4 }
+    { id: 'ventes', name: 'Ventes', icon: BarChart3, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+    { id: 'stock', name: 'Stock', icon: Package, color: 'text-green-600', bgColor: 'bg-green-50' },
+    { id: 'financier', name: 'Financier', icon: DollarSign, color: 'text-yellow-600', bgColor: 'bg-yellow-50' },
+    { id: 'clients', name: 'Clients', icon: Users, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+    { id: 'bi', name: 'Business Intelligence', icon: Target, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
+    { id: 'reglementaire', name: 'Réglementaire', icon: FileText, color: 'text-red-600', bgColor: 'bg-red-50' },
+    { id: 'geospatial', name: 'Géospatial', icon: MapPin, color: 'text-orange-600', bgColor: 'bg-orange-50' },
+    { id: 'mobile', name: 'Mobile', icon: Smartphone, color: 'text-pink-600', bgColor: 'bg-pink-50' },
+    { id: 'ia', name: 'IA/Prédictif', icon: Brain, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
+    { id: 'generateur', name: 'Générateur', icon: Settings, color: 'text-gray-600', bgColor: 'bg-gray-50' },
+    { id: 'comparatif', name: 'Comparatif', icon: TrendingUp, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
+    { id: 'configuration', name: 'Configuration', icon: Cog, color: 'text-slate-600', bgColor: 'bg-slate-50' }
   ];
 
   const iconMap: Record<string, any> = {
@@ -211,25 +218,27 @@ const ReportsDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {[
-                    { name: 'Rapports Ventes', usage: 89, color: 'bg-blue-500' },
-                    { name: 'Analyses Stock', usage: 76, color: 'bg-green-500' },
-                    { name: 'Business Intelligence', usage: 65, color: 'bg-indigo-500' },
-                    { name: 'Rapports Financiers', usage: 43, color: 'bg-yellow-500' }
-                  ].map((item, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>{item.name}</span>
-                        <span>{item.usage}%</span>
+                  {moduleUsage.length > 0 ? (
+                    moduleUsage.map((item, index) => (
+                      <div key={index} className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>{item.name}</span>
+                          <span>{item.usage}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`${item.color} h-2 rounded-full transition-all duration-500`}
+                            style={{ width: `${item.usage}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`${item.color} h-2 rounded-full transition-all duration-500`}
-                          style={{ width: `${item.usage}%` }}
-                        />
-                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-muted-foreground">
+                      <p className="text-sm">Aucune donnée d'usage disponible</p>
+                      <p className="text-xs mt-1">Générez des rapports pour voir les tendances</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -240,6 +249,7 @@ const ReportsDashboard = () => {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {reportGroups.map((group, index) => {
               const IconComponent = group.icon;
+              const reportCount = getModuleCount(group.id);
               return (
                 <Card key={group.id} className="hover-scale animate-fade-in cursor-pointer">
                   <CardHeader className="pb-3">
@@ -248,12 +258,12 @@ const ReportsDashboard = () => {
                     </div>
                     <CardTitle className="text-base">{group.name}</CardTitle>
                     <CardDescription className="text-xs">
-                      {group.reports} rapports disponibles
+                      {reportCount} rapport{reportCount !== 1 ? 's' : ''} disponible{reportCount !== 1 ? 's' : ''}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
                     <Badge variant="secondary" className="text-xs">
-                      {group.reports} rapports
+                      {reportCount} rapport{reportCount !== 1 ? 's' : ''}
                     </Badge>
                   </CardContent>
                 </Card>
@@ -274,33 +284,44 @@ const ReportsDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentReports.map((report, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${getStatusColor(report.status)}`} />
-                      <div>
-                        <p className="font-medium">{report.name}</p>
-                        <p className="text-sm text-muted-foreground">{report.date}</p>
+              {recentReports.length > 0 ? (
+                <div className="space-y-4">
+                  {recentReports.map((report, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${getStatusColor(report.status)}`} />
+                        <div>
+                          <p className="font-medium">{report.name}</p>
+                          <p className="text-sm text-muted-foreground">{report.date}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{report.format}</Badge>
+                        <Badge 
+                          variant={report.status === 'completed' ? 'default' : 
+                                  report.status === 'pending' ? 'secondary' : 'destructive'}
+                        >
+                          {getStatusText(report.status)}
+                        </Badge>
+                        {report.status === 'completed' && (
+                          <Button size="sm" variant="ghost">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{report.format}</Badge>
-                      <Badge 
-                        variant={report.status === 'completed' ? 'default' : 
-                                report.status === 'pending' ? 'secondary' : 'destructive'}
-                      >
-                        {getStatusText(report.status)}
-                      </Badge>
-                      {report.status === 'completed' && (
-                        <Button size="sm" variant="ghost">
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="font-medium">Aucun rapport généré</p>
+                  <p className="text-sm mt-1">Les rapports générés apparaîtront ici</p>
+                  <Button variant="outline" className="mt-4" size="sm">
+                    Générer un rapport
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -317,25 +338,36 @@ const ReportsDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {favoriteReports.map((report, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                      <div>
-                        <p className="font-medium">{report.name}</p>
-                        <p className="text-sm text-muted-foreground">{report.category}</p>
+              {favoriteReports.length > 0 ? (
+                <div className="space-y-4">
+                  {favoriteReports.map((report, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Star className="h-4 w-4 text-yellow-500 fill-current" />
+                        <div>
+                          <p className="font-medium">{report.name}</p>
+                          <p className="text-sm text-muted-foreground">{report.category}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{report.frequency}</Badge>
+                        <Button size="sm" variant="outline">
+                          Générer
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{report.frequency}</Badge>
-                      <Button size="sm" variant="outline">
-                        Générer
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Star className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="font-medium">Aucun rapport favori</p>
+                  <p className="text-sm mt-1">Ajoutez des modèles de rapports pour y accéder rapidement</p>
+                  <Button variant="outline" className="mt-4" size="sm">
+                    Configurer les modèles
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
