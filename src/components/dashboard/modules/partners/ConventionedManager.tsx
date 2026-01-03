@@ -34,7 +34,8 @@ const conventionneSchema = z.object({
   taux_ticket_moderateur: z.number().min(0).max(100, "Le taux doit être entre 0 et 100").optional(),
   caution: z.number().min(0, "La caution ne peut être négative").optional(),
   taux_remise_automatique: z.number().min(0).max(100, "Le taux doit être entre 0 et 100").optional(),
-  // Nouveaux champs
+  taux_couverture_agent: z.number().min(0).max(100, "Le taux doit être entre 0 et 100").optional(),
+  taux_couverture_ayant_droit: z.number().min(0).max(100, "Le taux doit être entre 0 et 100").optional(),
   assureur_id: z.string().optional().or(z.literal('')),
   peut_prendre_bon: z.boolean().optional(),
 });
@@ -112,6 +113,8 @@ const ConventionedManager = () => {
     taux_ticket_moderateur: 0,
     caution: 0,
     taux_remise_automatique: 0,
+    taux_couverture_agent: 0,
+    taux_couverture_ayant_droit: 0,
     assureur_id: '',
     peut_prendre_bon: true
   }), []);
@@ -154,6 +157,8 @@ const ConventionedManager = () => {
       taux_ticket_moderateur: conventionne.taux_ticket_moderateur || 0,
       caution: conventionne.caution || 0,
       taux_remise_automatique: conventionne.taux_remise_automatique || 0,
+      taux_couverture_agent: (conventionne as any).taux_couverture_agent || 0,
+      taux_couverture_ayant_droit: (conventionne as any).taux_couverture_ayant_droit || 0,
       assureur_id: (conventionne as any).assureur_id || '',
       peut_prendre_bon: (conventionne as any).peut_prendre_bon !== false
     });
@@ -419,6 +424,7 @@ const ConventionedManager = () => {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
+                        {/* Ligne 1: Assureur + Taux de remise */}
                         <div className="grid grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
@@ -426,7 +432,7 @@ const ConventionedManager = () => {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Assureur (optionnel)</FormLabel>
-                <Select onValueChange={(val) => field.onChange(val === "__none__" ? "" : val)} value={field.value || "__none__"}>
+                                <Select onValueChange={(val) => field.onChange(val === "__none__" ? "" : val)} value={field.value || "__none__"}>
                                   <FormControl>
                                     <SelectTrigger>
                                       <SelectValue placeholder="Aucun assureur" />
@@ -441,6 +447,102 @@ const ConventionedManager = () => {
                                     ))}
                                   </SelectContent>
                                 </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="taux_remise_automatique"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Taux de remise automatique (%)</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    min="0"
+                                    max="100"
+                                    placeholder="0" 
+                                    {...field}
+                                    value={field.value || 0}
+                                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                                  />
+                                </FormControl>
+                                <FormDescription>Remise appliquée automatiquement au point de vente</FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        {/* Ligne 2: Taux Agent + Taux Ayant Droit */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="taux_couverture_agent"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Taux Agent (%)</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    min="0"
+                                    max="100"
+                                    placeholder="0"
+                                    {...field}
+                                    value={field.value || 0}
+                                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                                  />
+                                </FormControl>
+                                <FormDescription>Taux de prise en charge pour l'agent</FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="taux_couverture_ayant_droit"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Taux Ayant Droit (%)</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    min="0"
+                                    max="100"
+                                    placeholder="0"
+                                    {...field}
+                                    value={field.value || 0}
+                                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                                  />
+                                </FormControl>
+                                <FormDescription>Taux de prise en charge pour les ayants droit</FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        {/* Ligne 3: Limite dette + Peut prendre bon */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="limite_dette"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    min="0"
+                                    step={getInputStep()} 
+                                    placeholder={isNoDecimalCurrency() ? "0" : "0.00"} 
+                                    {...field}
+                                    value={field.value || 0}
+                                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
+                                  />
+                                </FormControl>
+                                <FormDescription>Montant maximum de crédit autorisé</FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
