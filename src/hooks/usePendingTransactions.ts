@@ -15,10 +15,34 @@ export interface PendingTransaction {
   montant_tva?: number;
   montant_centime_additionnel?: number;
   remise_globale: number;
+  // Champs assurance
+  taux_couverture_assurance?: number;
+  montant_part_assurance?: number;
+  montant_part_patient?: number;
+  // Métadonnées client
+  metadata?: {
+    client_info?: {
+      assureur_id?: string;
+      assureur_libelle?: string;
+      taux_agent?: number;
+      taux_ayant_droit?: number;
+      taux_ticket_moderateur?: number;
+      montant_ticket_moderateur?: number;
+      taux_remise_automatique?: number;
+      montant_remise_automatique?: number;
+      societe_id?: string;
+      personnel_id?: string;
+    };
+  };
   client?: {
     id: string;
     nom_complet: string;
     type_client: string;
+    taux_agent?: number;
+    taux_remise_automatique?: number;
+    taux_ticket_moderateur?: number;
+    assureur_id?: string;
+    assureur?: { libelle_assureur: string };
   };
   lignes_ventes: Array<{
     id: string;
@@ -53,7 +77,20 @@ export const usePendingTransactions = (sessionId?: string) => {
           montant_tva,
           montant_centime_additionnel,
           remise_globale,
-          client:clients(id, nom_complet, type_client),
+          taux_couverture_assurance,
+          montant_part_assurance,
+          montant_part_patient,
+          metadata,
+          client:clients(
+            id, 
+            nom_complet, 
+            type_client,
+            taux_agent,
+            taux_remise_automatique,
+            taux_ticket_moderateur,
+            assureur_id,
+            assureur:assureurs(libelle_assureur)
+          ),
           lignes_ventes!lignes_ventes_vente_id_fkey(
             id,
             quantite,
@@ -95,9 +132,22 @@ export const usePendingTransactions = (sessionId?: string) => {
         montant_tva,
         montant_centime_additionnel,
         remise_globale,
+        taux_couverture_assurance,
+        montant_part_assurance,
+        montant_part_patient,
+        metadata,
         session_caisse_id,
         statut,
-        client:clients(id, nom_complet, type_client),
+        client:clients(
+          id, 
+          nom_complet, 
+          type_client,
+          taux_agent,
+          taux_remise_automatique,
+          taux_ticket_moderateur,
+          assureur_id,
+          assureur:assureurs(libelle_assureur)
+        ),
         lignes_ventes!lignes_ventes_vente_id_fkey(
           id,
           quantite,
