@@ -200,6 +200,7 @@ export const usePOSData = () => {
         date_vente: new Date().toISOString(),
         montant_total_ht: montantHT,
         montant_tva: montantTVA,
+        montant_centime_additionnel: montantCentimeAdditionnel,
         montant_total_ttc: subtotal,
         remise_globale: montantRemiseAuto + montantTicketModerateur, // Total réductions
         montant_net: totalAPayer, // Le montant final après toutes les réductions

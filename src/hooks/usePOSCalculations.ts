@@ -58,12 +58,54 @@ export const usePOSCalculations = (
     }, 0);
 
     const montantTVA = cart.reduce((total, item) => {
-      const tvaMontant = item.product.tva_montant || 0;
+      let tvaMontant = item.product.tva_montant || 0;
+      
+      // Fallback: calculer depuis taux_tva si tva_montant manque
+      if (tvaMontant === 0 && (item.product.taux_tva || 0) > 0) {
+        const prixHT = item.product.prix_vente_ht || item.product.price_ht || 0;
+        const prixTTC = item.product.prix_vente_ttc || item.product.price || item.unitPrice;
+        const tauxTVA = item.product.taux_tva || 0;
+        const tauxCentime = item.product.taux_centime_additionnel || 0;
+        
+        if (prixHT > 0) {
+          tvaMontant = Math.round(prixHT * tauxTVA / 100);
+        } else if (prixTTC > 0 && tauxTVA > 0) {
+          // Calcul inverse depuis TTC
+          const diviseur = 1 + (tauxTVA / 100) + (tauxCentime / 100);
+          const calculatedHT = Math.round(prixTTC / diviseur);
+          tvaMontant = Math.round(calculatedHT * tauxTVA / 100);
+        }
+      }
+      
       return total + (tvaMontant * item.quantity);
     }, 0);
 
     const montantCentime = cart.reduce((total, item) => {
-      const centimeMontant = item.product.centime_additionnel_montant || 0;
+      let centimeMontant = item.product.centime_additionnel_montant || 0;
+      
+      // Fallback: calculer depuis taux_centime_additionnel si montant manque
+      if (centimeMontant === 0 && (item.product.taux_centime_additionnel || 0) > 0) {
+        const prixHT = item.product.prix_vente_ht || item.product.price_ht || 0;
+        const prixTTC = item.product.prix_vente_ttc || item.product.price || item.unitPrice;
+        const tauxTVA = item.product.taux_tva || 0;
+        const tauxCentime = item.product.taux_centime_additionnel || 0;
+        
+        let tvaMontant = item.product.tva_montant || 0;
+        if (tvaMontant === 0 && tauxTVA > 0) {
+          if (prixHT > 0) {
+            tvaMontant = Math.round(prixHT * tauxTVA / 100);
+          } else if (prixTTC > 0) {
+            const diviseur = 1 + (tauxTVA / 100) + (tauxCentime / 100);
+            const calculatedHT = Math.round(prixTTC / diviseur);
+            tvaMontant = Math.round(calculatedHT * tauxTVA / 100);
+          }
+        }
+        
+        if (tvaMontant > 0) {
+          centimeMontant = Math.round(tvaMontant * tauxCentime / 100);
+        }
+      }
+      
       return total + (centimeMontant * item.quantity);
     }, 0);
 
