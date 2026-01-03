@@ -54,21 +54,20 @@ export function useSalesReports(period: SalesPeriod, category: SalesCategory) {
           client_id,
           agent_id,
           statut,
-          lignes_ventes!inner(
+          lignes_ventes(
             montant_ligne_ttc,
             quantite,
-            produit:produits!inner(
+            produit_id,
+            produits(
               id,
-              nom_produit,
-              marge_beneficiaire,
-              categorie:categories_produits(
+              libelle_produit,
+              famille_produit(
                 id,
-                nom_categorie,
-                type_categorie
+                libelle_famille
               )
             )
           ),
-          agent:personnel!ventes_agent_id_fkey(
+          personnel!ventes_agent_id_fkey(
             id,
             noms,
             prenoms
@@ -76,8 +75,8 @@ export function useSalesReports(period: SalesPeriod, category: SalesCategory) {
         `)
         .eq('tenant_id', tenantId)
         .eq('statut', 'Validée')
-        .gte('date_vente', formatDateForSQL(current.startDate))
-        .lte('date_vente', formatDateForSQL(current.endDate));
+        .gte('date_vente', format(current.startDate, 'yyyy-MM-dd'))
+        .lte('date_vente', format(current.endDate, 'yyyy-MM-dd'));
 
       // Récupération des ventes de la période précédente
       let previousQuery = supabase
@@ -85,8 +84,8 @@ export function useSalesReports(period: SalesPeriod, category: SalesCategory) {
         .select('id, montant_net, client_id')
         .eq('tenant_id', tenantId)
         .eq('statut', 'Validée')
-        .gte('date_vente', formatDateForSQL(previous.startDate))
-        .lte('date_vente', formatDateForSQL(previous.endDate));
+        .gte('date_vente', format(previous.startDate, 'yyyy-MM-dd'))
+        .lte('date_vente', format(previous.endDate, 'yyyy-MM-dd'));
 
       const [currentResult, previousResult] = await Promise.all([
         currentQuery,
@@ -103,7 +102,7 @@ export function useSalesReports(period: SalesPeriod, category: SalesCategory) {
       if (categoryFilter && currentSales.length > 0) {
         currentSales = currentSales.filter(sale => {
           const hasMatchingCategory = sale.lignes_ventes?.some((ligne: any) => 
-            ligne.produit?.categorie?.type_categorie === categoryFilter
+            ligne.produits?.famille_produit?.libelle_famille === categoryFilter
           );
           return hasMatchingCategory;
         });
@@ -149,11 +148,12 @@ export function useSalesReports(period: SalesPeriod, category: SalesCategory) {
  * Mapping des catégories frontend vers la base de données
  */
 function getCategoryFilter(category: SalesCategory): string | null {
+  // Mapping vers les valeurs réelles de libelle_famille dans la base
   const mapping: Record<SalesCategory, string | null> = {
     'all': null,
     'medicines': 'Médicaments',
     'parapharmacy': 'Parapharmacie',
-    'medical': 'Matériel Médical'
+    'medical': 'Matériel médical'
   };
   return mapping[category];
 }
@@ -251,13 +251,13 @@ function calculateTopProducts(sales: any[]): TopProduct[] {
 
   sales.forEach(sale => {
     sale.lignes_ventes?.forEach((ligne: any) => {
-      const productName = ligne.produit?.nom_produit || 'Produit inconnu';
+      const productName = ligne.produits?.libelle_produit || 'Produit inconnu';
       const existing = productMap.get(productName) || { ventes: 0, quantite: 0, marge: 0 };
       
       productMap.set(productName, {
         ventes: existing.ventes + (ligne.montant_ligne_ttc || 0),
         quantite: existing.quantite + (ligne.quantite || 0),
-        marge: ligne.produit?.marge_beneficiaire || existing.marge
+        marge: existing.marge // marge_beneficiaire n'existe pas, on garde la valeur existante
       });
     });
   });
@@ -278,9 +278,9 @@ function calculateStaffPerformance(sales: any[], objectifJournalier: number): St
   const staffMap = new Map<string, { ventes: number; transactions: number }>();
 
   sales.forEach(sale => {
-    if (!sale.agent) return;
+    if (!sale.personnel) return;
     
-    const agentName = `${sale.agent.noms} ${sale.agent.prenoms}`;
+    const agentName = `${sale.personnel.noms || ''} ${sale.personnel.prenoms || ''}`.trim() || 'Agent inconnu';
     const existing = staffMap.get(agentName) || { ventes: 0, transactions: 0 };
     
     staffMap.set(agentName, {
@@ -309,7 +309,7 @@ function calculateCategoryData(sales: any[]): CategoryData[] {
 
   sales.forEach(sale => {
     sale.lignes_ventes?.forEach((ligne: any) => {
-      const categoryName = ligne.produit?.categorie?.nom_categorie || 'Autres';
+      const categoryName = ligne.produits?.famille_produit?.libelle_famille || 'Autres';
       const existing = categoryMap.get(categoryName) || 0;
       categoryMap.set(categoryName, existing + (ligne.montant_ligne_ttc || 0));
     });
