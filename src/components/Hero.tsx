@@ -11,8 +11,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePharmacyConnection } from '@/hooks/usePharmacyConnection';
 import { useHeroMetrics } from '@/hooks/useHeroMetrics';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export function Hero() {
+  const { t } = useLanguage();
   const { user, connectedPharmacy, pharmacy, disconnectPharmacy } = useAuth();
   // Debug hook pour suivre l'état de connexion
   usePharmacyConnection();
@@ -90,20 +92,20 @@ export function Hero() {
           <div className="order-2 lg:order-1">
             <FadeIn>
               <div className="inline-block px-3 py-1 mb-6 rounded-full bg-pharma-100 border border-pharma-200 text-pharma-800 text-sm font-medium">
-                La solution complète pour votre pharmacie
+                {t('heroTagline')}
               </div>
             </FadeIn>
             
             <FadeIn delay={0.1}>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold tracking-tight mb-6">
-                <span className="block">Transformez la gestion</span>
-                <span className="block text-gradient">de votre officine</span>
+                <span className="block">{t('heroTransformTitle1')}</span>
+                <span className="block text-gradient">{t('heroTransformTitle2')}</span>
               </h1>
             </FadeIn>
             
             <FadeIn delay={0.2}>
               <p className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-xl leading-relaxed">
-                PharmaSoft est une application complète de gestion d'officine pharmaceutique disponible en version web et mobile, conçue pour simplifier tous vos processus.
+                {t('heroDescription')}
               </p>
             </FadeIn>
             
@@ -117,7 +119,7 @@ export function Hero() {
                   onClick={handlePharmacyAuthentication}
                 >
                   <Building2 size={16} className="mr-2" />
-                  {loading ? 'Chargement...' : 'Connecter votre Pharmacie'}
+                  {loading ? t('loading') : t('connectYourPharmacy')}
                 </Button>
               ) : (
                 /* État connecté - Affichage unifié */
@@ -134,7 +136,7 @@ export function Hero() {
                           <div className="font-semibold text-base">{activePharmacy.name}</div>
                           <div className="text-sm text-muted-foreground">{activePharmacy.email}</div>
                           <div className="text-xs text-green-600 font-medium">
-                            Session active
+                            {t('activeSession')}
                           </div>
                         </div>
                       </div>
@@ -143,7 +145,7 @@ export function Hero() {
                   <DropdownMenuContent align="start" className="bg-white dark:bg-gray-800 border shadow-lg">
                     <DropdownMenuItem onClick={handlePharmacyDisconnect}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      Se déconnecter
+                      {t('signOut')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -151,7 +153,7 @@ export function Hero() {
 
               <Link to="/tableau-de-bord">
                 <Button size="lg" variant="outline" className="button-hover-effect border-primary/20 text-primary hover:bg-primary/5">
-                  <span>Voir la Démo</span>
+                  <span>{t('seeDemo')}</span>
                   <ArrowRight size={16} className="ml-2" />
                 </Button>
               </Link>
@@ -177,7 +179,7 @@ export function Hero() {
                 <div className="text-sm text-muted-foreground">
                   <span className="font-medium text-foreground">
                     {metrics.isRealData ? metrics.pharmacyCount : '+500'}
-                  </span> pharmacies utilisent déjà PharmaSoft
+                  </span> {t('pharmaciesUsing')}
                 </div>
               </div>
             </FadeIn>
@@ -204,20 +206,21 @@ export function Hero() {
             >
               <div className="glass-card p-4 rounded-lg shadow-lg">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">Stocks</span>
+                  <span className="text-sm font-medium">{t('stocks')}</span>
                   <span className={cn(
                     "text-xs px-2 py-0.5 rounded-full",
                     metrics.stockStatus === 'Optimal' && "bg-green-100 text-green-800",
                     metrics.stockStatus === 'Attention' && "bg-yellow-100 text-yellow-800",
                     metrics.stockStatus === 'Critique' && "bg-red-100 text-red-800"
                   )}>
-                    {metrics.stockStatus}
+                    {metrics.stockStatus === 'Optimal' ? t('optimal') : 
+                     metrics.stockStatus === 'Attention' ? t('attention') : t('critical')}
                   </span>
                 </div>
                 <div className="flex gap-2 text-xs text-muted-foreground">
-                  <span>{formatNumber(metrics.totalProducts)} produits</span>
+                  <span>{formatNumber(metrics.totalProducts)} {t('products')}</span>
                   <span>•</span>
-                  <span>{metrics.availabilityRate}% disponibilité</span>
+                  <span>{metrics.availabilityRate}% {t('availability')}</span>
                 </div>
               </div>
             </FadeIn>
@@ -227,7 +230,7 @@ export function Hero() {
               delay={0.6}
             >
               <div className="glass-card p-4 rounded-lg shadow-lg">
-                <div className="text-sm font-medium mb-2">Ventes</div>
+                <div className="text-sm font-medium mb-2">{t('sales')}</div>
                 <div className="flex items-center gap-2">
                   <div className="w-16 h-4 bg-primary/10 rounded-full overflow-hidden">
                     <div 

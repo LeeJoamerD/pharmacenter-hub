@@ -28,7 +28,7 @@ export function Footer() {
                 <h3 className="text-xl font-display font-bold">PharmaSoft</h3>
               </div>
               <p className="text-slate-300 mb-6">
-                Une application complète de gestion d'officine pharmaceutique disponible en version web et mobile.
+                {t('footerDescription')}
               </p>
               <div className="flex space-x-4">
                 <a href="#" className="text-slate-300 hover:text-white transition-colors">
