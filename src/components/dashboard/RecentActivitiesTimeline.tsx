@@ -3,7 +3,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Clock, ShoppingCart, Package, Clipboard, CreditCard } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useDateLocale } from '@/hooks/useDateLocale';
 
 interface Activity {
   id: string;
@@ -36,45 +37,48 @@ const getActivityIcon = (tableName: string) => {
   }
 };
 
-const getActivityLabel = (action: string, tableName: string) => {
-  const labels: Record<string, Record<string, string>> = {
-    INSERT: {
-      ventes: 'Nouvelle vente',
-      receptions_fournisseurs: 'Réception fournisseur',
-      inventaires: 'Inventaire créé',
-      sessions_caisse: 'Session caisse ouverte',
-    },
-    UPDATE: {
-      ventes: 'Vente modifiée',
-      receptions_fournisseurs: 'Réception mise à jour',
-      inventaires: 'Inventaire mis à jour',
-      sessions_caisse: 'Session caisse mise à jour',
-    },
-    DELETE: {
-      ventes: 'Vente supprimée',
-      receptions_fournisseurs: 'Réception supprimée',
-      inventaires: 'Inventaire supprimé',
-      sessions_caisse: 'Session caisse supprimée',
-    },
+export const RecentActivitiesTimeline = ({ activities, loading }: RecentActivitiesTimelineProps) => {
+  const { t } = useLanguage();
+  const { dateLocale } = useDateLocale();
+
+  const getActivityLabel = (action: string, tableName: string) => {
+    const labels: Record<string, Record<string, string>> = {
+      INSERT: {
+        ventes: t('newSaleActivity'),
+        receptions_fournisseurs: t('supplierReception'),
+        inventaires: t('inventoryCreated'),
+        sessions_caisse: t('registerOpened'),
+      },
+      UPDATE: {
+        ventes: t('saleModified'),
+        receptions_fournisseurs: t('receptionUpdated'),
+        inventaires: t('inventoryUpdated'),
+        sessions_caisse: t('registerUpdated'),
+      },
+      DELETE: {
+        ventes: t('saleDeleted'),
+        receptions_fournisseurs: t('receptionDeleted'),
+        inventaires: t('inventoryDeleted'),
+        sessions_caisse: t('registerDeleted'),
+      },
+    };
+
+    return labels[action]?.[tableName] || `${action} sur ${tableName}`;
   };
 
-  return labels[action]?.[tableName] || `${action} sur ${tableName}`;
-};
+  const getActionVariant = (action: string): 'default' | 'secondary' | 'destructive' => {
+    switch (action) {
+      case 'INSERT':
+        return 'default';
+      case 'UPDATE':
+        return 'secondary';
+      case 'DELETE':
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
+  };
 
-const getActionVariant = (action: string): 'default' | 'secondary' | 'destructive' => {
-  switch (action) {
-    case 'INSERT':
-      return 'default';
-    case 'UPDATE':
-      return 'secondary';
-    case 'DELETE':
-      return 'destructive';
-    default:
-      return 'secondary';
-  }
-};
-
-export const RecentActivitiesTimeline = ({ activities, loading }: RecentActivitiesTimelineProps) => {
   if (loading) {
     return (
       <Card>
@@ -95,13 +99,13 @@ export const RecentActivitiesTimeline = ({ activities, loading }: RecentActiviti
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Clock className="h-5 w-5" />
-          Activités Récentes
+          {t('recentActivities')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {!activities || activities.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
-            Aucune activité récente
+            {t('noRecentActivities')}
           </p>
         ) : (
           <div className="space-y-4">
@@ -138,7 +142,7 @@ export const RecentActivitiesTimeline = ({ activities, loading }: RecentActiviti
                       <span>
                         {formatDistanceToNow(new Date(activity.created_at), {
                           addSuffix: true,
-                          locale: fr,
+                          locale: dateLocale,
                         })}
                       </span>
                     </div>

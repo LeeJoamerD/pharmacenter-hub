@@ -3,8 +3,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, User, ShoppingCart } from 'lucide-react';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useDateLocale } from '@/hooks/useDateLocale';
 
 interface ActiveSession {
   id: string;
@@ -25,6 +26,9 @@ interface ActiveSessionsCardsProps {
 
 export const ActiveSessionsCards = ({ sessions, loading }: ActiveSessionsCardsProps) => {
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
+  const { dateLocale } = useDateLocale();
+
   if (loading) {
     return (
       <Card>
@@ -43,13 +47,13 @@ export const ActiveSessionsCards = ({ sessions, loading }: ActiveSessionsCardsPr
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CreditCard className="h-5 w-5" />
-          Sessions de Caisse Actives
+          {t('activeSessions')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {!sessions || sessions.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
-            Aucune session de caisse ouverte
+            {t('noActiveSessions')}
           </p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -66,24 +70,24 @@ export const ActiveSessionsCards = ({ sessions, loading }: ActiveSessionsCardsPr
                         {session.personnel?.prenoms} {session.personnel?.noms}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(session.created_at), 'HH:mm', { locale: fr })}
+                        {format(new Date(session.created_at), 'HH:mm', { locale: dateLocale })}
                       </p>
                     </div>
                   </div>
                   <Badge className="shrink-0 bg-success text-success-foreground">
-                    Ouverte
+                    {t('active')}
                   </Badge>
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Ouverture:</span>
+                    <span className="text-muted-foreground">{t('openingBalance')}:</span>
                     <span className="font-medium">
                       {formatPrice(session.solde_ouverture)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Montant actuel:</span>
+                    <span className="text-muted-foreground">{t('currentAmount')}:</span>
                     <span className="font-semibold text-primary">
                       {formatPrice(session.currentAmount)}
                     </span>
@@ -91,7 +95,7 @@ export const ActiveSessionsCards = ({ sessions, loading }: ActiveSessionsCardsPr
                   <div className="flex items-center justify-between text-sm pt-2 border-t">
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <ShoppingCart className="h-3 w-3" />
-                      <span className="text-xs">Ventes:</span>
+                      <span className="text-xs">{t('salesCount')}:</span>
                     </div>
                     <Badge variant="secondary">{session.salesCount}</Badge>
                   </div>

@@ -3,6 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CreditCard, TrendingDown, AlertCircle, Percent, Tag, Trophy } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CreditMetrics {
   totalCredit: number;
@@ -29,6 +30,8 @@ export const CreditPromotionsSummary = ({
   loading,
 }: CreditPromotionsSummaryProps) => {
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
+
   if (loading) {
     return (
       <>
@@ -59,20 +62,20 @@ export const CreditPromotionsSummary = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <CreditCard className="h-5 w-5" />
-            Crédit Clients
+            {t('clientCredit')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Total en cours</span>
+              <span className="text-muted-foreground">{t('totalOngoing')}</span>
               <span className="font-semibold text-lg">
                 {formatPrice(creditMetrics?.totalCredit || 0)}
               </span>
             </div>
             
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Comptes actifs</span>
+              <span className="text-muted-foreground">{t('activeAccounts')}</span>
               <span className="font-medium">
                 {creditMetrics?.activeAccounts || 0}
               </span>
@@ -83,7 +86,7 @@ export const CreditPromotionsSummary = ({
                 <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
                 <div className="flex-1">
                   <p className="text-xs font-medium text-destructive">
-                    Retards de paiement
+                    {t('paymentDelays')}
                   </p>
                   <p className="text-xs text-destructive/80">
                     {formatPrice(creditMetrics.overdueAmount)}
@@ -94,7 +97,7 @@ export const CreditPromotionsSummary = ({
 
             <div className="space-y-1 pt-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Taux d'utilisation</span>
+                <span className="text-muted-foreground">{t('utilizationRate')}</span>
                 <span className="font-medium">
                   {creditMetrics?.utilizationRate.toFixed(1) || 0}%
                 </span>
@@ -110,7 +113,7 @@ export const CreditPromotionsSummary = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Tag className="h-5 w-5" />
-            Promotions
+            {t('promotions')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -118,7 +121,7 @@ export const CreditPromotionsSummary = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Percent className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Actives</span>
+                <span className="text-sm text-muted-foreground">{t('active')}</span>
               </div>
               <span className="text-2xl font-bold text-primary">
                 {promotionMetrics?.activeCount || 0}
@@ -128,7 +131,7 @@ export const CreditPromotionsSummary = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Trophy className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Utilisations</span>
+                <span className="text-sm text-muted-foreground">{t('usages')}</span>
               </div>
               <span className="text-lg font-semibold">
                 {promotionMetrics?.totalUsages || 0}
@@ -139,7 +142,7 @@ export const CreditPromotionsSummary = ({
               <div className="flex items-center gap-2">
                 <TrendingDown className="h-4 w-4 text-success" />
                 <span className="text-xs font-medium text-success">
-                  Économies aujourd'hui
+                  {t('savingsToday')}
                 </span>
               </div>
               <p className="text-lg font-bold text-success">

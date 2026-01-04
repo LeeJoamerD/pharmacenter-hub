@@ -2,6 +2,7 @@ import { DashboardKPICard } from './DashboardKPICard';
 import { Package, PackageCheck, AlertTriangle, PackageX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface StockMetrics {
   totalValue: number;
@@ -18,42 +19,43 @@ interface StockMetricsCardsProps {
 export const StockMetricsCards = ({ metrics, loading }: StockMetricsCardsProps) => {
   const navigate = useNavigate();
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
 
   return (
     <>
       <DashboardKPICard
-        title="Valeur Stock Total"
+        title={t('totalStockValue')}
         value={formatPrice(metrics?.totalValue || 0)}
         icon={Package}
-        subtitle="Inventaire total"
+        subtitle={t('totalInventory')}
         onClick={() => navigate('/stock')}
         loading={loading}
       />
       
       <DashboardKPICard
-        title="Produits Disponibles"
+        title={t('availableProducts')}
         value={metrics?.availableProducts || 0}
         icon={PackageCheck}
-        subtitle="En stock suffisant"
+        subtitle={t('sufficientStock')}
         onClick={() => navigate('/stock')}
         loading={loading}
       />
       
       <DashboardKPICard
-        title="Alertes Stock Faible"
+        title={t('lowStockAlerts')}
         value={metrics?.lowStockProducts || 0}
         icon={AlertTriangle}
-        subtitle="À réapprovisionner"
+        subtitle={t('toReorder')}
         onClick={() => navigate('/stock/alertes')}
         loading={loading}
         className={metrics?.lowStockProducts ? 'border-warning' : ''}
       />
       
       <DashboardKPICard
-        title="Produits en Rupture"
+        title={t('outOfStock')}
         value={metrics?.outOfStockProducts || 0}
         icon={PackageX}
-        subtitle="Stock épuisé"
+        subtitle={t('stockDepleted')}
         onClick={() => navigate('/stock/alertes')}
         loading={loading}
         className={metrics?.outOfStockProducts ? 'border-destructive' : ''}

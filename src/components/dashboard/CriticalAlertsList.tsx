@@ -3,7 +3,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useDateLocale } from '@/hooks/useDateLocale';
 
 interface ExpirationAlert {
   id: string;
@@ -29,6 +30,9 @@ interface CriticalAlertsListProps {
 }
 
 export const CriticalAlertsList = ({ alerts, loading }: CriticalAlertsListProps) => {
+  const { t } = useLanguage();
+  const { dateLocale } = useDateLocale();
+
   if (loading) {
     return (
       <Card>
@@ -49,13 +53,13 @@ export const CriticalAlertsList = ({ alerts, loading }: CriticalAlertsListProps)
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-destructive">
           <AlertTriangle className="h-5 w-5" />
-          Alertes Critiques
+          {t('criticalAlerts')}
         </CardTitle>
       </CardHeader>
       <CardContent>
         {!alerts || alerts.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
-            Aucune alerte critique
+            {t('noCriticalAlerts')}
           </p>
         ) : (
           <div className="space-y-3 max-h-[400px] overflow-y-auto">
@@ -87,12 +91,12 @@ export const CriticalAlertsList = ({ alerts, loading }: CriticalAlertsListProps)
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <Calendar className="h-3 w-3" />
                     {alert.lots?.date_peremption 
-                      ? format(new Date(alert.lots.date_peremption), 'dd MMM yyyy', { locale: fr })
-                      : 'Date inconnue'
+                      ? format(new Date(alert.lots.date_peremption), 'dd MMM yyyy', { locale: dateLocale })
+                      : t('unknownDate')
                     }
                   </div>
                   <span className="text-muted-foreground">
-                    {alert.lots.quantite_restante} unités
+                    {alert.lots.quantite_restante} {t('units')}
                   </span>
                 </div>
               </div>
