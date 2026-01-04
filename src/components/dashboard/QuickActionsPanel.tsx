@@ -2,43 +2,45 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShoppingCart, CreditCard, Wallet, Package, FileText, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export const QuickActionsPanel = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const actions = [
     {
       icon: ShoppingCart,
-      label: 'Nouvelle Vente',
-      description: 'Point de vente',
+      label: t('newSale'),
+      description: t('pos'),
       path: '/ventes/pos',
       variant: 'default' as const,
     },
     {
       icon: CreditCard,
-      label: 'Ouvrir Caisse',
-      description: 'Gestion caisses',
+      label: t('openRegister'),
+      description: t('cashManagementAction'),
       path: '/ventes/caisses',
       variant: 'outline' as const,
     },
     {
       icon: Wallet,
-      label: 'Paiement',
-      description: 'Encaissements',
+      label: t('payment'),
+      description: t('collections'),
       path: '/ventes/encaissements',
       variant: 'outline' as const,
     },
     {
       icon: Package,
-      label: 'Inventaire',
-      description: 'Gestion stock',
+      label: t('inventory'),
+      description: t('stockManagementAction'),
       path: '/stock/inventaires',
       variant: 'outline' as const,
     },
     {
       icon: FileText,
-      label: 'Rapports',
-      description: 'Analytics',
+      label: t('reports'),
+      description: t('analytics'),
       path: '/rapports',
       variant: 'outline' as const,
     },
@@ -49,7 +51,7 @@ export const QuickActionsPanel = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Zap className="h-5 w-5" />
-          Actions Rapides
+          {t('quickActions')}
         </CardTitle>
       </CardHeader>
       <CardContent>

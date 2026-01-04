@@ -12,6 +12,7 @@ import { Home, ShoppingCart, Package, Calculator, BarChart,
   Eye, GraduationCap, Folder, Paperclip, Zap, TestTube, Activity, Database, Wallet } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PERMISSIONS, ROLES } from '@/types/permissions';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface AppSidebarProps {
   activeModule: string;
@@ -30,11 +31,12 @@ const AppSidebar = ({
   const navigate = useNavigate();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const { personnel } = useAuth();
+  const { t } = useLanguage();
   
   const handleLogout = () => {
     toast({
-      title: "Déconnexion",
-      description: "Vous avez été déconnecté avec succès.",
+      title: t('signOutLabel'),
+      description: t('logoutSuccess'),
     });
     // Dans une vraie application, rediriger vers la page de connexion
   };
@@ -183,7 +185,7 @@ const AppSidebar = ({
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Principal</SidebarGroupLabel>
+          <SidebarGroupLabel>{t('mainMenu')}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -192,7 +194,7 @@ const AppSidebar = ({
                   onClick={() => handleMenuClick('dashboard')}
                 >
                   <Home className="h-5 w-5 text-blue-600" />
-                  <span>Tableau de bord</span>
+                  <span>{t('dashboard')}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
@@ -201,7 +203,7 @@ const AppSidebar = ({
                   onClick={() => handleMenuClick('administration')}
                 >
                   <Shield className="h-5 w-5 text-purple-600" />
-                  <span>Administration</span>
+                  <span>{t('administration')}</span>
                 </SidebarMenuButton>
                 {expandedMenus.includes('administration') && (
                   <SidebarMenuSub>
@@ -225,7 +227,7 @@ const AppSidebar = ({
                   onClick={() => handleMenuClick('stock')}
                 >
                   <Package className="h-5 w-5 text-orange-600" />
-                  <span>Stock</span>
+                  <span>{t('stock')}</span>
                 </SidebarMenuButton>
                 {expandedMenus.includes('stock') && (
                   <SidebarMenuSub>
@@ -249,7 +251,7 @@ const AppSidebar = ({
                   onClick={() => handleMenuClick('ventes')}
                 >
                   <ShoppingCart className="h-5 w-5 text-green-600" />
-                  <span>Ventes</span>
+                  <span>{t('salesMenu')}</span>
                 </SidebarMenuButton>
                 {expandedMenus.includes('ventes') && (
                   <SidebarMenuSub>
@@ -273,7 +275,7 @@ const AppSidebar = ({
                   onClick={() => handleMenuClick('comptabilite')}
                 >
                   <Calculator className="h-5 w-5 text-red-600" />
-                  <span>Comptabilité</span>
+                  <span>{t('accounting')}</span>
                 </SidebarMenuButton>
                 {expandedMenus.includes('comptabilite') && (
                   <SidebarMenuSub>
@@ -297,7 +299,7 @@ const AppSidebar = ({
                   onClick={() => handleMenuClick('rapports')}
                 >
                   <BarChart className="h-5 w-5 text-indigo-600" />
-                  <span>Rapports</span>
+                  <span>{t('reportsMenu')}</span>
                 </SidebarMenuButton>
                 {expandedMenus.includes('rapports') && (
                   <SidebarMenuSub>
@@ -321,7 +323,7 @@ const AppSidebar = ({
                   onClick={() => handleMenuClick('assistant')}
                 >
                   <Bot className="h-5 w-5 text-cyan-600" />
-                  <span>Assistant IA</span>
+                  <span>{t('aiAssistant')}</span>
                 </SidebarMenuButton>
                 {expandedMenus.includes('assistant') && (
                   <SidebarMenuSub>
@@ -345,7 +347,7 @@ const AppSidebar = ({
                   onClick={() => handleMenuClick('chat')}
                 >
                   <MessageCircle className="h-5 w-5 text-pink-600" />
-                  <span>Chat-PharmaSoft</span>
+                  <span>{t('chatNetwork')}</span>
                 </SidebarMenuButton>
                 {expandedMenus.includes('chat') && (
                   <SidebarMenuSub>
@@ -367,7 +369,7 @@ const AppSidebar = ({
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel>Tests & Développement</SidebarGroupLabel>
+          <SidebarGroupLabel>{t('testsMenu')}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -376,14 +378,14 @@ const AppSidebar = ({
                   onClick={() => navigate('/dashboard/tests')}
                 >
                   <TestTube className="h-5 w-5 text-amber-600" />
-                  <span>Suites de Tests</span>
+                  <span>{t('testSuites')}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel>Paramètres</SidebarGroupLabel>
+          <SidebarGroupLabel>{t('settings')}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -392,7 +394,7 @@ const AppSidebar = ({
                   onClick={() => handleMenuClick('parametres')}
                 >
                   <Settings className="h-5 w-5 text-gray-600" />
-                  <span>Paramètres</span>
+                  <span>{t('settings')}</span>
                 </SidebarMenuButton>
                 {expandedMenus.includes('parametres') && (
                   <SidebarMenuSub>
@@ -417,7 +419,7 @@ const AppSidebar = ({
       <SidebarFooter className="border-t p-4">
         <Button variant="outline" className="w-full justify-start" onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
-          Déconnexion
+          {t('signOutLabel')}
         </Button>
       </SidebarFooter>
     </Sidebar>

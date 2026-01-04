@@ -3,6 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface TopProduct {
   produit_id: string;
@@ -19,6 +20,8 @@ interface TopProductsListProps {
 
 export const TopProductsList = ({ products, loading }: TopProductsListProps) => {
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
+
   if (loading) {
     return (
       <Card>
@@ -40,12 +43,12 @@ export const TopProductsList = ({ products, loading }: TopProductsListProps) => 
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            Top 5 Produits (Aujourd'hui)
+            {t('topProducts')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-8">
-            Aucune vente aujourd'hui
+            {t('noTopProducts')}
           </p>
         </CardContent>
       </Card>
@@ -59,7 +62,7 @@ export const TopProductsList = ({ products, loading }: TopProductsListProps) => 
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5" />
-          Top 5 Produits (Aujourd'hui)
+          {t('topProducts')}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -85,7 +88,7 @@ export const TopProductsList = ({ products, loading }: TopProductsListProps) => 
                     {formatPrice(product.ca)}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {product.quantite} unités
+                    {product.quantite} {t('units')}
                   </p>
                 </div>
               </div>
