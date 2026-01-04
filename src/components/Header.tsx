@@ -148,12 +148,12 @@ export function Header() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('/tableau-de-bord')}>
                     <User className="mr-2 h-4 w-4" />
-                    <span>Tableau de bord</span>
+                    <span>{t('dashboard')}</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Se déconnecter</span>
+                    <span>{t('signOut')}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -201,7 +201,7 @@ export function Header() {
               onClick={() => navigate('/pharmacy-connection')}
               className="text-foreground hover:bg-muted/50 mr-2"
             >
-              Pharmacie
+              {t('pharmacy')}
             </Button>
           )}
           <Button
@@ -260,7 +260,7 @@ export function Header() {
                 }}
                 className="justify-start py-3 text-lg font-medium border-b border-border/20"
               >
-                Tableau de bord
+                {t('dashboard')}
               </Button>
               <Button 
                 variant="ghost" 
@@ -271,7 +271,7 @@ export function Header() {
                 className="justify-start py-3 text-lg font-medium border-b border-border/20 text-red-600"
               >
                 <LogOut className="mr-2 h-4 w-4" />
-                Se déconnecter
+                {t('signOut')}
               </Button>
             </>
           ) : connectedPharmacy ? (
@@ -289,7 +289,7 @@ export function Header() {
                 className="justify-start py-3 text-lg font-medium border-b border-border/20 text-red-600"
               >
                 <LogOut className="mr-2 h-4 w-4" />
-                Déconnecter pharmacie
+                {t('disconnectPharmacy')}
               </Button>
             </>
           ) : (
@@ -301,7 +301,7 @@ export function Header() {
               }}
               className="justify-start py-3 text-lg font-medium border-b border-border/20"
             >
-              Connecter pharmacie
+              {t('connectPharmacy')}
             </Button>
           )}
         </nav>
