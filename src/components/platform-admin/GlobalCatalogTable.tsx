@@ -19,7 +19,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, ChevronLeft, ChevronRight, Loader2, Pencil } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Search, ChevronLeft, ChevronRight, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import GlobalProductEditDialog from './GlobalProductEditDialog';
 
 export interface GlobalProduct {
@@ -49,6 +60,8 @@ const GlobalCatalogTable = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [editingProduct, setEditingProduct] = useState<GlobalProduct | null>(null);
+  const [deletingProduct, setDeletingProduct] = useState<GlobalProduct | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -95,6 +108,28 @@ const GlobalCatalogTable = () => {
   const handleEditSuccess = () => {
     fetchProducts();
     setEditingProduct(null);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingProduct) return;
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('catalogue_global_produits')
+        .delete()
+        .eq('id', deletingProduct.id);
+
+      if (error) throw error;
+
+      toast.success(`Produit "${deletingProduct.libelle_produit}" supprimé`);
+      fetchProducts();
+    } catch (error) {
+      console.error('Erreur suppression:', error);
+      toast.error('Erreur lors de la suppression');
+    } finally {
+      setIsDeleting(false);
+      setDeletingProduct(null);
+    }
   };
 
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -185,14 +220,25 @@ const GlobalCatalogTable = () => {
                           {product.prix_vente_reference?.toLocaleString() || 0} FCFA
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setEditingProduct(product)}
-                            title="Modifier"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setEditingProduct(product)}
+                              title="Modifier"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeletingProduct(product)}
+                              title="Supprimer"
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -241,6 +287,32 @@ const GlobalCatalogTable = () => {
           onSuccess={handleEditSuccess}
         />
       )}
+
+      <AlertDialog open={!!deletingProduct} onOpenChange={(open) => !open && setDeletingProduct(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer le produit{' '}
+              <strong>"{deletingProduct?.libelle_produit}"</strong>{' '}
+              (CIP: {deletingProduct?.code_cip}) ?
+              <br /><br />
+              Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
