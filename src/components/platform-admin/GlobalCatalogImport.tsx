@@ -95,6 +95,30 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
     duplicates: number;
   } | null>(null);
 
+  // Fonction pour normaliser les codes EAN/CIP (gère la notation scientifique)
+  const normalizeEAN = (value: any): string | null => {
+    if (value === undefined || value === null || value === '') return null;
+    
+    // Si c'est un nombre (incluant notation scientifique), le convertir en entier
+    if (typeof value === 'number') {
+      // Utiliser toFixed(0) pour éviter la notation scientifique
+      return Math.round(value).toFixed(0);
+    }
+    
+    // Si c'est une string
+    const strVal = String(value).trim();
+    
+    // Si la string contient une notation scientifique (ex: 4.25014E+12)
+    if (strVal.includes('E+') || strVal.includes('e+') || strVal.includes('E-') || strVal.includes('e-')) {
+      const num = parseFloat(strVal);
+      if (!isNaN(num)) {
+        return Math.round(num).toFixed(0);
+      }
+    }
+    
+    return strVal;
+  };
+
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (!selectedFile) return;
@@ -107,7 +131,8 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
       const workbook = XLSX.read(data);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet);
+      // Utiliser raw: true pour préserver les valeurs numériques brutes
+      const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { raw: true });
 
       if (jsonData.length === 0) {
         toast.error('Le fichier Excel est vide');
@@ -125,8 +150,15 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
         for (const [excelCol, dbCol] of Object.entries(EXCEL_COLUMN_MAPPING)) {
           const value = row[excelCol];
           if (value !== undefined && value !== null && value !== '') {
-            // Convertir les valeurs numériques
-            if (['prix_achat_reference', 'prix_vente_reference', 'taux_tva'].includes(dbCol)) {
+            // Traitement spécial pour les codes CIP/EAN (notation scientifique)
+            if (dbCol === 'code_cip' || dbCol === 'ancien_code_cip') {
+              const normalized = normalizeEAN(value);
+              if (normalized && normalized !== '0') {
+                product[dbCol] = normalized;
+              }
+            }
+            // Convertir les valeurs numériques de prix/TVA
+            else if (['prix_achat_reference', 'prix_vente_reference', 'taux_tva'].includes(dbCol)) {
               product[dbCol] = parseFloat(String(value).replace(',', '.')) || 0;
             } else {
               product[dbCol] = String(value).trim();
@@ -138,7 +170,13 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
       }).filter(p => p.code_cip && p.libelle_produit);
 
       setParsedData(mappedData);
-      toast.success(`${mappedData.length} produits valides détectés`);
+      
+      if (mappedData.length === 0) {
+        console.warn('Aucun produit valide. Lignes brutes:', jsonData.slice(0, 3));
+        toast.error('Aucun produit valide détecté. Vérifiez les colonnes EAN13/CIP et Libellé produit.');
+      } else {
+        toast.success(`${mappedData.length} produits valides détectés`);
+      }
     } catch (error) {
       console.error('Error parsing Excel:', error);
       toast.error('Erreur lors de la lecture du fichier Excel');
