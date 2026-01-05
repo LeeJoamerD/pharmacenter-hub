@@ -9,16 +9,18 @@ import { EmployeeManagement } from '@/components/dashboard/personnel/EmployeeMan
 import { ScheduleManagement } from '@/components/dashboard/personnel/ScheduleManagement';
 import { LeaveManagement } from '@/components/dashboard/personnel/LeaveManagement';
 import { TrainingManagement } from '@/components/dashboard/personnel/TrainingManagement';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const PersonnelModule = () => {
   const { canAccess } = usePermissions();
   const [activeTab, setActiveTab] = useState('employees');
+  const { t } = useLanguage();
 
   if (!canAccess(PERMISSIONS.USERS_VIEW)) {
     return (
       <Alert variant="destructive">
         <AlertDescription>
-          Vous n'avez pas les permissions nécessaires pour accéder à ce module.
+          {t('noPermission')}
         </AlertDescription>
       </Alert>
     );
@@ -30,10 +32,10 @@ const PersonnelModule = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Gestion du Personnel
+            {t('personnelManagement')}
           </CardTitle>
           <CardDescription>
-            Gestion des employés, horaires, congés et formations (hors gestion des utilisateurs système)
+            {t('personnelDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -41,19 +43,19 @@ const PersonnelModule = () => {
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="employees" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
-                Employés
+                {t('employees')}
               </TabsTrigger>
               <TabsTrigger value="schedules" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                Horaires
+                {t('schedules')}
               </TabsTrigger>
               <TabsTrigger value="leaves" className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Congés
+                {t('leaves')}
               </TabsTrigger>
               <TabsTrigger value="training" className="flex items-center gap-2">
                 <GraduationCap className="h-4 w-4" />
-                Formations
+                {t('trainings')}
               </TabsTrigger>
             </TabsList>
 
