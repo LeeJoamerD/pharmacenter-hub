@@ -95,13 +95,29 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
     duplicates: number;
   } | null>(null);
 
+  // Fonction pour normaliser les en-têtes (gère espaces, NBSP, etc.)
+  const normalizeHeader = (header: string): string => {
+    return header
+      .replace(/\u00A0/g, ' ')  // Remplace les espaces insécables (NBSP)
+      .replace(/\s+/g, ' ')     // Collapse multiples espaces
+      .trim()                   // Supprime espaces début/fin
+      .toLowerCase();           // Minuscules pour comparaison
+  };
+
+  // Créer le mapping normalisé une seule fois
+  const NORMALIZED_MAPPING: Record<string, string> = Object.fromEntries(
+    Object.entries(EXCEL_COLUMN_MAPPING).map(([excelCol, dbCol]) => [
+      normalizeHeader(excelCol),
+      dbCol
+    ])
+  );
+
   // Fonction pour normaliser les codes EAN/CIP (gère la notation scientifique)
   const normalizeEAN = (value: any): string | null => {
     if (value === undefined || value === null || value === '') return null;
     
     // Si c'est un nombre (incluant notation scientifique), le convertir en entier
     if (typeof value === 'number') {
-      // Utiliser toFixed(0) pour éviter la notation scientifique
       return Math.round(value).toFixed(0);
     }
     
@@ -143,12 +159,19 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
       const columns = Object.keys(jsonData[0]);
       setExcelColumns(columns);
 
-      // Mapper les données
+      // Mapper les données en utilisant les en-têtes normalisés
       const mappedData: ParsedProduct[] = jsonData.map((row) => {
         const product: Record<string, any> = {};
         
-        for (const [excelCol, dbCol] of Object.entries(EXCEL_COLUMN_MAPPING)) {
-          const value = row[excelCol];
+        // Normaliser les clés de la ligne Excel
+        const normalizedRow: Record<string, any> = {};
+        for (const [key, value] of Object.entries(row)) {
+          normalizedRow[normalizeHeader(key)] = value;
+        }
+        
+        // Utiliser le mapping normalisé
+        for (const [normalizedExcelCol, dbCol] of Object.entries(NORMALIZED_MAPPING)) {
+          const value = normalizedRow[normalizedExcelCol];
           if (value !== undefined && value !== null && value !== '') {
             // Traitement spécial pour les codes CIP/EAN (notation scientifique)
             if (dbCol === 'code_cip' || dbCol === 'ancien_code_cip') {
@@ -172,7 +195,13 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
       setParsedData(mappedData);
       
       if (mappedData.length === 0) {
-        console.warn('Aucun produit valide. Lignes brutes:', jsonData.slice(0, 3));
+        // Diagnostic détaillé
+        const detectedNormalized = columns.map(c => normalizeHeader(c));
+        const expectedNormalized = Object.keys(NORMALIZED_MAPPING);
+        console.warn('=== DIAGNOSTIC IMPORT ===');
+        console.warn('Colonnes détectées (normalisées):', detectedNormalized);
+        console.warn('Colonnes attendues (normalisées):', expectedNormalized);
+        console.warn('1ère ligne brute:', jsonData[0]);
         toast.error('Aucun produit valide détecté. Vérifiez les colonnes EAN13/CIP et Libellé produit.');
       } else {
         toast.success(`${mappedData.length} produits valides détectés`);
@@ -316,17 +345,24 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {excelColumns.map((col, index) => (
-                <Badge 
-                  key={index} 
-                  variant={EXCEL_COLUMN_MAPPING[col] ? 'default' : 'secondary'}
-                >
-                  {col}
-                  {EXCEL_COLUMN_MAPPING[col] && (
-                    <CheckCircle2 className="ml-1 h-3 w-3" />
-                  )}
-                </Badge>
-              ))}
+              {excelColumns.map((col, index) => {
+                // Vérifier le mapping via normalisation
+                const isMatched = EXCEL_COLUMN_MAPPING[col] || 
+                  Object.keys(EXCEL_COLUMN_MAPPING).some(
+                    expected => normalizeHeader(expected) === normalizeHeader(col)
+                  );
+                return (
+                  <Badge 
+                    key={index} 
+                    variant={isMatched ? 'default' : 'secondary'}
+                  >
+                    {col}
+                    {isMatched && (
+                      <CheckCircle2 className="ml-1 h-3 w-3" />
+                    )}
+                  </Badge>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
