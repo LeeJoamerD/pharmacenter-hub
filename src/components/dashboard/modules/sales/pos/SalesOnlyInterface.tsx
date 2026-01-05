@@ -36,6 +36,7 @@ import { usePOSCalculations } from '@/hooks/usePOSCalculations';
 import { useClientDebt, useCanAddDebt } from '@/hooks/useClientDebt';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { TransactionData, CartItemWithLot, CustomerInfo, CustomerType } from '@/types/pos';
 import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 import { printSalesTicket } from '@/utils/salesTicketPrinter';
@@ -62,6 +63,7 @@ const SalesOnlyInterface = () => {
   const { toast } = useToast();
   const { getPharmacyInfo } = useGlobalSystemSettings();
   const { formatAmount } = useCurrencyFormatting();
+  const { t } = useLanguage();
   
   const { searchByBarcode, saveTransaction, checkStock } = usePOSData();
 
@@ -115,9 +117,9 @@ const SalesOnlyInterface = () => {
       const product = await searchByBarcode(barcode);
       if (product) {
         addToCart(product);
-        toast({ title: "Produit scanné", description: product.name });
+        toast({ title: t('productScanned'), description: product.name });
       } else {
-        toast({ title: "Produit non trouvé", description: barcode, variant: "destructive" });
+        toast({ title: t('productNotFound'), description: barcode, variant: "destructive" });
       }
     }, { minLength: 8, maxLength: 20, timeout: 100 });
     return cleanup;
@@ -127,8 +129,8 @@ const SalesOnlyInterface = () => {
     const hasStock = await checkStock(product.id, quantity);
     if (!hasStock) {
       toast({
-        title: "Stock insuffisant",
-        description: `Seulement ${product.stock} unités disponibles`,
+        title: t('stockInsufficient'),
+        description: `${t('only')} ${product.stock} ${t('unitsAvailable')}`,
         variant: "destructive"
       });
       return;
@@ -141,8 +143,8 @@ const SalesOnlyInterface = () => {
         const newQty = existingItem.quantity + quantity;
         if (newQty > product.stock) {
           toast({
-            title: "Quantité maximale atteinte",
-            description: `Stock disponible: ${product.stock}`,
+            title: t('maxQuantityReached'),
+            description: `${t('stockAvailable')}: ${product.stock}`,
             variant: "destructive"
           });
           return prev;
@@ -179,8 +181,8 @@ const SalesOnlyInterface = () => {
     const maxStock = item.product.stock;
     if (quantity > maxStock) {
       toast({
-        title: "Stock insuffisant",
-        description: `Maximum disponible: ${maxStock} unités`,
+        title: t('stockInsufficient'),
+        description: `${t('maxAvailable')}: ${maxStock} ${t('units')}`,
         variant: "destructive"
       });
       return;
@@ -247,18 +249,18 @@ const SalesOnlyInterface = () => {
   // Valider la vente (sans encaissement)
   const handleValidateSale = useCallback(async () => {
     if (cart.length === 0) {
-      toast({ title: "Panier vide", variant: "destructive" });
+      toast({ title: t('emptyCartError'), variant: "destructive" });
       return;
     }
 
     if (!selectedSessionId) {
-      toast({ title: "Sélectionnez une session de caisse", variant: "destructive" });
+      toast({ title: t('selectSessionError'), variant: "destructive" });
       return;
     }
 
     const selectedSession = openSessions.find(s => s.id === selectedSessionId);
     if (!selectedSession) {
-      toast({ title: "Session invalide", variant: "destructive" });
+      toast({ title: t('invalidSession'), variant: "destructive" });
       return;
     }
 
@@ -267,8 +269,8 @@ const SalesOnlyInterface = () => {
       const hasStock = await checkStock(item.product.id, item.quantity);
       if (!hasStock) {
         toast({
-          title: "Stock insuffisant",
-          description: `Stock insuffisant pour "${item.product.name}". Veuillez ajuster la quantité.`,
+          title: t('stockInsufficient'),
+          description: `${t('stockInsufficient')} "${item.product.name}". ${t('adjustQuantity')}`,
           variant: "destructive"
         });
         return;
@@ -318,8 +320,8 @@ const SalesOnlyInterface = () => {
 
       if (result.success) {
         toast({
-          title: "Vente enregistrée",
-          description: `Ticket N° ${result.numero_facture} - En attente d'encaissement`,
+          title: t('saleRegistered'),
+          description: `${t('ticketNumber')} ${result.numero_facture} - ${t('pendingCashPayment')}`,
         });
 
         // Impression automatique du ticket
@@ -376,10 +378,10 @@ const SalesOnlyInterface = () => {
               printWindow.onload = () => printWindow.print();
             }
 
-            toast({ title: "Ticket imprimé", description: "Le ticket a été envoyé à l'imprimante" });
+            toast({ title: t('ticketPrinted'), description: t('ticketSentPrinter') });
           } catch (printError) {
             console.error('Erreur impression:', printError);
-            toast({ title: "Avertissement", description: "Vente enregistrée mais erreur d'impression" });
+            toast({ title: t('warning'), description: t('saleRegisteredPrintWarning') });
           }
         }
 
@@ -405,12 +407,12 @@ const SalesOnlyInterface = () => {
           <CardHeader>
             <CardTitle className="text-center flex items-center gap-2 justify-center">
               <AlertCircle className="h-5 w-5 text-destructive" />
-              Aucune Session Ouverte
+              {t('noOpenSession')}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-muted-foreground">
-              Aucune session de caisse n'est ouverte. Veuillez ouvrir une session pour effectuer des ventes.
+              {t('noOpenSessionDesc')}
             </p>
           </CardContent>
         </Card>
@@ -427,10 +429,10 @@ const SalesOnlyInterface = () => {
           <CardContent className="pt-4">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex-1 min-w-[200px]">
-                <Label className="text-sm font-medium mb-1 block">Session de caisse</Label>
+                <Label className="text-sm font-medium mb-1 block">{t('cashSession')}</Label>
                 <Select value={selectedSessionId} onValueChange={setSelectedSessionId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une session" />
+                    <SelectValue placeholder={t('selectSession')} />
                   </SelectTrigger>
                   <SelectContent>
                     {openSessions.map(session => (
@@ -450,7 +452,7 @@ const SalesOnlyInterface = () => {
                 />
                 <Label htmlFor="autoPrint" className="flex items-center gap-1">
                   <Printer className="h-4 w-4" />
-                  Impression auto
+                  {t('autoPrint')}
                 </Label>
               </div>
             </div>
@@ -462,16 +464,16 @@ const SalesOnlyInterface = () => {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Search className="h-5 w-5" />
-                Recherche de Produits
+                {t('productSearch')}
               </CardTitle>
               <POSBarcodeActions 
                 onBarcodeScanned={async (barcode) => {
                   const product = await searchByBarcode(barcode);
                   if (product) {
                     addToCart(product);
-                    toast({ title: "Produit scanné", description: product.name });
+                    toast({ title: t('productScanned'), description: product.name });
                   } else {
-                    toast({ title: "Produit non trouvé", description: barcode, variant: "destructive" });
+                    toast({ title: t('productNotFound'), description: barcode, variant: "destructive" });
                   }
                 }}
               />
@@ -490,7 +492,7 @@ const SalesOnlyInterface = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
-              Client
+              {t('client')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -504,10 +506,10 @@ const SalesOnlyInterface = () => {
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-5 w-5" />
-                Panier
+                {t('cart')}
               </div>
               <Badge variant="secondary">
-                {cart.reduce((total, item) => total + item.quantity, 0)} articles
+                {cart.reduce((total, item) => total + item.quantity, 0)} {t('articles')}
               </Badge>
             </CardTitle>
           </CardHeader>

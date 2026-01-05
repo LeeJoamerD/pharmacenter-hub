@@ -24,6 +24,7 @@ import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { usePOSCalculations } from '@/hooks/usePOSCalculations';
 import { useClientDebt, useCanAddDebt } from '@/hooks/useClientDebt';
 import { CustomerInfo } from '@/types/pos';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface PaymentModalProps {
   transaction: {
@@ -47,6 +48,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
   const [processing, setProcessing] = useState(false);
   const [autoPrintTicket, setAutoPrintTicket] = useState(true);
   const { formatAmount } = useCurrencyFormatting();
+  const { t } = useLanguage();
 
   // Utiliser le hook de calcul centralisé
   const calculations = usePOSCalculations(transaction.items, transaction.customer);
@@ -64,39 +66,39 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
   const basePaymentMethods = [
     { 
       id: 'cash' as PaymentMethod, 
-      label: 'Espèces', 
+      label: t('cash'), 
       icon: DollarSign, 
       color: 'bg-green-500',
       always: true
     },
     { 
       id: 'card' as PaymentMethod, 
-      label: 'Carte Bancaire', 
+      label: t('bankCard'), 
       icon: CreditCard, 
       color: 'bg-blue-500',
       always: true
     },
     { 
       id: 'mobile' as PaymentMethod, 
-      label: 'Mobile Money', 
+      label: t('mobileMoney'), 
       icon: Smartphone, 
       color: 'bg-purple-500',
       always: true
     },
     { 
       id: 'insurance' as PaymentMethod, 
-      label: 'Assurance', 
+      label: t('insurance'), 
       icon: Building2, 
       color: 'bg-orange-500',
-      always: false, // Seulement si client assuré
+      always: false,
       condition: calculations.estAssure
     },
     { 
       id: 'caution' as PaymentMethod, 
-      label: 'Caution', 
+      label: t('caution'), 
       icon: Wallet, 
       color: 'bg-teal-500',
-      always: false, // Seulement si caution disponible et suffisante
+      always: false,
       condition: calculations.peutPayerParCaution
     }
   ];
@@ -189,10 +191,10 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" />
-            Finaliser la Transaction
+            {t('finalizeTransaction')}
           </DialogTitle>
           <DialogDescription>
-            Sélectionnez le mode de paiement et validez la transaction
+            {t('selectPaymentMode')}
           </DialogDescription>
         </DialogHeader>
 
@@ -203,14 +205,14 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
               <div className="space-y-2">
                 {/* Total HT */}
                 <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Total HT:</span>
+                  <span>{t('totalHT')}:</span>
                   <span>{formatAmount(calculations.totalHT)}</span>
                 </div>
                 
                 {/* TVA */}
                 {calculations.montantTVA > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>TVA:</span>
+                    <span>{t('tvaTax')}:</span>
                     <span>{formatAmount(calculations.montantTVA)}</span>
                   </div>
                 )}
@@ -218,7 +220,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
                 {/* Centime Additionnel */}
                 {calculations.montantCentime > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Centime Add.:</span>
+                    <span>{t('additionalCentime')}:</span>
                     <span>{formatAmount(calculations.montantCentime)}</span>
                   </div>
                 )}
@@ -227,7 +229,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
                 
                 {/* Sous-total TTC */}
                 <div className="flex justify-between text-sm font-medium">
-                  <span>Sous-total TTC:</span>
+                  <span>{t('subtotalTTC')}:</span>
                   <span>{formatAmount(calculations.sousTotalTTC)}</span>
                 </div>
                 
@@ -237,12 +239,12 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
                     <div className="flex justify-between text-sm text-orange-600">
                       <span className="flex items-center gap-1">
                         <ShieldCheck className="h-3 w-3" />
-                        Couverture Assurance ({calculations.tauxCouverture}%):
+                        {t('insuranceCoverage')} ({calculations.tauxCouverture}%):
                       </span>
                       <span>-{formatAmount(calculations.partAssurance)}</span>
                     </div>
                     <div className="flex justify-between text-sm font-medium">
-                      <span>Part Client:</span>
+                      <span>{t('clientPart')}:</span>
                       <span>{formatAmount(calculations.partClient)}</span>
                     </div>
                   </>
@@ -251,7 +253,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
                 {/* Ticket Modérateur (si non assuré) */}
                 {!calculations.estAssure && calculations.montantTicketModerateur > 0 && (
                   <div className="flex justify-between text-sm text-blue-600">
-                    <span>Ticket modérateur ({calculations.tauxTicketModerateur}%):</span>
+                    <span>{t('moderatorTicketRate')} ({calculations.tauxTicketModerateur}%):</span>
                     <span>-{formatAmount(calculations.montantTicketModerateur)}</span>
                   </div>
                 )}
@@ -259,7 +261,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
                 {/* Remise automatique */}
                 {calculations.montantRemise > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
-                    <span>Remise automatique ({calculations.tauxRemise}%):</span>
+                    <span>{t('autoDiscount')} ({calculations.tauxRemise}%):</span>
                     <span>-{formatAmount(calculations.montantRemise)}</span>
                   </div>
                 )}
@@ -268,7 +270,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
                 
                 {/* Total à payer */}
                 <div className="flex justify-between font-bold text-lg">
-                  <span>Total à payer:</span>
+                  <span>{t('totalToPay')}:</span>
                   <span className="text-primary">{formatAmount(totalAPayer)}</span>
                 </div>
 
@@ -277,7 +279,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
                   <div className="flex items-center justify-between p-2 bg-teal-50 dark:bg-teal-950 rounded-md text-sm">
                     <span className="flex items-center gap-1 text-teal-700 dark:text-teal-300">
                       <Wallet className="h-4 w-4" />
-                      Caution disponible:
+                      {t('cautionAvailable')}:
                     </span>
                     <span className="font-medium text-teal-700 dark:text-teal-300">
                       {formatAmount(calculations.cautionDisponible)}
@@ -290,7 +292,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
 
           {/* Payment Method Selection */}
           <div className="space-y-3">
-            <Label className="text-base font-medium">Mode de Paiement</Label>
+            <Label className="text-base font-medium">{t('paymentMethod')}</Label>
             <div className="grid grid-cols-2 gap-3">
               {availablePaymentMethods.map((method) => {
                 const Icon = method.icon;
@@ -315,20 +317,20 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
           {paymentMethod === 'cash' && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="amount">Montant Reçu</Label>
+                <Label htmlFor="amount">{t('amountReceived')}</Label>
                 <Input
                   id="amount"
                   type="number"
                   value={amountReceived}
                   onChange={(e) => setAmountReceived(e.target.value)}
-                  placeholder="Montant en FCFA"
+                  placeholder={t('amountInFCFA')}
                 />
               </div>
               
               {change > 0 && (
                 <div className="p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
                   <div className="flex justify-between items-center">
-                    <span className="text-green-800 dark:text-green-200 font-medium">Monnaie à rendre:</span>
+                    <span className="text-green-800 dark:text-green-200 font-medium">{t('changeToReturn')}:</span>
                     <span className="text-green-800 dark:text-green-200 font-bold text-lg">
                       {formatAmount(change)}
                     </span>
@@ -339,7 +341,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
               {!isValidPayment && amountReceived && (
                 <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md">
                   <span className="text-red-800 dark:text-red-200 text-sm">
-                    Le montant reçu est insuffisant
+                    {t('amountInsufficient')}
                   </span>
                 </div>
               )}
@@ -349,7 +351,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
           {paymentMethod === 'card' && (
             <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
               <p className="text-blue-800 dark:text-blue-200 text-sm text-center">
-                Insérez ou présentez la carte au terminal de paiement
+                {t('insertCard')}
               </p>
             </div>
           )}
@@ -357,7 +359,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
           {paymentMethod === 'mobile' && (
             <div className="p-4 bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-md">
               <p className="text-purple-800 dark:text-purple-200 text-sm text-center">
-                Le client peut procéder au paiement via Mobile Money
+                {t('proceedMobile')}
               </p>
             </div>
           )}
@@ -366,7 +368,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
             <div className="p-4 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-md">
               <div className="text-center space-y-2">
                 <p className="text-orange-800 dark:text-orange-200 text-sm">
-                  Paiement couvert par l'assurance
+                  {t('insurancePayment')}
                 </p>
                 {transaction.customer.assureur_libelle && (
                   <Badge variant="outline" className="text-orange-700 dark:text-orange-300">
@@ -381,16 +383,16 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
             <div className="p-4 bg-teal-50 dark:bg-teal-950 border border-teal-200 dark:border-teal-800 rounded-md">
               <div className="text-center space-y-2">
                 <p className="text-teal-800 dark:text-teal-200 text-sm">
-                  Le montant sera débité de la caution du client
+                  {t('cautionPayment')}
                 </p>
                 <div className="flex justify-center gap-4 text-sm">
-                  <span className="text-muted-foreground">Caution actuelle:</span>
+                  <span className="text-muted-foreground">{t('currentCaution')}:</span>
                   <span className="font-medium text-teal-700 dark:text-teal-300">
                     {formatAmount(calculations.cautionDisponible)}
                   </span>
                 </div>
                 <div className="flex justify-center gap-4 text-sm">
-                  <span className="text-muted-foreground">Après transaction:</span>
+                  <span className="text-muted-foreground">{t('afterTransaction')}:</span>
                   <span className="font-medium text-teal-700 dark:text-teal-300">
                     {formatAmount(calculations.cautionDisponible - totalAPayer)}
                   </span>
@@ -406,7 +408,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
                 <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-red-600" />
                   <span className="text-red-800 dark:text-red-200 text-sm">
-                    Ce client ne peut pas prendre de crédit
+                    {t('clientCannotCredit')}
                   </span>
                 </div>
               )}
@@ -415,8 +417,8 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
                 <div className="p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-red-600" />
                   <span className="text-red-800 dark:text-red-200 text-sm">
-                    Limite de crédit atteinte ({formatAmount(transaction.customer.limite_credit ?? 0)}). 
-                    Dette actuelle: {formatAmount(totalDette)}
+                    {t('creditLimitReached')} ({formatAmount(transaction.customer.limite_credit ?? 0)}). 
+                    {t('currentDebt')}: {formatAmount(totalDette)}
                   </span>
                 </div>
               )}
@@ -427,7 +429,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-md">
             <Label htmlFor="autoPrintTicket" className="flex items-center gap-2 cursor-pointer">
               <Printer className="h-4 w-4" />
-              Impression automatique du ticket
+              {t('autoPrintTicket')}
             </Label>
             <Switch
               id="autoPrintTicket"
@@ -439,7 +441,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
             <Button variant="outline" onClick={onClose} className="flex-1">
-              Annuler
+              {t('cancel')}
             </Button>
             <Button 
               onClick={handlePayment}
@@ -449,12 +451,12 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
               {(processing || isSaving) ? (
                 <>
                   <Calculator className="h-4 w-4 mr-2 animate-spin" />
-                  {isSaving ? 'Enregistrement...' : 'Traitement...'}
+                  {isSaving ? t('loading') : t('processingPayment')}
                 </>
               ) : (
                 <>
                   <CheckCircle className="h-4 w-4 mr-2" />
-                  Confirmer le Paiement
+                  {t('validatePayment')}
                 </>
               )}
             </Button>
