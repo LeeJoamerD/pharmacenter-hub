@@ -342,7 +342,11 @@ const GeneralSettings = () => {
               <Label htmlFor="default_language">Langue d'interface</Label>
               <Select 
                 value={formData.default_language || ''} 
-                onValueChange={(value) => handleInputChange('default_language', value)}
+                onValueChange={(value) => {
+                  // Synchroniser les deux clés pour cohérence
+                  handleInputChange('default_language', value);
+                  handleInputChange('default_lingual', value);
+                }}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionner une langue" />
