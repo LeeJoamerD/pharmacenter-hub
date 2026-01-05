@@ -4669,7 +4669,9 @@ export type Database = {
           libelle_rayon: string | null
           libelle_statut: string | null
           prix_achat_reference: number | null
+          prix_achat_reference_pnr: number | null
           prix_vente_reference: number | null
+          prix_vente_reference_pnr: number | null
           tva: boolean
           updated_at: string | null
           updated_by: string | null
@@ -4690,7 +4692,9 @@ export type Database = {
           libelle_rayon?: string | null
           libelle_statut?: string | null
           prix_achat_reference?: number | null
+          prix_achat_reference_pnr?: number | null
           prix_vente_reference?: number | null
+          prix_vente_reference_pnr?: number | null
           tva?: boolean
           updated_at?: string | null
           updated_by?: string | null
@@ -4711,7 +4715,9 @@ export type Database = {
           libelle_rayon?: string | null
           libelle_statut?: string | null
           prix_achat_reference?: number | null
+          prix_achat_reference_pnr?: number | null
           prix_vente_reference?: number | null
+          prix_vente_reference_pnr?: number | null
           tva?: boolean
           updated_at?: string | null
           updated_by?: string | null

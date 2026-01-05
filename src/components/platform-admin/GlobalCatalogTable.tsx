@@ -40,6 +40,8 @@ export interface GlobalProduct {
   ancien_code_cip: string | null;
   prix_achat_reference: number | null;
   prix_vente_reference: number | null;
+  prix_achat_reference_pnr: number | null;
+  prix_vente_reference_pnr: number | null;
   tva: boolean;
   libelle_classe_therapeutique: string | null;
   libelle_famille: string | null;
@@ -78,7 +80,7 @@ const GlobalCatalogTable = () => {
       let query = supabase
         .from('catalogue_global_produits')
         .select(
-          'id, code_cip, libelle_produit, ancien_code_cip, prix_achat_reference, prix_vente_reference, tva, libelle_classe_therapeutique, libelle_famille, libelle_forme, libelle_laboratoire, libelle_rayon, libelle_dci, libelle_categorie_tarification, libelle_statut',
+          'id, code_cip, libelle_produit, ancien_code_cip, prix_achat_reference, prix_vente_reference, prix_achat_reference_pnr, prix_vente_reference_pnr, tva, libelle_classe_therapeutique, libelle_famille, libelle_forme, libelle_laboratoire, libelle_rayon, libelle_dci, libelle_categorie_tarification, libelle_statut',
           { count: 'exact' }
         )
         .order('libelle_produit', { ascending: true })
