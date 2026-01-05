@@ -23,6 +23,7 @@ import UserLogin from "./pages/UserLogin";
 import UserRegister from "./pages/UserRegister";
 import SetPassword from "./pages/SetPassword";
 import PasswordReset from "./pages/PasswordReset";
+import PlatformAdmin from "./pages/PlatformAdmin";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
                     <Route path="/test-interface" element={<TestInterface />} />
                     <Route path="/testing" element={<TestingPage />} />
                     <Route path="/dashboard/tests" element={<TestSuitePage />} />
+                    <Route path="/platform-admin/*" element={<PlatformAdmin />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </BrowserRouter>
