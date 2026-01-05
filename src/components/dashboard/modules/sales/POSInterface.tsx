@@ -33,6 +33,7 @@ import { usePOSCalculations } from '@/hooks/usePOSCalculations';
 import { useClientDebt, useCanAddDebt } from '@/hooks/useClientDebt';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { TransactionData, CartItemWithLot, CustomerInfo, CustomerType } from '@/types/pos';
 import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 import { printReceipt } from '@/utils/receiptPrinter';
@@ -50,6 +51,7 @@ export interface CartItem {
 const POSInterface = () => {
   const { tenantId, currentUser } = useTenant();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const { autoPrint } = useRegionalSettings();
   const { settings: globalSettings, getPharmacyInfo } = useGlobalSystemSettings();
   const { formatAmount } = useCurrencyFormatting();
@@ -109,12 +111,12 @@ const POSInterface = () => {
   useEffect(() => {
     if (!sessionLoading && !hasActiveSession && !separateSaleAndCash) {
       toast({
-        title: "Session Caisse Fermée",
-        description: "Veuillez ouvrir une session de caisse pour effectuer des ventes.",
+        title: t('cashSessionClosed'),
+        description: t('pleaseOpenSession'),
         variant: "destructive"
       });
     }
-  }, [sessionLoading, hasActiveSession, separateSaleAndCash, toast]);
+  }, [sessionLoading, hasActiveSession, separateSaleAndCash, toast, t]);
 
   // Ajouter un produit au panier avec vérification stock
   const addToCart = useCallback(async (product: any, quantity: number = 1) => {
@@ -122,8 +124,8 @@ const POSInterface = () => {
     const hasStock = await checkStock(product.id, quantity);
     if (!hasStock) {
       toast({
-        title: "Stock insuffisant",
-        description: `Seulement ${product.stock} unités disponibles`,
+        title: t('stockInsufficient'),
+        description: `${t('stockAvailable')}: ${product.stock}`,
         variant: "destructive"
       });
       return;
@@ -137,8 +139,8 @@ const POSInterface = () => {
         
         if (newQty > product.stock) {
           toast({
-            title: "Quantité maximale atteinte",
-            description: `Stock disponible: ${product.stock}`,
+            title: t('maxQuantityReached'),
+            description: `${t('stockAvailable')}: ${product.stock}`,
             variant: "destructive"
           });
           return prev;
@@ -164,10 +166,10 @@ const POSInterface = () => {
     });
     
     toast({
-      title: "Produit ajouté",
+      title: t('posProductAdded'),
       description: `${product.name} x${quantity}`,
     });
-  }, [checkStock, toast]);
+  }, [checkStock, toast, t]);
 
   // Scanner de codes-barres clavier (recherche serveur-side)
   useEffect(() => {
@@ -177,12 +179,12 @@ const POSInterface = () => {
       if (product) {
         addToCart(product);
         toast({
-          title: "Produit scanné",
+          title: t('productScanned'),
           description: product.name
         });
       } else {
         toast({
-          title: "Produit non trouvé",
+          title: t('productNotFound'),
           description: barcode,
           variant: "destructive"
         });
@@ -194,7 +196,7 @@ const POSInterface = () => {
     });
 
     return cleanup;
-  }, [searchByBarcode, addToCart, toast]);
+  }, [searchByBarcode, addToCart, toast, t]);
 
   const updateCartItem = useCallback((productId: number, quantity: number) => {
     if (quantity <= 0) {
@@ -209,8 +211,8 @@ const POSInterface = () => {
     const maxStock = item.product.stock;
     if (quantity > maxStock) {
       toast({
-        title: "Stock insuffisant",
-        description: `Maximum disponible: ${maxStock} unités`,
+        title: t('stockInsufficient'),
+        description: `${t('stockAvailable')}: ${maxStock}`,
         variant: "destructive"
       });
       return;
@@ -227,7 +229,7 @@ const POSInterface = () => {
           : item
       )
     );
-  }, [cart, toast]);
+  }, [cart, toast, t]);
 
   const removeFromCart = useCallback((productId: number) => {
     setCart(prev => prev.filter(item => item.product.id !== productId));
@@ -544,15 +546,15 @@ const POSInterface = () => {
           <CardHeader>
             <CardTitle className="text-center flex items-center gap-2 justify-center">
               <AlertCircle className="h-5 w-5 text-destructive" />
-              Session Caisse Fermée
+              {t('cashSessionClosed')}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-muted-foreground">
-              Vous devez ouvrir une session de caisse pour effectuer des ventes.
+              {t('pleaseOpenSession')}
             </p>
             <p className="text-sm text-muted-foreground">
-              Veuillez contacter votre responsable pour ouvrir une session.
+              {t('contactManager')}
             </p>
           </CardContent>
         </Card>
@@ -566,7 +568,7 @@ const POSInterface = () => {
       <div className="h-full flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
-          <p className="text-muted-foreground">Chargement du point de vente...</p>
+          <p className="text-muted-foreground">{t('loadingPos')}</p>
         </div>
       </div>
     );
@@ -578,37 +580,37 @@ const POSInterface = () => {
         {!separateSaleAndCash ? (
           <TabsTrigger value="vente">
             <ShoppingCart className="h-4 w-4 mr-2" />
-            Vente
+            {t('saleTab')}
           </TabsTrigger>
         ) : (
           <>
             <TabsTrigger value="vente-seule">
               <ShoppingCart className="h-4 w-4 mr-2" />
-              Vente
+              {t('saleOnlyTab')}
             </TabsTrigger>
             {canCashier && (
               <TabsTrigger value="encaissement">
                 <Banknote className="h-4 w-4 mr-2" />
-                Encaissement
+                {t('cashierTab')}
               </TabsTrigger>
             )}
           </>
         )}
         <TabsTrigger value="retours">
           <PackageX className="h-4 w-4 mr-2" />
-          Retours
+          {t('returnsTab')}
         </TabsTrigger>
         <TabsTrigger value="fidelite">
           <Gift className="h-4 w-4 mr-2" />
-          Fidélité
+          {t('loyaltyTab')}
         </TabsTrigger>
         <TabsTrigger value="ordonnances">
           <FileText className="h-4 w-4 mr-2" />
-          Ordonnances
+          {t('prescriptionsTab')}
         </TabsTrigger>
         <TabsTrigger value="analytiques">
           <TrendingUp className="h-4 w-4 mr-2" />
-          Analytiques
+          {t('analyticsTab')}
         </TabsTrigger>
       </TabsList>
 
