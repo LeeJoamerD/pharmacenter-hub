@@ -18,10 +18,8 @@ import {
   Upload, 
   FileSpreadsheet, 
   CheckCircle2, 
-  XCircle, 
   AlertCircle,
   Loader2,
-  Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -29,29 +27,21 @@ interface GlobalCatalogImportProps {
   onSuccess?: () => void;
 }
 
-// Mapping des colonnes Excel vers les colonnes de la base de données
+// Nouveau mapping des colonnes Excel vers les colonnes de la base de données
 const EXCEL_COLUMN_MAPPING: Record<string, string> = {
   'EAN13/CIP': 'code_cip',
   'Ancien EAN13/CIP': 'ancien_code_cip',
   'Libellé produit': 'libelle_produit',
-  'Code Forme': 'code_forme',
-  'Libellé Forme': 'libelle_forme',
-  'Code Famille': 'code_famille',
-  'Libellé Famille': 'libelle_famille',
-  'Code Rayon': 'code_rayon',
-  'Libellé Rayon': 'libelle_rayon',
-  'Code DCI': 'code_dci',
-  'Libellé DCI': 'libelle_dci',
-  'Code Classe thérapeutique': 'code_classe_therapeutique',
-  'Libellé Classe thérapeutique': 'libelle_classe_therapeutique',
-  'Code Fournisseur': 'code_laboratoire',
-  'Libellé Fournisseur': 'libelle_laboratoire',
-  'Code Catégorie tarification': 'code_categorie_tarification',
-  'Libellé Catégorie tarification': 'libelle_categorie_tarification',
   'Prix de Vente Etablt': 'prix_achat_reference',
   'Prix Public Etablt': 'prix_vente_reference',
-  'Taux TVA': 'taux_tva',
-  'Code Statut': 'code_statut',
+  'TVA': 'tva_value', // Traitement spécial -> boolean tva
+  'Libellé Classe Thérapeutique': 'libelle_classe_therapeutique',
+  'Libellé Famille': 'libelle_famille',
+  'Libellé Forme': 'libelle_forme',
+  'Libellé Laboratoire': 'libelle_laboratoire',
+  'Libellé Rayon': 'libelle_rayon',
+  'Libellé DCI': 'libelle_dci',
+  'Libellé Catégorie': 'libelle_categorie_tarification',
   'Libellé Statut': 'libelle_statut'
 };
 
@@ -59,24 +49,16 @@ interface ParsedProduct {
   code_cip: string;
   ancien_code_cip?: string;
   libelle_produit: string;
-  code_forme?: string;
-  libelle_forme?: string;
-  code_famille?: string;
-  libelle_famille?: string;
-  code_rayon?: string;
-  libelle_rayon?: string;
-  code_dci?: string;
-  libelle_dci?: string;
-  code_classe_therapeutique?: string;
-  libelle_classe_therapeutique?: string;
-  code_laboratoire?: string;
-  libelle_laboratoire?: string;
-  code_categorie_tarification?: string;
-  libelle_categorie_tarification?: string;
   prix_achat_reference?: number;
   prix_vente_reference?: number;
-  taux_tva?: number;
-  code_statut?: string;
+  tva: boolean;
+  libelle_classe_therapeutique?: string;
+  libelle_famille?: string;
+  libelle_forme?: string;
+  libelle_laboratoire?: string;
+  libelle_rayon?: string;
+  libelle_dci?: string;
+  libelle_categorie_tarification?: string;
   libelle_statut?: string;
 }
 
@@ -116,15 +98,12 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
   const normalizeEAN = (value: any): string | null => {
     if (value === undefined || value === null || value === '') return null;
     
-    // Si c'est un nombre (incluant notation scientifique), le convertir en entier
     if (typeof value === 'number') {
       return Math.round(value).toFixed(0);
     }
     
-    // Si c'est une string
     const strVal = String(value).trim();
     
-    // Si la string contient une notation scientifique (ex: 4.25014E+12)
     if (strVal.includes('E+') || strVal.includes('e+') || strVal.includes('E-') || strVal.includes('e-')) {
       const num = parseFloat(strVal);
       if (!isNaN(num)) {
@@ -147,7 +126,6 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
       const workbook = XLSX.read(data);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      // Utiliser raw: true pour préserver les valeurs numériques brutes
       const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, { raw: true });
 
       if (jsonData.length === 0) {
@@ -155,11 +133,10 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
         return;
       }
 
-      // Extraire les colonnes du fichier Excel
       const columns = Object.keys(jsonData[0]);
       setExcelColumns(columns);
 
-      // Mapper les données en utilisant les en-têtes normalisés
+      // Mapper les données
       const mappedData: ParsedProduct[] = jsonData.map((row) => {
         const product: Record<string, any> = {};
         
@@ -169,24 +146,64 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
           normalizedRow[normalizeHeader(key)] = value;
         }
         
+        // Variables temporaires pour les transformations
+        let tvaValue = 0;
+        let libelleRayon: string | null = null;
+        let libelleForme: string | null = null;
+        let libelleCategorie: string | null = null;
+        
         // Utiliser le mapping normalisé
         for (const [normalizedExcelCol, dbCol] of Object.entries(NORMALIZED_MAPPING)) {
           const value = normalizedRow[normalizedExcelCol];
+          
           if (value !== undefined && value !== null && value !== '') {
-            // Traitement spécial pour les codes CIP/EAN (notation scientifique)
+            // Traitement spécial pour les codes CIP/EAN
             if (dbCol === 'code_cip' || dbCol === 'ancien_code_cip') {
               const normalized = normalizeEAN(value);
               if (normalized && normalized !== '0') {
                 product[dbCol] = normalized;
               }
             }
-            // Convertir les valeurs numériques de prix/TVA
-            else if (['prix_achat_reference', 'prix_vente_reference', 'taux_tva'].includes(dbCol)) {
+            // Traitement pour TVA -> stocker la valeur pour conversion boolean
+            else if (dbCol === 'tva_value') {
+              tvaValue = parseFloat(String(value).replace(',', '.')) || 0;
+            }
+            // Convertir les valeurs numériques de prix
+            else if (['prix_achat_reference', 'prix_vente_reference'].includes(dbCol)) {
               product[dbCol] = parseFloat(String(value).replace(',', '.')) || 0;
-            } else {
+            }
+            // Libellé Rayon
+            else if (dbCol === 'libelle_rayon') {
+              libelleRayon = String(value).trim();
+            }
+            // Libellé Forme
+            else if (dbCol === 'libelle_forme') {
+              libelleForme = String(value).trim();
+              product[dbCol] = libelleForme;
+            }
+            // Libellé Catégorie
+            else if (dbCol === 'libelle_categorie_tarification') {
+              libelleCategorie = String(value).trim();
+            }
+            else {
               product[dbCol] = String(value).trim();
             }
           }
+        }
+        
+        // Transformation TVA : Si > 0 alors TRUE, sinon FALSE
+        product.tva = tvaValue > 0;
+        
+        // Transformation libelle_rayon : Si vide, prend libelle_forme
+        product.libelle_rayon = libelleRayon || libelleForme || null;
+        
+        // Transformation libelle_categorie_tarification
+        if (libelleCategorie) {
+          product.libelle_categorie_tarification = libelleCategorie;
+        } else if (!product.tva) {
+          product.libelle_categorie_tarification = 'MEDICAMENTS';
+        } else {
+          product.libelle_categorie_tarification = 'PARAPHARMACIES AVEC TVA';
         }
         
         return product as ParsedProduct;
@@ -195,7 +212,6 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
       setParsedData(mappedData);
       
       if (mappedData.length === 0) {
-        // Diagnostic détaillé
         const detectedNormalized = columns.map(c => normalizeHeader(c));
         const expectedNormalized = Object.keys(NORMALIZED_MAPPING);
         console.warn('=== DIAGNOSTIC IMPORT ===');
@@ -229,7 +245,6 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
         
         const productsToInsert = batch.map(product => ({
           ...product,
-          is_active: true,
           created_by: platformAdmin.id,
           updated_by: platformAdmin.id
         }));
@@ -247,7 +262,6 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
           errors += batch.length;
         } else {
           success += data?.length || 0;
-          // Count duplicates (products that were updated vs inserted)
           duplicates += batch.length - (data?.length || 0);
         }
 
@@ -346,7 +360,6 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {excelColumns.map((col, index) => {
-                // Vérifier le mapping via normalisation
                 const isMatched = EXCEL_COLUMN_MAPPING[col] || 
                   Object.keys(EXCEL_COLUMN_MAPPING).some(
                     expected => normalizeHeader(expected) === normalizeHeader(col)
@@ -382,8 +395,8 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
                     <TableHead>Code CIP</TableHead>
                     <TableHead>Libellé</TableHead>
                     <TableHead>Forme</TableHead>
-                    <TableHead>Famille</TableHead>
-                    <TableHead>Laboratoire</TableHead>
+                    <TableHead>TVA</TableHead>
+                    <TableHead>Catégorie</TableHead>
                     <TableHead className="text-right">Prix Vente</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -393,8 +406,12 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
                       <TableCell className="font-mono text-sm">{product.code_cip}</TableCell>
                       <TableCell className="max-w-[200px] truncate">{product.libelle_produit}</TableCell>
                       <TableCell>{product.libelle_forme || '-'}</TableCell>
-                      <TableCell>{product.libelle_famille || '-'}</TableCell>
-                      <TableCell>{product.libelle_laboratoire || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant={product.tva ? 'default' : 'secondary'}>
+                          {product.tva ? 'Oui' : 'Non'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{product.libelle_categorie_tarification || '-'}</TableCell>
                       <TableCell className="text-right">
                         {product.prix_vente_reference?.toLocaleString() || 0} FCFA
                       </TableCell>
