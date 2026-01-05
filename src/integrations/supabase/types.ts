@@ -4655,19 +4655,10 @@ export type Database = {
       catalogue_global_produits: {
         Row: {
           ancien_code_cip: string | null
-          code_categorie_tarification: string | null
           code_cip: string
-          code_classe_therapeutique: string | null
-          code_dci: string | null
-          code_famille: string | null
-          code_forme: string | null
-          code_laboratoire: string | null
-          code_rayon: string | null
-          code_statut: string | null
           created_at: string | null
           created_by: string | null
           id: string
-          is_active: boolean | null
           libelle_categorie_tarification: string | null
           libelle_classe_therapeutique: string | null
           libelle_dci: string | null
@@ -4677,28 +4668,18 @@ export type Database = {
           libelle_produit: string
           libelle_rayon: string | null
           libelle_statut: string | null
-          prescription_requise: boolean | null
           prix_achat_reference: number | null
           prix_vente_reference: number | null
-          taux_tva: number | null
+          tva: boolean
           updated_at: string | null
           updated_by: string | null
         }
         Insert: {
           ancien_code_cip?: string | null
-          code_categorie_tarification?: string | null
           code_cip: string
-          code_classe_therapeutique?: string | null
-          code_dci?: string | null
-          code_famille?: string | null
-          code_forme?: string | null
-          code_laboratoire?: string | null
-          code_rayon?: string | null
-          code_statut?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
-          is_active?: boolean | null
           libelle_categorie_tarification?: string | null
           libelle_classe_therapeutique?: string | null
           libelle_dci?: string | null
@@ -4708,28 +4689,18 @@ export type Database = {
           libelle_produit: string
           libelle_rayon?: string | null
           libelle_statut?: string | null
-          prescription_requise?: boolean | null
           prix_achat_reference?: number | null
           prix_vente_reference?: number | null
-          taux_tva?: number | null
+          tva?: boolean
           updated_at?: string | null
           updated_by?: string | null
         }
         Update: {
           ancien_code_cip?: string | null
-          code_categorie_tarification?: string | null
           code_cip?: string
-          code_classe_therapeutique?: string | null
-          code_dci?: string | null
-          code_famille?: string | null
-          code_forme?: string | null
-          code_laboratoire?: string | null
-          code_rayon?: string | null
-          code_statut?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
-          is_active?: boolean | null
           libelle_categorie_tarification?: string | null
           libelle_classe_therapeutique?: string | null
           libelle_dci?: string | null
@@ -4739,10 +4710,9 @@ export type Database = {
           libelle_produit?: string
           libelle_rayon?: string | null
           libelle_statut?: string | null
-          prescription_requise?: boolean | null
           prix_achat_reference?: number | null
           prix_vente_reference?: number | null
-          taux_tva?: number | null
+          tva?: boolean
           updated_at?: string | null
           updated_by?: string | null
         }
