@@ -4652,6 +4652,117 @@ export type Database = {
         }
         Relationships: []
       }
+      catalogue_global_produits: {
+        Row: {
+          ancien_code_cip: string | null
+          code_categorie_tarification: string | null
+          code_cip: string
+          code_classe_therapeutique: string | null
+          code_dci: string | null
+          code_famille: string | null
+          code_forme: string | null
+          code_laboratoire: string | null
+          code_rayon: string | null
+          code_statut: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          libelle_categorie_tarification: string | null
+          libelle_classe_therapeutique: string | null
+          libelle_dci: string | null
+          libelle_famille: string | null
+          libelle_forme: string | null
+          libelle_laboratoire: string | null
+          libelle_produit: string
+          libelle_rayon: string | null
+          libelle_statut: string | null
+          prescription_requise: boolean | null
+          prix_achat_reference: number | null
+          prix_vente_reference: number | null
+          taux_tva: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          ancien_code_cip?: string | null
+          code_categorie_tarification?: string | null
+          code_cip: string
+          code_classe_therapeutique?: string | null
+          code_dci?: string | null
+          code_famille?: string | null
+          code_forme?: string | null
+          code_laboratoire?: string | null
+          code_rayon?: string | null
+          code_statut?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          libelle_categorie_tarification?: string | null
+          libelle_classe_therapeutique?: string | null
+          libelle_dci?: string | null
+          libelle_famille?: string | null
+          libelle_forme?: string | null
+          libelle_laboratoire?: string | null
+          libelle_produit: string
+          libelle_rayon?: string | null
+          libelle_statut?: string | null
+          prescription_requise?: boolean | null
+          prix_achat_reference?: number | null
+          prix_vente_reference?: number | null
+          taux_tva?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          ancien_code_cip?: string | null
+          code_categorie_tarification?: string | null
+          code_cip?: string
+          code_classe_therapeutique?: string | null
+          code_dci?: string | null
+          code_famille?: string | null
+          code_forme?: string | null
+          code_laboratoire?: string | null
+          code_rayon?: string | null
+          code_statut?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          libelle_categorie_tarification?: string | null
+          libelle_classe_therapeutique?: string | null
+          libelle_dci?: string | null
+          libelle_famille?: string | null
+          libelle_forme?: string | null
+          libelle_laboratoire?: string | null
+          libelle_produit?: string
+          libelle_rayon?: string | null
+          libelle_statut?: string | null
+          prescription_requise?: boolean | null
+          prix_achat_reference?: number | null
+          prix_vente_reference?: number | null
+          taux_tva?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalogue_global_produits_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "platform_admins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalogue_global_produits_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "platform_admins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorie_tarification: {
         Row: {
           coefficient_prix_vente: number | null
@@ -14790,6 +14901,39 @@ export type Database = {
           },
         ]
       }
+      platform_admins: {
+        Row: {
+          auth_user_id: string
+          created_at: string | null
+          email: string
+          id: string
+          is_active: boolean | null
+          nom: string
+          prenoms: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string | null
+          email: string
+          id?: string
+          is_active?: boolean | null
+          nom: string
+          prenoms?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string | null
+          email?: string
+          id?: string
+          is_active?: boolean | null
+          nom?: string
+          prenoms?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       preferences_utilisateur: {
         Row: {
           cle_preference: string
@@ -20542,6 +20686,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_platform_admin: { Args: never; Returns: boolean }
       is_system_admin: { Args: never; Returns: boolean }
       nettoyer_alertes_expiration_anciennes: {
         Args: { p_jours_retention?: number; p_tenant_id: string }
