@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 /**
  * Composant invisible qui synchronise automatiquement les paramètres système
@@ -7,21 +8,25 @@ import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
  */
 export const SystemSettingsSync = () => {
   const { settings, syncWithOtherContexts, getCurrentLanguage } = useGlobalSystemSettings();
+  const { changeLanguage, languages, currentLanguage } = useLanguage();
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
     // Synchroniser les paramètres avec les autres contextes dès que les settings sont chargés
-    if (settings) {
+    if (settings && !hasInitialized.current) {
+      hasInitialized.current = true;
       syncWithOtherContexts();
       
-      // Dispatch custom event to sync language with LanguageContext
-      const currentLang = getCurrentLanguage();
-      if (currentLang?.code) {
-        window.dispatchEvent(new CustomEvent('systemSettingsLanguageChanged', {
-          detail: { languageCode: currentLang.code }
-        }));
+      // Synchroniser directement la langue avec le LanguageContext
+      const systemLang = getCurrentLanguage();
+      if (systemLang?.code && systemLang.code !== currentLanguage.code) {
+        const matchedLang = languages.find(l => l.code === systemLang.code);
+        if (matchedLang) {
+          changeLanguage(matchedLang);
+        }
       }
     }
-  }, [settings, syncWithOtherContexts, getCurrentLanguage]);
+  }, [settings, syncWithOtherContexts, getCurrentLanguage, changeLanguage, languages, currentLanguage]);
 
   // Ce composant ne rend rien, il sert uniquement à la synchronisation
   return null;

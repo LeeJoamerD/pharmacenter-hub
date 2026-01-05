@@ -325,7 +325,7 @@ export const useSystemSettings = () => {
           // Via le contexte SystemSettings
           window.dispatchEvent(new CustomEvent('systemSettingsLanguageChanged', {
             detail: { 
-              language: updatedSettings.default_language || updatedSettings.default_lingual 
+              languageCode: updatedSettings.default_language || updatedSettings.default_lingual 
             }
           }));
         } catch (langError) {

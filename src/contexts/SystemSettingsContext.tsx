@@ -117,9 +117,11 @@ export function SystemSettingsProvider({ children }: { children: ReactNode }) {
   };
 
   // Obtenir la langue actuelle depuis les paramètres système
+  // Priorité: default_lingual (interface), puis default_language (général)
   const getCurrentLanguage = (): Language | undefined => {
     if (!settings) return undefined;
-    return settings.languages_available.find(l => l.code === settings.default_language);
+    const langCode = settings.default_lingual || settings.default_language;
+    return settings.languages_available.find(l => l.code === langCode);
   };
 
   // Palette de couleurs HSL pour Tailwind (format: H S% L%)
