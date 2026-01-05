@@ -37,6 +37,8 @@ const GlobalProductEditDialog: React.FC<GlobalProductEditDialogProps> = ({
     ancien_code_cip: product.ancien_code_cip || '',
     prix_achat_reference: product.prix_achat_reference || 0,
     prix_vente_reference: product.prix_vente_reference || 0,
+    prix_achat_reference_pnr: product.prix_achat_reference_pnr || 0,
+    prix_vente_reference_pnr: product.prix_vente_reference_pnr || 0,
     tva: product.tva,
     libelle_classe_therapeutique: product.libelle_classe_therapeutique || '',
     libelle_famille: product.libelle_famille || '',
@@ -67,6 +69,8 @@ const GlobalProductEditDialog: React.FC<GlobalProductEditDialogProps> = ({
           ancien_code_cip: formData.ancien_code_cip.trim() || null,
           prix_achat_reference: formData.prix_achat_reference,
           prix_vente_reference: formData.prix_vente_reference,
+          prix_achat_reference_pnr: formData.prix_achat_reference_pnr,
+          prix_vente_reference_pnr: formData.prix_vente_reference_pnr,
           tva: formData.tva,
           libelle_classe_therapeutique: formData.libelle_classe_therapeutique.trim() || null,
           libelle_famille: formData.libelle_famille.trim() || null,
@@ -123,7 +127,7 @@ const GlobalProductEditDialog: React.FC<GlobalProductEditDialogProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="prix_achat_reference">Prix achat réf.</Label>
               <Input
@@ -142,14 +146,36 @@ const GlobalProductEditDialog: React.FC<GlobalProductEditDialogProps> = ({
                 onChange={(e) => handleChange('prix_vente_reference', parseFloat(e.target.value) || 0)}
               />
             </div>
-            <div className="flex items-center space-x-2 pt-8">
-              <Checkbox
-                id="tva"
-                checked={formData.tva}
-                onCheckedChange={(checked) => handleChange('tva', !!checked)}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="prix_achat_reference_pnr">Prix achat Pointe Noire</Label>
+              <Input
+                id="prix_achat_reference_pnr"
+                type="number"
+                value={formData.prix_achat_reference_pnr}
+                onChange={(e) => handleChange('prix_achat_reference_pnr', parseFloat(e.target.value) || 0)}
               />
-              <Label htmlFor="tva">Soumis à TVA</Label>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="prix_vente_reference_pnr">Prix vente Pointe Noire</Label>
+              <Input
+                id="prix_vente_reference_pnr"
+                type="number"
+                value={formData.prix_vente_reference_pnr}
+                onChange={(e) => handleChange('prix_vente_reference_pnr', parseFloat(e.target.value) || 0)}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="tva"
+              checked={formData.tva}
+              onCheckedChange={(checked) => handleChange('tva', !!checked)}
+            />
+            <Label htmlFor="tva">Soumis à TVA</Label>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

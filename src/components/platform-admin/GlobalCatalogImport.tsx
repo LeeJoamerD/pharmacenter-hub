@@ -34,6 +34,8 @@ const EXCEL_COLUMN_MAPPING: Record<string, string> = {
   'Libellé produit': 'libelle_produit',
   'Prix de Vente Etablt': 'prix_achat_reference',
   'Prix Public Etablt': 'prix_vente_reference',
+  'Prix de Vente Etablt PNR': 'prix_achat_reference_pnr',
+  'Prix Public Etablt PNR': 'prix_vente_reference_pnr',
   'TVA': 'tva_value', // Traitement spécial -> boolean tva
   'Libellé Classe Thérapeutique': 'libelle_classe_therapeutique',
   'Libellé Famille': 'libelle_famille',
@@ -51,6 +53,8 @@ interface ParsedProduct {
   libelle_produit: string;
   prix_achat_reference?: number;
   prix_vente_reference?: number;
+  prix_achat_reference_pnr?: number;
+  prix_vente_reference_pnr?: number;
   tva: boolean;
   libelle_classe_therapeutique?: string;
   libelle_famille?: string;
@@ -169,7 +173,7 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
               tvaValue = parseFloat(String(value).replace(',', '.')) || 0;
             }
             // Convertir les valeurs numériques de prix
-            else if (['prix_achat_reference', 'prix_vente_reference'].includes(dbCol)) {
+            else if (['prix_achat_reference', 'prix_vente_reference', 'prix_achat_reference_pnr', 'prix_vente_reference_pnr'].includes(dbCol)) {
               product[dbCol] = parseFloat(String(value).replace(',', '.')) || 0;
             }
             // Libellé Rayon
