@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, Minus, Trash2, ShoppingCart } from 'lucide-react';
 import { CartItem } from '../POSInterface';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ShoppingCartComponentProps {
   cart: CartItem[];
@@ -21,13 +22,14 @@ const ShoppingCartComponent = ({
   onClearCart 
 }: ShoppingCartComponentProps) => {
   const { formatAmount } = useCurrencyFormatting();
+  const { t } = useLanguage();
 
   if (cart.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <ShoppingCart className="h-12 w-12 mx-auto mb-4 opacity-50" />
-        <p>Panier vide</p>
-        <p className="text-sm">Ajoutez des produits pour commencer</p>
+        <p>{t('emptyCartMessage')}</p>
+        <p className="text-sm">{t('addProductsToStart')}</p>
       </div>
     );
   }
@@ -36,7 +38,7 @@ const ShoppingCartComponent = ({
     <div className="space-y-4">
       {/* Clear Cart Button */}
       <div className="flex justify-between items-center">
-        <span className="text-sm font-medium">Articles dans le panier</span>
+        <span className="text-sm font-medium">{t('cartItemsTitle')}</span>
         <Button
           variant="ghost"
           size="sm"
@@ -44,7 +46,7 @@ const ShoppingCartComponent = ({
           className="text-destructive hover:text-destructive"
         >
           <Trash2 className="h-4 w-4 mr-1" />
-          Vider
+          {t('emptyBtn')}
         </Button>
       </div>
 
@@ -58,7 +60,7 @@ const ShoppingCartComponent = ({
                   {item.product.name}
                 </h5>
                 <p className="text-xs text-muted-foreground">
-                  {formatAmount(item.unitPrice)} / unité
+                  {formatAmount(item.unitPrice)} {t('perUnit')}
                 </p>
               </div>
               
@@ -115,7 +117,7 @@ const ShoppingCartComponent = ({
                 </div>
                 {item.discount && (
                   <div className="text-xs text-green-600">
-                    Remise: -{formatAmount(item.discount)}
+                    {t('discount')}: -{formatAmount(item.discount)}
                   </div>
                 )}
               </div>
@@ -124,7 +126,7 @@ const ShoppingCartComponent = ({
             {/* Stock Warning */}
             {item.quantity >= item.product.stock && (
               <Badge variant="destructive" className="text-xs">
-                Stock insuffisant
+                {t('insufficientStock')}
               </Badge>
             )}
             

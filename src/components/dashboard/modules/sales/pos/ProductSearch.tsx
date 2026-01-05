@@ -8,6 +8,7 @@ import { POSProduct } from '@/types/pos';
 import { usePOSProductsPaginated } from '@/hooks/usePOSProductsPaginated';
 import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { useLanguage } from '@/contexts/LanguageContext';
 interface ProductSearchProps {
   onAddToCart: (product: POSProduct, quantity?: number) => void;
 }
@@ -16,6 +17,7 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
   const [searchInput, setSearchInput] = useState('');
   const debouncedSearch = useDebouncedValue(searchInput, 300);
   const { formatAmount } = useCurrencyFormatting();
+  const { t } = useLanguage();
   
   const { 
     products, 
@@ -46,7 +48,7 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Rechercher par nom, DCI ou code-barres..."
+          placeholder={t('searchByNameDciBarcode')}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className="pl-10 pr-10"
@@ -58,9 +60,9 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
 
       {/* Product count */}
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>{showSearchPrompt ? '0' : totalCount} produits disponibles</span>
+        <span>{showSearchPrompt ? '0' : totalCount} {t('productsAvailable')}</span>
         {totalPages > 1 && (
-          <span>Page {currentPage} / {totalPages}</span>
+          <span>{t('page')} {currentPage} / {totalPages}</span>
         )}
       </div>
 
@@ -69,13 +71,13 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
         {showSearchPrompt ? (
           <div className="text-center py-8 text-muted-foreground">
             <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Tapez au moins 2 caractères pour rechercher</p>
-            <p className="text-xs mt-1">ou scannez un code-barres</p>
+            <p>{t('typeMinChars')}</p>
+            <p className="text-xs mt-1">{t('orScanBarcode')}</p>
           </div>
         ) : products.length === 0 && !isLoading ? (
           <div className="text-center py-8 text-muted-foreground">
             <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Aucun produit trouvé</p>
+            <p>{t('noProductsFoundSearch')}</p>
           </div>
         ) : (
           products.map(product => (
@@ -88,7 +90,7 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
                       {product.requiresPrescription && (
                         <Badge variant="destructive" className="text-xs">
                           <AlertTriangle className="h-3 w-3 mr-1" />
-                          Ordonnance
+                          {t('prescriptionRequired')}
                         </Badge>
                       )}
                     </div>
@@ -106,7 +108,7 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
                           variant={product.stock > 10 ? 'default' : product.stock > 0 ? 'secondary' : 'destructive'}
                           className="text-xs"
                         >
-                          Stock: {product.stock}
+                          {t('stockLabel')}: {product.stock}
                         </Badge>
                       </div>
                       
@@ -117,7 +119,7 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
                         className="shrink-0"
                       >
                         <Plus className="h-4 w-4 mr-1" />
-                        Ajouter
+                        {t('addBtn')}
                       </Button>
                     </div>
                   </div>
@@ -138,10 +140,10 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
             disabled={currentPage === 1 || isLoading}
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
-            Précédent
+            {t('previousBtn')}
           </Button>
           <span className="text-sm text-muted-foreground min-w-[100px] text-center">
-            Page {currentPage} / {totalPages}
+            {t('page')} {currentPage} / {totalPages}
           </span>
           <Button
             variant="outline"
@@ -149,7 +151,7 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
             onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages || isLoading}
           >
-            Suivant
+            {t('nextBtn')}
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>

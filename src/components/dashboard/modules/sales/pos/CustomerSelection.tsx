@@ -30,6 +30,7 @@ import {
 import ClientSearchField from './ClientSearchField';
 import { CustomerType } from '@/types/pos';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CustomerData {
   id?: string;
@@ -92,6 +93,7 @@ const customerTypes: {
 
 const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProps) => {
   const { formatAmount } = useCurrencyFormatting();
+  const { t } = useLanguage();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const currentType = customerTypes.find(t => t.id === customer.type) || customerTypes[0];
@@ -182,7 +184,7 @@ const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProp
             <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8">
-                  Changer
+                  {t('changeBtn')}
                   <ChevronDown className="h-3 w-3 ml-1" />
                 </Button>
               </DropdownMenuTrigger>
@@ -202,7 +204,7 @@ const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProp
                           <div className="font-medium text-sm">{type.label}</div>
                           <div className="text-xs text-muted-foreground">{type.description}</div>
                         </div>
-                        {isSelected && <Badge variant="default" className="text-xs">Actuel</Badge>}
+                        {isSelected && <Badge variant="default" className="text-xs">{t('currentLabel')}</Badge>}
                       </div>
                     </DropdownMenuItem>
                   );
@@ -267,7 +269,7 @@ const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProp
                     <div className="flex items-center gap-1.5">
                       <Percent className="h-3 w-3 text-green-600" />
                       <span className="text-green-600">
-                        Remise: {customer.taux_remise_automatique}%
+                        {t('discount')}: {customer.taux_remise_automatique}%
                       </span>
                     </div>
                   )}
@@ -276,7 +278,7 @@ const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProp
                   {(customer.limite_credit ?? 0) > 0 && (
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <CreditCard className="h-3 w-3" />
-                      <span>Limite: {formatAmount(customer.limite_credit ?? 0)}</span>
+                      <span>{t('debtLimit')}: {formatAmount(customer.limite_credit ?? 0)}</span>
                     </div>
                   )}
 
@@ -284,7 +286,7 @@ const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProp
                   {customer.peut_prendre_bon && (
                     <div className="flex items-center gap-1.5 text-blue-600">
                       <ShieldCheck className="h-3 w-3" />
-                      <span>Peut prendre bon</span>
+                      <span>{t('canTakeVoucherLabel')}</span>
                     </div>
                   )}
 
@@ -292,7 +294,7 @@ const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProp
                   {(customer.taux_agent ?? 0) > 0 && (
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <User className="h-3 w-3" />
-                      <span>Taux Agent: {customer.taux_agent}%</span>
+                      <span>{t('agentRateLabel')}: {customer.taux_agent}%</span>
                     </div>
                   )}
 
@@ -300,14 +302,14 @@ const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProp
                   {(customer.taux_ayant_droit ?? 0) > 0 && (
                     <div className="flex items-center gap-1.5 text-muted-foreground">
                       <Users className="h-3 w-3" />
-                      <span>Taux AD: {customer.taux_ayant_droit}%</span>
+                      <span>{t('beneficiaryRateLabel')}: {customer.taux_ayant_droit}%</span>
                     </div>
                   )}
 
                   {/* Ticket modérateur */}
                   {(customer.taux_ticket_moderateur ?? 0) > 0 && (
                     <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
-                      <span>Ticket modérateur: {customer.taux_ticket_moderateur}%</span>
+                      <span>{t('moderatorTicketRate')}: {customer.taux_ticket_moderateur}%</span>
                     </div>
                   )}
                 </div>
@@ -320,13 +322,13 @@ const CustomerSelection = ({ customer, onCustomerChange }: CustomerSelectionProp
                         <Wallet className="h-4 w-4 text-green-600" />
                         <div>
                           <p className="text-sm font-medium text-green-600">
-                            Caution disponible: {formatAmount(customer.caution ?? 0)}
+                            {t('availableCaution')}: {formatAmount(customer.caution ?? 0)}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Label htmlFor="use-caution" className="text-xs">
-                          Utiliser
+                          {t('useLabel')}
                         </Label>
                         <Switch
                           id="use-caution"
