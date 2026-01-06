@@ -15427,6 +15427,66 @@ export type Database = {
           },
         ]
       }
+      produits_dci: {
+        Row: {
+          created_at: string | null
+          dci_id: string
+          id: string
+          produit_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dci_id: string
+          id?: string
+          produit_id: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string | null
+          dci_id?: string
+          id?: string
+          produit_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produits_dci_dci_id_fkey"
+            columns: ["dci_id"]
+            isOneToOne: false
+            referencedRelation: "dci"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_dci_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_dci_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "produits_with_stock"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_dci_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_produits_with_famille"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produits_dci_produit_id_fkey"
+            columns: ["produit_id"]
+            isOneToOne: false
+            referencedRelation: "v_rentabilite_produits"
+            referencedColumns: ["produit_id"]
+          },
+        ]
+      }
       produits_eligibles_promotion: {
         Row: {
           categorie_id: string | null
@@ -19389,6 +19449,7 @@ export type Database = {
           code_cip: string | null
           created_at: string | null
           dci_id: string | null
+          dci_noms: string | null
           famille_id: string | null
           forme_id: string | null
           id: string | null
@@ -19729,6 +19790,7 @@ export type Database = {
           code_cip: string | null
           created_at: string | null
           dci_id: string | null
+          dci_noms: string | null
           famille_id: string | null
           forme_id: string | null
           id: string | null
