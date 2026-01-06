@@ -114,7 +114,9 @@ const PlatformTestSuite = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {tenantsLoading ? (
-                    <SelectItem value="" disabled>Chargement...</SelectItem>
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      Chargement...
+                    </div>
                   ) : tenants && tenants.length > 0 ? (
                     tenants.map((tenant) => (
                       <SelectItem key={tenant.id} value={tenant.id}>
@@ -122,7 +124,9 @@ const PlatformTestSuite = () => {
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="" disabled>Aucun tenant disponible</SelectItem>
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      Aucun tenant disponible
+                    </div>
                   )}
                 </SelectContent>
               </Select>
