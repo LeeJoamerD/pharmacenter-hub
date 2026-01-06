@@ -66,6 +66,12 @@ interface ParsedProduct {
   libelle_statut?: string;
 }
 
+interface SkippedGroup {
+  reason: string;
+  count: number;
+  examples: string[];
+}
+
 const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) => {
   const { platformAdmin } = usePlatformAdmin();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,10 +81,13 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
   const [excelColumns, setExcelColumns] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [skippedProducts, setSkippedProducts] = useState<SkippedGroup[]>([]);
+  const [totalDetected, setTotalDetected] = useState(0);
   const [importResult, setImportResult] = useState<{
     success: number;
     errors: number;
     duplicates: number;
+    skipped: number;
   } | null>(null);
 
   // Fonction pour normaliser les en-têtes (gère espaces, NBSP, etc.)
@@ -140,8 +149,10 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
       const columns = Object.keys(jsonData[0]);
       setExcelColumns(columns);
 
-      // Mapper les données
-      const mappedData: ParsedProduct[] = jsonData.map((row) => {
+      // Mapper les données avec suivi des produits ignorés
+      setTotalDetected(jsonData.length);
+      
+      const allMappedData = jsonData.map((row, index) => {
         const product: Record<string, any> = {};
         
         // Normaliser les clés de la ligne Excel
@@ -210,12 +221,57 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
           product.libelle_categorie_tarification = 'PARAPHARMACIES AVEC TVA';
         }
         
-        return product as ParsedProduct;
-      }).filter(p => p.code_cip && p.libelle_produit);
+        return {
+          product: product as ParsedProduct,
+          rowIndex: index + 2, // +2 car Excel commence à 1 et l'en-tête est ligne 1
+          rawRow: row
+        };
+      });
 
-      setParsedData(mappedData);
+      // Analyser les produits ignorés
+      const validProducts: ParsedProduct[] = [];
+      const skipped: { reason: string; rowIndex: number; details: string }[] = [];
+
+      allMappedData.forEach(({ product, rowIndex, rawRow }) => {
+        if (!product.code_cip) {
+          skipped.push({
+            reason: 'Code CIP/EAN manquant ou invalide',
+            rowIndex,
+            details: `Libellé: ${product.libelle_produit || rawRow['Libellé produit'] || 'N/A'}`
+          });
+        } else if (!product.libelle_produit) {
+          skipped.push({
+            reason: 'Libellé produit manquant',
+            rowIndex,
+            details: `CIP: ${product.code_cip}`
+          });
+        } else {
+          validProducts.push(product);
+        }
+      });
+
+      // Grouper les produits ignorés par raison
+      const groupedSkipped = skipped.reduce((acc, item) => {
+        const existing = acc.find(g => g.reason === item.reason);
+        if (existing) {
+          existing.count++;
+          if (existing.examples.length < 5) {
+            existing.examples.push(`Ligne ${item.rowIndex}: ${item.details}`);
+          }
+        } else {
+          acc.push({
+            reason: item.reason,
+            count: 1,
+            examples: [`Ligne ${item.rowIndex}: ${item.details}`]
+          });
+        }
+        return acc;
+      }, [] as SkippedGroup[]);
+
+      setSkippedProducts(groupedSkipped);
+      setParsedData(validProducts);
       
-      if (mappedData.length === 0) {
+      if (validProducts.length === 0) {
         const detectedNormalized = columns.map(c => normalizeHeader(c));
         const expectedNormalized = Object.keys(NORMALIZED_MAPPING);
         console.warn('=== DIAGNOSTIC IMPORT ===');
@@ -224,7 +280,11 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
         console.warn('1ère ligne brute:', jsonData[0]);
         toast.error('Aucun produit valide détecté. Vérifiez les colonnes EAN13/CIP et Libellé produit.');
       } else {
-        toast.success(`${mappedData.length} produits valides détectés`);
+        toast.success(`${validProducts.length} produits valides détectés sur ${jsonData.length}`);
+        if (groupedSkipped.length > 0) {
+          const totalSkipped = groupedSkipped.reduce((sum, g) => sum + g.count, 0);
+          toast.warning(`${totalSkipped} produit(s) ignoré(s) - voir les détails ci-dessous`);
+        }
       }
     } catch (error) {
       console.error('Error parsing Excel:', error);
@@ -272,7 +332,8 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
         setProgress(Math.round(((i + batch.length) / parsedData.length) * 100));
       }
 
-      setImportResult({ success, errors, duplicates });
+      const totalSkipped = skippedProducts.reduce((sum, g) => sum + g.count, 0);
+      setImportResult({ success, errors, duplicates, skipped: totalSkipped });
       
       if (success > 0) {
         toast.success(`Import terminé: ${success} produits importés`);
@@ -294,6 +355,8 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
     setExcelColumns([]);
     setImportResult(null);
     setProgress(0);
+    setSkippedProducts([]);
+    setTotalDetected(0);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -340,7 +403,12 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
                 <div>
                   <p className="font-medium">{file.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {(file.size / 1024).toFixed(1)} Ko • {parsedData.length} produits détectés
+                    {(file.size / 1024).toFixed(1)} Ko • {totalDetected} produits détectés
+                    {skippedProducts.length > 0 && (
+                      <span className="text-yellow-600 ml-1">
+                        ({parsedData.length} valides, {skippedProducts.reduce((sum, g) => sum + g.count, 0)} ignorés)
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -433,6 +501,43 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
         </Card>
       )}
 
+      {/* Produits ignorés */}
+      {skippedProducts.length > 0 && (
+        <Card className="border-yellow-500/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-yellow-600">
+              <AlertCircle className="h-5 w-5" />
+              Produits ignorés ({skippedProducts.reduce((sum, g) => sum + g.count, 0)})
+            </CardTitle>
+            <CardDescription>
+              Ces produits ne seront pas importés car ils ne respectent pas les critères requis (Code CIP et Libellé obligatoires)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {skippedProducts.map((group, idx) => (
+                <div key={idx} className="p-3 bg-yellow-500/10 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">{group.reason}</span>
+                    <Badge variant="outline" className="text-yellow-600 border-yellow-600">
+                      {group.count} produit(s)
+                    </Badge>
+                  </div>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    {group.examples.map((ex, i) => (
+                      <li key={i}>• {ex}</li>
+                    ))}
+                    {group.count > 5 && (
+                      <li className="italic">... et {group.count - 5} autres</li>
+                    )}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Progression de l'import */}
       {importing && (
         <Card>
@@ -465,14 +570,18 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               <div className="text-center p-4 bg-green-500/10 rounded-lg">
                 <p className="text-2xl font-bold text-green-500">{importResult.success}</p>
-                <p className="text-sm text-muted-foreground">Importés avec succès</p>
+                <p className="text-sm text-muted-foreground">Importés</p>
               </div>
               <div className="text-center p-4 bg-blue-500/10 rounded-lg">
                 <p className="text-2xl font-bold text-blue-500">{importResult.duplicates}</p>
                 <p className="text-sm text-muted-foreground">Mis à jour</p>
+              </div>
+              <div className="text-center p-4 bg-yellow-500/10 rounded-lg">
+                <p className="text-2xl font-bold text-yellow-500">{importResult.skipped}</p>
+                <p className="text-sm text-muted-foreground">Ignorés</p>
               </div>
               <div className="text-center p-4 bg-red-500/10 rounded-lg">
                 <p className="text-2xl font-bold text-red-500">{importResult.errors}</p>
