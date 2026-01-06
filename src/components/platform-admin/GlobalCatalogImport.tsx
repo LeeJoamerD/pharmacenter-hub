@@ -250,8 +250,33 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
         }
       });
 
+      // Dédoublonner par code_cip - garder la dernière occurrence
+      const productsByCode = new Map<string, { product: ParsedProduct; rowIndex: number }>();
+      const duplicatesInFile: { reason: string; rowIndex: number; details: string }[] = [];
+
+      validProducts.forEach((product) => {
+        const code = product.code_cip;
+        // Trouver l'index de ligne original
+        const mappedItem = allMappedData.find(d => d.product.code_cip === code);
+        const rowIndex = mappedItem?.rowIndex || 0;
+        
+        if (productsByCode.has(code)) {
+          // C'est un doublon - on garde le nouveau et on note l'ancien
+          const existing = productsByCode.get(code)!;
+          duplicatesInFile.push({
+            reason: 'Code CIP en double dans le fichier',
+            rowIndex: existing.rowIndex,
+            details: `CIP: ${code} - "${existing.product.libelle_produit}" (remplacé par ligne ${rowIndex})`
+          });
+        }
+        productsByCode.set(code, { product, rowIndex });
+      });
+
+      // Récupérer les produits uniques
+      const uniqueProducts = Array.from(productsByCode.values()).map(v => v.product);
+
       // Grouper les produits ignorés par raison
-      const groupedSkipped = skipped.reduce((acc, item) => {
+      const groupedSkipped = [...skipped, ...duplicatesInFile].reduce((acc, item) => {
         const existing = acc.find(g => g.reason === item.reason);
         if (existing) {
           existing.count++;
@@ -268,8 +293,13 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
         return acc;
       }, [] as SkippedGroup[]);
 
+      // Afficher un warning si des doublons ont été détectés
+      if (duplicatesInFile.length > 0) {
+        toast.warning(`${duplicatesInFile.length} produit(s) en double détectés dans le fichier (dernière occurrence conservée)`);
+      }
+
       setSkippedProducts(groupedSkipped);
-      setParsedData(validProducts);
+      setParsedData(uniqueProducts);
       
       if (validProducts.length === 0) {
         const detectedNormalized = columns.map(c => normalizeHeader(c));
@@ -280,7 +310,7 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
         console.warn('1ère ligne brute:', jsonData[0]);
         toast.error('Aucun produit valide détecté. Vérifiez les colonnes EAN13/CIP et Libellé produit.');
       } else {
-        toast.success(`${validProducts.length} produits valides détectés sur ${jsonData.length}`);
+        toast.success(`${uniqueProducts.length} produits uniques détectés sur ${jsonData.length}`);
         if (groupedSkipped.length > 0) {
           const totalSkipped = groupedSkipped.reduce((sum, g) => sum + g.count, 0);
           toast.warning(`${totalSkipped} produit(s) ignoré(s) - voir les détails ci-dessous`);
