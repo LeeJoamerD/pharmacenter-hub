@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -64,6 +65,85 @@ const GlobalCatalogTable = () => {
   const [editingProduct, setEditingProduct] = useState<GlobalProduct | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<GlobalProduct | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Bulk selection states
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteMode, setBulkDeleteMode] = useState<'selected' | 'all' | null>(null);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  // Reset selection on page/search change
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page, pageSize, debouncedSearch]);
+
+  const isAllSelected = products.length > 0 && products.every(p => selectedIds.has(p.id));
+  const isSomeSelected = products.some(p => selectedIds.has(p.id));
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) newSet.delete(id);
+      else newSet.add(id);
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(products.map(p => p.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    setIsBulkDeleting(true);
+    try {
+      if (bulkDeleteMode === 'all') {
+        // Delete ALL products in batches of 1000
+        let deleted = 0;
+        while (true) {
+          const { data, error } = await supabase
+            .from('catalogue_global_produits')
+            .delete()
+            .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all
+            .select('id')
+            .limit(1000);
+          
+          if (error) throw error;
+          if (!data || data.length === 0) break;
+          deleted += data.length;
+        }
+        toast.success(`${deleted.toLocaleString()} produits supprimés du catalogue`);
+      } else {
+        // Delete selected products in batches of 100
+        const ids = Array.from(selectedIds);
+        const batchSize = 100;
+        let deleted = 0;
+        
+        for (let i = 0; i < ids.length; i += batchSize) {
+          const batch = ids.slice(i, i + batchSize);
+          const { error } = await supabase
+            .from('catalogue_global_produits')
+            .delete()
+            .in('id', batch);
+          
+          if (error) throw error;
+          deleted += batch.length;
+        }
+        toast.success(`${deleted} produit(s) supprimé(s)`);
+      }
+      
+      setSelectedIds(new Set());
+      fetchProducts();
+    } catch (error) {
+      console.error('Erreur suppression en masse:', error);
+      toast.error('Erreur lors de la suppression');
+    } finally {
+      setIsBulkDeleting(false);
+      setBulkDeleteMode(null);
+    }
+  };
 
   // Debounce search
   useEffect(() => {
@@ -173,6 +253,40 @@ const GlobalCatalogTable = () => {
             </div>
           </div>
 
+          {/* Bulk actions bar */}
+          {totalCount > 0 && (
+            <div className="flex items-center justify-between bg-muted/50 p-3 rounded-lg border">
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted-foreground">
+                  {selectedIds.size > 0 
+                    ? `${selectedIds.size} produit(s) sélectionné(s)`
+                    : 'Cochez pour sélectionner'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {selectedIds.size > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setBulkDeleteMode('selected')}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer la sélection ({selectedIds.size})
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive border-destructive/50 hover:bg-destructive/10 hover:border-destructive"
+                  onClick={() => setBulkDeleteMode('all')}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Tout supprimer ({totalCount.toLocaleString()})
+                </Button>
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -187,6 +301,14 @@ const GlobalCatalogTable = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={isAllSelected}
+                          onCheckedChange={toggleSelectAll}
+                          aria-label="Sélectionner tout"
+                          className={isSomeSelected && !isAllSelected ? 'opacity-50' : ''}
+                        />
+                      </TableHead>
                       <TableHead>Code CIP</TableHead>
                       <TableHead>Libellé</TableHead>
                       <TableHead>Forme</TableHead>
@@ -199,7 +321,14 @@ const GlobalCatalogTable = () => {
                   </TableHeader>
                   <TableBody>
                     {products.map((product) => (
-                      <TableRow key={product.id}>
+                      <TableRow key={product.id} className={selectedIds.has(product.id) ? 'bg-muted/50' : ''}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(product.id)}
+                            onCheckedChange={() => toggleSelect(product.id)}
+                            aria-label={`Sélectionner ${product.libelle_produit}`}
+                          />
+                        </TableCell>
                         <TableCell className="font-mono text-sm">{product.code_cip}</TableCell>
                         <TableCell className="font-medium max-w-[200px] truncate">
                           {product.libelle_produit}
@@ -290,6 +419,7 @@ const GlobalCatalogTable = () => {
         />
       )}
 
+      {/* Single product delete dialog */}
       <AlertDialog open={!!deletingProduct} onOpenChange={(open) => !open && setDeletingProduct(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -311,6 +441,45 @@ const GlobalCatalogTable = () => {
             >
               {isDeleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk delete confirmation dialog */}
+      <AlertDialog open={!!bulkDeleteMode} onOpenChange={(open) => !open && setBulkDeleteMode(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive flex items-center gap-2">
+              ⚠️ Suppression en masse
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                {bulkDeleteMode === 'all' ? (
+                  <>
+                    <p>Vous êtes sur le point de supprimer <strong className="text-foreground">TOUS les {totalCount.toLocaleString()} produits</strong> du catalogue global.</p>
+                    <p className="text-destructive font-semibold">⚠️ Cette action est IRRÉVERSIBLE !</p>
+                  </>
+                ) : (
+                  <>
+                    <p>Vous êtes sur le point de supprimer <strong className="text-foreground">{selectedIds.size} produit(s)</strong> sélectionné(s).</p>
+                    <p className="text-destructive">Cette action est irréversible.</p>
+                  </>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkDeleting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isBulkDeleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {bulkDeleteMode === 'all' 
+                ? `Supprimer tout (${totalCount.toLocaleString()})`
+                : `Supprimer (${selectedIds.size})`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
