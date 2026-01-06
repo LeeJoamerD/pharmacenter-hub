@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Combobox } from '@/components/ui/combobox';
+import { MultiSelect, type Option as MultiSelectOption } from '@/components/ui/multi-select';
 import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
@@ -124,6 +125,7 @@ const ProductCatalogNew = () => {
   const [isReferencesDialogOpen, setIsReferencesDialogOpen] = useState(false);
   const [referencesData, setReferencesData] = useState<any[]>([]);
   const [referencesProduct, setReferencesProduct] = useState<Product | null>(null);
+  const [selectedDcis, setSelectedDcis] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
 
   const { toast } = useToast();
@@ -240,14 +242,29 @@ const ProductCatalogNew = () => {
       stock_limite: 0,
       is_active: true,
     });
+    setSelectedDcis([]);
     setIsDialogOpen(true);
   };
 
-  const handleEditProduct = (product: Product) => {
+  const handleEditProduct = async (product: Product) => {
     setEditingProduct(product);
     // Exclure stock_actuel car c'est une colonne calculée qui n'existe pas physiquement dans la table produits
     const { stock_actuel, ...productWithoutStock } = product as any;
     reset(productWithoutStock);
+    
+    // Charger les DCI associés au produit
+    if (product.id && personnel?.tenant_id) {
+      const { data: productDcis } = await supabase
+        .from('produits_dci')
+        .select('dci_id')
+        .eq('produit_id', product.id)
+        .eq('tenant_id', personnel.tenant_id);
+      
+      setSelectedDcis(productDcis?.map(pd => pd.dci_id) || []);
+    } else {
+      setSelectedDcis([]);
+    }
+    
     setIsDialogOpen(true);
   };
 
@@ -439,7 +456,7 @@ const ProductCatalogNew = () => {
         'Famille': product.famille_libelle || '',
         'Rayon': product.rayon_libelle || '',
         'Forme Galénique': product.forme_libelle || '',
-        'DCI': product.dci_nom || '',
+        'DCI': product.dci_noms || '',
         'Classe Thérapeutique': product.classe_therapeutique_libelle || '',
         'Laboratoire': product.laboratoire_nom || '',
         'Catégorie Tarification': product.categorie_tarification_libelle || '',
@@ -535,9 +552,33 @@ const ProductCatalogNew = () => {
       return;
     }
 
+    // Fonction pour sauvegarder les DCI multiples
+    const saveDciRelations = async (productId: string) => {
+      if (!personnel?.tenant_id) return;
+      
+      // Supprimer les anciennes associations
+      await supabase
+        .from('produits_dci')
+        .delete()
+        .eq('produit_id', productId)
+        .eq('tenant_id', personnel.tenant_id);
+      
+      // Insérer les nouvelles associations
+      if (selectedDcis.length > 0) {
+        const dciRelations = selectedDcis.map(dci_id => ({
+          produit_id: productId,
+          dci_id,
+          tenant_id: personnel.tenant_id,
+        }));
+        
+        await supabase.from('produits_dci').insert(dciRelations);
+      }
+    };
+
     if (editingProduct) {
       updateMutation.mutate({ id: editingProduct.id, ...productData }, {
-        onSuccess: () => {
+        onSuccess: async () => {
+          await saveDciRelations(editingProduct.id!);
           toast({ title: "Succès", description: "Produit modifié avec succès" });
           handleDialogClose();
         },
@@ -552,7 +593,10 @@ const ProductCatalogNew = () => {
       });
     } else {
       createMutation.mutate(productData, {
-        onSuccess: () => {
+        onSuccess: async (newProduct: any) => {
+          if (newProduct?.id) {
+            await saveDciRelations(newProduct.id);
+          }
           toast({ title: "Succès", description: "Produit ajouté avec succès" });
           handleDialogClose();
         },
@@ -1037,15 +1081,18 @@ const ProductCatalogNew = () => {
                   </div>
 
                   <div>
-                    <Label htmlFor="dci_id">DCI</Label>
-                    <Combobox
+                    <Label htmlFor="dci_id">DCI (multiples)</Label>
+                    <MultiSelect
                       options={dcis.map((dci) => ({ value: dci.id, label: dci.nom_dci }))}
-                      value={watch('dci_id') || ""}
-                      onValueChange={(value) => setValue('dci_id', value)}
-                      placeholder="Sélectionner un DCI"
-                      searchPlaceholder="Rechercher un DCI..."
-                      emptyMessage="Aucun DCI trouvé"
+                      selected={selectedDcis}
+                      onSelectedChange={setSelectedDcis}
+                      placeholder="Sélectionner un ou plusieurs DCI"
                     />
+                    {selectedDcis.length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Format : {selectedDcis.map(id => dcis.find(d => d.id === id)?.nom_dci).filter(Boolean).join('/')}
+                      </p>
+                    )}
                   </div>
 
                   <div>
