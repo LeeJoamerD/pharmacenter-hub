@@ -45,6 +45,7 @@ interface Product {
   tenant_id?: string;
   libelle_produit: string;
   code_cip?: string;
+  ancien_code_cip?: string;
   famille_id?: string;
   rayon_id?: string;
   forme_id?: string;
@@ -229,6 +230,7 @@ const ProductCatalogNew = () => {
     reset({
       libelle_produit: "",
       code_cip: "",
+      ancien_code_cip: "",
       prix_achat: 0,
       prix_vente_ht: 0,
       prix_vente_ttc: 0,
@@ -258,11 +260,12 @@ const ProductCatalogNew = () => {
     if (!codeCip || !personnel?.tenant_id) return false;
     
     try {
+      // Vérifier dans code_cip ET ancien_code_cip
       const { data } = await supabase
         .from('produits')
         .select('id, is_active')
-        .eq('code_cip', codeCip)
-        .eq('tenant_id', personnel.tenant_id);
+        .eq('tenant_id', personnel.tenant_id)
+        .or(`code_cip.eq.${codeCip},ancien_code_cip.eq.${codeCip}`);
       
       const duplicates = data?.filter(p => p.id !== excludeId) || [];
       return duplicates.length > 0;
@@ -430,6 +433,7 @@ const ProductCatalogNew = () => {
       const currencyLabel = getCurrencySymbol();
       const exportData = allProducts.map(product => ({
         'Code CIP': product.code_cip || '',
+        'Ancien Code CIP': product.ancien_code_cip || '',
         'Libellé Produit': product.libelle_produit || '',
         'Famille': product.famille_libelle || '',
         'Rayon': product.rayon_libelle || '',
@@ -465,6 +469,7 @@ const ProductCatalogNew = () => {
       // Ajuster la largeur des colonnes
       const colWidths = [
         { wch: 15 }, // Code CIP
+        { wch: 15 }, // Ancien Code CIP
         { wch: 40 }, // Libellé Produit
         { wch: 20 }, // Famille
         { wch: 20 }, // Rayon
@@ -702,6 +707,7 @@ const ProductCatalogNew = () => {
                   <TableRow>
                     <TableHead>Produit</TableHead>
                     <TableHead>Code CIP</TableHead>
+                    <TableHead>Ancien CIP</TableHead>
                     <TableHead>Niveau</TableHead>
                     <TableHead>Famille / Rayon / Forme</TableHead>
                     <TableHead>Prix achat</TableHead>
@@ -727,6 +733,9 @@ const ProductCatalogNew = () => {
                         </div>
                       </TableCell>
                      <TableCell>{product.code_cip || 'N/A'}</TableCell>
+                     <TableCell className="text-muted-foreground text-sm">
+                       {(product as any).ancien_code_cip || '-'}
+                     </TableCell>
                      <TableCell>
                        {product.niveau_detail && product.niveau_detail > 1 && (
                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -927,6 +936,23 @@ const ProductCatalogNew = () => {
                     {errors.code_cip && (
                       <p className="text-sm text-destructive mt-1">{errors.code_cip.message}</p>
                     )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="ancien_code_cip">Ancien Code CIP</Label>
+                    <Input
+                      id="ancien_code_cip"
+                      {...register("ancien_code_cip")}
+                      placeholder="Ancien code CIP (optionnel)"
+                      className="uppercase"
+                      onChange={(e) => {
+                        e.target.value = e.target.value.toUpperCase();
+                        setValue("ancien_code_cip", e.target.value);
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Code CIP historique ou alternatif (EAN7, ancien format)
+                    </p>
                   </div>
 
                   <div>
