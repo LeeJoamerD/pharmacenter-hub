@@ -83,12 +83,114 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
   const [progress, setProgress] = useState(0);
   const [skippedProducts, setSkippedProducts] = useState<SkippedGroup[]>([]);
   const [totalDetected, setTotalDetected] = useState(0);
+  const [isChecking, setIsChecking] = useState(false);
+  const [existingCount, setExistingCount] = useState(0);
+  const [newCount, setNewCount] = useState(0);
   const [importResult, setImportResult] = useState<{
     success: number;
     errors: number;
     duplicates: number;
     skipped: number;
   } | null>(null);
+
+  // Fonction pour vérifier les produits existants dans la base avec comparaison croisée des codes CIP
+  const checkExistingProducts = async (
+    products: ParsedProduct[]
+  ): Promise<{
+    existingProducts: Map<string, { id: string; matchedBy: string }>;
+    newProducts: ParsedProduct[];
+  }> => {
+    // Collecter tous les codes CIP à vérifier (principaux et anciens)
+    const allCodes = new Set<string>();
+    products.forEach(p => {
+      if (p.code_cip) allCodes.add(p.code_cip);
+      if (p.ancien_code_cip) allCodes.add(p.ancien_code_cip);
+    });
+    
+    const codesArray = Array.from(allCodes).filter(Boolean);
+    
+    if (codesArray.length === 0) {
+      return { existingProducts: new Map(), newProducts: products };
+    }
+    
+    // Créer des maps pour lookup rapide
+    const dbByCodeCip = new Map<string, { id: string }>();
+    const dbByAncienCip = new Map<string, { id: string }>();
+    
+    // Traiter par lots de 500 codes pour éviter les limites PostgreSQL
+    const batchSize = 500;
+    
+    try {
+      for (let i = 0; i < codesArray.length; i += batchSize) {
+        const batch = codesArray.slice(i, i + batchSize);
+        
+        // Requête pour récupérer tous les produits qui correspondent
+        // à l'un des codes (dans code_cip OU ancien_code_cip)
+        const { data: existingInDb, error } = await supabase
+          .from('catalogue_global_produits')
+          .select('id, code_cip, ancien_code_cip')
+          .or(`code_cip.in.(${batch.join(',')}),ancien_code_cip.in.(${batch.join(',')})`);
+        
+        if (error) {
+          console.error('Error checking existing products:', error);
+          continue;
+        }
+        
+        existingInDb?.forEach(p => {
+          if (p.code_cip) dbByCodeCip.set(p.code_cip, { id: p.id });
+          if (p.ancien_code_cip) dbByAncienCip.set(p.ancien_code_cip, { id: p.id });
+        });
+      }
+    } catch (error) {
+      console.error('Error in batch check:', error);
+      return { existingProducts: new Map(), newProducts: products };
+    }
+    
+    // Vérifier chaque produit avec la logique de comparaison croisée
+    const existingProducts = new Map<string, { id: string; matchedBy: string }>();
+    const newProducts: ParsedProduct[] = [];
+    
+    products.forEach(product => {
+      let match: { id: string; matchedBy: string } | null = null;
+      
+      // Étape 1: code_cip_excel ↔ code_cip_db
+      if (product.code_cip && dbByCodeCip.has(product.code_cip)) {
+        match = { 
+          id: dbByCodeCip.get(product.code_cip)!.id, 
+          matchedBy: 'CIP principal → CIP principal' 
+        };
+      }
+      // Étape 2: code_cip_excel ↔ ancien_code_cip_db
+      else if (product.code_cip && dbByAncienCip.has(product.code_cip)) {
+        match = { 
+          id: dbByAncienCip.get(product.code_cip)!.id, 
+          matchedBy: 'CIP principal → Ancien CIP' 
+        };
+      }
+      // Étape 3: ancien_code_cip_excel ↔ code_cip_db
+      else if (product.ancien_code_cip && dbByCodeCip.has(product.ancien_code_cip)) {
+        match = { 
+          id: dbByCodeCip.get(product.ancien_code_cip)!.id, 
+          matchedBy: 'Ancien CIP → CIP principal' 
+        };
+      }
+      // Étape 4: ancien_code_cip_excel ↔ ancien_code_cip_db
+      else if (product.ancien_code_cip && dbByAncienCip.has(product.ancien_code_cip)) {
+        match = { 
+          id: dbByAncienCip.get(product.ancien_code_cip)!.id, 
+          matchedBy: 'Ancien CIP → Ancien CIP' 
+        };
+      }
+      
+      if (match) {
+        existingProducts.set(product.code_cip, match);
+      } else {
+        newProducts.push(product);
+      }
+    });
+    
+    return { existingProducts, newProducts };
+  };
 
   // Fonction pour normaliser les en-têtes (gère espaces, NBSP, etc.)
   const normalizeHeader = (header: string): string => {
@@ -299,9 +401,8 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
       }
 
       setSkippedProducts(groupedSkipped);
-      setParsedData(uniqueProducts);
       
-      if (validProducts.length === 0) {
+      if (uniqueProducts.length === 0) {
         const detectedNormalized = columns.map(c => normalizeHeader(c));
         const expectedNormalized = Object.keys(NORMALIZED_MAPPING);
         console.warn('=== DIAGNOSTIC IMPORT ===');
@@ -309,16 +410,46 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
         console.warn('Colonnes attendues (normalisées):', expectedNormalized);
         console.warn('1ère ligne brute:', jsonData[0]);
         toast.error('Aucun produit valide détecté. Vérifiez les colonnes EAN13/CIP et Libellé produit.');
-      } else {
-        toast.success(`${uniqueProducts.length} produits uniques détectés sur ${jsonData.length}`);
-        if (groupedSkipped.length > 0) {
-          const totalSkipped = groupedSkipped.reduce((sum, g) => sum + g.count, 0);
-          toast.warning(`${totalSkipped} produit(s) ignoré(s) - voir les détails ci-dessous`);
-        }
+        setParsedData([]);
+        return;
+      }
+
+      // Vérifier les produits existants dans la base de données
+      setIsChecking(true);
+      toast.info('Vérification des doublons dans le catalogue...');
+
+      const { existingProducts, newProducts } = await checkExistingProducts(uniqueProducts);
+
+      setIsChecking(false);
+      setExistingCount(existingProducts.size);
+      setNewCount(newProducts.length);
+
+      // Ajouter les produits existants dans les groupes pour info
+      if (existingProducts.size > 0) {
+        const existingGroup: SkippedGroup = {
+          reason: 'Produit déjà existant dans le catalogue (sera mis à jour)',
+          count: existingProducts.size,
+          examples: Array.from(existingProducts.entries())
+            .slice(0, 5)
+            .map(([cip, info]) => `CIP: ${cip} - Correspondance: ${info.matchedBy}`)
+        };
+        setSkippedProducts(prev => [...prev, existingGroup]);
+      }
+
+      setParsedData(uniqueProducts);
+      
+      toast.success(
+        `${uniqueProducts.length} produits analysés : ${newProducts.length} nouveaux, ${existingProducts.size} existants`
+      );
+      
+      if (groupedSkipped.length > 0) {
+        const totalSkipped = groupedSkipped.reduce((sum, g) => sum + g.count, 0);
+        toast.warning(`${totalSkipped} produit(s) ignoré(s) - voir les détails ci-dessous`);
       }
     } catch (error) {
       console.error('Error parsing Excel:', error);
       toast.error('Erreur lors de la lecture du fichier Excel');
+      setIsChecking(false);
     }
   };
 
@@ -387,6 +518,9 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
     setProgress(0);
     setSkippedProducts([]);
     setTotalDetected(0);
+    setIsChecking(false);
+    setExistingCount(0);
+    setNewCount(0);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -434,15 +568,26 @@ const GlobalCatalogImport: React.FC<GlobalCatalogImportProps> = ({ onSuccess }) 
                   <p className="font-medium">{file.name}</p>
                   <p className="text-sm text-muted-foreground">
                     {(file.size / 1024).toFixed(1)} Ko • {totalDetected} produits détectés
-                    {skippedProducts.length > 0 && (
-                      <span className="text-yellow-600 ml-1">
-                        ({parsedData.length} valides, {skippedProducts.reduce((sum, g) => sum + g.count, 0)} ignorés)
+                    {isChecking ? (
+                      <span className="text-muted-foreground ml-1 inline-flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Vérification dans le catalogue...
+                      </span>
+                    ) : parsedData.length > 0 && (
+                      <span className="ml-1">
+                        (<span className="text-green-600">{newCount} nouveaux</span>
+                        <span className="text-blue-600">, {existingCount} à mettre à jour</span>
+                        {skippedProducts.filter(g => !g.reason.includes('existant')).length > 0 && (
+                          <span className="text-yellow-600">
+                            , {skippedProducts.filter(g => !g.reason.includes('existant')).reduce((sum, g) => sum + g.count, 0)} ignorés
+                          </span>
+                        )})
                       </span>
                     )}
                   </p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" onClick={resetImport}>
+              <Button variant="outline" size="sm" onClick={resetImport} disabled={isChecking}>
                 Supprimer
               </Button>
             </div>
