@@ -30,7 +30,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, ChevronLeft, ChevronRight, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Loader2, Pencil, Trash2, Download } from 'lucide-react';
+import { exportCatalogueGlobalListes } from '@/utils/catalogueGlobalExportUtils';
 import { toast } from 'sonner';
 import GlobalProductEditDialog from './GlobalProductEditDialog';
 
@@ -65,6 +66,7 @@ const GlobalCatalogTable = () => {
   const [editingProduct, setEditingProduct] = useState<GlobalProduct | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<GlobalProduct | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Bulk selection states
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -215,6 +217,20 @@ const GlobalCatalogTable = () => {
     }
   };
 
+  const handleExportListes = async () => {
+    setIsExporting(true);
+    try {
+      toast.info("Génération du fichier Excel...");
+      await exportCatalogueGlobalListes();
+      toast.success("Fichier téléchargé avec succès !");
+    } catch (error) {
+      console.error('Erreur export:', error);
+      toast.error("Erreur lors de l'export");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const totalPages = Math.ceil(totalCount / pageSize);
   const startItem = page * pageSize + 1;
   const endItem = Math.min((page + 1) * pageSize, totalCount);
@@ -225,7 +241,22 @@ const GlobalCatalogTable = () => {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Produits du Catalogue Global</span>
-            <Badge variant="secondary">{totalCount.toLocaleString()} produits</Badge>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportListes}
+                disabled={isExporting}
+              >
+                {isExporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Exporter les listes
+              </Button>
+              <Badge variant="secondary">{totalCount.toLocaleString()} produits</Badge>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
