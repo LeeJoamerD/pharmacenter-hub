@@ -106,7 +106,8 @@ const GlobalCatalogTable = () => {
           const { data, error } = await supabase
             .from('catalogue_global_produits')
             .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all
+            .neq('id', '00000000-0000-0000-0000-000000000000')
+            .order('id')
             .select('id')
             .limit(1000);
           
