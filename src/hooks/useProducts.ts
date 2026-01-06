@@ -7,6 +7,7 @@ export interface Product {
   tenant_id: string;
   libelle_produit: string;
   code_cip?: string;
+  ancien_code_cip?: string;
   famille_id?: string;
   rayon_id?: string;
   dci_id?: string;
@@ -275,6 +276,7 @@ export const useProducts = () => {
           tenant_id: personnel.tenant_id,
           libelle_produit: detailName,
           code_cip: detailCip,
+          ancien_code_cip: sourceProduct.ancien_code_cip,
           famille_id: sourceProduct.famille_id,
           rayon_id: sourceProduct.rayon_id,
           dci_id: sourceProduct.dci_id,

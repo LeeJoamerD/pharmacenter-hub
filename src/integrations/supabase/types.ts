@@ -15216,6 +15216,7 @@ export type Database = {
       }
       produits: {
         Row: {
+          ancien_code_cip: string | null
           categorie_tarification_id: string | null
           centime_additionnel: number | null
           classe_therapeutique_id: string | null
@@ -15252,6 +15253,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ancien_code_cip?: string | null
           categorie_tarification_id?: string | null
           centime_additionnel?: number | null
           classe_therapeutique_id?: string | null
@@ -15288,6 +15290,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ancien_code_cip?: string | null
           categorie_tarification_id?: string | null
           centime_additionnel?: number | null
           classe_therapeutique_id?: string | null
@@ -19379,6 +19382,7 @@ export type Database = {
     Views: {
       produits_with_stock: {
         Row: {
+          ancien_code_cip: string | null
           categorie_tarification_id: string | null
           centime_additionnel: number | null
           classe_therapeutique_id: string | null
@@ -19716,9 +19720,12 @@ export type Database = {
       }
       v_produits_with_famille: {
         Row: {
+          ancien_code_cip: string | null
           categorie_tarification_id: string | null
+          categorie_tarification_libelle: string | null
           centime_additionnel: number | null
           classe_therapeutique_id: string | null
+          classe_therapeutique_libelle: string | null
           code_cip: string | null
           created_at: string | null
           dci_id: string | null
@@ -19727,10 +19734,14 @@ export type Database = {
           id: string | null
           id_produit_source: string | null
           is_active: boolean | null
+          laboratoire_nom: string | null
           laboratoires_id: string | null
           libelle_famille: string | null
+          libelle_forme: string | null
           libelle_produit: string | null
+          libelle_rayon: string | null
           niveau_detail: number | null
+          nom_dci: string | null
           prix_achat: number | null
           prix_vente_ht: number | null
           prix_vente_ttc: number | null
