@@ -1,25 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { 
   Zap, 
   Clock, 
   Database, 
-  TrendingUp, 
   CheckCircle, 
   AlertTriangle,
   Loader2,
   BarChart3,
-  Timer,
-  Search
+  Timer
 } from 'lucide-react';
-import { useTenant } from '@/contexts/TenantContext';
-import { useQuickStockSearch } from '@/hooks/useQuickStockSearch';
 import { generateTestProducts, cleanupTestData } from '@/utils/testDataGenerator';
+
+interface PerformanceTestSuiteProps {
+  tenantId?: string;
+}
 
 interface PerformanceTest {
   id: string;
@@ -27,7 +26,7 @@ interface PerformanceTest {
   description: string;
   searchTerm: string;
   expectedResults: number;
-  maxResponseTime: number; // en ms
+  maxResponseTime: number;
   status?: 'pending' | 'running' | 'passed' | 'failed';
   result?: {
     responseTime: number;
@@ -48,8 +47,7 @@ interface PerformanceMetrics {
   memoryUsage: number;
 }
 
-const PerformanceTestSuite = () => {
-  const { tenantId } = useTenant();
+const PerformanceTestSuite = ({ tenantId }: PerformanceTestSuiteProps) => {
   const [isRunningTests, setIsRunningTests] = useState(false);
   const [isGeneratingData, setIsGeneratingData] = useState(false);
   const [testResults, setTestResults] = useState<PerformanceTest[]>([]);
@@ -58,7 +56,6 @@ const PerformanceTestSuite = () => {
   const [hasTestData, setHasTestData] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
 
-  // Tests de performance prédéfinis
   const performanceTests: PerformanceTest[] = [
     {
       id: 'search_common_term',
@@ -136,7 +133,6 @@ const PerformanceTestSuite = () => {
     setGenerationProgress(0);
 
     try {
-      // Simuler la progression
       const progressInterval = setInterval(() => {
         setGenerationProgress(prev => Math.min(prev + 10, 90));
       }, 200);
@@ -183,10 +179,8 @@ const PerformanceTestSuite = () => {
       const startTime = performance.now();
       const memoryBefore = (performance as any).memory?.usedJSHeapSize || 0;
       
-      // Simuler l'appel au hook de recherche
       const searchResult = await new Promise((resolve, reject) => {
-        // Simuler une recherche avec délai variable selon le terme
-        const simulatedDelay = Math.random() * 800 + 100; // 100-900ms
+        const simulatedDelay = Math.random() * 800 + 100;
         
         setTimeout(() => {
           if (test.searchTerm.length < 2 && test.searchTerm !== '') {
@@ -199,7 +193,6 @@ const PerformanceTestSuite = () => {
             return;
           }
 
-          // Simuler des résultats basés sur le terme de recherche
           const mockResults = {
             products: Array(Math.min(test.expectedResults, 50)).fill(null).map((_, i) => ({
               id: `test-${i}`,
@@ -236,8 +229,8 @@ const PerformanceTestSuite = () => {
     } catch (error) {
       return {
         ...test,
-        status: test.searchTerm.length < 2 ? 'passed' : 'failed', // Les erreurs de validation sont attendues
-        error: error.message,
+        status: test.searchTerm.length < 2 ? 'passed' : 'failed',
+        error: (error as Error).message,
         result: {
           responseTime: 0,
           resultsCount: 0,
@@ -265,7 +258,6 @@ const PerformanceTestSuite = () => {
       results.push(result);
       setTestResults([...results]);
       
-      // Petite pause entre les tests
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
@@ -292,7 +284,7 @@ const PerformanceTestSuite = () => {
   const metrics = calculateMetrics();
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -499,63 +491,10 @@ const PerformanceTestSuite = () => {
                           </>
                         )}
                       </div>
-
-                      {test.error && (
-                        <Alert className="mt-3">
-                          <AlertTriangle className="h-4 w-4" />
-                          <AlertDescription className="text-xs">
-                            {test.error}
-                          </AlertDescription>
-                        </Alert>
-                      )}
                     </div>
                   </div>
                 </div>
               ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Tests en cours */}
-      {isRunningTests && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Tests en Cours
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {performanceTests.map((test) => {
-                const result = testResults.find(r => r.id === test.id);
-                const isCurrentTest = currentTest === test.name;
-                
-                return (
-                  <div key={test.id} className="flex items-center justify-between p-2 border rounded">
-                    <span className={`text-sm ${isCurrentTest ? 'font-medium text-blue-600' : ''}`}>
-                      {test.name}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">
-                        {test.maxResponseTime}ms max
-                      </Badge>
-                      {result ? (
-                        result.status === 'passed' ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <AlertTriangle className="h-4 w-4 text-red-600" />
-                        )
-                      ) : isCurrentTest ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <div className="h-4 w-4 rounded-full bg-gray-300" />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
             </div>
           </CardContent>
         </Card>

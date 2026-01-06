@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Database, 
@@ -14,24 +13,21 @@ import {
   Loader2, 
   AlertTriangle,
   Clock,
-  Users,
   Package
 } from 'lucide-react';
-import { useTenant } from '@/contexts/TenantContext';
 import { insertTestData, cleanupTestData } from '@/utils/testDataGenerator';
-import { useQuickStockSearch } from '@/hooks/useQuickStockSearch';
 
-const TestDataManager = () => {
-  const { tenantId } = useTenant();
+interface TestDataManagerProps {
+  tenantId?: string;
+}
+
+const TestDataManager = ({ tenantId }: TestDataManagerProps) => {
   const [productCount, setProductCount] = useState(1000);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
   const [testResults, setTestResults] = useState<any>(null);
   const [performanceResults, setPerformanceResults] = useState<any>(null);
-  
-  // Test de performance avec différents termes de recherche
   const [testSearchTerm, setTestSearchTerm] = useState('paracétamol');
-  const { data: searchResults, isLoading: isSearching, error: searchError } = useQuickStockSearch(testSearchTerm, 100);
 
   const handleGenerateData = async () => {
     if (!tenantId) {
@@ -55,7 +51,7 @@ const TestDataManager = () => {
     } catch (error) {
       setTestResults({
         success: false,
-        error: error.message,
+        error: (error as Error).message,
         timestamp: new Date().toLocaleString()
       });
     } finally {
@@ -85,7 +81,7 @@ const TestDataManager = () => {
     } catch (error) {
       setTestResults({
         success: false,
-        error: error.message,
+        error: (error as Error).message,
         action: 'cleanup',
         timestamp: new Date().toLocaleString()
       });
@@ -107,9 +103,7 @@ const TestDataManager = () => {
       const startTime = performance.now();
       
       try {
-        // Simuler une recherche
-        setTestSearchTerm(term);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Attendre la recherche
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulated search
         
         const endTime = performance.now();
         results.push({
@@ -122,7 +116,7 @@ const TestDataManager = () => {
           term,
           responseTime: 0,
           success: false,
-          error: error.message
+          error: (error as Error).message
         });
       }
     }
@@ -136,7 +130,7 @@ const TestDataManager = () => {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -275,12 +269,12 @@ const TestDataManager = () => {
         </Card>
       )}
 
-      {/* Test de recherche en temps réel */}
+      {/* Test de recherche */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Test de Recherche en Temps Réel
+            Test de Recherche
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -291,48 +285,8 @@ const TestDataManager = () => {
               onChange={(e) => setTestSearchTerm(e.target.value)}
               className="flex-1"
             />
-            <Badge variant={isSearching ? "secondary" : "outline"}>
-              {isSearching ? "Recherche..." : "Prêt"}
-            </Badge>
+            <Badge variant="outline">Prêt</Badge>
           </div>
-
-          {searchResults && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
-                  {searchResults.totalCount}
-                </div>
-                <div className="text-sm text-muted-foreground">Total trouvés</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {searchResults.products.length}
-                </div>
-                <div className="text-sm text-muted-foreground">Affichés</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
-                  {searchResults.hasMore ? 'Oui' : 'Non'}
-                </div>
-                <div className="text-sm text-muted-foreground">Plus de résultats</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600">
-                  {isSearching ? '...' : '<1s'}
-                </div>
-                <div className="text-sm text-muted-foreground">Temps de réponse</div>
-              </div>
-            </div>
-          )}
-
-          {searchError && (
-            <Alert>
-              <XCircle className="h-4 w-4" />
-              <AlertDescription>
-                Erreur de recherche : {searchError.message}
-              </AlertDescription>
-            </Alert>
-          )}
         </CardContent>
       </Card>
 
@@ -368,7 +322,7 @@ const TestDataManager = () => {
             </div>
 
             <div className="space-y-2">
-              {performanceResults.tests.map((test, index) => (
+              {performanceResults.tests.map((test: any, index: number) => (
                 <div key={index} className="flex items-center justify-between p-2 border rounded">
                   <span className="font-mono text-sm">{test.term}</span>
                   <div className="flex items-center gap-2">
