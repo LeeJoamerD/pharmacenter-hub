@@ -3,6 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Shield, 
   Zap, 
@@ -13,16 +16,30 @@ import {
   AlertTriangle,
   Clock,
   Users,
-  Lock
+  Lock,
+  Building
 } from 'lucide-react';
-import SecurityTestSuite from '@/components/SecurityTestSuite';
-import PerformanceTestSuite from '@/components/PerformanceTestSuite';
-import TestDataManager from '@/components/TestDataManager';
-import { useTenant } from '@/contexts/TenantContext';
+import SecurityTestSuite from './SecurityTestSuite';
+import PerformanceTestSuite from './PerformanceTestSuite';
+import TestDataManager from './TestDataManager';
 
-const TestSuitePage = () => {
-  const { tenantId } = useTenant();
+const PlatformTestSuite = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [selectedTenantId, setSelectedTenantId] = useState<string>('');
+
+  // Charger la liste des tenants (pharmacies)
+  const { data: tenants, isLoading: tenantsLoading } = useQuery({
+    queryKey: ['all-tenants-for-tests'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pharmacies')
+        .select('id, name')
+        .order('name');
+      
+      if (error) throw error;
+      return data || [];
+    }
+  });
 
   const testSuites = [
     {
@@ -67,33 +84,60 @@ const TestSuitePage = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
             <TestTube className="h-8 w-8 text-blue-600" />
-            Suite de Tests PharmaSoft
+            Suite de Tests Plateforme
           </h1>
           <p className="text-muted-foreground mt-2">
             Tests complets de sécurité, performance et validation des données
           </p>
         </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <div className="text-sm text-muted-foreground">Tenant actuel</div>
-            <div className="font-mono text-sm">
-              {tenantId ? (
-                <Badge variant="default">{tenantId.slice(0, 8)}...</Badge>
-              ) : (
-                <Badge variant="destructive">Non sélectionné</Badge>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
 
-      {!tenantId && (
+      {/* Sélecteur de tenant */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building className="h-5 w-5" />
+            Sélection du Tenant
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un tenant pour les tests..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {tenantsLoading ? (
+                    <SelectItem value="" disabled>Chargement...</SelectItem>
+                  ) : tenants && tenants.length > 0 ? (
+                    tenants.map((tenant) => (
+                      <SelectItem key={tenant.id} value={tenant.id}>
+                        {tenant.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>Aucun tenant disponible</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {selectedTenantId && (
+              <Badge variant="default" className="font-mono text-xs">
+                {selectedTenantId.slice(0, 8)}...
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {!selectedTenantId && (
         <Card className="border-amber-200 bg-amber-50">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -163,7 +207,7 @@ const TestSuitePage = () => {
                       <Button
                         size="sm"
                         onClick={() => setActiveTab(suite.id)}
-                        disabled={!tenantId}
+                        disabled={!selectedTenantId}
                       >
                         Ouvrir
                       </Button>
@@ -239,9 +283,9 @@ const TestSuitePage = () => {
                     1
                   </div>
                   <div>
-                    <h4 className="font-medium">Tests de Sécurité</h4>
+                    <h4 className="font-medium">Sélectionner un Tenant</h4>
                     <p className="text-sm text-muted-foreground">
-                      Validez la protection contre les injections SQL, la validation des entrées et l'isolation multi-tenant.
+                      Choisissez la pharmacie sur laquelle vous souhaitez exécuter les tests.
                     </p>
                   </div>
                 </div>
@@ -251,9 +295,9 @@ const TestSuitePage = () => {
                     2
                   </div>
                   <div>
-                    <h4 className="font-medium">Génération de Données</h4>
+                    <h4 className="font-medium">Tests de Sécurité</h4>
                     <p className="text-sm text-muted-foreground">
-                      Créez des jeux de données de test réalistes pour valider les performances avec de gros volumes.
+                      Validez la protection contre les injections SQL, la validation des entrées et l'isolation multi-tenant.
                     </p>
                   </div>
                 </div>
@@ -275,19 +319,19 @@ const TestSuitePage = () => {
         </TabsContent>
 
         <TabsContent value="security">
-          <SecurityTestSuite />
+          <SecurityTestSuite tenantId={selectedTenantId} />
         </TabsContent>
 
         <TabsContent value="performance">
-          <PerformanceTestSuite />
+          <PerformanceTestSuite tenantId={selectedTenantId} />
         </TabsContent>
 
         <TabsContent value="data-manager">
-          <TestDataManager />
+          <TestDataManager tenantId={selectedTenantId} />
         </TabsContent>
       </Tabs>
     </div>
   );
 };
 
-export default TestSuitePage;
+export default PlatformTestSuite;

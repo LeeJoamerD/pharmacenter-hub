@@ -167,12 +167,6 @@ const AppSidebar = ({
       { name: 'Personnalisation Réseau', icon: Palette },
       { name: 'Administration Réseau', icon: Settings }
     ],
-    tests: [
-      { name: 'Sécurité', icon: Shield },
-      { name: 'Performance', icon: Activity },
-      { name: 'Données de Test', icon: Database },
-      { name: 'Validation', icon: TestTube }
-    ]
   };
 
   return (
@@ -364,22 +358,6 @@ const AppSidebar = ({
                     ))}
                   </SidebarMenuSub>
                 )}
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>{t('testsMenu')}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton 
-                  className={activeModule === 'tests' ? 'bg-primary/10 text-primary' : ''} 
-                  onClick={() => navigate('/dashboard/tests')}
-                >
-                  <TestTube className="h-5 w-5 text-amber-600" />
-                  <span>{t('testSuites')}</span>
-                </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>

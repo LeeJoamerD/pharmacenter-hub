@@ -6,7 +6,7 @@ import {
   Package, 
   LayoutDashboard, 
   LogOut,
-  Settings
+  TestTube
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,6 +26,11 @@ const menuItems = [
     title: 'Catalogue Global',
     icon: Package,
     href: '/platform-admin/catalogue',
+  },
+  {
+    title: 'Tests & Développement',
+    icon: TestTube,
+    href: '/platform-admin/tests',
   },
 ];
 

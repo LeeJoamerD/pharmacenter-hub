@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
@@ -12,11 +11,12 @@ import {
   Loader2,
   Lock,
   Users,
-  Database,
   Eye
 } from 'lucide-react';
-import { useTenant } from '@/contexts/TenantContext';
-import { useQuickStockSearch } from '@/hooks/useQuickStockSearch';
+
+interface SecurityTestSuiteProps {
+  tenantId?: string;
+}
 
 interface SecurityTest {
   id: string;
@@ -30,8 +30,7 @@ interface SecurityTest {
   error?: string;
 }
 
-const SecurityTestSuite = () => {
-  const { tenantId } = useTenant();
+const SecurityTestSuite = ({ tenantId }: SecurityTestSuiteProps) => {
   const [isRunningTests, setIsRunningTests] = useState(false);
   const [testResults, setTestResults] = useState<SecurityTest[]>([]);
   const [currentTest, setCurrentTest] = useState<string>('');
@@ -165,15 +164,11 @@ const SecurityTestSuite = () => {
     setCurrentTest(test.name);
     
     try {
-      // Utiliser le hook de recherche pour tester
       const startTime = Date.now();
       
-      // Simuler l'appel au hook (en réalité, nous devons tester la validation directement)
       const testResult = await new Promise((resolve, reject) => {
-        // Simuler le comportement du hook
         setTimeout(() => {
           if (test.expectedResult === 'block') {
-            // Ces entrées devraient être bloquées par la validation
             if (test.testInput.length < 2 || 
                 test.testInput.length > 100 || 
                 test.testInput.trim() === '' ||
@@ -184,7 +179,6 @@ const SecurityTestSuite = () => {
               reject(new Error('Expected input to be blocked but it was allowed'));
             }
           } else {
-            // Ces entrées devraient être autorisées
             resolve({ blocked: false, data: { products: [], totalCount: 0 } });
           }
         }, 100);
@@ -206,10 +200,10 @@ const SecurityTestSuite = () => {
       return {
         ...test,
         status: test.expectedResult === 'block' ? 'passed' : 'failed',
-        error: error.message,
+        error: (error as Error).message,
         result: {
           blocked: true,
-          reason: error.message,
+          reason: (error as Error).message,
           timestamp: new Date().toISOString()
         }
       };
@@ -272,7 +266,7 @@ const SecurityTestSuite = () => {
   const totalTests = securityTests.length;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

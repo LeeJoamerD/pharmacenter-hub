@@ -10,14 +10,10 @@ import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { SystemSettingsProvider } from "@/contexts/SystemSettingsContext";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Tableau de bord";
-
 import PharmacyCreation from "./pages/PharmacyCreation";
 import PharmacyConnection from "./pages/PharmacyConnection";
 import PharmacyPasswordReset from "./pages/PharmacyPasswordReset";
 import PharmacySetPassword from "./pages/PharmacySetPassword";
-import TestInterface from "./pages/TestInterface";
-import TestingPage from "./pages/TestingPage";
-import TestSuitePage from "./pages/TestSuitePage";
 import NotFound from "./pages/NotFound";
 import UserLogin from "./pages/UserLogin";
 import UserRegister from "./pages/UserRegister";
@@ -41,7 +37,6 @@ const App = () => (
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/tableau-de-bord" element={<Dashboard />} />
-                    
                     <Route path="/pharmacy-creation" element={<PharmacyCreation />} />
                     <Route path="/pharmacy-connection" element={<PharmacyConnection />} />
                     <Route path="/pharmacy-password-reset" element={<PharmacyPasswordReset />} />
@@ -50,9 +45,6 @@ const App = () => (
                     <Route path="/user-register" element={<UserRegister />} />
                     <Route path="/set-password" element={<SetPassword />} />
                     <Route path="/password-reset" element={<PasswordReset />} />
-                    <Route path="/test-interface" element={<TestInterface />} />
-                    <Route path="/testing" element={<TestingPage />} />
-                    <Route path="/dashboard/tests" element={<TestSuitePage />} />
                     <Route path="/platform-admin/*" element={<PlatformAdmin />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
