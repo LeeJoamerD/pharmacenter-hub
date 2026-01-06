@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
@@ -989,114 +990,86 @@ const ProductCatalogNew = () => {
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="famille_id">Famille Produit</Label>
-                    <Select onValueChange={(value) => setValue('famille_id', value)} value={watch('famille_id') || ""}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une famille" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {families.map((family) => (
-                          <SelectItem key={family.id} value={family.id}>
-                            {family.libelle_famille}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Combobox
+                      options={families.map((family) => ({ value: family.id, label: family.libelle_famille }))}
+                      value={watch('famille_id') || ""}
+                      onValueChange={(value) => setValue('famille_id', value)}
+                      placeholder="Sélectionner une famille"
+                      searchPlaceholder="Rechercher une famille..."
+                      emptyMessage="Aucune famille trouvée"
+                    />
                   </div>
 
                   <div>
                     <Label htmlFor="rayon_id">Rayon Produit</Label>
-                    <Select onValueChange={(value) => setValue('rayon_id', value)} value={watch('rayon_id') || ""}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un rayon" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {rayons.map((rayon) => (
-                          <SelectItem key={rayon.id} value={rayon.id}>
-                            {rayon.libelle_rayon}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Combobox
+                      options={rayons.map((rayon) => ({ value: rayon.id, label: rayon.libelle_rayon }))}
+                      value={watch('rayon_id') || ""}
+                      onValueChange={(value) => setValue('rayon_id', value)}
+                      placeholder="Sélectionner un rayon"
+                      searchPlaceholder="Rechercher un rayon..."
+                      emptyMessage="Aucun rayon trouvé"
+                    />
                   </div>
 
                   <div>
                     <Label htmlFor="forme_id">Forme Galénique</Label>
-                    <Select onValueChange={(value) => setValue('forme_id', value)} value={watch('forme_id') || ""}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une forme" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {formes.map((forme) => (
-                          <SelectItem key={forme.id} value={forme.id}>
-                            {forme.libelle_forme}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Combobox
+                      options={formes.map((forme) => ({ value: forme.id, label: forme.libelle_forme }))}
+                      value={watch('forme_id') || ""}
+                      onValueChange={(value) => setValue('forme_id', value)}
+                      placeholder="Sélectionner une forme"
+                      searchPlaceholder="Rechercher une forme..."
+                      emptyMessage="Aucune forme trouvée"
+                    />
                   </div>
 
                   <div>
                     <Label htmlFor="categorie_tarification_id">Catégorie Tarification *</Label>
-                    <Select onValueChange={(value) => setValue('categorie_tarification_id', value)} value={watch('categorie_tarification_id') || ""}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une catégorie" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.libelle_categorie}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Combobox
+                      options={categories.map((category) => ({ value: category.id, label: category.libelle_categorie }))}
+                      value={watch('categorie_tarification_id') || ""}
+                      onValueChange={(value) => setValue('categorie_tarification_id', value)}
+                      placeholder="Sélectionner une catégorie"
+                      searchPlaceholder="Rechercher une catégorie..."
+                      emptyMessage="Aucune catégorie trouvée"
+                    />
                   </div>
 
                   <div>
                     <Label htmlFor="dci_id">DCI</Label>
-                    <Select onValueChange={(value) => setValue('dci_id', value)} value={watch('dci_id') || ""}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un DCI" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {dcis.map((dci) => (
-                          <SelectItem key={dci.id} value={dci.id}>
-                            {dci.nom_dci}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Combobox
+                      options={dcis.map((dci) => ({ value: dci.id, label: dci.nom_dci }))}
+                      value={watch('dci_id') || ""}
+                      onValueChange={(value) => setValue('dci_id', value)}
+                      placeholder="Sélectionner un DCI"
+                      searchPlaceholder="Rechercher un DCI..."
+                      emptyMessage="Aucun DCI trouvé"
+                    />
                   </div>
 
                   <div>
                     <Label htmlFor="classe_therapeutique_id">Classe thérapeutique</Label>
-                    <Select onValueChange={(value) => setValue('classe_therapeutique_id', value)} value={watch('classe_therapeutique_id') || ""}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une classe" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {classes.map((classe) => (
-                          <SelectItem key={classe.id} value={classe.id}>
-                            {classe.libelle_classe} — {classe.systeme_anatomique}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Combobox
+                      options={classes.map((classe) => ({ value: classe.id, label: classe.libelle_classe, description: classe.systeme_anatomique }))}
+                      value={watch('classe_therapeutique_id') || ""}
+                      onValueChange={(value) => setValue('classe_therapeutique_id', value)}
+                      placeholder="Sélectionner une classe"
+                      searchPlaceholder="Rechercher une classe..."
+                      emptyMessage="Aucune classe trouvée"
+                    />
                   </div>
 
                   <div>
                     <Label htmlFor="laboratoires_id">Laboratoire</Label>
-                    <Select onValueChange={(value) => setValue('laboratoires_id', value)} value={watch('laboratoires_id') || ""}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un laboratoire" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {laboratories.map((lab) => (
-                          <SelectItem key={lab.id} value={lab.id}>
-                            {lab.libelle}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Combobox
+                      options={laboratories.map((lab) => ({ value: lab.id, label: lab.libelle }))}
+                      value={watch('laboratoires_id') || ""}
+                      onValueChange={(value) => setValue('laboratoires_id', value)}
+                      placeholder="Sélectionner un laboratoire"
+                      searchPlaceholder="Rechercher un laboratoire..."
+                      emptyMessage="Aucun laboratoire trouvé"
+                    />
                   </div>
                 </div>
               </div>
