@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useLaboratories } from '@/hooks/useLaboratories';
 import { useProducts } from '@/hooks/useProducts';
@@ -201,17 +202,37 @@ const ProductCatalogNew = () => {
     'id, libelle_classe, systeme_anatomique'
   );
 
-  // Mutations
+  // QueryClient pour invalidation explicite
+  const queryClient = useQueryClient();
+
+  // Fonction pour invalider toutes les requêtes produits
+  const invalidateProductQueries = () => {
+    queryClient.invalidateQueries({
+      predicate: (query) =>
+        query.queryKey.some(key =>
+          typeof key === 'string' && (
+            key.includes('products') ||
+            key.includes('produits') ||
+            key.includes('referentiel')
+          )
+        )
+    });
+  };
+
+  // Mutations avec invalidation corrigée
   const createMutation = useTenantMutation('produits', 'insert', {
-    invalidateQueries: ['products-catalog'],
+    invalidateQueries: ['products-paginated'],
+    onSuccess: () => invalidateProductQueries(),
   });
 
   const updateMutation = useTenantMutation('produits', 'update', {
-    invalidateQueries: ['products-catalog'],
+    invalidateQueries: ['products-paginated'],
+    onSuccess: () => invalidateProductQueries(),
   });
 
   const deleteMutation = useTenantMutation('produits', 'delete', {
-    invalidateQueries: ['products-catalog'],
+    invalidateQueries: ['products-paginated'],
+    onSuccess: () => invalidateProductQueries(),
   });
 
   // Mutation pour vérifier les duplicates CIP
