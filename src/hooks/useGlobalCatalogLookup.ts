@@ -1,6 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { unifiedPricingService } from '@/services/UnifiedPricingService';
+import { useUnifiedPricingParams } from '@/hooks/useUnifiedPricingParams';
 
 interface GlobalCatalogProduct {
   id: string;
@@ -51,6 +53,7 @@ export const useGlobalCatalogLookup = () => {
   const { toast } = useToast();
   const { personnel } = useAuth();
   const tenantId = personnel?.tenant_id;
+  const { params: pricingParams } = useUnifiedPricingParams();
 
   /**
    * Recherche un produit dans le catalogue global par code CIP
@@ -319,6 +322,16 @@ export const useGlobalCatalogLookup = () => {
       findPricingCategory(globalProduct.tva)
     ]);
 
+    // Appliquer les paramètres d'arrondi du tenant sur le prix de vente importé
+    const prix_vente_ttc = globalProduct.prix_vente_reference
+      ? unifiedPricingService.roundToNearest(
+          globalProduct.prix_vente_reference,
+          pricingParams.roundingPrecision,
+          pricingParams.taxRoundingMethod,
+          pricingParams.currencyCode
+        )
+      : undefined;
+
     return {
       code_cip: globalProduct.code_cip || '',
       ancien_code_cip: globalProduct.ancien_code_cip || '',
@@ -331,7 +344,7 @@ export const useGlobalCatalogLookup = () => {
       laboratoires_id,
       categorie_tarification_id,
       prix_achat: globalProduct.prix_achat_reference || undefined,
-      prix_vente_ttc: globalProduct.prix_vente_reference || undefined
+      prix_vente_ttc
     };
   };
 
