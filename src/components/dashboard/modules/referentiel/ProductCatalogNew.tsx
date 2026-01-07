@@ -130,6 +130,7 @@ const ProductCatalogNew = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
   const [globalSearchResult, setGlobalSearchResult] = useState<'found' | 'not_found' | null>(null);
+  const [globalSearchInput, setGlobalSearchInput] = useState('');
 
   const { toast } = useToast();
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
@@ -248,17 +249,21 @@ const ProductCatalogNew = () => {
     });
     setSelectedDcis([]);
     setGlobalSearchResult(null);
+    setGlobalSearchInput('');
     setIsDialogOpen(true);
   };
 
   /**
-   * Handler appelé quand l'utilisateur quitte le champ Code CIP
-   * Recherche dans le catalogue global et pré-remplit le formulaire si trouvé
+   * Handler pour rechercher et importer depuis le catalogue global
+   * Appelé explicitement via le champ dédié à l'import
    */
-  const handleCodeCipBlur = async (codeCip: string) => {
-    // Ne pas rechercher si on édite, si le champ est vide ou trop court
-    if (!codeCip || codeCip.length < 3 || editingProduct) {
-      setGlobalSearchResult(null);
+  const handleGlobalCatalogSearch = async (codeCip: string) => {
+    if (!codeCip || codeCip.length < 3) {
+      toast({
+        title: "Code invalide",
+        description: "Le code CIP doit contenir au moins 3 caractères",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -271,7 +276,7 @@ const ProductCatalogNew = () => {
       if (globalProduct) {
         const mappedData = await mapToLocalReferences(globalProduct);
 
-        // Remplir le formulaire avec les données du catalogue global
+        // Remplir TOUS les champs du formulaire
         setValue('code_cip', mappedData.code_cip);
         setValue('libelle_produit', mappedData.libelle_produit);
         setValue('ancien_code_cip', mappedData.ancien_code_cip);
@@ -297,9 +302,19 @@ const ProductCatalogNew = () => {
         setGlobalSearchResult('found');
       } else {
         setGlobalSearchResult('not_found');
+        toast({
+          title: "Non trouvé",
+          description: "Aucun produit trouvé avec ce code CIP dans le catalogue global",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error('Erreur lors de la recherche globale:', error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la recherche",
+        variant: "destructive"
+      });
       setGlobalSearchResult(null);
     } finally {
       setIsSearchingGlobal(false);
@@ -1006,6 +1021,58 @@ const ProductCatalogNew = () => {
             </DialogHeader>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {/* Section Import Catalogue Global - Uniquement en mode création */}
+              {!editingProduct && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ExternalLink className="h-4 w-4 text-blue-600" />
+                    <Label className="text-blue-800 font-medium">Importer depuis le catalogue global</Label>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        value={globalSearchInput}
+                        onChange={(e) => setGlobalSearchInput(e.target.value.toUpperCase())}
+                        placeholder="Saisissez un code CIP pour rechercher..."
+                        className="uppercase"
+                        disabled={isSearchingGlobal}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleGlobalCatalogSearch(globalSearchInput);
+                          }
+                        }}
+                      />
+                      {isSearchingGlobal && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        </div>
+                      )}
+                    </div>
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      onClick={() => handleGlobalCatalogSearch(globalSearchInput)}
+                      disabled={isSearchingGlobal || !globalSearchInput}
+                      className="gap-2"
+                    >
+                      <Search className="h-4 w-4" />
+                      Rechercher
+                    </Button>
+                  </div>
+                  {globalSearchResult === 'found' && (
+                    <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" /> Données importées avec succès - vérifiez les champs ci-dessous
+                    </p>
+                  )}
+                  {globalSearchResult === 'not_found' && (
+                    <p className="text-xs text-amber-600 mt-2">
+                      Code non trouvé dans le catalogue global - saisie manuelle requise
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Section 1: Informations principales - 2 colonnes */}
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
@@ -1028,42 +1095,16 @@ const ProductCatalogNew = () => {
 
                   <div>
                     <Label htmlFor="code_cip">Code CIP *</Label>
-                    <div className="relative">
-                      <Input
-                        id="code_cip"
-                        {...register("code_cip", { required: "Le code CIP est requis" })}
-                        placeholder={editingProduct ? "CODE CIP" : "Saisissez le code CIP pour importer depuis le catalogue global"}
-                        className="uppercase pr-10"
-                        disabled={isSearchingGlobal}
-                        onChange={(e) => {
-                          e.target.value = e.target.value.toUpperCase();
-                          setValue("code_cip", e.target.value);
-                          // Réinitialiser le résultat de recherche quand on modifie
-                          if (globalSearchResult) setGlobalSearchResult(null);
-                        }}
-                        onBlur={(e) => handleCodeCipBlur(e.target.value)}
-                      />
-                      {isSearchingGlobal && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                        </div>
-                      )}
-                      {!isSearchingGlobal && globalSearchResult === 'found' && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        </div>
-                      )}
-                    </div>
-                    {globalSearchResult === 'found' && (
-                      <p className="text-xs text-green-600 mt-1">
-                        ✓ Données importées depuis le catalogue global
-                      </p>
-                    )}
-                    {globalSearchResult === 'not_found' && !editingProduct && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Code non trouvé dans le catalogue global - saisie manuelle
-                      </p>
-                    )}
+                    <Input
+                      id="code_cip"
+                      {...register("code_cip", { required: "Le code CIP est requis" })}
+                      placeholder="CODE CIP DU PRODUIT"
+                      className="uppercase"
+                      onChange={(e) => {
+                        e.target.value = e.target.value.toUpperCase();
+                        setValue("code_cip", e.target.value);
+                      }}
+                    />
                     {errors.code_cip && (
                       <p className="text-sm text-destructive mt-1">{errors.code_cip.message}</p>
                     )}
