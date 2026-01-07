@@ -9,6 +9,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
 export interface PriceCalculationResult {
   prix_vente_ht: number;
@@ -25,15 +26,15 @@ export interface RecalculationResult {
   error?: string;
 }
 
-// Devises sans décimales (Franc CFA zones CEMAC et UEMOA)
-const NO_DECIMAL_CURRENCIES = ['XAF', 'XOF', 'FCFA'];
+// Devises sans décimales (depuis configuration centralisée)
+const NO_DECIMAL_CURRENCIES = DEFAULT_SETTINGS.currency.noDecimalCurrencies;
 
 class PricingCalculationService {
   /**
    * Vérifie si une devise nécessite un arrondi à l'entier
    */
   private isNoDecimalCurrency(currencyCode?: string): boolean {
-    const code = currencyCode || 'XAF'; // Par défaut XAF pour le Congo
+    const code = currencyCode || DEFAULT_SETTINGS.currency.code;
     return NO_DECIMAL_CURRENCIES.includes(code);
   }
 

@@ -4,6 +4,7 @@
  */
 import jsPDF from 'jspdf';
 import { formatCurrencyAmount } from './currencyFormatter';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
 interface ReceiptData {
   vente: {
@@ -58,7 +59,7 @@ export async function printReceipt(data: ReceiptData): Promise<string> {
     format: [80, 220] // Ticket thermique 80mm, plus long pour les détails
   });
 
-  const currency = data.currencySymbol || 'FCFA';
+  const currency = data.currencySymbol || DEFAULT_SETTINGS.currency.symbol;
   let y = 10;
 
   // En-tête avec PharmaSoft

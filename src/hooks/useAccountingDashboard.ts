@@ -6,6 +6,7 @@ import { useMemo } from 'react';
 import { format, subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, isAfter, isBefore, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DollarSign, TrendingUp, CreditCard, Banknote } from 'lucide-react';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
 // ============= TYPES =============
 
@@ -179,8 +180,8 @@ export const useAccountingDashboard = (selectedPeriod: string = 'month') => {
       
       return data || {
         code_pays: 'CG',
-        devise: 'FCFA',
-        symbole_devise: 'FCFA',
+        devise: DEFAULT_SETTINGS.currency.symbol,
+        symbole_devise: DEFAULT_SETTINGS.currency.symbol,
         format_date: 'DD/MM/YYYY',
         separateur_milliers: ' ',
         separateur_decimales: ',',

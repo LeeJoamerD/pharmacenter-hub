@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
 export interface PharmacyMetrics {
   messages_sent: number;
@@ -97,7 +98,7 @@ export const useMultiPharmacyManagement = () => {
     regionHeatmap: []
   });
   const [systemConfig, setSystemConfig] = useState<SystemConfig>({
-    currency: 'XAF',
+    currency: DEFAULT_SETTINGS.currency.code,
     dateFormat: 'DD/MM/YYYY',
     timezone: 'Africa/Douala',
     messageLimitPerDay: 100,
@@ -366,7 +367,7 @@ export const useMultiPharmacyManagement = () => {
 
       if (params || chatConfig) {
         setSystemConfig({
-          currency: (params as any)?.default_currency || 'XAF',
+          currency: (params as any)?.default_currency || DEFAULT_SETTINGS.currency.code,
           dateFormat: (params as any)?.default_date_format || 'DD/MM/YYYY',
           timezone: (params as any)?.default_timezone || 'Africa/Douala',
           messageLimitPerDay: (chatConfig as any)?.message_limit_per_day || 100,

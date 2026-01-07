@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePOSAnalytics } from '@/hooks/usePOSAnalytics';
 import { TrendingUp, ShoppingCart, Users, CreditCard, BarChart3, Clock } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
 
@@ -21,7 +22,7 @@ export const POSAnalyticsDashboard: React.FC = () => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: 'XOF',
+      currency: DEFAULT_SETTINGS.currency.code,
       minimumFractionDigits: 0
     }).format(value);
   };

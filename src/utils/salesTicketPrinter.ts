@@ -7,6 +7,7 @@ import jsPDF from 'jspdf';
 // @ts-ignore - bwip-js types
 import bwipjs from 'bwip-js';
 import { formatCurrencyAmount } from './currencyFormatter';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
 interface SalesTicketData {
   vente: {
@@ -117,7 +118,7 @@ export async function printSalesTicket(data: SalesTicketData): Promise<string> {
     format: [80, 270] // Ticket thermique 80mm, plus long pour les détails et code-barres
   });
 
-  const currency = data.currencySymbol || 'FCFA';
+  const currency = data.currencySymbol || DEFAULT_SETTINGS.currency.symbol;
   let y = 10;
 
   // Bandeau "À ENCAISSER"
@@ -335,7 +336,7 @@ export async function printCashReceipt(data: CashReceiptData): Promise<string> {
     format: [80, 160] // Ticket court pour le reçu, légèrement plus long pour les détails
   });
 
-  const currency = data.currencySymbol || 'FCFA';
+  const currency = data.currencySymbol || DEFAULT_SETTINGS.currency.symbol;
   let y = 10;
 
   // Bandeau "REÇU DE PAIEMENT"

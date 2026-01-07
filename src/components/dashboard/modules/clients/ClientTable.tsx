@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Edit, Trash2, User } from 'lucide-react';
 import { Client } from './types';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
 interface ClientTableProps {
   clients: Client[];
@@ -13,10 +14,10 @@ interface ClientTableProps {
 }
 
 const formatCurrency = (amount: number | null) => {
-  if (!amount) return '0 FCFA';
+  if (!amount) return `0 ${DEFAULT_SETTINGS.currency.symbol}`;
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'XOF',
+    currency: DEFAULT_SETTINGS.currency.code,
     minimumFractionDigits: 0,
   }).format(amount);
 };
