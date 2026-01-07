@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
 export interface StockSettings {
   oneLotPerReception: boolean;
@@ -29,17 +30,17 @@ export const useStockSettings = () => {
     oneLotPerReception: false,
     automaticReceptionValidation: false,
     requireLotNumbers: true,
-    alertOnExpirationDays: 90,
-    criticalExpirationDays: 30,
-    // Default values for additional settings
-    default_units: 'Unité',
-    minimum_stock_days: 30,
-    maximum_stock_days: 365,
+    alertOnExpirationDays: DEFAULT_SETTINGS.stock.alertExpirationDays,
+    criticalExpirationDays: DEFAULT_SETTINGS.stock.criticalExpirationDays,
+    // Default values for additional settings - utilise la config centralisée
+    default_units: DEFAULT_SETTINGS.stock.defaultUnits,
+    minimum_stock_days: DEFAULT_SETTINGS.stock.minimumStockDays,
+    maximum_stock_days: DEFAULT_SETTINGS.stock.maximumStockDays,
     auto_reorder_enabled: false,
-    reorder_point_days: 15,
-    safety_stock_percentage: 10,
-    valuation_method: 'FIFO',
-    rounding_precision: 2,
+    reorder_point_days: DEFAULT_SETTINGS.stock.reorderPointDays,
+    safety_stock_percentage: DEFAULT_SETTINGS.stock.safetyStockPercentage,
+    valuation_method: DEFAULT_SETTINGS.stock.valuationMethod,
+    rounding_precision: DEFAULT_SETTINGS.rounding.precision,
     allow_negative_stock: false,
     track_expiration_dates: true,
     auto_generate_lots: false,
@@ -85,16 +86,16 @@ export const useStockSettings = () => {
         oneLotPerReception: paramMap.stock_one_lot_per_reception === 'true',
         automaticReceptionValidation: paramMap.stock_automatic_reception_validation === 'true',
         requireLotNumbers: paramMap.stock_require_lot_numbers !== 'false',
-        alertOnExpirationDays: parseInt(paramMap.stock_alert_expiration_days) || 90,
-        criticalExpirationDays: parseInt(paramMap.stock_critical_expiration_days) || 30,
-        default_units: paramMap.stock_default_units || 'Unité',
-        minimum_stock_days: parseInt(paramMap.stock_minimum_stock_days) || 30,
-        maximum_stock_days: parseInt(paramMap.stock_maximum_stock_days) || 365,
+        alertOnExpirationDays: parseInt(paramMap.stock_alert_expiration_days) || DEFAULT_SETTINGS.stock.alertExpirationDays,
+        criticalExpirationDays: parseInt(paramMap.stock_critical_expiration_days) || DEFAULT_SETTINGS.stock.criticalExpirationDays,
+        default_units: paramMap.stock_default_units || DEFAULT_SETTINGS.stock.defaultUnits,
+        minimum_stock_days: parseInt(paramMap.stock_minimum_stock_days) || DEFAULT_SETTINGS.stock.minimumStockDays,
+        maximum_stock_days: parseInt(paramMap.stock_maximum_stock_days) || DEFAULT_SETTINGS.stock.maximumStockDays,
         auto_reorder_enabled: paramMap.stock_auto_reorder_enabled === 'true',
-        reorder_point_days: parseInt(paramMap.stock_reorder_point_days) || 15,
-        safety_stock_percentage: parseInt(paramMap.stock_safety_stock_percentage) || 10,
-        valuation_method: (paramMap.stock_valuation_method as any) || 'FIFO',
-        rounding_precision: parseInt(paramMap.stock_rounding_precision) || 2,
+        reorder_point_days: parseInt(paramMap.stock_reorder_point_days) || DEFAULT_SETTINGS.stock.reorderPointDays,
+        safety_stock_percentage: parseInt(paramMap.stock_safety_stock_percentage) || DEFAULT_SETTINGS.stock.safetyStockPercentage,
+        valuation_method: (paramMap.stock_valuation_method as any) || DEFAULT_SETTINGS.stock.valuationMethod,
+        rounding_precision: parseInt(paramMap.stock_rounding_precision) || DEFAULT_SETTINGS.rounding.precision,
         allow_negative_stock: paramMap.stock_allow_negative_stock === 'true',
         track_expiration_dates: paramMap.stock_track_expiration_dates !== 'false',
         auto_generate_lots: paramMap.stock_auto_generate_lots === 'true',

@@ -15,7 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { PricingConfigParams } from '@/services/UnifiedPricingService';
-
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 export interface UnifiedPricingParamsResult {
   // Paramètres de calcul
   params: PricingConfigParams;
@@ -63,7 +63,7 @@ export const useUnifiedPricingParams = (): UnifiedPricingParamsResult => {
 
       // Parser les paramètres de vente (JSON)
       let salesTaxSettings = {
-        taxRoundingMethod: 'ceil' as const
+        taxRoundingMethod: DEFAULT_SETTINGS.rounding.method as 'ceil' | 'floor' | 'round' | 'none'
       };
       
       try {
@@ -81,15 +81,15 @@ export const useUnifiedPricingParams = (): UnifiedPricingParamsResult => {
       // Construire l'objet de configuration unifié
       const config: PricingConfigParams = {
         // Paramètres stock - précision d'arrondi
-        roundingPrecision: parseInt(paramsMap.stock_rounding_precision) || 25,
+        roundingPrecision: parseInt(paramsMap.stock_rounding_precision) || DEFAULT_SETTINGS.rounding.precision,
         
         // Paramètres vente - méthode d'arrondi
-        taxRoundingMethod: (salesTaxSettings.taxRoundingMethod as 'ceil' | 'floor' | 'round' | 'none') || 'ceil',
+        taxRoundingMethod: (salesTaxSettings.taxRoundingMethod as 'ceil' | 'floor' | 'round' | 'none') || DEFAULT_SETTINGS.rounding.method,
         
         // Paramètres système - taux par défaut
-        defaultTauxTVA: parseFloat(paramsMap.taux_tva) || 19.25,
-        defaultTauxCentime: parseFloat(paramsMap.taux_centime_additionnel) || 0.175,
-        currencyCode: paramsMap.default_currency || 'XAF'
+        defaultTauxTVA: parseFloat(paramsMap.taux_tva) || DEFAULT_SETTINGS.taxes.tva,
+        defaultTauxCentime: parseFloat(paramsMap.taux_centime_additionnel) || DEFAULT_SETTINGS.taxes.centimeAdditionnel,
+        currencyCode: paramsMap.default_currency || DEFAULT_SETTINGS.currency.code
       };
 
       console.log('📊 Paramètres pricing unifiés chargés:', config);
@@ -101,13 +101,13 @@ export const useUnifiedPricingParams = (): UnifiedPricingParamsResult => {
     gcTime: 30 * 60 * 1000, // 30 minutes
   });
 
-  // Valeurs par défaut si pas encore chargé
+  // Valeurs par défaut si pas encore chargé - utilise la config centralisée
   const defaultParams: PricingConfigParams = {
-    roundingPrecision: 25,
-    taxRoundingMethod: 'ceil',
-    defaultTauxTVA: 19.25,
-    defaultTauxCentime: 0.175,
-    currencyCode: 'XAF'
+    roundingPrecision: DEFAULT_SETTINGS.rounding.precision,
+    taxRoundingMethod: DEFAULT_SETTINGS.rounding.method,
+    defaultTauxTVA: DEFAULT_SETTINGS.taxes.tva,
+    defaultTauxCentime: DEFAULT_SETTINGS.taxes.centimeAdditionnel,
+    currencyCode: DEFAULT_SETTINGS.currency.code
   };
 
   return {
