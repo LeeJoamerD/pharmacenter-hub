@@ -111,6 +111,20 @@ export const useCurrencyFormatting = () => {
     return checkIsNoDecimalCurrency();
   };
 
+  /**
+   * Arrondit un montant selon les règles de la devise courante
+   * - XAF/XOF/FCFA : arrondi à l'entier
+   * - EUR/USD/autres : arrondi à 2 décimales
+   */
+  const roundForCurrency = (amount: number): number => {
+    const validAmount = Number(amount) || 0;
+    
+    if (checkIsNoDecimalCurrency()) {
+      return Math.round(validAmount);
+    }
+    return Math.round(validAmount * 100) / 100;
+  };
+
   return { 
     formatAmount, 
     formatNumber,
@@ -120,6 +134,7 @@ export const useCurrencyFormatting = () => {
     getCurrencyCode,
     getInputStep,
     isNoDecimalCurrency,
+    roundForCurrency,
     currency: regionalCurrency || currentCurrency?.symbol || 'FCFA'
   };
 };
