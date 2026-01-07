@@ -258,10 +258,19 @@ export const useTenantQuery = () => {
         return data;
       },
       onSuccess: (data) => {
-        // Invalider les caches liés
+        // Invalider les caches liés avec matching flexible
         if (options?.invalidateQueries) {
-          options.invalidateQueries.forEach(queryKey => {
-            queryClient.invalidateQueries({ queryKey: [tenantId, queryKey] });
+          options.invalidateQueries.forEach(key => {
+            // Invalider avec la clé exacte tenant + key
+            queryClient.invalidateQueries({ queryKey: [tenantId, key] });
+            
+            // Aussi invalider toutes les requêtes contenant cette clé (matching partiel)
+            queryClient.invalidateQueries({
+              predicate: (query) =>
+                query.queryKey.some(qk =>
+                  typeof qk === 'string' && qk.includes(key)
+                )
+            });
           });
         }
         
