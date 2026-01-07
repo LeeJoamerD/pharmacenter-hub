@@ -230,24 +230,47 @@ export const useGlobalCatalogLookup = () => {
 
   /**
    * Recherche ou crée un laboratoire par libellé
+   * Avec gestion d'erreur améliorée pour récupérer l'ID après insertion
    */
   const findOrCreateLaboratoire = async (libelle: string | null): Promise<string | undefined> => {
     if (!libelle || !tenantId) return undefined;
 
-    const { data: existing } = await supabase
+    const normalizedLibelle = libelle.trim().toUpperCase();
+
+    // Recherche existante
+    const { data: existing, error: searchError } = await supabase
       .from('laboratoires')
       .select('id')
       .eq('tenant_id', tenantId)
-      .ilike('libelle', libelle.trim())
+      .ilike('libelle', normalizedLibelle)
       .maybeSingle();
+
+    if (searchError) {
+      console.error('Erreur recherche laboratoire:', searchError);
+    }
 
     if (existing) return existing.id;
 
-    const { data: created } = await supabase
+    // Création si non trouvé
+    const { data: created, error: insertError } = await supabase
       .from('laboratoires')
-      .insert({ tenant_id: tenantId, libelle: libelle.trim().toUpperCase() })
+      .insert({ tenant_id: tenantId, libelle: normalizedLibelle })
       .select('id')
       .single();
+
+    if (insertError) {
+      console.error('Erreur création laboratoire:', insertError);
+      
+      // Si l'insert a réussi mais le SELECT a échoué, récupérer l'ID avec un SELECT séparé
+      const { data: refetched } = await supabase
+        .from('laboratoires')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .ilike('libelle', normalizedLibelle)
+        .maybeSingle();
+      
+      return refetched?.id;
+    }
 
     return created?.id;
   };
