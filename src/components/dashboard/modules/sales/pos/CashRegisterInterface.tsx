@@ -56,7 +56,7 @@ const CashRegisterInterface = () => {
   const { tenantId, currentUser } = useTenant();
   const { toast } = useToast();
   const { getPharmacyInfo } = useGlobalSystemSettings();
-  const { formatAmount } = useCurrencyFormatting();
+  const { formatAmount, roundForCurrency } = useCurrencyFormatting();
   
   const { processPayment } = usePOSData();
   
@@ -202,7 +202,7 @@ const CashRegisterInterface = () => {
       const transaction = await searchByInvoiceNumber(value.trim());
       if (transaction) {
         setSelectedTransaction(transaction);
-        setAmountReceived(transaction.montant_net);
+        setAmountReceived(roundForCurrency(transaction.montant_net));
         toast({ title: "Transaction trouvée", description: `Ticket ${transaction.numero_vente}` });
       } else {
         toast({ title: "Transaction non trouvée", variant: "destructive" });
@@ -217,7 +217,7 @@ const CashRegisterInterface = () => {
   // Sélection depuis la liste
   const handleSelectFromList = (transaction: PendingTransaction) => {
     setSelectedTransaction(transaction);
-    setAmountReceived(transaction.montant_net);
+    setAmountReceived(roundForCurrency(transaction.montant_net));
     setSearchInput(transaction.numero_vente);
   };
 

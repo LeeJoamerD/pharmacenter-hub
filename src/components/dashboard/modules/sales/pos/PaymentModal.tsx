@@ -47,7 +47,7 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
   const [amountReceived, setAmountReceived] = useState<string>('');
   const [processing, setProcessing] = useState(false);
   const [autoPrintTicket, setAutoPrintTicket] = useState(true);
-  const { formatAmount } = useCurrencyFormatting();
+  const { formatAmount, roundForCurrency } = useCurrencyFormatting();
   const { t } = useLanguage();
 
   // Utiliser le hook de calcul centralisé
@@ -181,9 +181,10 @@ const PaymentModal = ({ transaction, onPaymentComplete, onClose, isSaving = fals
   // Auto-fill le montant reçu au total quand on change de mode
   React.useEffect(() => {
     if (paymentMethod === 'cash') {
-      setAmountReceived(totalAPayer.toString());
+      const roundedAmount = roundForCurrency(totalAPayer);
+      setAmountReceived(roundedAmount.toString());
     }
-  }, [paymentMethod, totalAPayer]);
+  }, [paymentMethod, totalAPayer, roundForCurrency]);
 
   return (
     <Dialog open onOpenChange={onClose}>
