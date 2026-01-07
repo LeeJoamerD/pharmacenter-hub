@@ -35,10 +35,11 @@ import {
 } from '@/components/ui/select';
 import { Combobox } from '@/components/ui/combobox';
 import { MultiSelect, type Option as MultiSelectOption } from '@/components/ui/multi-select';
-import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download, Loader2, CheckCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { useGlobalCatalogLookup } from '@/hooks/useGlobalCatalogLookup';
 
 // Hook will be used inside the component
 
@@ -127,6 +128,8 @@ const ProductCatalogNew = () => {
   const [referencesProduct, setReferencesProduct] = useState<Product | null>(null);
   const [selectedDcis, setSelectedDcis] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
+  const [globalSearchResult, setGlobalSearchResult] = useState<'found' | 'not_found' | null>(null);
 
   const { toast } = useToast();
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
@@ -134,6 +137,7 @@ const ProductCatalogNew = () => {
   const { personnel } = useAuth();
   const { createProductDetail } = useProducts();
   const { formatAmount, getCurrencySymbol, getInputStep, isNoDecimalCurrency } = useCurrencyFormatting();
+  const { searchGlobalCatalog, mapToLocalReferences } = useGlobalCatalogLookup();
 
   // Récupération des données avec pagination
   const {
@@ -243,7 +247,63 @@ const ProductCatalogNew = () => {
       is_active: true,
     });
     setSelectedDcis([]);
+    setGlobalSearchResult(null);
     setIsDialogOpen(true);
+  };
+
+  /**
+   * Handler appelé quand l'utilisateur quitte le champ Code CIP
+   * Recherche dans le catalogue global et pré-remplit le formulaire si trouvé
+   */
+  const handleCodeCipBlur = async (codeCip: string) => {
+    // Ne pas rechercher si on édite, si le champ est vide ou trop court
+    if (!codeCip || codeCip.length < 3 || editingProduct) {
+      setGlobalSearchResult(null);
+      return;
+    }
+
+    setIsSearchingGlobal(true);
+    setGlobalSearchResult(null);
+
+    try {
+      const globalProduct = await searchGlobalCatalog(codeCip);
+      
+      if (globalProduct) {
+        const mappedData = await mapToLocalReferences(globalProduct);
+
+        // Remplir le formulaire avec les données du catalogue global
+        setValue('code_cip', mappedData.code_cip);
+        setValue('libelle_produit', mappedData.libelle_produit);
+        setValue('ancien_code_cip', mappedData.ancien_code_cip);
+        
+        if (mappedData.famille_id) setValue('famille_id', mappedData.famille_id);
+        if (mappedData.rayon_id) setValue('rayon_id', mappedData.rayon_id);
+        if (mappedData.forme_id) setValue('forme_id', mappedData.forme_id);
+        if (mappedData.classe_therapeutique_id) setValue('classe_therapeutique_id', mappedData.classe_therapeutique_id);
+        if (mappedData.laboratoires_id) setValue('laboratoires_id', mappedData.laboratoires_id);
+        if (mappedData.categorie_tarification_id) setValue('categorie_tarification_id', mappedData.categorie_tarification_id);
+        
+        // DCI multiples
+        setSelectedDcis(mappedData.dci_ids || []);
+
+        // Prix de référence (optionnels)
+        if (mappedData.prix_achat) setValue('prix_achat', mappedData.prix_achat);
+        if (mappedData.prix_vente_ttc) setValue('prix_vente_ttc', mappedData.prix_vente_ttc);
+
+        toast({
+          title: "Produit trouvé",
+          description: `"${globalProduct.libelle_produit}" importé depuis le catalogue global`,
+        });
+        setGlobalSearchResult('found');
+      } else {
+        setGlobalSearchResult('not_found');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la recherche globale:', error);
+      setGlobalSearchResult(null);
+    } finally {
+      setIsSearchingGlobal(false);
+    }
   };
 
   const handleEditProduct = async (product: Product) => {
@@ -968,16 +1028,42 @@ const ProductCatalogNew = () => {
 
                   <div>
                     <Label htmlFor="code_cip">Code CIP *</Label>
-                    <Input
-                      id="code_cip"
-                      {...register("code_cip", { required: "Le code CIP est requis" })}
-                      placeholder="CODE CIP"
-                      className="uppercase"
-                      onChange={(e) => {
-                        e.target.value = e.target.value.toUpperCase();
-                        setValue("code_cip", e.target.value);
-                      }}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="code_cip"
+                        {...register("code_cip", { required: "Le code CIP est requis" })}
+                        placeholder={editingProduct ? "CODE CIP" : "Saisissez le code CIP pour importer depuis le catalogue global"}
+                        className="uppercase pr-10"
+                        disabled={isSearchingGlobal}
+                        onChange={(e) => {
+                          e.target.value = e.target.value.toUpperCase();
+                          setValue("code_cip", e.target.value);
+                          // Réinitialiser le résultat de recherche quand on modifie
+                          if (globalSearchResult) setGlobalSearchResult(null);
+                        }}
+                        onBlur={(e) => handleCodeCipBlur(e.target.value)}
+                      />
+                      {isSearchingGlobal && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        </div>
+                      )}
+                      {!isSearchingGlobal && globalSearchResult === 'found' && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        </div>
+                      )}
+                    </div>
+                    {globalSearchResult === 'found' && (
+                      <p className="text-xs text-green-600 mt-1">
+                        ✓ Données importées depuis le catalogue global
+                      </p>
+                    )}
+                    {globalSearchResult === 'not_found' && !editingProduct && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Code non trouvé dans le catalogue global - saisie manuelle
+                      </p>
+                    )}
                     {errors.code_cip && (
                       <p className="text-sm text-destructive mt-1">{errors.code_cip.message}</p>
                     )}
