@@ -2,8 +2,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { unifiedPricingService } from '@/services/UnifiedPricingService';
-import { useUnifiedPricingParams } from '@/hooks/useUnifiedPricingParams';
-
 interface GlobalCatalogProduct {
   id: string;
   code_cip: string;
@@ -53,7 +51,6 @@ export const useGlobalCatalogLookup = () => {
   const { toast } = useToast();
   const { personnel } = useAuth();
   const tenantId = personnel?.tenant_id;
-  const { params: pricingParams, refetch: refetchPricingParams } = useUnifiedPricingParams();
 
   /**
    * Recherche un produit dans le catalogue global par code CIP
@@ -322,17 +319,45 @@ export const useGlobalCatalogLookup = () => {
       findPricingCategory(globalProduct.tva)
     ]);
 
-    // Rafraîchir les paramètres avant utilisation pour avoir les dernières valeurs
-    await refetchPricingParams();
-    // Note: pricingParams sera mis à jour après le refetch grâce à React Query
+    // Récupérer les paramètres DIRECTEMENT depuis Supabase pour éviter le stale closure
+    let roundingPrecision = 25;
+    let roundingMethod: 'ceil' | 'floor' | 'round' | 'none' = 'ceil';
+    let currencyCode = 'XAF';
+
+    if (tenantId) {
+      const { data: freshParams } = await supabase
+        .from('parametres_systeme')
+        .select('cle_parametre, valeur_parametre')
+        .eq('tenant_id', tenantId)
+        .in('cle_parametre', ['stock_rounding_precision', 'sales_tax', 'default_currency']);
+
+      if (freshParams) {
+        for (const param of freshParams) {
+          if (param.cle_parametre === 'stock_rounding_precision' && param.valeur_parametre) {
+            roundingPrecision = parseInt(param.valeur_parametre);
+          }
+          if (param.cle_parametre === 'sales_tax' && param.valeur_parametre) {
+            try {
+              const salesTax = JSON.parse(param.valeur_parametre);
+              roundingMethod = salesTax.taxRoundingMethod || 'ceil';
+            } catch (e) {
+              // Ignorer les erreurs de parsing
+            }
+          }
+          if (param.cle_parametre === 'default_currency' && param.valeur_parametre) {
+            currencyCode = param.valeur_parametre;
+          }
+        }
+      }
+    }
 
     // Appliquer les paramètres d'arrondi du tenant sur le prix de vente importé
     const prix_vente_ttc = globalProduct.prix_vente_reference
       ? unifiedPricingService.roundToNearest(
           globalProduct.prix_vente_reference,
-          pricingParams.roundingPrecision,
-          pricingParams.taxRoundingMethod,
-          pricingParams.currencyCode
+          roundingPrecision,
+          roundingMethod,
+          currencyCode
         )
       : undefined;
 
