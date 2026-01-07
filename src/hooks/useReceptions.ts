@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useStockSettings } from '@/hooks/useStockSettings';
 import { unifiedPricingService } from '@/services/UnifiedPricingService';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
 export interface Reception {
   id: string;
@@ -257,9 +258,9 @@ export const useReceptions = () => {
               const paramsMap: Record<string, string> = {};
               (parametres as any[])?.forEach((p: any) => { paramsMap[p.cle_parametre] = p.valeur_parametre; });
 
-              const roundingPrecision = parseFloat(paramsMap['stock_rounding_precision'] || '25');
-              const roundingMethod = (paramsMap['taxRoundingMethod'] || 'ceil') as 'ceil' | 'floor' | 'round' | 'none';
-              const currencyCode = paramsMap['default_currency'] || 'XAF';
+              const roundingPrecision = parseFloat(paramsMap['stock_rounding_precision'] || String(DEFAULT_SETTINGS.rounding.precision));
+              const roundingMethod = (paramsMap['taxRoundingMethod'] || DEFAULT_SETTINGS.rounding.method) as 'ceil' | 'floor' | 'round' | 'none';
+              const currencyCode = paramsMap['default_currency'] || DEFAULT_SETTINGS.currency.code;
 
               // Calculer les prix via UnifiedPricingService
               const pricingResult = unifiedPricingService.calculateSalePrice({

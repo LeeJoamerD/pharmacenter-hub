@@ -1,3 +1,5 @@
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
+
 export interface OrderLineTotals {
   sousTotal: number;
   remiseAmount: number;
@@ -65,7 +67,7 @@ export class OrderCalculationService {
     return new Intl.NumberFormat('fr-FR', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(amount) + ' F CFA';
+    }).format(amount) + ` ${DEFAULT_SETTINGS.currency.symbol}`;
   }
 
   static generateOrderNumber(): string {

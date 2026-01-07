@@ -16,8 +16,10 @@
  * - Appliqué au Prix TTC final
  */
 
-// Devises sans décimales (Franc CFA zones CEMAC et UEMOA)
-const NO_DECIMAL_CURRENCIES = ['XAF', 'XOF', 'FCFA'];
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
+
+// Devises sans décimales (depuis configuration centralisée)
+const NO_DECIMAL_CURRENCIES = DEFAULT_SETTINGS.currency.noDecimalCurrencies;
 
 /**
  * Paramètres de calcul des prix
@@ -71,7 +73,7 @@ class UnifiedPricingService {
    * Vérifie si une devise nécessite un arrondi à l'entier (pas de décimales)
    */
   isNoDecimalCurrency(currencyCode?: string): boolean {
-    const code = currencyCode || 'XAF';
+    const code = currencyCode || DEFAULT_SETTINGS.currency.code;
     return NO_DECIMAL_CURRENCIES.includes(code);
   }
 
@@ -200,7 +202,7 @@ class UnifiedPricingService {
   /**
    * Formate un montant avec symbole de devise
    */
-  formatAmount(value: number, currencySymbol: string = 'FCFA', currencyCode?: string): string {
+  formatAmount(value: number, currencySymbol: string = DEFAULT_SETTINGS.currency.symbol, currencyCode?: string): string {
     return `${this.formatWithThousandSeparator(value, currencyCode)} ${currencySymbol}`;
   }
 

@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import type { StockReportsData } from '@/types/stockReports';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
 interface PharmacyInfo {
   name: string;
@@ -8,9 +9,9 @@ interface PharmacyInfo {
 }
 
 // Helper function for currency formatting in non-hook context
-const formatCurrencyValue = (amount: number, currencySymbol: string = 'FCFA'): string => {
+const formatCurrencyValue = (amount: number, currencySymbol: string = DEFAULT_SETTINGS.currency.symbol): string => {
   // For FCFA (no decimals), round to integer
-  const isNoDecimal = ['XAF', 'XOF', 'FCFA'].includes(currencySymbol);
+  const isNoDecimal = DEFAULT_SETTINGS.currency.noDecimalCurrencies.includes(currencySymbol);
   if (isNoDecimal) {
     return `${Math.round(amount).toLocaleString('fr-FR')} ${currencySymbol}`;
   }
@@ -22,7 +23,7 @@ export const exportStockReportToPDF = async (
   period: string,
   category: string,
   pharmacyInfo: PharmacyInfo,
-  currencySymbol: string = 'FCFA'
+  currencySymbol: string = DEFAULT_SETTINGS.currency.symbol
 ) => {
   const doc = new jsPDF();
   let yPosition = 20;

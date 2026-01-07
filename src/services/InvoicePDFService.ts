@@ -1,4 +1,5 @@
 import { Invoice, InvoiceLine } from '@/hooks/useInvoiceManager';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
 interface ExportResult {
   url: string;
@@ -56,7 +57,7 @@ export class InvoicePDFService {
     const clientAddress = isClient ? invoice.client_adresse : invoice.fournisseur_adresse;
 
     // Regional formatting
-    const devise = regionalParams?.symbole_devise || 'FCFA';
+    const devise = regionalParams?.symbole_devise || DEFAULT_SETTINGS.currency.symbol;
     const tvaLabel = regionalParams?.libelle_tva || 'TVA';
     const companyInfo = {
       nom: regionalParams?.nom_societe || 'PharmaSoft',
@@ -68,7 +69,7 @@ export class InvoicePDFService {
     };
 
     const formatAmount = (amount: number): string => {
-      if (!regionalParams) return `${amount.toFixed(2)} FCFA`;
+      if (!regionalParams) return `${amount.toFixed(2)} ${DEFAULT_SETTINGS.currency.symbol}`;
       
       const formatted = amount.toFixed(2);
       const [integer, decimal] = formatted.split('.');

@@ -6,8 +6,10 @@
  * dans des contextes non-React (génération de PDF, etc.)
  */
 
-// Devises sans décimales (Franc CFA zones CEMAC et UEMOA)
-const NO_DECIMAL_CURRENCIES = ['XAF', 'XOF', 'FCFA'];
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
+
+// Devises sans décimales (depuis configuration centralisée)
+const NO_DECIMAL_CURRENCIES = DEFAULT_SETTINGS.currency.noDecimalCurrencies;
 
 /**
  * Normalise les espaces pour compatibilité PDF (jsPDF)
@@ -26,7 +28,7 @@ const normalizePdfSpaces = (str: string): string => {
  */
 export const formatCurrencyAmount = (
   amount: number, 
-  currencySymbol: string = 'FCFA'
+  currencySymbol: string = DEFAULT_SETTINGS.currency.symbol
 ): string => {
   const validAmount = Number(amount) || 0;
   const isNoDecimal = NO_DECIMAL_CURRENCIES.includes(currencySymbol) || 
@@ -51,7 +53,7 @@ export const formatCurrencyAmount = (
  */
 export const formatNumber = (
   amount: number, 
-  currencyCode: string = 'XAF'
+  currencyCode: string = DEFAULT_SETTINGS.currency.code
 ): string => {
   const validAmount = Number(amount) || 0;
   const isNoDecimal = NO_DECIMAL_CURRENCIES.includes(currencyCode) ||

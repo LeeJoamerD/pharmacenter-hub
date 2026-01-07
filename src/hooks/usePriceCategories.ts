@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
 export interface PriceCategory {
   id: string;
@@ -38,8 +39,8 @@ export const usePriceCategories = () => {
         .from('categorie_tarification')
         .insert({
           ...category,
-          taux_tva: category.taux_tva || 19.25,
-          taux_centime_additionnel: category.taux_centime_additionnel || 0.175,
+          taux_tva: category.taux_tva || DEFAULT_SETTINGS.taxes.tva,
+          taux_centime_additionnel: category.taux_centime_additionnel || DEFAULT_SETTINGS.taxes.centimeAdditionnel,
         })
         .select()
         .single();
