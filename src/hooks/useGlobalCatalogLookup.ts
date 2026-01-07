@@ -53,7 +53,7 @@ export const useGlobalCatalogLookup = () => {
   const { toast } = useToast();
   const { personnel } = useAuth();
   const tenantId = personnel?.tenant_id;
-  const { params: pricingParams } = useUnifiedPricingParams();
+  const { params: pricingParams, refetch: refetchPricingParams } = useUnifiedPricingParams();
 
   /**
    * Recherche un produit dans le catalogue global par code CIP
@@ -321,6 +321,10 @@ export const useGlobalCatalogLookup = () => {
       findOrCreateLaboratoire(globalProduct.libelle_laboratoire),
       findPricingCategory(globalProduct.tva)
     ]);
+
+    // Rafraîchir les paramètres avant utilisation pour avoir les dernières valeurs
+    await refetchPricingParams();
+    // Note: pricingParams sera mis à jour après le refetch grâce à React Query
 
     // Appliquer les paramètres d'arrondi du tenant sur le prix de vente importé
     const prix_vente_ttc = globalProduct.prix_vente_reference
