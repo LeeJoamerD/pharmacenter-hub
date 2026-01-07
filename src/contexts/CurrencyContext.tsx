@@ -1,6 +1,6 @@
-
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
 export type Currency = {
   code: string;
@@ -59,8 +59,9 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   const formatPrice = (amount: number): string => {
     const convertedAmount = (amount * currentCurrency.rate).toFixed(2);
-    // For XAF, don't show decimal places as they're rarely used
-    const formattedAmount = currentCurrency.code === 'XAF' 
+    // Utilise la liste centralisée des devises sans décimales
+    const isNoDecimal = DEFAULT_SETTINGS.currency.noDecimalCurrencies.includes(currentCurrency.code);
+    const formattedAmount = isNoDecimal 
       ? Math.round(parseFloat(convertedAmount)).toString()
       : convertedAmount;
     

@@ -7,9 +7,10 @@
  */
 import { useRegionalSettings } from './useRegionalSettings';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
-// Devises sans décimales (Franc CFA zones CEMAC et UEMOA)
-const NO_DECIMAL_CURRENCIES = ['XAF', 'XOF', 'FCFA'];
+// Devises sans décimales - utilise la config centralisée
+const NO_DECIMAL_CURRENCIES = DEFAULT_SETTINGS.currency.noDecimalCurrencies;
 
 export const useCurrencyFormatting = () => {
   const { currency: regionalCurrency } = useRegionalSettings();
@@ -19,8 +20,8 @@ export const useCurrencyFormatting = () => {
    * Vérifie si la devise courante est sans décimales
    */
   const checkIsNoDecimalCurrency = (): boolean => {
-    const symbol = regionalCurrency || currentCurrency?.symbol || 'FCFA';
-    const currencyCode = currentCurrency?.code || 'XAF';
+    const symbol = regionalCurrency || currentCurrency?.symbol || DEFAULT_SETTINGS.currency.symbol;
+    const currencyCode = currentCurrency?.code || DEFAULT_SETTINGS.currency.code;
     return NO_DECIMAL_CURRENCIES.includes(currencyCode) || 
            NO_DECIMAL_CURRENCIES.includes(symbol);
   };
@@ -31,7 +32,7 @@ export const useCurrencyFormatting = () => {
    * - EUR/USD/autres : 2 décimales
    */
   const formatAmount = (amount: number): string => {
-    const symbol = regionalCurrency || currentCurrency?.symbol || 'FCFA';
+    const symbol = regionalCurrency || currentCurrency?.symbol || DEFAULT_SETTINGS.currency.symbol;
     const validAmount = Number(amount) || 0;
     
     if (checkIsNoDecimalCurrency()) {
@@ -85,14 +86,14 @@ export const useCurrencyFormatting = () => {
    * Retourne uniquement le symbole de devise
    */
   const getCurrencySymbol = (): string => {
-    return regionalCurrency || currentCurrency?.symbol || 'FCFA';
+    return regionalCurrency || currentCurrency?.symbol || DEFAULT_SETTINGS.currency.symbol;
   };
 
   /**
    * Retourne le code de la devise
    */
   const getCurrencyCode = (): string => {
-    return currentCurrency?.code || 'XAF';
+    return currentCurrency?.code || DEFAULT_SETTINGS.currency.code;
   };
 
   /**
@@ -135,6 +136,6 @@ export const useCurrencyFormatting = () => {
     getInputStep,
     isNoDecimalCurrency,
     roundForCurrency,
-    currency: regionalCurrency || currentCurrency?.symbol || 'FCFA'
+    currency: regionalCurrency || currentCurrency?.symbol || DEFAULT_SETTINGS.currency.symbol
   };
 };

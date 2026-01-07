@@ -4,6 +4,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
+import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 
 interface RegionalSettings {
   currency: string;
@@ -37,11 +38,11 @@ export const useRegionalSettings = () => {
       }), {} as Record<string, any>);
 
       return {
-        currency: params?.devise_principale || 'FCFA',
-        defaultTVA: parseFloat(params?.tva_defaut) || 16,
-        invoiceFormat: params?.format_numero_facture || 'POS-{date}-{seq}',
+        currency: params?.devise_principale || DEFAULT_SETTINGS.currency.symbol,
+        defaultTVA: parseFloat(params?.tva_defaut) || DEFAULT_SETTINGS.taxes.tva,
+        invoiceFormat: params?.format_numero_facture || DEFAULT_SETTINGS.regional.invoiceFormat,
         autoPrint: params?.impression_auto_ticket === 'true' || params?.impression_auto_ticket === true,
-        language: params?.langue_interface || 'fr'
+        language: params?.langue_interface || DEFAULT_SETTINGS.regional.language
       } as RegionalSettings;
     },
     enabled: !!tenantId,
@@ -49,11 +50,11 @@ export const useRegionalSettings = () => {
   });
 
   return {
-    currency: settings?.currency || 'FCFA',
-    defaultTVA: settings?.defaultTVA || 16,
-    invoiceFormat: settings?.invoiceFormat || 'POS-{date}-{seq}',
-    autoPrint: settings?.autoPrint ?? true,
-    language: settings?.language || 'fr',
+    currency: settings?.currency || DEFAULT_SETTINGS.currency.symbol,
+    defaultTVA: settings?.defaultTVA || DEFAULT_SETTINGS.taxes.tva,
+    invoiceFormat: settings?.invoiceFormat || DEFAULT_SETTINGS.regional.invoiceFormat,
+    autoPrint: settings?.autoPrint ?? DEFAULT_SETTINGS.regional.autoPrint,
+    language: settings?.language || DEFAULT_SETTINGS.regional.language,
     isLoading
   };
 };
