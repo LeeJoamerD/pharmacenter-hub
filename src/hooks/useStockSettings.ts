@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 export interface StockSettings {
   oneLotPerReception: boolean;
@@ -23,6 +24,7 @@ export interface StockSettings {
 }
 
 export const useStockSettings = () => {
+  const queryClient = useQueryClient();
   const [settings, setSettings] = useState<StockSettings>({
     oneLotPerReception: false,
     automaticReceptionValidation: false,
@@ -318,6 +320,9 @@ export const useStockSettings = () => {
 
       // Update local state
       setSettings(prev => ({ ...prev, ...newSettings }));
+
+      // Invalider le cache des paramètres de pricing pour forcer le rafraîchissement
+      queryClient.invalidateQueries({ queryKey: ['unified-pricing-params'] });
 
       toast({
         title: "Succès",

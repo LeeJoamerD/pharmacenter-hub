@@ -97,7 +97,7 @@ export const useUnifiedPricingParams = (): UnifiedPricingParamsResult => {
       return config;
     },
     enabled: !!tenantId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Toujours vérifier la fraîcheur des données
     gcTime: 30 * 60 * 1000, // 30 minutes
   });
 
