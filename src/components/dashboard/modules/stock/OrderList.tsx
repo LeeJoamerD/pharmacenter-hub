@@ -191,14 +191,14 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
     try {
       await onUpdateStatus(orderId, newStatus);
       toast({
-        title: "Succès",
-        description: "Statut de la commande mis à jour",
+        title: t('orderListSuccess'),
+        description: t('orderListStatusUpdated'),
       });
       onRefresh();
     } catch (error) {
       toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour le statut",
+        title: t('orderListError'),
+        description: t('orderListCannotUpdateStatus'),
         variant: "destructive",
       });
     }
@@ -208,14 +208,14 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
     try {
       await onDeleteOrder(orderId);
       toast({
-        title: "Succès",
-        description: "Commande supprimée avec succès",
+        title: t('orderListSuccess'),
+        description: t('orderListDeleteSuccess'),
       });
       onRefresh();
     } catch (error) {
       toast({
-        title: "Erreur", 
-        description: "Impossible de supprimer la commande",
+        title: t('orderListError'), 
+        description: t('orderListCannotDelete'),
         variant: "destructive",
       });
     }
@@ -254,15 +254,15 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
         link.click();
         document.body.removeChild(link);
         
-        toast({
-          title: "Succès",
-          description: `Commande ${order.numero} téléchargée`,
+      toast({
+          title: t('orderListSuccess'),
+          description: t('orderListDownloadSuccess', { orderNumber: order.numero }),
         });
       }
     } catch (error) {
       toast({
-        title: "Erreur",
-        description: "Impossible de générer le PDF",
+        title: t('orderListError'),
+        description: t('orderListCannotGeneratePDF'),
         variant: "destructive",
       });
     }
@@ -578,7 +578,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
 };
 
 // Composant pour afficher les détails d'une commande
-const OrderDetailsContent = ({ order, getStatusColor, t }: { order: any; getStatusColor: (statut: string) => string; t: (key: string) => string }) => {
+const OrderDetailsContent = ({ order, getStatusColor, t }: { order: any; getStatusColor: (statut: string) => string; t: (key: string, params?: Record<string, string | number>) => string }) => {
   const { orderLines, loading: linesLoading } = useOrderLines(order.id);
   
   return (

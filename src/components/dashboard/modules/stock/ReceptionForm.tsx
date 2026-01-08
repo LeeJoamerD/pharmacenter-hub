@@ -350,8 +350,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       
       if (lowStockAlerts.length > 0) {
         toast({
-          title: "Alerte Stock Faible",
-          description: `Produits toujours en stock faible après réception: ${lowStockAlerts.join(', ')}`,
+          title: t('receptionFormLowStockAlert'),
+          description: t('receptionFormLowStockProducts') + ': ' + lowStockAlerts.join(', '),
           variant: "destructive",
           duration: 10000, // Show for 10 seconds
         });
@@ -382,8 +382,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   const handleBarcodeSubmit = () => {
     if (!scannedBarcode.trim()) {
       toast({
-        title: "Erreur",
-        description: "Veuillez saisir ou scanner un code-barres",
+        title: t('receptionFormError'),
+        description: t('receptionFormEnterBarcode'),
         variant: "destructive",
       });
       return;
@@ -396,8 +396,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
 
     if (!matchingOrderLine) {
       toast({
-        title: "Produit non trouvé",
-        description: `Aucun produit avec le code ${scannedBarcode} dans cette commande`,
+        title: t('receptionFormProductNotFound'),
+        description: t('receptionFormNoProductWithCode', { code: scannedBarcode }),
         variant: "destructive",
       });
       setScannedBarcode('');
@@ -411,8 +411,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       updateReceptionLine(existingLine.id, 'quantiteAcceptee', existingLine.quantiteAcceptee + 1);
       
       toast({
-        title: "Produit traité",
-        description: `${matchingOrderLine.produit?.libelle_produit || 'Produit'} - Quantité incrémentée`,
+        title: t('receptionFormProductProcessed'),
+        description: `${matchingOrderLine.produit?.libelle_produit || t('orderListProduct')} - ${t('receptionFormQuantityIncremented')}`,
       });
     }
 
@@ -436,20 +436,20 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         
         // TODO: Implémenter la détection en temps réel
         toast({
-          title: "Caméra activée",
-          description: "Scanner activé - Dirigez vers un code-barres",
+          title: t('receptionFormCameraActivated'),
+          description: t('receptionFormScannerActivated'),
         });
       } else {
         toast({
-          title: "Scanner non supporté",
-          description: "Utilisez la saisie manuelle ou un lecteur externe",
+          title: t('receptionFormScannerNotSupported'),
+          description: t('receptionFormUseManual'),
           variant: "destructive",
         });
       }
     } catch (error) {
       toast({
-        title: "Erreur caméra",
-        description: "Impossible d'accéder à la caméra",
+        title: t('receptionFormCameraError'),
+        description: t('receptionFormCameraAccessError'),
         variant: "destructive",
       });
     }
@@ -516,39 +516,39 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
           
           if (updateError) {
             console.error('❌ Error updating order status:', updateError);
-            toast({
-              title: "Avertissement",
-              description: "Réception créée mais le statut de la commande n'a pas pu être mis à jour",
-              variant: "destructive",
-            });
-          } else {
-            console.log('✅ Order status updated to Réceptionné successfully');
-            
+        toast({
+          title: t('receptionFormWarningStatus'),
+          description: t('receptionFormStatusError'),
+          variant: "destructive",
+        });
+      } else {
+        console.log('✅ Order status updated to Réceptionné successfully');
+        
             if (onRefreshOrders) {
               await onRefreshOrders();
             }
           }
-        } catch (supabaseError) {
-          console.error('❌ Supabase error during order status update:', supabaseError);
-          toast({
-            title: "Avertissement",
-            description: "Réception créée mais erreur lors de la mise à jour du statut de la commande",
-            variant: "destructive",
-          });
-        }
+      } catch (supabaseError) {
+        console.error('❌ Supabase error during order status update:', supabaseError);
+        toast({
+          title: t('receptionFormWarningStatus'),
+          description: t('receptionFormStatusError'),
+          variant: "destructive",
+        });
+      }
       } else {
         console.warn('⚠️ Order status transition from', selectedOrderData.statut, 'to Réceptionné is not allowed');
         toast({
-          title: "Avertissement",
-          description: `Transition du statut ${selectedOrderData.statut} vers Réceptionné non autorisée`,
+          title: t('receptionFormWarningStatus'),
+          description: t('receptionFormStatusTransitionNotAllowed', { from: selectedOrderData.statut, to: 'Réceptionné' }),
           variant: "destructive",
         });
       }
     } catch (statusError) {
       console.error('❌ Error during order status update:', statusError);
       toast({
-        title: "Avertissement",
-        description: "Réception créée mais erreur lors de la mise à jour du statut de la commande",
+        title: t('receptionFormWarningStatus'),
+        description: t('receptionFormStatusError'),
         variant: "destructive",
       });
     }
@@ -581,8 +581,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       console.log('✅ Lots and stock movements processed successfully');
       
       toast({
-        title: "Stock mis à jour",
-        description: "Réception et lots traités avec succès",
+        title: t('receptionFormStockUpdated'),
+        description: t('receptionFormStockSuccess'),
       });
       
       await checkLowStockAlerts(receptionLines);
@@ -590,8 +590,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     } catch (stockError) {
       console.error('❌ Error during stock processing:', stockError);
       toast({
-        title: "Avertissement Stock",
-        description: "Réception créée mais erreur lors du traitement des lots et mouvements de stock",
+        title: t('receptionFormStockWarning'),
+        description: t('receptionFormStockError'),
         variant: "destructive",
       });
     }
@@ -608,8 +608,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       
       if (!selectedOrder) {
         toast({
-          title: "Erreur",
-          description: "Veuillez sélectionner une commande",
+          title: t('receptionFormError'),
+          description: t('receptionFormSelectOrderError'),
           variant: "destructive",
         });
         return;
@@ -618,8 +618,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       const selectedOrderData = pendingOrders.find(o => o.id === selectedOrder);
       if (!selectedOrderData) {
         toast({
-          title: "Erreur",
-          description: "Commande introuvable",
+          title: t('receptionFormError'),
+          description: t('receptionFormOrderNotFound'),
           variant: "destructive",
         });
         return;
@@ -628,8 +628,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       // Check if order is already received
       if (selectedOrderData.statut === 'Réceptionné') {
         toast({
-          title: "Commande déjà réceptionnée",
-          description: "Cette commande a déjà été réceptionnée et ne peut pas être traitée à nouveau",
+          title: t('receptionFormAlreadyReceived'),
+          description: t('receptionFormAlreadyReceivedDesc'),
           variant: "destructive",
         });
         return;
@@ -662,7 +662,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       
       if (!validation.isValid) {
         toast({
-          title: "Erreurs de validation",
+          title: t('receptionFormValidationErrors'),
           description: validation.errors.join(', '),
           variant: "destructive",
         });
@@ -701,8 +701,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       
       if (!createdReception) {
         toast({
-          title: "Erreur",
-          description: "Erreur lors de la création de la réception",
+          title: t('receptionFormError'),
+          description: t('receptionFormReceptionError'),
           variant: "destructive",
         });
         return;
@@ -724,15 +724,15 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       resetForm();
       
       toast({
-        title: "Succès",
-        description: `Réception ${isValidated ? 'validée' : 'sauvegardée'} avec succès`,
+        title: t('receptionFormSuccess'),
+        description: isValidated ? t('receptionFormValidated') : t('receptionFormSavedSuccess'),
       });
       
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
       toast({
-        title: "Erreur",
-        description: "Erreur lors de l'enregistrement de la réception",
+        title: t('receptionFormError'),
+        description: t('receptionFormSaveError'),
         variant: "destructive",
       });
     } finally {
@@ -790,15 +790,15 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         resetForm();
         
         toast({
-          title: "Succès",
-          description: `Réception ${isValidated ? 'validée' : 'sauvegardée'} avec succès`,
+          title: t('receptionFormSuccess'),
+          description: isValidated ? t('receptionFormValidated') : t('receptionFormSavedSuccess'),
         });
       }
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
       toast({
-        title: "Erreur",
-        description: "Erreur lors de l'enregistrement de la réception",
+        title: t('receptionFormError'),
+        description: t('receptionFormSaveError'),
         variant: "destructive",
       });
     }
@@ -819,8 +819,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       const selectedOrderData = pendingOrders.find(o => o.id === selectedOrder);
       if (!selectedOrderData) {
         toast({
-          title: "Erreur",
-          description: "Commande sélectionnée introuvable",
+          title: t('receptionFormError'),
+          description: t('receptionFormOrderNotFound'),
           variant: "destructive",
         });
         return;
@@ -857,8 +857,8 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       
       if (!createdReception) {
         toast({
-          title: "Erreur",
-          description: "Erreur lors de la création de la réception",
+          title: t('receptionFormError'),
+          description: t('receptionFormReceptionError'),
           variant: "destructive",
         });
         return;
@@ -880,15 +880,15 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       resetForm();
       
       toast({
-        title: "Succès",
-        description: "Réception validée avec succès",
+        title: t('receptionFormSuccess'),
+        description: t('receptionFormValidated'),
       });
       
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
       toast({
-        title: "Erreur",
-        description: "Erreur lors de l'enregistrement de la réception",
+        title: t('receptionFormError'),
+        description: t('receptionFormSaveError'),
         variant: "destructive",
       });
     } finally {
