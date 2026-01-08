@@ -9,6 +9,7 @@ import { Package, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface QuickSupplyDialogProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface QuickSupplyDialogProps {
 export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupplyDialogProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     fournisseur: '',
@@ -73,8 +75,8 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
       }
 
       toast({
-        title: "Commande créée",
-        description: "La commande de réapprovisionnement a été créée avec succès.",
+        title: t('orderCreated'),
+        description: t('orderCreatedSuccess'),
       });
 
       onOpenChange(false);
@@ -86,8 +88,8 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
     } catch (error) {
       console.error('Erreur lors de la création de la commande:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de créer la commande de réapprovisionnement.",
+        title: t('error'),
+        description: t('orderCreationError'),
         variant: "destructive",
       });
     } finally {
@@ -106,38 +108,38 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Réapprovisionnement Rapide
+            {t('quickResupply')}
           </DialogTitle>
           <DialogDescription>
-            Créez une commande fournisseur simple ou accédez à la page complète
+            {t('createQuickOrder')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="fournisseur">Fournisseur</Label>
+            <Label htmlFor="fournisseur">{t('supplier')}</Label>
             <Select
               value={formData.fournisseur}
               onValueChange={(value) => setFormData({ ...formData, fournisseur: value })}
             >
               <SelectTrigger id="fournisseur">
-                <SelectValue placeholder="Sélectionner un fournisseur" />
+                <SelectValue placeholder={t('dialogSelectSupplier')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="fournisseur-1">Fournisseur A</SelectItem>
-                <SelectItem value="fournisseur-2">Fournisseur B</SelectItem>
+                <SelectItem value="fournisseur-1">{t('supplier')} A</SelectItem>
+                <SelectItem value="fournisseur-2">{t('supplier')} B</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {productId && (
             <div className="space-y-2">
-              <Label htmlFor="quantite">Quantité</Label>
+              <Label htmlFor="quantite">{t('quantity')}</Label>
               <Input
                 id="quantite"
                 type="number"
                 min="1"
-                placeholder="Quantité à commander"
+                placeholder={t('quantityToOrder')}
                 value={formData.quantite}
                 onChange={(e) => setFormData({ ...formData, quantite: e.target.value })}
               />
@@ -145,10 +147,10 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes (optionnel)</Label>
+            <Label htmlFor="notes">{t('notes')} ({t('optional')})</Label>
             <Textarea
               id="notes"
-              placeholder="Notes supplémentaires..."
+              placeholder={t('additionalNotes')}
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={3}
@@ -162,14 +164,14 @@ export const QuickSupplyDialog = ({ open, onOpenChange, productId }: QuickSupply
               disabled={isSubmitting || !formData.fournisseur}
             >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Créer Commande Rapide
+              {t('createQuickOrderBtn')}
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={handleNavigate}
             >
-              Page Complète
+              {t('fullPage')}
             </Button>
           </div>
         </form>

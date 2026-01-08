@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { exportAllAnalytics } from '@/lib/exportUtils';
 import { toast } from 'sonner';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface AnalyticsExportButtonProps {
   dashboardData: {
@@ -28,18 +29,19 @@ const AnalyticsExportButton: React.FC<AnalyticsExportButtonProps> = ({
   disabled = false
 }) => {
   const [isExporting, setIsExporting] = useState(false);
+  const { t } = useLanguage();
 
   const handleExport = async (format: 'xlsx' | 'pdf') => {
     setIsExporting(true);
     try {
       await exportAllAnalytics(dashboardData, format, dateFilter);
-      toast.success(`Export ${format.toUpperCase()} réussi`, {
-        description: 'Le fichier a été téléchargé avec succès'
+      toast.success(`${t('export')} ${format.toUpperCase()} ${t('success').toLowerCase()}`, {
+        description: t('fileDownloadedSuccess')
       });
     } catch (error) {
       console.error("Erreur lors de l'export:", error);
-      toast.error("Erreur lors de l'export", {
-        description: "Une erreur est survenue lors de l'exportation des données."
+      toast.error(t('exportError'), {
+        description: t('exportErrorDescription')
       });
     } finally {
       setIsExporting(false);
@@ -58,22 +60,22 @@ const AnalyticsExportButton: React.FC<AnalyticsExportButtonProps> = ({
           {isExporting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Export en cours...
+              {t('exportInProgress')}
             </>
           ) : (
             <>
               <Download className="h-4 w-4" />
-              Exporter Analytics
+              {t('exportAnalytics')}
             </>
           )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => handleExport('xlsx')}>
-          Format Excel (XLSX)
+          {t('formatExcel')}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleExport('pdf')}>
-          Format PDF
+          {t('formatPdf')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { FileBarChart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface QuickInventoryDialogProps {
   open: boolean;
@@ -11,6 +12,7 @@ interface QuickInventoryDialogProps {
 
 export const QuickInventoryDialog = ({ open, onOpenChange }: QuickInventoryDialogProps) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const handleNavigate = () => {
     onOpenChange(false);
@@ -23,16 +25,16 @@ export const QuickInventoryDialog = ({ open, onOpenChange }: QuickInventoryDialo
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileBarChart className="h-5 w-5" />
-            Lancer Inventaire
+            {t('stockInventory')}
           </DialogTitle>
           <DialogDescription>
-            Créez une nouvelle session d'inventaire rapidement
+            {t('createInventorySession')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={(e) => { e.preventDefault(); handleNavigate(); }} className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Accédez à la page d'inventaires pour créer et gérer vos sessions d'inventaire avec tous les détails nécessaires.
+            {t('accessInventoryPage')}
           </p>
 
           <div className="flex gap-2">
@@ -40,14 +42,14 @@ export const QuickInventoryDialog = ({ open, onOpenChange }: QuickInventoryDialo
               type="submit"
               className="flex-1"
             >
-              Aller à la page Inventaires
+              {t('goToInventoryPage')}
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              Annuler
+              {t('stockCancel')}
             </Button>
           </div>
         </form>
