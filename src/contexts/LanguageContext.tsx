@@ -1741,6 +1741,26 @@ const translations: AllTranslations = {
     orderListOrderDeleteError: "Impossible de supprimer la commande",
     orderListOrderDownloaded: "Commande {number} téléchargée",
     orderListPDFError: "Impossible de générer le PDF",
+    orderListSuccess: "Succès",
+    orderListError: "Erreur",
+    orderListCannotUpdateStatus: "Impossible de mettre à jour le statut",
+    orderListDeleteSuccess: "Commande supprimée avec succès",
+    orderListCannotDelete: "Impossible de supprimer la commande",
+    orderListDownloadSuccess: "Commande {orderNumber} téléchargée",
+    orderListCannotGeneratePDF: "Impossible de générer le PDF",
+    orderListDeleteConfirmation: "Êtes-vous sûr de vouloir supprimer la commande",
+    orderListOrderDetailsDescription: "Informations complètes de la commande",
+    orderListArticlesCount: "Nombre d'articles",
+    orderListNoOrderLines: "Aucune ligne de commande trouvée",
+    orderListProduct: "Produit",
+    orderListStatusDraft: "Brouillon",
+    orderListStatusInProgress: "En cours",
+    orderListStatusConfirmed: "Confirmé",
+    orderListStatusShipped: "Expédié",
+    orderListStatusInTransit: "En transit",
+    orderListStatusDelivered: "Livré",
+    orderListStatusReceived: "Réceptionné",
+    orderListStatusCancelled: "Annulé",
     // ReceptionForm translations
     receptionFormTitle: "Réception de Marchandises",
     receptionFormDescription: "Enregistrer la réception d'une commande fournisseur",
@@ -3541,6 +3561,26 @@ const translations: AllTranslations = {
     orderListOrderDeleteError: "Unable to delete order",
     orderListOrderDownloaded: "Order {number} downloaded",
     orderListPDFError: "Unable to generate PDF",
+    orderListSuccess: "Success",
+    orderListError: "Error",
+    orderListCannotUpdateStatus: "Unable to update status",
+    orderListDeleteSuccess: "Order deleted successfully",
+    orderListCannotDelete: "Unable to delete order",
+    orderListDownloadSuccess: "Order {orderNumber} downloaded",
+    orderListCannotGeneratePDF: "Unable to generate PDF",
+    orderListDeleteConfirmation: "Are you sure you want to delete order",
+    orderListOrderDetailsDescription: "Complete order information",
+    orderListArticlesCount: "Number of items",
+    orderListNoOrderLines: "No order lines found",
+    orderListProduct: "Product",
+    orderListStatusDraft: "Draft",
+    orderListStatusInProgress: "In progress",
+    orderListStatusConfirmed: "Confirmed",
+    orderListStatusShipped: "Shipped",
+    orderListStatusInTransit: "In transit",
+    orderListStatusDelivered: "Delivered",
+    orderListStatusReceived: "Received",
+    orderListStatusCancelled: "Cancelled",
     // ReceptionForm translations
     receptionFormTitle: "Goods Reception",
     receptionFormDescription: "Record the reception of a supplier order",
@@ -5358,6 +5398,26 @@ const translations: AllTranslations = {
     orderListOrderDeleteError: "No se puede eliminar el pedido",
     orderListOrderDownloaded: "Pedido {number} descargado",
     orderListPDFError: "No se puede generar el PDF",
+    orderListSuccess: "Éxito",
+    orderListError: "Error",
+    orderListCannotUpdateStatus: "No se puede actualizar el estado",
+    orderListDeleteSuccess: "Pedido eliminado exitosamente",
+    orderListCannotDelete: "No se puede eliminar el pedido",
+    orderListDownloadSuccess: "Pedido {orderNumber} descargado",
+    orderListCannotGeneratePDF: "No se puede generar el PDF",
+    orderListDeleteConfirmation: "¿Está seguro de eliminar el pedido",
+    orderListOrderDetailsDescription: "Información completa del pedido",
+    orderListArticlesCount: "Número de artículos",
+    orderListNoOrderLines: "No se encontraron líneas de pedido",
+    orderListProduct: "Producto",
+    orderListStatusDraft: "Borrador",
+    orderListStatusInProgress: "En curso",
+    orderListStatusConfirmed: "Confirmado",
+    orderListStatusShipped: "Enviado",
+    orderListStatusInTransit: "En tránsito",
+    orderListStatusDelivered: "Entregado",
+    orderListStatusReceived: "Recibido",
+    orderListStatusCancelled: "Cancelado",
     // ReceptionForm translations
     receptionFormTitle: "Recepción de Mercancías",
     receptionFormDescription: "Registrar la recepción de un pedido a proveedor",
@@ -7175,6 +7235,26 @@ const translations: AllTranslations = {
     orderListOrderDeleteError: "Ekoki te kolongola commande",
     orderListOrderDownloaded: "Commande {number} etelechargi",
     orderListPDFError: "Ekoki te kosala PDF",
+    orderListSuccess: "Malamu",
+    orderListError: "Erreur",
+    orderListCannotUpdateStatus: "Ekoki te kobongisa statut",
+    orderListDeleteSuccess: "Commande elongwe malamu",
+    orderListCannotDelete: "Ekoki te kolongola commande",
+    orderListDownloadSuccess: "Commande {orderNumber} etelechargi",
+    orderListCannotGeneratePDF: "Ekoki te kosala PDF",
+    orderListDeleteConfirmation: "Ondimi kolongola commande",
+    orderListOrderDetailsDescription: "Makambo mobimba ya commande",
+    orderListArticlesCount: "Motango ya biloko",
+    orderListNoOrderLines: "Ligne moko te emonani",
+    orderListProduct: "Eloko",
+    orderListStatusDraft: "Brouillon",
+    orderListStatusInProgress: "Ezali kosalema",
+    orderListStatusConfirmed: "Endimami",
+    orderListStatusShipped: "Etindami",
+    orderListStatusInTransit: "Ezali nzela",
+    orderListStatusDelivered: "Ekomi",
+    orderListStatusReceived: "Eyambami",
+    orderListStatusCancelled: "Eboyami",
     // ReceptionForm translations
     receptionFormTitle: "Koyamba Biloko",
     receptionFormDescription: "Kokomisa koyamba ya commande fournisseur",
@@ -7278,7 +7358,7 @@ type LanguageContextType = {
   currentLanguage: Language;
   changeLanguage: (lang: Language) => void;
   languages: Language[];
-  t: (key: string) => string; // Translation function
+  t: (key: string, params?: Record<string, string | number>) => string; // Translation function with interpolation support
 };
 
 const defaultLanguages: Language[] = [
@@ -7312,10 +7392,19 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const [currentLanguage, setCurrentLanguage] = useState<Language>(getStoredLanguage);
 
-  // Translation function
-  const t = (key: string): string => {
+  // Translation function with interpolation support
+  const t = (key: string, params?: Record<string, string | number>): string => {
     const langTranslations = translations[currentLanguage.code];
-    return langTranslations && langTranslations[key] ? langTranslations[key] : key;
+    let translation = langTranslations && langTranslations[key] ? langTranslations[key] : key;
+    
+    // Replace placeholders like {param} with their values
+    if (params) {
+      Object.entries(params).forEach(([paramKey, paramValue]) => {
+        translation = translation.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(paramValue));
+      });
+    }
+    
+    return translation;
   };
 
   // Function to change the language
