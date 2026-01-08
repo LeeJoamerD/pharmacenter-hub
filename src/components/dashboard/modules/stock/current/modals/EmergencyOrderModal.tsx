@@ -12,6 +12,7 @@ import { Loader2, AlertTriangle, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getStockThreshold } from "@/lib/utils";
 import { LowStockItem } from "@/hooks/useLowStockData";
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface EmergencyOrderModalProps {
   open: boolean;
@@ -25,6 +26,7 @@ interface Supplier {
 }
 
 export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: EmergencyOrderModalProps) {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const { settings } = useAlertSettings();
   const [loading, setLoading] = useState(false);
@@ -66,8 +68,8 @@ export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: Emerg
   const handleCreateEmergencyOrder = async () => {
     if (!selectedSupplier) {
       toast({
-        title: "Fournisseur requis",
-        description: "Veuillez sélectionner un fournisseur",
+        title: t('modalSupplierRequired'),
+        description: t('pleaseSelectSupplier'),
         variant: "destructive"
       });
       return;
@@ -76,7 +78,7 @@ export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: Emerg
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Non authentifié");
+      if (!user) throw new Error(t('notAuthenticated'));
 
       const { data: personnel } = await supabase
         .from("personnel")
@@ -84,7 +86,7 @@ export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: Emerg
         .eq("auth_user_id", user.id)
         .single();
 
-      if (!personnel) throw new Error("Personnel non trouvé");
+      if (!personnel) throw new Error(t('personnelNotFound'));
 
       // Créer la commande fournisseur
       const { data: commande, error: commandeError } = await supabase
@@ -138,14 +140,14 @@ export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: Emerg
       await Promise.all(logPromises);
 
       toast({
-        title: "Commande urgente créée",
-        description: `Commande de ${criticalItems.length} produits critiques envoyée au fournisseur`
+        title: t('emergencyOrderCreated'),
+        description: t('emergencyOrderDescription').replace('{count}', String(criticalItems.length))
       });
 
       onOpenChange(false);
     } catch (error: any) {
       toast({
-        title: "Erreur",
+        title: t('error'),
         description: error.message,
         variant: "destructive"
       });
@@ -164,10 +166,10 @@ export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: Emerg
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            Commande Urgente Globale
+            {t('globalEmergencyOrder')}
           </DialogTitle>
           <DialogDescription>
-            Créer une commande d'urgence pour les produits en stock critique
+            {t('createEmergencyOrderFor')}
           </DialogDescription>
         </DialogHeader>
 
@@ -177,20 +179,20 @@ export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: Emerg
               <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
               <div className="space-y-1">
                 <p className="font-medium text-destructive">
-                  {criticalItems.length} produits en stock critique
+                  {criticalItems.length} {t('criticalStockProducts')}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Quantité totale estimée à commander: {totalEstimated} unités
+                  {t('estimatedQuantityToOrder')} {totalEstimated} {t('unitsToOrder')}
                 </p>
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="supplier">Fournisseur *</Label>
+            <Label htmlFor="supplier">{t('selectSupplierRequired')}</Label>
             <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
               <SelectTrigger id="supplier">
-                <SelectValue placeholder="Sélectionner un fournisseur" />
+                <SelectValue placeholder={t('dialogSelectSupplier')} />
               </SelectTrigger>
               <SelectContent>
                 {suppliers.map((supplier) => (
@@ -203,7 +205,7 @@ export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: Emerg
           </div>
 
           <div className="space-y-2">
-            <Label>Produits concernés</Label>
+            <Label>{t('affectedProducts')}</Label>
             <ScrollArea className="h-[200px] border rounded-lg">
               <div className="p-4 space-y-2">
                 {criticalItems.map((item) => (
@@ -214,10 +216,10 @@ export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: Emerg
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge variant="destructive">
-                        Stock: {item.quantiteActuelle}
+                        {t('stock')}: {item.quantiteActuelle}
                       </Badge>
                       <span className="text-sm text-muted-foreground">
-                        → {item.seuilMinimum * 2} unités
+                        → {item.seuilMinimum * 2} {t('unitsToOrder')}
                       </span>
                     </div>
                   </div>
@@ -227,10 +229,10 @@ export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: Emerg
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes (optionnel)</Label>
+            <Label htmlFor="notes">{t('optionalNotes')}</Label>
             <Textarea
               id="notes"
-              placeholder="Ajouter des instructions spéciales..."
+              placeholder={t('addSpecialInstructions')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
@@ -240,11 +242,11 @@ export function EmergencyOrderModal({ open, onOpenChange, criticalItems }: Emerg
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Annuler
+            {t('cancel')}
           </Button>
           <Button onClick={handleCreateEmergencyOrder} disabled={loading} variant="destructive">
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Créer la commande urgente
+            {t('createEmergencyOrder')}
           </Button>
         </DialogFooter>
       </DialogContent>

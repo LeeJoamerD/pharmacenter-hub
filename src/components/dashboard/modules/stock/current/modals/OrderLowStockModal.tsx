@@ -11,6 +11,7 @@ import { Loader2, ShoppingCart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { getStockThreshold } from '@/lib/utils';
 import type { CurrentStockItem } from '@/hooks/useCurrentStockDirect';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface OrderLowStockModalProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface OrderLowStockModalProps {
 }
 
 export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStockModalProps) => {
+  const { t } = useLanguage();
   const { suppliers, loading: loadingSuppliers } = useSuppliers();
   const { createOrder } = useSupplierOrders();
   const { settings } = useAlertSettings();
@@ -37,8 +39,8 @@ export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStoc
     
     if (!selectedSupplierId) {
       toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner un fournisseur",
+        title: t('error'),
+        description: t('pleaseSelectSupplier'),
         variant: "destructive",
       });
       return;
@@ -46,8 +48,8 @@ export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStoc
 
     if (quantity <= 0) {
       toast({
-        title: "Erreur",
-        description: "La quantité doit être supérieure à 0",
+        title: t('error'),
+        description: t('quantityMustBeGreaterThanZero'),
         variant: "destructive",
       });
       return;
@@ -67,8 +69,8 @@ export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStoc
       });
 
       toast({
-        title: "Commande créée",
-        description: `Commande de ${quantity} ${product.libelle_produit} créée avec succès`,
+        title: t('modalOrderCreated'),
+        description: t('modalOrderCreatedDescription').replace('{quantity}', String(quantity)).replace('{product}', product.libelle_produit),
       });
       
       onOpenChange(false);
@@ -87,10 +89,10 @@ export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStoc
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
-            Commander un produit
+            {t('orderProduct')}
           </DialogTitle>
           <DialogDescription>
-            Créer une commande rapide pour {product.libelle_produit}
+            {t('createQuickOrderFor')} {product.libelle_produit}
           </DialogDescription>
         </DialogHeader>
 
@@ -98,33 +100,33 @@ export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStoc
           {/* Info produit */}
           <div className="bg-muted p-4 rounded-lg space-y-2">
             <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Produit:</span>
+              <span className="text-sm text-muted-foreground">{t('productLabel')}</span>
               <span className="text-sm font-medium">{product.libelle_produit}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Stock actuel:</span>
+              <span className="text-sm text-muted-foreground">{t('currentStockLabel')}</span>
               <span className="text-sm font-medium">{product.stock_actuel}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Stock faible:</span>
+              <span className="text-sm text-muted-foreground">{t('lowStockLabel')}</span>
               <span className="text-sm font-medium">{product.stock_faible}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Quantité suggérée:</span>
+              <span className="text-sm text-muted-foreground">{t('suggestedQuantityLabel')}</span>
               <span className="text-sm font-medium text-primary">{suggestedQuantity}</span>
             </div>
           </div>
 
           {/* Sélection fournisseur */}
           <div className="space-y-2">
-            <Label htmlFor="supplier">Fournisseur *</Label>
+            <Label htmlFor="supplier">{t('selectSupplierRequired')}</Label>
             <Select
               value={selectedSupplierId}
               onValueChange={setSelectedSupplierId}
               disabled={loadingSuppliers}
             >
               <SelectTrigger id="supplier">
-                <SelectValue placeholder="Sélectionner un fournisseur" />
+                <SelectValue placeholder={t('dialogSelectSupplier')} />
               </SelectTrigger>
               <SelectContent>
                 {suppliers.map((supplier) => (
@@ -136,21 +138,21 @@ export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStoc
             </Select>
             {suppliers.length === 0 && !loadingSuppliers && (
               <p className="text-sm text-muted-foreground">
-                Aucun fournisseur disponible. Veuillez en créer un dans la section Approvisionnement.
+                {t('noSupplierAvailable')}
               </p>
             )}
           </div>
 
           {/* Quantité */}
           <div className="space-y-2">
-            <Label htmlFor="quantity">Quantité à commander *</Label>
+            <Label htmlFor="quantity">{t('modalQuantityToOrder')}</Label>
             <Input
               id="quantity"
               type="number"
               min="1"
               value={quantity}
               onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-              placeholder="Quantité"
+              placeholder={t('quantity')}
             />
             <div className="flex gap-2">
               <Button
@@ -159,7 +161,7 @@ export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStoc
                 size="sm"
                 onClick={() => setQuantity(suggestedQuantity)}
               >
-                Quantité suggérée ({suggestedQuantity})
+                {t('suggestedQuantityBtn')} ({suggestedQuantity})
               </Button>
               <Button
                 type="button"
@@ -167,7 +169,7 @@ export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStoc
                 size="sm"
                 onClick={() => setQuantity(product.stock_faible * 2)}
               >
-                Stock optimal ({product.stock_faible * 2})
+                {t('optimalStock')} ({product.stock_faible * 2})
               </Button>
             </div>
           </div>
@@ -176,11 +178,11 @@ export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStoc
           {product.prix_achat && (
             <div className="bg-primary/10 p-4 rounded-lg space-y-1">
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Prix unitaire:</span>
+                <span className="text-sm text-muted-foreground">{t('unitPrice')}</span>
                 <span className="text-sm font-medium">{product.prix_achat.toLocaleString()} FCFA</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm font-semibold">Total estimé:</span>
+                <span className="text-sm font-semibold">{t('estimatedTotal')}</span>
                 <span className="text-sm font-bold text-primary">{totalEstimated.toLocaleString()} FCFA</span>
               </div>
             </div>
@@ -194,16 +196,16 @@ export const OrderLowStockModal = ({ open, onOpenChange, product }: OrderLowStoc
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
-              Annuler
+              {t('cancel')}
             </Button>
             <Button type="submit" disabled={isSubmitting || !selectedSupplierId}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Création...
+                  {t('creatingOrder')}
                 </>
               ) : (
-                'Créer la commande'
+                t('createOrder')
               )}
             </Button>
           </div>

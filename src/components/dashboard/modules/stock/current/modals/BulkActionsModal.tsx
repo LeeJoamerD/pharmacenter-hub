@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CurrentStockItem } from '@/hooks/useCurrentStockDirect';
 import { Package, TrendingUp, TrendingDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface BulkActionsModalProps {
   open: boolean;
@@ -28,6 +29,7 @@ export const BulkActionsModal = ({
   selectedProducts,
   onActionComplete
 }: BulkActionsModalProps) => {
+  const { t } = useLanguage();
   const [adjustmentQuantity, setAdjustmentQuantity] = useState<number>(0);
   const [adjustmentType, setAdjustmentType] = useState<'increase' | 'decrease'>('increase');
   const { toast } = useToast();
@@ -41,7 +43,7 @@ export const BulkActionsModal = ({
       const { getCurrentTenantId } = await import('@/utils/tenantValidation');
       
       const tenantId = await getCurrentTenantId();
-      if (!tenantId) throw new Error('Utilisateur non autorisé');
+      if (!tenantId) throw new Error(t('userNotAuthorized'));
 
       // Get current user as agent
       const { data: userData } = await supabase.auth.getUser();
@@ -77,7 +79,7 @@ export const BulkActionsModal = ({
           lot_id: lot.id,
           quantite: adjustmentQuantity,
           type_mouvement: 'ajustement',
-          motif: `Ajustement groupé: ${adjustmentType === 'increase' ? 'Augmentation' : 'Diminution'} de ${adjustmentQuantity} unités`,
+          motif: `${t('bulkAdjustment')}: ${adjustmentType === 'increase' ? t('increase') : t('decrease')} ${adjustmentQuantity} ${t('unitsToOrder')}`,
           agent_id: personnel?.id,
           metadata: {
             bulk_action: true,
@@ -97,11 +99,11 @@ export const BulkActionsModal = ({
           .eq('id', lot.id);
       }
       
-      const action = adjustmentType === 'increase' ? 'augmenté' : 'diminué';
+      const action = adjustmentType === 'increase' ? t('increased') : t('decreased');
       
       toast({
-        title: "Ajustement groupé effectué",
-        description: `Le stock de ${selectedProducts.length} produit(s) a été ${action} de ${adjustmentQuantity} unité(s).`,
+        title: t('bulkAdjustmentCompleted'),
+        description: t('bulkAdjustmentDescription').replace('{count}', String(selectedProducts.length)).replace('{action}', action).replace('{quantity}', String(adjustmentQuantity)),
       });
       
       onActionComplete();
@@ -109,8 +111,8 @@ export const BulkActionsModal = ({
     } catch (error: any) {
       console.error('Bulk adjustment error:', error);
       toast({
-        title: "Erreur",
-        description: error.message || "Une erreur est survenue lors de l'ajustement groupé.",
+        title: t('error'),
+        description: error.message || t('bulkAdjustmentError'),
         variant: "destructive",
       });
     } finally {
@@ -130,25 +132,25 @@ export const BulkActionsModal = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Actions Groupées - {selectedProducts.length} produit(s) sélectionné(s)
+            {t('bulkActions')} - {selectedProducts.length} {t('productsSelected')}
           </DialogTitle>
           <DialogDescription>
-            Effectuez des actions sur plusieurs produits simultanément
+            {t('bulkActionsDescription')}
           </DialogDescription>
         </DialogHeader>
 
         {/* Résumé de la sélection */}
         <div className="grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
           <div>
-            <div className="text-sm text-muted-foreground">Total produits</div>
+            <div className="text-sm text-muted-foreground">{t('totalProductsLabel')}</div>
             <div className="text-2xl font-bold">{selectedProducts.length}</div>
           </div>
           <div>
-            <div className="text-sm text-muted-foreground">Valorisation totale</div>
+            <div className="text-sm text-muted-foreground">{t('totalValuation')}</div>
             <div className="text-2xl font-bold">{totalValue.toLocaleString()} FCFA</div>
           </div>
           <div>
-            <div className="text-sm text-muted-foreground">Alertes</div>
+            <div className="text-sm text-muted-foreground">{t('alerts')}</div>
             <div className="text-2xl font-bold text-destructive">
               {criticalCount + lowCount}
             </div>
@@ -157,8 +159,8 @@ export const BulkActionsModal = ({
 
         <Tabs defaultValue="adjust" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="adjust">Ajuster Stock</TabsTrigger>
-            <TabsTrigger value="details">Voir Détails</TabsTrigger>
+            <TabsTrigger value="adjust">{t('bulkAdjustStock')}</TabsTrigger>
+            <TabsTrigger value="details">{t('bulkViewDetails')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="adjust" className="space-y-4">
@@ -170,7 +172,7 @@ export const BulkActionsModal = ({
                   className="flex-1"
                 >
                   <TrendingUp className="h-4 w-4 mr-2" />
-                  Augmenter
+                  {t('increase')}
                 </Button>
                 <Button
                   variant={adjustmentType === 'decrease' ? 'default' : 'outline'}
@@ -178,21 +180,21 @@ export const BulkActionsModal = ({
                   className="flex-1"
                 >
                   <TrendingDown className="h-4 w-4 mr-2" />
-                  Diminuer
+                  {t('decrease')}
                 </Button>
               </div>
 
               <div className="space-y-2">
-                <Label>Quantité d'ajustement</Label>
+                <Label>{t('adjustmentQuantity')}</Label>
                 <Input
                   type="number"
                   min="0"
                   value={adjustmentQuantity}
                   onChange={(e) => setAdjustmentQuantity(Number(e.target.value))}
-                  placeholder="Entrez la quantité"
+                  placeholder={t('enterQuantity')}
                 />
                 <p className="text-sm text-muted-foreground">
-                  Cette quantité sera {adjustmentType === 'increase' ? 'ajoutée à' : 'retirée de'} chaque produit sélectionné
+                  {t('quantityWillBe')} {adjustmentType === 'increase' ? t('addedTo') : t('removedFrom')} {t('eachSelectedProduct')}
                 </p>
               </div>
 
@@ -201,7 +203,7 @@ export const BulkActionsModal = ({
                 className="w-full"
                 disabled={adjustmentQuantity === 0 || isSubmitting}
               >
-                {isSubmitting ? 'Traitement...' : 'Appliquer l\'ajustement'}
+                {isSubmitting ? t('processing') : t('applyAdjustment')}
               </Button>
             </div>
           </TabsContent>
@@ -216,11 +218,11 @@ export const BulkActionsModal = ({
                   <div className="flex-1">
                     <div className="font-medium">{product.libelle_produit}</div>
                     <div className="text-sm text-muted-foreground">
-                      Code: {product.code_cip}
+                      {t('code')}: {product.code_cip}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold">Stock: {product.stock_actuel}</div>
+                    <div className="font-semibold">{t('stock')}: {product.stock_actuel}</div>
                     <div className="text-sm text-muted-foreground">
                       {product.valeur_stock.toLocaleString()} FCFA
                     </div>
