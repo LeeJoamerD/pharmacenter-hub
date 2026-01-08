@@ -14,8 +14,10 @@ import { useSecuritySettings, type PasswordPolicy, type TenantSecurityConfig } f
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const SecuritySettings = () => {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const { pharmacy } = useAuth();
   const { settings, loading, saving, savePasswordPolicy, saveSecurityConfig, resolveAlert } = useSecuritySettings();

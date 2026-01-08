@@ -17,8 +17,10 @@ import {
   type Role,
   type Permission
 } from '@/hooks/useRolesPermissions';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export const RolePermissionManager: React.FC = () => {
+  const { t } = useLanguage();
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
 
   // Charger les données depuis la base
@@ -115,20 +117,20 @@ export const RolePermissionManager: React.FC = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Gestion des Rôles et Permissions</h2>
+            <h2 className="text-2xl font-bold tracking-tight">{t('rolesPermissionsManagement')}</h2>
             <p className="text-muted-foreground">
-              Configurez les permissions pour chaque rôle de votre équipe
+              {t('configureRolePermissions')}
             </p>
           </div>
         </div>
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Erreur lors du chargement des données. 
-            {rolesError && ` Rôles: ${rolesError.message}`}
-            {permissionsError && ` Permissions: ${permissionsError.message}`}
-            {!roles?.length && !rolesError && " Aucun rôle n'est défini dans le système."}
-            {!permissions?.length && !permissionsError && " Aucune permission n'est définie dans le système."}
+            {t('loadingRolesError')}
+            {rolesError && ` ${t('roles')}: ${rolesError.message}`}
+            {permissionsError && ` ${t('permissions')}: ${permissionsError.message}`}
+            {!roles?.length && !rolesError && ` ${t('noRolesDefined')}`}
+            {!permissions?.length && !permissionsError && ` ${t('noPermissionsDefined')}`}
           </AlertDescription>
         </Alert>
       </div>
@@ -141,9 +143,9 @@ export const RolePermissionManager: React.FC = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Gestion des Rôles et Permissions</h2>
+            <h2 className="text-2xl font-bold tracking-tight">{t('rolesPermissionsManagement')}</h2>
             <p className="text-muted-foreground">
-              Configurez les permissions pour chaque rôle de votre équipe
+              {t('configureRolePermissions')}
             </p>
           </div>
         </div>
@@ -151,7 +153,7 @@ export const RolePermissionManager: React.FC = () => {
           <div className="col-span-4">
             <Card>
               <CardHeader>
-                <CardTitle>Chargement des rôles...</CardTitle>
+                <CardTitle>{t('loadingRoles')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {[...Array(3)].map((_, i) => (
@@ -163,7 +165,7 @@ export const RolePermissionManager: React.FC = () => {
           <div className="col-span-8">
             <Card>
               <CardHeader>
-                <CardTitle>Chargement des permissions...</CardTitle>
+                <CardTitle>{t('loadingPermissions')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {[...Array(3)].map((_, i) => (
@@ -183,18 +185,18 @@ export const RolePermissionManager: React.FC = () => {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Gestion des Rôles et Permissions</h2>
+            <h2 className="text-2xl font-bold tracking-tight">{t('rolesPermissionsManagement')}</h2>
             <p className="text-muted-foreground">
-              Configurez les permissions pour chaque rôle de votre équipe
+              {t('configureRolePermissions')}
             </p>
           </div>
         </div>
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            {!roles?.length && "Aucun rôle disponible. "}
-            {!permissions?.length && "Aucune permission disponible. "}
-            Les données de rôles et permissions doivent être configurées par un administrateur système.
+            {!roles?.length && `${t('noRolesAvailable')} `}
+            {!permissions?.length && `${t('noPermissionsAvailable')} `}
+            {t('rolesPermissionsAdminConfig')}
           </AlertDescription>
         </Alert>
       </div>
@@ -207,9 +209,9 @@ export const RolePermissionManager: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Gestion des Rôles et Permissions</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{t('rolesPermissionsManagement')}</h2>
           <p className="text-muted-foreground">
-            Configurez les permissions pour chaque rôle de votre équipe
+            {t('configureRolePermissions')}
           </p>
         </div>
       </div>
@@ -221,7 +223,7 @@ export const RolePermissionManager: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Rôles
+                {t('roles')}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -242,14 +244,14 @@ export const RolePermissionManager: React.FC = () => {
                         )}
                       </div>
                       <Badge variant={role.is_active ? 'default' : 'secondary'}>
-                        {role.is_active ? 'Actif' : 'Inactif'}
+                        {role.is_active ? t('activeRole') : t('inactiveRole')}
                       </Badge>
                     </div>
                   </button>
                 )) : (
                   <div className="p-4 text-center text-muted-foreground">
                     <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Aucun rôle disponible</p>
+                    <p className="text-sm">{t('noRolesAvailable')}</p>
                   </div>
                 )}
               </div>
@@ -265,7 +267,7 @@ export const RolePermissionManager: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <Shield className="h-5 w-5" />
-                    Permissions - {selectedRole?.nom_role}
+                    {t('permissions')} - {selectedRole?.nom_role}
                   </CardTitle>
                   <div className="flex items-center gap-2">
                     <Button
@@ -274,7 +276,7 @@ export const RolePermissionManager: React.FC = () => {
                       onClick={handleCancel}
                       disabled={!hasChanges || updateRolePermissions.isPending}
                     >
-                      Annuler
+                      {t('cancelBtn')}
                     </Button>
                     <Button
                       size="sm"
@@ -284,10 +286,10 @@ export const RolePermissionManager: React.FC = () => {
                       {updateRolePermissions.isPending ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Sauvegarde...
+                          {t('savingInProgress')}
                         </>
                       ) : (
-                        'Sauvegarder'
+                        t('saveBtn')
                       )}
                     </Button>
                   </div>
@@ -346,9 +348,9 @@ export const RolePermissionManager: React.FC = () => {
             <Card>
               <CardContent className="p-12 text-center">
                 <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">Sélectionnez un rôle</h3>
+                <h3 className="text-lg font-medium mb-2">{t('selectRole')}</h3>
                 <p className="text-muted-foreground">
-                  Choisissez un rôle dans la liste pour configurer ses permissions
+                  {t('chooseRoleToConfig')}
                 </p>
               </CardContent>
             </Card>

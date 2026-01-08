@@ -5,34 +5,36 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const AlertesSettings = () => {
+  const { t } = useLanguage();
   const alertTypes = [
     {
       id: 'stock-bas',
-      title: 'Stock bas',
-      description: 'Alerter quand le stock descend sous le seuil critique',
+      title: t('lowStock'),
+      description: t('lowStockDesc'),
       icon: Package,
       enabled: true,
     },
     {
       id: 'peremption',
-      title: 'Péremption proche',
-      description: 'Alerter X jours avant la date de péremption',
+      title: t('nearExpiration'),
+      description: t('nearExpirationDesc'),
       icon: Calendar,
       enabled: true,
     },
     {
       id: 'rupture',
-      title: 'Rupture de stock',
-      description: 'Alerter immédiatement en cas de rupture',
+      title: t('outOfStockAlert'),
+      description: t('outOfStockAlertDesc'),
       icon: AlertTriangle,
       enabled: true,
     },
     {
       id: 'ventes-faibles',
-      title: 'Ventes faibles',
-      description: 'Alerter si les ventes sont inhabituellement basses',
+      title: t('lowSales'),
+      description: t('lowSalesDesc'),
       icon: TrendingDown,
       enabled: false,
     },
@@ -41,22 +43,22 @@ const AlertesSettings = () => {
   const notificationChannels = [
     {
       id: 'email',
-      title: 'Email',
-      description: 'Recevoir les alertes par email',
+      title: t('emailChannel'),
+      description: t('emailChannelDesc'),
       icon: Mail,
       enabled: true,
     },
     {
       id: 'sms',
-      title: 'SMS',
-      description: 'Recevoir les alertes par SMS',
+      title: t('smsChannel'),
+      description: t('smsChannelDesc'),
       icon: Smartphone,
       enabled: false,
     },
     {
       id: 'in-app',
-      title: 'Notification in-app',
-      description: 'Afficher les alertes dans l\'application',
+      title: t('inAppChannel'),
+      description: t('inAppChannelDesc'),
       icon: MessageSquare,
       enabled: true,
     },
@@ -66,14 +68,14 @@ const AlertesSettings = () => {
     <div className="space-y-6">
       <div className="flex items-center gap-2 text-muted-foreground">
         <Bell className="h-5 w-5" />
-        <span>Configurez les alertes et notifications automatiques du système.</span>
+        <span>{t('configureAlertsDesc')}</span>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Types d'alertes</CardTitle>
+          <CardTitle className="text-lg">{t('alertTypes')}</CardTitle>
           <CardDescription>
-            Activez ou désactivez les différents types d'alertes
+            {t('enableDisableAlerts')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -103,9 +105,9 @@ const AlertesSettings = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Canaux de notification</CardTitle>
+          <CardTitle className="text-lg">{t('notificationChannels')}</CardTitle>
           <CardDescription>
-            Choisissez comment recevoir vos alertes
+            {t('chooseAlertChannels')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -135,15 +137,15 @@ const AlertesSettings = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Paramètres des seuils</CardTitle>
+          <CardTitle className="text-lg">{t('thresholdSettings')}</CardTitle>
           <CardDescription>
-            Définissez les seuils pour déclencher les alertes
+            {t('defineThresholds')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="jours-peremption">Jours avant péremption</Label>
+              <Label htmlFor="jours-peremption">{t('daysBeforeExpiration')}</Label>
               <Input 
                 id="jours-peremption" 
                 type="number" 
@@ -151,11 +153,11 @@ const AlertesSettings = () => {
                 min={1}
               />
               <p className="text-xs text-muted-foreground">
-                Nombre de jours avant la date de péremption pour alerter
+                {t('daysBeforeExpirationDesc')}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="seuil-stock">Seuil stock critique (%)</Label>
+              <Label htmlFor="seuil-stock">{t('criticalStockThreshold')}</Label>
               <Input 
                 id="seuil-stock" 
                 type="number" 
@@ -164,7 +166,7 @@ const AlertesSettings = () => {
                 max={100}
               />
               <p className="text-xs text-muted-foreground">
-                Pourcentage du stock optimal pour déclencher l'alerte
+                {t('criticalStockThresholdDesc')}
               </p>
             </div>
           </div>
