@@ -138,8 +138,7 @@ export const useSystemSettings = () => {
         { code: 'fr', name: 'Français', flag: '🇫🇷', native_name: 'Français', region: 'Congo Brazzaville' },
         { code: 'ln', name: 'Lingala', flag: '🇨🇬', native_name: 'Lingála', region: 'Congo Brazzaville' },
         { code: 'en', name: 'English', flag: '🇺🇸', native_name: 'English', region: 'United States' },
-        { code: 'es', name: 'Español', flag: '🇪🇸', native_name: 'Español', region: 'España' },
-        { code: 'de', name: 'Deutsch', flag: '🇩🇪', native_name: 'Deutsch', region: 'Deutschland' }
+        { code: 'es', name: 'Español', flag: '🇪🇸', native_name: 'Español', region: 'España' }
       ];
 
       const systemSettings: SystemSettings = {

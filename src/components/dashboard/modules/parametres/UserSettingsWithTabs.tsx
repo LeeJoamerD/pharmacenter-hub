@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, Shield, Activity, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import UserSettings from './UserSettings';
 import { RolePermissionManager } from './RolePermissionManager';
 import { SecurityDashboard } from './SecurityDashboard';
@@ -17,6 +18,7 @@ import TempLogin from '@/components/TempLogin';
 const UserSettingsWithTabs = () => {
   const { user, loading } = useAuth();
   const { tenantId } = useTenant();
+  const { t } = useLanguage();
 
   // Si pas d'utilisateur connecté, afficher le formulaire de connexion
   if (!loading && !user) {
@@ -26,10 +28,10 @@ const UserSettingsWithTabs = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lock className="h-5 w-5" />
-              Connexion requise
+              {t('loginRequired')}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Vous devez être connecté pour accéder à la gestion des utilisateurs et permissions.
+              {t('loginRequiredDesc')}
             </p>
           </CardHeader>
           <CardContent>
@@ -48,10 +50,10 @@ const UserSettingsWithTabs = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Chargement...
+              {t('loadingWorkspace')}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Initialisation de votre espace de travail...
+              {t('initializingWorkspace')}
             </p>
           </CardHeader>
         </Card>
@@ -65,10 +67,10 @@ const UserSettingsWithTabs = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Gestion des Utilisateurs et Permissions
+            {t('userPermissionsManagement')}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Gérez les utilisateurs de votre pharmacie et configurez leurs permissions de manière dynamique.
+            {t('userPermissionsDesc')}
           </p>
         </CardHeader>
       </Card>
@@ -77,18 +79,18 @@ const UserSettingsWithTabs = () => {
         <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="users" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Utilisateurs
+            {t('usersTab')}
           </TabsTrigger>
           <TabsTrigger value="permissions" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
-            Rôles et Permissions
+            {t('rolesPermissionsTab')}
           </TabsTrigger>
-          <TabsTrigger value="security">Sécurité</TabsTrigger>
-          <TabsTrigger value="surveillance">Surveillance</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="incidents">Incidents</TabsTrigger>
-          <TabsTrigger value="integration">Système Intégré</TabsTrigger>
-          <TabsTrigger value="tests">Tests Sécurité</TabsTrigger>
+          <TabsTrigger value="security">{t('securityTab')}</TabsTrigger>
+          <TabsTrigger value="surveillance">{t('surveillanceTab')}</TabsTrigger>
+          <TabsTrigger value="notifications">{t('notificationsTab')}</TabsTrigger>
+          <TabsTrigger value="incidents">{t('incidentsTab')}</TabsTrigger>
+          <TabsTrigger value="integration">{t('integratedSystemTab')}</TabsTrigger>
+          <TabsTrigger value="tests">{t('securityTestsTab')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-6">
@@ -104,10 +106,10 @@ const UserSettingsWithTabs = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
-                Surveillance des sessions et activité
+                {t('sessionActivityMonitoring')}
               </CardTitle>
               <CardDescription>
-                Surveillez les sessions actives et l'activité de sécurité
+                {t('monitorActiveSessionsDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
