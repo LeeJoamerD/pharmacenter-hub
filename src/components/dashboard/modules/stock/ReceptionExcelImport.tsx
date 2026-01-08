@@ -225,7 +225,11 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         return;
       }
       
-      const mapping = await getMappingBySupplier(selectedSupplierId);
+      // Récupérer le nom du fournisseur pour la recherche par nom partagé
+      const supplier = suppliers.find(s => s.id === selectedSupplierId);
+      const supplierName = supplier?.nom || '';
+      
+      const mapping = await getMappingBySupplier(selectedSupplierId, supplierName);
       if (mapping) {
         setCurrentMapping(mapping.mapping_config);
         setHasMappingConfig(true);
@@ -236,7 +240,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     };
     
     loadMapping();
-  }, [selectedSupplierId, getMappingBySupplier, mappings]);
+  }, [selectedSupplierId, getMappingBySupplier, mappings, suppliers]);
 
   // Fonction pour lancer le robot Site Fournisseur
   const handleLaunchSupplierRobot = async () => {
