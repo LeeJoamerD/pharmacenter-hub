@@ -56,7 +56,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Noms <span className="text-destructive">*</span>
+                        {t('lastName')} <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input 
@@ -75,7 +75,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Prénoms <span className="text-destructive">*</span>
+                        {t('firstName')} <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input placeholder="Prénoms" {...field} />
@@ -93,26 +93,26 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Fonction <span className="text-destructive">*</span>
+                        {t('function')} <span className="text-destructive">*</span>
                       </FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || ''}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner une fonction" />
+                            <SelectValue placeholder={t('selectFunction')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="Pharmacien Titulaire">Pharmacien Titulaire</SelectItem>
-                          <SelectItem value="Pharmacien Adjoint">Pharmacien Adjoint</SelectItem>
-                          <SelectItem value="Préparateur">Préparateur</SelectItem>
-                          <SelectItem value="Technicien">Technicien</SelectItem>
-                          <SelectItem value="Caissier">Caissier</SelectItem>
-                          <SelectItem value="Vendeur">Vendeur</SelectItem>
-                          <SelectItem value="Gestionnaire de stock">Gestionnaire de stock</SelectItem>
-                          <SelectItem value="Comptable">Comptable</SelectItem>
-                          <SelectItem value="Secrétaire">Secrétaire</SelectItem>
-                          <SelectItem value="Livreur">Livreur</SelectItem>
-                          <SelectItem value="Stagiaire">Stagiaire</SelectItem>
+                          <SelectItem value="Pharmacien Titulaire">{t('pharmacistOwner')}</SelectItem>
+                          <SelectItem value="Pharmacien Adjoint">{t('assistantPharmacist')}</SelectItem>
+                          <SelectItem value="Préparateur">{t('preparer')}</SelectItem>
+                          <SelectItem value="Technicien">{t('technician')}</SelectItem>
+                          <SelectItem value="Caissier">{t('cashier')}</SelectItem>
+                          <SelectItem value="Vendeur">{t('seller')}</SelectItem>
+                          <SelectItem value="Gestionnaire de stock">{t('stockManager')}</SelectItem>
+                          <SelectItem value="Comptable">{t('accountant')}</SelectItem>
+                          <SelectItem value="Secrétaire">{t('secretary')}</SelectItem>
+                          <SelectItem value="Livreur">{t('deliveryPerson')}</SelectItem>
+                          <SelectItem value="Stagiaire">{t('intern')}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -124,7 +124,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   name="profession"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Profession (optionnel)</FormLabel>
+                      <FormLabel>{t('profession')}</FormLabel>
                       <FormControl>
                         <Input placeholder="Profession" {...field} />
                       </FormControl>
@@ -139,7 +139,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                 name="adresse"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Adresse (optionnel)</FormLabel>
+                    <FormLabel>{t('addressOptional')}</FormLabel>
                     <FormControl>
                       <Textarea 
                         placeholder="Adresse complète"
@@ -159,7 +159,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Téléphone d'appel <span className="text-destructive">*</span>
+                        {t('phone')} <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input placeholder="+237 6XX XXX XXX ou 6XX XXX XXX" {...field} />
@@ -176,7 +176,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   name="telephone_whatsapp"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>WhatsApp (optionnel)</FormLabel>
+                      <FormLabel>{t('whatsapp')}</FormLabel>
                       <FormControl>
                         <Input placeholder="+237 6XX XXX XXX ou 6XX XXX XXX" {...field} />
                       </FormControl>
@@ -193,7 +193,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Email <span className="text-destructive">*</span>
+                        {t('email')} <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input placeholder="email@exemple.com" type="email" {...field} />
@@ -208,7 +208,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        NIU/CNI <span className="text-destructive">*</span>
+                        {t('nationalId')} <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input placeholder="Numéro d'identification unique" {...field} />
@@ -226,7 +226,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>
-                        Date de naissance <span className="text-destructive">*</span>
+                        {t('birthDate')} <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input
@@ -247,7 +247,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>
-                        Date de recrutement <span className="text-destructive">*</span>
+                        {t('hireDate')} <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input
@@ -270,19 +270,19 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Situation familiale <span className="text-destructive">*</span>
+                        {t('familyStatus')} <span className="text-destructive">*</span>
                       </FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || ''}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner la situation" />
+                            <SelectValue placeholder={t('selectFamilyStatus')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="Célibataire">Célibataire</SelectItem>
-                          <SelectItem value="Marié(e)">Marié(e)</SelectItem>
-                          <SelectItem value="Divorcé(e)">Divorcé(e)</SelectItem>
-                          <SelectItem value="Veuf(ve)">Veuf(ve)</SelectItem>
+                          <SelectItem value="Célibataire">{t('single')}</SelectItem>
+                          <SelectItem value="Marié(e)">{t('married')}</SelectItem>
+                          <SelectItem value="Divorcé(e)">{t('divorced')}</SelectItem>
+                          <SelectItem value="Veuf(ve)">{t('widowed')}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -294,7 +294,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   name="nombre_enfants"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nombre d'enfants</FormLabel>
+                      <FormLabel>{t('childrenCount')}</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
@@ -317,19 +317,19 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Statut contractuel <span className="text-destructive">*</span>
+                        {t('contractStatus')} <span className="text-destructive">*</span>
                       </FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || ''}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner le statut" />
+                            <SelectValue placeholder={t('selectContractStatus')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="CDI">CDI</SelectItem>
-                          <SelectItem value="CDD">CDD</SelectItem>
-                          <SelectItem value="Stage">Stage</SelectItem>
-                          <SelectItem value="Freelance">Freelance</SelectItem>
+                          <SelectItem value="CDI">{t('cdi')}</SelectItem>
+                          <SelectItem value="CDD">{t('cdd')}</SelectItem>
+                          <SelectItem value="Stage">{t('internship')}</SelectItem>
+                          <SelectItem value="Freelance">{t('freelance')}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -341,7 +341,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   name="numero_cnss"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Numéro CNSS (optionnel)</FormLabel>
+                      <FormLabel>{t('socialSecurityNumber')}</FormLabel>
                       <FormControl>
                         <Input placeholder="Numéro CNSS" {...field} />
                       </FormControl>
@@ -357,7 +357,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                   name="salaire_base"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Salaire de base (optionnel)</FormLabel>
+                      <FormLabel>{t('baseSalary')}</FormLabel>
                       <FormControl>
                         <Input 
                           type="number" 
@@ -380,7 +380,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                       <ImageUpload
                         value={field.value || ''}
                         onChange={field.onChange}
-                        label="Photo d'identité"
+                        label={t('photo')}
                       />
                       <FormMessage />
                     </FormItem>
@@ -394,7 +394,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <CreditCard className="h-4 w-4" />
-                  Infos Compte Client
+                  {t('clientAccountInfo')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -405,18 +405,18 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                     name="assureur_id"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Assureur (optionnel)</FormLabel>
+                        <FormLabel>{t('insurerOptional')}</FormLabel>
                         <Select 
                           onValueChange={(val) => field.onChange(val === '__none__' ? '' : val)} 
                           value={field.value || '__none__'}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Aucun assureur" />
+                              <SelectValue placeholder={t('noInsurer')} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="__none__">Aucun assureur</SelectItem>
+                            <SelectItem value="__none__">{t('noInsurer')}</SelectItem>
                             {assureurs.map((assureur: Assureur) => (
                               <SelectItem key={assureur.id} value={assureur.id}>
                                 {assureur.libelle_assureur}
@@ -433,7 +433,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                     name="taux_remise_automatique"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Taux de remise automatique (%)</FormLabel>
+                        <FormLabel>{t('autoDiscountRate')}</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -446,7 +446,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           />
                         </FormControl>
-                        <FormDescription>Remise appliquée automatiquement au point de vente</FormDescription>
+                        <FormDescription>{t('autoDiscountDesc')}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -460,7 +460,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                     name="taux_agent"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Taux Agent (%)</FormLabel>
+                        <FormLabel>{t('agentRate')}</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -473,7 +473,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           />
                         </FormControl>
-                        <FormDescription>Taux de prise en charge pour l'agent</FormDescription>
+                        <FormDescription>{t('agentCoverageDesc')}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -483,7 +483,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                     name="taux_ayant_droit"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Taux Ayant Droit (%)</FormLabel>
+                        <FormLabel>{t('beneficiaryRate')}</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -496,7 +496,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           />
                         </FormControl>
-                        <FormDescription>Taux de prise en charge pour les ayants droit</FormDescription>
+                        <FormDescription>{t('beneficiaryCoverageDesc')}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -510,7 +510,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                     name="limite_dette"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
+                        <FormLabel>{t('debtLimit')} ({getCurrencySymbol()})</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -522,7 +522,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           />
                         </FormControl>
-                        <FormDescription>Montant maximum de crédit autorisé</FormDescription>
+                        <FormDescription>{t('maxCreditAmount')}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -539,9 +539,9 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel>Peut prendre des produits en bon</FormLabel>
+                          <FormLabel>{t('canTakeVoucher')}</FormLabel>
                           <FormDescription>
-                            Autoriser les achats à crédit au point de vente
+                            {t('allowVoucherDesc')}
                           </FormDescription>
                         </div>
                       </FormItem>
@@ -556,7 +556,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                     name="taux_ticket_moderateur"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Taux ticket modérateur (%)</FormLabel>
+                        <FormLabel>{t('moderatorTicketRate')}</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -568,7 +568,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           />
                         </FormControl>
-                        <FormDescription>Part payée comptant par le client non assuré lors d'un achat en bon</FormDescription>
+                        <FormDescription>{t('moderatorTicketDesc')}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -578,7 +578,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                     name="caution"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Valeur Caution Actuelle ({getCurrencySymbol()})</FormLabel>
+                        <FormLabel>{t('deposit')} ({getCurrencySymbol()})</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -590,7 +590,7 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
                             className="bg-muted cursor-not-allowed"
                           />
                         </FormControl>
-                        <FormDescription>Montant de la caution actuelle (non modifiable)</FormDescription>
+                        <FormDescription>{t('depositDesc')}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -603,15 +603,15 @@ export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoadi
         
         <div className="flex justify-end space-x-2 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
-            Annuler
+            {t('cancel')}
           </Button>
           <Button 
             type="submit" 
             disabled={isLoading}
           >
             {isLoading 
-              ? 'Enregistrement...' 
-              : (isEdit ? 'Modifier' : 'Créer')
+              ? t('processing') 
+              : (isEdit ? t('modify') : t('create'))
             }
           </Button>
         </div>
