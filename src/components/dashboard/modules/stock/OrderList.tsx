@@ -27,8 +27,12 @@ import {
   ChevronRight,
   CheckSquare,
   Check,
-  XCircle
+  XCircle,
+  Send,
+  Loader2
 } from 'lucide-react';
+import { PharmaMLService } from '@/services/PharmaMLService';
+import { useAuth } from '@/contexts/AuthContext';
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { OrderPDFService } from '@/services/OrderPDFService';
 import { useToast } from '@/hooks/use-toast';
@@ -48,6 +52,7 @@ interface Order {
     nom: string;
     email?: string;
     telephone_appel?: string;
+    pharmaml_enabled?: boolean;
   };
   agent?: {
     noms: string;
@@ -70,9 +75,12 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [sendingPharmaML, setSendingPharmaML] = useState<string | null>(null);
+  const [pharmamlStatus, setPharmamlStatus] = useState<Record<string, { configured: boolean; sent: boolean }>>({});
   const { orderLines } = useOrderLines();
   const { toast } = useToast();
   const { t } = useLanguage();
+  const { pharmacy } = useAuth();
   const ordersPerPage = 10;
 
   // Calculate real totals for each order using useOrderLines data
@@ -114,6 +122,27 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
       processOrders();
     }
   }, [propOrders, orderLines]);
+
+  // Check PharmaML status for orders
+  useEffect(() => {
+    const checkPharmaMLStatus = async () => {
+      const statusMap: Record<string, { configured: boolean; sent: boolean }> = {};
+      
+      for (const order of propOrders) {
+        if (order.fournisseur_id) {
+          const configured = await PharmaMLService.isSupplierConfigured(order.fournisseur_id);
+          const { sent } = await PharmaMLService.hasBeenSent(order.id);
+          statusMap[order.id] = { configured, sent };
+        }
+      }
+      
+      setPharmamlStatus(statusMap);
+    };
+    
+    if (propOrders.length > 0) {
+      checkPharmaMLStatus();
+    }
+  }, [propOrders]);
 
   // Use orders with calculated totals
   const orders = ordersWithTotals;
@@ -265,6 +294,54 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
         description: t('orderListCannotGeneratePDF'),
         variant: "destructive",
       });
+    }
+  };
+
+  const handleSendPharmaML = async (order: any) => {
+    if (!pharmacy?.id) {
+      toast({
+        title: t('orderListError'),
+        description: 'Pharmacie non identifiée',
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSendingPharmaML(order.id);
+    
+    try {
+      const result = await PharmaMLService.sendOrder(
+        order.id,
+        order.fournisseur_id,
+        pharmacy.id
+      );
+
+      if (result.success) {
+        toast({
+          title: t('pharmamlSendSuccess'),
+          description: result.orderNumber ? `N° PharmaML: ${result.orderNumber}` : result.message,
+        });
+        // Update local status
+        setPharmamlStatus(prev => ({
+          ...prev,
+          [order.id]: { ...prev[order.id], sent: true }
+        }));
+        onRefresh();
+      } else {
+        toast({
+          title: t('pharmamlSendError'),
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: t('pharmamlSendError'),
+        description: error.message || 'Erreur inattendue',
+        variant: "destructive",
+      });
+    } finally {
+      setSendingPharmaML(null);
     }
   };
 
@@ -484,6 +561,22 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
                           >
                             <Download className="h-4 w-4" />
                           </Button>
+                          {/* PharmaML Send Button */}
+                          {pharmamlStatus[order.id]?.configured && (
+                            <Button 
+                              variant={pharmamlStatus[order.id]?.sent ? "secondary" : "default"}
+                              size="sm"
+                              onClick={() => handleSendPharmaML(order)}
+                              disabled={sendingPharmaML === order.id || pharmamlStatus[order.id]?.sent}
+                              title={pharmamlStatus[order.id]?.sent ? 'Déjà envoyé' : t('pharmamlSendOrder')}
+                            >
+                              {sendingPharmaML === order.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Send className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="outline" size="sm">

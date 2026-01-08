@@ -10,7 +10,11 @@ import {
   FileText, 
   Truck,
   ArrowLeft,
-  Download
+  Download,
+  Send,
+  Loader2,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
@@ -19,6 +23,10 @@ import { useToast } from '@/hooks/use-toast';
 import { unifiedPricingService } from '@/services/UnifiedPricingService';
 import { useStockSettings } from '@/hooks/useStockSettings';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { PharmaMLService } from '@/services/PharmaMLService';
+import PharmaMLHistory from './PharmaMLHistory';
 
 interface OrderDetailsProps {
   order: any;
@@ -31,6 +39,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
   const { settings: stockSettings } = useStockSettings();
   const { settings: salesSettings } = useSalesSettings();
   const { toast } = useToast();
+  const { pharmacy } = useAuth();
+  const { t } = useLanguage();
   const [calculatedTotals, setCalculatedTotals] = useState({
     subtotalHT: 0,
     centimeAdditionnel: 0,
@@ -38,6 +48,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
     totalTTC: 0,
     totalQuantity: 0
   });
+  const [pharmamlConfigured, setPharmamlConfigured] = useState(false);
+  const [pharmamlSent, setPharmamlSent] = useState(false);
+  const [sendingPharmaML, setSendingPharmaML] = useState(false);
 
   // Get dynamic rates from system settings (en pourcentage)
   const tauxTVA = settings?.taux_tva ? parseFloat(settings.taux_tva.toString()) : 18;
@@ -83,6 +96,20 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
       });
     }
   }, [orderLines, tauxTVA, tauxCentimeAdditionnel, roundingPrecision, roundingMethod]);
+
+  // Check PharmaML status
+  useEffect(() => {
+    const checkPharmaML = async () => {
+      if (order?.fournisseur_id) {
+        const configured = await PharmaMLService.isSupplierConfigured(order.fournisseur_id);
+        setPharmamlConfigured(configured);
+        
+        const { sent } = await PharmaMLService.hasBeenSent(order.id);
+        setPharmamlSent(sent);
+      }
+    };
+    checkPharmaML();
+  }, [order?.id, order?.fournisseur_id]);
 
   const getStatusColor = (statut: string) => {
     switch (statut) {
@@ -136,6 +163,49 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
     }
   };
 
+  const handleSendPharmaML = async () => {
+    if (!pharmacy?.id) {
+      toast({
+        title: t('orderListError'),
+        description: 'Pharmacie non identifiée',
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSendingPharmaML(true);
+    
+    try {
+      const result = await PharmaMLService.sendOrder(
+        order.id,
+        order.fournisseur_id,
+        pharmacy.id
+      );
+
+      if (result.success) {
+        toast({
+          title: t('pharmamlSendSuccess'),
+          description: result.orderNumber ? `N° PharmaML: ${result.orderNumber}` : result.message,
+        });
+        setPharmamlSent(true);
+      } else {
+        toast({
+          title: t('pharmamlSendError'),
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: t('pharmamlSendError'),
+        description: error.message || 'Erreur inattendue',
+        variant: "destructive",
+      });
+    } finally {
+      setSendingPharmaML(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -143,17 +213,52 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
         <div className="flex items-center gap-4">
           <Button variant="outline" onClick={onBack}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour
+            {t('back') || 'Retour'}
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Détails de la commande</h1>
+            <h1 className="text-2xl font-bold">{t('orderListOrderDetails') || 'Détails de la commande'}</h1>
             <p className="text-muted-foreground">{order.numero}</p>
           </div>
         </div>
-        <Button onClick={handleDownloadOrder}>
-          <Download className="h-4 w-4 mr-2" />
-          Télécharger
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* PharmaML Status Badge */}
+          {pharmamlConfigured && (
+            <Badge variant={pharmamlSent ? "default" : "secondary"} className="flex items-center gap-1">
+              {pharmamlSent ? (
+                <>
+                  <CheckCircle className="h-3 w-3" />
+                  {t('pharmamlConfigured')}
+                </>
+              ) : (
+                <>
+                  <Send className="h-3 w-3" />
+                  {t('pharmamlConfigured')}
+                </>
+              )}
+            </Badge>
+          )}
+          
+          {/* PharmaML Send Button */}
+          {pharmamlConfigured && !pharmamlSent && (
+            <Button 
+              variant="default" 
+              onClick={handleSendPharmaML}
+              disabled={sendingPharmaML}
+            >
+              {sendingPharmaML ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              {sendingPharmaML ? t('pharmamlSending') : t('pharmamlSendOrder')}
+            </Button>
+          )}
+          
+          <Button onClick={handleDownloadOrder}>
+            <Download className="h-4 w-4 mr-2" />
+            {t('download') || 'Télécharger'}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -336,6 +441,11 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
           </Card>
         </div>
       </div>
+
+      {/* PharmaML Transmission History */}
+      {pharmamlConfigured && (
+        <PharmaMLHistory orderId={order.id} />
+      )}
     </div>
   );
 };
