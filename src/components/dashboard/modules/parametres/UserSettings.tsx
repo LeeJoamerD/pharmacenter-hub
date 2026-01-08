@@ -19,6 +19,7 @@ import { PERMISSIONS, ROLES } from '@/types/permissions';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface PersonnelFormData {
   noms: string;
@@ -31,6 +32,7 @@ interface PersonnelFormData {
 }
 
 const UserSettings = () => {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const { useTenantMutation, tenantId } = useTenantQuery();
   const queryClient = useQueryClient();

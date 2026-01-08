@@ -11,8 +11,10 @@ import { Separator } from '@/components/ui/separator';
 import { Building, Globe, MapPin, Phone, Mail, Loader2, Save, AlertCircle, CheckCircle2, Settings, DollarSign } from 'lucide-react';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const GeneralSettings = () => {
+  const { t } = useLanguage();
   const { settings, loading, saving, saveSettings, getCurrentCurrency, getCurrentTimezone, getCurrentLanguage } = useGlobalSystemSettings();
   const { toast } = useToast();
   const [hasChanges, setHasChanges] = useState(false);

@@ -9,8 +9,10 @@ import { Palette, Monitor, Type, Layout, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const InterfaceSettings = () => {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const { settings: systemSettings, loading, saving, saveSettings, updateSettings } = useGlobalSystemSettings();
   
