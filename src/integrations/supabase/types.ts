@@ -20638,6 +20638,19 @@ export type Database = {
         }
         Returns: number
       }
+      get_supplier_excel_mapping: {
+        Args: { p_fournisseur_id: string; p_fournisseur_nom?: string }
+        Returns: {
+          created_at: string
+          fournisseur_id: string
+          id: string
+          is_active: boolean
+          is_owner: boolean
+          mapping_config: Json
+          tenant_id: string
+          updated_at: string
+        }[]
+      }
       get_top_critical_products: {
         Args: { p_limit?: number; p_tenant_id: string }
         Returns: {
