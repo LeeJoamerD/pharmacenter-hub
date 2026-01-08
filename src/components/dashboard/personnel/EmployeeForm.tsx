@@ -13,6 +13,7 @@ import { ImageUpload } from './ImageUpload';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { CreditCard } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface EmployeeFormProps {
   form: UseFormReturn<EmployeeFormData>;
@@ -30,6 +31,7 @@ interface Assureur {
 export const EmployeeForm = ({ form, onSubmit, isEdit = false, onCancel, isLoading = false }: EmployeeFormProps) => {
   const { useTenantQueryWithCache } = useTenantQuery();
   const { formatAmount, getCurrencySymbol, getInputStep, isNoDecimalCurrency } = useCurrencyFormatting();
+  const { t } = useLanguage();
 
   // Récupération des assureurs
   const { data: assureurs = [] } = useTenantQueryWithCache(

@@ -13,6 +13,7 @@ import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useQueryClient } from '@tanstack/react-query';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Interface pour la structure des données d'une société
 interface Societe {
@@ -46,6 +47,7 @@ const Societes = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { formatAmount, getCurrencySymbol, getInputStep, isNoDecimalCurrency } = useCurrencyFormatting();
+  const { t } = useLanguage();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);

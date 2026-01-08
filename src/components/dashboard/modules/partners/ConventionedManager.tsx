@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import type { Database } from '@/integrations/supabase/types';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Assureur {
   id: string;
@@ -49,6 +50,7 @@ const ConventionedManager = () => {
   const [editingConventionne, setEditingConventionne] = useState<Conventionne | null>(null);
   const { toast } = useToast();
   const { formatAmount, getCurrencySymbol, getInputStep, isNoDecimalCurrency } = useCurrencyFormatting();
+  const { t } = useLanguage();
 
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
   const { data: conventionnes = [], isLoading } = useTenantQueryWithCache(

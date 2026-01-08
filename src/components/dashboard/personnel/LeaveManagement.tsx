@@ -12,11 +12,14 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export const LeaveManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLeave, setEditingLeave] = useState<LeaveRequest | null>(null);
+  const { t } = useLanguage();
+  const { dateLocale } = useDateLocale();
 
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
 
@@ -40,38 +43,38 @@ export const LeaveManagement = () => {
   // Mutations
   const createMutation = useTenantMutation('conges_employes', 'insert', {
     onSuccess: () => {
-      toast.success('Demande de congé créée avec succès');
+      toast.success(t('leaveCreated'));
       setIsDialogOpen(false);
       form.reset();
       refetch();
     },
     onError: (error) => {
-      toast.error('Erreur lors de la création de la demande');
+      toast.error(t('errorCreatingLeave'));
       console.error(error);
     }
   });
 
   const updateMutation = useTenantMutation('conges_employes', 'update', {
     onSuccess: () => {
-      toast.success('Demande de congé modifiée avec succès');
+      toast.success(t('leaveUpdated'));
       setIsDialogOpen(false);
       setEditingLeave(null);
       form.reset();
       refetch();
     },
     onError: (error) => {
-      toast.error('Erreur lors de la modification de la demande');
+      toast.error(t('errorUpdatingLeave'));
       console.error(error);
     }
   });
 
   const deleteMutation = useTenantMutation('conges_employes', 'delete', {
     onSuccess: () => {
-      toast.success('Demande de congé supprimée avec succès');
+      toast.success(t('leaveDeleted'));
       refetch();
     },
     onError: (error) => {
-      toast.error('Erreur lors de la suppression de la demande');
+      toast.error(t('errorDeletingLeave'));
       console.error(error);
     }
   });
@@ -166,14 +169,14 @@ export const LeaveManagement = () => {
 
   const getEmployeeName = (employeId: string) => {
     const employee = employees.find((e: any) => e.id === employeId);
-    return employee ? `${employee.prenoms} ${employee.noms}` : 'Employé inconnu';
+    return employee ? `${employee.prenoms} ${employee.noms}` : t('noEmployeeFound');
   };
 
   if (leavesLoading) {
     return (
       <Card>
         <CardContent className="p-6">
-          <div className="text-center">Chargement des demandes de congés...</div>
+          <div className="text-center">{t('loadingLeaves')}</div>
         </CardContent>
       </Card>
     );
@@ -184,9 +187,9 @@ export const LeaveManagement = () => {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Gestion des Congés</CardTitle>
+            <CardTitle>{t('leaveManagement')}</CardTitle>
             <CardDescription>
-              Gérez les demandes de congés et absences de vos employés
+              {t('leaveManagementDesc')}
             </CardDescription>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -196,13 +199,13 @@ export const LeaveManagement = () => {
                 form.reset();
               }}>
                 <Plus className="w-4 h-4 mr-2" />
-                Nouvelle Demande
+                {t('newLeaveRequest')}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>
-                  {editingLeave ? 'Modifier la demande' : 'Créer une nouvelle demande'}
+                  {editingLeave ? t('editLeaveRequest') : t('createLeaveRequest')}
                 </DialogTitle>
                 <DialogDescription></DialogDescription>
               </DialogHeader>
@@ -224,7 +227,7 @@ export const LeaveManagement = () => {
             <Card>
               <CardContent className="p-4">
                 <div className="text-2xl font-bold">{leaves.length}</div>
-                <p className="text-sm text-muted-foreground">Total demandes</p>
+                <p className="text-sm text-muted-foreground">{t('totalRequests')}</p>
               </CardContent>
             </Card>
             <Card>
@@ -232,7 +235,7 @@ export const LeaveManagement = () => {
                 <div className="text-2xl font-bold text-orange-600">
                   {leaves.filter((l: LeaveRequest) => l.statut === 'En attente').length}
                 </div>
-                <p className="text-sm text-muted-foreground">En attente</p>
+                <p className="text-sm text-muted-foreground">{t('pending')}</p>
               </CardContent>
             </Card>
             <Card>
@@ -240,7 +243,7 @@ export const LeaveManagement = () => {
                 <div className="text-2xl font-bold text-green-600">
                   {leaves.filter((l: LeaveRequest) => l.statut === 'Approuvé').length}
                 </div>
-                <p className="text-sm text-muted-foreground">Approuvées</p>
+                <p className="text-sm text-muted-foreground">{t('approved')}</p>
               </CardContent>
             </Card>
             <Card>
@@ -248,7 +251,7 @@ export const LeaveManagement = () => {
                 <div className="text-2xl font-bold text-red-600">
                   {leaves.filter((l: LeaveRequest) => l.statut === 'Rejeté').length}
                 </div>
-                <p className="text-sm text-muted-foreground">Rejetées</p>
+                <p className="text-sm text-muted-foreground">{t('rejected')}</p>
               </CardContent>
             </Card>
           </div>
@@ -259,7 +262,7 @@ export const LeaveManagement = () => {
               <CardContent className="p-8 text-center">
                 <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <div className="text-muted-foreground">
-                  Aucune demande de congé
+                  {t('noLeaveRequest')}
                 </div>
               </CardContent>
             </Card>
@@ -268,13 +271,13 @@ export const LeaveManagement = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Employé</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Période</TableHead>
-                    <TableHead>Durée</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Motif</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>{t('employees')}</TableHead>
+                    <TableHead>{t('type')}</TableHead>
+                    <TableHead>{t('period')}</TableHead>
+                    <TableHead>{t('duration')}</TableHead>
+                    <TableHead>{t('status')}</TableHead>
+                    <TableHead>{t('reason')}</TableHead>
+                    <TableHead>{t('actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -293,16 +296,16 @@ export const LeaveManagement = () => {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            <div>{format(startDate, 'dd/MM/yyyy', { locale: fr })}</div>
+                            <div>{format(startDate, 'dd/MM/yyyy', { locale: dateLocale })}</div>
                             <div className="text-muted-foreground">
-                              au {format(endDate, 'dd/MM/yyyy', { locale: fr })}
+                              {t('to')} {format(endDate, 'dd/MM/yyyy', { locale: dateLocale })}
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
-                            {duration} jour{duration > 1 ? 's' : ''}
+                            {duration} {duration > 1 ? t('days') : t('day')}
                           </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(leave.statut)}</TableCell>
@@ -319,7 +322,7 @@ export const LeaveManagement = () => {
                                   onClick={() => handleApprove(leave.id)}
                                   className="text-green-600 hover:text-green-700 hover:border-green-300"
                                 >
-                                  Approuver
+                                  {t('approve')}
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -327,7 +330,7 @@ export const LeaveManagement = () => {
                                   onClick={() => handleReject(leave.id)}
                                   className="text-red-600 hover:text-red-700 hover:border-red-300"
                                 >
-                                  Rejeter
+                                  {t('reject')}
                                 </Button>
                               </>
                             )}
