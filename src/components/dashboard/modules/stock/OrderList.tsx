@@ -442,7 +442,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div>{order.nbProduits || 0} articles</div>
+                          <div>{order.nbProduits || 0} {t('orderListArticles')}</div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -457,14 +457,14 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
                             </Badge>
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Brouillon">Brouillon</SelectItem>
-                            <SelectItem value="En cours">En cours</SelectItem>
-                            <SelectItem value="Confirmé">Confirmé</SelectItem>
-                            <SelectItem value="Expédié">Expédié</SelectItem>
-                            <SelectItem value="En transit">En transit</SelectItem>
-                            <SelectItem value="Livré">Livré</SelectItem>
-                            <SelectItem value="Réceptionné">Réceptionné</SelectItem>
-                            <SelectItem value="Annulé">Annulé</SelectItem>
+                            <SelectItem value="Brouillon">{t('orderListStatusDraft')}</SelectItem>
+                            <SelectItem value="En cours">{t('orderListStatusInProgress')}</SelectItem>
+                            <SelectItem value="Confirmé">{t('orderListStatusConfirmed')}</SelectItem>
+                            <SelectItem value="Expédié">{t('orderListStatusShipped')}</SelectItem>
+                            <SelectItem value="En transit">{t('orderListStatusInTransit')}</SelectItem>
+                            <SelectItem value="Livré">{t('orderListStatusDelivered')}</SelectItem>
+                            <SelectItem value="Réceptionné">{t('orderListStatusReceived')}</SelectItem>
+                            <SelectItem value="Annulé">{t('orderListStatusCancelled')}</SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -492,15 +492,15 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Supprimer la commande</AlertDialogTitle>
+                                <AlertDialogTitle>{t('orderListDeleteOrder')}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Êtes-vous sûr de vouloir supprimer la commande {order.numero} ? Cette action ne peut pas être annulée.
+                                  {t('orderListDeleteConfirmation')} {order.numero} ?
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                <AlertDialogCancel>{t('orderListCancel')}</AlertDialogCancel>
                                 <AlertDialogAction onClick={() => handleDeleteOrder(order.id)}>
-                                  Supprimer
+                                  {t('orderListDelete')}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -518,7 +518,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
             {totalPages > 1 && (
               <div className="flex items-center justify-between border-t pt-4">
                 <div className="text-sm text-muted-foreground">
-                  Page {currentPage} sur {totalPages} ({filteredOrders.length} commandes au total)
+                  {t('orderListPage')} {currentPage} {t('orderListOf')} {totalPages} ({filteredOrders.length} {t('orderListOrdersTotal')})
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -528,7 +528,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
                     disabled={currentPage === 1}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Précédent
+                    {t('orderListPrevious')}
                   </Button>
                   <div className="flex items-center gap-1">
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -551,7 +551,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
                   >
-                    Suivant
+                    {t('orderListNext')}
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -564,13 +564,13 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>Détails de la Commande</DialogTitle>
+              <DialogTitle>{t('orderListOrderDetails')}</DialogTitle>
               <DialogDescription>
-                Informations complètes de la commande {selectedOrder?.numero}
+                {t('orderListOrderDetailsDescription')} {selectedOrder?.numero}
               </DialogDescription>
             </DialogHeader>
             
-            {selectedOrder && <OrderDetailsContent order={selectedOrder} getStatusColor={getStatusColor} />}
+            {selectedOrder && <OrderDetailsContent order={selectedOrder} getStatusColor={getStatusColor} t={t} />}
           </DialogContent>
         </Dialog>
       </div>
@@ -578,54 +578,54 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
 };
 
 // Composant pour afficher les détails d'une commande
-const OrderDetailsContent = ({ order, getStatusColor }: { order: any; getStatusColor: (statut: string) => string }) => {
+const OrderDetailsContent = ({ order, getStatusColor, t }: { order: any; getStatusColor: (statut: string) => string; t: (key: string) => string }) => {
   const { orderLines, loading: linesLoading } = useOrderLines(order.id);
   
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <h4 className="font-medium mb-2">Informations générales</h4>
+          <h4 className="font-medium mb-2">{t('orderListGeneralInfo')}</h4>
           <div className="space-y-2 text-sm">
-            <div><strong>Numéro:</strong> {order.numero}</div>
-            <div><strong>Fournisseur:</strong> {order.fournisseur}</div>
-            <div><strong>Date commande:</strong> {new Date(order.dateCommande).toLocaleDateString('fr-FR')}</div>
-            <div><strong>Livraison prévue:</strong> {new Date(order.dateLivraison).toLocaleDateString('fr-FR')}</div>
-            <div><strong>Statut:</strong> <Badge className={getStatusColor(order.statut)}>{order.statut}</Badge></div>
+            <div><strong>{t('orderListNumber')}:</strong> {order.numero}</div>
+            <div><strong>{t('orderListSupplier')}:</strong> {order.fournisseur}</div>
+            <div><strong>{t('orderListOrderDate')}:</strong> {new Date(order.dateCommande).toLocaleDateString('fr-FR')}</div>
+            <div><strong>{t('orderListExpectedDelivery')}:</strong> {new Date(order.dateLivraison).toLocaleDateString('fr-FR')}</div>
+            <div><strong>{t('orderListStatus')}:</strong> <Badge className={getStatusColor(order.statut)}>{order.statut}</Badge></div>
           </div>
         </div>
         <div>
-          <h4 className="font-medium mb-2">Montants</h4>
+          <h4 className="font-medium mb-2">{t('orderListAmounts')}</h4>
           <div className="space-y-2 text-sm">
-            <div><strong>Sous-total HT:</strong> {(order.totalHT || 0).toLocaleString()} F CFA</div>
-            <div><strong>TVA (18%):</strong> {Math.round((order.totalHT || 0) * 0.18).toLocaleString()} F CFA</div>
-            <div><strong>Total TTC:</strong> {Math.round((order.totalHT || 0) * 1.18).toLocaleString()} F CFA</div>
-            <div><strong>Nombre d'articles:</strong> {order.nbProduits || 0}</div>
+            <div><strong>{t('orderListSubtotalHT')}:</strong> {(order.totalHT || 0).toLocaleString()} F CFA</div>
+            <div><strong>{t('orderListVAT')}:</strong> {Math.round((order.totalHT || 0) * 0.18).toLocaleString()} F CFA</div>
+            <div><strong>{t('orderListTotalTTC')}:</strong> {Math.round((order.totalHT || 0) * 1.18).toLocaleString()} F CFA</div>
+            <div><strong>{t('orderListArticlesCount')}:</strong> {order.nbProduits || 0}</div>
           </div>
         </div>
       </div>
 
       <div>
-        <h4 className="font-medium mb-2">Lignes de commande</h4>
+        <h4 className="font-medium mb-2">{t('orderListOrderLines')}</h4>
         {linesLoading ? (
           <div className="text-center py-4">
             <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
-            Chargement des lignes...
+            {t('orderListLoadingLines')}
           </div>
         ) : orderLines.length > 0 ? (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Produit</TableHead>
-                <TableHead>Quantité</TableHead>
-                <TableHead>Prix unitaire</TableHead>
-                <TableHead>Total</TableHead>
+                <TableHead>{t('orderListProduct')}</TableHead>
+                <TableHead>{t('orderListQuantity')}</TableHead>
+                <TableHead>{t('orderListUnitPrice')}</TableHead>
+                <TableHead>{t('orderListTotal')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {orderLines.map((line) => (
                 <TableRow key={line.id}>
-                  <TableCell>{line.produit?.libelle_produit || 'Produit inconnu'}</TableCell>
+                  <TableCell>{line.produit?.libelle_produit || t('orderListUnknownProduct')}</TableCell>
                   <TableCell>{line.quantite_commandee}</TableCell>
                   <TableCell>{(line.prix_achat_unitaire_attendu || 0).toLocaleString()} F CFA</TableCell>
                   <TableCell>{((line.quantite_commandee || 0) * (line.prix_achat_unitaire_attendu || 0)).toLocaleString()} F CFA</TableCell>
@@ -635,7 +635,7 @@ const OrderDetailsContent = ({ order, getStatusColor }: { order: any; getStatusC
           </Table>
         ) : (
           <div className="text-center py-4 text-muted-foreground">
-            Aucune ligne de commande trouvée
+            {t('orderListNoOrderLines')}
           </div>
         )}
       </div>
