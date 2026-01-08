@@ -277,7 +277,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
             <div className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5 text-blue-600" />
               <div>
-                <p className="text-sm text-muted-foreground">En Cours</p>
+                <p className="text-sm text-muted-foreground">{t('orderListInProgress')}</p>
                 <p className="text-2xl font-bold">{statistics.enCours}</p>
               </div>
             </div>
@@ -289,7 +289,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
             <div className="flex items-center gap-2">
               <Edit className="h-5 w-5 text-gray-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Brouillons</p>
+                <p className="text-sm text-muted-foreground">{t('orderListDrafts')}</p>
                 <p className="text-2xl font-bold">{statistics.brouillons}</p>
               </div>
             </div>
@@ -301,7 +301,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
             <div className="flex items-center gap-2">
               <Truck className="h-5 w-5 text-green-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Livrées</p>
+                <p className="text-sm text-muted-foreground">{t('orderListDelivered')}</p>
                 <p className="text-2xl font-bold">{statistics.livrees}</p>
               </div>
             </div>
@@ -313,7 +313,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
             <div className="flex items-center gap-2">
               <Package className="h-5 w-5 text-purple-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Total Commandes</p>
+                <p className="text-sm text-muted-foreground">{t('orderListTotalOrders')}</p>
                 <p className="text-2xl font-bold">{statistics.total}</p>
               </div>
             </div>
@@ -327,7 +327,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                Liste des Commandes
+                {t('orderListTitle')}
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -337,11 +337,11 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 </Button>
               </CardTitle>
-              <CardDescription>Gestion complète des commandes fournisseurs ({filteredOrders.length} commandes)</CardDescription>
+              <CardDescription>{t('orderListDescription')} ({filteredOrders.length} {t('orderListOrders')})</CardDescription>
             </div>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Nouvelle Commande
+              {t('orderListNewOrder')}
             </Button>
           </div>
         </CardHeader>
@@ -351,7 +351,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
-                  placeholder="Rechercher par numéro ou fournisseur..."
+                  placeholder={t('orderListSearchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -361,27 +361,27 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
             
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
               <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Statut" />
+                <SelectValue placeholder={t('orderListStatus')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="tous">Tous les statuts</SelectItem>
-                <SelectItem value="Brouillon">Brouillon</SelectItem>
-                <SelectItem value="En cours">En cours</SelectItem>
-                <SelectItem value="Confirmé">Confirmé</SelectItem>
-                <SelectItem value="Expédié">Expédié</SelectItem>
-                <SelectItem value="En transit">En transit</SelectItem>
-                <SelectItem value="Livré">Livré</SelectItem>
-                <SelectItem value="Réceptionné">Réceptionné</SelectItem>
-                <SelectItem value="Annulé">Annulé</SelectItem>
+                <SelectItem value="tous">{t('orderListAllStatuses')}</SelectItem>
+                <SelectItem value="Brouillon">{t('orderListDraft')}</SelectItem>
+                <SelectItem value="En cours">{t('orderListInProgress')}</SelectItem>
+                <SelectItem value="Confirmé">{t('orderListConfirmed')}</SelectItem>
+                <SelectItem value="Expédié">{t('orderListShipped')}</SelectItem>
+                <SelectItem value="En transit">{t('orderListInTransit')}</SelectItem>
+                <SelectItem value="Livré">{t('orderListDelivered')}</SelectItem>
+                <SelectItem value="Réceptionné">{t('orderListReceived')}</SelectItem>
+                <SelectItem value="Annulé">{t('orderListCancelled')}</SelectItem>
               </SelectContent>
             </Select>
             
             <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
               <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Fournisseur" />
+                <SelectValue placeholder={t('orderListSupplier')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="tous">Tous les fournisseurs</SelectItem>
+                <SelectItem value="tous">{t('orderListAllSuppliers')}</SelectItem>
                 {fournisseurs.map(fournisseur => (
                   <SelectItem key={fournisseur} value={fournisseur}>
                     {fournisseur}
@@ -396,14 +396,14 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Numéro</TableHead>
-                  <TableHead>Fournisseur</TableHead>
-                  <TableHead>Date Commande</TableHead>
-                  <TableHead>Livraison Prévue</TableHead>
-                  <TableHead>Montant HT</TableHead>
-                  <TableHead>Produits</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t('orderListNumber')}</TableHead>
+                  <TableHead>{t('orderListSupplier')}</TableHead>
+                  <TableHead>{t('orderListOrderDate')}</TableHead>
+                  <TableHead>{t('orderListExpectedDelivery')}</TableHead>
+                  <TableHead>{t('orderListAmountHT')}</TableHead>
+                  <TableHead>{t('orderListProducts')}</TableHead>
+                  <TableHead>{t('orderListStatus')}</TableHead>
+                  <TableHead>{t('orderFormActions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -411,13 +411,13 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
                       <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
-                      Chargement...
+                      {t('orderListLoading')}
                     </TableCell>
                   </TableRow>
                 ) : paginatedOrders.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
-                      Aucune commande trouvée
+                      {t('orderListNoOrderFound')}
                     </TableCell>
                   </TableRow>
                 ) : (
