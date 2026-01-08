@@ -330,18 +330,18 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
-            Nouvelle Commande
+            {t('orderFormNewOrder')}
           </CardTitle>
-          <CardDescription>Créer un bon de commande fournisseur</CardDescription>
+          <CardDescription>{t('orderFormCreatePO')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
-                <Label htmlFor="fournisseur">Fournisseur *</Label>
+                <Label htmlFor="fournisseur">{t('orderFormSupplier')} *</Label>
                 <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un fournisseur" />
+                    <SelectValue placeholder={t('orderFormSelectSupplier')} />
                   </SelectTrigger>
                   <SelectContent>
                     {suppliers.map(supplier => (
@@ -354,7 +354,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
               </div>
               
               <div>
-                <Label htmlFor="dateCommande">Date de commande</Label>
+                <Label htmlFor="dateCommande">{t('orderFormOrderDate')}</Label>
                 <Input
                   id="dateCommande"
                   type="date"
@@ -365,7 +365,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
             
             <div className="space-y-4">
               <div>
-                <Label htmlFor="dateLivraison">Date de livraison souhaitée</Label>
+                <Label htmlFor="dateLivraison">{t('orderFormDeliveryDate')}</Label>
                 <Input
                   id="dateLivraison"
                   type="date"
@@ -373,16 +373,16 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
               </div>
               
               <div>
-                <Label htmlFor="priorite">Priorité</Label>
+                <Label htmlFor="priorite">{t('orderFormPriority')}</Label>
                 <Select defaultValue="normale">
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="faible">Faible</SelectItem>
-                    <SelectItem value="normale">Normale</SelectItem>
-                    <SelectItem value="haute">Haute</SelectItem>
-                    <SelectItem value="urgente">Urgente</SelectItem>
+                    <SelectItem value="faible">{t('orderFormPriorityLow')}</SelectItem>
+                    <SelectItem value="normale">{t('orderFormPriorityNormal')}</SelectItem>
+                    <SelectItem value="haute">{t('orderFormPriorityHigh')}</SelectItem>
+                    <SelectItem value="urgente">{t('orderFormPriorityUrgent')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -394,7 +394,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
       {/* Ajout de produits */}
       <Card>
         <CardHeader>
-          <CardTitle>Ajouter des Produits</CardTitle>
+          <CardTitle>{t('orderFormAddProducts')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4 mb-4">
@@ -402,7 +402,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
-                  placeholder="Rechercher un produit..."
+                  placeholder={t('orderFormSearchProduct')}
                   value={searchProduct}
                   onChange={(e) => setSearchProduct(e.target.value)}
                   className="pl-10"
@@ -564,23 +564,23 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
               <div className="flex justify-end">
                 <div className="w-96 space-y-3">
                   <div className="flex justify-between">
-                    <span>Sous-total HT :</span>
+                    <span>{t('orderFormSubtotalHT')} :</span>
                     <span className="font-medium">{formatAmount(sousTotalHT)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>TVA ({currencySymbol}) :</span>
+                    <span>{t('orderFormTVA')} ({currencySymbol}) :</span>
                     <span className="font-medium">{formatAmount(totalTva)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Centime Additionnel ({currencySymbol}) :</span>
+                    <span>{t('orderFormCentimeAdditionnel')} ({currencySymbol}) :</span>
                     <span className="font-medium">{formatAmount(totalCentime)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>ASDI ({currencySymbol}) :</span>
+                    <span>{t('orderFormASDI')} ({currencySymbol}) :</span>
                     <span className="font-medium">{formatAmount(totalAsdi)}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold border-t pt-2">
-                    <span>Total TTC :</span>
+                    <span>{t('orderFormTotalTTC')} :</span>
                     <span>{formatAmount(totalTTC)}</span>
                   </div>
                 </div>
@@ -593,17 +593,17 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
       {/* Notes et actions */}
       <Card>
         <CardHeader>
-          <CardTitle>Finalisation</CardTitle>
+          <CardTitle>{t('orderFormFinalization')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="notes">Notes et commentaires</Label>
+              <Label htmlFor="notes">{t('orderFormNotesComments')}</Label>
                <Textarea
                  id="notes"
                  value={notes}
                  onChange={(e) => setNotes(e.target.value)}
-                 placeholder="Instructions particulières, conditions de livraison, etc."
+                 placeholder={t('orderFormNotesPlaceholder')}
                  rows={3}
                />
             </div>
@@ -615,7 +615,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                  disabled={loading || !selectedSupplier || orderLines.length === 0}
                >
                  <Save className="mr-2 h-4 w-4" />
-                 Sauvegarder Brouillon
+                 {t('orderFormSaveDraft')}
                </Button>
                <Button 
                  variant="secondary"
@@ -623,14 +623,14 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
                  disabled={loading || !selectedSupplier || orderLines.length === 0}
                >
                  <FileText className="mr-2 h-4 w-4" />
-                 Mettre En Cours
+                 {t('orderFormSetInProgress')}
                </Button>
                <Button
                  onClick={() => handleSaveOrder('Confirmé')}
                  disabled={loading || !selectedSupplier || orderLines.length === 0}
                >
                  <Send className="mr-2 h-4 w-4" />
-                 Confirmer Commande
+                 {t('orderFormConfirmOrder')}
                </Button>
              </div>
           </div>
