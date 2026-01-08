@@ -9,6 +9,7 @@ import { TrendingDown, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface QuickAdjustmentDialogProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface QuickAdjustmentDialogProps {
 export const QuickAdjustmentDialog = ({ open, onOpenChange, productId }: QuickAdjustmentDialogProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     type_mouvement: '',
@@ -45,8 +47,8 @@ export const QuickAdjustmentDialog = ({ open, onOpenChange, productId }: QuickAd
 
       if (!productId) {
         toast({
-          title: "Erreur",
-          description: "Aucun produit sélectionné pour l'ajustement.",
+          title: t('error'),
+          description: t('noProductSelected'),
           variant: "destructive",
         });
         return;
@@ -68,16 +70,16 @@ export const QuickAdjustmentDialog = ({ open, onOpenChange, productId }: QuickAd
       if (mouvementError) throw mouvementError;
 
       toast({
-        title: "Ajustement effectué",
-        description: "L'ajustement de stock a été enregistré avec succès.",
+        title: t('adjustmentDone'),
+        description: t('adjustmentSuccess'),
       });
 
       onOpenChange(false);
     } catch (error) {
       console.error('Erreur lors de l\'ajustement:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible d'effectuer l'ajustement de stock.",
+        title: t('error'),
+        description: t('adjustmentError'),
         variant: "destructive",
       });
     } finally {
@@ -96,40 +98,40 @@ export const QuickAdjustmentDialog = ({ open, onOpenChange, productId }: QuickAd
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TrendingDown className="h-5 w-5" />
-            Ajustement de Stock
+            {t('dialogStockAdjustment')}
           </DialogTitle>
           <DialogDescription>
-            Ajustez rapidement le stock d'un produit
+            {t('quickAdjustStock')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="type_mouvement">Type d'ajustement *</Label>
+            <Label htmlFor="type_mouvement">{t('adjustmentType')} *</Label>
             <Select
               value={formData.type_mouvement}
               onValueChange={(value) => setFormData({ ...formData, type_mouvement: value })}
               required
             >
               <SelectTrigger id="type_mouvement">
-                <SelectValue placeholder="Sélectionner le type" />
+                <SelectValue placeholder={t('selectType')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Entrée">Entrée (Ajout)</SelectItem>
-                <SelectItem value="Sortie">Sortie (Retrait)</SelectItem>
-                <SelectItem value="Ajustement">Ajustement</SelectItem>
-                <SelectItem value="Correction">Correction</SelectItem>
+                <SelectItem value="Entrée">{t('dialogEntry')} ({t('add')})</SelectItem>
+                <SelectItem value="Sortie">{t('dialogExit')} ({t('remove')})</SelectItem>
+                <SelectItem value="Ajustement">{t('dialogAdjustment')}</SelectItem>
+                <SelectItem value="Correction">{t('dialogCorrection')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="quantite">Quantité *</Label>
+            <Label htmlFor="quantite">{t('quantity')} *</Label>
             <Input
               id="quantite"
               type="number"
               min="1"
-              placeholder="Quantité à ajuster"
+              placeholder={t('quantityToAdjust')}
               value={formData.quantite}
               onChange={(e) => setFormData({ ...formData, quantite: e.target.value })}
               required
@@ -137,10 +139,10 @@ export const QuickAdjustmentDialog = ({ open, onOpenChange, productId }: QuickAd
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="motif">Motif *</Label>
+            <Label htmlFor="motif">{t('dialogReason')} *</Label>
             <Textarea
               id="motif"
-              placeholder="Raison de l'ajustement..."
+              placeholder={t('adjustmentReason')}
               value={formData.motif}
               onChange={(e) => setFormData({ ...formData, motif: e.target.value })}
               rows={3}
@@ -155,14 +157,14 @@ export const QuickAdjustmentDialog = ({ open, onOpenChange, productId }: QuickAd
               disabled={isSubmitting || !formData.type_mouvement || !formData.quantite || !formData.motif}
             >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Effectuer Ajustement
+              {t('performAdjustment')}
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={handleNavigate}
             >
-              Page Complète
+              {t('fullPage')}
             </Button>
           </div>
         </form>
