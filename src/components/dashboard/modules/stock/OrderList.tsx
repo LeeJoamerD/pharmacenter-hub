@@ -32,6 +32,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { PharmaMLService } from '@/services/PharmaMLService';
+import PharmaMLHistory from './PharmaMLHistory';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { OrderPDFService } from '@/services/OrderPDFService';
@@ -680,6 +681,23 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
 // Composant pour afficher les détails d'une commande
 const OrderDetailsContent = ({ order, getStatusColor, t }: { order: any; getStatusColor: (statut: string) => string; t: (key: string, params?: Record<string, string | number>) => string }) => {
   const { orderLines, loading: linesLoading } = useOrderLines(order.id);
+  const [pharmamlConfigured, setPharmamlConfigured] = useState(false);
+  const [hasTransmissions, setHasTransmissions] = useState(false);
+
+  useEffect(() => {
+    const checkPharmaML = async () => {
+      if (order?.fournisseur_id) {
+        const configured = await PharmaMLService.isSupplierConfigured(order.fournisseur_id);
+        setPharmamlConfigured(configured);
+      }
+      
+      if (order?.id) {
+        const { hasTransmissions: hasTx } = await PharmaMLService.hasBeenSent(order.id);
+        setHasTransmissions(hasTx);
+      }
+    };
+    checkPharmaML();
+  }, [order?.id, order?.fournisseur_id]);
   
   return (
     <div className="space-y-6">
@@ -739,6 +757,13 @@ const OrderDetailsContent = ({ order, getStatusColor, t }: { order: any; getStat
           </div>
         )}
       </div>
+
+      {/* Historique PharmaML */}
+      {(pharmamlConfigured || hasTransmissions) && (
+        <div className="mt-4">
+          <PharmaMLHistory orderId={order.id} />
+        </div>
+      )}
     </div>
   );
 };
