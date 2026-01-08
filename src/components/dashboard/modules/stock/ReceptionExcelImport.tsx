@@ -23,6 +23,7 @@ import { FileUp, Upload, CheckCircle2, XCircle, AlertTriangle, Loader2, PlusCirc
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useGlobalCatalogLookup } from '@/hooks/useGlobalCatalogLookup';
 import { ExcelParserService } from '@/services/ExcelParserService';
 import { AutoOrderCreationService } from '@/services/AutoOrderCreationService';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
@@ -49,6 +50,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const { categories: priceCategories } = usePriceCategories();
   const { getMappingBySupplier, mappings } = useSupplierExcelMappings();
   const { tenantId } = useTenant();
+  const { searchGlobalCatalog, mapToLocalReferences } = useGlobalCatalogLookup();
   
   // État pour le bouton Robot Site Fournisseur
   const [launchingRobot, setLaunchingRobot] = useState(false);
@@ -559,12 +561,14 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
 
       let created = 0;
       let skipped = 0;
+      let notFoundInGlobal = 0;
       const errors: string[] = [];
 
       for (const line of linesToAdd) {
         const normalizedCip = String(line.reference).trim();
         const normalizedName = String(line.produit).trim();
 
+        // Vérifier si le produit existe déjà dans le catalogue local
         const { data: existing } = await supabase
           .from('produits')
           .select('id')
@@ -574,33 +578,81 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
 
         if (existing) {
           skipped++;
-          errors.push(`"${normalizedName}" (CIP: ${normalizedCip}) existe déjà`);
           continue;
         }
 
-        const { error } = await supabase
-          .from('produits')
-          .insert({
-            tenant_id: personnel.tenant_id,
-            libelle_produit: normalizedName,
-            code_cip: normalizedCip,
-            prix_achat: line.prixAchatReel,
-            categorie_tarification_id: '52e236fb-9bf7-4709-bcb0-d8abb4b44db6',
-            is_active: true
-          });
+        // Rechercher dans le catalogue global
+        const globalProduct = await searchGlobalCatalog(normalizedCip);
 
-        if (error) {
-          errors.push(`Erreur pour "${normalizedName}": ${error.message}`);
+        if (globalProduct) {
+          // Mapper vers les références locales (crée les référentiels manquants)
+          const mappedData = await mapToLocalReferences(globalProduct);
+
+          // Insérer le produit avec toutes les données du catalogue global
+          const { data: newProduct, error } = await supabase
+            .from('produits')
+            .insert({
+              tenant_id: personnel.tenant_id,
+              code_cip: mappedData.code_cip,
+              ancien_code_cip: mappedData.ancien_code_cip || null,
+              libelle_produit: mappedData.libelle_produit,
+              famille_id: mappedData.famille_id || null,
+              rayon_id: mappedData.rayon_id || null,
+              forme_id: mappedData.forme_id || null,
+              classe_therapeutique_id: mappedData.classe_therapeutique_id || null,
+              laboratoires_id: mappedData.laboratoires_id || null,
+              categorie_tarification_id: mappedData.categorie_tarification_id || null,
+              prix_achat: line.prixAchatReel || mappedData.prix_achat || null,
+              prix_vente_ttc: mappedData.prix_vente_ttc || null,
+              is_active: true
+            })
+            .select('id')
+            .single();
+
+          if (error) {
+            errors.push(`Erreur pour "${normalizedName}": ${error.message}`);
+          } else {
+            // Insérer les relations DCI multiples
+            if (mappedData.dci_ids.length > 0 && newProduct?.id) {
+              const dciRelations = mappedData.dci_ids.map(dci_id => ({
+                produit_id: newProduct.id,
+                dci_id,
+                tenant_id: personnel.tenant_id,
+              }));
+              await supabase.from('produits_dci').insert(dciRelations);
+            }
+            created++;
+          }
         } else {
-          created++;
+          // Produit non trouvé dans le catalogue global - création minimale
+          notFoundInGlobal++;
+          const { error } = await supabase
+            .from('produits')
+            .insert({
+              tenant_id: personnel.tenant_id,
+              libelle_produit: normalizedName,
+              code_cip: normalizedCip,
+              prix_achat: line.prixAchatReel,
+              is_active: true
+            });
+
+          if (error) {
+            errors.push(`Erreur pour "${normalizedName}": ${error.message}`);
+          } else {
+            created++;
+          }
         }
       }
 
+      // Afficher les résultats
       if (created > 0) {
         toast.success(`${created} produit(s) ajouté(s) au catalogue`);
       }
       if (skipped > 0) {
         toast.warning(`${skipped} produit(s) ignoré(s) (déjà existants)`);
+      }
+      if (notFoundInGlobal > 0) {
+        toast.info(`${notFoundInGlobal} produit(s) créé(s) sans données du catalogue global`);
       }
       if (errors.length > 0 && created === 0 && skipped === 0) {
         toast.error(`Erreurs: ${errors.slice(0, 3).join(', ')}`);
@@ -608,6 +660,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
 
       setSelectedForCatalog(new Set());
 
+      // Re-valider pour mettre à jour l'affichage
       if (parseResult?.lines) {
         await validateData(parseResult.lines);
       }
