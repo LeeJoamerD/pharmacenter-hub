@@ -45,7 +45,7 @@ const IntegrationsConfig: React.FC = () => {
           .from('fournisseurs')
           .select('id, nom, pharmaml_enabled, pharmaml_url, pharmaml_code_repartiteur, pharmaml_id_repartiteur, pharmaml_cle_secrete, pharmaml_id_officine, pharmaml_pays')
           .eq('tenant_id', pharmacy.id)
-          .eq('est_actif', true)
+          .eq('statut', 'actif')
           .order('nom');
         
         if (error) throw error;
