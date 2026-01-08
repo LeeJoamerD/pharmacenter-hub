@@ -106,11 +106,11 @@ const Societes = () => {
   const updateSociete = useTenantMutation('societes', 'update', {
     invalidateQueries: ['societes'],
     onSuccess: () => {
-      toast({ title: "Succès", description: "Société modifiée avec succès." });
+      toast({ title: t('success'), description: t('companyModified') });
       setIsDialogOpen(false);
     },
     onError: (error: any) => {
-        toast({ title: "Erreur", description: `Erreur: ${error.message}`, variant: "destructive" });
+        toast({ title: t('error'), description: `${t('error')}: ${error.message}`, variant: "destructive" });
     }
   });
 
@@ -118,10 +118,10 @@ const Societes = () => {
   const deleteSociete = useTenantMutation('societes', 'delete', {
     invalidateQueries: ['societes'],
     onSuccess: () => {
-        toast({ title: "Succès", description: "Société supprimée avec succès." });
+        toast({ title: t('success'), description: t('companyDeleted') });
     },
     onError: (error: any) => {
-        toast({ title: "Erreur", description: `Erreur: ${error.message}`, variant: "destructive" });
+        toast({ title: t('error'), description: `${t('error')}: ${error.message}`, variant: "destructive" });
     }
   });
 
@@ -156,12 +156,12 @@ const Societes = () => {
         // Création - le client sera créé automatiquement par le trigger de la DB
         createSociete.mutate(finalData, {
             onSuccess: () => {
-                toast({ title: "Succès", description: "Société ajoutée avec succès." });
+                toast({ title: t('success'), description: t('companyAdded') });
                 setIsDialogOpen(false);
                 form.reset();
             },
             onError: (error: any) => {
-                toast({ title: "Erreur", description: `Erreur lors de la création: ${error.message}`, variant: "destructive" });
+                toast({ title: t('error'), description: `${t('error')}: ${error.message}`, variant: "destructive" });
             },
         });
     }
@@ -209,7 +209,7 @@ const Societes = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building className="h-5 w-5" />
-            Gestion des Sociétés Partenaires
+            {t('companyManagement')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -217,7 +217,7 @@ const Societes = () => {
             <div className="flex items-center space-x-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher par nom de société..."
+                placeholder={t('searchCompany')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-64"
@@ -227,14 +227,14 @@ const Societes = () => {
               <DialogTrigger asChild>
                 <Button onClick={handleAddNew}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Ajouter une Société
+                  {t('newCompany')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>{editingSociete ? 'Modifier la Société' : 'Ajouter une nouvelle Société'}</DialogTitle>
+                  <DialogTitle>{editingSociete ? t('editCompany') : t('newCompany')}</DialogTitle>
                   <DialogDescription>
-                    Remplissez les informations de la société partenaire.
+                    {t('fillCompanyInfo')}
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -242,42 +242,42 @@ const Societes = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <FormField control={form.control} name="libelle_societe" render={({ field }) => (
                         <FormItem className="col-span-2">
-                          <FormLabel>Nom de la société *</FormLabel>
+                          <FormLabel>{t('companyName')} *</FormLabel>
                           <FormControl><Input {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                        <FormField control={form.control} name="niu" render={({ field }) => (
                          <FormItem>
-                           <FormLabel>NIU</FormLabel>
+                           <FormLabel>{t('niu')}</FormLabel>
                            <FormControl><Input {...field} /></FormControl>
                            <FormMessage />
                          </FormItem>
                        )} />
                       <FormField control={form.control} name="telephone_appel" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Téléphone principal *</FormLabel>
+                          <FormLabel>{t('phone')} *</FormLabel>
                           <FormControl><Input {...field} type="tel" /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="telephone_whatsapp" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Téléphone WhatsApp</FormLabel>
+                          <FormLabel>{t('whatsapp')}</FormLabel>
                           <FormControl><Input {...field} type="tel" /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="email" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>{t('email')}</FormLabel>
                           <FormControl><Input {...field} type="email" /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="adresse" render={({ field }) => (
                         <FormItem className="col-span-2">
-                          <FormLabel>Adresse</FormLabel>
+                          <FormLabel>{t('address')}</FormLabel>
                           <FormControl><Input {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
@@ -289,7 +289,7 @@ const Societes = () => {
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base flex items-center gap-2">
                           <CreditCard className="h-4 w-4" />
-                          Infos Compte Client
+                          {t('clientAccountInfo')}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
@@ -297,18 +297,18 @@ const Societes = () => {
                         <div className="grid grid-cols-2 gap-4">
                           <FormField control={form.control} name="assureur_id" render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Assureur (optionnel)</FormLabel>
+                              <FormLabel>{t('insurerOptional')}</FormLabel>
                               <Select 
                                 onValueChange={(value) => field.onChange(value === '__none__' ? null : value)} 
                                 value={field.value || '__none__'}
                               >
                                 <FormControl>
                                   <SelectTrigger>
-                                    <SelectValue placeholder="Aucun assureur" />
+                                    <SelectValue placeholder={t('noInsurer')} />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="__none__">Aucun assureur</SelectItem>
+                                  <SelectItem value="__none__">{t('noInsurer')}</SelectItem>
                                   {assureurs.map((assureur: Assureur) => (
                                     <SelectItem key={assureur.id} value={assureur.id}>
                                       {assureur.libelle_assureur}
@@ -321,7 +321,7 @@ const Societes = () => {
                           )} />
                           <FormField control={form.control} name="taux_remise_automatique" render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Taux de remise automatique (%)</FormLabel>
+                              <FormLabel>{t('autoDiscountRate')}</FormLabel>
                               <FormControl>
                                 <Input 
                                   type="number" 
@@ -333,7 +333,7 @@ const Societes = () => {
                                   onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
                                 />
                               </FormControl>
-                              <FormDescription>Remise appliquée automatiquement au point de vente</FormDescription>
+                              <FormDescription>{t('autoDiscountDesc')}</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )} />
@@ -343,7 +343,7 @@ const Societes = () => {
                         <div className="grid grid-cols-2 gap-4">
                           <FormField control={form.control} name="taux_couverture_agent" render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Taux Agent (%)</FormLabel>
+                              <FormLabel>{t('agentRate')}</FormLabel>
                               <FormControl>
                                 <Input 
                                   type="number" 
@@ -355,13 +355,13 @@ const Societes = () => {
                                   onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
                                 />
                               </FormControl>
-                              <FormDescription>Taux de prise en charge pour l'agent</FormDescription>
+                              <FormDescription>{t('agentCoverageDesc')}</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )} />
                           <FormField control={form.control} name="taux_couverture_ayant_droit" render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Taux Ayant Droit (%)</FormLabel>
+                              <FormLabel>{t('beneficiaryRate')}</FormLabel>
                               <FormControl>
                                 <Input 
                                   type="number" 
@@ -373,7 +373,7 @@ const Societes = () => {
                                   onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
                                 />
                               </FormControl>
-                              <FormDescription>Taux de prise en charge pour les ayants droit</FormDescription>
+                              <FormDescription>{t('beneficiaryCoverageDesc')}</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )} />
@@ -383,7 +383,7 @@ const Societes = () => {
                         <div className="grid grid-cols-2 gap-4">
                           <FormField control={form.control} name="limite_dette" render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
+                              <FormLabel>{t('debtLimit')} ({getCurrencySymbol()})</FormLabel>
                               <FormControl>
                                 <Input 
                                   type="number" 
@@ -395,7 +395,7 @@ const Societes = () => {
                                   onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
                                 />
                               </FormControl>
-                              <FormDescription>Montant maximum de crédit autorisé</FormDescription>
+                              <FormDescription>{t('maxCreditAmount')}</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )} />
@@ -408,9 +408,9 @@ const Societes = () => {
                                 />
                               </FormControl>
                               <div className="space-y-1 leading-none">
-                                <FormLabel>Peut prendre des produits en bon</FormLabel>
+                                <FormLabel>{t('canTakeVoucher')}</FormLabel>
                                 <FormDescription>
-                                  Autoriser les achats à crédit au point de vente
+                                  {t('allowVoucherDesc')}
                                 </FormDescription>
                               </div>
                             </FormItem>
@@ -421,7 +421,7 @@ const Societes = () => {
                         <div className="grid grid-cols-2 gap-4">
                           <FormField control={form.control} name="taux_ticket_moderateur" render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Taux ticket modérateur (%)</FormLabel>
+                              <FormLabel>{t('moderatorTicketRate')}</FormLabel>
                               <FormControl>
                                 <Input 
                                   type="number" 
@@ -433,13 +433,13 @@ const Societes = () => {
                                   onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
                                 />
                               </FormControl>
-                              <FormDescription>Part payée comptant par le client non assuré lors d'un achat en bon</FormDescription>
+                              <FormDescription>{t('moderatorTicketDesc')}</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )} />
                           <FormField control={form.control} name="caution" render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Valeur Caution Actuelle ({getCurrencySymbol()})</FormLabel>
+                              <FormLabel>{t('deposit')} ({getCurrencySymbol()})</FormLabel>
                               <FormControl>
                                 <Input 
                                   type="number" 
@@ -451,7 +451,7 @@ const Societes = () => {
                                   className="bg-muted cursor-not-allowed"
                                 />
                               </FormControl>
-                              <FormDescription>Montant de la caution actuelle (non modifiable)</FormDescription>
+                              <FormDescription>{t('depositDesc')}</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )} />
@@ -460,8 +460,8 @@ const Societes = () => {
                     </Card>
 
                      <DialogFooter className="mt-4">
-                        <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
-                        <Button type="submit">{editingSociete ? 'Modifier' : 'Ajouter'}</Button>
+                        <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>{t('cancel')}</Button>
+                        <Button type="submit">{editingSociete ? t('modify') : t('create')}</Button>
                     </DialogFooter>
                   </form>
                 </Form>
@@ -470,19 +470,19 @@ const Societes = () => {
           </div>
 
             {isLoading ? (
-                <div className="text-center">Chargement...</div>
+                <div className="text-center">{t('loading')}</div>
             ) : error ? (
-                <div className="text-center text-red-500">Erreur: {error.message}</div>
+                <div className="text-center text-red-500">{t('error')}: {error.message}</div>
             ) : (
                 <Table>
                     <TableHeader>
                     <TableRow>
-                        <TableHead>Nom de la société</TableHead>
-                        <TableHead>Contacts</TableHead>
-                        <TableHead>Adresse</TableHead>
-                        <TableHead>Limite dette</TableHead>
-                        <TableHead>Remise</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead>{t('companyName')}</TableHead>
+                        <TableHead>{t('contacts')}</TableHead>
+                        <TableHead>{t('address')}</TableHead>
+                        <TableHead>{t('debtLimit')}</TableHead>
+                        <TableHead>{t('discountRate')}</TableHead>
+                        <TableHead>{t('actions')}</TableHead>
                     </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -523,7 +523,7 @@ const Societes = () => {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm text-muted-foreground max-w-xs truncate">
-                            {societe.adresse || 'Non renseignée'}
+                            {societe.adresse || t('notProvided')}
                           </div>
                         </TableCell>
                         <TableCell>{formatAmount(societe.limite_dette || 0)}</TableCell>
@@ -549,7 +549,7 @@ const Societes = () => {
                 </Table>
             )}
             {filteredSocietes.length === 0 && !isLoading && (
-                <p className="text-center text-muted-foreground mt-4">Aucune société trouvée.</p>
+                <p className="text-center text-muted-foreground mt-4">{t('noCompanyFound')}</p>
             )}
         </CardContent>
       </Card>

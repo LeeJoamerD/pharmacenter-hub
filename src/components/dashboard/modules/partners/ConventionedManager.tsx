@@ -75,8 +75,8 @@ const ConventionedManager = () => {
     invalidateQueries: ['conventionnes'],
     onSuccess: () => {
       toast({ 
-        title: "Conventionné ajouté avec succès",
-        description: "Un compte client a été créé automatiquement pour ce conventionné."
+        title: t('conventionedAdded'),
+        description: t('clientAccountCreated')
       });
       handleDialogClose();
     }
@@ -86,8 +86,8 @@ const ConventionedManager = () => {
     invalidateQueries: ['conventionnes'],
     onSuccess: () => {
       toast({ 
-        title: "Conventionné modifié avec succès",
-        description: "Le compte client associé a été mis à jour automatiquement."
+        title: t('conventionedModified'),
+        description: t('clientAccountUpdated')
       });
       handleDialogClose();
     }
@@ -97,8 +97,8 @@ const ConventionedManager = () => {
     invalidateQueries: ['conventionnes'],
     onSuccess: () => {
       toast({ 
-        title: "Conventionné supprimé",
-        description: "Le compte client associé a été supprimé automatiquement."
+        title: t('conventionedDeleted'),
+        description: t('clientAccountDeleted')
       });
     }
   });
@@ -186,7 +186,7 @@ const ConventionedManager = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <UserCheck className="h-5 w-5" />
-              Gestion des Conventionnés
+              {t('conventionedManagement')}
             </CardTitle>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
@@ -196,16 +196,16 @@ const ConventionedManager = () => {
                   setIsDialogOpen(true);
                 }}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Nouveau Conventionné
+                  {t('newConventioned')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
-                    {editingConventionne ? 'Modifier le conventionné' : 'Nouveau conventionné'}
+                    {editingConventionne ? t('editConventioned') : t('newConventioned')}
                   </DialogTitle>
                   <DialogDescription>
-                    {editingConventionne ? 'Modifiez les informations du conventionné ci-dessous.' : 'Remplissez les informations pour créer un nouveau conventionné.'}
+                    {editingConventionne ? t('fillConventionedInfoEdit') : t('fillConventionedInfo')}
                   </DialogDescription>
                 </DialogHeader>
                 
@@ -218,7 +218,7 @@ const ConventionedManager = () => {
                         name="noms"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Nom de l'établissement *</FormLabel>
+                            <FormLabel>{t('conventionedName')} *</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="Ex: Hôpital Général de Brazzaville" 
@@ -236,7 +236,7 @@ const ConventionedManager = () => {
                         name="niu"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>NIU</FormLabel>
+                            <FormLabel>{t('niu')}</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="Numéro d'identification unique" 
@@ -253,7 +253,7 @@ const ConventionedManager = () => {
                         name="telephone_appel"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Téléphone</FormLabel>
+                            <FormLabel>{t('phone')}</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="+242 06 123 45 67" 
@@ -270,7 +270,7 @@ const ConventionedManager = () => {
                         name="telephone_whatsapp"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>WhatsApp</FormLabel>
+                            <FormLabel>{t('whatsapp')}</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="+242 06 123 45 67" 
@@ -287,7 +287,7 @@ const ConventionedManager = () => {
                         name="email"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Email</FormLabel>
+                            <FormLabel>{t('email')}</FormLabel>
                             <FormControl>
                               <Input 
                                 type="email" 
@@ -305,7 +305,7 @@ const ConventionedManager = () => {
                         name="ville"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Ville</FormLabel>
+                            <FormLabel>{t('city')}</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="Brazzaville" 
@@ -324,7 +324,7 @@ const ConventionedManager = () => {
                       name="adresse"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Adresse</FormLabel>
+                          <FormLabel>{t('address')}</FormLabel>
                           <FormControl>
                             <Textarea 
                               placeholder="Adresse complète" 
@@ -341,7 +341,7 @@ const ConventionedManager = () => {
                       <CardHeader className="pb-3">
                         <CardTitle className="text-base flex items-center gap-2">
                           <CreditCard className="h-4 w-4" />
-                          Infos Compte Client
+                          {t('clientAccountInfo')}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
@@ -352,15 +352,15 @@ const ConventionedManager = () => {
                             name="assureur_id"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Assureur (optionnel)</FormLabel>
+                                <FormLabel>{t('insurerOptional')}</FormLabel>
                                 <Select onValueChange={(val) => field.onChange(val === "__none__" ? "" : val)} value={field.value || "__none__"}>
                                   <FormControl>
                                     <SelectTrigger>
-                                      <SelectValue placeholder="Aucun assureur" />
+                                      <SelectValue placeholder={t('noInsurer')} />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    <SelectItem value="__none__">Aucun assureur</SelectItem>
+                                    <SelectItem value="__none__">{t('noInsurer')}</SelectItem>
                                     {assureurs.map((assureur: Assureur) => (
                                       <SelectItem key={assureur.id} value={assureur.id}>
                                         {assureur.libelle_assureur}
@@ -377,7 +377,7 @@ const ConventionedManager = () => {
                             name="taux_remise_automatique"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Taux de remise automatique (%)</FormLabel>
+                                <FormLabel>{t('autoDiscountRate')}</FormLabel>
                                 <FormControl>
                                   <Input 
                                     type="number" 
@@ -389,7 +389,7 @@ const ConventionedManager = () => {
                                     onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
                                   />
                                 </FormControl>
-                                <FormDescription>Remise appliquée automatiquement au point de vente</FormDescription>
+                                <FormDescription>{t('autoDiscountDesc')}</FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -403,7 +403,7 @@ const ConventionedManager = () => {
                             name="taux_couverture_agent"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Taux Agent (%)</FormLabel>
+                                <FormLabel>{t('agentRate')}</FormLabel>
                                 <FormControl>
                                   <Input 
                                     type="number" 
@@ -415,7 +415,7 @@ const ConventionedManager = () => {
                                     onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
                                   />
                                 </FormControl>
-                                <FormDescription>Taux de prise en charge pour l'agent</FormDescription>
+                                <FormDescription>{t('agentCoverageDesc')}</FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -425,7 +425,7 @@ const ConventionedManager = () => {
                             name="taux_couverture_ayant_droit"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Taux Ayant Droit (%)</FormLabel>
+                                <FormLabel>{t('beneficiaryRate')}</FormLabel>
                                 <FormControl>
                                   <Input 
                                     type="number" 
@@ -437,7 +437,7 @@ const ConventionedManager = () => {
                                     onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
                                   />
                                 </FormControl>
-                                <FormDescription>Taux de prise en charge pour les ayants droit</FormDescription>
+                                <FormDescription>{t('beneficiaryCoverageDesc')}</FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -451,7 +451,7 @@ const ConventionedManager = () => {
                             name="limite_dette"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
+                                <FormLabel>{t('debtLimit')} ({getCurrencySymbol()})</FormLabel>
                                 <FormControl>
                                   <Input 
                                     type="number" 
@@ -463,7 +463,7 @@ const ConventionedManager = () => {
                                     onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} 
                                   />
                                 </FormControl>
-                                <FormDescription>Montant maximum de crédit autorisé</FormDescription>
+                                <FormDescription>{t('maxCreditAmount')}</FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -480,9 +480,9 @@ const ConventionedManager = () => {
                                   />
                                 </FormControl>
                                 <div className="space-y-1 leading-none">
-                                  <FormLabel>Peut prendre des produits en bon</FormLabel>
+                                  <FormLabel>{t('canTakeVoucher')}</FormLabel>
                                   <FormDescription>
-                                    Autoriser les achats à crédit au point de vente
+                                    {t('allowVoucherDesc')}
                                   </FormDescription>
                                 </div>
                               </FormItem>
@@ -497,7 +497,7 @@ const ConventionedManager = () => {
                             name="taux_ticket_moderateur"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Taux ticket modérateur (%)</FormLabel>
+                                <FormLabel>{t('moderatorTicketRate')}</FormLabel>
                                 <FormControl>
                                   <Input 
                                     type="number" 
@@ -510,7 +510,7 @@ const ConventionedManager = () => {
                                   />
                                 </FormControl>
                                 <FormDescription>
-                                  Part payée comptant par le client non assuré lors d'un achat en bon
+                                  {t('moderatorTicketDesc')}
                                 </FormDescription>
                                 <FormMessage />
                               </FormItem>
@@ -521,7 +521,7 @@ const ConventionedManager = () => {
                             name="caution"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Valeur Caution Actuelle ({getCurrencySymbol()})</FormLabel>
+                                <FormLabel>{t('deposit')} ({getCurrencySymbol()})</FormLabel>
                                 <FormControl>
                                   <Input 
                                     type="number" 
@@ -533,7 +533,7 @@ const ConventionedManager = () => {
                                     className="bg-muted cursor-not-allowed"
                                   />
                                 </FormControl>
-                                <FormDescription>Montant de la caution actuelle (non modifiable)</FormDescription>
+                                <FormDescription>{t('depositDesc')}</FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -548,13 +548,13 @@ const ConventionedManager = () => {
                         variant="outline" 
                         onClick={handleDialogClose}
                       >
-                        Annuler
+                        {t('cancel')}
                       </Button>
                       <Button 
                         type="submit"
                         disabled={createMutation.isPending || updateMutation.isPending}
                       >
-                        {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingConventionne ? 'Modifier' : 'Ajouter')}
+                        {createMutation.isPending || updateMutation.isPending ? t('processing') : (editingConventionne ? t('modify') : t('create'))}
                       </Button>
                     </div>
                   </form>
@@ -568,7 +568,7 @@ const ConventionedManager = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher un conventionné..."
+                placeholder={t('searchConventioned')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -579,18 +579,18 @@ const ConventionedManager = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Établissement</TableHead>
-                <TableHead>Contacts</TableHead>
-                <TableHead>Taux (%)</TableHead>
-                <TableHead>Limite dette</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t('conventionedName')}</TableHead>
+                <TableHead>{t('contacts')}</TableHead>
+                <TableHead>{t('discountRate')}</TableHead>
+                <TableHead>{t('debtLimit')}</TableHead>
+                <TableHead>{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8">
-                    Chargement...
+                    {t('loading')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -667,7 +667,7 @@ const ConventionedManager = () => {
 
           {filteredConventionnes.length === 0 && !isLoading && (
             <div className="text-center py-8 text-muted-foreground">
-              Aucun conventionné trouvé
+              {t('noConventionedFound')}
             </div>
           )}
         </CardContent>
