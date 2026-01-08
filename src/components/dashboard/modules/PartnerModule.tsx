@@ -9,9 +9,11 @@ import ConventionedManager from './partners/ConventionedManager';
 import SupplierManager from './partners/SupplierManager';
 import LaboratoryManager from './partners/LaboratoryManager';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const PartnerModule = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const { t } = useLanguage();
 
   // Récupérer les métriques réelles
   const { useTenantQueryWithCache } = useTenantQuery();
@@ -59,56 +61,56 @@ const PartnerModule = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Assureurs</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('insurers')}</CardTitle>
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{partnerMetrics.assureurs}</div>
-            <p className="text-xs text-muted-foreground">Compagnies d'assurance</p>
+            <p className="text-xs text-muted-foreground">{t('insuranceCompanies')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sociétés</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('companies')}</CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{partnerMetrics.societes}</div>
-            <p className="text-xs text-muted-foreground">Entreprises partenaires</p>
+            <p className="text-xs text-muted-foreground">{t('partnerCompanies')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conventionnés</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('conventioned')}</CardTitle>
             <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{partnerMetrics.conventionnes}</div>
-            <p className="text-xs text-muted-foreground">Établissements conventionnés</p>
+            <p className="text-xs text-muted-foreground">{t('conventionedEstablishments')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fournisseurs</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('suppliers')}</CardTitle>
             <Truck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{partnerMetrics.fournisseurs}</div>
-            <p className="text-xs text-muted-foreground">Fournisseurs actifs</p>
+            <p className="text-xs text-muted-foreground">{t('activeSuppliers')}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Laboratoires</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('laboratories')}</CardTitle>
             <FlaskConical className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{partnerMetrics.laboratoires}</div>
-            <p className="text-xs text-muted-foreground">Laboratoires pharmaceutiques</p>
+            <p className="text-xs text-muted-foreground">{t('pharmaLabs')}</p>
           </CardContent>
         </Card>
       </div>
@@ -116,30 +118,30 @@ const PartnerModule = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Partenaires Récents</CardTitle>
+            <CardTitle>{t('recentPartners')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Assureur NSIA</p>
-                  <p className="text-xs text-muted-foreground">Ajouté il y a 2 jours</p>
+                  <p className="text-xs text-muted-foreground">{t('addedAgo')} 2 {t('days')}</p>
                 </div>
-                <Badge variant="default">Assureur</Badge>
+                <Badge variant="default">{t('insurers')}</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Laboratoire Roche</p>
-                  <p className="text-xs text-muted-foreground">Ajouté il y a 1 semaine</p>
+                  <p className="text-xs text-muted-foreground">{t('addedAgo')} 1 {t('week')}</p>
                 </div>
-                <Badge variant="secondary">Laboratoire</Badge>
+                <Badge variant="secondary">{t('laboratories')}</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Fournisseur COPHAL</p>
-                  <p className="text-xs text-muted-foreground">Ajouté il y a 2 semaines</p>
+                  <p className="text-xs text-muted-foreground">{t('addedAgo')} 2 {t('weeks')}</p>
                 </div>
-                <Badge variant="outline">Fournisseur</Badge>
+                <Badge variant="outline">{t('suppliers')}</Badge>
               </div>
             </div>
           </CardContent>
@@ -147,7 +149,7 @@ const PartnerModule = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Actions Rapides</CardTitle>
+            <CardTitle>{t('quickActions')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -157,7 +159,7 @@ const PartnerModule = () => {
               >
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4" />
-                  <span className="text-sm">Gérer les Assureurs</span>
+                  <span className="text-sm">{t('manageInsurers')}</span>
                 </div>
               </button>
               <button 
@@ -166,7 +168,7 @@ const PartnerModule = () => {
               >
                 <div className="flex items-center gap-2">
                   <Truck className="h-4 w-4" />
-                  <span className="text-sm">Gérer les Fournisseurs</span>
+                  <span className="text-sm">{t('manageSuppliers')}</span>
                 </div>
               </button>
               <button 
@@ -175,7 +177,7 @@ const PartnerModule = () => {
               >
                 <div className="flex items-center gap-2">
                   <FlaskConical className="h-4 w-4" />
-                  <span className="text-sm">Gérer les Laboratoires</span>
+                  <span className="text-sm">{t('manageLabs')}</span>
                 </div>
               </button>
             </div>
@@ -189,12 +191,12 @@ const PartnerModule = () => {
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-          <TabsTrigger value="assureurs">Assureurs</TabsTrigger>
-          <TabsTrigger value="societes">Sociétés</TabsTrigger>
-          <TabsTrigger value="conventionnes">Conventionnés</TabsTrigger>
-          <TabsTrigger value="fournisseurs">Fournisseurs</TabsTrigger>
-          <TabsTrigger value="laboratoires">Laboratoires</TabsTrigger>
+          <TabsTrigger value="overview">{t('partnersOverview')}</TabsTrigger>
+          <TabsTrigger value="assureurs">{t('insurers')}</TabsTrigger>
+          <TabsTrigger value="societes">{t('companies')}</TabsTrigger>
+          <TabsTrigger value="conventionnes">{t('conventioned')}</TabsTrigger>
+          <TabsTrigger value="fournisseurs">{t('suppliers')}</TabsTrigger>
+          <TabsTrigger value="laboratoires">{t('laboratories')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">

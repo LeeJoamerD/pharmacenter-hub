@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const assureurSchema = z.object({
   libelle_assureur: z.string().min(1, "Le nom est requis"),
@@ -34,6 +35,7 @@ const InsuranceManager = () => {
   const { toast } = useToast();
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
   const { getCurrencySymbol, getInputStep, isNoDecimalCurrency } = useCurrencyFormatting();
+  const { t } = useLanguage();
 
   // Récupérer les assureurs
   const { data: assureurs = [], isLoading, refetch } = useTenantQueryWithCache(
@@ -48,7 +50,7 @@ const InsuranceManager = () => {
   const createMutation = useTenantMutation('assureurs', 'insert', {
     invalidateQueries: ['assureurs-v2'],
     onSuccess: () => {
-      toast({ title: "Assureur ajouté avec succès" });
+      toast({ title: t('insurerAdded') });
       setIsDialogOpen(false);
       form.reset();
     }
@@ -57,7 +59,7 @@ const InsuranceManager = () => {
   const updateMutation = useTenantMutation('assureurs', 'update', {
     invalidateQueries: ['assureurs-v2'],
     onSuccess: () => {
-      toast({ title: "Assureur modifié avec succès" });
+      toast({ title: t('insurerModified') });
       setIsDialogOpen(false);
       form.reset();
       setEditingAssureur(null);
@@ -67,7 +69,7 @@ const InsuranceManager = () => {
   const deleteMutation = useTenantMutation('assureurs', 'delete', {
     invalidateQueries: ['assureurs-v2'],
     onSuccess: () => {
-      toast({ title: "Assureur supprimé" });
+      toast({ title: t('insurerDeleted') });
     }
   });
 
@@ -123,7 +125,7 @@ const InsuranceManager = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Gestion des Assureurs
+              {t('insurerManagement')}
             </CardTitle>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
@@ -133,16 +135,16 @@ const InsuranceManager = () => {
                   setIsDialogOpen(true);
                 }}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Nouvel Assureur
+                  {t('newInsurer')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
-                    {editingAssureur ? 'Modifier l\'assureur' : 'Nouvel assureur'}
+                    {editingAssureur ? t('editInsurer') : t('newInsurer')}
                   </DialogTitle>
                   <DialogDescription>
-                    {editingAssureur ? 'Modifiez les informations de l\'assureur ci-dessous.' : 'Remplissez les informations pour créer un nouvel assureur.'}
+                    {editingAssureur ? t('editInsurer') : t('newInsurer')}
                   </DialogDescription>
                 </DialogHeader>
                 
@@ -154,7 +156,7 @@ const InsuranceManager = () => {
                         name="libelle_assureur"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Nom de l'assureur *</FormLabel>
+                            <FormLabel>{t('insurerName')} *</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="Ex: NSIA Assurances" 
@@ -172,7 +174,7 @@ const InsuranceManager = () => {
                         name="niu"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>NIU</FormLabel>
+                            <FormLabel>{t('niu')}</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="Numéro d'identification unique" 
@@ -189,7 +191,7 @@ const InsuranceManager = () => {
                         name="telephone_appel"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Téléphone</FormLabel>
+                            <FormLabel>{t('phone')}</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="+242 06 123 45 67" 
@@ -206,7 +208,7 @@ const InsuranceManager = () => {
                         name="telephone_whatsapp"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>WhatsApp</FormLabel>
+                            <FormLabel>{t('whatsapp')}</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="+242 06 123 45 67" 
@@ -223,7 +225,7 @@ const InsuranceManager = () => {
                         name="email"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Email</FormLabel>
+                            <FormLabel>{t('email')}</FormLabel>
                             <FormControl>
                               <Input 
                                 type="email" 
@@ -241,7 +243,7 @@ const InsuranceManager = () => {
                         name="limite_dette"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Limite de dette ({getCurrencySymbol()})</FormLabel>
+                            <FormLabel>{t('debtLimit')} ({getCurrencySymbol()})</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number"
@@ -261,7 +263,7 @@ const InsuranceManager = () => {
                       name="adresse"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Adresse</FormLabel>
+                          <FormLabel>{t('address')}</FormLabel>
                           <FormControl>
                             <Textarea 
                               placeholder="Adresse complète" 
@@ -279,13 +281,13 @@ const InsuranceManager = () => {
                         variant="outline" 
                         onClick={handleDialogClose}
                       >
-                        Annuler
+                        {t('cancel')}
                       </Button>
                       <Button 
                         type="submit" 
                         disabled={createMutation.isPending || updateMutation.isPending}
                       >
-                        {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingAssureur ? 'Modifier' : 'Ajouter')}
+                        {createMutation.isPending || updateMutation.isPending ? t('processing') : (editingAssureur ? t('modify') : t('create'))}
                       </Button>
                     </div>
                   </form>
@@ -299,7 +301,7 @@ const InsuranceManager = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher un assureur..."
+                placeholder={t('searchInsurer')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -310,17 +312,17 @@ const InsuranceManager = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Assureur</TableHead>
-                <TableHead>Contacts</TableHead>
-                <TableHead>Adresse</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t('insurers')}</TableHead>
+                <TableHead>{t('contacts')}</TableHead>
+                <TableHead>{t('address')}</TableHead>
+                <TableHead>{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-8">
-                    Chargement...
+                    {t('loading')}
                   </TableCell>
                 </TableRow>
               ) : filteredAssureurs.map((assureur: any) => (
@@ -363,7 +365,7 @@ const InsuranceManager = () => {
                   </TableCell>
                   <TableCell>
                     <div className="text-sm text-muted-foreground max-w-xs truncate">
-                      {assureur.adresse || 'Non renseignée'}
+                      {assureur.adresse || t('notProvided')}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -394,7 +396,7 @@ const InsuranceManager = () => {
 
           {filteredAssureurs.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              Aucun assureur trouvé
+              {t('noInsurerFound')}
             </div>
           )}
         </CardContent>

@@ -12,11 +12,14 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { useDateLocale } from '@/hooks/useDateLocale';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export const ScheduleManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const { t } = useLanguage();
+  const { dateLocale } = useDateLocale();
 
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
 
@@ -40,38 +43,38 @@ export const ScheduleManagement = () => {
   // Mutations
   const createMutation = useTenantMutation('planning_employes', 'insert', {
     onSuccess: () => {
-      toast.success('Horaire créé avec succès');
+      toast.success(t('scheduleCreated'));
       setIsDialogOpen(false);
       form.reset();
       refetch();
     },
     onError: (error) => {
-      toast.error('Erreur lors de la création de l\'horaire');
+      toast.error(t('errorLoading'));
       console.error(error);
     }
   });
 
   const updateMutation = useTenantMutation('planning_employes', 'update', {
     onSuccess: () => {
-      toast.success('Horaire modifié avec succès');
+      toast.success(t('scheduleUpdated'));
       setIsDialogOpen(false);
       setEditingSchedule(null);
       form.reset();
       refetch();
     },
     onError: (error) => {
-      toast.error('Erreur lors de la modification de l\'horaire');
+      toast.error(t('errorLoading'));
       console.error(error);
     }
   });
 
   const deleteMutation = useTenantMutation('planning_employes', 'delete', {
     onSuccess: () => {
-      toast.success('Horaire supprimé avec succès');
+      toast.success(t('scheduleDeleted'));
       refetch();
     },
     onError: (error) => {
-      toast.error('Erreur lors de la suppression de l\'horaire');
+      toast.error(t('errorLoading'));
       console.error(error);
     }
   });
@@ -154,17 +157,18 @@ export const ScheduleManagement = () => {
 
   const getEmployeeName = (employeId: string) => {
     const employee = employees.find((e: any) => e.id.toString() === employeId);
-    return employee ? `${employee.prenoms} ${employee.noms}` : 'Employé inconnu';
+    return employee ? `${employee.prenoms} ${employee.noms}` : t('noEmployeeFound');
   };
 
   if (schedulesLoading) {
     return (
       <Card>
         <CardContent className="p-6">
-          <div className="text-center">Chargement des horaires...</div>
+          <div className="text-center">{t('loadingSchedules')}</div>
         </CardContent>
       </Card>
     );
+  }
   }
 
   return (
@@ -172,9 +176,9 @@ export const ScheduleManagement = () => {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Gestion des Horaires</CardTitle>
+            <CardTitle>{t('scheduleManagement')}</CardTitle>
             <CardDescription>
-              Planifiez et gérez les horaires de travail de vos employés
+              {t('scheduleManagementDesc')}
             </CardDescription>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -184,13 +188,13 @@ export const ScheduleManagement = () => {
                 form.reset();
               }}>
                 <Plus className="w-4 h-4 mr-2" />
-                Nouvel Horaire
+                {t('newSchedule')}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>
-                  {editingSchedule ? 'Modifier l\'horaire' : 'Créer un nouvel horaire'}
+                  {editingSchedule ? t('editSchedule') : t('newSchedule')}
                 </DialogTitle>
                 <DialogDescription></DialogDescription>
               </DialogHeader>
@@ -212,7 +216,7 @@ export const ScheduleManagement = () => {
             <Card>
               <CardContent className="p-4">
                 <div className="text-2xl font-bold">{schedules.length}</div>
-                <p className="text-sm text-muted-foreground">Total horaires</p>
+                <p className="text-sm text-muted-foreground">{t('totalEmployees')}</p>
               </CardContent>
             </Card>
             <Card>
@@ -220,7 +224,7 @@ export const ScheduleManagement = () => {
                 <div className="text-2xl font-bold text-blue-600">
                   {schedules.filter((s: Schedule) => s.statut === 'Planifié').length}
                 </div>
-                <p className="text-sm text-muted-foreground">Planifiés</p>
+                <p className="text-sm text-muted-foreground">{t('planned')}</p>
               </CardContent>
             </Card>
             <Card>
@@ -228,7 +232,7 @@ export const ScheduleManagement = () => {
                 <div className="text-2xl font-bold text-green-600">
                   {schedules.filter((s: Schedule) => s.statut === 'En cours').length}
                 </div>
-                <p className="text-sm text-muted-foreground">En cours</p>
+                <p className="text-sm text-muted-foreground">{t('inProgress')}</p>
               </CardContent>
             </Card>
             <Card>
@@ -236,7 +240,7 @@ export const ScheduleManagement = () => {
                 <div className="text-2xl font-bold text-gray-600">
                   {schedules.filter((s: Schedule) => s.statut === 'Terminé').length}
                 </div>
-                <p className="text-sm text-muted-foreground">Terminés</p>
+                <p className="text-sm text-muted-foreground">{t('completed')}</p>
               </CardContent>
             </Card>
           </div>
@@ -247,7 +251,7 @@ export const ScheduleManagement = () => {
               <CardContent className="p-8 text-center">
                 <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <div className="text-muted-foreground">
-                  Aucun horaire planifié
+                  {t('noScheduleFound')}
                 </div>
               </CardContent>
             </Card>
@@ -256,13 +260,13 @@ export const ScheduleManagement = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Employé</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Horaires</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Poste</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>{t('employees')}</TableHead>
+                    <TableHead>{t('date')}</TableHead>
+                    <TableHead>{t('schedules')}</TableHead>
+                    <TableHead>{t('shiftType')}</TableHead>
+                    <TableHead>{t('post')}</TableHead>
+                    <TableHead>{t('status')}</TableHead>
+                    <TableHead>{t('actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -272,7 +276,7 @@ export const ScheduleManagement = () => {
                         {getEmployeeName(schedule.employe_id)}
                       </TableCell>
                       <TableCell>
-                        {format(new Date(schedule.date), 'dd/MM/yyyy', { locale: fr })}
+                        {format(new Date(schedule.date), 'dd/MM/yyyy', { locale: dateLocale })}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
