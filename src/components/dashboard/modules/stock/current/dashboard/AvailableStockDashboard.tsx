@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Package, AlertTriangle, Zap } from 'lucide-react';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import QuickStockSearch from './QuickStockSearch';
 import StockLevels from './StockLevels';
 import CriticalStock from './CriticalStock';
@@ -39,6 +40,7 @@ const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, rup
   const warningAlerts = metrics.lowStockProducts;
   const fastMovingCount = metrics.fastMovingProducts || 0;
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
 
   return (
     <div className="space-y-6">
@@ -48,13 +50,13 @@ const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, rup
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Package className="h-4 w-4 text-success" />
-              <span className="text-sm font-medium">Produits Disponibles</span>
+              <span className="text-sm font-medium">{t('availableProducts')}</span>
             </div>
             <div className="text-2xl font-bold text-success">{metrics.availableProducts}</div>
             <p className="text-xs text-muted-foreground">
               {metrics.totalProducts > 0 
-                ? `${((metrics.availableProducts / metrics.totalProducts) * 100).toFixed(1)}% du catalogue`
-                : '0% du catalogue'
+                ? `${((metrics.availableProducts / metrics.totalProducts) * 100).toFixed(1)}% ${t('ofCatalog')}`
+                : `0% ${t('ofCatalog')}`
               }
             </p>
           </CardContent>
@@ -64,10 +66,10 @@ const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, rup
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Zap className="h-4 w-4 text-info" />
-              <span className="text-sm font-medium">Rotation Rapide</span>
+              <span className="text-sm font-medium">{t('fastRotation')}</span>
             </div>
             <div className="text-2xl font-bold text-info">{fastMovingCount}</div>
-            <p className="text-xs text-muted-foreground">Produits performants</p>
+            <p className="text-xs text-muted-foreground">{t('performingProducts')}</p>
           </CardContent>
         </Card>
 
@@ -75,10 +77,10 @@ const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, rup
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="h-4 w-4 text-destructive" />
-              <span className="text-sm font-medium">Alertes Critiques</span>
+              <span className="text-sm font-medium">{t('criticalAlerts')}</span>
             </div>
             <div className="text-2xl font-bold text-destructive">{criticalAlerts}</div>
-            <p className="text-xs text-muted-foreground">Action immédiate requise</p>
+            <p className="text-xs text-muted-foreground">{t('immediateActionRequired')}</p>
           </CardContent>
         </Card>
 
@@ -86,12 +88,12 @@ const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, rup
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Valorisation</span>
+              <span className="text-sm font-medium">{t('valuation')}</span>
             </div>
             <div className="text-xl font-bold text-primary">
               {formatPrice(metrics.totalValue)}
             </div>
-            <p className="text-xs text-muted-foreground">Stock total</p>
+            <p className="text-xs text-muted-foreground">{t('totalStock')}</p>
           </CardContent>
         </Card>
       </div>
@@ -102,19 +104,19 @@ const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, rup
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
-              Alertes Importantes
+              {t('importantAlerts')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex gap-2">
               {criticalAlerts > 0 && (
                 <Badge className="bg-destructive/10 text-destructive border-destructive/20">
-                  {criticalAlerts} alerte{criticalAlerts > 1 ? 's' : ''} critique{criticalAlerts > 1 ? 's' : ''}
+                  {criticalAlerts} {t('criticalAlertLabel')}{criticalAlerts > 1 ? 's' : ''}
                 </Badge>
               )}
               {warningAlerts > 0 && (
                 <Badge className="bg-warning/10 text-warning border-warning/20">
-                  {warningAlerts} avertissement{warningAlerts > 1 ? 's' : ''}
+                  {warningAlerts} {t('warningLabel')}{warningAlerts > 1 ? 's' : ''}
                 </Badge>
               )}
             </div>

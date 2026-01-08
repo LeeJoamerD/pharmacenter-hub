@@ -10,9 +10,10 @@ import { getStockThresholds, calculateStockStatus, calculateRotation } from '@/u
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
-
+import { useLanguage } from '@/contexts/LanguageContext';
 const CriticalStock = React.memo(() => {
   const { tenantId } = useTenant();
+  const { t } = useLanguage();
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
@@ -147,7 +148,7 @@ const CriticalStock = React.memo(() => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            Stock Critique
+            {t('criticalStock')}
             {totalCriticalProducts > 0 && (
               <Badge variant="destructive">
                 {totalCriticalProducts}
@@ -159,7 +160,7 @@ const CriticalStock = React.memo(() => {
                   <Info className="h-4 w-4 text-muted-foreground" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Produits nécessitant un réapprovisionnement urgent (stock très faible mais &gt; 0)</p>
+                  <p>{t('criticalStockDescription')}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -169,8 +170,8 @@ const CriticalStock = React.memo(() => {
           {criticalProducts.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">
               <AlertTriangle className="h-12 w-12 mx-auto mb-2 text-success" />
-              <p className="font-medium text-success">Excellent !</p>
-              <p className="text-sm">Aucun stock critique détecté</p>
+              <p className="font-medium text-success">{t('excellent')}</p>
+              <p className="text-sm">{t('noCriticalStock')}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -199,7 +200,7 @@ const CriticalStock = React.memo(() => {
                         {product.stock_actuel}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Limite: {product.stock_limite}
+                        {t('stockLimit')}: {product.stock_limite}
                       </div>
                     </div>
                   </div>
@@ -212,7 +213,7 @@ const CriticalStock = React.memo(() => {
                       onClick={() => handleOrder(product)}
                     >
                       <ShoppingCart className="h-3 w-3 mr-1" />
-                      Commander
+                      {t('order')}
                     </Button>
                     <Button 
                       size="sm" 
@@ -229,7 +230,7 @@ const CriticalStock = React.memo(() => {
               {totalCriticalProducts > 8 && (
                 <div className="text-center pt-2">
                   <Button variant="outline" size="sm" onClick={handleViewAll}>
-                    Voir tous ({totalCriticalProducts})
+                    {t('viewAll')} ({totalCriticalProducts})
                   </Button>
                 </div>
               )}
