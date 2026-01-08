@@ -17,9 +17,11 @@ import { useReceptions } from "@/hooks/useReceptions";
 import { useTransporters } from "@/hooks/useTransporters";
 import { useOrderLines } from "@/hooks/useOrderLines";
 import { useOrderTracking } from "@/hooks/useOrderTracking";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const StockApprovisionnementTab = () => {
   const [activeTab, setActiveTab] = useState('liste');
+  const { t } = useLanguage();
   
   // Initialize all hooks for real data management
   const suppliers = useSuppliers();
@@ -35,49 +37,49 @@ const StockApprovisionnementTab = () => {
         <TabsTrigger value="liste">
           <div className="flex items-center gap-2">
             <Clipboard className="h-4 w-4" />
-            <span>Liste commandes</span>
+            <span>{t('orderList')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="commandes">
           <div className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
-            <span>Commandes</span>
+            <span>{t('orders')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="modifications">
           <div className="flex items-center gap-2">
             <Edit className="h-4 w-4" />
-            <span>Modification</span>
+            <span>{t('modification')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="receptions">
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4" />
-            <span>Réceptions</span>
+            <span>{t('receptions')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="import-excel">
           <div className="flex items-center gap-2">
             <FileUp className="h-4 w-4" />
-            <span>Import Excel</span>
+            <span>{t('excelImport')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="historique">
           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            <span>Historique</span>
+            <span>{t('history')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="fournisseurs">
           <div className="flex items-center gap-2">
             <ShoppingCart className="h-4 w-4" />
-            <span>Fournisseurs</span>
+            <span>{t('suppliers')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="suivi">
           <div className="flex items-center gap-2">
             <Eye className="h-4 w-4" />
-            <span>Suivi</span>
+            <span>{t('orderTracking')}</span>
           </div>
         </TabsTrigger>
       </TabsList>
@@ -136,11 +138,11 @@ const StockApprovisionnementTab = () => {
       
       <TabsContent value="fournisseurs">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-semibold">Gestion des Fournisseurs</h3>
+          <h3 className="text-lg font-semibold">{t('supplierManagement')}</h3>
           <StockSettingsDialog>
             <Button variant="outline" size="sm">
               <Settings className="h-4 w-4 mr-2" />
-              Paramètres Stock
+              {t('stockSettings')}
             </Button>
           </StockSettingsDialog>
         </div>

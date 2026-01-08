@@ -13,23 +13,25 @@ import StockValuation from './tabs/StockValuation';
 import QuickStockCheck from './tabs/QuickStockCheck';
 import { useCurrentStockPaginated } from '@/hooks/useCurrentStockPaginated';
 import { StockCacheManager } from '@/utils/stockCacheUtils';
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const CurrentStockTab = () => {
   const { metrics, isLoading, error } = useCurrentStockPaginated();
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
 
   const handleForceRefresh = async () => {
     setIsRefreshing(true);
     try {
       await StockCacheManager.forceResetAllCache(queryClient);
-      toast.success('Cache vidé avec succès', {
-        description: 'Les données ont été rechargées'
+      toast.success(t('cacheCleared'), {
+        description: t('dataReloaded')
       });
     } catch (error) {
-      toast.error('Erreur lors du rafraîchissement', {
-        description: 'Veuillez réessayer'
+      toast.error(t('refreshError'), {
+        description: t('pleaseTryAgain')
       });
     } finally {
       setIsRefreshing(false);
@@ -59,13 +61,13 @@ const CurrentStockTab = () => {
         <Card>
           <CardContent className="p-6">
             <div className="text-center">
-              <div className="text-destructive mb-2">Erreur de chargement du stock actuel</div>
-              <div className="text-sm text-muted-foreground mb-4">{error?.message || 'Une erreur est survenue'}</div>
+              <div className="text-destructive mb-2">{t('loadingError')}</div>
+              <div className="text-sm text-muted-foreground mb-4">{error?.message || t('errorOccurred')}</div>
               <button 
                 onClick={() => window.location.reload()} 
                 className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
               >
-                Recharger la page
+                {t('reloadPage')}
               </button>
             </div>
           </CardContent>
@@ -82,7 +84,7 @@ const CurrentStockTab = () => {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Total Produits</span>
+              <span className="text-sm font-medium">{t('totalProducts')}</span>
             </div>
             <div className="text-2xl font-bold text-primary">{metrics.totalProducts}</div>
           </CardContent>
@@ -92,7 +94,7 @@ const CurrentStockTab = () => {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <Eye className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium">Disponibles</span>
+              <span className="text-sm font-medium">{t('availableProducts')}</span>
             </div>
             <div className="text-2xl font-bold text-green-600">{metrics.availableProducts}</div>
           </CardContent>
@@ -102,7 +104,7 @@ const CurrentStockTab = () => {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <span className="text-sm font-medium">Stock Faible</span>
+              <span className="text-sm font-medium">{t('lowStock')}</span>
             </div>
             <div className="text-2xl font-bold text-yellow-600">{metrics.lowStockProducts}</div>
           </CardContent>
@@ -112,7 +114,7 @@ const CurrentStockTab = () => {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <XCircle className="h-4 w-4 text-red-600" />
-              <span className="text-sm font-medium">Ruptures</span>
+              <span className="text-sm font-medium">{t('outOfStock')}</span>
             </div>
             <div className="text-2xl font-bold text-red-600">{metrics.outOfStockProducts}</div>
           </CardContent>
@@ -122,7 +124,7 @@ const CurrentStockTab = () => {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium">Valorisation</span>
+              <span className="text-sm font-medium">{t('stockValorisation')}</span>
             </div>
             <div className="text-2xl font-bold text-blue-600">
               {formatPrice(metrics.totalValue)}
@@ -137,7 +139,7 @@ const CurrentStockTab = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5" />
-              Stock Actuel - Consultation Temps Réel
+              {t('currentStockRealTime')}
             </CardTitle>
             <Button
               variant="outline"
@@ -147,7 +149,7 @@ const CurrentStockTab = () => {
               className="flex items-center gap-2"
             >
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {isRefreshing ? 'Rafraîchissement...' : 'Rafraîchir'}
+              {isRefreshing ? t('refreshing') : t('stockRefresh')}
             </Button>
           </div>
         </CardHeader>
@@ -156,23 +158,23 @@ const CurrentStockTab = () => {
             <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="available" className="flex items-center gap-2">
                 <Package className="h-4 w-4" />
-                Disponible
+                {t('available')}
               </TabsTrigger>
               <TabsTrigger value="low-stock" className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" />
-                Stock Faible
+                {t('lowStock')}
               </TabsTrigger>
               <TabsTrigger value="out-of-stock" className="flex items-center gap-2">
                 <XCircle className="h-4 w-4" />
-                Ruptures
+                {t('outOfStock')}
               </TabsTrigger>
               <TabsTrigger value="valuation" className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
-                Valorisation
+                {t('stockValorisation')}
               </TabsTrigger>
               <TabsTrigger value="quick-check" className="flex items-center gap-2">
                 <Search className="h-4 w-4" />
-                Vérification
+                {t('quickCheck')}
               </TabsTrigger>
             </TabsList>
 
