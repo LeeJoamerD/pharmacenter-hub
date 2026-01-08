@@ -20739,6 +20739,10 @@ export type Database = {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: string
       }
+      initialize_tenant_roles_permissions: {
+        Args: { p_tenant_id: string }
+        Returns: undefined
+      }
       is_cross_tenant_authorized: {
         Args: {
           p_permission_type: string
