@@ -11,6 +11,7 @@ import { Loader2, AlertCircle, Mail, Phone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupplierAlerts } from "@/hooks/useSupplierAlerts";
 import { CurrentStockItem } from "@/hooks/useCurrentStock";
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface SupplierAlertModalProps {
   open: boolean;
@@ -27,6 +28,7 @@ interface Supplier {
 }
 
 export function SupplierAlertModal({ open, onOpenChange, products }: SupplierAlertModalProps) {
+  const { t } = useLanguage();
   const { toast } = useToast();
   const { sendMultipleSupplierAlerts } = useSupplierAlerts();
   const [loading, setLoading] = useState(false);
