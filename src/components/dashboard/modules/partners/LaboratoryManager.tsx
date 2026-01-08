@@ -12,6 +12,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const laboratoireSchema = z.object({
   libelle: z.string().min(1, "Le nom est requis"),
@@ -30,6 +31,7 @@ const LaboratoryManager = () => {
   const [editingLaboratoire, setEditingLaboratoire] = useState<Laboratoire | null>(null);
   const { toast } = useToast();
   const { useTenantQueryWithCache, useTenantMutation } = useTenantQuery();
+  const { t } = useLanguage();
 
   // Récupérer les laboratoires
   const { data: laboratoires = [], isLoading, refetch } = useTenantQueryWithCache(
@@ -44,7 +46,7 @@ const LaboratoryManager = () => {
   const createMutation = useTenantMutation('laboratoires', 'insert', {
     invalidateQueries: ['laboratoires-v2'],
     onSuccess: () => {
-      toast({ title: "Laboratoire ajouté avec succès" });
+      toast({ title: t('laboratoryAdded') });
       handleDialogClose();
     }
   });
@@ -52,7 +54,7 @@ const LaboratoryManager = () => {
   const updateMutation = useTenantMutation('laboratoires', 'update', {
     invalidateQueries: ['laboratoires-v2'],
     onSuccess: () => {
-      toast({ title: "Laboratoire modifié avec succès" });
+      toast({ title: t('laboratoryModified') });
       handleDialogClose();
     }
   });
@@ -60,7 +62,7 @@ const LaboratoryManager = () => {
   const deleteMutation = useTenantMutation('laboratoires', 'delete', {
     invalidateQueries: ['laboratoires-v2'],
     onSuccess: () => {
-      toast({ title: "Laboratoire supprimé" });
+      toast({ title: t('laboratoryDeleted') });
     }
   });
 
@@ -116,7 +118,7 @@ const LaboratoryManager = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <FlaskConical className="h-5 w-5" />
-              Gestion des Laboratoires Pharmaceutiques
+              {t('laboratoryManagement')}
             </CardTitle>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
@@ -126,16 +128,16 @@ const LaboratoryManager = () => {
                   setIsDialogOpen(true);
                 }}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Nouveau Laboratoire
+                  {t('newLaboratory')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl">
                 <DialogHeader>
                   <DialogTitle>
-                    {editingLaboratoire ? 'Modifier le laboratoire' : 'Nouveau laboratoire'}
+                    {editingLaboratoire ? t('editLaboratory') : t('newLaboratory')}
                   </DialogTitle>
                   <DialogDescription>
-                    {editingLaboratoire ? 'Modifiez les informations du laboratoire ci-dessous.' : 'Remplissez les informations pour créer un nouveau laboratoire.'}
+                    {editingLaboratoire ? t('editLaboratory') : t('newLaboratory')}
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -146,7 +148,7 @@ const LaboratoryManager = () => {
                         name="libelle"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Nom du laboratoire *</FormLabel>
+                            <FormLabel>{t('laboratoryName')} *</FormLabel>
                             <FormControl>
                               <Input 
                                 placeholder="Ex: Laboratoires Roche" 
@@ -253,13 +255,13 @@ const LaboratoryManager = () => {
                         variant="outline" 
                         onClick={handleDialogClose}
                       >
-                        Annuler
+                        {t('cancel')}
                       </Button>
                       <Button 
                         type="submit"
                         disabled={createMutation.isPending || updateMutation.isPending}
                       >
-                        {createMutation.isPending || updateMutation.isPending ? 'En cours...' : (editingLaboratoire ? 'Modifier' : 'Ajouter')}
+                        {createMutation.isPending || updateMutation.isPending ? t('processing') : (editingLaboratoire ? t('modify') : t('create'))}
                       </Button>
                     </div>
                   </form>
@@ -273,7 +275,7 @@ const LaboratoryManager = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher un laboratoire..."
+                placeholder={t('searchLaboratory')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -284,18 +286,18 @@ const LaboratoryManager = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Laboratoire</TableHead>
-                <TableHead>Contacts siège social</TableHead>
-                <TableHead>Contacts délégation locale</TableHead>
-                <TableHead>Date création</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t('laboratories')}</TableHead>
+                <TableHead>{t('contacts')}</TableHead>
+                <TableHead>{t('contacts')}</TableHead>
+                <TableHead>{t('createdAt')}</TableHead>
+                <TableHead>{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8">
-                    Chargement...
+                    {t('loading')}
                   </TableCell>
                 </TableRow>
               ) : filteredLaboratoires.map((labo: any) => (
@@ -382,7 +384,7 @@ const LaboratoryManager = () => {
 
           {filteredLaboratoires.length === 0 && !isLoading && (
             <div className="text-center py-8 text-muted-foreground">
-              Aucun laboratoire trouvé
+              {t('noLaboratoryFound')}
             </div>
           )}
         </CardContent>

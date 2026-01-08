@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, Users } from 'lucide-react';
 import { Employee } from './types';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface EmployeeTableProps {
   employees: Employee[];
@@ -12,12 +13,13 @@ interface EmployeeTableProps {
 }
 
 export const EmployeeTable = ({ employees, onEdit, onDelete }: EmployeeTableProps) => {
+  const { t } = useLanguage();
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Actif':
-        return <Badge variant="default" className="bg-green-100 text-green-800">Actif</Badge>;
+        return <Badge variant="default" className="bg-green-100 text-green-800">{t('active')}</Badge>;
       case 'Congé':
-        return <Badge variant="secondary" className="bg-orange-100 text-orange-800">Congé</Badge>;
+        return <Badge variant="secondary" className="bg-orange-100 text-orange-800">{t('leaves')}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -28,13 +30,13 @@ export const EmployeeTable = ({ employees, onEdit, onDelete }: EmployeeTableProp
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Nom</TableHead>
-            <TableHead>Prénom</TableHead>
-            <TableHead>Poste</TableHead>
-            <TableHead>Téléphone</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Statut</TableHead>
-            <TableHead>Actions</TableHead>
+            <TableHead>{t('lastName')}</TableHead>
+            <TableHead>{t('firstName')}</TableHead>
+            <TableHead>{t('function')}</TableHead>
+            <TableHead>{t('phone')}</TableHead>
+            <TableHead>{t('email')}</TableHead>
+            <TableHead>{t('status')}</TableHead>
+            <TableHead>{t('actions')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
