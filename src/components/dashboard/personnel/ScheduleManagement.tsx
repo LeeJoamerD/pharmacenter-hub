@@ -169,7 +169,6 @@ export const ScheduleManagement = () => {
       </Card>
     );
   }
-  }
 
   return (
     <Card>
