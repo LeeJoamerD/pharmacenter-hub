@@ -593,12 +593,13 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
           const mappedData = await mapToLocalReferences(globalProduct);
 
           // Insérer le produit avec toutes les données du catalogue global
+          // Priorité pour ancien_code_cip : valeur Excel > catalogue global
           const { data: newProduct, error } = await supabase
             .from('produits')
             .insert({
               tenant_id: personnel.tenant_id,
               code_cip: mappedData.code_cip,
-              ancien_code_cip: mappedData.ancien_code_cip || null,
+              ancien_code_cip: line.ancienCodeCip || mappedData.ancien_code_cip || null,
               libelle_produit: mappedData.libelle_produit,
               famille_id: mappedData.famille_id || null,
               rayon_id: mappedData.rayon_id || null,
@@ -636,6 +637,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
               tenant_id: personnel.tenant_id,
               libelle_produit: normalizedName,
               code_cip: normalizedCip,
+              ancien_code_cip: line.ancienCodeCip || null,
               prix_achat: line.prixAchatReel,
               is_active: true
             });

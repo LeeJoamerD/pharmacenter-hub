@@ -1,5 +1,6 @@
 export interface ExcelReceptionLine {
   reference: string;          // Colonne D (CIP/EAN13)
+  ancienCodeCip?: string;     // Ancien code CIP (optionnel, depuis Excel)
   produit: string;            // Colonne E (Libellé du produit)
   quantiteCommandee: number;  // Colonne F (Qté commandée)
   quantiteRecue: number;      // Colonne H (Qté livrée)
