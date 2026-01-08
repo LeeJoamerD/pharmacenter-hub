@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { XCircle, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface StockRuptureProps {
   products: any[];
@@ -11,6 +12,7 @@ interface StockRuptureProps {
 
 export const StockRupture: React.FC<StockRuptureProps> = ({ products }) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const ruptureProducts = useMemo(() => 
     products
@@ -34,11 +36,11 @@ export const StockRupture: React.FC<StockRuptureProps> = ({ products }) => {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <XCircle className="h-5 w-5 text-muted-foreground" />
-            Stock en Rupture
+            {t('outOfStock')}
             <Badge variant="secondary">0</Badge>
           </CardTitle>
           <CardDescription>
-            Aucun produit en rupture de stock
+            {t('noOutOfStockProducts')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -47,7 +49,7 @@ export const StockRupture: React.FC<StockRuptureProps> = ({ products }) => {
               <XCircle className="h-8 w-8 text-success" />
             </div>
             <p className="text-sm text-muted-foreground">
-              Tous vos produits sont disponibles
+              {t('allProductsAvailable')}
             </p>
           </div>
         </CardContent>
@@ -61,7 +63,7 @@ export const StockRupture: React.FC<StockRuptureProps> = ({ products }) => {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <XCircle className="h-5 w-5 text-destructive" />
-            Stock en Rupture
+            {t('outOfStock')}
             {totalRuptureProducts > 0 && (
               <Badge variant="destructive">
                 {totalRuptureProducts}
@@ -75,12 +77,12 @@ export const StockRupture: React.FC<StockRuptureProps> = ({ products }) => {
               onClick={handleViewAll}
               className="text-xs"
             >
-              Voir tout ({totalRuptureProducts})
+              {t('viewAll')} ({totalRuptureProducts})
             </Button>
           )}
         </div>
         <CardDescription>
-          Produits totalement épuisés (stock = 0) nécessitant un réapprovisionnement immédiat
+          {t('outOfStockDescription')}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -103,10 +105,10 @@ export const StockRupture: React.FC<StockRuptureProps> = ({ products }) => {
               </div>
               <div className="flex flex-col items-end ml-3">
                 <Badge variant="destructive" className="text-xs whitespace-nowrap">
-                  Rupture
+                  {t('rupture')}
                 </Badge>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Stock: 0
+                  {t('stockLabel')}: 0
                 </p>
               </div>
             </div>
@@ -119,7 +121,7 @@ export const StockRupture: React.FC<StockRuptureProps> = ({ products }) => {
             className="w-full mt-4"
             onClick={handleViewAll}
           >
-            Voir tous les produits en rupture ({totalRuptureProducts})
+            {t('viewAllOutOfStock')} ({totalRuptureProducts})
           </Button>
         )}
       </CardContent>

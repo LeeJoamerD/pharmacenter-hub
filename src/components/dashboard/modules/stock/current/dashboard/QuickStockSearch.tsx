@@ -10,6 +10,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { useAlertSettings } from '@/hooks/useAlertSettings';
 import { getStockThreshold } from '@/lib/utils';
 import { useDebouncedValue } from '@/hooks/use-debounce';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface QuickStockSearchProps {
   products: any[];
@@ -19,6 +20,7 @@ const QuickStockSearch = React.memo(({ products }: QuickStockSearchProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const { tenantId } = useTenant();
   const { settings } = useAlertSettings();
+  const { t } = useLanguage();
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
 
   // Recherche dynamique dans la base de données
@@ -111,14 +113,14 @@ const QuickStockSearch = React.memo(({ products }: QuickStockSearchProps) => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Search className="h-5 w-5" />
-          Recherche Rapide
+          {t('quickSearch')}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger>
                 <Info className="h-4 w-4 text-muted-foreground" />
               </TooltipTrigger>
               <TooltipContent>
-                <p>Recherchez un produit par nom ou code CIP</p>
+                <p>{t('searchByNameOrCip')}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -128,7 +130,7 @@ const QuickStockSearch = React.memo(({ products }: QuickStockSearchProps) => {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Rechercher un produit..."
+            placeholder={t('searchProduct')}
             value={searchTerm}
             onChange={(e) => handleQuickSearch(e.target.value)}
             className="pl-10"
@@ -138,7 +140,7 @@ const QuickStockSearch = React.memo(({ products }: QuickStockSearchProps) => {
         {isSearching && (
           <div className="flex items-center justify-center py-4 text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin mr-2" />
-            <p className="text-sm">Recherche en cours...</p>
+            <p className="text-sm">{t('searchInProgress')}</p>
           </div>
         )}
 
@@ -166,14 +168,14 @@ const QuickStockSearch = React.memo(({ products }: QuickStockSearchProps) => {
         {!isSearching && searchTerm && searchResults.length === 0 && (
           <div className="text-center py-4 text-muted-foreground animate-fade-in">
             <Package className="h-8 w-8 mx-auto mb-2" />
-            <p className="text-sm">Aucun produit trouvé</p>
+            <p className="text-sm">{t('noProductFound')}</p>
           </div>
         )}
 
         {!searchTerm && (
           <div className="text-center py-4 text-muted-foreground">
             <Clock className="h-8 w-8 mx-auto mb-2" />
-            <p className="text-sm">Tapez pour rechercher un produit</p>
+            <p className="text-sm">{t('typeToSearch')}</p>
           </div>
         )}
       </CardContent>
