@@ -113,7 +113,7 @@ export class PharmaMLService {
   /**
    * Check if an order has already been sent via PharmaML
    */
-  static async hasBeenSent(orderId: string): Promise<{ sent: boolean; lastStatus?: string }> {
+  static async hasBeenSent(orderId: string): Promise<{ sent: boolean; lastStatus?: string; hasTransmissions: boolean }> {
     try {
       const { data, error } = await supabase
         .from('pharmaml_transmissions')
@@ -123,15 +123,18 @@ export class PharmaMLService {
         .limit(1);
 
       if (error || !data || data.length === 0) {
-        return { sent: false };
+        return { sent: false, hasTransmissions: false };
       }
 
+      const lastStatus = data[0].statut;
       return {
-        sent: true,
-        lastStatus: data[0].statut
+        // Only consider as "sent" if the last transmission was successful
+        sent: lastStatus === 'success',
+        lastStatus,
+        hasTransmissions: true
       };
     } catch {
-      return { sent: false };
+      return { sent: false, hasTransmissions: false };
     }
   }
 }
