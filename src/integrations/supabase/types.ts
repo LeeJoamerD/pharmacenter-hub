@@ -8270,6 +8270,13 @@ export type Database = {
           mp_fournisseur_import: string | null
           niu: string | null
           nom: string
+          pharmaml_cle_secrete: string | null
+          pharmaml_code_repartiteur: string | null
+          pharmaml_enabled: boolean | null
+          pharmaml_id_officine: string | null
+          pharmaml_id_repartiteur: string | null
+          pharmaml_pays: string | null
+          pharmaml_url: string | null
           statut: string | null
           telephone_appel: string | null
           telephone_whatsapp: string | null
@@ -8286,6 +8293,13 @@ export type Database = {
           mp_fournisseur_import?: string | null
           niu?: string | null
           nom: string
+          pharmaml_cle_secrete?: string | null
+          pharmaml_code_repartiteur?: string | null
+          pharmaml_enabled?: boolean | null
+          pharmaml_id_officine?: string | null
+          pharmaml_id_repartiteur?: string | null
+          pharmaml_pays?: string | null
+          pharmaml_url?: string | null
           statut?: string | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
@@ -8302,6 +8316,13 @@ export type Database = {
           mp_fournisseur_import?: string | null
           niu?: string | null
           nom?: string
+          pharmaml_cle_secrete?: string | null
+          pharmaml_code_repartiteur?: string | null
+          pharmaml_enabled?: boolean | null
+          pharmaml_id_officine?: string | null
+          pharmaml_id_repartiteur?: string | null
+          pharmaml_pays?: string | null
+          pharmaml_url?: string | null
           statut?: string | null
           telephone_appel?: string | null
           telephone_whatsapp?: string | null
@@ -14737,6 +14758,76 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "pharmacy_specialties_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmaml_transmissions: {
+        Row: {
+          code_erreur: string | null
+          commande_id: string
+          created_at: string
+          duree_ms: number | null
+          fournisseur_id: string
+          id: string
+          message: string | null
+          numero_commande_pharmaml: string | null
+          statut: string
+          tenant_id: string
+          updated_at: string
+          xml_envoye: string | null
+          xml_reponse: string | null
+        }
+        Insert: {
+          code_erreur?: string | null
+          commande_id: string
+          created_at?: string
+          duree_ms?: number | null
+          fournisseur_id: string
+          id?: string
+          message?: string | null
+          numero_commande_pharmaml?: string | null
+          statut?: string
+          tenant_id: string
+          updated_at?: string
+          xml_envoye?: string | null
+          xml_reponse?: string | null
+        }
+        Update: {
+          code_erreur?: string | null
+          commande_id?: string
+          created_at?: string
+          duree_ms?: number | null
+          fournisseur_id?: string
+          id?: string
+          message?: string | null
+          numero_commande_pharmaml?: string | null
+          statut?: string
+          tenant_id?: string
+          updated_at?: string
+          xml_envoye?: string | null
+          xml_reponse?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmaml_transmissions_commande_id_fkey"
+            columns: ["commande_id"]
+            isOneToOne: false
+            referencedRelation: "commandes_fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmaml_transmissions_fournisseur_id_fkey"
+            columns: ["fournisseur_id"]
+            isOneToOne: false
+            referencedRelation: "fournisseurs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmaml_transmissions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
