@@ -28,6 +28,8 @@ export interface SupplierExcelMapping {
     id: string;
     nom: string;
   };
+  isOwner?: boolean;      // Indique si le tenant courant est le créateur
+  creatorName?: string;   // Nom de la pharmacie créatrice
 }
 
 // Liste des champs du tableau de réception disponibles pour le mapping
