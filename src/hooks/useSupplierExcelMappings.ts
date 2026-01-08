@@ -45,7 +45,7 @@ export const useSupplierExcelMappings = () => {
     }
   }, [tenantId]);
 
-  // Récupérer le mapping d'un fournisseur spécifique (priorité au mapping du tenant, puis recherche par nom)
+  // Récupérer le mapping d'un fournisseur spécifique via RPC (contourne RLS fournisseurs)
   const getMappingBySupplier = useCallback(async (
     fournisseurId: string,
     fournisseurNom?: string
@@ -53,59 +53,28 @@ export const useSupplierExcelMappings = () => {
     if (!tenantId || !fournisseurId) return null;
 
     try {
-      // 1. D'abord chercher un mapping du tenant courant (par ID exact)
-      const { data: ownMapping, error: ownError } = await supabase
-        .from('supplier_excel_mappings')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('fournisseur_id', fournisseurId)
-        .eq('is_active', true)
-        .maybeSingle();
+      // Appel RPC qui gère la recherche par ID puis par nom (SECURITY DEFINER)
+      const { data, error } = await supabase
+        .rpc('get_supplier_excel_mapping', {
+          p_fournisseur_id: fournisseurId,
+          p_fournisseur_nom: fournisseurNom || null
+        });
 
-      if (ownError) throw ownError;
-      
-      if (ownMapping) {
+      if (error) throw error;
+
+      // La RPC retourne un tableau, on prend le premier résultat
+      if (data && data.length > 0) {
+        const mapping = data[0];
         return {
-          ...ownMapping,
-          mapping_config: ownMapping.mapping_config as ExcelColumnMapping,
-          isOwner: true
+          id: mapping.id,
+          tenant_id: mapping.tenant_id,
+          fournisseur_id: mapping.fournisseur_id,
+          mapping_config: mapping.mapping_config as ExcelColumnMapping,
+          is_active: mapping.is_active,
+          created_at: mapping.created_at,
+          updated_at: mapping.updated_at,
+          isOwner: mapping.is_owner
         };
-      }
-
-      // 2. Si pas de mapping propre et qu'on a un nom, chercher par NOM de fournisseur
-      if (fournisseurNom) {
-        // Récupérer tous les fournisseurs du même pays avec le même nom (RLS filtre par pays)
-        const { data: matchingFournisseurs, error: fournisseursError } = await supabase
-          .from('fournisseurs')
-          .select('id')
-          .ilike('nom', fournisseurNom);
-
-        if (fournisseursError) throw fournisseursError;
-
-        if (matchingFournisseurs && matchingFournisseurs.length > 0) {
-          const fournisseurIds = matchingFournisseurs.map(f => f.id);
-          
-          // Chercher un mapping pour n'importe quel fournisseur du même nom
-          const { data: sharedMapping, error: sharedError } = await supabase
-            .from('supplier_excel_mappings')
-            .select('*')
-            .in('fournisseur_id', fournisseurIds)
-            .eq('is_active', true)
-            .neq('tenant_id', tenantId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (sharedError) throw sharedError;
-          
-          if (sharedMapping) {
-            return {
-              ...sharedMapping,
-              mapping_config: sharedMapping.mapping_config as ExcelColumnMapping,
-              isOwner: false
-            };
-          }
-        }
       }
 
       return null;
