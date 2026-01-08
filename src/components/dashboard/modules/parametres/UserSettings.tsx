@@ -88,7 +88,7 @@ const UserSettings = () => {
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['personnel'] });
       queryClient.invalidateQueries({ queryKey: ['active-cash-session'] });
-      toast({ title: 'Utilisateur créé avec succès' });
+      toast({ title: t('userCreatedSuccess') });
       setIsCreateDialogOpen(false);
       createForm.reset();
       await queryClient.refetchQueries({ queryKey: ['auth-user'] });
@@ -96,8 +96,8 @@ const UserSettings = () => {
     onError: (error: any) => {
       console.error('Erreur lors de la création:', error);
       toast({
-        title: 'Erreur lors de la création',
-        description: error.message || 'Une erreur est survenue',
+        title: t('createUserError'),
+        description: error.message || t('unableToSaveSettings'),
         variant: 'destructive'
       });
     }
@@ -106,17 +106,16 @@ const UserSettings = () => {
   const updatePersonnelMutation = useTenantMutation('personnel', 'update', {
     invalidateQueries: ['personnel'],
     onSuccess: async () => {
-      // Force immediate refetch to ensure UI is updated with latest data
       await queryClient.refetchQueries({ queryKey: [tenantId, 'personnel'] });
-      toast({ title: 'Utilisateur modifié avec succès' });
+      toast({ title: t('userUpdatedSuccess') });
       setIsEditDialogOpen(false);
       setSelectedUser(null);
     },
     onError: (error) => {
       console.error('Update personnel error:', error);
       toast({
-        title: 'Erreur lors de la modification',
-        description: error.message || 'Permissions insuffisantes ou erreur serveur',
+        title: t('updateUserError'),
+        description: error.message || t('unableToSaveSettings'),
         variant: 'destructive'
       });
     }
@@ -125,11 +124,11 @@ const UserSettings = () => {
   const deletePersonnelMutation = useTenantMutation('personnel', 'delete', {
     invalidateQueries: ['personnel'],
     onSuccess: () => {
-      toast({ title: 'Utilisateur supprimé avec succès' });
+      toast({ title: t('userDeletedSuccess') });
     },
     onError: (error) => {
       toast({
-        title: 'Erreur lors de la suppression',
+        title: t('deleteUserError'),
         description: error.message,
         variant: 'destructive'
       });
@@ -153,18 +152,17 @@ const UserSettings = () => {
   const onCreateSubmit = async (data: PersonnelFormData) => {
     if (!tenantId) {
       toast({
-        title: 'Erreur de configuration',
-        description: 'Tenant ID non disponible. Veuillez vous reconnecter.',
+        title: t('configError'),
+        description: t('tenantIdNotAvailable'),
         variant: 'destructive'
       });
       return;
     }
 
-    // Validation du mot de passe
     if (!data.password || data.password.length < 8) {
       toast({
-        title: 'Mot de passe invalide',
-        description: 'Le mot de passe doit contenir au moins 8 caractères',
+        title: t('invalidPassword'),
+        description: t('passwordMinLength'),
         variant: 'destructive'
       });
       return;
@@ -195,7 +193,7 @@ const UserSettings = () => {
   };
 
   const handleDelete = async (user: any) => {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer ${user.prenoms} ${user.noms} ?`)) {
+    if (confirm(`${t('confirmDeleteUser')} ${user.prenoms} ${user.noms} ?`)) {
       deletePersonnelMutation.mutate({ id: user.id });
     }
   };
@@ -267,14 +265,14 @@ const UserSettings = () => {
       if (error) throw error;
 
       toast({
-        title: "Paramètres sauvegardés",
-        description: "La configuration des utilisateurs a été mise à jour avec succès.",
+        title: t('settingsSavedSuccess'),
+        description: t('userConfigUpdated'),
       });
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder les paramètres.",
+        title: t('error'),
+        description: t('unableToSaveSettings'),
         variant: "destructive",
       });
     }
@@ -309,15 +307,15 @@ const UserSettings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Politique de Sécurité
+              {t('securityPolicy')}
             </CardTitle>
             <CardDescription>
-              Configuration de la sécurité des comptes utilisateurs
+              {t('userSecurityConfig')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="maxUsers">Nombre max d'utilisateurs</Label>
+              <Label htmlFor="maxUsers">{t('maxUsersLabel')}</Label>
               <Input
                 id="maxUsers"
                 type="number"
@@ -327,7 +325,7 @@ const UserSettings = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="sessionTimeout">Timeout session (minutes)</Label>
+              <Label htmlFor="sessionTimeout">{t('sessionTimeoutLabel')}</Label>
               <Input
                 id="sessionTimeout"
                 type="number"
@@ -337,7 +335,7 @@ const UserSettings = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="passwordPolicy">Politique mot de passe</Label>
+              <Label htmlFor="passwordPolicy">{t('passwordPolicyLabel')}</Label>
               <Select 
                 value={userSettings.passwordPolicy} 
                 onValueChange={(value) => setUserSettings(prev => ({ ...prev, passwordPolicy: value }))}
@@ -346,15 +344,15 @@ const UserSettings = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Faible (6 caractères min)</SelectItem>
-                  <SelectItem value="medium">Moyenne (8 caractères + chiffres)</SelectItem>
-                  <SelectItem value="high">Forte (12 caractères + symboles)</SelectItem>
+                  <SelectItem value="low">{t('passwordWeak')}</SelectItem>
+                  <SelectItem value="medium">{t('passwordMedium')}</SelectItem>
+                  <SelectItem value="high">{t('passwordStrong')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="loginAttempts">Tentatives de connexion max</Label>
+              <Label htmlFor="loginAttempts">{t('maxLoginAttemptsLabel')}</Label>
               <Input
                 id="loginAttempts"
                 type="number"
@@ -369,15 +367,15 @@ const UserSettings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Key className="h-5 w-5" />
-              Options de Sécurité
+              {t('securityOptions')}
             </CardTitle>
             <CardDescription>
-              Configuration avancée de la sécurité
+              {t('advancedSecurityConfig')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label htmlFor="twoFactor">Authentification à 2 facteurs</Label>
+              <Label htmlFor="twoFactor">{t('twoFactorAuth')}</Label>
               <Switch
                 id="twoFactor"
                 checked={userSettings.twoFactorAuth}
@@ -386,7 +384,7 @@ const UserSettings = () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <Label htmlFor="autoLogout">Déconnexion automatique</Label>
+              <Label htmlFor="autoLogout">{t('autoLogout')}</Label>
               <Switch
                 id="autoLogout"
                 checked={userSettings.autoLogout}
@@ -396,7 +394,7 @@ const UserSettings = () => {
             
             <div className="pt-4">
               <Button onClick={handleSaveSettings} className="w-full">
-                Sauvegarder la configuration
+                {t('saveConfiguration')}
               </Button>
             </div>
           </CardContent>
@@ -409,10 +407,10 @@ const UserSettings = () => {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Gestion des Utilisateurs
+                  {t('userManagement')}
                 </CardTitle>
                 <CardDescription>
-                  Liste et gestion des comptes utilisateurs
+                  {t('userAccountsList')}
                 </CardDescription>
               </div>
                 {canCreateUsers && (
@@ -420,14 +418,14 @@ const UserSettings = () => {
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="h-4 w-4 mr-2" />
-                      Ajouter un Utilisateur
+                      {t('addUser')}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
-                      <DialogTitle>Créer un Utilisateur</DialogTitle>
+                      <DialogTitle>{t('createUser')}</DialogTitle>
                       <DialogDescription>
-                        Ajouter un nouveau membre à votre équipe
+                        {t('addTeamMember')}
                       </DialogDescription>
                     </DialogHeader>
                     <Form {...createForm}>
@@ -438,7 +436,7 @@ const UserSettings = () => {
                             name="noms"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Nom(s)</FormLabel>
+                                <FormLabel>{t('namesLabel')}</FormLabel>
                                 <FormControl>
                                   <Input {...field} required />
                                 </FormControl>
@@ -451,7 +449,7 @@ const UserSettings = () => {
                             name="prenoms"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Prénom(s)</FormLabel>
+                                <FormLabel>{t('firstNamesLabel')}</FormLabel>
                                 <FormControl>
                                   <Input {...field} required />
                                 </FormControl>
@@ -466,7 +464,7 @@ const UserSettings = () => {
                           name="email"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Email</FormLabel>
+                              <FormLabel>{t('emailLabel')}</FormLabel>
                               <FormControl>
                                 <Input {...field} type="email" required />
                               </FormControl>
@@ -481,7 +479,7 @@ const UserSettings = () => {
                           name="password"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Mot de passe</FormLabel>
+                              <FormLabel>{t('passwordLabel')}</FormLabel>
                               <FormControl>
                                 <Input {...field} type="password" placeholder="Mot de passe temporaire" />
                               </FormControl>
@@ -495,7 +493,7 @@ const UserSettings = () => {
                           name="role"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Rôle</FormLabel>
+                              <FormLabel>{t('role')}</FormLabel>
                               <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
@@ -527,7 +525,7 @@ const UserSettings = () => {
                                     onCheckedChange={field.onChange}
                                   />
                                 </FormControl>
-                                <FormLabel>Utilisateur actif</FormLabel>
+                                <FormLabel>{t('activeStatus')}</FormLabel>
                               </FormItem>
                             )}
                           />
@@ -538,7 +536,7 @@ const UserSettings = () => {
                             type="submit" 
                             disabled={!tenantId}
                           >
-                            Créer
+                            {t('create')}
                           </Button>
                         </DialogFooter>
                       </form>
@@ -557,25 +555,25 @@ const UserSettings = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nom d'utilisateur</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Rôle</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Dernière connexion</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t('namesLabel')}</TableHead>
+                <TableHead>{t('emailLabel')}</TableHead>
+                <TableHead>{t('role')}</TableHead>
+                <TableHead>{t('status')}</TableHead>
+                <TableHead>{t('lastConnection')}</TableHead>
+                <TableHead>{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center">
-                    Chargement des utilisateurs...
+                    {t('loadingUsers')}
                   </TableCell>
                 </TableRow>
               ) : personnelList?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center">
-                    Aucun utilisateur trouvé
+                    {t('noUsersRegistered')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -592,7 +590,7 @@ const UserSettings = () => {
                     </TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(user.is_active ? 'active' : 'inactive')}>
-                        {user.is_active ? 'Actif' : 'Inactif'}
+                        {user.is_active ? t('activeStatus') : t('inactiveStatus')}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -633,9 +631,9 @@ const UserSettings = () => {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Modifier l'Utilisateur</DialogTitle>
+            <DialogTitle>{t('editUser')}</DialogTitle>
             <DialogDescription>
-              Modifier les informations de {selectedUser?.prenoms} {selectedUser?.noms}
+              {t('updateTeamMember')} {selectedUser?.prenoms} {selectedUser?.noms}
             </DialogDescription>
           </DialogHeader>
           <Form {...editForm}>
@@ -646,7 +644,7 @@ const UserSettings = () => {
                   name="noms"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nom(s)</FormLabel>
+                      <FormLabel>{t('namesLabel')}</FormLabel>
                       <FormControl>
                         <Input {...field} required />
                       </FormControl>
@@ -659,7 +657,7 @@ const UserSettings = () => {
                   name="prenoms"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Prénom(s)</FormLabel>
+                      <FormLabel>{t('firstNamesLabel')}</FormLabel>
                       <FormControl>
                         <Input {...field} required />
                       </FormControl>
@@ -674,7 +672,7 @@ const UserSettings = () => {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t('emailLabel')}</FormLabel>
                     <FormControl>
                       <Input {...field} type="email" required />
                     </FormControl>
@@ -689,7 +687,7 @@ const UserSettings = () => {
                 name="role"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Rôle</FormLabel>
+                    <FormLabel>{t('role')}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -716,13 +714,13 @@ const UserSettings = () => {
                   render={({ field }) => (
                     <FormItem className="flex items-center space-x-2">
                       <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormLabel>Utilisateur actif</FormLabel>
-                    </FormItem>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormLabel>{t('activeStatus')}</FormLabel>
+                  </FormItem>
                   )}
                 />
               </div>
@@ -732,7 +730,7 @@ const UserSettings = () => {
                   type="submit" 
                   disabled={updatePersonnelMutation.isPending}
                 >
-                  {updatePersonnelMutation.isPending ? 'Modification...' : 'Modifier'}
+                  {updatePersonnelMutation.isPending ? t('savingInProgress') : t('modify')}
                 </Button>
               </DialogFooter>
             </form>

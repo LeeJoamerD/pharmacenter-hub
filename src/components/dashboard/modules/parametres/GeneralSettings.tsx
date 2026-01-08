@@ -33,16 +33,16 @@ const GeneralSettings = () => {
   const validateField = (field: string, value: any): string | null => {
     switch (field) {
       case 'name':
-        return !value || value.trim().length < 2 ? 'Le nom doit contenir au moins 2 caractères' : null;
+        return !value || value.trim().length < 2 ? t('nameMinChars') : null;
       case 'email':
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return value && !emailRegex.test(value) ? 'Format d\'email invalide' : null;
+        return value && !emailRegex.test(value) ? t('invalidEmailFormat') : null;
       case 'taux_tva':
-        return value < 0 || value > 100 ? 'Le taux de TVA doit être entre 0 et 100%' : null;
+        return value < 0 || value > 100 ? t('vatRateRange') : null;
       case 'taux_centime_additionnel':
-        return value < 0 || value > 100 ? 'Le taux de centime additionnel doit être entre 0 et 100%' : null;
+        return value < 0 || value > 100 ? t('additionalCentRateRange') : null;
       case 'telephone_appel':
-        return value && value.length > 0 && value.length < 8 ? 'Numéro de téléphone trop court' : null;
+        return value && value.length > 0 && value.length < 8 ? t('phoneTooShort') : null;
       default:
         return null;
     }
@@ -79,8 +79,8 @@ const GeneralSettings = () => {
     if (Object.keys(errors).some(key => errors[key])) {
       setValidationErrors(errors);
       toast({
-        title: "Erreurs de validation",
-        description: "Veuillez corriger les erreurs avant de sauvegarder.",
+        title: t('validationErrors'),
+        description: t('pleaseCorrectErrors'),
         variant: "destructive",
       });
       return;
@@ -92,23 +92,22 @@ const GeneralSettings = () => {
       setHasChanges(false);
       setValidationErrors({});
       toast({
-        title: "Paramètres sauvegardés",
-        description: "Les paramètres système ont été mis à jour avec succès.",
+        title: t('settingsSaved'),
+        description: t('settingsUpdatedSuccess'),
       });
     } catch (error: any) {
-      // Gérer les erreurs partielles
-      const errorMessage = error?.message || 'Erreur lors de la sauvegarde';
+      const errorMessage = error?.message || t('saveError');
       
       if (errorMessage.includes('pharmacy') || errorMessage.includes('RLS')) {
         toast({
-          title: "Sauvegarde partielle",
-          description: "Les paramètres système ont été sauvegardés, mais certaines informations de pharmacie n'ont pas pu être mises à jour (permissions insuffisantes).",
+          title: t('partialSave'),
+          description: t('pharmacyInfoNotUpdated'),
           variant: "default",
         });
-        setHasChanges(false); // Considérer comme sauvegardé partiellement
+        setHasChanges(false);
       } else {
         toast({
-          title: "Erreur de sauvegarde",
+          title: t('saveError'),
           description: errorMessage,
           variant: "destructive",
         });
@@ -120,7 +119,7 @@ const GeneralSettings = () => {
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Chargement des paramètres système...</span>
+        <span className="ml-2">{t('loadingSystemSettings')}</span>
       </div>
     );
   }
@@ -129,8 +128,8 @@ const GeneralSettings = () => {
     return (
       <div className="text-center p-8">
         <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <p className="text-lg font-medium">Impossible de charger les paramètres</p>
-        <p className="text-sm text-muted-foreground">Veuillez rafraîchir la page ou contacter le support.</p>
+        <p className="text-lg font-medium">{t('unableToLoadSettings')}</p>
+        <p className="text-sm text-muted-foreground">{t('refreshPageOrContact')}</p>
       </div>
     );
   }
@@ -141,11 +140,10 @@ const GeneralSettings = () => {
       <Alert>
         <Settings className="h-4 w-4" />
         <AlertDescription>
-          Configuration générale de la pharmacie <strong>{settings.name}</strong>. 
-          Les modifications seront appliquées à tous les modules du système.
+          {t('pharmacyConfiguration')} <strong>{settings.name}</strong>. 
           {hasChanges && (
             <span className="block mt-2 text-orange-600 font-medium">
-              ⚠️ Vous avez des modifications non sauvegardées
+              ⚠️ {t('unsavedChanges')}
             </span>
           )}
         </AlertDescription>
@@ -157,17 +155,17 @@ const GeneralSettings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building className="h-5 w-5 text-primary" />
-              Informations Pharmacie
+              {t('pharmacyInfo')}
             </CardTitle>
             <CardDescription>
-              Données principales de votre établissement pharmaceutique
+              {t('pharmacyMainData')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name" className="flex items-center gap-2">
                 <Building className="h-4 w-4" />
-                Nom de la pharmacie *
+                {t('pharmacyName')} *
               </Label>
               <Input
                 id="name"
@@ -184,7 +182,7 @@ const GeneralSettings = () => {
             <div className="space-y-2">
               <Label htmlFor="code" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
-                Code pharmacie
+                {t('pharmacyCode')}
               </Label>
               <Input
                 id="code"
@@ -197,7 +195,7 @@ const GeneralSettings = () => {
             <div className="space-y-2">
               <Label htmlFor="address" className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                Adresse complète
+                {t('fullAddress')}
               </Label>
               <Textarea
                 id="address"
@@ -210,7 +208,7 @@ const GeneralSettings = () => {
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="city">Ville</Label>
+                <Label htmlFor="city">{t('city')}</Label>
                 <Input
                   id="city"
                   value={formData.city || ''}
@@ -219,7 +217,7 @@ const GeneralSettings = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="region">Région</Label>
+                <Label htmlFor="region">{t('region')}</Label>
                 <Input
                   id="region"
                   value={formData.region || ''}
@@ -234,7 +232,7 @@ const GeneralSettings = () => {
             <div className="space-y-2">
               <Label htmlFor="telephone_appel" className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
-                Téléphone principal
+                {t('mainPhone')}
               </Label>
               <Input
                 id="telephone_appel"
@@ -252,7 +250,7 @@ const GeneralSettings = () => {
             <div className="space-y-2">
               <Label htmlFor="email" className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                Email professionnel
+                {t('professionalEmail')}
               </Label>
               <Input
                 id="email"
@@ -274,24 +272,24 @@ const GeneralSettings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Globe className="h-5 w-5 text-primary" />
-              Paramètres Système
+              {t('systemSettings')}
             </CardTitle>
             <CardDescription>
-              Configuration régionale et préférences système
+              {t('regionalConfiguration')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="default_currency" className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4" />
-                Devise par défaut
+                {t('defaultCurrency')}
               </Label>
               <Select 
                 value={formData.default_currency || ''} 
                 onValueChange={(value) => handleInputChange('default_currency', value)}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sélectionner une devise" />
+                  <SelectValue placeholder={t('selectCurrency')} />
                 </SelectTrigger>
                 <SelectContent className="z-[100] max-h-[300px] overflow-y-auto bg-popover text-popover-foreground border shadow-lg">
                   {settings.currencies_available.map((currency) => (
@@ -308,21 +306,21 @@ const GeneralSettings = () => {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Devise actuelle: <strong>{getCurrentCurrency()?.name || 'Non définie'}</strong>
+                {t('currentCurrency')}: <strong>{getCurrentCurrency()?.name || t('notDefined')}</strong>
               </p>
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="default_timezone" className="flex items-center gap-2">
                 <Globe className="h-4 w-4" />
-                Fuseau horaire
+                {t('timezone')}
               </Label>
               <Select 
                 value={formData.default_timezone || ''} 
                 onValueChange={(value) => handleInputChange('default_timezone', value)}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sélectionner un fuseau horaire" />
+                  <SelectValue placeholder={t('selectTimezone')} />
                 </SelectTrigger>
                 <SelectContent className="z-[100] max-h-[300px] overflow-y-auto bg-popover text-popover-foreground border shadow-lg">
                   {settings.timezones_available.map((timezone) => (
@@ -336,22 +334,21 @@ const GeneralSettings = () => {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Fuseau actuel: <strong>{getCurrentTimezone()?.name || 'Non défini'}</strong>
+                {t('currentTimezone')}: <strong>{getCurrentTimezone()?.name || t('notDefined')}</strong>
               </p>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="default_language">Langue d'interface</Label>
+              <Label htmlFor="default_language">{t('interfaceLanguage')}</Label>
               <Select 
                 value={formData.default_language || ''} 
                 onValueChange={(value) => {
-                  // Synchroniser les deux clés pour cohérence
                   handleInputChange('default_language', value);
                   handleInputChange('default_lingual', value);
                 }}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sélectionner une langue" />
+                  <SelectValue placeholder={t('selectLanguage')} />
                 </SelectTrigger>
                 <SelectContent className="z-[100] max-h-[300px] overflow-y-auto bg-popover text-popover-foreground border shadow-lg">
                   {settings.languages_available.map((language) => (
@@ -366,7 +363,7 @@ const GeneralSettings = () => {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Langue actuelle: <strong>{getCurrentLanguage()?.name || 'Non définie'}</strong>
+                {t('currentLanguage')}: <strong>{getCurrentLanguage()?.name || t('notDefined')}</strong>
               </p>
             </div>
           </CardContent>
@@ -378,16 +375,16 @@ const GeneralSettings = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-primary" />
-            Configuration Fiscale et Comptable
+            {t('fiscalAccountingConfig')}
           </CardTitle>
           <CardDescription>
-            Paramètres de taxation et configuration comptable
+            {t('taxationSettings')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 md:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="fiscal_year">Année fiscale</Label>
+              <Label htmlFor="fiscal_year">{t('fiscalYear')}</Label>
               <Input
                 id="fiscal_year"
                 value={formData.fiscal_year || ''}
@@ -395,12 +392,12 @@ const GeneralSettings = () => {
                 placeholder="2024"
               />
               <p className="text-xs text-muted-foreground">
-                Année de référence pour les rapports comptables
+                {t('fiscalYearRef')}
               </p>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="taux_tva">Taux de TVA (%)</Label>
+              <Label htmlFor="taux_tva">{t('vatRate')} (%)</Label>
               <Input
                 id="taux_tva"
                 type="number"
@@ -415,12 +412,12 @@ const GeneralSettings = () => {
                 <p className="text-sm text-red-500">{validationErrors.taux_tva}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                Taux standard appliqué aux ventes
+                {t('standardRate')}
               </p>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="taux_centime_additionnel">Taux de Centime additionnel (%)</Label>
+              <Label htmlFor="taux_centime_additionnel">{t('additionalCentRate')} (%)</Label>
               <Input
                 id="taux_centime_additionnel"
                 type="number"
@@ -435,7 +432,7 @@ const GeneralSettings = () => {
                 <p className="text-sm text-red-500">{validationErrors.taux_centime_additionnel}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                Taxe additionnelle sur certains produits
+                {t('additionalTaxRate')}
               </p>
             </div>
           </div>
@@ -448,13 +445,13 @@ const GeneralSettings = () => {
           {!hasChanges && (
             <>
               <CheckCircle2 className="h-4 w-4 text-green-500" />
-              <span>Tous les paramètres sont sauvegardés</span>
+              <span>{t('allSettingsSaved')}</span>
             </>
           )}
           {hasChanges && (
             <>
               <AlertCircle className="h-4 w-4 text-orange-500" />
-              <span>Modifications en attente de sauvegarde</span>
+              <span>{t('pendingChanges')}</span>
             </>
           )}
         </div>
@@ -468,12 +465,12 @@ const GeneralSettings = () => {
           {saving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Sauvegarde en cours...
+              {t('savingInProgress')}
             </>
           ) : (
             <>
               <Save className="mr-2 h-4 w-4" />
-              Sauvegarder les paramètres
+              {t('saveSettings')}
             </>
           )}
         </Button>
