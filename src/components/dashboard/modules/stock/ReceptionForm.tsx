@@ -34,6 +34,7 @@ import { OrderStatusValidationService } from '@/services/orderStatusValidationSe
 import { StockUpdateService } from '@/services/stockUpdateService';
 import { supabase } from '@/integrations/supabase/client';
 import BarcodeScanner from './BarcodeScanner';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ReceptionLine {
   id: string;
@@ -69,6 +70,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   onRefreshOrders,
   loading 
 }) => {
+  const { t } = useLanguage();
   const [selectedOrder, setSelectedOrder] = useState('');
   const [receptionLines, setReceptionLines] = useState<ReceptionLine[]>([]);
   const [scannedBarcode, setScannedBarcode] = useState('');

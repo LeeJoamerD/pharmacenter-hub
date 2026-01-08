@@ -32,6 +32,7 @@ import {
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { OrderPDFService } from '@/services/OrderPDFService';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Order {
   id: string;
@@ -71,6 +72,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const { orderLines } = useOrderLines();
   const { toast } = useToast();
+  const { t } = useLanguage();
   const ordersPerPage = 10;
 
   // Calculate real totals for each order using useOrderLines data
