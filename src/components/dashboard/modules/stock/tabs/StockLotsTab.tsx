@@ -12,14 +12,17 @@ import {
   Package, AlertTriangle, Settings, Activity, 
   ShoppingCart, Clipboard, BarChart3, Target 
 } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const StockLotsTab = () => {
+  const { t } = useLanguage();
+  
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Gestion des Lots</h2>
+        <h2 className="text-2xl font-bold tracking-tight">{t('lotManagement')}</h2>
         <p className="text-muted-foreground">
-          Suivi et gestion complète des lots de produits pharmaceutiques
+          {t('lotManagementDescription')}
         </p>
       </div>
 
@@ -27,44 +30,44 @@ export const StockLotsTab = () => {
         <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="tracker" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
-            Suivi
+            {t('lotTracking')}
           </TabsTrigger>
           <TabsTrigger value="details" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
-            Détails
+            {t('lotDetails')}
           </TabsTrigger>
           <TabsTrigger value="expirations" className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" />
-            Péremptions
+            {t('expirations')}
           </TabsTrigger>
           <TabsTrigger value="fifo" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
-            Configuration FIFO
+            {t('fifoConfiguration')}
           </TabsTrigger>
           <TabsTrigger value="sales" className="flex items-center gap-2">
             <ShoppingCart className="h-4 w-4" />
-            Intégration Ventes
+            {t('salesIntegration')}
           </TabsTrigger>
           <TabsTrigger value="inventory" className="flex items-center gap-2">
             <Clipboard className="h-4 w-4" />
-            Réconciliation
+            {t('reconciliation')}
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
-            Analytics
+            {t('analytics')}
           </TabsTrigger>
           <TabsTrigger value="optimization" className="flex items-center gap-2">
             <Target className="h-4 w-4" />
-            Optimisation
+            {t('optimization')}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="tracker">
           <Card>
             <CardHeader>
-              <CardTitle>Suivi des Lots</CardTitle>
+              <CardTitle>{t('lotTracking')}</CardTitle>
               <CardDescription>
-                Visualisez et suivez tous vos lots en temps réel
+                {t('viewTrackLotsDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -76,9 +79,9 @@ export const StockLotsTab = () => {
         <TabsContent value="details">
           <Card>
             <CardHeader>
-              <CardTitle>Détails des Lots</CardTitle>
+              <CardTitle>{t('lotDetails')}</CardTitle>
               <CardDescription>
-                Consultez les informations détaillées d'un lot spécifique
+                {t('lotDetailsDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -90,9 +93,9 @@ export const StockLotsTab = () => {
         <TabsContent value="expirations">
           <Card>
             <CardHeader>
-              <CardTitle>Alertes de Péremption</CardTitle>
+              <CardTitle>{t('expirationAlerts')}</CardTitle>
               <CardDescription>
-                Gérez les alertes et surveillez les dates d'expiration
+                {t('expirationAlertsDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -104,9 +107,9 @@ export const StockLotsTab = () => {
         <TabsContent value="fifo">
           <Card>
             <CardHeader>
-              <CardTitle>Configuration FIFO</CardTitle>
+              <CardTitle>{t('fifoConfiguration')}</CardTitle>
               <CardDescription>
-                Configurez les règles de rotation des stocks
+                {t('fifoConfigDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>

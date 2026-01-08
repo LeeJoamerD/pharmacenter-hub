@@ -6,39 +6,42 @@ import ABCAnalysis from '../analysis/ABCAnalysis';
 import RotationAnalysis from '../analysis/RotationAnalysis';
 import ForecastAnalysis from '../analysis/ForecastAnalysis';
 import ComplianceReports from '../analysis/ComplianceReports';
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const StockAnalysesTab = () => {
+  const { t } = useLanguage();
+  
   return (
     <Tabs defaultValue="valorisation" className="space-y-6">
       <TabsList>
         <TabsTrigger value="valorisation">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
-            <span>Valorisation</span>
+            <span>{t('stockValorisation')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="abc">
           <div className="flex items-center gap-2">
             <ChartBar className="h-4 w-4" />
-            <span>Analyse ABC</span>
+            <span>{t('abcAnalysis')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="rotation">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
-            <span>Rotation</span>
+            <span>{t('rotationAnalysis')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="previsions">
           <div className="flex items-center gap-2">
             <Eye className="h-4 w-4" />
-            <span>Prévisions</span>
+            <span>{t('forecastAnalysis')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="conformite">
           <div className="flex items-center gap-2">
             <Clipboard className="h-4 w-4" />
-            <span>Conformité</span>
+            <span>{t('complianceReports')}</span>
           </div>
         </TabsTrigger>
       </TabsList>

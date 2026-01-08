@@ -9,12 +9,14 @@ import StockAlertesTab from './stock/tabs/StockAlertesTab';
 import StockAnalysesTab from './stock/tabs/StockAnalysesTab';
 import StockConfigurationTab from './stock/tabs/StockConfigurationTab';
 import StockIntegrationDemo from './stock/StockIntegrationDemo';
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface StockModuleProps {
   activeSubModule: string;
 }
 
 const StockModule = ({ activeSubModule }: StockModuleProps) => {
+  const { t } = useLanguage();
 
   const renderContent = () => {
     switch (activeSubModule) {
@@ -44,9 +46,9 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Gestion de Stock</h2>
+        <h2 className="text-3xl font-bold tracking-tight">{t('stockManagement')}</h2>
         <p className="text-muted-foreground">
-          Module complet de gestion des stocks, produits et approvisionnements
+          {t('stockModuleDescription')}
         </p>
       </div>
 

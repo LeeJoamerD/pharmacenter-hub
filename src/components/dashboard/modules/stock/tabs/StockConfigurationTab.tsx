@@ -5,9 +5,11 @@ import StockGeneralConfig from '../config/StockGeneralConfig';
 import AlertsConfig from '../config/AlertsConfig';
 import PricingConfig from '../config/PricingConfig';
 import ExcelMappingConfig from '../config/ExcelMappingConfig';
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const StockConfigurationTab = () => {
   const [activeTab, setActiveTab] = useState('general');
+  const { t } = useLanguage();
 
   return (
     <div className="space-y-6">
@@ -16,25 +18,25 @@ const StockConfigurationTab = () => {
           <TabsTrigger value="general">
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4" />
-              <span>Général</span>
+              <span>{t('generalConfig')}</span>
             </div>
           </TabsTrigger>
           <TabsTrigger value="alerts">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
-              <span>Alertes</span>
+              <span>{t('alertsConfig')}</span>
             </div>
           </TabsTrigger>
           <TabsTrigger value="pricing">
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
-              <span>Tarification</span>
+              <span>{t('pricingConfig')}</span>
             </div>
           </TabsTrigger>
           <TabsTrigger value="excel-mapping">
             <div className="flex items-center gap-2">
               <FileSpreadsheet className="h-4 w-4" />
-              <span>Import Excel</span>
+              <span>{t('excelMapping')}</span>
             </div>
           </TabsTrigger>
         </TabsList>

@@ -23,6 +23,7 @@ import { SupplierStatsService, SupplierStats, SupplierLocation } from '@/service
 import { useSupplierEvaluations } from '@/hooks/useSupplierEvaluations';
 import { useTenantQuery } from '@/hooks/useTenantQuery';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface SupplierWithStats {
   id: string;
@@ -44,6 +45,7 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
   const [suppliersWithStats, setSuppliersWithStats] = useState<SupplierWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   // Load suppliers with real stats from database
   const loadSuppliersWithStats = async () => {
@@ -54,8 +56,8 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
     } catch (error) {
       console.error('Erreur lors du chargement des fournisseurs:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de charger les données des fournisseurs",
+        title: t('error'),
+        description: t('supplierLoadError'),
         variant: "destructive",
       });
     } finally {
@@ -116,7 +118,7 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
             <div className="flex items-center gap-2">
               <Building className="h-5 w-5 text-blue-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Total Fournisseurs</p>
+                <p className="text-sm text-muted-foreground">{t('totalSuppliers')}</p>
                 <p className="text-2xl font-bold">{aggregateStats.total}</p>
               </div>
             </div>
@@ -128,7 +130,7 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-green-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Actifs</p>
+                <p className="text-sm text-muted-foreground">{t('active')}</p>
                 <p className="text-2xl font-bold">{aggregateStats.actifs}</p>
               </div>
             </div>
@@ -140,7 +142,7 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Suspendus</p>
+                <p className="text-sm text-muted-foreground">{t('suspended')}</p>
                 <p className="text-2xl font-bold">{aggregateStats.suspendus}</p>
               </div>
             </div>
@@ -152,7 +154,7 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
             <div className="flex items-center gap-2">
               <Star className="h-5 w-5 text-yellow-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Note Moyenne</p>
+                <p className="text-sm text-muted-foreground">{t('averageRating')}</p>
                 <p className="text-2xl font-bold">{aggregateStats.noteMoyenne.toFixed(1)}</p>
               </div>
             </div>
@@ -166,7 +168,7 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                Gestion des Fournisseurs
+                {t('supplierManagement')}
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -176,9 +178,8 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
                   <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 </Button>
               </CardTitle>
-              <CardDescription>Liste et consultation de tous les fournisseurs ({filteredSuppliers.length} fournisseurs)</CardDescription>
+              <CardDescription>{t('supplierListDescription')} ({filteredSuppliers.length} {t('suppliers').toLowerCase()})</CardDescription>
             </div>
-            {/* Bouton "Nouvelle Fournisseur" supprimé */}
           </div>
         </CardHeader>
         <CardContent>
@@ -187,7 +188,7 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
-                  placeholder="Rechercher par nom ou email..."
+                  placeholder={t('searchByNameOrEmail')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -197,13 +198,13 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
             
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
               <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Statut" />
+                <SelectValue placeholder={t('receptionStatus')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="tous">Tous les statuts</SelectItem>
-                <SelectItem value="actif">Actif</SelectItem>
-                <SelectItem value="inactif">Inactif</SelectItem>
-                <SelectItem value="suspendu">Suspendu</SelectItem>
+                <SelectItem value="tous">{t('allStatuses')}</SelectItem>
+                <SelectItem value="actif">{t('active')}</SelectItem>
+                <SelectItem value="inactif">{t('inactive')}</SelectItem>
+                <SelectItem value="suspendu">{t('suspended')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -213,14 +214,14 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Fournisseur</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Localisation</TableHead>
-                  <TableHead>Note</TableHead>
-                  <TableHead>Délai</TableHead>
-                  <TableHead>Total Commandes</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t('supplier')}</TableHead>
+                  <TableHead>{t('contact')}</TableHead>
+                  <TableHead>{t('location')}</TableHead>
+                  <TableHead>{t('rating')}</TableHead>
+                  <TableHead>{t('deliveryTime')}</TableHead>
+                  <TableHead>{t('totalOrders')}</TableHead>
+                  <TableHead>{t('receptionStatus')}</TableHead>
+                  <TableHead>{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -228,13 +229,13 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
                       <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
-                      Chargement des fournisseurs...
+                      {t('loadingSuppliers')}
                     </TableCell>
                   </TableRow>
                 ) : filteredSuppliers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
-                      Aucun fournisseur trouvé
+                      {t('noSupplierFound')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -244,7 +245,7 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
                         <div>
                           <div className="font-medium">{supplier.nom}</div>
                           <div className="text-sm text-muted-foreground">
-                            {supplier.stats.totalCommandes} commandes
+                            {supplier.stats.totalCommandes} {t('orders').toLowerCase()}
                           </div>
                         </div>
                       </TableCell>
@@ -289,11 +290,11 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">{supplier.stats.delaiMoyenLivraison} jours</span>
+                        <span className="text-sm">{supplier.stats.delaiMoyenLivraison} {t('days')}</span>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          <div className="font-medium">{supplier.stats.totalCommandes} commandes</div>
+                          <div className="font-medium">{supplier.stats.totalCommandes} {t('orders').toLowerCase()}</div>
                           <div className="text-muted-foreground">
                             {supplier.stats.montantTotal.toLocaleString()} F CFA
                           </div>
@@ -301,7 +302,7 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
                       </TableCell>
                       <TableCell>
                         <Badge className={`${getStatusColor(supplier.statut)} w-fit`}>
-                          {supplier.statut}
+                          {supplier.statut === 'actif' ? t('active') : supplier.statut === 'inactif' ? t('inactive') : t('suspended')}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -313,7 +314,6 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {/* Bouton "Modifier" supprimé - Mode lecture seule */}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -329,9 +329,9 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Aperçu du Fournisseur</DialogTitle>
+            <DialogTitle>{t('supplierOverview')}</DialogTitle>
             <DialogDescription>
-              Informations générales et statistiques du fournisseur
+              {t('generalInfoAndStats')}
             </DialogDescription>
           </DialogHeader>
           
@@ -340,26 +340,26 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
               {/* Informations générales */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h4 className="font-semibold text-sm mb-3">Informations Générales</h4>
+                  <h4 className="font-semibold text-sm mb-3">{t('generalInformation')}</h4>
                   <div className="space-y-2 text-sm">
-                    <p><span className="font-medium">Nom:</span> {selectedSupplier.nom}</p>
-                    <p><span className="font-medium">Adresse:</span> {selectedSupplier.location.adresse}</p>
-                    <p><span className="font-medium">Téléphone:</span> {selectedSupplier.location.telephone}</p>
-                    <p><span className="font-medium">Email:</span> {selectedSupplier.location.email}</p>
+                    <p><span className="font-medium">{t('name')}:</span> {selectedSupplier.nom}</p>
+                    <p><span className="font-medium">{t('address')}:</span> {selectedSupplier.location.adresse}</p>
+                    <p><span className="font-medium">{t('phone')}:</span> {selectedSupplier.location.telephone}</p>
+                    <p><span className="font-medium">{t('email')}:</span> {selectedSupplier.location.email}</p>
                   </div>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-sm mb-3">Performance</h4>
+                  <h4 className="font-semibold text-sm mb-3">{t('performance')}</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">Note:</span>
+                      <span className="font-medium">{t('rating')}:</span>
                       <div className="flex items-center gap-1">
                         <div className="flex">{renderStars(selectedSupplier.stats.noteEvaluation)}</div>
                         <span>{selectedSupplier.stats.noteEvaluation > 0 ? selectedSupplier.stats.noteEvaluation.toFixed(1) : '-'}</span>
                       </div>
                     </div>
-                    <p><span className="font-medium">Délai moyen:</span> {selectedSupplier.stats.delaiMoyenLivraison} jours</p>
-                    <p><span className="font-medium">Taux de livraison:</span> {selectedSupplier.stats.tauxLivraisonATemps}%</p>
+                    <p><span className="font-medium">{t('averageDeliveryTime')}:</span> {selectedSupplier.stats.delaiMoyenLivraison} {t('days')}</p>
+                    <p><span className="font-medium">{t('onTimeDeliveryRate')}:</span> {selectedSupplier.stats.tauxLivraisonATemps}%</p>
                   </div>
                 </div>
               </div>
@@ -368,15 +368,15 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
               <div className="grid grid-cols-3 gap-4 pt-4 border-t">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-blue-600">{selectedSupplier.stats.totalCommandes}</p>
-                  <p className="text-sm text-muted-foreground">Commandes</p>
+                  <p className="text-sm text-muted-foreground">{t('orders')}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-green-600">{selectedSupplier.stats.montantTotal.toLocaleString()}</p>
-                  <p className="text-sm text-muted-foreground">F CFA Total</p>
+                  <p className="text-sm text-muted-foreground">F CFA {t('total')}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-orange-600">{selectedSupplier.stats.activeCommandes}</p>
-                  <p className="text-sm text-muted-foreground">Commandes Actives</p>
+                  <p className="text-sm text-muted-foreground">{t('activeOrders')}</p>
                 </div>
               </div>
 
@@ -392,9 +392,8 @@ const SupplierManager = ({ onViewHistory }: SupplierManagerProps) => {
                   }}
                 >
                   <FileText className="mr-2 h-4 w-4" />
-                  Voir Historique
+                  {t('viewHistory')}
                 </Button>
-                {/* Bouton "Modifier" supprimé - Mode lecture seule */}
               </div>
             </div>
           )}

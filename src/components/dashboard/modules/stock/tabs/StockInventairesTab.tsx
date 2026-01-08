@@ -7,9 +7,11 @@ import InventoryEntry from '../InventoryEntry';
 import InventoryReconciliation from '../InventoryReconciliation';
 import InventoryReports from '../InventoryReports';
 import { InventoryExcelImport } from '../InventoryExcelImport';
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const StockInventairesTab = () => {
   console.log('[StockInventairesTab] Rendering component');
+  const { t } = useLanguage();
   
   const [activeTab, setActiveTab] = useState('sessions');
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
@@ -28,31 +30,31 @@ const StockInventairesTab = () => {
         <TabsTrigger value="sessions">
           <div className="flex items-center gap-2">
             <Clipboard className="h-4 w-4" />
-            <span>Sessions</span>
+            <span>{t('inventorySessions')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="saisie">
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4" />
-            <span>Saisie</span>
+            <span>{t('inventoryEntry')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="import-excel">
           <div className="flex items-center gap-2">
             <FileUp className="h-4 w-4" />
-            <span>Import Excel</span>
+            <span>{t('excelImport')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="reconciliation">
           <div className="flex items-center gap-2">
             <ChartBar className="h-4 w-4" />
-            <span>Réconciliation</span>
+            <span>{t('reconciliation')}</span>
           </div>
         </TabsTrigger>
         <TabsTrigger value="rapports">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
-            <span>Rapports</span>
+            <span>{t('reports')}</span>
           </div>
         </TabsTrigger>
       </TabsList>
