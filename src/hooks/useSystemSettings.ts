@@ -119,9 +119,9 @@ export const useSystemSettings = () => {
 
       // Données par défaut pour les options disponibles (Congo Brazzaville)
       const defaultCurrencies: Currency[] = [
-        { code: 'XOF', name: 'Franc CFA XOF', symbol: 'CFA', rate: 1, countries: ['Congo Brazzaville', 'Sénégal', 'Mali'] },
-        { code: 'XAF', name: 'Franc CFA BEAC', symbol: 'FCFA', rate: 1, countries: ['Cameroun', 'Gabon', 'Tchad'] },
-        { code: 'EUR', name: 'Euro', symbol: '€', rate: 0.0015, countries: ['France', 'Allemagne', 'Espagne'] },
+        { code: 'XAF', name: 'Franc CFA BEAC', symbol: 'FCFA', rate: 1, countries: ['Congo Brazzaville', 'Gabon'] },
+        { code: 'XOF', name: 'Franc CFA BCEAO', symbol: 'CFA', rate: 1, countries: ['Côte d\'Ivoire', 'Bénin'] },
+        { code: 'EUR', name: 'Euro', symbol: '€', rate: 0.0015, countries: ['France', 'Belgique'] },
         { code: 'USD', name: 'Dollar américain', symbol: '$', rate: 0.0016, countries: ['États-Unis', 'Canada'] },
         { code: 'GBP', name: 'Livre sterling', symbol: '£', rate: 0.0013, countries: ['Royaume-Uni'] }
       ];
@@ -160,7 +160,7 @@ export const useSystemSettings = () => {
         taux_centime_additionnel: parseFloat(parametresMap.taux_centime_additionnel || '0'),
         
         // Paramètres système (par défaut Congo Brazzaville)
-        default_currency: parametresMap.default_currency || 'XOF',
+        default_currency: parametresMap.default_currency || 'XAF',
         default_timezone: parametresMap.default_timezone || 'Africa/Brazzaville',
         default_language: parametresMap.default_language || 'fr',
         fiscal_year: parametresMap.fiscal_year || new Date().getFullYear().toString(),
