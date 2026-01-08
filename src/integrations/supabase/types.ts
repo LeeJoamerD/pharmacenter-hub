@@ -20440,6 +20440,7 @@ export type Database = {
         Returns: Json
       }
       get_current_tenant_alert_settings: { Args: never; Returns: Json }
+      get_current_user_country: { Args: never; Returns: string }
       get_current_user_tenant_id: { Args: never; Returns: string }
       get_customization_metrics: {
         Args: { p_tenant_id: string }

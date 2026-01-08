@@ -9,28 +9,31 @@ export const useSupplierExcelMappings = () => {
   const [mappings, setMappings] = useState<SupplierExcelMapping[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Charger tous les mappings
+  // Charger tous les mappings du même pays (RLS s'en occupe)
   const loadMappings = useCallback(async () => {
     if (!tenantId) return;
     
     setLoading(true);
     try {
+      // Charger tous les mappings visibles (même pays via RLS)
       const { data, error } = await supabase
         .from('supplier_excel_mappings')
         .select(`
           *,
-          fournisseur:fournisseurs(id, nom)
+          fournisseur:fournisseurs(id, nom),
+          pharmacy:pharmacies!tenant_id(id, name)
         `)
-        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      // Transform the data to match our interface
+      // Transform the data to match our interface with ownership indicator
       const transformedData = (data || []).map(item => ({
         ...item,
         mapping_config: item.mapping_config as ExcelColumnMapping,
-        fournisseur: item.fournisseur as { id: string; nom: string } | undefined
+        fournisseur: item.fournisseur as { id: string; nom: string } | undefined,
+        isOwner: item.tenant_id === tenantId,
+        creatorName: (item.pharmacy as { id: string; name: string } | null)?.name || 'Inconnu'
       }));
       
       setMappings(transformedData);
@@ -42,12 +45,13 @@ export const useSupplierExcelMappings = () => {
     }
   }, [tenantId]);
 
-  // Récupérer le mapping d'un fournisseur spécifique
+  // Récupérer le mapping d'un fournisseur spécifique (priorité au mapping du tenant)
   const getMappingBySupplier = useCallback(async (fournisseurId: string): Promise<SupplierExcelMapping | null> => {
     if (!tenantId || !fournisseurId) return null;
 
     try {
-      const { data, error } = await supabase
+      // D'abord chercher un mapping du tenant courant
+      const { data: ownMapping, error: ownError } = await supabase
         .from('supplier_excel_mappings')
         .select('*')
         .eq('tenant_id', tenantId)
@@ -55,14 +59,37 @@ export const useSupplierExcelMappings = () => {
         .eq('is_active', true)
         .maybeSingle();
 
-      if (error) throw error;
+      if (ownError) throw ownError;
       
-      if (data) {
+      if (ownMapping) {
         return {
-          ...data,
-          mapping_config: data.mapping_config as ExcelColumnMapping
+          ...ownMapping,
+          mapping_config: ownMapping.mapping_config as ExcelColumnMapping,
+          isOwner: true
         };
       }
+
+      // Sinon, chercher un mapping partagé (d'un autre tenant du même pays)
+      const { data: sharedMapping, error: sharedError } = await supabase
+        .from('supplier_excel_mappings')
+        .select('*')
+        .eq('fournisseur_id', fournisseurId)
+        .eq('is_active', true)
+        .neq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (sharedError) throw sharedError;
+      
+      if (sharedMapping) {
+        return {
+          ...sharedMapping,
+          mapping_config: sharedMapping.mapping_config as ExcelColumnMapping,
+          isOwner: false
+        };
+      }
+
       return null;
     } catch (error) {
       console.error('Erreur récupération mapping fournisseur:', error);

@@ -16,7 +16,8 @@ import {
   AlertTriangle,
   Info,
   Settings2,
-  Loader2
+  Loader2,
+  Share2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,6 +39,7 @@ const ExcelMappingConfig: React.FC = () => {
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
   const [currentMapping, setCurrentMapping] = useState<Record<ExcelColumnLetter, ReceptionFieldKey | ''>>({} as any);
   const [existingMappingId, setExistingMappingId] = useState<string | null>(null);
+  const [existingMappingIsOwner, setExistingMappingIsOwner] = useState<boolean>(true);
   const [saving, setSaving] = useState(false);
 
   // Charger les fournisseurs actifs
@@ -76,6 +78,7 @@ const ExcelMappingConfig: React.FC = () => {
     if (!selectedSupplierId) {
       setCurrentMapping(initializeEmptyMapping());
       setExistingMappingId(null);
+      setExistingMappingIsOwner(true);
       return;
     }
 
@@ -83,6 +86,7 @@ const ExcelMappingConfig: React.FC = () => {
     
     if (existingMapping) {
       setExistingMappingId(existingMapping.id);
+      setExistingMappingIsOwner(existingMapping.isOwner ?? true);
       
       // Reconstruire le mapping inversé (field -> letter devient letter -> field)
       const reversedMapping = initializeEmptyMapping();
@@ -98,6 +102,7 @@ const ExcelMappingConfig: React.FC = () => {
     } else {
       setCurrentMapping(initializeEmptyMapping());
       setExistingMappingId(null);
+      setExistingMappingIsOwner(true);
     }
   }, [selectedSupplierId, mappings]);
 
@@ -227,9 +232,24 @@ const ExcelMappingConfig: React.FC = () => {
             </div>
             
             {existingMappingId && (
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Mapping existant
+              <Badge 
+                variant="outline" 
+                className={existingMappingIsOwner 
+                  ? "bg-green-50 text-green-700 border-green-200" 
+                  : "bg-blue-50 text-blue-700 border-blue-200"
+                }
+              >
+                {existingMappingIsOwner ? (
+                  <>
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Votre mapping
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="h-3 w-3 mr-1" />
+                    Mapping partagé
+                  </>
+                )}
               </Badge>
             )}
           </div>
@@ -334,7 +354,7 @@ const ExcelMappingConfig: React.FC = () => {
             {/* Actions */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {existingMappingId && (
+                {existingMappingId && existingMappingIsOwner && (
                   <Button 
                     variant="destructive" 
                     size="sm"
@@ -348,28 +368,38 @@ const ExcelMappingConfig: React.FC = () => {
                   variant="outline" 
                   size="sm"
                   onClick={handleReset}
+                  disabled={!existingMappingIsOwner && existingMappingId !== null}
                 >
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Réinitialiser
                 </Button>
               </div>
               
-              <Button 
-                onClick={handleSave}
-                disabled={saving || configuredCount === 0}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Enregistrement...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    {existingMappingId ? 'Mettre à jour' : 'Enregistrer'}
-                  </>
-                )}
-              </Button>
+              {!existingMappingIsOwner && existingMappingId && (
+                <Badge variant="secondary" className="text-xs">
+                  <Info className="h-3 w-3 mr-1" />
+                  Mapping en lecture seule
+                </Badge>
+              )}
+              
+              {existingMappingIsOwner && (
+                <Button 
+                  onClick={handleSave}
+                  disabled={saving || configuredCount === 0}
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Enregistrement...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      {existingMappingId ? 'Mettre à jour' : 'Enregistrer'}
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -400,6 +430,7 @@ const ExcelMappingConfig: React.FC = () => {
                 <TableHeader>
                   <TableRow className="bg-muted/50">
                     <TableHead>Fournisseur</TableHead>
+                    <TableHead>Créé par</TableHead>
                     <TableHead>Champs configurés</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Dernière modification</TableHead>
@@ -422,6 +453,21 @@ const ExcelMappingConfig: React.FC = () => {
                       >
                         <TableCell className="font-medium">
                           {mapping.fournisseur?.nom || 'Fournisseur inconnu'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">{mapping.creatorName}</span>
+                            {mapping.isOwner ? (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
+                                Vous
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">
+                                <Share2 className="h-3 w-3 mr-1" />
+                                Partagé
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{fieldCount} champs</Badge>
