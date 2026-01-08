@@ -27,6 +27,7 @@ import { OrderStatusValidationService } from '@/services/orderStatusValidationSe
 import { unifiedPricingService } from '@/services/UnifiedPricingService';
 import { useStockSettings } from '@/hooks/useStockSettings';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface OrderLine {
   id: string;
@@ -54,6 +55,7 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   const [searchProduct, setSearchProduct] = useState('');
   const [notes, setNotes] = useState('');
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   // Hooks multi-devise et catégories de tarification
   const { formatAmount, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
