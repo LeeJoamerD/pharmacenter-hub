@@ -50,7 +50,7 @@ const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, rup
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Package className="h-4 w-4 text-success" />
-              <span className="text-sm font-medium">{t('availableProducts')}</span>
+              <span className="text-sm font-medium">{t('dashboardAvailableProducts')}</span>
             </div>
             <div className="text-2xl font-bold text-success">{metrics.availableProducts}</div>
             <p className="text-xs text-muted-foreground">
@@ -77,10 +77,10 @@ const AvailableStockDashboard = ({ metrics, totalProducts, criticalProducts, rup
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="h-4 w-4 text-destructive" />
-              <span className="text-sm font-medium">{t('criticalAlerts')}</span>
+              <span className="text-sm font-medium">{t('dashboardCriticalAlerts')}</span>
             </div>
             <div className="text-2xl font-bold text-destructive">{criticalAlerts}</div>
-            <p className="text-xs text-muted-foreground">{t('immediateActionRequired')}</p>
+            <p className="text-xs text-muted-foreground">{t('dashboardImmediateAction')}</p>
           </CardContent>
         </Card>
 

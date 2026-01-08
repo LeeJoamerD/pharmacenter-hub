@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { BarChart3, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface StockLevelsProps {
   statusDistribution: {
@@ -17,45 +18,46 @@ interface StockLevelsProps {
 }
 
 const StockLevels = React.memo(({ statusDistribution, metrics, totalProducts }: StockLevelsProps) => {
+  const { t } = useLanguage();
 
   // Optimisation avec useMemo pour le calcul des niveaux - utilise metrics avec les bons seuils
   const stockLevels = useMemo(() => [
     {
-      label: 'Normal',
+      label: t('normal'),
       value: metrics.normalStockProducts || 0,
       color: 'hsl(var(--success))',
       icon: TrendingUp,
       iconColor: 'text-success'
     },
     {
-      label: 'Faible',
+      label: t('low'),
       value: metrics.lowStockProducts || 0,
       color: 'hsl(var(--warning))',
       icon: Minus,
       iconColor: 'text-warning'
     },
     {
-      label: 'Critique',
+      label: t('critical'),
       value: metrics.criticalStockProducts || 0,
       color: 'hsl(38 92% 50%)',
       icon: TrendingDown,
       iconColor: 'text-[hsl(38_92%_50%)]'
     },
     {
-      label: 'Rupture',
+      label: t('outOfStock'),
       value: metrics.outOfStockProducts || 0,
       color: 'hsl(var(--destructive))',
       icon: TrendingDown,
       iconColor: 'text-destructive'
     },
     {
-      label: 'Surstock',
+      label: t('overstock'),
       value: metrics.overstockProducts || 0,
       color: 'hsl(var(--info))',
       icon: TrendingUp,
       iconColor: 'text-info'
     }
-  ], [metrics]);
+  ], [metrics, t]);
 
   const chartData = useMemo(() => 
     stockLevels.filter(level => level.value > 0), 
@@ -67,14 +69,14 @@ const StockLevels = React.memo(({ statusDistribution, metrics, totalProducts }: 
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5" />
-          Niveaux de Stock
+          {t('stockLevels')}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger>
                 <Info className="h-4 w-4 text-muted-foreground" />
               </TooltipTrigger>
               <TooltipContent>
-                <p>Répartition des produits par niveau de stock</p>
+                <p>{t('stockLevelsTooltip')}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -107,7 +109,7 @@ const StockLevels = React.memo(({ statusDistribution, metrics, totalProducts }: 
           </div>
         ) : (
           <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-            Aucune donnée disponible
+            {t('noDataAvailable')}
           </div>
         )}
 
@@ -131,7 +133,7 @@ const StockLevels = React.memo(({ statusDistribution, metrics, totalProducts }: 
 
         <div className="pt-4 border-t">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Total produits</span>
+            <span className="text-sm text-muted-foreground">{t('totalProducts')}</span>
             <span className="font-semibold">{totalProducts}</span>
           </div>
         </div>
