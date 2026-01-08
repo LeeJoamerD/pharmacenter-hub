@@ -7,6 +7,7 @@ import { Zap, TrendingUp, Eye, ShoppingCart, Info } from 'lucide-react';
 import ProductDetailsModal from '../modals/ProductDetailsModal';
 import { OrderLowStockModal } from '../modals/OrderLowStockModal';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface FastMovingItemsProps {
   products: any[];
@@ -17,6 +18,7 @@ const FastMovingItems = React.memo(({ products }: FastMovingItemsProps) => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const { formatPrice } = useCurrency();
+  const { t } = useLanguage();
 
   const handleMonitor = useCallback((product: any) => {
     setSelectedProduct(product);
@@ -86,7 +88,7 @@ const FastMovingItems = React.memo(({ products }: FastMovingItemsProps) => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-info" />
-            Produits à Rotation Rapide
+            {t('fastMovingProducts')}
             {totalFastMovingProducts > 0 && (
               <Badge className="bg-info/10 text-info border-info/20">
                 {totalFastMovingProducts}
@@ -98,7 +100,7 @@ const FastMovingItems = React.memo(({ products }: FastMovingItemsProps) => {
                   <Info className="h-4 w-4 text-muted-foreground" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Produits à forte rotation nécessitant un suivi attentif</p>
+                  <p>{t('fastMovingTooltip')}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -108,8 +110,8 @@ const FastMovingItems = React.memo(({ products }: FastMovingItemsProps) => {
           {fastMovingProducts.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">
               <Zap className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-              <p className="font-medium">Aucun produit à rotation rapide</p>
-              <p className="text-sm">Les produits performants apparaîtront ici</p>
+              <p className="font-medium">{t('noFastMovingProducts')}</p>
+              <p className="text-sm">{t('performingProductsAppear')}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -158,7 +160,7 @@ const FastMovingItems = React.memo(({ products }: FastMovingItemsProps) => {
                       onClick={() => handleMonitor(product)}
                     >
                       <Eye className="h-3 w-3 mr-1" />
-                      Surveiller
+                      {t('monitor')}
                     </Button>
                     <Button 
                       size="sm" 
@@ -167,7 +169,7 @@ const FastMovingItems = React.memo(({ products }: FastMovingItemsProps) => {
                       onClick={() => handleReorder(product)}
                     >
                       <ShoppingCart className="h-3 w-3 mr-1" />
-                      Réappro
+                      {t('reorder')}
                     </Button>
                   </div>
                 </div>
@@ -176,14 +178,14 @@ const FastMovingItems = React.memo(({ products }: FastMovingItemsProps) => {
               {totalFastMovingProducts > 8 && (
                 <div className="text-center pt-2">
                   <Button variant="outline" size="sm" onClick={handleViewAll}>
-                    Voir tous ({totalFastMovingProducts})
+                    {t('viewAll')} ({totalFastMovingProducts})
                   </Button>
                 </div>
               )}
               
               <div className="pt-3 border-t">
                 <div className="text-xs text-muted-foreground text-center">
-                  💡 Ces produits se vendent rapidement et nécessitent un suivi attentif
+                  💡 {t('fastMovingTip')}
                 </div>
               </div>
             </div>
