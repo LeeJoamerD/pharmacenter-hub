@@ -103,8 +103,8 @@ L'équipe pharmacie`;
     
     if (selectedSuppliers.length === 0) {
       toast({
-        title: "Aucun fournisseur sélectionné",
-        description: "Veuillez sélectionner au moins un fournisseur",
+        title: t('noSupplierSelected'),
+        description: t('pleaseSelectSupplier'),
         variant: "destructive"
       });
       return;
@@ -112,8 +112,8 @@ L'équipe pharmacie`;
 
     if (!message.trim()) {
       toast({
-        title: "Message requis",
-        description: "Veuillez saisir un message",
+        title: t('modalSupplierRequired'),
+        description: t('pleaseSelectSupplier'),
         variant: "destructive"
       });
       return;
@@ -132,8 +132,8 @@ L'équipe pharmacie`;
       const result = await sendMultipleSupplierAlerts(alertsToSend);
 
       toast({
-        title: "Alertes envoyées",
-        description: `${result.success} alerte(s) envoyée(s) avec succès${result.failed > 0 ? `, ${result.failed} échec(s)` : ''}`,
+        title: t('alertsSent'),
+        description: t('alertsSentDescription').replace('{success}', String(result.success)) + (result.failed > 0 ? `, ${result.failed} ${t('error')}` : ''),
       });
 
       onOpenChange(false);
@@ -141,8 +141,8 @@ L'équipe pharmacie`;
       setSuppliers(prev => prev.map(s => ({ ...s, selected: false })));
     } catch (error: any) {
       toast({
-        title: "Erreur",
-        description: error.message || "Erreur lors de l'envoi des alertes",
+        title: t('error'),
+        description: error.message || t('bulkAdjustmentError'),
         variant: "destructive"
       });
     } finally {
@@ -158,10 +158,10 @@ L'équipe pharmacie`;
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-orange-600" />
-            Alerter les Fournisseurs
+            {t('alertSuppliers')}
           </DialogTitle>
           <DialogDescription>
-            Envoyer une alerte de rupture de stock à vos fournisseurs
+            {t('sendStockOutAlert')}
           </DialogDescription>
         </DialogHeader>
 
@@ -171,17 +171,17 @@ L'équipe pharmacie`;
               <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
               <div className="space-y-1">
                 <p className="font-medium text-orange-900">
-                  {products.length} produit(s) en rupture de stock
+                  {products.length} {t('productsOutOfStock')}
                 </p>
                 <p className="text-sm text-orange-700">
-                  Sélectionnez les fournisseurs à alerter
+                  {t('selectSuppliersToAlert')}
                 </p>
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>Fournisseurs ({selectedCount} sélectionné{selectedCount > 1 ? 's' : ''})</Label>
+            <Label>{t('suppliersCount')} ({selectedCount} {t('selected')}{selectedCount > 1 ? 's' : ''})</Label>
             <ScrollArea className="h-[180px] border rounded-lg">
               <div className="p-4 space-y-2">
                 {suppliers.map((supplier) => (
@@ -213,7 +213,7 @@ L'équipe pharmacie`;
                       </div>
                     </div>
                     {supplier.selected && (
-                      <Badge variant="secondary">Sélectionné</Badge>
+                      <Badge variant="secondary">{t('selected')}</Badge>
                     )}
                   </div>
                 ))}
@@ -222,7 +222,7 @@ L'équipe pharmacie`;
           </div>
 
           <div className="space-y-2">
-            <Label>Canal d'envoi</Label>
+            <Label>{t('sendChannel')}</Label>
             <div className="flex gap-4">
               <div className="flex items-center gap-2">
                 <Checkbox
@@ -254,10 +254,10 @@ L'équipe pharmacie`;
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="message">Message *</Label>
+            <Label htmlFor="message">{t('messageRequired')}</Label>
             <Textarea
               id="message"
-              placeholder="Saisir le message à envoyer aux fournisseurs..."
+              placeholder={t('enterMessageToSend')}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={10}
@@ -268,11 +268,11 @@ L'équipe pharmacie`;
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Annuler
+            {t('stockCancel')}
           </Button>
           <Button onClick={handleSendAlerts} disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Envoyer les alertes ({selectedCount})
+            {t('sendAlerts')} ({selectedCount})
           </Button>
         </DialogFooter>
       </DialogContent>
