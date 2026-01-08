@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { 
   Search, 
@@ -663,7 +664,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
 
         {/* Dialog pour les détails de commande */}
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-          <DialogContent className="max-w-4xl">
+          <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
             <DialogHeader>
               <DialogTitle>{t('orderListOrderDetails')}</DialogTitle>
               <DialogDescription>
@@ -671,7 +672,9 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
               </DialogDescription>
             </DialogHeader>
             
-            {selectedOrder && <OrderDetailsContent order={selectedOrder} getStatusColor={getStatusColor} t={t} />}
+            <ScrollArea className="flex-1 overflow-auto pr-4">
+              {selectedOrder && <OrderDetailsContent order={selectedOrder} getStatusColor={getStatusColor} t={t} />}
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       </div>
@@ -731,26 +734,28 @@ const OrderDetailsContent = ({ order, getStatusColor, t }: { order: any; getStat
             {t('orderListLoadingLines')}
           </div>
         ) : orderLines.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t('orderListProduct')}</TableHead>
-                <TableHead>{t('orderListQuantity')}</TableHead>
-                <TableHead>{t('orderListUnitPrice')}</TableHead>
-                <TableHead>{t('orderListTotal')}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orderLines.map((line) => (
-                <TableRow key={line.id}>
-                  <TableCell>{line.produit?.libelle_produit || t('orderListUnknownProduct')}</TableCell>
-                  <TableCell>{line.quantite_commandee}</TableCell>
-                  <TableCell>{(line.prix_achat_unitaire_attendu || 0).toLocaleString()} F CFA</TableCell>
-                  <TableCell>{((line.quantite_commandee || 0) * (line.prix_achat_unitaire_attendu || 0)).toLocaleString()} F CFA</TableCell>
+          <div className="max-h-[300px] overflow-auto border rounded-lg">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('orderListProduct')}</TableHead>
+                  <TableHead>{t('orderListQuantity')}</TableHead>
+                  <TableHead>{t('orderListUnitPrice')}</TableHead>
+                  <TableHead>{t('orderListTotal')}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {orderLines.map((line) => (
+                  <TableRow key={line.id}>
+                    <TableCell>{line.produit?.libelle_produit || t('orderListUnknownProduct')}</TableCell>
+                    <TableCell>{line.quantite_commandee}</TableCell>
+                    <TableCell>{(line.prix_achat_unitaire_attendu || 0).toLocaleString()} F CFA</TableCell>
+                    <TableCell>{((line.quantite_commandee || 0) * (line.prix_achat_unitaire_attendu || 0)).toLocaleString()} F CFA</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         ) : (
           <div className="text-center py-4 text-muted-foreground">
             {t('orderListNoOrderLines')}
