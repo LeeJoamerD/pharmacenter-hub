@@ -368,7 +368,7 @@ const NetworkChatCustomization = () => {
                       <SelectItem value="fr">Français</SelectItem>
                       <SelectItem value="en">English</SelectItem>
                       <SelectItem value="es">Español</SelectItem>
-                      <SelectItem value="de">Deutsch</SelectItem>
+                      <SelectItem value="ln">Lingala</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
