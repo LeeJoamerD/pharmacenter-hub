@@ -76,7 +76,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [sendingPharmaML, setSendingPharmaML] = useState<string | null>(null);
-  const [pharmamlStatus, setPharmamlStatus] = useState<Record<string, { configured: boolean; sent: boolean }>>({});
+  const [pharmamlStatus, setPharmamlStatus] = useState<Record<string, { configured: boolean; sent: boolean; lastStatus?: string }>>({});
   const { orderLines } = useOrderLines();
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -126,13 +126,13 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
   // Check PharmaML status for orders
   useEffect(() => {
     const checkPharmaMLStatus = async () => {
-      const statusMap: Record<string, { configured: boolean; sent: boolean }> = {};
+      const statusMap: Record<string, { configured: boolean; sent: boolean; lastStatus?: string }> = {};
       
       for (const order of propOrders) {
         if (order.fournisseur_id) {
           const configured = await PharmaMLService.isSupplierConfigured(order.fournisseur_id);
-          const { sent } = await PharmaMLService.hasBeenSent(order.id);
-          statusMap[order.id] = { configured, sent };
+          const { sent, lastStatus } = await PharmaMLService.hasBeenSent(order.id);
+          statusMap[order.id] = { configured, sent, lastStatus };
         }
       }
       
@@ -324,7 +324,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
         // Update local status
         setPharmamlStatus(prev => ({
           ...prev,
-          [order.id]: { ...prev[order.id], sent: true }
+          [order.id]: { ...prev[order.id], sent: true, lastStatus: 'success' }
         }));
         onRefresh();
       } else {
@@ -564,14 +564,21 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
                           {/* PharmaML Send Button */}
                           {pharmamlStatus[order.id]?.configured && (
                             <Button 
-                              variant={pharmamlStatus[order.id]?.sent ? "secondary" : "default"}
+                              variant={pharmamlStatus[order.id]?.sent ? "secondary" : 
+                                       pharmamlStatus[order.id]?.lastStatus === 'error' ? "destructive" : "default"}
                               size="sm"
                               onClick={() => handleSendPharmaML(order)}
                               disabled={sendingPharmaML === order.id || pharmamlStatus[order.id]?.sent}
-                              title={pharmamlStatus[order.id]?.sent ? 'Déjà envoyé' : t('pharmamlSendOrder')}
+                              title={pharmamlStatus[order.id]?.sent ? 'Envoyé avec succès' : 
+                                     pharmamlStatus[order.id]?.lastStatus === 'error' ? 'Erreur - Cliquez pour réessayer' :
+                                     t('pharmamlSendOrder')}
                             >
                               {sendingPharmaML === order.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : pharmamlStatus[order.id]?.lastStatus === 'error' ? (
+                                <XCircle className="h-4 w-4" />
+                              ) : pharmamlStatus[order.id]?.sent ? (
+                                <CheckCircle className="h-4 w-4" />
                               ) : (
                                 <Send className="h-4 w-4" />
                               )}

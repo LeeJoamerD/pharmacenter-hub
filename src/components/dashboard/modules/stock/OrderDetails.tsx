@@ -50,6 +50,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
   });
   const [pharmamlConfigured, setPharmamlConfigured] = useState(false);
   const [pharmamlSent, setPharmamlSent] = useState(false);
+  const [pharmamlLastStatus, setPharmamlLastStatus] = useState<string | undefined>();
+  const [hasTransmissions, setHasTransmissions] = useState(false);
   const [sendingPharmaML, setSendingPharmaML] = useState(false);
 
   // Get dynamic rates from system settings (en pourcentage)
@@ -103,9 +105,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
       if (order?.fournisseur_id) {
         const configured = await PharmaMLService.isSupplierConfigured(order.fournisseur_id);
         setPharmamlConfigured(configured);
-        
-        const { sent } = await PharmaMLService.hasBeenSent(order.id);
+      }
+      
+      if (order?.id) {
+        const { sent, lastStatus, hasTransmissions: hasTx } = await PharmaMLService.hasBeenSent(order.id);
         setPharmamlSent(sent);
+        setPharmamlLastStatus(lastStatus);
+        setHasTransmissions(hasTx);
       }
     };
     checkPharmaML();
@@ -188,12 +194,16 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
           description: result.orderNumber ? `N° PharmaML: ${result.orderNumber}` : result.message,
         });
         setPharmamlSent(true);
+        setPharmamlLastStatus('success');
+        setHasTransmissions(true);
       } else {
         toast({
           title: t('pharmamlSendError'),
           description: result.message,
           variant: "destructive",
         });
+        setPharmamlLastStatus('error');
+        setHasTransmissions(true);
       }
     } catch (error: any) {
       toast({
@@ -238,12 +248,13 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
             </Badge>
           )}
           
-          {/* PharmaML Send Button */}
+          {/* PharmaML Send Button - show retry if last status was error */}
           {pharmamlConfigured && !pharmamlSent && (
             <Button 
-              variant="default" 
+              variant={pharmamlLastStatus === 'error' ? "destructive" : "default"}
               onClick={handleSendPharmaML}
               disabled={sendingPharmaML}
+              title={pharmamlLastStatus === 'error' ? 'Erreur - Cliquez pour réessayer' : undefined}
             >
               {sendingPharmaML ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -442,8 +453,8 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order, onBack }) => {
         </div>
       </div>
 
-      {/* PharmaML Transmission History */}
-      {pharmamlConfigured && (
+      {/* PharmaML Transmission History - show if configured OR if transmissions exist */}
+      {(pharmamlConfigured || hasTransmissions) && (
         <PharmaMLHistory orderId={order.id} />
       )}
     </div>
