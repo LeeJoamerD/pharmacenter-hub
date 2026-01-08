@@ -5,6 +5,7 @@
 export interface ExcelColumnMapping {
   bon_livraison?: string;        // Lettre de la colonne Excel (ex: "B")
   cip?: string;                  // Code CIP/EAN13
+  ancien_code_cip?: string;      // Ancien code CIP (optionnel)
   produit?: string;              // Libellé du produit
   categorie_tarification?: string; // Catégorie de tarification
   quantite_commandee?: string;   // Quantité commandée
@@ -36,6 +37,7 @@ export interface SupplierExcelMapping {
 export const RECEPTION_TABLE_FIELDS = [
   { key: 'bon_livraison', label: 'Bon de livraison' },
   { key: 'cip', label: 'CIP/EAN13' },
+  { key: 'ancien_code_cip', label: 'Ancien Code CIP' },
   { key: 'produit', label: 'Produit' },
   { key: 'categorie_tarification', label: 'Cat. Tarification' },
   { key: 'quantite_commandee', label: 'Commandé' },

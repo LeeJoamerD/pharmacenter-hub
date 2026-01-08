@@ -39,6 +39,7 @@ export class ExcelParserService {
     // Index des colonnes (par défaut ou configurés)
     const colBonLivraison = getColIndex('bon_livraison', 'B');
     const colCip = getColIndex('cip', 'D');
+    const colAncienCip = mapping?.ancien_code_cip ? this.columnLetterToIndex(mapping.ancien_code_cip) : -1;
     const colProduit = getColIndex('produit', 'E');
     const colQteCommandee = getColIndex('quantite_commandee', 'F');
     const colQteRecue = getColIndex('quantite_recue', 'H');
@@ -89,6 +90,9 @@ export class ExcelParserService {
         try {
           const line: ExcelReceptionLine = {
             reference: this.convertScientificToString(this.cleanString(row[colCip])),
+            ancienCodeCip: colAncienCip >= 0 
+              ? this.convertScientificToString(this.cleanString(row[colAncienCip])) 
+              : undefined,
             produit: this.cleanString(row[colProduit]),
             quantiteCommandee: this.parseNumber(row[colQteCommandee], 0),
             quantiteRecue: this.parseNumber(row[colQteRecue], 0),
