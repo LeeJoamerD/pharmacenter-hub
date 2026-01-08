@@ -23,12 +23,14 @@ import { useLots, LotWithDetails } from '@/hooks/useLots';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ReceptionHistoryProps {
   onViewReception?: (reception: Reception) => void;
 }
 
 const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) => {
+  const { t } = useLanguage();
   const { receptions, loading } = useReceptions();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -137,7 +139,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
         <CardContent className="p-6">
           <div className="flex items-center justify-center">
             <Package className="h-8 w-8 animate-spin" />
-            <span className="ml-2">Chargement de l'historique...</span>
+            <span className="ml-2">{t('receptionHistoryLoading')}</span>
           </div>
         </CardContent>
       </Card>
@@ -166,7 +168,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
             <div className="flex items-center gap-2">
               <Package className="h-5 w-5 text-blue-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-sm text-muted-foreground">{t('receptionHistoryTotal')}</p>
                 <p className="text-2xl font-bold">{statistics.total}</p>
               </div>
             </div>
@@ -178,7 +180,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Validées</p>
+                <p className="text-sm text-muted-foreground">{t('receptionHistoryValidated')}</p>
                 <p className="text-2xl font-bold">{statistics.valides}</p>
               </div>
             </div>
@@ -190,7 +192,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-yellow-600" />
               <div>
-                <p className="text-sm text-muted-foreground">En cours</p>
+                <p className="text-sm text-muted-foreground">{t('receptionHistoryInProgress')}</p>
                 <p className="text-2xl font-bold">{statistics.enCours}</p>
               </div>
             </div>
@@ -202,7 +204,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
             <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-purple-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Ce mois</p>
+                <p className="text-sm text-muted-foreground">{t('receptionHistoryThisMonth')}</p>
                 <p className="text-2xl font-bold">{statistics.mensuelles}</p>
               </div>
             </div>
@@ -217,10 +219,10 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
-                Historique des Réceptions
+                {t('receptionHistoryTitle')}
               </CardTitle>
               <CardDescription>
-                Consultez l'historique complet de vos réceptions fournisseurs ({filteredReceptions.length} réceptions)
+                {t('receptionHistoryDescription')} ({filteredReceptions.length} {t('receptions').toLowerCase()})
               </CardDescription>
             </div>
           </div>
@@ -231,7 +233,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Rechercher par numéro, référence ou fournisseur..."
+                  placeholder={t('receptionHistorySearchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
@@ -240,13 +242,13 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-40">
-                <SelectValue placeholder="Tous les statuts" />
+                <SelectValue placeholder={t('receptionHistoryAllStatuses')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="En cours">En cours</SelectItem>
-                <SelectItem value="Validé">Validé</SelectItem>
-                <SelectItem value="Annulé">Annulé</SelectItem>
+                <SelectItem value="all">{t('receptionHistoryAllStatuses')}</SelectItem>
+                <SelectItem value="En cours">{t('receptionHistoryStatusInProgress')}</SelectItem>
+                <SelectItem value="Validé">{t('receptionHistoryStatusValidated')}</SelectItem>
+                <SelectItem value="Annulé">{t('receptionHistoryStatusCancelled')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -256,12 +258,12 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Numéro</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Fournisseur</TableHead>
-                  <TableHead>Référence</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t('receptionHistoryNumber')}</TableHead>
+                  <TableHead>{t('receptionHistoryDate')}</TableHead>
+                  <TableHead>{t('receptionHistorySupplier')}</TableHead>
+                  <TableHead>{t('receptionHistoryReference')}</TableHead>
+                  <TableHead>{t('receptionHistoryStatus')}</TableHead>
+                  <TableHead>{t('receptionHistoryActions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -271,7 +273,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                       <div className="flex flex-col items-center gap-2">
                         <Package className="h-8 w-8 text-muted-foreground" />
                         <p className="text-muted-foreground">
-                          {searchTerm || (statusFilter !== 'all') ? 'Aucune réception trouvée' : 'Aucune réception enregistrée'}
+                          {searchTerm || (statusFilter !== 'all') ? t('receptionHistoryNoResult') : t('receptionHistoryNoRecords')}
                         </p>
                       </div>
                     </TableCell>
@@ -294,7 +296,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Truck className="h-4 w-4 text-muted-foreground" />
-                          {reception.fournisseur?.nom || 'Fournisseur inconnu'}
+                          {reception.fournisseur?.nom || t('receptionHistoryUnknownSupplier')}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -310,7 +312,10 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                       <TableCell>
                         <Badge className={getStatusColor(reception.statut)}>
                           {getStatusIcon(reception.statut)}
-                          <span className="ml-1">{reception.statut || 'En cours'}</span>
+                          <span className="ml-1">{reception.statut === 'Validé' ? t('receptionHistoryStatusValidated') : 
+                            reception.statut === 'En cours' ? t('receptionHistoryStatusInProgress') : 
+                            reception.statut === 'Annulé' ? t('receptionHistoryStatusCancelled') : 
+                            t('receptionHistoryStatusInProgress')}</span>
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -323,17 +328,17 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                                 onClick={() => setSelectedReception(reception)}
                               >
                                 <Eye className="h-4 w-4 mr-1" />
-                                Voir
+                                {t('receptionHistoryView')}
                               </Button>
                             </DialogTrigger>
                             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                               <DialogHeader>
                                 <DialogTitle className="flex items-center gap-2">
                                   <Package className="h-5 w-5" />
-                                  Détails de la réception {selectedReception?.numero_reception}
+                                  {t('receptionHistoryDetails')} {selectedReception?.numero_reception}
                                 </DialogTitle>
                                 <DialogDescription>
-                                  Réception du {selectedReception?.date_reception ? 
+                                  {t('receptions')} {selectedReception?.date_reception ? 
                                     format(new Date(selectedReception.date_reception), 'dd/MM/yyyy à HH:mm', { locale: fr }) :
                                     format(new Date(selectedReception?.created_at || new Date()), 'dd/MM/yyyy à HH:mm', { locale: fr })
                                   }
@@ -345,24 +350,26 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                                   {/* Reception Info */}
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                      <h4 className="font-semibold text-sm">Informations générales</h4>
+                                      <h4 className="font-semibold text-sm">{t('receptionHistoryGeneralInfo')}</h4>
                                       <div className="text-sm space-y-1">
-                                        <p><span className="font-medium">Fournisseur:</span> {selectedReception.fournisseur?.nom}</p>
-                                        <p><span className="font-medium">Référence facture:</span> {selectedReception.reference_facture || '-'}</p>
-                                        <p><span className="font-medium">Statut:</span> 
+                                        <p><span className="font-medium">{t('receptionHistorySupplier')}:</span> {selectedReception.fournisseur?.nom}</p>
+                                        <p><span className="font-medium">{t('receptionHistoryReference')}:</span> {selectedReception.reference_facture || '-'}</p>
+                                        <p><span className="font-medium">{t('receptionHistoryStatus')}:</span> 
                                           <Badge className={`ml-2 ${getStatusColor(selectedReception.statut)}`}>
-                                            {selectedReception.statut || 'En cours'}
+                                            {selectedReception.statut === 'Validé' ? t('receptionHistoryStatusValidated') : 
+                                              selectedReception.statut === 'En cours' ? t('receptionHistoryStatusInProgress') : 
+                                              t('receptionHistoryStatusInProgress')}
                                           </Badge>
                                         </p>
                                       </div>
                                     </div>
                                     <div className="space-y-2">
-                                      <h4 className="font-semibold text-sm">Commande liée</h4>
+                                      <h4 className="font-semibold text-sm">{t('receptionHistoryLinkedOrder')}</h4>
                                       <div className="text-sm space-y-1">
                                         {selectedReception.commande ? (
-                                          <p><span className="font-medium">N° Commande:</span> {selectedReception.commande.numero}</p>
+                                          <p><span className="font-medium">{t('orderListNumber')}:</span> {selectedReception.commande.numero}</p>
                                         ) : (
-                                          <p className="text-muted-foreground">Aucune commande liée</p>
+                                          <p className="text-muted-foreground">{t('receptionHistoryNoLinkedOrder')}</p>
                                         )}
                                       </div>
                                     </div>
@@ -371,7 +378,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                                   {/* Notes */}
                                   {selectedReception.notes && (
                                     <div className="space-y-2">
-                                      <h4 className="font-semibold text-sm">Notes</h4>
+                                      <h4 className="font-semibold text-sm">{t('receptionHistoryNotes')}</h4>
                                       <p className="text-sm p-3 bg-muted rounded">{selectedReception.notes}</p>
                                     </div>
                                   )}
@@ -387,7 +394,7 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                                       }}
                                     >
                                       <ExternalLink className="h-4 w-4 mr-2" />
-                                      Voir les lots créés
+                                      {t('receptionHistoryViewLots')}
                                     </Button>
                                     <Button 
                                       variant="outline" 
@@ -398,11 +405,11 @@ const ReceptionHistory: React.FC<ReceptionHistoryProps> = ({ onViewReception }) 
                                       }}
                                     >
                                       <FileText className="h-4 w-4 mr-2" />
-                                      Historique des mouvements
+                                      {t('receptionHistoryViewMovements')}
                                     </Button>
                                   </div>
                                  </div>
-                               )}
+                              )}
                              </DialogContent>
                            </Dialog>
                            
