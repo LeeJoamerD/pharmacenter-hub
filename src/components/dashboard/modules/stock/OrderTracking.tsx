@@ -24,6 +24,7 @@ import { useTransporters } from '@/hooks/useTransporters';
 import ContactTransporterModal from './ContactTransporterModal';
 import OrderDetailsModal from './OrderDetailsModal';
 import type { SupplierOrder } from '@/hooks/useSupplierOrders';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface OrderTracking {
   id: string;
@@ -54,6 +55,7 @@ interface OrderTrackingProps {
 }
 
 const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], transporters = [], loading }) => {
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('tous');
   const [contactModalOpen, setContactModalOpen] = useState(false);
@@ -237,7 +239,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
             <div className="flex items-center gap-2">
               <Package className="h-5 w-5 text-blue-600" />
               <div>
-                <p className="text-sm text-muted-foreground">En Préparation</p>
+                <p className="text-sm text-muted-foreground">{t('orderTrackingPreparation')}</p>
                 <p className="text-2xl font-bold">{trackingData.filter(o => o.statut === 'preparation').length}</p>
               </div>
             </div>
@@ -249,7 +251,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
             <div className="flex items-center gap-2">
               <Truck className="h-5 w-5 text-orange-600" />
               <div>
-                <p className="text-sm text-muted-foreground">En Transit</p>
+                <p className="text-sm text-muted-foreground">{t('orderTrackingInTransit')}</p>
                 <p className="text-2xl font-bold">{trackingData.filter(o => ['expedie', 'en-transit'].includes(o.statut)).length}</p>
               </div>
             </div>
@@ -261,7 +263,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-600" />
               <div>
-                <p className="text-sm text-muted-foreground">En Retard</p>
+                <p className="text-sm text-muted-foreground">{t('orderTrackingDelay')}</p>
                 <p className="text-2xl font-bold">{trackingData.filter(o => o.statut === 'retard').length}</p>
               </div>
             </div>
@@ -273,7 +275,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-600" />
               <div>
-                <p className="text-sm text-muted-foreground">Livrées</p>
+                <p className="text-sm text-muted-foreground">{t('orderTrackingDelivered')}</p>
                 <p className="text-2xl font-bold">{trackingData.filter(o => o.statut === 'livre').length}</p>
               </div>
             </div>
@@ -284,8 +286,8 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
       {/* Filtres */}
       <Card>
         <CardHeader>
-          <CardTitle>Suivi des Commandes en Temps Réel</CardTitle>
-          <CardDescription>Suivez l'état d'avancement de toutes vos commandes</CardDescription>
+          <CardTitle>{t('orderTrackingTitle')}</CardTitle>
+          <CardDescription>{t('orderTrackingDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -293,7 +295,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
-                  placeholder="Rechercher par numéro de commande ou fournisseur..."
+                  placeholder={t('orderTrackingSearchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -303,15 +305,15 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
             
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
               <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Statut" />
+                <SelectValue placeholder={t('orderTrackingAllStatuses')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="tous">Tous les statuts</SelectItem>
-                <SelectItem value="preparation">Préparation</SelectItem>
-                <SelectItem value="expedie">Expédié</SelectItem>
-                <SelectItem value="en-transit">En Transit</SelectItem>
-                <SelectItem value="livre">Livré</SelectItem>
-                <SelectItem value="retard">Retard</SelectItem>
+                <SelectItem value="tous">{t('orderTrackingAllStatuses')}</SelectItem>
+                <SelectItem value="preparation">{t('orderTrackingStatusPreparation')}</SelectItem>
+                <SelectItem value="expedie">{t('orderTrackingStatusShipped')}</SelectItem>
+                <SelectItem value="en-transit">{t('orderTrackingStatusInTransit')}</SelectItem>
+                <SelectItem value="livre">{t('orderTrackingStatusDelivered')}</SelectItem>
+                <SelectItem value="retard">{t('orderTrackingStatusDelay')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -339,7 +341,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
                         </div>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span>Commandé le {new Date(order.dateCommande).toLocaleDateString('fr-FR')}</span>
+                          <span>{t('orderTrackingOrderedOn')} {new Date(order.dateCommande).toLocaleDateString('fr-FR')}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Truck className="h-4 w-4 text-muted-foreground" />
@@ -347,7 +349,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
                         </div>
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-muted-foreground" />
-                          <span>N° Suivi: {order.numeroSuivi}</span>
+                          <span>{t('orderTrackingTrackingNumber')}: {order.numeroSuivi}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -357,7 +359,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
 
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span>Progression:</span>
+                          <span>{t('orderTrackingProgress')}:</span>
                           <span className="font-medium">{order.progression}%</span>
                         </div>
                         <Progress value={order.progression} className="h-2" />
@@ -366,7 +368,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
 
                     {/* Étapes de suivi */}
                     <div className="lg:col-span-2">
-                      <h4 className="font-medium mb-4">Historique du suivi</h4>
+                      <h4 className="font-medium mb-4">{t('orderTrackingHistory')}</h4>
                       <div className="space-y-3">
                         {(order.etapes || []).map((etape, index) => (
                           <div key={etape.id} className="flex items-start gap-3">
@@ -401,7 +403,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
                       onClick={() => handleContactTransporter(order)}
                     >
                       <Phone className="mr-2 h-4 w-4" />
-                      Contacter Transporteur
+                      {t('orderTrackingContactCarrier')}
                     </Button>
                     <Button 
                       variant="outline" 
@@ -409,7 +411,7 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({ orders: propOrders = [], 
                       onClick={() => handleViewDetails(order)}
                     >
                       <Eye className="mr-2 h-4 w-4" />
-                      Voir Détails
+                      {t('orderTrackingViewDetails')}
                     </Button>
                   </div>
                 </CardContent>
