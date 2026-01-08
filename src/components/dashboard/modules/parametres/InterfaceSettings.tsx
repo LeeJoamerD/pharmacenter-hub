@@ -111,13 +111,13 @@ const InterfaceSettings = () => {
       setHasChanges(false);
       
       toast({
-        title: "Interface mise à jour",
-        description: "Les paramètres d'interface ont été sauvegardés avec succès.",
+        title: t('interfaceUpdated'),
+        description: t('interfaceSettingsSaved'),
       });
     } catch (error) {
       toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder les paramètres d'interface.",
+        title: t('error'),
+        description: t('unableToSaveInterfaceSettings'),
         variant: "destructive"
       });
     }
@@ -132,7 +132,7 @@ const InterfaceSettings = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Chargement des paramètres d'interface...</span>
+        <span className="ml-2">{t('loadingInterfaceSettings')}</span>
       </div>
     );
   }
@@ -142,7 +142,7 @@ const InterfaceSettings = () => {
       {hasChanges && (
         <Alert>
           <AlertDescription>
-            Vous avez des modifications non sauvegardées. N'oubliez pas de cliquer sur "Appliquer les changements".
+            {t('unsavedChangesReminder')}
           </AlertDescription>
         </Alert>
       )}
@@ -151,47 +151,47 @@ const InterfaceSettings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Palette className="h-5 w-5" />
-              Apparence
+              {t('appearance')}
             </CardTitle>
             <CardDescription>
-              Personnalisez l'apparence de l'interface
+              {t('customizeInterfaceAppearance')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="theme">Thème</Label>
+              <Label htmlFor="theme">{t('theme')}</Label>
               <Select value={settings.theme} onValueChange={(value) => handleSettingChange('theme', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="z-[100] bg-white dark:bg-gray-800 border shadow-lg">
-                  <SelectItem value="light">Clair</SelectItem>
-                  <SelectItem value="dark">Foncé</SelectItem>
-                  <SelectItem value="auto">Automatique</SelectItem>
+                  <SelectItem value="light">{t('themeLight')}</SelectItem>
+                  <SelectItem value="dark">{t('themeDark')}</SelectItem>
+                  <SelectItem value="auto">{t('themeAuto')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="primaryColor">Couleur principale</Label>
+              <Label htmlFor="primaryColor">{t('primaryColor')}</Label>
               <Select value={settings.primaryColor} onValueChange={(value) => handleSettingChange('primaryColor', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="z-[100] bg-white dark:bg-gray-800 border shadow-lg">
-                  <SelectItem value="blue">Bleu</SelectItem>
-                  <SelectItem value="green">Vert</SelectItem>
-                  <SelectItem value="purple">Violet</SelectItem>
-                  <SelectItem value="orange">Orange</SelectItem>
-                  <SelectItem value="red">Rouge</SelectItem>
-                  <SelectItem value="teal">Sarcelle</SelectItem>
-                  <SelectItem value="indigo">Indigo</SelectItem>
+                  <SelectItem value="blue">{t('colorBlue')}</SelectItem>
+                  <SelectItem value="green">{t('colorGreen')}</SelectItem>
+                  <SelectItem value="purple">{t('colorPurple')}</SelectItem>
+                  <SelectItem value="orange">{t('colorOrange')}</SelectItem>
+                  <SelectItem value="red">{t('colorRed')}</SelectItem>
+                  <SelectItem value="teal">{t('colorTeal')}</SelectItem>
+                  <SelectItem value="indigo">{t('colorIndigo')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="fontSize">Taille de police: {settings.fontSize}px</Label>
+              <Label htmlFor="fontSize">{t('fontSize')}: {settings.fontSize}px</Label>
               <Slider
                 id="fontSize"
                 min={12}
@@ -203,7 +203,7 @@ const InterfaceSettings = () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <Label htmlFor="animations">Animations</Label>
+              <Label htmlFor="animations">{t('animations')}</Label>
               <Switch
                 id="animations"
                 checked={settings.animationsEnabled}
@@ -217,29 +217,29 @@ const InterfaceSettings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Layout className="h-5 w-5" />
-              Disposition
+              {t('layout')}
             </CardTitle>
             <CardDescription>
-              Configuration de la mise en page
+              {t('layoutConfiguration')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="gridDensity">Densité des grilles</Label>
+              <Label htmlFor="gridDensity">{t('gridDensity')}</Label>
               <Select value={settings.gridDensity} onValueChange={(value) => handleSettingChange('gridDensity', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="z-[100] bg-white dark:bg-gray-800 border shadow-lg">
-                  <SelectItem value="compact">Compacte</SelectItem>
-                  <SelectItem value="comfortable">Confortable</SelectItem>
-                  <SelectItem value="spacious">Spacieuse</SelectItem>
+                  <SelectItem value="compact">{t('densityCompact')}</SelectItem>
+                  <SelectItem value="comfortable">{t('densityComfortable')}</SelectItem>
+                  <SelectItem value="spacious">{t('densitySpacious')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div className="flex items-center justify-between">
-              <Label htmlFor="sidebarCollapsed">Barre latérale réduite</Label>
+              <Label htmlFor="sidebarCollapsed">{t('sidebarCollapsed')}</Label>
               <Switch
                 id="sidebarCollapsed"
                 checked={settings.sidebarCollapsed}
@@ -248,7 +248,7 @@ const InterfaceSettings = () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <Label htmlFor="compactMode">Mode compact</Label>
+              <Label htmlFor="compactMode">{t('compactMode')}</Label>
               <Switch
                 id="compactMode"
                 checked={settings.compactMode}
@@ -257,7 +257,7 @@ const InterfaceSettings = () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <Label htmlFor="tooltips">Afficher les info-bulles</Label>
+              <Label htmlFor="tooltips">{t('showTooltips')}</Label>
               <Switch
                 id="tooltips"
                 checked={settings.showTooltips}
@@ -270,33 +270,33 @@ const InterfaceSettings = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Type className="h-5 w-5" />
-            Formats et Localisation
-          </CardTitle>
-          <CardDescription>
-            Configuration des formats d'affichage
-          </CardDescription>
-        </CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Type className="h-5 w-5" />
+              {t('formatsAndLocalization')}
+            </CardTitle>
+            <CardDescription>
+              {t('displayFormatsConfiguration')}
+            </CardDescription>
+          </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="language">Langue</Label>
+              <Label htmlFor="language">{t('language')}</Label>
               <Select value={settings.language} onValueChange={(value) => handleSettingChange('language', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="z-[100] bg-white dark:bg-gray-800 border shadow-lg">
-                  <SelectItem value="fr">Français</SelectItem>
-                  <SelectItem value="ln">Lingala</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="es">Español</SelectItem>
+                  <SelectItem value="fr">{t('langFrench')}</SelectItem>
+                  <SelectItem value="ln">{t('langLingala')}</SelectItem>
+                  <SelectItem value="en">{t('langEnglish')}</SelectItem>
+                  <SelectItem value="es">{t('langSpanish')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="dateFormat">Format de date</Label>
+              <Label htmlFor="dateFormat">{t('dateFormat')}</Label>
               <Select value={settings.dateFormat} onValueChange={(value) => handleSettingChange('dateFormat', value)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -311,22 +311,22 @@ const InterfaceSettings = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="numberFormat">Format numérique</Label>
+              <Label htmlFor="numberFormat">{t('numberFormat')}</Label>
               <Select value={settings.numberFormat} onValueChange={(value) => handleSettingChange('numberFormat', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="z-[100] bg-white dark:bg-gray-800 border shadow-lg">
-                  <SelectItem value="french">Français (1 234,56)</SelectItem>
-                  <SelectItem value="english">Anglais (1,234.56)</SelectItem>
-                  <SelectItem value="space">Espace (1 234.56)</SelectItem>
+                  <SelectItem value="french">{t('numberFormatFrench')}</SelectItem>
+                  <SelectItem value="english">{t('numberFormatEnglish')}</SelectItem>
+                  <SelectItem value="space">{t('numberFormatSpace')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           
           <div className="flex items-center justify-between">
-            <Label htmlFor="autoSave">Sauvegarde automatique</Label>
+            <Label htmlFor="autoSave">{t('autoSave')}</Label>
             <Switch
               id="autoSave"
               checked={settings.autoSave}
@@ -345,10 +345,10 @@ const InterfaceSettings = () => {
           {saving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Sauvegarde...
+              {t('savingInProgress')}
             </>
           ) : (
-            'Appliquer les changements'
+            t('applyChanges')
           )}
         </Button>
       </div>

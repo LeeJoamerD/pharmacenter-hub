@@ -181,7 +181,7 @@ const SecuritySettings = () => {
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Impossible de charger les paramètres de sécurité.
+            {t('unableToLoadSecuritySettings')}
           </AlertDescription>
         </Alert>
       </div>
@@ -193,7 +193,7 @@ const SecuritySettings = () => {
       <Alert>
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
-          Les modifications des paramètres de sécurité affectent tous les utilisateurs. Assurez-vous de bien comprendre les implications avant de sauvegarder.
+          {t('securitySettingsWarning')}
         </AlertDescription>
       </Alert>
 
@@ -202,15 +202,15 @@ const SecuritySettings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Key className="h-5 w-5" />
-              Politique des Mots de Passe
+              {t('passwordPolicy')}
             </CardTitle>
             <CardDescription>
-              Configuration des exigences de mots de passe
+              {t('passwordRequirementsConfig')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="passwordMinLength">Longueur minimale</Label>
+              <Label htmlFor="passwordMinLength">{t('minLength')}</Label>
               <Input
                 id="passwordMinLength"
                 type="number"
@@ -222,7 +222,7 @@ const SecuritySettings = () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <Label htmlFor="requireSpecial">Caractères spéciaux obligatoires</Label>
+              <Label htmlFor="requireSpecial">{t('requireSpecialChars')}</Label>
               <Switch
                 id="requireSpecial"
                 checked={localPasswordPolicy?.require_special_chars || false}
@@ -231,7 +231,7 @@ const SecuritySettings = () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <Label htmlFor="requireNumbers">Chiffres obligatoires</Label>
+              <Label htmlFor="requireNumbers">{t('requireNumbers')}</Label>
               <Switch
                 id="requireNumbers"
                 checked={localPasswordPolicy?.require_numbers || false}
@@ -240,7 +240,7 @@ const SecuritySettings = () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <Label htmlFor="requireUppercase">Majuscules obligatoires</Label>
+              <Label htmlFor="requireUppercase">{t('requireUppercase')}</Label>
               <Switch
                 id="requireUppercase"
                 checked={localPasswordPolicy?.require_uppercase || false}
@@ -254,15 +254,15 @@ const SecuritySettings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Gestion des Sessions
+              {t('sessionManagement')}
             </CardTitle>
             <CardDescription>
-              Paramètres de timeout et de connexion
+              {t('timeoutAndConnectionSettings')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="sessionTimeout">Timeout session (minutes)</Label>
+              <Label htmlFor="sessionTimeout">{t('sessionTimeoutMinutes')}</Label>
               <Input
                 id="sessionTimeout"
                 type="number"
@@ -274,7 +274,7 @@ const SecuritySettings = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="maxLoginAttempts">Tentatives de connexion max</Label>
+              <Label htmlFor="maxLoginAttempts">{t('maxLoginAttempts')}</Label>
               <Input
                 id="maxLoginAttempts"
                 type="number"
@@ -286,7 +286,7 @@ const SecuritySettings = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="lockoutDuration">Durée de verrouillage (minutes)</Label>
+              <Label htmlFor="lockoutDuration">{t('lockoutDurationMinutes')}</Label>
               <Input
                 id="lockoutDuration"
                 type="number"
@@ -298,7 +298,7 @@ const SecuritySettings = () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <Label htmlFor="twoFactorAuth">Authentification à 2 facteurs</Label>
+              <Label htmlFor="twoFactorAuth">{t('twoFactorAuth')}</Label>
               <Switch
                 id="twoFactorAuth"
                 checked={localPasswordPolicy?.force_2fa_for_roles && localPasswordPolicy.force_2fa_for_roles.length > 0}
@@ -311,18 +311,18 @@ const SecuritySettings = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Sécurité Avancée
-          </CardTitle>
-          <CardDescription>
-            Configuration de sécurité avancée du système
-          </CardDescription>
-        </CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              {t('advancedSecurity')}
+            </CardTitle>
+            <CardDescription>
+              {t('advancedSecurityConfig')}
+            </CardDescription>
+          </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="encryptionLevel">Niveau de chiffrement</Label>
+              <Label htmlFor="encryptionLevel">{t('encryptionLevel')}</Label>
               <Select 
                 value={localSecurityConfig?.security_level || 'standard'} 
                 onValueChange={(value) => handleSecurityConfigChange('encryptionLevel', value)}
@@ -340,7 +340,7 @@ const SecuritySettings = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="ipWhitelist">Liste blanche IP (optionnel)</Label>
+              <Label htmlFor="ipWhitelist">{t('ipWhitelistOptional')}</Label>
               <Input
                 id="ipWhitelist"
                 placeholder="192.168.1.0/24, 10.0.0.0/8"
@@ -355,7 +355,7 @@ const SecuritySettings = () => {
           
           <div className="grid gap-4 md:grid-cols-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="auditLogging">Journalisation d'audit</Label>
+              <Label htmlFor="auditLogging">{t('auditLogging')}</Label>
               <Switch
                 id="auditLogging"
                 checked={true}
@@ -364,7 +364,7 @@ const SecuritySettings = () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <Label htmlFor="backupEncryption">Chiffrement des sauvegardes</Label>
+              <Label htmlFor="backupEncryption">{t('backupEncryption')}</Label>
               <Switch
                 id="backupEncryption"
                 checked={localSecurityConfig?.security_level !== 'basic'}
@@ -373,7 +373,7 @@ const SecuritySettings = () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <Label htmlFor="apiAccessControl">Contrôle d'accès API</Label>
+              <Label htmlFor="apiAccessControl">{t('apiAccessControl')}</Label>
               <Switch
                 id="apiAccessControl"
                 checked={!localSecurityConfig?.allow_cross_tenant_read}
@@ -382,7 +382,7 @@ const SecuritySettings = () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <Label htmlFor="bruteForceProtection">Protection force brute</Label>
+              <Label htmlFor="bruteForceProtection">{t('bruteForceProtection')}</Label>
               <Switch
                 id="bruteForceProtection"
                 checked={localSecurityConfig?.auto_block_violations || false}
@@ -399,9 +399,9 @@ const SecuritySettings = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-medium">Politique des mots de passe</h3>
+                <h3 className="font-medium">{t('passwordPolicy')}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Sauvegarder les modifications de sécurité
+                  {t('saveSecurityChanges')}
                 </p>
               </div>
               <Button 
@@ -409,7 +409,7 @@ const SecuritySettings = () => {
                 disabled={!hasPasswordChanges || saving}
                 variant={hasPasswordChanges ? "default" : "outline"}
               >
-                {saving ? "Sauvegarde..." : "Sauvegarder"}
+                {saving ? t('savingInProgress') : t('save')}
               </Button>
             </div>
           </CardContent>
@@ -419,9 +419,9 @@ const SecuritySettings = () => {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-medium">Configuration avancée</h3>
+                <h3 className="font-medium">{t('advancedConfiguration')}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Sauvegarder les paramètres de sécurité
+                  {t('saveSecuritySettings')}
                 </p>
               </div>
               <Button 
@@ -429,7 +429,7 @@ const SecuritySettings = () => {
                 disabled={!hasSecurityChanges || saving}
                 variant={hasSecurityChanges ? "default" : "outline"}
               >
-                {saving ? "Sauvegarde..." : "Sauvegarder"}
+                {saving ? t('savingInProgress') : t('save')}
               </Button>
             </div>
           </CardContent>
@@ -442,10 +442,10 @@ const SecuritySettings = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5" />
-              Alertes de Sécurité
+              {t('securityAlerts')}
             </CardTitle>
             <CardDescription>
-              Alertes de sécurité nécessitant votre attention
+              {t('securityAlertsNeedingAttention')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -472,7 +472,7 @@ const SecuritySettings = () => {
                     className="gap-2"
                   >
                     <CheckCircle className="h-4 w-4" />
-                    Résoudre
+                    {t('resolve')}
                   </Button>
                 </div>
               ))}
@@ -484,19 +484,19 @@ const SecuritySettings = () => {
       {/* Journaux d'audit */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Journaux d'Audit
-          </CardTitle>
-          <CardDescription>
-            Activité récente du système (30 derniers jours)
-          </CardDescription>
-        </CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              {t('auditLogs')}
+            </CardTitle>
+            <CardDescription>
+              {t('recentSystemActivity')}
+            </CardDescription>
+          </CardHeader>
         <CardContent>
           <div className="space-y-2">
             {settings.securityLogs.length === 0 ? (
               <p className="text-center text-muted-foreground py-4">
-                Aucun journal d'audit récent
+                {t('noRecentAuditLogs')}
               </p>
             ) : (
               settings.securityLogs.slice(0, 20).map((log) => (
