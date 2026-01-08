@@ -26,3 +26,9 @@ verify_jwt = false
 
 [functions.validate-pharmacy-session]
 verify_jwt = false
+
+[functions.pharmaml-test]
+verify_jwt = false
+
+[functions.pharmaml-order]
+verify_jwt = false
