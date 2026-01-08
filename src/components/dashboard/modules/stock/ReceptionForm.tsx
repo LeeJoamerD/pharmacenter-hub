@@ -905,20 +905,20 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Réception de Marchandises
+            {t('receptionFormTitle')}
           </CardTitle>
-          <CardDescription>Enregistrer la réception d'une commande fournisseur</CardDescription>
+          <CardDescription>{t('receptionFormDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-4">
               <div>
-                <Label htmlFor="commande">Commande à réceptionner *</Label>
+                <Label htmlFor="commande">{t('receptionFormOrderToReceive')} *</Label>
                 <Select value={selectedOrder} onValueChange={(value) => {
                   setSelectedOrder(value);
                 }}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner une commande" />
+                    <SelectValue placeholder={t('receptionFormSelectOrder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {pendingOrders.map(order => (
@@ -931,7 +931,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
               </div>
               
               <div>
-                <Label htmlFor="dateReception">Date de réception</Label>
+                <Label htmlFor="dateReception">{t('receptionFormReceptionDate')}</Label>
                 <Input
                   id="dateReception"
                   type="datetime-local"
@@ -942,34 +942,34 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
             
             <div className="space-y-4">
               <div>
-                <Label htmlFor="bonLivraison">Bon de livraison</Label>
+                <Label htmlFor="bonLivraison">{t('receptionFormDeliveryNote')}</Label>
                  <Input
                    id="bonLivraison"
                    value={bonLivraison}
                    onChange={(e) => setBonLivraison(e.target.value)}
-                   placeholder="Numéro du bon de livraison"
+                   placeholder={t('receptionFormDeliveryNotePlaceholder')}
                  />
               </div>
               
               <div>
-                <Label htmlFor="transporteur">Transporteur</Label>
+                <Label htmlFor="transporteur">{t('receptionFormCarrier')}</Label>
                  <Input
                    id="transporteur"
                    value={transporteur}
                    onChange={(e) => setTransporteur(e.target.value)}
-                   placeholder="Nom du transporteur"
+                   placeholder={t('receptionFormCarrierPlaceholder')}
                  />
               </div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="observations">Notes / Observations</Label>
+                <Label htmlFor="observations">{t('receptionFormNotes')}</Label>
                 <Textarea
                   id="observations"
                   value={observations}
                   onChange={(e) => setObservations(e.target.value)}
-                  placeholder="Observations sur la réception..."
+                  placeholder={t('receptionFormNotesPlaceholder')}
                   rows={3}
                 />
               </div>
@@ -983,14 +983,14 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <QrCode className="h-5 w-5" />
-            Scanner Code-Barres
+            {t('receptionFormBarcodeScanner')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4">
             <div className="flex-1">
               <Input
-                placeholder="Scanner ou saisir le code-barres..."
+                placeholder={t('receptionFormBarcodePlaceholder')}
                 value={scannedBarcode}
                 onChange={(e) => setScannedBarcode(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleBarcodeSubmit()}
@@ -998,11 +998,11 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
             </div>
             <Button onClick={handleBarcodeSubmit}>
               <QrCode className="mr-2 h-4 w-4" />
-              Traiter
+              {t('receptionFormProcess')}
             </Button>
             <Button variant="outline" onClick={handleCameraOpen}>
               <Camera className="mr-2 h-4 w-4" />
-              Caméra
+              {t('receptionFormCamera')}
             </Button>
           </div>
         </CardContent>
@@ -1023,24 +1023,24 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       {receptionLines.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Détail de la Réception</CardTitle>
+            <CardTitle>{t('receptionFormReceptionDetails')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="rounded-md border max-h-96 overflow-x-scroll overflow-y-scroll">
               <Table className="min-w-[1400px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Produit</TableHead>
-                    <TableHead>Cat. Tarification</TableHead>
-                    <TableHead>Commandé</TableHead>
-                    <TableHead>Reçu</TableHead>
-                    <TableHead>Accepté</TableHead>
-                    <TableHead>Prix Réel</TableHead>
-                    <TableHead>N° Lot</TableHead>
-                    <TableHead>Expiration</TableHead>
-                    <TableHead>Emplacement</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Commentaire</TableHead>
+                    <TableHead>{t('receptionFormProduct')}</TableHead>
+                    <TableHead>{t('receptionFormPricingCategory')}</TableHead>
+                    <TableHead>{t('receptionFormOrdered')}</TableHead>
+                    <TableHead>{t('receptionFormReceived')}</TableHead>
+                    <TableHead>{t('receptionFormAccepted')}</TableHead>
+                    <TableHead>{t('receptionFormRealPrice')}</TableHead>
+                    <TableHead>{t('receptionFormLotNumber')}</TableHead>
+                    <TableHead>{t('receptionFormExpiration')}</TableHead>
+                    <TableHead>{t('receptionFormLocation')}</TableHead>
+                    <TableHead>{t('receptionFormStatus')}</TableHead>
+                    <TableHead>{t('receptionFormComment')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1066,17 +1066,17 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                                 .eq('id', line.produitId)
                                 .then(({ error }) => {
                                   if (!error) {
-                                    toast({ title: "Catégorie mise à jour", description: "Le produit a été mis à jour" });
+                                    toast({ title: t('receptionFormCategoryUpdated'), description: t('receptionFormProductUpdated') });
                                   }
                                 });
                             }
                           }}
                         >
                         <SelectTrigger className={`w-36 ${getCategoryColorClass(line.categorieTarificationId)}`}>
-                          <SelectValue placeholder="Catégorie" />
+                          <SelectValue placeholder={t('receptionFormCategory')} />
                         </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Aucune</SelectItem>
+                            <SelectItem value="none">{t('receptionFormNone')}</SelectItem>
                             {priceCategories?.map((cat) => (
                               <SelectItem key={cat.id} value={cat.id}>
                                 {cat.libelle_categorie}
@@ -1170,9 +1170,9 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         return (
           <Card>
             <CardHeader>
-              <CardTitle>Calculs Financiers</CardTitle>
+              <CardTitle>{t('receptionFormFinancialCalculations')}</CardTitle>
             <CardDescription>
-              Les montants TVA, Centime Additionnel et ASDI sont calculés automatiquement selon les catégories de tarification des produits. Vous pouvez les modifier si nécessaire.
+              {t('receptionFormFinancialDescription')}
             </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1180,13 +1180,13 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                 <div className="w-96 space-y-4">
                   {/* Sous-total HT - Calculé automatiquement */}
                   <div className="flex justify-between items-center">
-                    <span className="font-medium">Sous-total HT :</span>
+                    <span className="font-medium">{t('receptionFormSubtotalHT')} :</span>
                     <span className="font-bold text-lg">{formatAmount(sousTotal)}</span>
                   </div>
                   
                   {/* TVA - Saisie manuelle en montant */}
                   <div className="flex justify-between items-center gap-4">
-                    <Label htmlFor="montant-tva" className="whitespace-nowrap">TVA ({currencySymbol}) :</Label>
+                    <Label htmlFor="montant-tva" className="whitespace-nowrap">{t('receptionFormVAT')} ({currencySymbol}) :</Label>
                     <Input
                       id="montant-tva"
                       type="number"
@@ -1205,7 +1205,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                   
                   {/* Centime Additionnel - Saisie manuelle en montant */}
                   <div className="flex justify-between items-center gap-4">
-                    <Label htmlFor="montant-centime" className="whitespace-nowrap">Centime Additionnel ({currencySymbol}) :</Label>
+                    <Label htmlFor="montant-centime" className="whitespace-nowrap">{t('receptionFormAdditionalCentime')} ({currencySymbol}) :</Label>
                     <Input
                       id="montant-centime"
                       type="number"
@@ -1224,7 +1224,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                   
                   {/* ASDI - Saisie manuelle en montant */}
                   <div className="flex justify-between items-center gap-4">
-                    <Label htmlFor="montant-asdi" className="whitespace-nowrap">ASDI ({currencySymbol}) :</Label>
+                    <Label htmlFor="montant-asdi" className="whitespace-nowrap">{t('receptionFormASDI')} ({currencySymbol}) :</Label>
                     <Input
                       id="montant-asdi"
                       type="number"
@@ -1243,7 +1243,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                   
                   {/* Total TTC */}
                   <div className="flex justify-between text-lg font-bold border-t pt-3">
-                    <span>Total TTC :</span>
+                    <span>{t('receptionFormTotalTTC')} :</span>
                     <span className="text-primary">{formatAmount(totalGeneral)}</span>
                   </div>
                 </div>
@@ -1257,7 +1257,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       {receptionLines.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Contrôle Qualité</CardTitle>
+            <CardTitle>{t('receptionFormQualityControl')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -1268,7 +1268,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                     checked={emballageConforme}
                     onCheckedChange={(checked) => setEmballageConforme(checked === true)}
                   />
-                  <Label htmlFor="emballage">Emballage conforme</Label>
+                  <Label htmlFor="emballage">{t('receptionFormPackagingCompliant')}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox 
@@ -1276,7 +1276,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                     checked={temperatureRespectee}
                     onCheckedChange={(checked) => setTemperatureRespectee(checked === true)}
                   />
-                  <Label htmlFor="temperature">Température respectée</Label>
+                  <Label htmlFor="temperature">{t('receptionFormTemperatureRespected')}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox 
@@ -1284,17 +1284,17 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                     checked={etiquetageCorrect}
                     onCheckedChange={(checked) => setEtiquetageCorrect(checked === true)}
                   />
-                  <Label htmlFor="etiquetage">Étiquetage correct</Label>
+                  <Label htmlFor="etiquetage">{t('receptionFormLabelingCorrect')}</Label>
                 </div>
               </div>
               
               <div>
-                <Label htmlFor="observations">Observations générales</Label>
+                <Label htmlFor="observations">{t('receptionFormGeneralObservations')}</Label>
                  <Textarea
                    id="observations"
                    value={observations}
                    onChange={(e) => setObservations(e.target.value)}
-                   placeholder="Observations sur l'état général de la livraison..."
+                   placeholder={t('receptionFormObservationsPlaceholder')}
                    rows={3}
                  />
               </div>
@@ -1306,14 +1306,14 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                    disabled={loading || isProcessing || !selectedOrder || receptionLines.length === 0}
                  >
                    <Save className="mr-2 h-4 w-4" />
-                   {isProcessing ? 'Traitement...' : 'Sauvegarder'}
+                   {isProcessing ? t('receptionFormProcessing') : t('receptionFormSave')}
                  </Button>
                  <Button
                    onClick={() => handleSaveReception(true)}
                    disabled={loading || isProcessing || !selectedOrder || receptionLines.length === 0}
                  >
                    <CheckCircle className="mr-2 h-4 w-4" />
-                   {isProcessing ? 'Validation...' : 'Valider Réception'}
+                   {isProcessing ? t('receptionFormValidating') : t('receptionFormValidateReception')}
                  </Button>
                </div>
             </div>
@@ -1325,13 +1325,13 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       <AlertDialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Avertissements détectés</AlertDialogTitle>
+            <AlertDialogTitle>{t('receptionFormWarningsDetected')}</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingValidation?.warnings.map((warning, index) => (
                 <div key={index} className="text-amber-600 mb-2">• {warning}</div>
               ))}
               <br />
-              Voulez-vous continuer malgré ces avertissements ?
+              {t('receptionFormContinueWithWarnings')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1339,10 +1339,10 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
               setShowWarningDialog(false);
               setPendingValidation(null);
             }}>
-              Annuler
+              {t('receptionFormCancel')}
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmWithWarnings}>
-              Continuer
+              {t('receptionFormContinue')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1354,18 +1354,18 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              Attention - TVA / Centime Additionnel à zéro
+              {t('receptionFormVATCentimeZeroWarningTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {montantTva === 0 && montantCentimeAdditionnel === 0 ? (
-                <>La <strong>TVA</strong> et le <strong>Centime Additionnel</strong> sont tous les deux à zéro.</>
+                <>{t('receptionFormVATAndCentimeZero')}</>
               ) : montantTva === 0 ? (
-                <>La <strong>TVA</strong> est à zéro.</>
+                <>{t('receptionFormVATZero')}</>
               ) : (
-                <>Le <strong>Centime Additionnel</strong> est à zéro.</>
+                <>{t('receptionFormCentimeZero')}</>
               )}
               <br /><br />
-              Êtes-vous sûr de vouloir valider cette réception sans ces montants ?
+              {t('receptionFormConfirmZeroValidation')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1373,10 +1373,10 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
               setShowZeroWarningDialog(false);
               setPendingZeroValidation(null);
             }}>
-              Annuler et corriger
+              {t('receptionFormCancelAndCorrect')}
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmZeroWarning}>
-              Continuer la validation
+              {t('receptionFormContinueValidation')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1386,9 +1386,9 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       <Dialog open={showCameraDialog} onOpenChange={handleCameraClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Scanner Code-Barres</DialogTitle>
+            <DialogTitle>{t('receptionFormBarcodeScannerTitle')}</DialogTitle>
             <DialogDescription>
-              Pointez la caméra vers un code-barres pour le scanner automatiquement
+              {t('receptionFormBarcodeScannerDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center space-y-4">
@@ -1405,11 +1405,11 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
               />
             ) : (
               <div className="w-full max-w-sm h-64 rounded-lg border flex items-center justify-center text-muted-foreground">
-                Initialisation de la caméra...
+                {t('receptionFormCameraInitializing')}
               </div>
             )}
             <Button onClick={handleCameraClose} variant="outline">
-              Fermer
+              {t('receptionFormClose')}
             </Button>
           </div>
         </DialogContent>
