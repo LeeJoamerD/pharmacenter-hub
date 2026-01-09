@@ -8,6 +8,12 @@ export interface OrderPDFData {
   dateLivraison: string;
   statut: string;
   responsable?: string;
+  // Montants depuis Supabase
+  montantHT?: number;
+  montantTVA?: number;
+  montantCAdd?: number;
+  montantASDI?: number;
+  montantTTC?: number;
 }
 
 export interface OrderLine {
@@ -19,6 +25,7 @@ export interface OrderLine {
   produit?: {
     libelle_produit: string;
     code_cip?: string;
+    ancien_code_cip?: string;
   };
   commande_id?: string;
 }
@@ -27,24 +34,17 @@ export class OrderPDFService {
   
   static async generateOrderPDF(order: OrderPDFData, orderLines: OrderLine[] = []): Promise<ExportResult> {
     try {
-      // Calculate totals
-      const subtotalHT = orderLines.reduce((sum, line) => {
-        const lineTotal = line.quantite * line.prix_unitaire;
-        const remise = (line.remise || 0) / 100;
-        return sum + (lineTotal - (lineTotal * remise));
-      }, 0);
-      
-      const centimeAdditionnel = subtotalHT * 0.05; // 5%
-      const tva = (subtotalHT + centimeAdditionnel) * 0.18; // 18%
-      const totalTTC = subtotalHT + centimeAdditionnel + tva;
+      // Utiliser les montants directement depuis Supabase
+      const totals = {
+        subtotalHT: order.montantHT || 0,
+        tva: order.montantTVA || 0,
+        centimeAdditionnel: order.montantCAdd || 0,
+        asdi: order.montantASDI || 0,
+        totalTTC: order.montantTTC || 0
+      };
       
       // Generate HTML content
-      const htmlContent = this.generateOrderHTML(order, orderLines, {
-        subtotalHT,
-        centimeAdditionnel,
-        tva,
-        totalTTC
-      });
+      const htmlContent = this.generateOrderHTML(order, orderLines, totals);
       
       // Create blob and download URL
       const blob = new Blob([htmlContent], { type: 'text/html' });
@@ -72,7 +72,7 @@ export class OrderPDFService {
   private static generateOrderHTML(
     order: OrderPDFData, 
     orderLines: OrderLine[], 
-    totals: { subtotalHT: number; centimeAdditionnel: number; tva: number; totalTTC: number }
+    totals: { subtotalHT: number; tva: number; centimeAdditionnel: number; asdi: number; totalTTC: number }
   ): string {
     const currentDate = new Date().toLocaleDateString('fr-FR');
     
@@ -254,6 +254,7 @@ export class OrderPDFService {
                 <tr>
                     <th>Article</th>
                     <th>Code CIP</th>
+                    <th>Ancien CIP</th>
                     <th class="text-right">Quantité</th>
                     <th class="text-right">Prix unitaire</th>
                     <th class="text-right">Remise</th>
@@ -270,6 +271,7 @@ export class OrderPDFService {
                 <tr>
                     <td>${line.produit?.libelle_produit || 'Produit'}</td>
                     <td>${line.produit?.code_cip || '-'}</td>
+                    <td>${line.produit?.ancien_code_cip || '-'}</td>
                     <td class="text-right">${line.quantite}</td>
                     <td class="text-right">${line.prix_unitaire.toLocaleString()} F CFA</td>
                     <td class="text-right">${line.remise || 0}%</td>
@@ -278,7 +280,7 @@ export class OrderPDFService {
                   `;
                 }).join('') : `
                 <tr>
-                    <td colspan="6" style="text-align: center; color: #64748b; font-style: italic;">
+                    <td colspan="7" style="text-align: center; color: #64748b; font-style: italic;">
                         Aucun article dans cette commande
                     </td>
                 </tr>
@@ -293,12 +295,16 @@ export class OrderPDFService {
                 <span>${totals.subtotalHT.toLocaleString()} F CFA</span>
             </div>
             <div class="total-line">
-                <span>Centime Additionnel (5%):</span>
+                <span>TVA (18%):</span>
+                <span>${totals.tva.toLocaleString()} F CFA</span>
+            </div>
+            <div class="total-line">
+                <span>Centime Additionnel (1%):</span>
                 <span>${totals.centimeAdditionnel.toLocaleString()} F CFA</span>
             </div>
             <div class="total-line">
-                <span>TVA (18%):</span>
-                <span>${totals.tva.toLocaleString()} F CFA</span>
+                <span>ASDI (0.42%):</span>
+                <span>${totals.asdi.toLocaleString()} F CFA</span>
             </div>
             <div class="total-line final">
                 <span>TOTAL TTC:</span>
