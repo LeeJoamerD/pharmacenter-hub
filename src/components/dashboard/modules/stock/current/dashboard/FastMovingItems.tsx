@@ -136,7 +136,7 @@ const FastMovingItems = React.memo(({ products }: FastMovingItemsProps) => {
                         </Badge>
                         <Badge className="bg-success/10 text-success border-success/20" variant="outline">
                           <TrendingUp className="h-3 w-3 mr-1" />
-                          Rapide
+                          {t('fastRotation')}
                         </Badge>
                       </div>
                     </div>
