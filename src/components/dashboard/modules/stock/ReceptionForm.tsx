@@ -694,6 +694,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         montant_ht: sousTotal,
         montant_tva: montantTva,
         montant_centime_additionnel: montantCentimeAdditionnel,
+        montant_asdi: montantAsdi,
         montant_ttc: totalGeneral
       };
       
@@ -766,6 +767,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         montant_ht: sousTotal,
         montant_tva: montantTva,
         montant_centime_additionnel: montantCentimeAdditionnel,
+        montant_asdi: montantAsdi,
         montant_ttc: totalGeneral,
         lignes: receptionLines.map(line => ({
           produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
@@ -837,6 +839,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         montant_ht: sousTotal,
         montant_tva: montantTva,
         montant_centime_additionnel: montantCentimeAdditionnel,
+        montant_asdi: montantAsdi,
         montant_ttc: totalGeneral,
         lignes: receptionLines.map(line => ({
           produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
