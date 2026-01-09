@@ -25,6 +25,17 @@ export interface AlertSettings {
  * Récupère les seuils de stock avec la logique de cascade
  * Priorité : 1. Produit, 2. Settings utilisateur, 3. Défaut système
  */
+/**
+ * Helper pour ignorer 0 comme valeur invalide (équivalent NULLIF en SQL)
+ */
+const nullIfZero = (value: number | null | undefined): number | undefined => {
+  return (value !== null && value !== undefined && value > 0) ? value : undefined;
+};
+
+/**
+ * Récupère les seuils de stock avec la logique de cascade
+ * Priorité : 1. Produit (si > 0), 2. Settings utilisateur, 3. Défaut système
+ */
 export function getStockThresholds(
   product: ProductThresholds,
   settings?: AlertSettings
@@ -34,9 +45,9 @@ export function getStockThresholds(
   const DEFAULT_LIMITE = 10;
 
   return {
-    critique: product.stock_critique ?? settings?.critical_stock_threshold ?? DEFAULT_CRITIQUE,
-    faible: product.stock_faible ?? settings?.low_stock_threshold ?? DEFAULT_FAIBLE,
-    limite: product.stock_limite ?? settings?.maximum_stock_threshold ?? DEFAULT_LIMITE,
+    critique: nullIfZero(product.stock_critique) ?? settings?.critical_stock_threshold ?? DEFAULT_CRITIQUE,
+    faible: nullIfZero(product.stock_faible) ?? settings?.low_stock_threshold ?? DEFAULT_FAIBLE,
+    limite: nullIfZero(product.stock_limite) ?? settings?.maximum_stock_threshold ?? DEFAULT_LIMITE,
   };
 }
 
