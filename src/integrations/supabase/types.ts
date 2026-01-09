@@ -20679,9 +20679,15 @@ export type Database = {
         Returns: {
           date_peremption: string
           id: string
+          montant_centime_additionnel: number
+          montant_tva: number
           numero_lot: string
           prix_achat_unitaire: number
+          prix_vente_ht: number
+          prix_vente_ttc: number
           quantite_restante: number
+          taux_centime_additionnel: number
+          taux_tva: number
         }[]
       }
       get_profitability_data: {
