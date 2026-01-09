@@ -61,14 +61,31 @@ export const OrderProductModal = ({ open, onOpenChange, product }: OrderProductM
     try {
       setIsSubmitting(true);
       
+      // Calculer les montants comme dans OrderForm.tsx
+      const prixUnitaire = product.prixUnitaire || 0;
+      const montantHT = quantity * prixUnitaire;
+      // TVA par défaut à 18% (taux standard)
+      const montantTVA = montantHT * 0.18;
+      // Centime additionnel : TVA × 1%
+      const montantCAdd = montantTVA * 0.01;
+      // ASDI : ((HT + TVA) × 0.42) / 100
+      const montantASDI = ((montantHT + montantTVA) * 0.42) / 100;
+      // TTC = HT + TVA + CAdd + ASDI
+      const montantTTC = montantHT + montantTVA + montantCAdd + montantASDI;
+      
       await createOrder({
         fournisseur_id: selectedSupplierId,
         statut: 'En cours',
         date_commande: new Date().toISOString().split('T')[0],
+        montant_ht: Math.round(montantHT),
+        montant_tva: Math.round(montantTVA),
+        montant_centime_additionnel: Math.round(montantCAdd),
+        montant_asdi: Math.round(montantASDI),
+        montant_ttc: Math.round(montantTTC),
         lignes: [{
           produit_id: product.id,
           quantite_commandee: quantity,
-          prix_achat_unitaire_attendu: product.prixUnitaire || 0
+          prix_achat_unitaire_attendu: prixUnitaire
         }]
       });
 
