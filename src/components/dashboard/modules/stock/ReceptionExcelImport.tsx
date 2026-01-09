@@ -108,6 +108,60 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   // États pour l'AlertDialog d'avertissement TVA/Centime/ASDI à zéro
   const [showZeroWarningDialog, setShowZeroWarningDialog] = useState(false);
 
+  // Fonction pour calculer les prix de vente d'une ligne (pour sauvegarde directe dans lots)
+  const calculateLinePricing = useCallback((line: ExcelReceptionLine) => {
+    const edited = editedLines.get(line.rowNumber);
+    const categoryId = edited?.categorieTarificationId ?? line.categorieTarificationId;
+    const prixAchatReel = edited?.prixAchatReel ?? line.prixAchatReel;
+    
+    const category = priceCategories?.find(cat => cat.id === categoryId);
+    if (!category || !prixAchatReel || prixAchatReel <= 0) {
+      return {
+        prixVenteHT: null,
+        tauxTva: 0,
+        montantTva: 0,
+        tauxCentimeAdditionnel: 0,
+        montantCentimeAdditionnel: 0,
+        prixVenteTTC: null,
+        prixVenteSuggere: null
+      };
+    }
+
+    const coefficient = category.coefficient_prix_vente || 1;
+    const tauxTva = category.taux_tva || 0;
+    const tauxCentime = category.taux_centime_additionnel || 0;
+
+    // Prix HT = Prix d'achat × Coefficient
+    let prixVenteHT = prixAchatReel * coefficient;
+    
+    // TVA sur le HT
+    let montantTva = prixVenteHT * (tauxTva / 100);
+    
+    // Centime additionnel sur la TVA
+    let montantCentimeAdditionnel = montantTva * (tauxCentime / 100);
+    
+    // Prix TTC = HT + TVA + Centime
+    let prixVenteTTC = prixVenteHT + montantTva + montantCentimeAdditionnel;
+
+    // Arrondir si devise sans décimales (FCFA)
+    if (isNoDecimalCurrency()) {
+      prixVenteHT = Math.round(prixVenteHT);
+      montantTva = Math.round(montantTva);
+      montantCentimeAdditionnel = Math.round(montantCentimeAdditionnel);
+      prixVenteTTC = Math.round(prixVenteTTC);
+    }
+
+    return {
+      prixVenteHT,
+      tauxTva,
+      montantTva,
+      tauxCentimeAdditionnel: tauxCentime,
+      montantCentimeAdditionnel,
+      prixVenteTTC,
+      prixVenteSuggere: prixVenteTTC  // Prix suggéré = TTC
+    };
+  }, [priceCategories, editedLines, isNoDecimalCurrency]);
+
   // Calcul automatique des suggestions TVA/Centime/ASDI basé sur les catégories produit
   const calculateAutoSuggestions = useCallback(() => {
     if (!parseResult?.lines || parseResult.lines.length === 0) {
@@ -450,10 +504,11 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         toast.success(`Commande ${orderResult.orderNumber} créée automatiquement`);
       }
 
-      // Préparer les lignes de réception (avec les valeurs éditées)
+      // Préparer les lignes de réception (avec les valeurs éditées et les prix pré-calculés)
       const lignes = validationResult.validLines.map(line => {
         const edited = editedLines.get(line.rowNumber);
         const finalLine = { ...line, ...edited };
+        const pricing = calculateLinePricing(line);  // Calcul des prix de vente
         
         // Récupérer le statut modifié ou garder le statut par défaut
         const statutValue = String(edited?.statut ?? line.statut ?? 'conforme');
@@ -473,7 +528,16 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
           date_expiration: finalLine.dateExpiration,
           statut: statutConverted as 'conforme' | 'non-conforme' | 'partiellement-conforme',
           emplacement: finalLine.emplacement || null,
-          commentaire: finalLine.commentaire || null
+          commentaire: finalLine.commentaire || null,
+          // Prix pré-calculés pour sauvegarde directe dans lots
+          categorie_tarification_id: edited?.categorieTarificationId ?? line.categorieTarificationId ?? null,
+          prix_vente_ht: pricing.prixVenteHT,
+          taux_tva: pricing.tauxTva,
+          montant_tva: pricing.montantTva,
+          taux_centime_additionnel: pricing.tauxCentimeAdditionnel,
+          montant_centime_additionnel: pricing.montantCentimeAdditionnel,
+          prix_vente_ttc: pricing.prixVenteTTC,
+          prix_vente_suggere: pricing.prixVenteSuggere
         };
       });
 
