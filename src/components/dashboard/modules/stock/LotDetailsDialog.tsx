@@ -51,6 +51,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useLots } from '@/hooks/useLots';
 import { useLotMovements } from '@/hooks/useLotMovements';
+import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 
 interface LotDetailsDialogProps {
   lotId: string | null;
@@ -65,6 +66,7 @@ export const LotDetailsDialog: React.FC<LotDetailsDialogProps> = ({
 }) => {
   const { useLotQuery, calculateDaysToExpiration, determineUrgencyLevel } = useLots();
   const { useLotMovementsForLot, getMovementTypeLabel, getMovementTypeColor, getMovementIcon } = useLotMovements();
+  const { formatAmount } = useCurrencyFormatting();
 
   const { data: lot, isLoading: loadingLot } = useLotQuery(lotId || '');
   const { data: movements = [], isLoading: loadingMovements } = useLotMovementsForLot(lotId || '');
@@ -93,13 +95,6 @@ export const LotDetailsDialog: React.FC<LotDetailsDialogProps> = ({
     }
   };
 
-  const formatCurrency = (amount: number | null | undefined) => {
-    if (!amount) return 'N/A';
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR',
-    }).format(amount);
-  };
 
   const formatDate = (date: string | null | undefined) => {
     if (!date) return 'N/A';
@@ -316,16 +311,16 @@ export const LotDetailsDialog: React.FC<LotDetailsDialogProps> = ({
                     <CardContent className="space-y-3">
                       <div>
                         <p className="text-xs sm:text-sm font-medium text-muted-foreground">Prix d'achat unitaire</p>
-                        <p className="text-base sm:text-lg font-semibold">{formatCurrency(lot.prix_achat_unitaire)}</p>
+                        <p className="text-base sm:text-lg font-semibold">{lot.prix_achat_unitaire ? formatAmount(lot.prix_achat_unitaire) : 'N/A'}</p>
                       </div>
                       <div>
                         <p className="text-xs sm:text-sm font-medium text-muted-foreground">Prix de vente suggéré</p>
-                        <p className="text-base sm:text-lg font-semibold">{formatCurrency(lot.prix_vente_suggere)}</p>
+                        <p className="text-base sm:text-lg font-semibold">{lot.prix_vente_suggere ? formatAmount(lot.prix_vente_suggere) : 'N/A'}</p>
                       </div>
                       <div>
                         <p className="text-xs sm:text-sm font-medium text-muted-foreground">Valeur stock restant</p>
                         <p className="text-base sm:text-lg font-semibold text-primary">
-                          {formatCurrency((lot.prix_achat_unitaire || 0) * lot.quantite_restante)}
+                          {formatAmount((lot.prix_achat_unitaire || 0) * lot.quantite_restante)}
                         </p>
                       </div>
                     </CardContent>
