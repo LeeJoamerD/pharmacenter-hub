@@ -24,6 +24,7 @@ import {
   Trash2,
   RefreshCw,
   FileText,
+  FileSpreadsheet,
   ChevronLeft,
   ChevronRight,
   CheckSquare,
@@ -37,6 +38,7 @@ import PharmaMLHistory from './PharmaMLHistory';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { OrderPDFService } from '@/services/OrderPDFService';
+import { OrderExcelService } from '@/services/OrderExcelService';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -272,15 +274,26 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
           produit_id: line.produit_id,
           quantite: line.quantite_commandee || 0,
           prix_unitaire: line.prix_achat_unitaire_attendu || 0,
-          remise: 0, // TODO: Add if remise field exists
+          remise: 0,
           produit: line.produit ? {
             libelle_produit: line.produit.libelle_produit,
-            code_cip: line.produit.code_cip
+            code_cip: line.produit.code_cip,
+            ancien_code_cip: line.produit.ancien_code_cip
           } : undefined,
           commande_id: line.commande_id
         }));
       
-      const result = await OrderPDFService.generateOrderPDF(order, orderSpecificLines);
+      // Créer l'objet order avec les montants de Supabase
+      const orderWithAmounts = {
+        ...order,
+        montantHT: order.totalHT,
+        montantTVA: order.montantTVA,
+        montantCAdd: order.montantCAdd,
+        montantASDI: order.montantASDI,
+        montantTTC: order.totalTTC
+      };
+      
+      const result = await OrderPDFService.generateOrderPDF(orderWithAmounts, orderSpecificLines);
       
       if (result.success && result.downloadUrl) {
         const link = document.createElement('a');
@@ -290,7 +303,7 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
         link.click();
         document.body.removeChild(link);
         
-      toast({
+        toast({
           title: t('orderListSuccess'),
           description: t('orderListDownloadSuccess', { orderNumber: order.numero }),
         });
@@ -299,6 +312,52 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
       toast({
         title: t('orderListError'),
         description: t('orderListCannotGeneratePDF'),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDownloadExcel = async (order: any) => {
+    try {
+      const orderSpecificLines = orderLines
+        .filter(line => line.commande_id === order.id)
+        .map(line => ({
+          id: line.id,
+          produit_id: line.produit_id,
+          quantite: line.quantite_commandee || 0,
+          prix_unitaire: line.prix_achat_unitaire_attendu || 0,
+          produit: line.produit ? {
+            libelle_produit: line.produit.libelle_produit,
+            code_cip: line.produit.code_cip,
+            ancien_code_cip: line.produit.ancien_code_cip
+          } : undefined
+        }));
+      
+      const orderWithAmounts = {
+        id: order.id,
+        numero: order.numero,
+        fournisseur: order.fournisseur,
+        dateCommande: order.dateCommande,
+        dateLivraison: order.dateLivraison,
+        statut: order.statut,
+        responsable: order.responsable,
+        montantHT: order.totalHT,
+        montantTVA: order.montantTVA,
+        montantCAdd: order.montantCAdd,
+        montantASDI: order.montantASDI,
+        montantTTC: order.totalTTC
+      };
+      
+      await OrderExcelService.generateOrderExcel(orderWithAmounts, orderSpecificLines);
+      
+      toast({
+        title: t('orderListSuccess'),
+        description: `Excel téléchargé pour ${order.numero}`,
+      });
+    } catch (error) {
+      toast({
+        title: t('orderListError'),
+        description: 'Erreur lors de la génération Excel',
         variant: "destructive",
       });
     }
@@ -565,8 +624,17 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
                             variant="outline" 
                             size="sm"
                             onClick={() => handleDownloadOrder(order)}
+                            title="Télécharger PDF"
                           >
                             <Download className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleDownloadExcel(order)}
+                            title="Télécharger Excel"
+                          >
+                            <FileSpreadsheet className="h-4 w-4" />
                           </Button>
                           {/* PharmaML Send Button */}
                           {pharmamlStatus[order.id]?.configured && (
