@@ -50,12 +50,12 @@ export const useRecentAdminActivity = (limit = 10) => {
       if (userIds.length > 0) {
         const { data: users } = await supabase
           .from('personnel')
-          .select('id, noms, prenoms')
-          .in('id', userIds);
+          .select('auth_user_id, noms, prenoms')
+          .in('auth_user_id', userIds);
         
         if (users) {
           usersMap = users.reduce((acc, user) => {
-            acc[user.id] = { noms: user.noms, prenoms: user.prenoms };
+            acc[user.auth_user_id] = { noms: user.noms, prenoms: user.prenoms };
             return acc;
           }, {} as Record<string, { noms: string; prenoms: string }>);
         }
