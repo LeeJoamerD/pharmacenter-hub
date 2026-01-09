@@ -6,9 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Package, CheckCircle, XCircle, AlertTriangle, BarChart3, Loader2 } from 'lucide-react';
 import { useQuickStockSearch } from '@/hooks/useQuickStockSearch';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const QuickStockCheck = () => {
   const { formatAmount } = useCurrencyFormatting();
+  const { t } = useLanguage();
   const [pageSize, setPageSize] = useState(50);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -52,12 +54,12 @@ const QuickStockCheck = () => {
 
   const getStockStatusText = (status: string) => {
     switch (status) {
-      case 'normal': return 'Disponible';
-      case 'faible': return 'Stock faible';
-      case 'critique': return 'Stock critique';
-      case 'rupture': return 'Rupture';
-      case 'surstock': return 'Surstock';
-      default: return 'Inconnu';
+      case 'normal': return t('quickCheckAvailable');
+      case 'faible': return t('quickCheckLowStock');
+      case 'critique': return t('quickCheckCriticalStock');
+      case 'rupture': return t('quickCheckOutOfStock');
+      case 'surstock': return t('quickCheckOverstock');
+      default: return t('quickCheckUnknown');
     }
   };
 
@@ -79,18 +81,18 @@ const QuickStockCheck = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5" />
-            Vérification Rapide de Disponibilité
+            {t('quickAvailabilityCheck')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <h4 className="font-medium text-blue-900 mb-2">Comment utiliser cette fonction :</h4>
+              <h4 className="font-medium text-blue-900 mb-2">{t('howToUseFunction')}</h4>
               <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Tapez le nom du produit, son code ou sa famille</li>
-                <li>• Obtenez instantanément l'état du stock</li>
-                <li>• Vérifiez la disponibilité avant une vente</li>
-                <li>• Consultez les informations essentielles en un coup d'œil</li>
+                <li>• {t('typeProductNameTip')}</li>
+                <li>• {t('getInstantStock')}</li>
+                <li>• {t('checkAvailabilityBeforeSale')}</li>
+                <li>• {t('viewEssentialInfo')}</li>
               </ul>
             </div>
 
@@ -99,7 +101,7 @@ const QuickStockCheck = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Rechercher un produit (nom, code, famille)..."
+                  placeholder={t('searchProductPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => handleQuickSearch(e.target.value)}
                   onKeyPress={handleKeyPress}
@@ -114,10 +116,10 @@ const QuickStockCheck = () => {
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Recherche...
+                    {t('searchInProgressLabel')}
                   </>
                 ) : (
-                  'Vérifier'
+                  t('verify')
                 )}
               </Button>
             </div>
@@ -130,7 +132,7 @@ const QuickStockCheck = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
-            Vérifications Fréquentes
+            {t('frequentChecks')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -177,10 +179,10 @@ const QuickStockCheck = () => {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5" />
-              Résultats de Vérification
+              {t('verificationResults')}
               {searchResults?.totalCount > 0 && (
                 <Badge variant="outline">
-                  {searchResults.products.length} affiché{searchResults.products.length > 1 ? 's' : ''} sur {searchResults.totalCount} trouvé{searchResults.totalCount > 1 ? 's' : ''}
+                  {searchResults.products.length} {t('displayedOf')} {searchResults.totalCount} {t('found')}
                 </Badge>
               )}
             </CardTitle>
@@ -191,14 +193,14 @@ const QuickStockCheck = () => {
                 onClick={() => refetch()}
                 disabled={isLoading}
               >
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Actualiser"}
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('refresh')}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={resetSearch}
               >
-                Réinitialiser
+                {t('resetLabel')}
               </Button>
             </div>
           </CardHeader>
@@ -206,8 +208,8 @@ const QuickStockCheck = () => {
             {searchResults?.products?.length === 0 && searchQuery && !isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Search className="h-16 w-16 mx-auto mb-4" />
-                <p className="text-lg font-medium">Aucun produit trouvé</p>
-                <p>Essayez avec un autre terme de recherche (minimum 2 caractères)</p>
+                <p className="text-lg font-medium">{t('quickCheckNoProductFound')}</p>
+                <p>{t('tryAnotherSearch')}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -225,27 +227,27 @@ const QuickStockCheck = () => {
                         
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
-                            <span className="text-muted-foreground">Code:</span>
+                            <span className="text-muted-foreground">{t('codeLabel')}</span>
                             <div className="font-mono font-medium">{product.code_cip}</div>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Stock Actuel:</span>
+                            <span className="text-muted-foreground">{t('quickCheckCurrentStock')}</span>
                             <div className="font-semibold text-lg">{product.stock_actuel}</div>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Stock Minimum:</span>
+                            <span className="text-muted-foreground">{t('minimumStockLabel')}</span>
                             <div>{product.stock_limite}</div>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Prix de Vente:</span>
+                            <span className="text-muted-foreground">{t('sellingPriceLabel')}</span>
                             <div className="font-medium">{formatAmount(product.prix_vente_ttc)}</div>
                           </div>
                         </div>
 
                         <div className="mt-3 flex gap-4 text-sm text-muted-foreground">
-                          <span>Famille: {product.famille_libelle || 'N/A'}</span>
-                          <span>Rayon: {product.rayon_libelle || 'N/A'}</span>
-                          <span>Rotation: {product.rotation}</span>
+                          <span>{t('quickCheckFamilyLabel')} {product.famille_libelle || 'N/A'}</span>
+                          <span>{t('departmentLabel')} {product.rayon_libelle || 'N/A'}</span>
+                          <span>{t('rotationLabel')} {product.rotation}</span>
                         </div>
                       </div>
 
@@ -257,22 +259,22 @@ const QuickStockCheck = () => {
                             <span className="text-red-600">0</span>
                           )}
                         </div>
-                        <div className="text-sm text-muted-foreground">unités</div>
+                        <div className="text-sm text-muted-foreground">{t('unitsLabel')}</div>
                       </div>
                     </div>
 
                     {/* Actions rapides */}
                     <div className="flex gap-2 mt-4 pt-3 border-t">
                       <Button size="sm" disabled={product.stock_actuel === 0}>
-                        Vendre
+                        {t('sell')}
                       </Button>
                       {(product.statut_stock === 'faible' || product.statut_stock === 'critique') && (
                         <Button size="sm" variant="outline">
-                          Commander
+                          {t('orderBtn')}
                         </Button>
                       )}
                       <Button size="sm" variant="outline">
-                        Détails
+                        {t('detailsBtn')}
                       </Button>
                     </div>
                   </div>
@@ -281,7 +283,7 @@ const QuickStockCheck = () => {
                 {/* Contrôles de pagination */}
                 <div className="flex items-center justify-between pt-4 border-t">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Taille de page:</span>
+                    <span className="text-sm text-muted-foreground">{t('pageSizeLabel')}</span>
                     <select
                       value={pageSize}
                       onChange={(e) => setPageSize(Number(e.target.value))}
@@ -298,7 +300,6 @@ const QuickStockCheck = () => {
                     <Button 
                       variant="outline" 
                       onClick={() => {
-                        // Charger plus de résultats en augmentant la taille de page
                         setPageSize(prev => prev + 50);
                       }}
                       disabled={isLoading}
@@ -306,10 +307,10 @@ const QuickStockCheck = () => {
                       {isLoading ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Chargement...
+                          {t('loadingLabel')}
                         </>
                       ) : (
-                        'Voir plus'
+                        t('seeMore')
                       )}
                     </Button>
                   )}
@@ -325,7 +326,7 @@ const QuickStockCheck = () => {
         <Card>
           <CardContent className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin mr-2" />
-            <span>Recherche en cours...</span>
+            <span>{t('searchInProgressLabel')}</span>
           </CardContent>
         </Card>
       )}
@@ -345,7 +346,7 @@ const QuickStockCheck = () => {
         <Card className="border-red-200">
           <CardContent className="flex items-center gap-2 py-4 text-red-600">
             <XCircle className="h-5 w-5" />
-            <span>Erreur lors de la recherche: {error.message}</span>
+            <span>{t('stockLoadingError')}: {error.message}</span>
           </CardContent>
         </Card>
       )}

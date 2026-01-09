@@ -187,7 +187,7 @@ const CriticalStock = React.memo(() => {
                       </div>
                       <div className="flex gap-1 mt-1">
                         <Badge className={getSeverityColor(product.statut_stock)} variant="outline">
-                          {product.statut_stock === 'rupture' ? 'RUPTURE' : 'CRITIQUE'}
+                          {product.statut_stock === 'rupture' ? t('outOfStock').toUpperCase() : t('critical').toUpperCase()}
                         </Badge>
                         <Badge className={getRotationColor(product.rotation)} variant="outline">
                           {product.rotation}

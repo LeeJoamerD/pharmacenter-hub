@@ -18,6 +18,7 @@ import { EmergencyOrderModal } from "../modals/EmergencyOrderModal";
 import { ExportService } from "@/services/ExportService";
 import { LowStockTableSkeleton } from "./LowStockTableSkeleton";
 import { FadeIn } from "@/components/FadeIn";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { LowStockItem } from "@/hooks/useLowStockDataPaginated";
 
 type SortField = 'nomProduit' | 'quantiteActuelle' | 'seuilMinimum' | 'valeurStock' | 'dernierMouvement' | 'statut';
@@ -25,6 +26,7 @@ type SortDirection = 'asc' | 'desc';
 
 export const LowStockProducts = () => {
   const { toast } = useToast();
+  const { t } = useLanguage();
   
   // Local state for filters and pagination
   const [searchTerm, setSearchTerm] = useState('');
@@ -273,9 +275,9 @@ export const LowStockProducts = () => {
           <Card className="p-4 hover:shadow-md transition-shadow duration-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Stock Critique</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('criticalStock')}</p>
                 <h3 className="text-2xl font-bold text-destructive mt-1">{metrics.criticalItems}</h3>
-                <p className="text-xs text-muted-foreground mt-1">Nécessite action immédiate</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('immediateActionRequired')}</p>
               </div>
               <div className="p-3 bg-destructive/10 rounded-full">
                 <AlertTriangle className="h-6 w-6 text-destructive" />
@@ -288,9 +290,9 @@ export const LowStockProducts = () => {
           <Card className="p-4 hover:shadow-md transition-shadow duration-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Stock Faible</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('lowStock')}</p>
                 <h3 className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">{metrics.lowItems}</h3>
-                <p className="text-xs text-muted-foreground mt-1">À réapprovisionner</p>
+                <p className="text-xs text-muted-foreground mt-1">{t('toReorder')}</p>
               </div>
               <div className="p-3 bg-orange-100 dark:bg-orange-950 rounded-full">
                 <TrendingDown className="h-6 w-6 text-orange-600 dark:text-orange-400" />
@@ -303,7 +305,7 @@ export const LowStockProducts = () => {
           <Card className="p-4 hover:shadow-md transition-shadow duration-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Produits</p>
+                <p className="text-sm font-medium text-muted-foreground">{t('totalProducts')}</p>
                 <h3 className="text-2xl font-bold mt-1">{metrics.totalItems}</h3>
                 <p className="text-xs text-muted-foreground mt-1">
                   Valeur: {metrics.totalValue.toLocaleString()} F
