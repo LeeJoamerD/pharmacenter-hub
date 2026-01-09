@@ -103,6 +103,14 @@ export const useReceptions = () => {
       prix_achat_reel?: number;
       emplacement?: string;
       categorie_tarification_id?: string;
+      // Prix pré-calculés (pour éviter le recalcul)
+      prix_vente_ht?: number | null;
+      taux_tva?: number;
+      montant_tva?: number;
+      taux_centime_additionnel?: number;
+      montant_centime_additionnel?: number;
+      prix_vente_ttc?: number | null;
+      prix_vente_suggere?: number | null;
     }>;
   }) => {
     try {
@@ -219,91 +227,39 @@ export const useReceptions = () => {
           let shouldCreateNewLot = false;
           let existingLot = null;
 
-          // Récupérer la catégorie de tarification pour calculer les prix
-          let pricingData: {
-            prix_vente_ht: number | null;
-            taux_tva: number | null;
-            montant_tva: number | null;
-            taux_centime_additionnel: number | null;
-            montant_centime_additionnel: number | null;
-            prix_vente_ttc: number | null;
-          } = {
-            prix_vente_ht: null,
-            taux_tva: null,
-            montant_tva: null,
-            taux_centime_additionnel: null,
-            montant_centime_additionnel: null,
-            prix_vente_ttc: null
+          // Utiliser directement les prix pré-calculés transmis depuis le composant
+          // Évite le double calcul et garantit la cohérence avec l'affichage
+          const pricingData = {
+            prix_vente_ht: ligne.prix_vente_ht ?? null,
+            taux_tva: ligne.taux_tva ?? 0,
+            montant_tva: ligne.montant_tva ?? 0,
+            taux_centime_additionnel: ligne.taux_centime_additionnel ?? 0,
+            montant_centime_additionnel: ligne.montant_centime_additionnel ?? 0,
+            prix_vente_ttc: ligne.prix_vente_ttc ?? null,
+            prix_vente_suggere: ligne.prix_vente_suggere ?? null
           };
 
-          // Calculer les prix de vente si catégorie et prix d'achat disponibles
-          if (ligne.categorie_tarification_id && ligne.prix_achat_reel && ligne.prix_achat_reel > 0) {
-            // Récupérer les infos de la catégorie de tarification
-            // @ts-ignore - Ignorer les erreurs de typage Supabase
-            const { data: categorieData } = await supabase
-              .from('categorie_tarification')
-              .select('coefficient_prix_vente, taux_tva, taux_centime_additionnel')
-              .eq('id', ligne.categorie_tarification_id)
-              .single();
+          console.log('💰 Prix pré-calculés reçus pour lot:', {
+            produit_id: ligne.produit_id,
+            prix_achat: ligne.prix_achat_reel,
+            ...pricingData
+          });
 
-            if (categorieData) {
-              // Récupérer les paramètres système pour l'arrondi
-              // @ts-ignore - Ignorer les erreurs de typage Supabase
-              const { data: parametres } = await supabase
-                .from('parametres_systeme')
-                .select('cle_parametre, valeur_parametre')
-                .eq('tenant_id', personnel.tenant_id)
-                .in('cle_parametre', ['stock_rounding_precision', 'taxRoundingMethod', 'default_currency']);
+          // Mettre à jour la table produits avec ces prix si disponibles
+          if (pricingData.prix_vente_ttc !== null) {
+            const { error: produitUpdateError } = await supabase
+              .from('produits')
+              .update({
+                prix_vente_ht: pricingData.prix_vente_ht,
+                prix_vente_ttc: pricingData.prix_vente_ttc,
+                taux_tva: pricingData.taux_tva,
+                taux_centime_additionnel: pricingData.taux_centime_additionnel,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', ligne.produit_id);
 
-              const paramsMap: Record<string, string> = {};
-              (parametres as any[])?.forEach((p: any) => { paramsMap[p.cle_parametre] = p.valeur_parametre; });
-
-              const roundingPrecision = parseFloat(paramsMap['stock_rounding_precision'] || String(DEFAULT_SETTINGS.rounding.precision));
-              const roundingMethod = (paramsMap['taxRoundingMethod'] || DEFAULT_SETTINGS.rounding.method) as 'ceil' | 'floor' | 'round' | 'none';
-              const currencyCode = paramsMap['default_currency'] || DEFAULT_SETTINGS.currency.code;
-
-              // Calculer les prix via UnifiedPricingService
-              const pricingResult = unifiedPricingService.calculateSalePrice({
-                prixAchat: ligne.prix_achat_reel,
-                coefficientPrixVente: categorieData.coefficient_prix_vente || 1,
-                tauxTVA: categorieData.taux_tva || 0,
-                tauxCentimeAdditionnel: categorieData.taux_centime_additionnel || 0,
-                roundingPrecision,
-                roundingMethod,
-                currencyCode
-              });
-
-              pricingData = {
-                prix_vente_ht: pricingResult.prixVenteHT,
-                taux_tva: pricingResult.tauxTVA,
-                montant_tva: pricingResult.montantTVA,
-                taux_centime_additionnel: pricingResult.tauxCentimeAdditionnel,
-                montant_centime_additionnel: pricingResult.montantCentimeAdditionnel,
-                prix_vente_ttc: pricingResult.prixVenteTTC
-              };
-
-              console.log('💰 Prix calculés pour lot:', {
-                produit_id: ligne.produit_id,
-                prix_achat: ligne.prix_achat_reel,
-                coefficient: categorieData.coefficient_prix_vente,
-                ...pricingData
-              });
-
-              // Mettre à jour aussi la table produits avec ces prix
-              const { error: produitUpdateError } = await supabase
-                .from('produits')
-                .update({
-                  prix_vente_ht: pricingData.prix_vente_ht,
-                  prix_vente_ttc: pricingData.prix_vente_ttc,
-                  taux_tva: pricingData.taux_tva,
-                  taux_centime_additionnel: pricingData.taux_centime_additionnel,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', ligne.produit_id);
-
-              if (produitUpdateError) {
-                console.warn('⚠️ Erreur mise à jour prix produit:', produitUpdateError);
-              }
+            if (produitUpdateError) {
+              console.warn('⚠️ Erreur mise à jour prix produit:', produitUpdateError);
             }
           }
 
@@ -334,7 +290,7 @@ export const useReceptions = () => {
             if (ligne.emplacement) updateData.emplacement = ligne.emplacement;
             if (ligne.commentaire) updateData.notes = ligne.commentaire;
             
-            // Mettre à jour les prix si calculés
+            // Mettre à jour les prix pré-calculés si fournis
             if (pricingData.prix_vente_ttc !== null) {
               updateData.prix_vente_ht = pricingData.prix_vente_ht;
               updateData.taux_tva = pricingData.taux_tva;
@@ -342,6 +298,7 @@ export const useReceptions = () => {
               updateData.taux_centime_additionnel = pricingData.taux_centime_additionnel;
               updateData.montant_centime_additionnel = pricingData.montant_centime_additionnel;
               updateData.prix_vente_ttc = pricingData.prix_vente_ttc;
+              updateData.prix_vente_suggere = pricingData.prix_vente_suggere;
             }
 
             const { error: updateError } = await supabase
@@ -388,7 +345,7 @@ export const useReceptions = () => {
               categorie_tarification_id: ligne.categorie_tarification_id || null
             };
 
-            // Ajouter les prix calculés s'ils existent
+            // Ajouter les prix pré-calculés s'ils existent
             if (pricingData.prix_vente_ttc !== null) {
               lotInsertData.prix_vente_ht = pricingData.prix_vente_ht;
               lotInsertData.taux_tva = pricingData.taux_tva;
@@ -396,6 +353,7 @@ export const useReceptions = () => {
               lotInsertData.taux_centime_additionnel = pricingData.taux_centime_additionnel;
               lotInsertData.montant_centime_additionnel = pricingData.montant_centime_additionnel;
               lotInsertData.prix_vente_ttc = pricingData.prix_vente_ttc;
+              lotInsertData.prix_vente_suggere = pricingData.prix_vente_suggere;
             }
 
             // @ts-ignore - Ignorer les erreurs de typage Supabase pour Record<string, any>

@@ -53,6 +53,17 @@ interface ReceptionLine {
   produitId?: string;
 }
 
+// Interface pour les prix pré-calculés par ligne
+interface LinePricing {
+  prixVenteHT: number | null;
+  tauxTva: number;
+  montantTva: number;
+  tauxCentimeAdditionnel: number;
+  montantCentimeAdditionnel: number;
+  prixVenteTTC: number | null;
+  prixVenteSuggere: number | null;
+}
+
 interface ReceptionFormProps {
   orders: any[];
   suppliers: any[];
@@ -140,6 +151,58 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     const sequence = (index + 1).toString().padStart(3, '0');
     return `LOT-${productRef.slice(0, 8).toUpperCase()}-${timestamp}-${sequence}`;
   }, []);
+
+  // Fonction pour calculer les prix de vente d'une ligne (évite le recalcul dans le hook)
+  const calculateLinePricing = useCallback((line: ReceptionLine): LinePricing => {
+    const defaultPricing: LinePricing = {
+      prixVenteHT: null,
+      tauxTva: 0,
+      montantTva: 0,
+      tauxCentimeAdditionnel: 0,
+      montantCentimeAdditionnel: 0,
+      prixVenteTTC: null,
+      prixVenteSuggere: null
+    };
+
+    const category = priceCategories?.find(cat => cat.id === line.categorieTarificationId);
+    if (!category || !line.prixAchatReel || line.prixAchatReel <= 0) {
+      return defaultPricing;
+    }
+
+    const coefficient = category.coefficient_prix_vente || 1;
+    const tauxTva = category.taux_tva || 0;
+    const tauxCentime = category.taux_centime_additionnel || 0;
+
+    // Prix HT = Prix d'achat × Coefficient
+    let prixVenteHT = line.prixAchatReel * coefficient;
+    
+    // TVA
+    let montantTva = prixVenteHT * (tauxTva / 100);
+    
+    // Centime additionnel (sur la TVA)
+    let montantCentimeAdditionnel = montantTva * (tauxCentime / 100);
+    
+    // Prix TTC = HT + TVA + Centime
+    let prixVenteTTC = prixVenteHT + montantTva + montantCentimeAdditionnel;
+
+    // Arrondir si devise sans décimales (FCFA)
+    if (isNoDecimalCurrency()) {
+      prixVenteHT = Math.round(prixVenteHT);
+      montantTva = Math.round(montantTva);
+      montantCentimeAdditionnel = Math.round(montantCentimeAdditionnel);
+      prixVenteTTC = Math.round(prixVenteTTC);
+    }
+
+    return {
+      prixVenteHT,
+      tauxTva,
+      montantTva,
+      tauxCentimeAdditionnel: tauxCentime,
+      montantCentimeAdditionnel,
+      prixVenteTTC,
+      prixVenteSuggere: prixVenteTTC  // Prix suggéré = TTC
+    };
+  }, [priceCategories, isNoDecimalCurrency]);
 
   // Load order details from real data - only when data is ready
   const loadOrderDetails = useCallback((orderId: string) => {
@@ -643,18 +706,30 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         reference_facture: bonLivraison,
         notes: observations,
         isValidated: isValidated, // Ajout du paramètre isValidated
-        lignes: receptionLines.map(line => ({
-          produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
-          quantite_commandee: line.quantiteCommandee,
-          quantite_recue: line.quantiteRecue,
-          quantite_acceptee: line.quantiteAcceptee,
-          numero_lot: line.numeroLot,
-          date_expiration: line.dateExpiration || null,
-          statut: line.statut,
-          commentaire: line.commentaire,
-          prix_achat_reel: line.prixAchatReel || 0,
-          emplacement: line.emplacement || null
-        }))
+        lignes: receptionLines.map(line => {
+          const pricing = calculateLinePricing(line);
+          return {
+            produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
+            quantite_commandee: line.quantiteCommandee,
+            quantite_recue: line.quantiteRecue,
+            quantite_acceptee: line.quantiteAcceptee,
+            numero_lot: line.numeroLot,
+            date_expiration: line.dateExpiration || null,
+            statut: line.statut,
+            commentaire: line.commentaire,
+            prix_achat_reel: line.prixAchatReel || 0,
+            emplacement: line.emplacement || null,
+            categorie_tarification_id: line.categorieTarificationId || null,
+            // Prix pré-calculés - sauvegardés directement sans recalcul
+            prix_vente_ht: pricing.prixVenteHT,
+            taux_tva: pricing.tauxTva,
+            montant_tva: pricing.montantTva,
+            taux_centime_additionnel: pricing.tauxCentimeAdditionnel,
+            montant_centime_additionnel: pricing.montantCentimeAdditionnel,
+            prix_vente_ttc: pricing.prixVenteTTC,
+            prix_vente_suggere: pricing.prixVenteSuggere
+          };
+        })
       };
 
       // Reception validation
@@ -769,18 +844,29 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         montant_centime_additionnel: montantCentimeAdditionnel,
         montant_asdi: montantAsdi,
         montant_ttc: totalGeneral,
-        lignes: receptionLines.map(line => ({
-          produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
-          quantite_commandee: line.quantiteCommandee,
-          quantite_recue: line.quantiteRecue,
-          quantite_acceptee: line.quantiteAcceptee,
-          numero_lot: line.numeroLot,
-          date_expiration: line.dateExpiration || null,
-          statut: line.statut,
-          commentaire: line.commentaire,
-          prix_achat_reel: line.prixAchatReel || 0,
-          emplacement: line.emplacement || null
-        }))
+        lignes: receptionLines.map(line => {
+          const pricing = calculateLinePricing(line);
+          return {
+            produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
+            quantite_commandee: line.quantiteCommandee,
+            quantite_recue: line.quantiteRecue,
+            quantite_acceptee: line.quantiteAcceptee,
+            numero_lot: line.numeroLot,
+            date_expiration: line.dateExpiration || null,
+            statut: line.statut,
+            commentaire: line.commentaire,
+            prix_achat_reel: line.prixAchatReel || 0,
+            emplacement: line.emplacement || null,
+            categorie_tarification_id: line.categorieTarificationId || null,
+            prix_vente_ht: pricing.prixVenteHT,
+            taux_tva: pricing.tauxTva,
+            montant_tva: pricing.montantTva,
+            taux_centime_additionnel: pricing.tauxCentimeAdditionnel,
+            montant_centime_additionnel: pricing.montantCentimeAdditionnel,
+            prix_vente_ttc: pricing.prixVenteTTC,
+            prix_vente_suggere: pricing.prixVenteSuggere
+          };
+        })
       };
 
       const createdReception = await onCreateReception(receptionData);
@@ -841,18 +927,29 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         montant_centime_additionnel: montantCentimeAdditionnel,
         montant_asdi: montantAsdi,
         montant_ttc: totalGeneral,
-        lignes: receptionLines.map(line => ({
-          produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
-          quantite_commandee: line.quantiteCommandee,
-          quantite_recue: line.quantiteRecue,
-          quantite_acceptee: line.quantiteAcceptee,
-          numero_lot: line.numeroLot,
-          date_expiration: line.dateExpiration || null,
-          statut: line.statut,
-          commentaire: line.commentaire,
-          prix_achat_reel: line.prixAchatReel || 0,
-          emplacement: line.emplacement || null
-        })),
+        lignes: receptionLines.map(line => {
+          const pricing = calculateLinePricing(line);
+          return {
+            produit_id: orderLines.find(ol => ol.id === line.id)?.produit_id,
+            quantite_commandee: line.quantiteCommandee,
+            quantite_recue: line.quantiteRecue,
+            quantite_acceptee: line.quantiteAcceptee,
+            numero_lot: line.numeroLot,
+            date_expiration: line.dateExpiration || null,
+            statut: line.statut,
+            commentaire: line.commentaire,
+            prix_achat_reel: line.prixAchatReel || 0,
+            emplacement: line.emplacement || null,
+            categorie_tarification_id: line.categorieTarificationId || null,
+            prix_vente_ht: pricing.prixVenteHT,
+            taux_tva: pricing.tauxTva,
+            montant_tva: pricing.montantTva,
+            taux_centime_additionnel: pricing.tauxCentimeAdditionnel,
+            montant_centime_additionnel: pricing.montantCentimeAdditionnel,
+            prix_vente_ttc: pricing.prixVenteTTC,
+            prix_vente_suggere: pricing.prixVenteSuggere
+          };
+        }),
         isValidated: true
       };
 
