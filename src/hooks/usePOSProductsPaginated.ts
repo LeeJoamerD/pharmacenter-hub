@@ -102,7 +102,14 @@ export const usePOSProductsPaginated = (
         numero_lot: lot.numero_lot,
         quantite_restante: lot.quantite_restante,
         date_peremption: new Date(lot.date_peremption),
-        prix_achat_unitaire: Number(lot.prix_achat_unitaire)
+        prix_achat_unitaire: Number(lot.prix_achat_unitaire),
+        // Prix depuis les lots (source de vérité pour la vente)
+        prix_vente_ht: Number(lot.prix_vente_ht) || 0,
+        prix_vente_ttc: Number(lot.prix_vente_ttc) || 0,
+        taux_tva: Number(lot.taux_tva) || 0,
+        montant_tva: Number(lot.montant_tva) || 0,
+        taux_centime_additionnel: Number(lot.taux_centime_additionnel) || 0,
+        montant_centime_additionnel: Number(lot.montant_centime_additionnel) || 0
       }));
     } catch (error) {
       console.error('Erreur chargement lots:', error);

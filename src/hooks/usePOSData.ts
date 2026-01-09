@@ -102,49 +102,25 @@ export const usePOSData = () => {
       // 1. Générer numéro de facture
       const numeroFacture = await generateInvoiceNumber(tenantId);
 
-      // 2. Calculer les montants en utilisant les données produits comme source de vérité
-      // Logique: Prioriser prix_vente_ht, tva_montant, centime_additionnel depuis produits
-      // Si manquants et produit soumis à TVA, calculer depuis le TTC
+      // 2. Calculer les montants en utilisant les données du LOT comme source de vérité
+      // Les prix sont déjà calculés et sauvegardés lors de la réception - PAS DE RECALCUL
       let montantHT = 0;
       let montantTVA = 0;
       let montantCentimeAdditionnel = 0;
       
       for (const item of transactionData.cart) {
         const product = item.product;
-        let prixHT = product.prix_vente_ht || 0;
-        let tvaMontant = product.tva_montant || 0;
-        let centimeMontant = product.centime_additionnel_montant || 0;
-        const prixTTC = product.prix_vente_ttc || product.price || item.unitPrice;
-        const tauxTVA = product.taux_tva || 0;
-        const tauxCentime = product.taux_centime_additionnel || 0;
+        const lot = item.lot;
         
-        // Si pas de prix HT et produit soumis à TVA, calculer depuis TTC
-        if (prixHT === 0 && prixTTC > 0 && tauxTVA > 0) {
-          const diviseur = 1 + (tauxTVA / 100) + (tauxCentime / 100);
-          prixHT = unifiedPricingService.roundForCurrency(prixTTC / diviseur);
-        } else if (prixHT === 0 && prixTTC > 0) {
-          // Produit exonéré de TVA : HT = TTC
-          prixHT = prixTTC;
-        }
+        // Priorité: prix du lot > prix du produit (déjà récupéré depuis lot FIFO par RPC)
+        const prixHT = lot?.prix_vente_ht || product.prix_vente_ht || product.price_ht || 0;
+        const tvaMontant = lot?.montant_tva || product.tva_montant || 0;
+        const centimeMontant = lot?.montant_centime_additionnel || product.centime_additionnel_montant || 0;
         
-        // FALLBACK: Si tvaMontant = 0 mais tauxTVA > 0 et prixHT > 0, calculer la TVA
-        if (tvaMontant === 0 && tauxTVA > 0 && prixHT > 0) {
-          tvaMontant = unifiedPricingService.roundForCurrency(prixHT * tauxTVA / 100);
-        }
-        
-        // FALLBACK: Si centimeMontant = 0 mais tauxCentime > 0 et tvaMontant > 0, calculer le centime
-        if (centimeMontant === 0 && tauxCentime > 0 && tvaMontant > 0) {
-          centimeMontant = unifiedPricingService.roundForCurrency(tvaMontant * tauxCentime / 100);
-        }
-        
+        // Utiliser directement les valeurs sauvegardées, sans recalcul
         montantHT += prixHT * item.quantity;
-        // Ajouter TVA/Centime si montants > 0 (peu importe si tauxTVA est NULL/0 en base)
-        if (tvaMontant > 0) {
-          montantTVA += tvaMontant * item.quantity;
-        }
-        if (centimeMontant > 0) {
-          montantCentimeAdditionnel += centimeMontant * item.quantity;
-        }
+        montantTVA += tvaMontant * item.quantity;
+        montantCentimeAdditionnel += centimeMontant * item.quantity;
       }
       
       const subtotal = transactionData.cart.reduce((sum, item) => sum + item.total, 0);
@@ -274,48 +250,29 @@ export const usePOSData = () => {
         }
       }
 
-      // 7. Insérer les lignes de vente avec calcul correct des prix
+      // 7. Insérer les lignes de vente avec prix directement depuis les lots (source de vérité)
       const lignesVente = transactionData.cart.map(item => {
         const product = item.product;
-        let prixHT = product.prix_vente_ht || 0;
-        let tvaMontant = product.tva_montant || 0;
-        let centimeMontant = product.centime_additionnel_montant || 0;
-        const prixTTC = product.prix_vente_ttc || product.price || item.unitPrice;
-        const tauxTVA = product.taux_tva || 0;
-        const tauxCentime = product.taux_centime_additionnel || 0;
+        const lot = item.lot;
         
-        // Si pas de prix HT et produit soumis à TVA, calculer depuis TTC
-        if (prixHT === 0 && prixTTC > 0 && tauxTVA > 0) {
-          const diviseur = 1 + (tauxTVA / 100) + (tauxCentime / 100);
-          prixHT = unifiedPricingService.roundForCurrency(prixTTC / diviseur);
-        } else if (prixHT === 0 && prixTTC > 0) {
-          prixHT = prixTTC;
-        }
-        
-        // FALLBACK: calculer TVA si manquante
-        if (tvaMontant === 0 && tauxTVA > 0 && prixHT > 0) {
-          tvaMontant = unifiedPricingService.roundForCurrency(prixHT * tauxTVA / 100);
-        }
-        
-        // FALLBACK: calculer centime si manquant
-        if (centimeMontant === 0 && tauxCentime > 0 && tvaMontant > 0) {
-          centimeMontant = unifiedPricingService.roundForCurrency(tvaMontant * tauxCentime / 100);
-        }
-        
-        // Reconstituer le taux TVA si absent mais montant présent
-        const tauxTVAEffectif = tauxTVA > 0 ? tauxTVA : (prixHT > 0 && tvaMontant > 0 ? Math.round((tvaMontant / prixHT) * 10000) / 100 : 0);
-        const tauxCentimeEffectif = tauxCentime > 0 ? tauxCentime : (tvaMontant > 0 && centimeMontant > 0 ? Math.round((centimeMontant / tvaMontant) * 10000) / 100 : 0);
+        // Priorité: prix du lot > prix du produit - PAS DE RECALCUL
+        const prixHT = lot?.prix_vente_ht || product.prix_vente_ht || product.price_ht || 0;
+        const prixTTC = lot?.prix_vente_ttc || product.prix_vente_ttc || product.price || item.unitPrice;
+        const tauxTVA = lot?.taux_tva || product.taux_tva || 0;
+        const tvaMontant = lot?.montant_tva || product.tva_montant || 0;
+        const tauxCentime = lot?.taux_centime_additionnel || product.taux_centime_additionnel || 0;
+        const centimeMontant = lot?.montant_centime_additionnel || product.centime_additionnel_montant || 0;
         
         return {
           tenant_id: tenantId,
           vente_id: vente.id,
           produit_id: product.id,
-          lot_id: item.lot?.id,
+          lot_id: lot?.id,
           quantite: item.quantity,
           prix_unitaire_ht: prixHT,
           prix_unitaire_ttc: prixTTC,
-          taux_tva: tauxTVAEffectif,
-          taux_centime_additionnel: tauxCentimeEffectif,
+          taux_tva: tauxTVA,
+          taux_centime_additionnel: tauxCentime,
           remise_ligne: item.discount || 0,
           montant_ligne_ttc: item.total,
           montant_tva_ligne: tvaMontant * item.quantity,

@@ -10,7 +10,7 @@ export interface POSProduct {
   dci?: string;
   code_cip?: string;
   
-  // Prix depuis la table produits (source de vérité)
+  // Prix depuis les LOTS (source de vérité) via RPC get_pos_products FIFO
   prix_vente_ht: number;
   prix_vente_ttc: number;
   taux_tva: number;
