@@ -110,7 +110,12 @@ const OrderList: React.FC<OrderListProps> = ({ orders: propOrders = [], loading,
           fournisseur_nom: order.fournisseur?.nom || 'Fournisseur inconnu',
           dateCommande: order.date_commande || order.created_at,
           dateLivraison: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          totalHT: orderTotal,
+          // Montants directement depuis Supabase
+          totalHT: order.montant_ht || 0,
+          montantTVA: order.montant_tva || 0,
+          montantCAdd: order.montant_centime_additionnel || 0,
+          montantASDI: order.montant_asdi || 0,
+          totalTTC: order.montant_ttc || 0,
           nbProduits: orderProductCount,
           totalQuantity: orderQuantity,
           responsable: order.agent ? `${order.agent.prenoms} ${order.agent.noms}` : 'Non assigné'
@@ -719,8 +724,10 @@ const OrderDetailsContent = ({ order, getStatusColor, t }: { order: any; getStat
           <h4 className="font-medium mb-2">{t('orderListAmounts')}</h4>
           <div className="space-y-2 text-sm">
             <div><strong>{t('orderListSubtotalHT')}:</strong> {(order.totalHT || 0).toLocaleString()} F CFA</div>
-            <div><strong>{t('orderListVAT')}:</strong> {Math.round((order.totalHT || 0) * 0.18).toLocaleString()} F CFA</div>
-            <div><strong>{t('orderListTotalTTC')}:</strong> {Math.round((order.totalHT || 0) * 1.18).toLocaleString()} F CFA</div>
+            <div><strong>{t('orderListVAT')}:</strong> {(order.montantTVA || 0).toLocaleString()} F CFA</div>
+            <div><strong>{t('orderListCAdd')}:</strong> {(order.montantCAdd || 0).toLocaleString()} F CFA</div>
+            <div><strong>{t('orderListASDI')}:</strong> {(order.montantASDI || 0).toLocaleString()} F CFA</div>
+            <div><strong>{t('orderListTotalTTC')}:</strong> {(order.totalTTC || 0).toLocaleString()} F CFA</div>
             <div><strong>{t('orderListArticlesCount')}:</strong> {order.nbProduits || 0}</div>
           </div>
         </div>

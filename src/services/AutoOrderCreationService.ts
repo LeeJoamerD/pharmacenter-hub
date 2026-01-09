@@ -24,7 +24,25 @@ export class AutoOrderCreationService {
 
       if (!personnel) throw new Error('Personnel non trouvé');
 
-      // Créer la commande
+      // Calculer les montants totaux depuis les lignes
+      let montantHT = 0;
+      lines.filter(line => line.produitId).forEach(line => {
+        const prixUnitaire = line.prixAchatReel || 0;
+        const quantite = line.quantiteCommandee || line.quantiteRecue;
+        montantHT += prixUnitaire * quantite;
+      });
+
+      // Calculs comme dans OrderForm.tsx
+      // TVA par défaut à 18% (taux standard)
+      const montantTVA = montantHT * 0.18;
+      // Centime additionnel : TVA × 1%
+      const montantCAdd = montantTVA * 0.01;
+      // ASDI : ((HT + TVA) × 0.42) / 100
+      const montantASDI = ((montantHT + montantTVA) * 0.42) / 100;
+      // TTC = HT + TVA + CAdd + ASDI
+      const montantTTC = montantHT + montantTVA + montantCAdd + montantASDI;
+
+      // Créer la commande avec les montants
       const { data: commande, error: commandeError } = await supabase
         .from('commandes_fournisseurs')
         .insert({
@@ -33,16 +51,18 @@ export class AutoOrderCreationService {
           date_commande: new Date().toISOString(),
           statut: 'Livré',
           agent_id: personnel.id,
-          valide_par_id: personnel.id
+          valide_par_id: personnel.id,
+          montant_ht: Math.round(montantHT),
+          montant_tva: Math.round(montantTVA),
+          montant_centime_additionnel: Math.round(montantCAdd),
+          montant_asdi: Math.round(montantASDI),
+          montant_ttc: Math.round(montantTTC),
         })
         .select()
         .single();
 
       if (commandeError) throw commandeError;
       if (!commande) throw new Error('Erreur lors de la création de la commande');
-
-      // Calculer le montant total de la commande
-      let montantTotal = 0;
 
       // Créer les lignes de commande
       const lignesCommande = lines
@@ -68,12 +88,6 @@ export class AutoOrderCreationService {
         if (lignesError) throw lignesError;
       }
 
-      // Mettre à jour le montant total de la commande si nécessaire
-      // (selon votre schéma de base de données)
-      // await supabase
-      //   .from('commandes_fournisseurs')
-      //   .update({ montant_total: montantTotal })
-      //   .eq('id', commande.id);
 
       return {
         orderId: commande.id,

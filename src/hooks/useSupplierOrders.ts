@@ -66,6 +66,13 @@ export const useSupplierOrders = () => {
     date_commande?: string;
     agent_id?: string;
     statut?: string;
+    notes?: string;
+    // Montants financiers
+    montant_ht?: number;
+    montant_tva?: number;
+    montant_centime_additionnel?: number;
+    montant_asdi?: number;
+    montant_ttc?: number;
     lignes: Array<{
       produit_id: string;
       quantite_commandee: number;
@@ -104,7 +111,13 @@ export const useSupplierOrders = () => {
           fournisseur_id: orderData.fournisseur_id,
           date_commande: orderData.date_commande || new Date().toISOString(),
           agent_id: personnel.id,
-          statut: orderData.statut || 'En cours'
+          statut: orderData.statut || 'En cours',
+          // Montants financiers
+          montant_ht: orderData.montant_ht || 0,
+          montant_tva: orderData.montant_tva || 0,
+          montant_centime_additionnel: orderData.montant_centime_additionnel || 0,
+          montant_asdi: orderData.montant_asdi || 0,
+          montant_ttc: orderData.montant_ttc || 0,
         })
         .select()
         .single();
