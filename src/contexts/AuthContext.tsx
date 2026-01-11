@@ -148,9 +148,95 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Set up auth state listener
+    let isMounted = true;
+
+    // Fonction pour restaurer la session pharmacie depuis localStorage
+    const restorePharmacySession = async (): Promise<boolean> => {
+      const savedPharmacySession = localStorage.getItem('pharmacy_session');
+      if (!savedPharmacySession) {
+        console.log('AUTH: Aucune session pharmacie dans localStorage');
+        return false;
+      }
+      
+      try {
+        const sessionData = JSON.parse(savedPharmacySession);
+        console.log('AUTH: Données localStorage pharmacy_session:', JSON.stringify(sessionData));
+        
+        // Vérifier que le sessionToken existe AVANT de tenter la validation
+        if (!sessionData.sessionToken) {
+          console.log('AUTH: localStorage pharmacy_session sans sessionToken, suppression...');
+          localStorage.removeItem('pharmacy_session');
+          return false;
+        }
+        
+        console.log('AUTH: Restauration session pharmacie via Edge Function, token:', sessionData.sessionToken.substring(0, 8) + '...');
+        
+        // Utiliser l'Edge Function pour valider la session
+        const { data, error } = await supabase.functions.invoke('validate-pharmacy-session', {
+          body: { session_token: sessionData.sessionToken }
+        });
+        
+        if (error) {
+          console.error('AUTH: Erreur validation session pharmacie:', error);
+          localStorage.removeItem('pharmacy_session');
+          return false;
+        }
+        
+        console.log('AUTH: Résultat validation Edge Function:', JSON.stringify(data));
+        
+        const validationData = data as { valid: boolean; pharmacy: Pharmacy; error?: string } | null;
+        
+        if (validationData?.valid && validationData.pharmacy && isMounted) {
+          console.log('AUTH: Session pharmacie restaurée avec succès:', validationData.pharmacy.name);
+          setConnectedPharmacy({
+            ...validationData.pharmacy,
+            sessionToken: sessionData.sessionToken
+          });
+          return true;
+        } else {
+          console.log('AUTH: Session pharmacie invalide ou expirée:', validationData?.error);
+          localStorage.removeItem('pharmacy_session');
+          return false;
+        }
+      } catch (error) {
+        console.error('AUTH: Erreur parsing session pharmacie:', error);
+        localStorage.removeItem('pharmacy_session');
+        return false;
+      }
+    };
+
+    // Fonction d'initialisation séquentielle
+    const initializeAuth = async () => {
+      try {
+        // 1. D'abord restaurer la session pharmacie depuis localStorage
+        await restorePharmacySession();
+        
+        // 2. Ensuite vérifier la session auth Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        // 3. Récupérer les données utilisateur si connecté
+        if (session?.user) {
+          await fetchUserData(session.user.id);
+        }
+      } catch (error) {
+        console.error('AUTH: Erreur initialisation:', error);
+      } finally {
+        // 4. Seulement maintenant, le chargement est terminé
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    // Écouter les changements d'auth (après l'initialisation)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // Ne pas mettre loading à false ici pendant l'initialisation
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -164,78 +250,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSecurityLevel('standard');
           setRequires2FA(false);
         }
-        
-        setLoading(false);
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchUserData(session.user.id);
-      }
-      
-      setLoading(false);
-    });
+    // Lancer l'initialisation séquentielle
+    initializeAuth();
 
-    // Check for connected pharmacy session in localStorage
-    const restorePharmacySession = async () => {
-      const savedPharmacySession = localStorage.getItem('pharmacy_session');
-      if (!savedPharmacySession) {
-        console.log('AUTH: Aucune session pharmacie dans localStorage');
-        return;
-      }
-      
-      try {
-        const sessionData = JSON.parse(savedPharmacySession);
-        console.log('AUTH: Données localStorage pharmacy_session:', JSON.stringify(sessionData));
-        
-        // NOUVEAU : Vérifier que le sessionToken existe AVANT de tenter la validation
-        if (!sessionData.sessionToken) {
-          console.log('AUTH: localStorage pharmacy_session sans sessionToken, suppression...');
-          localStorage.removeItem('pharmacy_session');
-          return;
-        }
-        
-        console.log('AUTH: Restauration session pharmacie via Edge Function, token:', sessionData.sessionToken.substring(0, 8) + '...');
-        
-        // Utiliser l'Edge Function au lieu du RPC pour éviter le problème de cache PostgREST
-        const { data, error } = await supabase.functions.invoke('validate-pharmacy-session', {
-          body: { session_token: sessionData.sessionToken }
-        });
-        
-        if (error) {
-          console.error('AUTH: Erreur validation session pharmacie:', error);
-          localStorage.removeItem('pharmacy_session');
-          return;
-        }
-        
-        console.log('AUTH: Résultat validation Edge Function:', JSON.stringify(data));
-        
-        const validationData = data as { valid: boolean; pharmacy: Pharmacy; error?: string } | null;
-        
-        if (validationData?.valid && validationData.pharmacy) {
-          console.log('AUTH: Session pharmacie restaurée avec succès:', validationData.pharmacy.name);
-          setConnectedPharmacy({
-            ...validationData.pharmacy,
-            sessionToken: sessionData.sessionToken
-          });
-        } else {
-          console.log('AUTH: Session pharmacie invalide ou expirée:', validationData?.error);
-          localStorage.removeItem('pharmacy_session');
-        }
-      } catch (error) {
-        console.error('AUTH: Erreur parsing session pharmacie:', error);
-        localStorage.removeItem('pharmacy_session');
-      }
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
     };
-    
-    restorePharmacySession();
-
-    return () => subscription.unsubscribe();
   }, []);
 
   const signIn = async (email: string, password: string) => {
