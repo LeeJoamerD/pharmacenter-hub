@@ -19,13 +19,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { FileUp, Upload, CheckCircle2, XCircle, AlertTriangle, Loader2, PlusCircle, Settings, Bot } from 'lucide-react';
+import { FileUp, Upload, CheckCircle2, XCircle, AlertTriangle, Loader2, PlusCircle, Settings, Bot, ShieldAlert } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useGlobalCatalogLookup } from '@/hooks/useGlobalCatalogLookup';
 import { ExcelParserService } from '@/services/ExcelParserService';
 import { AutoOrderCreationService } from '@/services/AutoOrderCreationService';
+import { ReceptionValidationService } from '@/services/receptionValidationService';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { usePriceCategories } from '@/hooks/usePriceCategories';
 import { useSupplierExcelMappings } from '@/hooks/useSupplierExcelMappings';
@@ -120,6 +121,10 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   // États pour l'indicateur de progression pendant la validation
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState<string>('');
+  
+  // États pour le dialogue d'avertissements de validation qualité
+  const [showWarningDialog, setShowWarningDialog] = useState(false);
+  const [pendingWarnings, setPendingWarnings] = useState<string[]>([]);
 
   // Fonction pour calculer les prix de vente d'une ligne (pour sauvegarde directe dans lots)
   const calculateLinePricing = useCallback((line: ExcelReceptionLine) => {
@@ -465,8 +470,17 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     }
   };
 
-  // Vérification TVA/Centime à zéro avant validation
-  const handleValidateClick = () => {
+  // Vérification TVA/Centime à zéro avant validation finale
+  const checkZeroWarningAndProceed = () => {
+    if (montantTva === 0 || montantCentimeAdditionnel === 0) {
+      setShowZeroWarningDialog(true);
+      return;
+    }
+    handleSubmit();
+  };
+
+  // Validation complète avec le service de validation avant réception
+  const handleValidateClick = async () => {
     if (!selectedSupplierId) {
       toast.error('Veuillez sélectionner un fournisseur');
       return;
@@ -477,14 +491,76 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       return;
     }
 
-    // Vérifier si TVA ou Centime = 0
-    if (montantTva === 0 || montantCentimeAdditionnel === 0) {
-      setShowZeroWarningDialog(true);
-      return;
-    }
+    setIsProcessing(true);
+    setProcessingStep('Vérification des données...');
 
-    // Si tout est OK, procéder directement
-    handleSubmit();
+    try {
+      // Préparer les données pour validation via le service
+      const lignesForValidation = validationResult.validLines.map(line => {
+        const edited = editedLines.get(line.rowNumber);
+        const statutValue = String(edited?.statut ?? line.statut ?? 'conforme');
+        const statutConverted = statutValue === 'non_conforme' ? 'non-conforme' : 
+                                statutValue === 'refuse' ? 'non-conforme' : 
+                                statutValue === 'partiellement-conforme' ? 'partiellement-conforme' :
+                                'conforme';
+        
+        return {
+          produit_id: line.produitId!,
+          quantite_commandee: line.quantiteCommandee,
+          quantite_recue: line.quantiteRecue,
+          quantite_acceptee: edited?.quantiteAcceptee ?? line.quantiteAcceptee,
+          numero_lot: edited?.numeroLot ?? line.numeroLot,
+          date_expiration: edited?.dateExpiration ?? line.dateExpiration,
+          statut: statutConverted as 'conforme' | 'non-conforme' | 'partiellement-conforme',
+          commentaire: edited?.commentaire ?? line.commentaire
+        };
+      });
+
+      const receptionDataForValidation = {
+        fournisseur_id: selectedSupplierId,
+        commande_id: selectedOrderId || undefined,
+        lignes: lignesForValidation
+      };
+
+      // Validation via le service
+      const validation = await ReceptionValidationService.validateReception(receptionDataForValidation);
+
+      // Afficher les erreurs bloquantes
+      if (!validation.isValid) {
+        validation.errors.forEach(error => toast.error(error));
+        setIsProcessing(false);
+        setProcessingStep('');
+        return;
+      }
+
+      // Afficher les avertissements s'il y en a
+      if (validation.warnings.length > 0) {
+        setPendingWarnings(validation.warnings);
+        setShowWarningDialog(true);
+        setIsProcessing(false);
+        setProcessingStep('');
+        return;
+      }
+
+      // Si pas d'avertissements, vérifier TVA/Centime
+      setIsProcessing(false);
+      setProcessingStep('');
+      checkZeroWarningAndProceed();
+
+    } catch (error) {
+      console.error('Erreur lors de la validation:', error);
+      toast.error('Erreur lors de la validation des données');
+      setIsProcessing(false);
+      setProcessingStep('');
+    }
+  };
+
+  // Confirmation après avertissements de validation qualité
+  const handleConfirmWithWarnings = () => {
+    setShowWarningDialog(false);
+    setPendingWarnings([]);
+    // Après confirmation des avertissements, vérifier TVA/Centime
+    checkZeroWarningAndProceed();
   };
 
   // Confirmation après avertissement TVA/Centime à zéro
@@ -1571,6 +1647,47 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         </CardContent>
       </Card>
 
+      {/* AlertDialog pour avertissements de validation qualité */}
+      <AlertDialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
+        <AlertDialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-amber-500" />
+              Avertissements détectés
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p className="text-foreground">
+                  Les points suivants nécessitent votre attention avant de valider la réception :
+                </p>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {pendingWarnings.map((warning, index) => (
+                    <div key={index} className="flex items-start gap-2 p-2 bg-amber-50 dark:bg-amber-950 rounded-md border border-amber-200 dark:border-amber-800">
+                      <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-amber-700 dark:text-amber-300">{warning}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Voulez-vous continuer malgré ces avertissements ?
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowWarningDialog(false);
+              setPendingWarnings([]);
+            }}>
+              Annuler et corriger
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmWithWarnings}>
+              Continuer la validation
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* AlertDialog pour TVA/Centime à zéro */}
       <AlertDialog open={showZeroWarningDialog} onOpenChange={setShowZeroWarningDialog}>
         <AlertDialogContent>
@@ -1579,17 +1696,19 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
               <AlertTriangle className="h-5 w-5 text-yellow-500" />
               Attention - TVA / Centime Additionnel à zéro
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              {montantTva === 0 && montantCentimeAdditionnel === 0 ? (
-                <p>La <strong>TVA</strong> et le <strong>Centime Additionnel</strong> sont tous les deux à zéro. Êtes-vous sûr de vouloir continuer ?</p>
-              ) : montantTva === 0 ? (
-                <p>La <strong>TVA</strong> est à zéro. Êtes-vous sûr de vouloir continuer sans TVA ?</p>
-              ) : (
-                <p>Le <strong>Centime Additionnel</strong> est à zéro. Êtes-vous sûr de vouloir continuer sans centime additionnel ?</p>
-              )}
-              <p className="text-sm text-muted-foreground">
-                Vous pouvez annuler pour corriger les montants, ou continuer si c'est intentionnel.
-              </p>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                {montantTva === 0 && montantCentimeAdditionnel === 0 ? (
+                  <p>La <strong>TVA</strong> et le <strong>Centime Additionnel</strong> sont tous les deux à zéro. Êtes-vous sûr de vouloir continuer ?</p>
+                ) : montantTva === 0 ? (
+                  <p>La <strong>TVA</strong> est à zéro. Êtes-vous sûr de vouloir continuer sans TVA ?</p>
+                ) : (
+                  <p>Le <strong>Centime Additionnel</strong> est à zéro. Êtes-vous sûr de vouloir continuer sans centime additionnel ?</p>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  Vous pouvez annuler pour corriger les montants, ou continuer si c'est intentionnel.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
