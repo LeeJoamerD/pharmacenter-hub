@@ -41,7 +41,16 @@ export const usePOSProductsPaginated = (
 
       if (error) throw error;
 
-      if (!data || data.length === 0) {
+      // La fonction RPC retourne maintenant un objet JSON avec products, total_count, etc.
+      const result = data as { 
+        products: any[]; 
+        total_count: number; 
+        page: number; 
+        page_size: number; 
+        total_pages: number 
+      };
+
+      if (!result || !result.products || result.products.length === 0) {
         return {
           products: [],
           totalCount: 0,
@@ -50,35 +59,34 @@ export const usePOSProductsPaginated = (
       }
 
       // Transform RPC result to POSProduct format
-      const totalCount = data[0]?.total_count || 0;
-      const products: POSProduct[] = data.map(row => ({
+      const products: POSProduct[] = result.products.map(row => ({
         id: row.id,
         tenant_id: row.tenant_id,
-        name: row.name || row.libelle_produit,
+        name: row.libelle_produit,
         libelle_produit: row.libelle_produit,
-        dci: row.dci,
+        dci: row.dci_nom,
         code_cip: row.code_cip,
         // Prix depuis la table produits (source de vérité)
-        prix_vente_ht: Number(row.price_ht) || 0,
-        prix_vente_ttc: Number(row.price) || 0,
+        prix_vente_ht: Number(row.prix_vente_ht) || 0,
+        prix_vente_ttc: Number(row.prix_vente_ttc) || 0,
         taux_tva: Number(row.taux_tva) || 0,
         tva_montant: Number(row.tva_montant) || 0,
         taux_centime_additionnel: Number(row.taux_centime_additionnel) || 0,
         centime_additionnel_montant: Number(row.centime_additionnel_montant) || 0,
         // Alias pour compatibilité
-        price: Number(row.price) || 0,
-        price_ht: Number(row.price_ht) || 0,
+        price: Number(row.prix_vente_ttc) || 0,
+        price_ht: Number(row.prix_vente_ht) || 0,
         tva_rate: Number(row.taux_tva) || 0,
-        stock: Number(row.stock),
+        stock: Number(row.stock_disponible) || 0,
         category: row.category || 'Non catégorisé',
-        requiresPrescription: row.requires_prescription || false,
+        requiresPrescription: row.prescription_requise || false,
         lots: [] // Lots chargés à la demande
       }));
 
       return {
         products,
-        totalCount,
-        totalPages: Math.ceil(totalCount / pageSize)
+        totalCount: result.total_count,
+        totalPages: result.total_pages
       };
     },
     enabled: shouldFetch, // Ne charge que si recherche >= 2 caractères

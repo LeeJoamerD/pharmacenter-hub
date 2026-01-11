@@ -28,30 +28,32 @@ export const usePOSData = () => {
       return null;
     }
 
-    if (!data || data.length === 0) return null;
+    // La fonction RPC retourne un objet JSON avec product
+    const result = data as { product: any };
+    if (!result || !result.product) return null;
 
-    const product = data[0];
+    const product = result.product;
     return {
       id: product.id,
       tenant_id: product.tenant_id,
-      name: product.name,
+      name: product.libelle_produit,
       libelle_produit: product.libelle_produit,
-      dci: product.dci,
+      dci: product.dci_nom,
       code_cip: product.code_cip,
       // Prix depuis la table produits (source de vérité)
-      prix_vente_ht: Number(product.price_ht) || 0,
-      prix_vente_ttc: Number(product.price) || 0,
+      prix_vente_ht: Number(product.prix_vente_ht) || 0,
+      prix_vente_ttc: Number(product.prix_vente_ttc) || 0,
       taux_tva: Number(product.taux_tva) || 0,
       tva_montant: Number(product.tva_montant) || 0,
       taux_centime_additionnel: Number(product.taux_centime_additionnel) || 0,
       centime_additionnel_montant: Number(product.centime_additionnel_montant) || 0,
       // Alias compatibilité
-      price: Number(product.price) || 0,
-      price_ht: Number(product.price_ht) || 0,
+      price: Number(product.prix_vente_ttc) || 0,
+      price_ht: Number(product.prix_vente_ht) || 0,
       tva_rate: Number(product.taux_tva) || 0,
-      stock: Number(product.stock) || 0,
+      stock: Number(product.stock_disponible) || 0,
       category: product.category || 'Autre',
-      requiresPrescription: product.requires_prescription || false,
+      requiresPrescription: product.prescription_requise || false,
       lots: [] // Les lots seront chargés séparément si nécessaire
     };
   }, [tenantId]);
