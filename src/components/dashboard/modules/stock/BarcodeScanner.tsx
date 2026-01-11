@@ -1,8 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { BarcodeDetector } from 'barcode-detector/ponyfill';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Camera, X, Zap } from 'lucide-react';
+import { Camera, X, Zap, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface BarcodeScannerProps {
@@ -23,21 +24,24 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   const [isScanning, setIsScanning] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastScannedCode, setLastScannedCode] = useState<string | null>(null);
   const { toast } = useToast();
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const barcodeDetectorRef = useRef<BarcodeDetector | null>(null);
 
   const startCamera = async () => {
     try {
       setError(null);
-      
-      // Check if BarcodeDetector is supported
-      if (!('BarcodeDetector' in window)) {
-        throw new Error('La détection de codes-barres n\'est pas supportée sur ce navigateur');
-      }
+      setLastScannedCode(null);
+
+      // Initialize barcode detector with polyfill
+      barcodeDetectorRef.current = new BarcodeDetector({
+        formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code', 'upc_a', 'upc_e']
+      });
 
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: 'environment', // Use back camera if available
+          facingMode: 'environment',
           width: { ideal: 1280 },
           height: { ideal: 720 }
         }
@@ -47,14 +51,28 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        videoRef.current.play();
+        await videoRef.current.play();
       }
       
       setIsScanning(true);
       startBarcodeDetection();
       
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur d\'accès à la caméra';
+      console.error('Camera error:', err);
+      let errorMessage = 'Erreur d\'accès à la caméra';
+      
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError') {
+          errorMessage = 'Accès à la caméra refusé. Veuillez autoriser l\'accès dans les paramètres du navigateur.';
+        } else if (err.name === 'NotFoundError') {
+          errorMessage = 'Aucune caméra trouvée sur cet appareil.';
+        } else if (err.name === 'NotReadableError') {
+          errorMessage = 'La caméra est utilisée par une autre application.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
       setError(errorMessage);
       toast({
         title: "Erreur caméra",
@@ -64,58 +82,50 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     }
   };
 
-  const startBarcodeDetection = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
+  const startBarcodeDetection = () => {
+    if (!videoRef.current || !canvasRef.current || !barcodeDetectorRef.current) return;
 
-    try {
-      // @ts-ignore - BarcodeDetector is not in TypeScript types yet
-      const barcodeDetector = new BarcodeDetector({
-        formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code']
-      });
+    const detectBarcodes = async () => {
+      if (!videoRef.current || !canvasRef.current || !barcodeDetectorRef.current) return;
 
-      const detectBarcodes = async () => {
-        if (!videoRef.current || !canvasRef.current || !isScanning) return;
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
 
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        const context = canvas.getContext('2d');
+      if (!context || video.readyState !== video.HAVE_ENOUGH_DATA) return;
 
-        if (!context || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Set canvas size to match video
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        // Draw current video frame to canvas
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        try {
-          const barcodes = await barcodeDetector.detect(canvas);
+      try {
+        const barcodes = await barcodeDetectorRef.current.detect(canvas);
+        
+        if (barcodes.length > 0) {
+          const barcode = barcodes[0];
+          const scannedValue = barcode.rawValue;
           
-          if (barcodes.length > 0) {
-            const barcode = barcodes[0];
-            onScanResult(barcode.rawValue);
+          // Avoid duplicate scans
+          if (scannedValue && scannedValue !== lastScannedCode) {
+            setLastScannedCode(scannedValue);
+            onScanResult(scannedValue);
             
             toast({
               title: "Code-barres détecté",
-              description: `Code: ${barcode.rawValue}`,
+              description: `Code: ${scannedValue}`,
             });
             
-            // Stop scanning after successful detection
             stopCamera();
             onClose();
           }
-        } catch (detectionError) {
-          // Silent fail - continue scanning
         }
-      };
+      } catch (detectionError) {
+        // Silent fail - continue scanning
+        console.debug('Detection cycle error:', detectionError);
+      }
+    };
 
-      // Start detection loop
-      scanIntervalRef.current = setInterval(detectBarcodes, 100);
-      
-    } catch (err) {
-      setError('Erreur lors de l\'initialisation du détecteur de codes-barres');
-    }
+    scanIntervalRef.current = setInterval(detectBarcodes, 150);
   };
 
   const stopCamera = () => {
@@ -134,6 +144,8 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+
+    barcodeDetectorRef.current = null;
   };
 
   const handleClose = () => {
@@ -141,7 +153,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     onClose();
   };
 
-  // Start camera when dialog opens
   useEffect(() => {
     if (isOpen) {
       startCamera();
@@ -154,7 +165,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
     };
   }, [isOpen]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopCamera();
@@ -179,10 +189,10 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             <Card>
               <CardContent className="p-6">
                 <div className="text-center space-y-4">
-                  <div className="text-red-500">
-                    <X className="h-12 w-12 mx-auto mb-2" />
+                  <div className="text-destructive">
+                    <AlertCircle className="h-12 w-12 mx-auto mb-2" />
                     <p className="font-medium">Erreur de caméra</p>
-                    <p className="text-sm text-muted-foreground">{error}</p>
+                    <p className="text-sm text-muted-foreground mt-2">{error}</p>
                   </div>
                   <Button onClick={startCamera} variant="outline">
                     <Camera className="h-4 w-4 mr-2" />
@@ -203,9 +213,14 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
               
               {/* Scanning overlay */}
               {isScanning && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="border-2 border-white rounded-lg w-48 h-32 relative">
-                    <div className="absolute inset-0 border border-dashed border-white animate-pulse"></div>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="border-2 border-primary rounded-lg w-48 h-32 relative">
+                    <div className="absolute inset-0 border border-dashed border-primary/50 animate-pulse"></div>
+                    {/* Corner indicators */}
+                    <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-primary"></div>
+                    <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-primary"></div>
+                    <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-primary"></div>
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-primary"></div>
                   </div>
                 </div>
               )}
@@ -213,7 +228,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
               {/* Scanning indicator */}
               {isScanning && (
                 <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
-                  <Zap className="h-3 w-3" />
+                  <Zap className="h-3 w-3 animate-pulse" />
                   Scanning...
                 </div>
               )}
@@ -228,7 +243,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           
           <div className="flex justify-between items-center">
             <p className="text-sm text-muted-foreground">
-              Formats supportés: EAN-13, EAN-8, Code 128, Code 39, QR Code
+              Formats: EAN-13, EAN-8, Code 128, Code 39, UPC-A, UPC-E, QR
             </p>
             <Button variant="outline" onClick={handleClose}>
               <X className="h-4 w-4 mr-2" />

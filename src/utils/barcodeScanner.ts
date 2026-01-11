@@ -25,7 +25,7 @@ class BarcodeScanner {
       prefix: '',
       suffix: 'Enter',
       timeout: 100,
-      minLength: 8,
+      minLength: 7, // EAN-8 can have 7-8 characters
       maxLength: 20,
       ...config,
     };
