@@ -1,14 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Plus, Package, AlertTriangle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Plus, Package, AlertTriangle, Loader2, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { POSProduct } from '@/types/pos';
 import { usePOSProductsPaginated } from '@/hooks/usePOSProductsPaginated';
 import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+
 interface ProductSearchProps {
   onAddToCart: (product: POSProduct, quantity?: number) => void;
 }
@@ -18,6 +21,7 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
   const debouncedSearch = useDebouncedValue(searchInput, 300);
   const { formatAmount } = useCurrencyFormatting();
   const { t } = useLanguage();
+  const { toast } = useToast();
   
   const { 
     products, 
@@ -30,6 +34,16 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
   } = usePOSProductsPaginated(debouncedSearch, 50);
 
   const handleAddToCart = async (product: POSProduct) => {
+    // Bloquer l'ajout si tous les lots sont expirés
+    if (product.all_lots_expired) {
+      toast({
+        title: t('expiredProduct') || 'Produit expiré',
+        description: t('expiredProductMessage') || 'Impossible d\'ajouter ce produit au panier car tous ses lots sont expirés.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     // Récupérer les lots à la demande pour ce produit
     const lots = await getProductLots(product.id);
     onAddToCart({ ...product, lots });
@@ -81,14 +95,31 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
           </div>
         ) : (
           products.map(product => (
-            <Card key={product.id} className="hover:shadow-md transition-shadow">
+            <Card 
+              key={product.id} 
+              className={cn(
+                "hover:shadow-md transition-shadow",
+                product.all_lots_expired && "border-destructive bg-destructive/5"
+              )}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-medium truncate">{product.name}</h4>
-                      {product.requiresPrescription && (
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h4 className={cn(
+                        "font-medium truncate",
+                        product.all_lots_expired && "text-destructive"
+                      )}>
+                        {product.name}
+                      </h4>
+                      {product.all_lots_expired && (
                         <Badge variant="destructive" className="text-xs">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {t('allLotsExpired') || 'Tous lots expirés'}
+                        </Badge>
+                      )}
+                      {product.requiresPrescription && (
+                        <Badge variant="outline" className="text-xs border-orange-500 text-orange-600">
                           <AlertTriangle className="h-3 w-3 mr-1" />
                           {t('prescriptionRequired')}
                         </Badge>
@@ -101,7 +132,10 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
                     
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <span className="font-bold text-primary">
+                        <span className={cn(
+                          "font-bold",
+                          product.all_lots_expired ? "text-destructive" : "text-primary"
+                        )}>
                           {formatAmount(product.price)}
                         </span>
                         <Badge 
@@ -115,8 +149,12 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
                       <Button
                         size="sm"
                         onClick={() => handleAddToCart(product)}
-                        disabled={product.stock === 0}
-                        className="shrink-0"
+                        disabled={product.stock === 0 || product.all_lots_expired}
+                        className={cn(
+                          "shrink-0",
+                          product.all_lots_expired && "opacity-50 cursor-not-allowed"
+                        )}
+                        variant={product.all_lots_expired ? "outline" : "default"}
                       >
                         <Plus className="h-4 w-4 mr-1" />
                         {t('addBtn')}

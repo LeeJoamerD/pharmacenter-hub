@@ -54,7 +54,11 @@ export const usePOSData = () => {
       stock: Number(product.stock_disponible) || 0,
       category: product.category || 'Autre',
       requiresPrescription: product.prescription_requise || false,
-      lots: [] // Les lots seront chargés séparément si nécessaire
+      lots: [], // Les lots seront chargés séparément si nécessaire
+      // Info expiration
+      earliest_expiration_date: product.earliest_expiration_date,
+      has_valid_stock: product.has_valid_stock ?? true,
+      all_lots_expired: product.all_lots_expired ?? false
     };
   }, [tenantId]);
 
