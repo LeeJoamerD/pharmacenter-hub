@@ -8,7 +8,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { POSProduct, TransactionData, VenteResult } from '@/types/pos';
 import { updateStockAfterSale } from '@/utils/stockUpdater';
 import { generateInvoiceNumber } from '@/utils/invoiceGenerator';
-import { generateSaleAccountingEntries, isAutoAccountingEnabled } from '@/services/AccountingEntriesService';
+// Note: Écritures comptables maintenant générées à la fermeture de session (CloseSessionModal)
 import { unifiedPricingService } from '@/services/UnifiedPricingService';
 
 export const usePOSData = () => {
@@ -318,24 +318,8 @@ export const usePOSData = () => {
         console.error('Erreur mouvements stock:', mouvementError);
       }
 
-      // 10. Générer les écritures comptables automatiquement (si configuré)
-      try {
-        const autoAccountingEnabled = await isAutoAccountingEnabled(tenantId);
-        if (autoAccountingEnabled && !skipPayment) {
-          await generateSaleAccountingEntries({
-            venteId: vente.id,
-            numeroVente: numeroFacture,
-            tenantId,
-            montantHT,
-            montantTVA,
-            montantCentimeAdditionnel,
-            montantTTC: subtotal,
-            modePaiement: transactionData.payment.method
-          });
-        }
-      } catch (accountingError) {
-        console.error('Erreur écritures comptables (non bloquante):', accountingError);
-      }
+      // 10. Écritures comptables maintenant générées à la fermeture de session
+      // (voir CloseSessionModal.tsx)
 
       return {
         vente_id: vente.id,
@@ -420,24 +404,8 @@ export const usePOSData = () => {
         console.error('Erreur création mouvement caisse:', mouvementError);
       }
 
-      // 4. Générer les écritures comptables automatiquement (si configuré)
-      try {
-        const autoAccountingEnabled = await isAutoAccountingEnabled(tenantId);
-        if (autoAccountingEnabled) {
-          await generateSaleAccountingEntries({
-            venteId,
-            numeroVente: vente.numero_vente,
-            tenantId,
-            montantHT: Number(vente.montant_total_ht) || 0,
-            montantTVA: Number(vente.montant_tva) || 0,
-            montantCentimeAdditionnel: 0, // Non stocké dans la vente, sera calculé si nécessaire
-            montantTTC: Number(vente.montant_total_ttc) || paymentData.amount_received,
-            modePaiement: paymentData.method
-          });
-        }
-      } catch (accountingError) {
-        console.error('Erreur écritures comptables (non bloquante):', accountingError);
-      }
+      // 4. Écritures comptables maintenant générées à la fermeture de session
+      // (voir CloseSessionModal.tsx)
 
       return { success: true };
 
