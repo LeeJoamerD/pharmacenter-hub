@@ -208,17 +208,14 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
       }
     });
 
-    // Arrondir avec le service centralisé (précision et méthode configurées)
-    sousTotalHT = unifiedPricingService.roundToNearest(sousTotalHT, roundingPrecision, roundingMethod);
-    totalTva = unifiedPricingService.roundToNearest(totalTva, roundingPrecision, roundingMethod);
-    totalCentime = unifiedPricingService.roundToNearest(totalCentime, roundingPrecision, roundingMethod);
-
     // Calcul ASDI automatique : ((Sous-total HT + TVA) × 0.42) / 100
-    let totalAsdi = ((sousTotalHT + totalTva) * 0.42) / 100;
-    totalAsdi = unifiedPricingService.roundToNearest(totalAsdi, roundingPrecision, roundingMethod);
+    // Pas d'arrondi sur Sous-total HT, TVA, Centime et ASDI - valeurs exactes
+    const totalAsdi = ((sousTotalHT + totalTva) * 0.42) / 100;
 
     // Total TTC = HT + TVA + Centime + ASDI
-    const totalTTC = sousTotalHT + totalTva + totalCentime + totalAsdi;
+    // Arrondi appliqué UNIQUEMENT sur le Total TTC final
+    const rawTotalTTC = sousTotalHT + totalTva + totalCentime + totalAsdi;
+    const totalTTC = unifiedPricingService.roundToNearest(rawTotalTTC, roundingPrecision, roundingMethod);
 
     return { sousTotalHT, totalTva, totalCentime, totalAsdi, totalTTC };
   };
