@@ -29,6 +29,9 @@ import { AutoOrderCreationService } from '@/services/AutoOrderCreationService';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { usePriceCategories } from '@/hooks/usePriceCategories';
 import { useSupplierExcelMappings } from '@/hooks/useSupplierExcelMappings';
+import { unifiedPricingService } from '@/services/UnifiedPricingService';
+import { useStockSettings } from '@/hooks/useStockSettings';
+import { useSalesSettings } from '@/hooks/useSalesSettings';
 import type { ExcelReceptionLine, ParseResult, ValidationResult } from '@/types/excelImport';
 import type { Reception } from '@/hooks/useReceptions';
 import type { ExcelColumnMapping } from '@/types/excelMapping';
@@ -51,6 +54,12 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const { getMappingBySupplier, mappings } = useSupplierExcelMappings();
   const { tenantId } = useTenant();
   const { searchGlobalCatalog, mapToLocalReferences } = useGlobalCatalogLookup();
+  const { settings: stockSettings } = useStockSettings();
+  const { settings: salesSettings } = useSalesSettings();
+  
+  // Paramètres d'arrondi depuis le service centralisé
+  const roundingPrecision = stockSettings?.rounding_precision || 25;
+  const roundingMethod = (salesSettings?.tax?.taxRoundingMethod as 'ceil' | 'floor' | 'round' | 'none') || 'ceil';
   
   // État pour le bouton Robot Site Fournisseur
   const [launchingRobot, setLaunchingRobot] = useState(false);
@@ -237,10 +246,14 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const calculateTotals = useMemo(() => {
     const { sousTotal } = calculateAutoSuggestions();
     
-    // Total TTC = Sous-total HT + TVA + Centime + ASDI (valeurs modifiables)
-    const totalGeneral = sousTotal + montantTva + montantCentimeAdditionnel + montantAsdi;
+    // Total TTC = Sous-total HT + TVA + Centime + ASDI
+    const rawTotal = sousTotal + montantTva + montantCentimeAdditionnel + montantAsdi;
+    
+    // Arrondi appliqué UNIQUEMENT sur le Total TTC final (selon configuration)
+    const totalGeneral = unifiedPricingService.roundToNearest(rawTotal, roundingPrecision, roundingMethod);
+    
     return { sousTotal, totalGeneral };
-  }, [calculateAutoSuggestions, montantTva, montantCentimeAdditionnel, montantAsdi]);
+  }, [calculateAutoSuggestions, montantTva, montantCentimeAdditionnel, montantAsdi, roundingPrecision, roundingMethod]);
 
   // Liste des produits avec erreur "product_not_found"
   const productNotFoundLines = useMemo(() => {
