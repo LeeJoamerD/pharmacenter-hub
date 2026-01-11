@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import {
   Pagination,
@@ -31,10 +30,13 @@ import {
   Camera,
   Keyboard,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  XCircle
 } from 'lucide-react';
 import { useInventoryEntry, InventoryItem } from '@/hooks/useInventoryEntry';
 import { toast } from 'sonner';
+import BarcodeScanner from './BarcodeScanner';
+import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 
 interface InventoryEntryProps {
   selectedSessionId?: string;
@@ -63,6 +65,7 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [showCameraDialog, setShowCameraDialog] = useState(false);
+  const [isPhysicalScannerActive, setIsPhysicalScannerActive] = useState(true);
   const [resetItemId, setResetItemId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'tous' | 'non_compte' | 'compte' | 'ecart'>('tous');
   const [searchTerm, setSearchTerm] = useState('');
@@ -166,7 +169,7 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
     }
   }, [selectedSession, loading, items.length, hasAttemptedInit, initializeSessionItems]);
 
-  const handleScan = (code: string) => {
+  const handleScan = useCallback((code: string) => {
     const item = itemsByBarcode.get(code);
     if (item) {
       setSelectedItem(item);
@@ -174,10 +177,24 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
       setCurrentLocation(item.emplacementReel || item.emplacementTheorique || '');
       setScannedCode(code);
       setManualCode('');
+      toast.success(`Produit trouvé: ${item.produit}`);
     } else {
       toast.error('Produit non trouvé dans cette session d\'inventaire');
     }
-  };
+  }, [itemsByBarcode]);
+
+  // Setup physical barcode scanner
+  useEffect(() => {
+    if (!isPhysicalScannerActive || !selectedSession) return;
+
+    const cleanup = setupBarcodeScanner(handleScan, {
+      minLength: 7,
+      maxLength: 20,
+      timeout: 100,
+    });
+
+    return cleanup;
+  }, [isPhysicalScannerActive, handleScan, selectedSession]);
 
   const handleManualEntry = () => {
     if (!manualCode.trim()) {
@@ -579,24 +596,29 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
                               }
                             }}
                           />
-                          <Dialog open={showCameraDialog} onOpenChange={setShowCameraDialog}>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="icon">
-                                <Camera className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Scanner avec la caméra</DialogTitle>
-                                <DialogDescription>
-                                  Positionnez le code-barres devant la caméra
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="flex items-center justify-center h-64 bg-muted rounded-lg">
-                                <p className="text-muted-foreground">Caméra non disponible</p>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={() => setShowCameraDialog(true)}
+                            title="Scanner avec la caméra"
+                          >
+                            <Camera className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant={isPhysicalScannerActive ? "default" : "outline"}
+                            size="icon"
+                            onClick={() => {
+                              setIsPhysicalScannerActive(prev => !prev);
+                              toast.info(isPhysicalScannerActive ? 'Scanner physique désactivé' : 'Scanner physique activé');
+                            }}
+                            title={isPhysicalScannerActive ? "Scanner physique actif" : "Scanner physique inactif"}
+                          >
+                            {isPhysicalScannerActive ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <XCircle className="h-4 w-4" />
+                            )}
+                          </Button>
                         </div>
                       </div>
                     ) : (
@@ -1060,6 +1082,17 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
           </CardContent>
         </Card>
       )}
+
+      {/* Camera Barcode Scanner Modal */}
+      <BarcodeScanner
+        isOpen={showCameraDialog}
+        onClose={() => setShowCameraDialog(false)}
+        onScanResult={(barcode) => {
+          handleScan(barcode);
+          setShowCameraDialog(false);
+        }}
+        title="Scanner un produit pour l'inventaire"
+      />
     </div>
   );
 };
