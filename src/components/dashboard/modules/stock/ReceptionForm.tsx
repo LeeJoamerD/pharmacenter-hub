@@ -1083,14 +1083,14 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <QrCode className="h-5 w-5" />
-            {t('receptionFormBarcodeScanner')}
+            {t('receptionFormScanBarcode')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4">
             <div className="flex-1">
               <Input
-                placeholder={t('receptionFormBarcodePlaceholder')}
+                placeholder={t('receptionFormScanPlaceholder')}
                 value={scannedBarcode}
                 onChange={(e) => setScannedBarcode(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleBarcodeSubmit()}
@@ -1123,7 +1123,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       {receptionLines.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>{t('receptionFormReceptionDetails')}</CardTitle>
+            <CardTitle>{t('receptionFormDetails')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="rounded-md border max-h-96 overflow-x-scroll overflow-y-scroll">
@@ -1131,7 +1131,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                 <TableHeader>
                   <TableRow>
                     <TableHead>{t('receptionFormProduct')}</TableHead>
-                    <TableHead>{t('receptionFormPricingCategory')}</TableHead>
+                    <TableHead>{t('receptionFormPriceCategory')}</TableHead>
                     <TableHead>{t('receptionFormOrdered')}</TableHead>
                     <TableHead>{t('receptionFormReceived')}</TableHead>
                     <TableHead>{t('receptionFormAccepted')}</TableHead>
@@ -1286,7 +1286,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                   
                   {/* TVA - Saisie manuelle en montant */}
                   <div className="flex justify-between items-center gap-4">
-                    <Label htmlFor="montant-tva" className="whitespace-nowrap">{t('receptionFormVAT')} ({currencySymbol}) :</Label>
+                    <Label htmlFor="montant-tva" className="whitespace-nowrap">{t('receptionFormTVA')} ({currencySymbol}) :</Label>
                     <Input
                       id="montant-tva"
                       type="number"
@@ -1305,7 +1305,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                   
                   {/* Centime Additionnel - Saisie manuelle en montant */}
                   <div className="flex justify-between items-center gap-4">
-                    <Label htmlFor="montant-centime" className="whitespace-nowrap">{t('receptionFormAdditionalCentime')} ({currencySymbol}) :</Label>
+                    <Label htmlFor="montant-centime" className="whitespace-nowrap">{t('receptionFormCentimeAdditionnel')} ({currencySymbol}) :</Label>
                     <Input
                       id="montant-centime"
                       type="number"
@@ -1368,7 +1368,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                     checked={emballageConforme}
                     onCheckedChange={(checked) => setEmballageConforme(checked === true)}
                   />
-                  <Label htmlFor="emballage">{t('receptionFormPackagingCompliant')}</Label>
+                  <Label htmlFor="emballage">{t('receptionFormPackagingConform')}</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox 
@@ -1394,7 +1394,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                    id="observations"
                    value={observations}
                    onChange={(e) => setObservations(e.target.value)}
-                   placeholder={t('receptionFormObservationsPlaceholder')}
+                   placeholder={t('receptionFormGeneralObservationsPlaceholder')}
                    rows={3}
                  />
               </div>
@@ -1413,7 +1413,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                    disabled={loading || isProcessing || !selectedOrder || receptionLines.length === 0}
                  >
                    <CheckCircle className="mr-2 h-4 w-4" />
-                   {isProcessing ? t('receptionFormValidating') : t('receptionFormValidateReception')}
+                   {isProcessing ? t('receptionFormValidating') : t('receptionFormValidate')}
                  </Button>
                </div>
             </div>
@@ -1431,7 +1431,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
                 <div key={index} className="text-amber-600 mb-2">• {warning}</div>
               ))}
               <br />
-              {t('receptionFormContinueWithWarnings')}
+              {t('receptionFormContinueWarnings')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1454,18 +1454,18 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              {t('receptionFormVATCentimeZeroWarningTitle')}
+              {t('receptionFormZeroWarningTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {montantTva === 0 && montantCentimeAdditionnel === 0 ? (
-                <>{t('receptionFormVATAndCentimeZero')}</>
+                <>{t('receptionFormTVACentimeZero')}</>
               ) : montantTva === 0 ? (
-                <>{t('receptionFormVATZero')}</>
+                <>{t('receptionFormTVAZero')}</>
               ) : (
                 <>{t('receptionFormCentimeZero')}</>
               )}
               <br /><br />
-              {t('receptionFormConfirmZeroValidation')}
+              {t('receptionFormConfirmZero')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1473,7 +1473,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
               setShowZeroWarningDialog(false);
               setPendingZeroValidation(null);
             }}>
-              {t('receptionFormCancelAndCorrect')}
+              {t('receptionFormCancelCorrect')}
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmZeroWarning}>
               {t('receptionFormContinueValidation')}
@@ -1486,9 +1486,9 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       <Dialog open={showCameraDialog} onOpenChange={handleCameraClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('receptionFormBarcodeScannerTitle')}</DialogTitle>
+            <DialogTitle>{t('receptionFormCameraTitle')}</DialogTitle>
             <DialogDescription>
-              {t('receptionFormBarcodeScannerDescription')}
+              {t('receptionFormCameraDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center space-y-4">
@@ -1505,7 +1505,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
               />
             ) : (
               <div className="w-full max-w-sm h-64 rounded-lg border flex items-center justify-center text-muted-foreground">
-                {t('receptionFormCameraInitializing')}
+                {t('receptionFormCameraInit')}
               </div>
             )}
             <Button onClick={handleCameraClose} variant="outline">
