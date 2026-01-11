@@ -116,6 +116,10 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   
   // États pour l'AlertDialog d'avertissement TVA/Centime/ASDI à zéro
   const [showZeroWarningDialog, setShowZeroWarningDialog] = useState(false);
+  
+  // États pour l'indicateur de progression pendant la validation
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStep, setProcessingStep] = useState<string>('');
 
   // Fonction pour calculer les prix de vente d'une ligne (pour sauvegarde directe dans lots)
   const calculateLinePricing = useCallback((line: ExcelReceptionLine) => {
@@ -500,13 +504,16 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       return;
     }
 
+    setIsProcessing(true);
+    setProcessingStep('Préparation des données...');
+
     try {
       let orderId = selectedOrderId;
       let isAutoCreated = false;
 
       // Si aucune commande n'est sélectionnée, en créer une automatiquement
       if (!orderId) {
-        toast.info('Création automatique de la commande...');
+        setProcessingStep('Création automatique de la commande...');
         const orderResult = await AutoOrderCreationService.createOrderFromExcelData(
           selectedSupplierId,
           validationResult.validLines,
@@ -516,6 +523,8 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         isAutoCreated = true;
         toast.success(`Commande ${orderResult.orderNumber} créée automatiquement`);
       }
+
+      setProcessingStep(`Enregistrement des ${validationResult.validLines.length} lignes de réception...`);
 
       // Préparer les lignes de réception (avec les valeurs éditées et les prix pré-calculés)
       const lignes = validationResult.validLines.map(line => {
@@ -554,6 +563,8 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         };
       });
 
+      setProcessingStep('Création de la réception et mise à jour du stock...');
+
       const receptionData = {
         fournisseur_id: selectedSupplierId,
         commande_id: orderId || undefined,
@@ -579,6 +590,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
 
       // Mettre à jour le statut de la commande
       if (orderId) {
+        setProcessingStep('Finalisation de la commande...');
         await AutoOrderCreationService.updateOrderStatus(orderId, 'Réceptionné');
         toast.success(
           isAutoCreated 
@@ -594,6 +606,9 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     } catch (error) {
       console.error('Erreur lors de la création de la réception:', error);
       toast.error('Erreur lors de la création de la réception');
+    } finally {
+      setIsProcessing(false);
+      setProcessingStep('');
     }
   };
 
@@ -1495,20 +1510,50 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                 </div>
               </div>
               
+              {/* Indicateur de progression */}
+              {isProcessing && (
+                <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+                  <AlertTitle className="text-blue-700 dark:text-blue-300">Traitement en cours</AlertTitle>
+                  <AlertDescription className="text-blue-600 dark:text-blue-400">
+                    {processingStep}
+                    <div className="mt-2 h-2 w-full bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-600 dark:bg-blue-400 rounded-full transition-all duration-500 ease-out"
+                        style={{
+                          width: processingStep.includes('Préparation') ? '10%' :
+                                 processingStep.includes('commande') ? '30%' :
+                                 processingStep.includes('lignes') ? '60%' :
+                                 processingStep.includes('stock') ? '85%' :
+                                 processingStep.includes('Finalisation') ? '95%' :
+                                 '100%'
+                        }}
+                      />
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               {/* Boutons d'action */}
               <div className="flex gap-2">
                 <Button
                   onClick={resetForm}
                   variant="outline"
+                  disabled={isProcessing}
                 >
                   Annuler
                 </Button>
                 <Button
                   onClick={handleValidateClick}
-                  disabled={loading || validationResult.validLines.length === 0}
+                  disabled={isProcessing || loading || validationResult.validLines.length === 0}
                   className="ml-auto"
                 >
-                  {loading ? (
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {processingStep || 'Traitement en cours...'}
+                    </>
+                  ) : loading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Création en cours...
