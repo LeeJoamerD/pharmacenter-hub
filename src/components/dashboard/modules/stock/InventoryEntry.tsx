@@ -80,7 +80,6 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
   }>>([]);
   const [formErrors, setFormErrors] = useState<{
     quantity?: string;
-    location?: string;
   }>({});
   const [hasAttemptedInit, setHasAttemptedInit] = useState(false);
 
@@ -205,15 +204,13 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
   };
 
   const validateForm = () => {
-    const errors: { quantity?: string; location?: string } = {};
+    const errors: { quantity?: string } = {};
     
     if (!currentQuantity || isNaN(Number(currentQuantity)) || Number(currentQuantity) < 0) {
       errors.quantity = 'Quantité invalide';
     }
     
-    if (!currentLocation.trim()) {
-      errors.location = 'Emplacement requis';
-    }
+    // Emplacement est maintenant facultatif
     
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -297,8 +294,9 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
   };
 
   const handleQuickSave = async () => {
+    // Emplacement n'est plus requis pour la validation
     const validItems = quickEntryItems.filter(item => 
-      item.quantite && !isNaN(Number(item.quantite)) && Number(item.quantite) >= 0 && item.emplacement.trim()
+      item.quantite && !isNaN(Number(item.quantite)) && Number(item.quantite) >= 0
     );
 
     if (validItems.length === 0) {
@@ -672,17 +670,13 @@ const InventoryEntry: React.FC<InventoryEntryProps> = ({ selectedSessionId }) =>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="location">Emplacement</Label>
+                      <Label htmlFor="location">Emplacement (facultatif)</Label>
                       <Input
                         id="location"
                         placeholder="Ex: A1-B2"
                         value={currentLocation}
                         onChange={(e) => setCurrentLocation(e.target.value)}
-                        className={formErrors.location ? 'border-red-500' : ''}
                       />
-                      {formErrors.location && (
-                        <p className="text-sm text-red-500">{formErrors.location}</p>
-                      )}
                     </div>
 
                     <div className="flex gap-2">
