@@ -93,7 +93,6 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   const [showWarningDialog, setShowWarningDialog] = useState(false);
   const [pendingValidation, setPendingValidation] = useState<{ isValidated: boolean; warnings: string[] } | null>(null);
   const [showCameraDialog, setShowCameraDialog] = useState(false);
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   // Montants TVA, Centime et ASDI en FCFA (saisie manuelle)
   const [montantTva, setMontantTva] = useState<number>(0);
   const [montantCentimeAdditionnel, setMontantCentimeAdditionnel] = useState<number>(0);
@@ -442,29 +441,34 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
     }
   };
 
-  const handleBarcodeSubmit = () => {
-    if (!scannedBarcode.trim()) {
-      toast({
-        title: t('receptionFormError'),
-        description: t('receptionFormEnterBarcode'),
-        variant: "destructive",
-      });
-      return;
-    }
+  // Fonction de recherche multi-critères (CIP, code_barre_externe, ancien_code_cip)
+  const findProductByBarcode = useCallback((barcode: string) => {
+    const barcodeToSearch = barcode.trim().toLowerCase();
+    
+    return orderLines.find(ol => {
+      if (!ol.produit) return false;
+      
+      const codeCip = ol.produit.code_cip?.toLowerCase() || '';
+      const codeBarreExterne = ol.produit.code_barre_externe?.toLowerCase() || '';
+      const ancienCodeCip = ol.produit.ancien_code_cip?.toLowerCase() || '';
+      
+      return codeCip === barcodeToSearch || 
+             codeBarreExterne === barcodeToSearch || 
+             ancienCodeCip === barcodeToSearch;
+    });
+  }, [orderLines]);
 
-    // Chercher le produit dans les lignes de commande
-    const matchingOrderLine = orderLines.find(ol => 
-      ol.produit && ol.produit.code_cip && ol.produit.code_cip === scannedBarcode.trim()
-    );
+  // Fonction pour traiter un code-barres (utilisée par le champ manuel et la caméra)
+  const processBarcode = useCallback((barcode: string) => {
+    const matchingOrderLine = findProductByBarcode(barcode);
 
     if (!matchingOrderLine) {
       toast({
         title: t('receptionFormProductNotFound'),
-        description: t('receptionFormNoProductWithCode', { code: scannedBarcode }),
+        description: t('receptionFormNoProductWithCode', { code: barcode }),
         variant: "destructive",
       });
-      setScannedBarcode('');
-      return;
+      return false;
     }
 
     // Mettre à jour la ligne correspondante
@@ -477,52 +481,30 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         title: t('receptionFormProductProcessed'),
         description: `${matchingOrderLine.produit?.libelle_produit || t('orderListProduct')} - ${t('receptionFormQuantityIncremented')}`,
       });
+      return true;
+    }
+    return false;
+  }, [findProductByBarcode, receptionLines, t, toast, updateReceptionLine]);
+
+  const handleBarcodeSubmit = () => {
+    if (!scannedBarcode.trim()) {
+      toast({
+        title: t('receptionFormError'),
+        description: t('receptionFormEnterBarcode'),
+        variant: "destructive",
+      });
+      return;
     }
 
+    processBarcode(scannedBarcode);
     setScannedBarcode('');
   };
 
-  const handleCameraOpen = async () => {
-    try {
-      if ('BarcodeDetector' in window) {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
-        });
-        setCameraStream(stream);
-        setShowCameraDialog(true);
-        
-        // Initialiser le détecteur de codes-barres
-        // @ts-ignore - BarcodeDetector n'est pas encore dans les types TypeScript
-        const barcodeDetector = new BarcodeDetector({
-          formats: ['ean_13', 'ean_8', 'code_128', 'qr_code']
-        });
-        
-        // TODO: Implémenter la détection en temps réel
-        toast({
-          title: t('receptionFormCameraActivated'),
-          description: t('receptionFormScannerActivated'),
-        });
-      } else {
-        toast({
-          title: t('receptionFormScannerNotSupported'),
-          description: t('receptionFormUseManual'),
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      toast({
-        title: t('receptionFormCameraError'),
-        description: t('receptionFormCameraAccessError'),
-        variant: "destructive",
-      });
-    }
+  const handleCameraOpen = () => {
+    setShowCameraDialog(true);
   };
 
   const handleCameraClose = () => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
-      setCameraStream(null);
-    }
     setShowCameraDialog(false);
   };
 
@@ -1113,10 +1095,12 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         isOpen={showCameraDialog}
         onClose={handleCameraClose}
         onScanResult={(barcode) => {
-          setScannedBarcode(barcode);
-          handleBarcodeSubmit();
+          // Fermer d'abord le dialog
+          setShowCameraDialog(false);
+          // Traiter directement le barcode scanné (évite le bug de timing)
+          processBarcode(barcode);
         }}
-        title="Scanner de Réception"
+        title={t('receptionFormCameraTitle')}
       />
 
       {/* Détail de la réception */}
@@ -1482,38 +1466,6 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Dialog caméra */}
-      <Dialog open={showCameraDialog} onOpenChange={handleCameraClose}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('receptionFormCameraTitle')}</DialogTitle>
-            <DialogDescription>
-              {t('receptionFormCameraDescription')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center space-y-4">
-            {cameraStream ? (
-              <video 
-                autoPlay 
-                playsInline 
-                className="w-full max-w-sm rounded-lg border"
-                ref={(video) => {
-                  if (video && cameraStream) {
-                    video.srcObject = cameraStream;
-                  }
-                }}
-              />
-            ) : (
-              <div className="w-full max-w-sm h-64 rounded-lg border flex items-center justify-center text-muted-foreground">
-                {t('receptionFormCameraInit')}
-              </div>
-            )}
-            <Button onClick={handleCameraClose} variant="outline">
-              {t('receptionFormClose')}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
