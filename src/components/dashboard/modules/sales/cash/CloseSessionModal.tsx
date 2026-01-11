@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Calculator, DollarSign, TrendingUp, TrendingDown, Loader2, AlertTriangle, AlertCircle, Receipt } from 'lucide-react';
+import { Calculator, DollarSign, TrendingUp, TrendingDown, Loader2, AlertTriangle, AlertCircle, Receipt, BookOpen } from 'lucide-react';
 import { CashSession } from '@/hooks/useCashRegister';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import useCashRegister from '@/hooks/useCashRegister';
@@ -14,6 +14,8 @@ import { useTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { toast } from 'sonner';
+import { generateSessionAccountingEntries, getSessionSalesTotals, isAutoAccountingEnabled } from '@/services/AccountingEntriesService';
 
 interface PendingTransaction {
   id: string;
@@ -145,6 +147,38 @@ const CloseSessionModal = ({ session, open, onOpenChange, onSessionClosed }: Clo
 
     try {
       await closeSession(session.id, Number(montantReel), notes || undefined);
+      
+      // Génération des écritures comptables consolidées
+      try {
+        const autoAccountingEnabled = await isAutoAccountingEnabled(tenantId);
+        if (autoAccountingEnabled) {
+          const sessionTotals = await getSessionSalesTotals(session.id, tenantId);
+          
+          if (sessionTotals.nombreVentes > 0) {
+            const success = await generateSessionAccountingEntries({
+              sessionId: session.id,
+              numeroSession: session.numero_session || session.id.slice(-8),
+              tenantId,
+              montantTotalHT: sessionTotals.totalHT,
+              montantTotalTVA: sessionTotals.totalTVA,
+              montantTotalCentimeAdditionnel: sessionTotals.totalCentimeAdditionnel,
+              montantTotalTTC: sessionTotals.totalTTC,
+              nombreVentes: sessionTotals.nombreVentes,
+              modePaiementPrincipal: sessionTotals.modePaiementPrincipal
+            });
+            
+            if (success) {
+              toast.success(`Écritures comptables générées pour ${sessionTotals.nombreVentes} vente(s)`, {
+                icon: <BookOpen className="h-4 w-4" />
+              });
+            }
+          }
+        }
+      } catch (accountingError) {
+        console.error('Erreur génération écritures comptables (non bloquante):', accountingError);
+        // Ne pas bloquer la fermeture de session en cas d'erreur comptable
+      }
+      
       onSessionClosed();
       onOpenChange(false);
       // Reset form
