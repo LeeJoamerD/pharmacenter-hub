@@ -194,6 +194,20 @@ export default function PharmacyCreation() {
       <div className="max-w-2xl mx-auto relative z-10">
         <FadeIn>
           <Card className="shadow-xl border-0 bg-card/50 backdrop-blur-sm">
+            {/* Lien de connexion en haut */}
+            <div className="p-4 border-b border-border/50 bg-muted/30 rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  Vous avez déjà un compte ?
+                </span>
+                <Link to="/pharmacy-connection">
+                  <Button variant="default" size="sm" className="font-medium">
+                    Se connecter
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
             <CardHeader className="space-y-4 text-center">
               <div className="mx-auto w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center">
                 <Building2 className="w-8 h-8 text-primary" />
@@ -496,17 +510,6 @@ export default function PharmacyCreation() {
                   )}
                 </Button>
               </form>
-
-              <div className="text-center space-y-4">
-                <div className="text-sm text-muted-foreground">
-                  Vous avez déjà un compte ?
-                </div>
-                <Link to="/pharmacy-connection">
-                  <Button variant="outline" className="w-full h-11 font-medium">
-                    Se connecter
-                  </Button>
-                </Link>
-              </div>
 
               <div className="pt-4 border-t border-border/50">
                 <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary transition-colors">
