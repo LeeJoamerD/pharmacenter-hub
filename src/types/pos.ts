@@ -27,6 +27,11 @@ export interface POSProduct {
   category: string;
   requiresPrescription: boolean;
   lots: LotInfo[];
+  
+  // Info expiration pour affichage/blocage
+  earliest_expiration_date?: string;
+  has_valid_stock?: boolean;
+  all_lots_expired?: boolean;
 }
 
 export interface LotInfo {

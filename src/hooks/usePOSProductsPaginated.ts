@@ -80,7 +80,11 @@ export const usePOSProductsPaginated = (
         stock: Number(row.stock_disponible) || 0,
         category: row.category || 'Non catégorisé',
         requiresPrescription: row.prescription_requise || false,
-        lots: [] // Lots chargés à la demande
+        lots: [], // Lots chargés à la demande
+        // Info expiration
+        earliest_expiration_date: row.earliest_expiration_date,
+        has_valid_stock: row.has_valid_stock ?? true,
+        all_lots_expired: row.all_lots_expired ?? false
       }));
 
       return {
