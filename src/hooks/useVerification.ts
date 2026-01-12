@@ -19,6 +19,47 @@ interface VerificationState {
   phoneExpiresAt: Date | null;
 }
 
+// Normalise un numéro de téléphone au format E.164
+function normalizePhoneNumber(phone: string, defaultCountryCode = '+242'): string {
+  // Supprimer espaces et tirets
+  let cleaned = phone.replace(/[\s\-().]/g, '');
+  
+  // Si commence par 00, remplacer par +
+  if (cleaned.startsWith('00')) {
+    cleaned = '+' + cleaned.slice(2);
+  }
+  
+  // Si ne commence pas par +, ajouter le code pays par défaut
+  if (!cleaned.startsWith('+')) {
+    // Si commence par 0, le supprimer avant d'ajouter le code pays
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.slice(1);
+    }
+    cleaned = defaultCountryCode + cleaned;
+  }
+  
+  return cleaned;
+}
+
+// Retourne un message d'erreur explicite selon le type d'erreur
+function getErrorMessage(error: any): string {
+  const errorStr = error?.message || error?.toString() || '';
+  
+  if (errorStr.includes('ERR_NAME_NOT_RESOLVED') || errorStr.includes('FunctionsFetchError')) {
+    return "Problème de connexion réseau. Vérifiez votre connexion internet et réessayez.";
+  }
+  if (errorStr.includes('Failed to fetch') || errorStr.includes('NetworkError') || errorStr.includes('Failed to send a request')) {
+    return "Impossible de joindre le serveur. Vérifiez votre connexion internet.";
+  }
+  if (errorStr.includes('Numéro de téléphone invalide')) {
+    return "Numéro de téléphone invalide. Format attendu: +242XXXXXXXXX";
+  }
+  if (errorStr.includes('Trial') || errorStr.includes('21608')) {
+    return "Ce numéro ne peut pas recevoir de SMS (restriction compte Twilio).";
+  }
+  return error.message || "Une erreur est survenue";
+}
+
 export function useVerification(options: UseVerificationOptions = {}) {
   const [state, setState] = useState<VerificationState>({
     emailVerified: false,
@@ -53,12 +94,13 @@ export function useVerification(options: UseVerificationOptions = {}) {
       return { success: true };
     } catch (error: any) {
       console.error('Erreur envoi code email:', error);
+      const errorMessage = getErrorMessage(error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'envoyer le code",
+        description: errorMessage,
         variant: "destructive",
       });
-      return { success: false, error: error.message };
+      return { success: false, error: errorMessage };
     } finally {
       setState(prev => ({ ...prev, isSendingEmail: false }));
     }
@@ -68,8 +110,12 @@ export function useVerification(options: UseVerificationOptions = {}) {
     setState(prev => ({ ...prev, isSendingPhone: true }));
     
     try {
+      // Normaliser le numéro de téléphone au format E.164
+      const normalizedPhone = normalizePhoneNumber(phone);
+      console.log('Envoi SMS - Numéro original:', phone, '- Normalisé:', normalizedPhone);
+
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
-        body: { email, phone, type: 'sms', pharmacyName }
+        body: { email, phone: normalizedPhone, type: 'sms', pharmacyName }
       });
 
       if (error) throw error;
@@ -86,12 +132,13 @@ export function useVerification(options: UseVerificationOptions = {}) {
       return { success: true };
     } catch (error: any) {
       console.error('Erreur envoi code SMS:', error);
+      const errorMessage = getErrorMessage(error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'envoyer le SMS",
+        description: errorMessage,
         variant: "destructive",
       });
-      return { success: false, error: error.message };
+      return { success: false, error: errorMessage };
     } finally {
       setState(prev => ({ ...prev, isSendingPhone: false }));
     }
