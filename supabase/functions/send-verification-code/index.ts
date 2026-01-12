@@ -128,7 +128,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       const resend = new Resend(resendApiKey);
       const emailResponse = await resend.emails.send({
-        from: "PharmaSys <onboarding@resend.dev>",
+        from: "PharmaSoft <support@pharmasoft-djlcs.com>",
         to: [email],
         subject: `Votre code de vérification: ${code}`,
         html: `
@@ -142,12 +142,30 @@ const handler = async (req: Request): Promise<Response> => {
             <p>Ce code expire dans <strong>${expiryMinutes} minutes</strong>.</p>
             <p style="color: #6b7280; font-size: 14px;">Si vous n'avez pas demandé ce code, ignorez ce message.</p>
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-            <p style="color: #9ca3af; font-size: 12px;">PharmaSys - Système de Gestion Pharmaceutique</p>
+            <p style="color: #9ca3af; font-size: 12px;">PharmaSoft - Système de Gestion Pharmaceutique</p>
           </div>
         `,
       });
 
       console.log("Email envoyé:", emailResponse);
+
+      // Vérifier si Resend a retourné une erreur
+      if (emailResponse.error) {
+        console.error("Erreur Resend:", emailResponse.error);
+        
+        let userMessage = "Erreur lors de l'envoi de l'email";
+        
+        if (emailResponse.error.message?.includes("only send testing emails")) {
+          userMessage = "L'envoi d'email est limité en mode test. Veuillez vérifier votre domaine sur resend.com/domains";
+        } else if (emailResponse.error.message) {
+          userMessage = emailResponse.error.message;
+        }
+        
+        return new Response(
+          JSON.stringify({ error: userMessage }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
     } else if (type === "sms") {
       const twilioSid = settingsMap.get("TWILIO_ACCOUNT_SID");
       const twilioToken = settingsMap.get("TWILIO_AUTH_TOKEN");
