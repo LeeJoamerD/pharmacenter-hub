@@ -5,10 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Building2, Phone, MapPin, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { ArrowLeft, Building2, Phone, MapPin, Mail, Lock, Eye, EyeOff, Loader2, CheckCircle2, Shield } from 'lucide-react';
 import { FadeIn } from '@/components/FadeIn';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useVerification } from '@/hooks/useVerification';
+import { VerificationDialog } from '@/components/verification/VerificationDialog';
+import { Badge } from '@/components/ui/badge';
 
 export default function PharmacyCreation() {
   const navigate = useNavigate();
@@ -38,13 +41,96 @@ export default function PharmacyCreation() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // États pour la vérification
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [showPhoneDialog, setShowPhoneDialog] = useState(false);
+  
+  const verification = useVerification({
+    onEmailVerified: () => {
+      setShowEmailDialog(false);
+      toast({
+        title: "Email vérifié",
+        description: "Votre email a été vérifié. Veuillez maintenant vérifier votre téléphone.",
+      });
+      // Déclencher automatiquement l'envoi du code SMS
+      setTimeout(() => {
+        handleSendPhoneCode();
+      }, 500);
+    },
+    onPhoneVerified: () => {
+      setShowPhoneDialog(false);
+      toast({
+        title: "Téléphone vérifié",
+        description: "Toutes les vérifications sont complètes. Vous pouvez maintenant créer votre pharmacie.",
+      });
+    },
+  });
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Reset verification si l'email ou le téléphone change
+    if (field === 'email' || field === 'telephone') {
+      verification.reset();
+    }
+  };
+
+  const handleSendEmailCode = async () => {
+    if (!formData.email) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez entrer votre email",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const result = await verification.sendEmailCode(formData.email, formData.name);
+    if (result.success) {
+      setShowEmailDialog(true);
+    }
+  };
+
+  const handleSendPhoneCode = async () => {
+    if (!formData.telephone) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez entrer votre numéro de téléphone",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const result = await verification.sendPhoneCode(formData.email, formData.telephone, formData.name);
+    if (result.success) {
+      setShowPhoneDialog(true);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Vérifier si les vérifications sont complètes
+    if (!verification.isAllVerified) {
+      if (!verification.emailVerified) {
+        toast({
+          title: "Vérification requise",
+          description: "Veuillez d'abord vérifier votre adresse email",
+          variant: "destructive"
+        });
+        handleSendEmailCode();
+        return;
+      }
+      if (!verification.phoneVerified) {
+        toast({
+          title: "Vérification requise",
+          description: "Veuillez vérifier votre numéro de téléphone",
+          variant: "destructive"
+        });
+        handleSendPhoneCode();
+        return;
+      }
+    }
     
     // Validation des mots de passe
     if (formData.password !== formData.confirmPassword) {
@@ -183,6 +269,11 @@ export default function PharmacyCreation() {
     }
   };
 
+  const maskPhone = (phone: string) => {
+    if (phone.length <= 4) return phone;
+    return phone.slice(0, 4) + '*'.repeat(phone.length - 6) + phone.slice(-2);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 py-8 px-4">
       {/* Background decorative elements */}
@@ -217,6 +308,35 @@ export default function PharmacyCreation() {
                 <CardDescription className="text-muted-foreground mt-2">
                   Rejoignez notre réseau de pharmacies connectées
                 </CardDescription>
+              </div>
+              
+              {/* Indicateur de progression de vérification */}
+              <div className="flex items-center justify-center gap-4 pt-2">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${verification.emailVerified ? 'bg-green-500' : 'bg-muted'}`}>
+                    {verification.emailVerified ? (
+                      <CheckCircle2 className="w-5 h-5 text-white" />
+                    ) : (
+                      <Mail className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <span className={`text-sm ${verification.emailVerified ? 'text-green-600 font-medium' : 'text-muted-foreground'}`}>
+                    Email
+                  </span>
+                </div>
+                <div className="h-0.5 w-8 bg-muted" />
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${verification.phoneVerified ? 'bg-green-500' : 'bg-muted'}`}>
+                    {verification.phoneVerified ? (
+                      <CheckCircle2 className="w-5 h-5 text-white" />
+                    ) : (
+                      <Phone className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <span className={`text-sm ${verification.phoneVerified ? 'text-green-600 font-medium' : 'text-muted-foreground'}`}>
+                    Téléphone
+                  </span>
+                </div>
               </div>
             </CardHeader>
 
@@ -333,25 +453,55 @@ export default function PharmacyCreation() {
                   </div>
                 </div>
 
-                {/* Informations de connexion */}
+                {/* Informations de connexion avec vérification */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-foreground">Informations de connexion</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-foreground">Informations de connexion</h3>
+                    <Badge variant="outline" className="text-xs">
+                      <Shield className="w-3 h-3 mr-1" />
+                      Vérification requise
+                    </Badge>
+                  </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-medium">
+                    <Label htmlFor="email" className="text-sm font-medium flex items-center gap-2">
                       Adresse email *
+                      {verification.emailVerified && (
+                        <Badge className="bg-green-500 text-white text-xs">
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          Vérifié
+                        </Badge>
+                      )}
                     </Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="djl.computersciences@gmail.com"
-                        value={formData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        className="pl-10 h-11"
-                        required
-                      />
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="djl.computersciences@gmail.com"
+                          value={formData.email}
+                          onChange={(e) => handleInputChange('email', e.target.value)}
+                          className="pl-10 h-11"
+                          required
+                          disabled={verification.emailVerified}
+                        />
+                      </div>
+                      {!verification.emailVerified && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleSendEmailCode}
+                          disabled={!formData.email || verification.isSendingEmail}
+                          className="h-11 whitespace-nowrap"
+                        >
+                          {verification.isSendingEmail ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            'Vérifier'
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </div>
 
@@ -458,21 +608,50 @@ export default function PharmacyCreation() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="telephone" className="text-sm font-medium">
+                      <Label htmlFor="telephone" className="text-sm font-medium flex items-center gap-2">
                         Téléphone personnel *
+                        {verification.phoneVerified && (
+                          <Badge className="bg-green-500 text-white text-xs">
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Vérifié
+                          </Badge>
+                        )}
                       </Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                        <Input
-                          id="telephone"
-                          type="tel"
-                          placeholder="+242 XX XXX XX XX"
-                          value={formData.telephone}
-                          onChange={(e) => handleInputChange('telephone', e.target.value)}
-                          className="pl-10 h-11"
-                          required
-                        />
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                          <Input
+                            id="telephone"
+                            type="tel"
+                            placeholder="+242 XX XXX XX XX"
+                            value={formData.telephone}
+                            onChange={(e) => handleInputChange('telephone', e.target.value)}
+                            className="pl-10 h-11"
+                            required
+                            disabled={verification.phoneVerified}
+                          />
+                        </div>
+                        {verification.emailVerified && !verification.phoneVerified && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleSendPhoneCode}
+                            disabled={!formData.telephone || verification.isSendingPhone}
+                            className="h-11 whitespace-nowrap"
+                          >
+                            {verification.isSendingPhone ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              'Vérifier'
+                            )}
+                          </Button>
+                        )}
                       </div>
+                      {!verification.emailVerified && formData.telephone && (
+                        <p className="text-xs text-muted-foreground">
+                          Vérifiez d'abord votre email pour activer la vérification téléphone
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -495,12 +674,17 @@ export default function PharmacyCreation() {
                   type="submit"
                   size="lg"
                   className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90"
-                  disabled={isLoading}
+                  disabled={isLoading || !verification.isAllVerified}
                 >
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                       Création en cours...
+                    </>
+                  ) : !verification.isAllVerified ? (
+                    <>
+                      <Shield className="mr-2 h-5 w-5" />
+                      Vérification requise
                     </>
                   ) : (
                     <>
@@ -509,6 +693,12 @@ export default function PharmacyCreation() {
                     </>
                   )}
                 </Button>
+                
+                {!verification.isAllVerified && (
+                  <p className="text-center text-sm text-muted-foreground">
+                    Veuillez vérifier votre email et votre téléphone pour continuer
+                  </p>
+                )}
               </form>
 
               <div className="pt-4 border-t border-border/50">
@@ -521,6 +711,33 @@ export default function PharmacyCreation() {
           </Card>
         </FadeIn>
       </div>
+
+      {/* Dialogs de vérification */}
+      <VerificationDialog
+        open={showEmailDialog}
+        onOpenChange={setShowEmailDialog}
+        type="email"
+        target={formData.email}
+        onVerify={(code) => verification.verifyEmailCode(formData.email, code)}
+        onResend={() => verification.sendEmailCode(formData.email, formData.name)}
+        isVerifying={verification.isVerifyingEmail}
+        isSending={verification.isSendingEmail}
+        expiresAt={verification.emailExpiresAt}
+        isVerified={verification.emailVerified}
+      />
+
+      <VerificationDialog
+        open={showPhoneDialog}
+        onOpenChange={setShowPhoneDialog}
+        type="phone"
+        target={maskPhone(formData.telephone)}
+        onVerify={(code) => verification.verifyPhoneCode(formData.email, code)}
+        onResend={() => verification.sendPhoneCode(formData.email, formData.telephone, formData.name)}
+        isVerifying={verification.isVerifyingPhone}
+        isSending={verification.isSendingPhone}
+        expiresAt={verification.phoneExpiresAt}
+        isVerified={verification.phoneVerified}
+      />
     </div>
   );
 }
