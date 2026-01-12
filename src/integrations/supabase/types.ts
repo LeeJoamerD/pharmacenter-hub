@@ -15001,6 +15001,36 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_settings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_secret: boolean
+          setting_key: string
+          setting_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_secret?: boolean
+          setting_key: string
+          setting_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_secret?: boolean
+          setting_key?: string
+          setting_value?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       preferences_utilisateur: {
         Row: {
           cle_preference: string
@@ -19048,6 +19078,45 @@ export type Database = {
           },
         ]
       }
+      verification_codes: {
+        Row: {
+          attempts: number
+          code: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          max_attempts: number
+          phone: string | null
+          type: string
+          verified_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          code: string
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          max_attempts?: number
+          phone?: string | null
+          type: string
+          verified_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          code?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          max_attempts?: number
+          phone?: string | null
+          type?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       webhooks_config: {
         Row: {
           created_at: string | null
@@ -20294,6 +20363,7 @@ export type Database = {
         }[]
       }
       cleanup_expired_pharmacy_sessions: { Args: never; Returns: number }
+      cleanup_expired_verification_codes: { Args: never; Returns: number }
       complete_training_session: {
         Args: {
           p_final_accuracy: number
@@ -20644,6 +20714,10 @@ export type Database = {
         Returns: Json
       }
       get_pharma_tools_metrics: { Args: { p_tenant_id: string }; Returns: Json }
+      get_pharmacy_phone_by_email: {
+        Args: { p_email: string }
+        Returns: string
+      }
       get_pos_products: {
         Args: {
           p_page?: number
