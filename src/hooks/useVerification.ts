@@ -45,19 +45,33 @@ function normalizePhoneNumber(phone: string, defaultCountryCode = '+242'): strin
 function getErrorMessage(error: any): string {
   const errorStr = error?.message || error?.toString() || '';
   
+  // Erreurs réseau
   if (errorStr.includes('ERR_NAME_NOT_RESOLVED') || errorStr.includes('FunctionsFetchError')) {
     return "Problème de connexion réseau. Vérifiez votre connexion internet et réessayez.";
   }
   if (errorStr.includes('Failed to fetch') || errorStr.includes('NetworkError') || errorStr.includes('Failed to send a request')) {
     return "Impossible de joindre le serveur. Vérifiez votre connexion internet.";
   }
-  if (errorStr.includes('Numéro de téléphone invalide')) {
+  
+  // Erreurs Twilio explicites
+  if (errorStr.includes('21608') || errorStr.includes('non vérifié') || errorStr.includes('Trial') || errorStr.includes('unverified')) {
+    return "Ce numéro ne peut pas recevoir de SMS. Compte Twilio en mode Trial - passez en production pour envoyer à tous les numéros.";
+  }
+  if (errorStr.includes('21211') || errorStr.includes('21614') || errorStr.includes('invalide') || errorStr.includes('Invalid')) {
     return "Numéro de téléphone invalide. Format attendu: +242XXXXXXXXX";
   }
-  if (errorStr.includes('Trial') || errorStr.includes('21608')) {
-    return "Ce numéro ne peut pas recevoir de SMS (restriction compte Twilio).";
+  if (errorStr.includes('21408') || errorStr.includes('Permission') || errorStr.includes('permission')) {
+    return "Envoi vers ce pays non autorisé. Activez les SMS internationaux dans votre compte Twilio.";
   }
-  return error.message || "Une erreur est survenue";
+  if (errorStr.includes('21612')) {
+    return "Le numéro Twilio n'est pas configuré pour envoyer des SMS.";
+  }
+  if (errorStr.includes('Configuration Twilio incomplète') || errorStr.includes('TWILIO')) {
+    return "Configuration Twilio incomplète. Vérifiez les paramètres dans la plateforme.";
+  }
+  
+  // Message par défaut ou message d'erreur original
+  return errorStr || "Une erreur est survenue lors de l'envoi du SMS";
 }
 
 export function useVerification(options: UseVerificationOptions = {}) {
@@ -118,8 +132,22 @@ export function useVerification(options: UseVerificationOptions = {}) {
         body: { email, phone: normalizedPhone, type: 'sms', pharmacyName }
       });
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      // Extraire le message d'erreur du contexte si disponible
+      if (error) {
+        const errorContext = (error as any).context;
+        if (errorContext) {
+          try {
+            const errorBody = await errorContext.json();
+            if (errorBody.error) {
+              throw new Error(errorBody.error);
+            }
+          } catch (parseError) {
+            // Si on ne peut pas parser, on continue avec l'erreur originale
+          }
+        }
+        throw error;
+      }
+      if (data?.error) throw new Error(data.error);
 
       const expiresAt = new Date(Date.now() + (data.expiresInMinutes || 10) * 60 * 1000);
       setState(prev => ({ ...prev, phoneExpiresAt: expiresAt }));
@@ -134,7 +162,7 @@ export function useVerification(options: UseVerificationOptions = {}) {
       console.error('Erreur envoi code SMS:', error);
       const errorMessage = getErrorMessage(error);
       toast({
-        title: "Erreur",
+        title: "Erreur SMS",
         description: errorMessage,
         variant: "destructive",
       });
