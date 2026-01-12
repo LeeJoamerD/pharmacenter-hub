@@ -18,6 +18,24 @@ function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// Normalise un numéro de téléphone au format E.164
+function normalizePhoneForTwilio(phone: string): string {
+  // Supprimer espaces, tirets, parenthèses, points
+  let normalized = phone.replace(/[\s\-().]/g, '');
+  
+  // Si commence par 00, remplacer par +
+  if (normalized.startsWith('00')) {
+    normalized = '+' + normalized.slice(2);
+  }
+  
+  // Si ne commence pas par +, ajouter le +
+  if (!normalized.startsWith('+')) {
+    normalized = '+' + normalized;
+  }
+  
+  return normalized;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -25,6 +43,13 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { email, phone, type, pharmacyName }: SendVerificationRequest = await req.json();
+
+    console.log("=== Requête send-verification-code ===");
+    console.log("Type:", type);
+    console.log("Email:", email);
+    if (type === "sms") {
+      console.log("Phone (reçu):", phone?.slice(0, 4) + "****" + (phone?.slice(-2) || ""));
+    }
 
     if (!email || !type) {
       return new Response(
@@ -128,17 +153,28 @@ const handler = async (req: Request): Promise<Response> => {
       const twilioToken = settingsMap.get("TWILIO_AUTH_TOKEN");
       const twilioPhone = settingsMap.get("TWILIO_PHONE_NUMBER");
 
+      console.log("=== Préparation envoi SMS ===");
+      console.log("Twilio SID présent:", !!twilioSid);
+      console.log("Twilio Token présent:", !!twilioToken);
+      console.log("Twilio Phone (from):", twilioPhone);
+
       if (!twilioSid || !twilioToken || !twilioPhone) {
+        console.error("Configuration Twilio incomplète - SID:", !!twilioSid, "Token:", !!twilioToken, "Phone:", !!twilioPhone);
         return new Response(
           JSON.stringify({ error: "Configuration Twilio incomplète" }),
           { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
 
+      // Normaliser le numéro de téléphone au format E.164
+      const normalizedPhone = normalizePhoneForTwilio(phone!);
+      console.log("Phone normalisé (to):", normalizedPhone.slice(0, 4) + "****" + normalizedPhone.slice(-2));
+
       // Envoyer SMS via Twilio
       const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
       const auth = btoa(`${twilioSid}:${twilioToken}`);
 
+      console.log("Appel Twilio API...");
       const smsResponse = await fetch(twilioUrl, {
         method: "POST",
         headers: {
@@ -146,22 +182,50 @@ const handler = async (req: Request): Promise<Response> => {
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: new URLSearchParams({
-          To: phone!,
+          To: normalizedPhone,
           From: twilioPhone,
           Body: `PharmaSys - Votre code de vérification: ${code}. Valide ${expiryMinutes} min.`,
         }),
       });
 
       if (!smsResponse.ok) {
-        const errorData = await smsResponse.text();
-        console.error("Erreur Twilio:", errorData);
+        const errorText = await smsResponse.text();
+        console.error("Erreur Twilio brute:", errorText);
+        
+        let errorData: any = {};
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
+        }
+        
+        console.error("Erreur Twilio détaillée:", JSON.stringify(errorData));
+        
+        // Messages d'erreur explicites selon le code Twilio
+        let userMessage = "Erreur lors de l'envoi du SMS";
+        const twilioCode = errorData.code;
+        
+        if (twilioCode === 21211 || twilioCode === 21614) {
+          userMessage = "Numéro de téléphone invalide. Format attendu: +242XXXXXXXXX";
+        } else if (twilioCode === 21608) {
+          userMessage = "Ce numéro ne peut pas recevoir de SMS (compte Twilio Trial - numéro non vérifié)";
+        } else if (twilioCode === 21612) {
+          userMessage = "Le numéro d'envoi Twilio n'est pas configuré pour les SMS";
+        } else if (twilioCode === 21408) {
+          userMessage = "Permission refusée pour envoyer vers ce pays";
+        } else if (errorData.message) {
+          userMessage = `Erreur Twilio: ${errorData.message}`;
+        }
+        
         return new Response(
-          JSON.stringify({ error: "Erreur lors de l'envoi du SMS" }),
+          JSON.stringify({ error: userMessage }),
           { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
 
-      console.log("SMS envoyé à:", phone);
+      const smsResult = await smsResponse.json();
+      console.log("SMS envoyé avec succès! SID:", smsResult.sid);
+      console.log("SMS envoyé à:", normalizedPhone.slice(0, 4) + "****" + normalizedPhone.slice(-2));
     }
 
     return new Response(
