@@ -138,7 +138,7 @@ export const useMultiPharmacyManagement = () => {
     try {
       const { data: pharmaciesData } = await supabase
         .from('pharmacies')
-        .select('id, name, code, city, region, pays, type, status, email, phone, address')
+        .select('id, name, code, city, region, pays, type, status, email, telephone_appel, address')
         .order('name');
 
       if (!pharmaciesData) return;
@@ -187,7 +187,7 @@ export const useMultiPharmacyManagement = () => {
             region: pharmacy.region || '',
             type: pharmacy.type || '',
             status: pharmacy.status || 'active',
-            phone: pharmacy.phone || '',
+            phone: pharmacy.telephone_appel || '',
             email: pharmacy.email || '',
             pays: pharmacy.pays || '',
             is_inter_tenant: pharmacy.id !== tenantId,

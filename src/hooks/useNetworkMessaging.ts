@@ -109,7 +109,7 @@ export const useNetworkMessaging = () => {
         .from('network_messages')
         .select(`
           *,
-          pharmacy:pharmacies!sender_pharmacy_id(id, name, code, type, city, region, status)
+          pharmacy:pharmacies!sender_pharmacy_id(id, name, code, type, city, region, status, telephone_appel)
         `)
         .eq('channel_id', channelId)
         .order('created_at', { ascending: true })

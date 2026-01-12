@@ -71,7 +71,7 @@ const PharmacyDirectory = () => {
           type: pharmacy.type,
           status: pharmacy.status,
           email: pharmacy.email,
-          phone: pharmacy.phone,
+          phone: pharmacy.telephone_appel,
           personnel_count: count || 0,
           last_activity: lastMessage?.created_at || pharmacy.created_at
         } as Pharmacy;
