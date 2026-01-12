@@ -193,7 +193,7 @@ export const useNetworkMessagingEnhanced = () => {
   const loadPharmacies = async () => {
     const { data, error } = await supabase
       .from('pharmacies')
-      .select('id, name, code, city, region, pays, type, status, email, phone, address')
+      .select('id, name, code, city, region, pays, type, status, email, telephone_appel, address')
       .order('name');
 
     if (error) {
@@ -211,7 +211,7 @@ export const useNetworkMessagingEnhanced = () => {
       type: p.type,
       status: p.status,
       email: p.email,
-      phone: p.phone,
+      phone: p.telephone_appel,
       address: p.address
     }));
 

@@ -14538,7 +14538,6 @@ export type Database = {
           name: string
           niu: string | null
           pays: string | null
-          phone: string | null
           photo_exterieur: string | null
           photo_interieur: string | null
           postal_code: string | null
@@ -14564,7 +14563,6 @@ export type Database = {
           name: string
           niu?: string | null
           pays?: string | null
-          phone?: string | null
           photo_exterieur?: string | null
           photo_interieur?: string | null
           postal_code?: string | null
@@ -14590,7 +14588,6 @@ export type Database = {
           name?: string
           niu?: string | null
           pays?: string | null
-          phone?: string | null
           photo_exterieur?: string | null
           photo_interieur?: string | null
           postal_code?: string | null
