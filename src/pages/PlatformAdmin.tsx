@@ -5,8 +5,8 @@ import PlatformAdminLayout from '@/components/platform-admin/PlatformAdminLayout
 import GlobalCatalogManager from '@/components/platform-admin/GlobalCatalogManager';
 import PlatformOverview from '@/components/platform-admin/PlatformOverview';
 import PlatformTestSuite from '@/components/platform-admin/PlatformTestSuite';
+import { PlatformConfiguration } from '@/components/platform-admin/PlatformConfiguration';
 import { Loader2 } from 'lucide-react';
-
 const PlatformAdmin = () => {
   const { isPlatformAdmin, loading } = usePlatformAdmin();
 
@@ -31,6 +31,7 @@ const PlatformAdmin = () => {
         <Route index element={<PlatformOverview />} />
         <Route path="catalogue" element={<GlobalCatalogManager />} />
         <Route path="tests" element={<PlatformTestSuite />} />
+        <Route path="configuration" element={<PlatformConfiguration />} />
       </Routes>
     </PlatformAdminLayout>
   );
