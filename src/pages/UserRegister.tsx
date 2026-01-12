@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User2, Phone, Mail, Lock, CheckCircle2, Eye, EyeOff, Building2 } from "lucide-react";
+import { ArrowLeft, User2, Phone, Mail, Lock, CheckCircle2, Eye, EyeOff, Building2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdvancedAuth } from "@/hooks/useAdvancedAuth";
 import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
+import { useVerification } from "@/hooks/useVerification";
+import { VerificationDialog } from "@/components/verification/VerificationDialog";
 import { toast } from "sonner";
+
+interface FormData {
+  noms: string;
+  prenoms: string;
+  email: string;
+  phone: string;
+  password: string;
+}
 
 const UserRegister = () => {
   const navigate = useNavigate();
@@ -18,6 +28,7 @@ const UserRegister = () => {
   const [hasSession, setHasSession] = useState(false);
   const [passwordPolicy, setPasswordPolicy] = useState<any>(null);
 
+  // États du formulaire
   const [noms, setNoms] = useState("");
   const [prenoms, setPrenoms] = useState("");
   const [email, setEmail] = useState("");
@@ -29,12 +40,109 @@ const UserRegister = () => {
   const [validation, setValidation] = useState<{ isValid: boolean; errors: string[]; policy: any } | undefined>();
   const [loading, setLoading] = useState(false);
 
+  // États pour la vérification
+  const [step, setStep] = useState<'form' | 'email-verify' | 'phone-verify'>('form');
+  const [formData, setFormData] = useState<FormData | null>(null);
+
+  // Masquer le numéro de téléphone
+  const maskPhone = (phoneNum: string) => {
+    if (!phoneNum || phoneNum.length < 4) return phoneNum;
+    return phoneNum.slice(-4).padStart(phoneNum.length, '*');
+  };
+
+  // Créer le compte après vérifications réussies
+  const proceedWithAccountCreation = async () => {
+    if (!formData || !connectedPharmacy) return;
+
+    setLoading(true);
+    try {
+      const currentUrl = `${window.location.protocol}//${window.location.host}/user-register`;
+      
+      // Essai signUp standard
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password
+      });
+      if (error) throw error;
+
+      let activeSession = data.session;
+
+      // Si pas de session immédiate, tenter une connexion directe
+      if (!activeSession) {
+        console.log("Pas de session immédiate après signUp, tentative de connexion...");
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password
+        });
+        
+        if (signInError) {
+          console.error("Connexion impossible après signUp:", signInError.message);
+          toast.info("Un email de confirmation a été envoyé. Confirmez votre email puis connectez-vous.");
+          navigate("/user-login");
+          return;
+        }
+        
+        activeSession = signInData.session;
+      }
+
+      // Maintenant on a une session active, créer le personnel
+      if (activeSession) {
+        const payload = {
+          noms: formData.noms,
+          prenoms: formData.prenoms,
+          email: formData.email,
+          telephone: formData.phone || "",
+          reference_agent: `AG-${Date.now()}`,
+        };
+        
+        const { data: created, error: cpErr } = await supabase.rpc("create_personnel_for_user" as any, {
+          pharmacy_id: connectedPharmacy.id,
+          data: payload as any,
+        });
+        
+        if (cpErr) throw cpErr;
+        if (!(created as any)?.success) {
+          throw new Error((created as any)?.error || "Échec de la création du profil utilisateur");
+        }
+        
+        toast.success("Compte créé avec succès !");
+        navigate("/");
+        return;
+      }
+    } catch (err: any) {
+      console.error("Erreur lors de la création du compte:", err);
+      toast.error(err.message || "Erreur lors de la création du compte");
+      // Revenir au formulaire en cas d'erreur
+      setStep('form');
+      verification.reset();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Hook de vérification avec callbacks
+  const verification = useVerification({
+    onEmailVerified: () => {
+      toast.success("Email vérifié !");
+      // Passer à la vérification téléphone
+      setStep('phone-verify');
+      if (formData?.phone && formData?.email) {
+        verification.sendPhoneCode(formData.email, formData.phone);
+      }
+    },
+    onPhoneVerified: () => {
+      toast.success("Téléphone vérifié !");
+      // Les deux vérifications sont réussies, créer le compte
+      proceedWithAccountCreation();
+    },
+  });
+
   // Récupérer la politique de mot de passe une seule fois au chargement
   useEffect(() => {
     if (connectedPharmacy) {
       getPasswordPolicy().then(setPasswordPolicy).catch(console.error);
     }
-  }, [connectedPharmacy?.id]); // Dépendre uniquement de l'ID, pas de la fonction
+  }, [connectedPharmacy?.id]);
 
   // Validation en temps réel du mot de passe avec debounce
   useEffect(() => {
@@ -50,10 +158,10 @@ const UserRegister = () => {
       } catch (error) {
         console.error('Erreur validation:', error);
       }
-    }, 500); // Debounce 500ms pour réduire les appels
+    }, 500);
     
     return () => clearTimeout(timer);
-  }, [password, connectedPharmacy?.id]); // Dépendre de l'ID, pas de la fonction
+  }, [password, connectedPharmacy?.id]);
 
   // SEO
   useEffect(() => {
@@ -68,7 +176,6 @@ const UserRegister = () => {
       document.head.appendChild(link);
     }
   }, []);
-
 
   const disabledReason = useMemo(() => {
     if (!connectedPharmacy) return "Aucune pharmacie connectée. Veuillez connecter votre pharmacie avant de créer un compte utilisateur.";
@@ -89,12 +196,12 @@ const UserRegister = () => {
       return;
     }
 
+    // Valider le mot de passe avant de lancer les vérifications
     setLoading(true);
     try {
       const res = await validatePassword(password);
       setValidation(res);
       if (!res.isValid) {
-        // Afficher les détails spécifiques des erreurs de validation
         const errorMessage = res.errors && res.errors.length > 0 
           ? `Mot de passe non conforme: ${res.errors.join(', ')}`
           : "Mot de passe non conforme à la politique de sécurité";
@@ -103,73 +210,45 @@ const UserRegister = () => {
         return;
       }
 
-      // Inscription email classique
-        // Tenter signUp classique puis fallback OTP si GoTrue renvoie une 500 (Database error finding user)
-        const currentUrl = `${window.location.protocol}//${window.location.host}/user-register`;
-        try {
-          // Essai 1: signUp standard sans redirectTo (évite erreurs liées aux URLs non whitelists)
-          const { data, error } = await supabase.auth.signUp({
-            email: normEmail,
-            password
-          });
-          if (error) throw error;
+      // Stocker les données du formulaire pour après vérification
+      setFormData({
+        noms,
+        prenoms,
+        email: normEmail,
+        phone,
+        password
+      });
 
-          let activeSession = data.session;
-
-          // Si pas de session immédiate, tenter une connexion directe
-          // (fonctionne si "Confirm email" est désactivé dans Supabase)
-          if (!activeSession) {
-            console.log("Pas de session immédiate après signUp, tentative de connexion...");
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-              email: normEmail,
-              password
-            });
-            
-            if (signInError) {
-              // La connexion échoue = confirmation email probablement requise
-              console.error("Connexion impossible après signUp:", signInError.message);
-              toast.info("Un email de confirmation a été envoyé. Confirmez votre email puis connectez-vous.");
-              navigate("/user-login");
-              return;
-            }
-            
-            activeSession = signInData.session;
-          }
-
-          // Maintenant on a une session active, créer le personnel
-          if (activeSession) {
-            const payload = {
-              noms,
-              prenoms,
-              email: normEmail,
-              telephone: phone || "",
-              reference_agent: `AG-${Date.now()}`,
-            };
-            
-            const { data: created, error: cpErr } = await supabase.rpc("create_personnel_for_user" as any, {
-              pharmacy_id: connectedPharmacy.id,
-              data: payload as any,
-            });
-            
-            if (cpErr) throw cpErr;
-            if (!(created as any)?.success) {
-              throw new Error((created as any)?.error || "Échec de la création du profil utilisateur");
-            }
-            
-            toast.success("Compte créé et connecté à la pharmacie");
-            navigate("/");
-            return;
-          }
-        } catch (innerErr: any) {
-          // Fallback: si signUp ou signIn échoue, rediriger vers login
-          console.error("Erreur lors de l'inscription:", innerErr);
-          toast.error(innerErr.message || "Erreur lors de l'inscription");
-        }
+      // Passer à l'étape de vérification email
+      setStep('email-verify');
+      
+      // Envoyer le code de vérification email
+      const result = await verification.sendEmailCode(normEmail);
+      if (!result.success) {
+        toast.error(result.error || "Erreur lors de l'envoi du code");
+        setStep('form');
+      }
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Erreur lors de la création du compte");
+      toast.error(err.message || "Erreur lors de la validation");
+      setStep('form');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Gérer la fermeture des dialogs
+  const handleEmailDialogClose = (open: boolean) => {
+    if (!open && step === 'email-verify' && !verification.emailVerified) {
+      setStep('form');
+      verification.reset();
+    }
+  };
+
+  const handlePhoneDialogClose = (open: boolean) => {
+    if (!open && step === 'phone-verify' && !verification.phoneVerified) {
+      // Permettre de revenir à l'étape email
+      setStep('email-verify');
     }
   };
 
@@ -190,6 +269,44 @@ const UserRegister = () => {
             <p className="text-sm text-muted-foreground">Complétez vos informations pour finaliser l'inscription</p>
           </CardHeader>
           <CardContent>
+            {/* Indicateur de progression des vérifications */}
+            {step !== 'form' && (
+              <div className="mb-6 p-4 bg-muted/30 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-3 text-center">Vérification en cours</p>
+                <div className="flex items-center justify-center gap-3">
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${
+                    verification.emailVerified 
+                      ? 'bg-green-100 text-green-700' 
+                      : step === 'email-verify' 
+                        ? 'bg-primary/10 text-primary' 
+                        : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {verification.emailVerified ? (
+                      <CheckCircle className="h-4 w-4" />
+                    ) : (
+                      <span className="h-5 w-5 rounded-full bg-current/20 flex items-center justify-center text-xs font-bold">1</span>
+                    )}
+                    <span className="text-sm font-medium">Email</span>
+                  </div>
+                  <div className="w-8 h-0.5 bg-border" />
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${
+                    verification.phoneVerified 
+                      ? 'bg-green-100 text-green-700' 
+                      : step === 'phone-verify' 
+                        ? 'bg-primary/10 text-primary' 
+                        : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {verification.phoneVerified ? (
+                      <CheckCircle className="h-4 w-4" />
+                    ) : (
+                      <span className="h-5 w-5 rounded-full bg-current/20 flex items-center justify-center text-xs font-bold">2</span>
+                    )}
+                    <span className="text-sm font-medium">Téléphone</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {disabledReason && (
               <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
                 <p className="text-sm text-destructive mb-2">{disabledReason}</p>
@@ -211,14 +328,14 @@ const UserRegister = () => {
                   <Label htmlFor="prenoms">Prénoms *</Label>
                   <div className="relative">
                     <User2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="prenoms" value={prenoms} onChange={(e) => setPrenoms(e.target.value)} className="pl-9" required disabled={loading || !!disabledReason} />
+                    <Input id="prenoms" value={prenoms} onChange={(e) => setPrenoms(e.target.value)} className="pl-9" required disabled={loading || !!disabledReason || step !== 'form'} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="noms">Noms *</Label>
                   <div className="relative">
                     <User2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="noms" value={noms} onChange={(e) => setNoms(e.target.value)} className="pl-9" required disabled={loading || !!disabledReason} />
+                    <Input id="noms" value={noms} onChange={(e) => setNoms(e.target.value)} className="pl-9" required disabled={loading || !!disabledReason || step !== 'form'} />
                   </div>
                 </div>
 
@@ -226,14 +343,14 @@ const UserRegister = () => {
                   <Label htmlFor="email">Adresse Email *</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9" required disabled={loading || !!disabledReason} />
+                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-9" required disabled={loading || !!disabledReason || step !== 'form'} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="telephone">Téléphone *</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="telephone" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-9" required disabled={loading || !!disabledReason} />
+                    <Input id="telephone" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-9" required disabled={loading || !!disabledReason || step !== 'form'} />
                   </div>
                 </div>
               </div>
@@ -250,7 +367,7 @@ const UserRegister = () => {
                     placeholder="••••••••" 
                     className="pl-9 pr-10" 
                     required 
-                    disabled={loading || !!disabledReason} 
+                    disabled={loading || !!disabledReason || step !== 'form'} 
                   />
                   <button
                     type="button"
@@ -304,7 +421,7 @@ const UserRegister = () => {
                     placeholder="••••••••" 
                     className="pl-9 pr-10" 
                     required 
-                    disabled={loading || !!disabledReason} 
+                    disabled={loading || !!disabledReason || step !== 'form'} 
                   />
                   <button
                     type="button"
@@ -317,8 +434,16 @@ const UserRegister = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading || !!disabledReason}>
-                <CheckCircle2 className="mr-2 h-4 w-4" /> Créer mon compte
+              <Button type="submit" className="w-full" disabled={loading || !!disabledReason || step !== 'form'}>
+                {loading ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span> Vérification...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" /> Créer mon compte
+                  </>
+                )}
               </Button>
             </form>
 
@@ -330,6 +455,34 @@ const UserRegister = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog de vérification Email */}
+      <VerificationDialog
+        open={step === 'email-verify' && !verification.emailVerified}
+        onOpenChange={handleEmailDialogClose}
+        type="email"
+        target={formData?.email || email}
+        onVerify={(code) => verification.verifyEmailCode(formData?.email || email, code)}
+        onResend={() => verification.sendEmailCode(formData?.email || email)}
+        isVerifying={verification.isVerifyingEmail}
+        isSending={verification.isSendingEmail}
+        expiresAt={verification.emailExpiresAt}
+        isVerified={verification.emailVerified}
+      />
+
+      {/* Dialog de vérification Téléphone */}
+      <VerificationDialog
+        open={step === 'phone-verify' && !verification.phoneVerified}
+        onOpenChange={handlePhoneDialogClose}
+        type="phone"
+        target={maskPhone(formData?.phone || phone)}
+        onVerify={(code) => verification.verifyPhoneCode(formData?.email || email, code)}
+        onResend={() => verification.sendPhoneCode(formData?.email || email, formData?.phone || phone)}
+        isVerifying={verification.isVerifyingPhone}
+        isSending={verification.isSendingPhone}
+        expiresAt={verification.phoneExpiresAt}
+        isVerified={verification.phoneVerified}
+      />
     </main>
   );
 };
