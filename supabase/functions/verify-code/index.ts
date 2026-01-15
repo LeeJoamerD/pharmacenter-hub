@@ -72,7 +72,37 @@ const handler = async (req: Request): Promise<Response> => {
       .update({ attempts: verificationCode.attempts + 1 })
       .eq("id", verificationCode.id);
 
-    // Vérifier le code
+    // ============================================================
+    // ⚠️ BYPASS TEMPORAIRE - SMS VERIFICATION DÉSACTIVÉE ⚠️
+    // Raison: Problèmes Twilio (restrictions Trial/Brand Congo +242/+243)
+    // Date: 2026-01-15
+    // Pour réactiver: Supprimer ce bloc (lignes 75-99)
+    // ============================================================
+    if (type === "sms") {
+      // Accepter n'importe quel code à 6 chiffres pour les SMS
+      if (code.length === 6 && /^\d{6}$/.test(code)) {
+        console.log("⚠️ BYPASS SMS ACTIF: Code accepté sans vérification réelle pour:", email);
+        
+        // Marquer comme vérifié dans la base
+        await supabase
+          .from("verification_codes")
+          .update({ verified_at: new Date().toISOString() })
+          .eq("id", verificationCode.id);
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Numéro de téléphone vérifié avec succès"
+          }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
+    // ============================================================
+    // FIN DU BYPASS TEMPORAIRE
+    // ============================================================
+
+    // Vérifier le code (VÉRIFICATION NORMALE - actif pour les emails)
     if (verificationCode.code !== code) {
       const remainingAttempts = verificationCode.max_attempts - verificationCode.attempts - 1;
       return new Response(
