@@ -38,6 +38,9 @@ interface SalesTicketData {
     prix_unitaire_ttc: number;
     montant_ligne_ttc: number;
     taux_tva?: number;
+    // Nouveau: informations du lot pour traçabilité
+    numero_lot?: string;
+    date_peremption?: string;
   }>;
   client?: {
     nom: string;
@@ -194,6 +197,19 @@ export async function printSalesTicket(data: SalesTicketData): Promise<string> {
     } else {
       doc.text(productName, 5, y);
       y += 4;
+    }
+    
+    // Numéro de lot et date de péremption (traçabilité pharmaceutique)
+    if (ligne.numero_lot) {
+      doc.setFontSize(7);
+      doc.setTextColor(100, 100, 100);
+      const lotText = ligne.date_peremption 
+        ? `Lot: ${ligne.numero_lot} - Exp: ${new Date(ligne.date_peremption).toLocaleDateString('fr-CG')}`
+        : `Lot: ${ligne.numero_lot}`;
+      doc.text(lotText, 10, y);
+      y += 3;
+      doc.setFontSize(8);
+      doc.setTextColor(0, 0, 0);
     }
     
     // Quantité et prix - utiliser le formatage correct

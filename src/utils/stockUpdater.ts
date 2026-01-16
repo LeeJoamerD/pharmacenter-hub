@@ -3,11 +3,27 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 
+/**
+ * Interface représentant l'utilisation d'un lot lors d'une vente
+ */
+export interface LotUsage {
+  lot_id: string;
+  numero_lot: string;
+  quantite_deduite: number;
+  date_peremption: string;
+  prix_vente_ht?: number;
+  prix_vente_ttc?: number;
+}
+
+/**
+ * Met à jour le stock après une vente en utilisant la méthode FIFO
+ * et retourne les détails des lots utilisés pour la traçabilité
+ */
 export async function updateStockAfterSale(
   productId: string,
   quantityToSell: number,
   tenantId: string
-): Promise<void> {
+): Promise<LotUsage[]> {
   // 1. Récupérer les lots disponibles (FIFO: date_peremption ASC)
   const { data: lots, error } = await supabase
     .from('lots')
@@ -23,9 +39,10 @@ export async function updateStockAfterSale(
     throw new Error(`Stock insuffisant pour le produit ${productId}`);
   }
 
-  // 2. Déduire la quantité selon FIFO
+  // 2. Déduire la quantité selon FIFO et collecter les lots utilisés
   let remainingQty = quantityToSell;
   const updates: Array<{ id: string; new_quantity: number }> = [];
+  const lotsUsed: LotUsage[] = [];
 
   for (const lot of lots) {
     if (remainingQty <= 0) break;
@@ -34,6 +51,16 @@ export async function updateStockAfterSale(
     updates.push({
       id: lot.id,
       new_quantity: lot.quantite_restante - qtyToDeduct
+    });
+
+    // Ajouter aux lots utilisés pour la traçabilité
+    lotsUsed.push({
+      lot_id: lot.id,
+      numero_lot: lot.numero_lot,
+      quantite_deduite: qtyToDeduct,
+      date_peremption: lot.date_peremption,
+      prix_vente_ht: lot.prix_vente_ht,
+      prix_vente_ttc: lot.prix_vente_ttc
     });
 
     remainingQty -= qtyToDeduct;
@@ -52,4 +79,7 @@ export async function updateStockAfterSale(
 
     if (updateError) throw updateError;
   }
+
+  // 4. Retourner les lots utilisés pour la traçabilité
+  return lotsUsed;
 }
