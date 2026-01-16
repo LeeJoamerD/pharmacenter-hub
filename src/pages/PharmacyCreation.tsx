@@ -209,7 +209,7 @@ export default function PharmacyCreation() {
       const { data, error } = await supabase.rpc('register_pharmacy_with_admin', {
         pharmacy_data: {
           name: formData.name,
-          code: formData.code || `PH${Date.now()}`,
+          licence_number: formData.code || `PH${Date.now()}`,
           address: formData.address,
           quartier: formData.quartier,
           arrondissement: formData.arrondissement,
