@@ -375,12 +375,20 @@ const SalesOnlyInterface = () => {
                 taux_remise_automatique: calculations.tauxRemise,
                 montant_remise_automatique: calculations.montantRemise
               },
-              lignes: cart.map(item => ({
-                produit: { libelle_produit: item.product.name || item.product.libelle_produit },
-                quantite: item.quantity,
-                prix_unitaire_ttc: item.unitPrice,
-                montant_ligne_ttc: item.total
-              })),
+              lignes: cart.map(item => {
+                const lot = item.product.lots?.[0];
+                return {
+                  produit: { libelle_produit: item.product.name || item.product.libelle_produit },
+                  quantite: item.quantity,
+                  prix_unitaire_ttc: item.unitPrice,
+                  montant_ligne_ttc: item.total,
+                  // Informations de traçabilité du lot
+                  numero_lot: lot?.numero_lot,
+                  date_peremption: lot?.date_peremption 
+                    ? new Date(lot.date_peremption).toISOString() 
+                    : undefined
+                };
+              }),
               client: customer.name ? {
                 nom: customer.name,
                 type: customer.type,
