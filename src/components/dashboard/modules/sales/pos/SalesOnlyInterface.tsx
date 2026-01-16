@@ -21,8 +21,10 @@ import {
   FileText,
   ClipboardList,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  ShieldAlert
 } from 'lucide-react';
+import { useDynamicPermissions } from '@/hooks/useDynamicPermissions';
 import { PrescriptionModal } from '../../pos/PrescriptionModal';
 import ProductDemandModal from '../../pos/ProductDemandModal';
 import ProductSearch from './ProductSearch';
@@ -64,8 +66,31 @@ const SalesOnlyInterface = () => {
   const { getPharmacyInfo } = useGlobalSystemSettings();
   const { formatAmount } = useCurrencyFormatting();
   const { t } = useLanguage();
+  const { canAccess } = useDynamicPermissions();
   
   const { searchByBarcode, saveTransaction, checkStock } = usePOSData();
+
+  // Bloquer l'accès si pas de permission de créer des ventes
+  if (!canAccess('sales.create')) {
+    return (
+      <div className="h-full flex items-center justify-center p-6">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center flex items-center gap-2 justify-center">
+              <ShieldAlert className="h-5 w-5 text-destructive" />
+              Accès Non Autorisé
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground">
+              Vous n'avez pas les permissions nécessaires pour créer des ventes.
+              Contactez votre responsable pour obtenir les accès appropriés.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // États
   const [cart, setCart] = useState<CartItem[]>([]);
