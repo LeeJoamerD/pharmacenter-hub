@@ -270,8 +270,8 @@ export default function PharmacyCreation() {
   };
 
   const maskPhone = (phone: string) => {
-    if (phone.length <= 4) return phone;
-    return phone.slice(0, 4) + '*'.repeat(phone.length - 6) + phone.slice(-2);
+    if (!phone || phone.length < 4) return phone;
+    return phone.slice(-4).padStart(phone.length, '*');
   };
 
   return (
