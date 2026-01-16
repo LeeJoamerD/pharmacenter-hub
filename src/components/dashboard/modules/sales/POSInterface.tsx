@@ -463,7 +463,8 @@ const POSInterface = () => {
                 *,
                 lignes_ventes!lignes_ventes_vente_id_fkey(
                   *,
-                  produit:produits!lignes_ventes_produit_id_fkey(libelle_produit)
+                  produit:produits!lignes_ventes_produit_id_fkey(libelle_produit),
+                  lot:lots!lignes_ventes_lot_id_fkey(numero_lot, date_peremption)
                 )
               `)
               .eq('id', result.vente_id)
@@ -473,7 +474,7 @@ const POSInterface = () => {
               // Récupérer infos pharmacie depuis les paramètres système
               const pharmacyInfo = getPharmacyInfo();
 
-              // Préparer les données du reçu
+              // Préparer les données du reçu avec informations de lot
               const receiptData = {
                 vente: {
                   numero_vente: venteDetails.numero_vente,
@@ -488,7 +489,12 @@ const POSInterface = () => {
                   montant_rendu: venteDetails.montant_rendu,
                   mode_paiement: venteDetails.mode_paiement,
                 },
-                lignes: venteDetails.lignes_ventes || [],
+                // Mapper les lignes avec informations de lot pour traçabilité
+                lignes: (venteDetails.lignes_ventes || []).map((ligne: any) => ({
+                  ...ligne,
+                  numero_lot: ligne.numero_lot || ligne.lot?.numero_lot,
+                  date_peremption: ligne.date_peremption || ligne.lot?.date_peremption
+                })),
                 pharmacyInfo: {
                   name: pharmacyInfo.name,
                   adresse: pharmacyInfo.address,
