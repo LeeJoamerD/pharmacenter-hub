@@ -3,14 +3,15 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, Plus, Package, AlertTriangle, Loader2, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
-import { POSProduct } from '@/types/pos';
+import { Search, Plus, Package, AlertTriangle, Loader2, ChevronLeft, ChevronRight, Clock, Layers } from 'lucide-react';
+import { POSProduct, LotInfo } from '@/types/pos';
 import { usePOSProductsPaginated } from '@/hooks/usePOSProductsPaginated';
 import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import LotSelectorModal from './LotSelectorModal';
 
 interface ProductSearchProps {
   onAddToCart: (product: POSProduct, quantity?: number) => void;
@@ -22,6 +23,11 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
   const { formatAmount } = useCurrencyFormatting();
   const { t } = useLanguage();
   const { toast } = useToast();
+  
+  // État pour la sélection de lot
+  const [lotSelectorOpen, setLotSelectorOpen] = useState(false);
+  const [selectedProductForLot, setSelectedProductForLot] = useState<POSProduct | null>(null);
+  const [availableLots, setAvailableLots] = useState<LotInfo[]>([]);
   
   const { 
     products, 
@@ -46,11 +52,40 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
 
     // Récupérer les lots à la demande pour ce produit
     const lots = await getProductLots(product.id);
+    
+    // Si plusieurs lots disponibles, ouvrir le modal de sélection
+    if (lots.length > 1) {
+      setSelectedProductForLot({ ...product, lots });
+      setAvailableLots(lots);
+      setLotSelectorOpen(true);
+      return;
+    }
+    
+    // Si un seul lot ou aucun, ajouter directement avec FIFO
     onAddToCart({ ...product, lots });
     
     // Réinitialiser la recherche après ajout au panier
     setSearchInput('');
     setCurrentPage(1);
+  };
+
+  // Callback quand l'utilisateur sélectionne un lot spécifique
+  const handleLotSelected = (product: POSProduct, selectedLot: LotInfo) => {
+    // Réorganiser les lots pour mettre le lot sélectionné en premier
+    const reorderedLots = [selectedLot, ...product.lots.filter(l => l.id !== selectedLot.id)];
+    onAddToCart({ ...product, lots: reorderedLots });
+    
+    // Réinitialiser
+    setSearchInput('');
+    setCurrentPage(1);
+    setLotSelectorOpen(false);
+    setSelectedProductForLot(null);
+    setAvailableLots([]);
+    
+    toast({
+      title: 'Lot sélectionné',
+      description: `Lot ${selectedLot.numero_lot} ajouté au panier`,
+    });
   };
 
   // Afficher un message si pas assez de caractères
@@ -193,6 +228,17 @@ const ProductSearch = ({ onAddToCart }: ProductSearchProps) => {
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
+      )}
+
+      {/* Modal de sélection de lot */}
+      {selectedProductForLot && (
+        <LotSelectorModal
+          open={lotSelectorOpen}
+          onOpenChange={setLotSelectorOpen}
+          product={selectedProductForLot}
+          lots={availableLots}
+          onSelectLot={handleLotSelected}
+        />
       )}
     </div>
   );

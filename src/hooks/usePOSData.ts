@@ -5,8 +5,8 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
-import { POSProduct, TransactionData, VenteResult } from '@/types/pos';
-import { updateStockAfterSale } from '@/utils/stockUpdater';
+import { POSProduct, TransactionData, VenteResult, LotInfo } from '@/types/pos';
+import { updateStockAfterSale, LotUsage } from '@/utils/stockUpdater';
 import { generateInvoiceNumber } from '@/utils/invoiceGenerator';
 // Note: Écritures comptables maintenant générées à la fermeture de session (CloseSessionModal)
 import { unifiedPricingService } from '@/services/UnifiedPricingService';
@@ -257,7 +257,11 @@ export const usePOSData = () => {
       }
 
       // 7. Insérer les lignes de vente avec prix directement depuis les lots (source de vérité)
-      const lignesVente = transactionData.cart.map(item => {
+      // NOUVEAU: Éclater les lignes si une vente puise dans plusieurs lots (traçabilité FIFO)
+      const lignesVente: any[] = [];
+      const allLotsUsed: Map<string, LotUsage[]> = new Map();
+
+      for (const item of transactionData.cart) {
         const product = item.product;
         const lot = item.lot;
         
@@ -268,23 +272,48 @@ export const usePOSData = () => {
         const tvaMontant = lot?.montant_tva || product.tva_montant || 0;
         const tauxCentime = lot?.taux_centime_additionnel || product.taux_centime_additionnel || 0;
         const centimeMontant = lot?.montant_centime_additionnel || product.centime_additionnel_montant || 0;
-        
-        return {
-          tenant_id: tenantId,
-          vente_id: vente.id,
-          produit_id: product.id,
-          lot_id: lot?.id,
-          quantite: item.quantity,
-          prix_unitaire_ht: prixHT,
-          prix_unitaire_ttc: prixTTC,
-          taux_tva: tauxTVA,
-          taux_centime_additionnel: tauxCentime,
-          remise_ligne: item.discount || 0,
-          montant_ligne_ttc: item.total,
-          montant_tva_ligne: tvaMontant * item.quantity,
-          montant_centime_ligne: centimeMontant * item.quantity
-        };
-      });
+
+        // Si un lot est explicitement sélectionné, créer une seule ligne
+        if (lot?.id) {
+          lignesVente.push({
+            tenant_id: tenantId,
+            vente_id: vente.id,
+            produit_id: product.id,
+            lot_id: lot.id,
+            numero_lot: lot.numero_lot,
+            date_peremption_lot: lot.date_peremption,
+            quantite: item.quantity,
+            prix_unitaire_ht: prixHT,
+            prix_unitaire_ttc: prixTTC,
+            taux_tva: tauxTVA,
+            taux_centime_additionnel: tauxCentime,
+            remise_ligne: item.discount || 0,
+            montant_ligne_ttc: item.total,
+            montant_tva_ligne: tvaMontant * item.quantity,
+            montant_centime_ligne: centimeMontant * item.quantity
+          });
+        } else {
+          // Sinon, créer une ligne par défaut (le lot sera déterminé par updateStockAfterSale)
+          // Le lot FIFO sera associé lors de la mise à jour du stock
+          lignesVente.push({
+            tenant_id: tenantId,
+            vente_id: vente.id,
+            produit_id: product.id,
+            lot_id: product.lots?.[0]?.id || null,
+            numero_lot: product.lots?.[0]?.numero_lot || null,
+            date_peremption_lot: product.lots?.[0]?.date_peremption || null,
+            quantite: item.quantity,
+            prix_unitaire_ht: prixHT,
+            prix_unitaire_ttc: prixTTC,
+            taux_tva: tauxTVA,
+            taux_centime_additionnel: tauxCentime,
+            remise_ligne: item.discount || 0,
+            montant_ligne_ttc: item.total,
+            montant_tva_ligne: tvaMontant * item.quantity,
+            montant_centime_ligne: centimeMontant * item.quantity
+          });
+        }
+      }
 
       const { error: lignesError } = await supabase
         .from('lignes_ventes')
@@ -292,23 +321,32 @@ export const usePOSData = () => {
 
       if (lignesError) throw lignesError;
 
-      // 8. Mettre à jour le stock (FIFO) - Se fait immédiatement, même si pas de paiement
+      // 8. Mettre à jour le stock (FIFO) et récupérer les lots utilisés
       for (const item of transactionData.cart) {
-        await updateStockAfterSale(item.product.id, item.quantity, tenantId);
+        const lotsUsed = await updateStockAfterSale(item.product.id, item.quantity, tenantId);
+        allLotsUsed.set(item.product.id, lotsUsed);
       }
 
-      // 9. Créer mouvements de stock
-      const mouvementsStock = transactionData.cart.map(item => ({
-        tenant_id: tenantId,
-        produit_id: item.product.id,
-        type_mouvement: 'vente',
-        quantite: -item.quantity,
-        date_mouvement: new Date().toISOString(),
-        agent_id: transactionData.agent_id,
-        reference_type: 'vente',
-        reference_id: vente.id,
-        lot_id: item.lot?.id || null
-      }));
+      // 9. Créer mouvements de stock avec détails des lots
+      const mouvementsStock: any[] = [];
+      for (const item of transactionData.cart) {
+        const lotsUsedForProduct = allLotsUsed.get(item.product.id) || [];
+        
+        // Créer un mouvement par lot utilisé pour une traçabilité complète
+        for (const lotUsage of lotsUsedForProduct) {
+          mouvementsStock.push({
+            tenant_id: tenantId,
+            produit_id: item.product.id,
+            type_mouvement: 'vente',
+            quantite: -lotUsage.quantite_deduite,
+            date_mouvement: new Date().toISOString(),
+            agent_id: transactionData.agent_id,
+            reference_type: 'vente',
+            reference_id: vente.id,
+            lot_id: lotUsage.lot_id
+          });
+        }
+      }
 
       const { error: mouvementError } = await supabase
         .from('stock_mouvements')
