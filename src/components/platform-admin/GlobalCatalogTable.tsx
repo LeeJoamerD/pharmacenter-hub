@@ -30,10 +30,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, ChevronLeft, ChevronRight, Loader2, Pencil, Trash2, Download } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Loader2, Pencil, Trash2, Download, RefreshCw } from 'lucide-react';
 import { exportCatalogueGlobalListes } from '@/utils/catalogueGlobalExportUtils';
 import { toast } from 'sonner';
 import GlobalProductEditDialog from './GlobalProductEditDialog';
+import GlobalCatalogCategoryUpdate from './GlobalCatalogCategoryUpdate';
 
 export interface GlobalProduct {
   id: string;
@@ -67,6 +68,7 @@ const GlobalCatalogTable = () => {
   const [deletingProduct, setDeletingProduct] = useState<GlobalProduct | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showCategoryUpdate, setShowCategoryUpdate] = useState(false);
 
   // Bulk selection states
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -242,6 +244,14 @@ const GlobalCatalogTable = () => {
           <CardTitle className="flex items-center justify-between">
             <span>Produits du Catalogue Global</span>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCategoryUpdate(true)}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Màj Catégories
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -516,6 +526,13 @@ const GlobalCatalogTable = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Category update dialog */}
+      <GlobalCatalogCategoryUpdate
+        open={showCategoryUpdate}
+        onOpenChange={setShowCategoryUpdate}
+        onSuccess={fetchProducts}
+      />
     </>
   );
 };
