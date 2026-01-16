@@ -11,12 +11,36 @@ import { CreditManagerConnected } from './sales/CreditManagerConnected';
 import PromotionsManagerConnected from './sales/PromotionsManagerConnected';
 import SalesConfiguration from './sales/SalesConfiguration';
 import CashExpensesManager from './sales/CashExpensesManager';
+import { useDynamicPermissions } from '@/hooks/useDynamicPermissions';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ShieldAlert } from 'lucide-react';
 
 interface VentesModuleProps {
   activeSubModule: string;
 }
 
 const VentesModule = ({ activeSubModule }: VentesModuleProps) => {
+  const { canAccess } = useDynamicPermissions();
+
+  // Vérifier l'accès au module ventes
+  if (!canAccess('sales.view')) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Gestion des Ventes</h2>
+          <p className="text-muted-foreground">
+            Module complet de gestion des ventes, encaissements et point de vente
+          </p>
+        </div>
+        <Alert variant="destructive">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertDescription>
+            Vous n'avez pas les permissions nécessaires pour accéder au module Ventes.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
   const renderContent = () => {
     switch (activeSubModule) {
       case 'caisses':

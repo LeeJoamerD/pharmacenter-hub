@@ -60,9 +60,25 @@ const POSInterface = () => {
   // Paramètre de séparation Vente/Caisse
   const separateSaleAndCash = salesSettings.general.separateSaleAndCash;
   
-  // Vérification permission encaissement
+  // Vérification permission encaissement et vente
   const { canAccess } = useDynamicPermissions();
   const canCashier = canAccess('sales.cashier');
+  const canCreateSale = canAccess('sales.create');
+
+  // Bloquer l'accès si pas de permission de créer des ventes
+  if (!canCreateSale) {
+    return (
+      <Card className="m-4">
+        <CardContent className="pt-6 text-center">
+          <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
+          <h3 className="text-lg font-semibold">Accès refusé</h3>
+          <p className="text-muted-foreground">
+            Vous n'avez pas les permissions nécessaires pour utiliser le Point de Vente.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
   
   // Hook principal POS (version optimisée sans fetch massif)
   const { 

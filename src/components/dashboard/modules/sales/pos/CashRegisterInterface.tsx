@@ -38,6 +38,7 @@ import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { useGlobalSystemSettings } from '@/hooks/useGlobalSystemSettings';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
+import { useDynamicPermissions } from '@/hooks/useDynamicPermissions';
 import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 import { printCashReceipt } from '@/utils/salesTicketPrinter';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,8 +58,31 @@ const CashRegisterInterface = () => {
   const { toast } = useToast();
   const { getPharmacyInfo } = useGlobalSystemSettings();
   const { formatAmount, roundForCurrency } = useCurrencyFormatting();
+  const { canAccess } = useDynamicPermissions();
   
   const { processPayment } = usePOSData();
+
+  // Bloquer l'accès si pas de permission d'encaissement
+  if (!canAccess('sales.create') && !canAccess('sales.cashier')) {
+    return (
+      <div className="h-full flex items-center justify-center p-6">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center flex items-center gap-2 justify-center">
+              <ShieldAlert className="h-5 w-5 text-destructive" />
+              Accès Non Autorisé
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-muted-foreground">
+              Vous n'avez pas les permissions nécessaires pour effectuer des encaissements.
+              Contactez votre responsable pour obtenir les accès appropriés.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   
   // États pour le sélecteur de session
   const [mySessions, setMySessions] = useState<CashierSession[]>([]);
