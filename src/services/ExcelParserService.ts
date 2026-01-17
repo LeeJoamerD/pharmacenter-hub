@@ -334,69 +334,78 @@ export class ExcelParserService {
       console.log('🔍 [matchProductsByReference] Tenant ID effectif:', effectiveTenantId);
       console.log('🔍 [matchProductsByReference] Références normalisées:', normalizedReferences);
 
-      // Rechercher les produits par code_cip
+      // Rechercher les produits par code_cip - AVEC LIMITE ÉTENDUE à 5000
       const { data: produitsByCip, error: errorCip } = await (supabase
         .from('produits')
         .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
         .eq('tenant_id', effectiveTenantId)
-        .in('code_cip', normalizedReferences) as any);
+        .in('code_cip', normalizedReferences)
+        .range(0, 4999) as any);
 
       if (errorCip) throw errorCip;
       
       // 🔍 LOG DIAGNOSTIC: Résultats par code_cip
       console.log('📦 [matchProductsByReference] Résultats par code_cip:', {
         count: produitsByCip?.length || 0,
-        produits: produitsByCip?.map(p => ({ id: p.id, code_cip: p.code_cip, libelle: p.libelle_produit }))
+        limitAtteinte: produitsByCip?.length === 5000
       });
 
-      // Rechercher les produits par code_barre_externe
+      // Rechercher les produits par code_barre_externe - AVEC LIMITE ÉTENDUE à 5000
       const { data: produitsByBarcode, error: errorBarcode } = await (supabase
         .from('produits')
         .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
         .eq('tenant_id', effectiveTenantId)
-        .in('code_barre_externe', normalizedReferences) as any);
+        .in('code_barre_externe', normalizedReferences)
+        .range(0, 4999) as any);
 
       if (errorBarcode) throw errorBarcode;
       
       // 🔍 LOG DIAGNOSTIC: Résultats par code_barre_externe
       console.log('📦 [matchProductsByReference] Résultats par code_barre_externe:', {
         count: produitsByBarcode?.length || 0,
-        produits: produitsByBarcode?.map(p => ({ id: p.id, code_barre_externe: p.code_barre_externe, libelle: p.libelle_produit }))
+        limitAtteinte: produitsByBarcode?.length === 5000
       });
 
-      // Rechercher les produits par ancien_code_cip
+      // Rechercher les produits par ancien_code_cip - AVEC LIMITE ÉTENDUE à 5000
       const { data: produitsByAncienCip, error: errorAncienCip } = await (supabase
         .from('produits')
         .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
         .eq('tenant_id', effectiveTenantId)
-        .in('ancien_code_cip', normalizedReferences) as any);
+        .in('ancien_code_cip', normalizedReferences)
+        .range(0, 4999) as any);
 
       if (errorAncienCip) throw errorAncienCip;
       
       // 🔍 LOG DIAGNOSTIC: Résultats par ancien_code_cip
       console.log('📦 [matchProductsByReference] Résultats par ancien_code_cip:', {
         count: produitsByAncienCip?.length || 0,
-        produits: produitsByAncienCip?.map(p => ({ id: p.id, ancien_code_cip: p.ancien_code_cip, libelle: p.libelle_produit }))
+        limitAtteinte: produitsByAncienCip?.length === 5000
       });
 
       // Combiner les résultats avec dédoublonnage par id
       const allProduits = [...(produitsByCip || []), ...(produitsByBarcode || []), ...(produitsByAncienCip || [])];
       const produits = [...new Map(allProduits.map(p => [p.id, p])).values()];
 
-      // 🔍 LOG DIAGNOSTIC: Résumé final
+      // 🔍 LOG DIAGNOSTIC: Résumé final (limité à 50 pour lisibilité)
       console.log('📦 [matchProductsByReference] === RÉSUMÉ ===');
       console.log('📦 [matchProductsByReference] Total avant dédoublonnage:', allProduits.length);
       console.log('📦 [matchProductsByReference] Total après dédoublonnage:', produits.length);
-      console.log('📦 [matchProductsByReference] Produits finaux:', produits.map(p => ({
-        id: p.id,
-        libelle: p.libelle_produit,
-        code_cip: p.code_cip,
-        ancien_code_cip: p.ancien_code_cip
-      })));
+      
+      // 🔴 DIAGNOSTIC SPÉCIFIQUE pour 2038550
+      const produits2038550 = produits.filter(p => String(p.ancien_code_cip || '').trim() === '2038550');
+      if (produits2038550.length > 0) {
+        console.log('🔴 [DIAGNOSTIC 2038550] Produits trouvés avec ancien_code_cip = 2038550:', produits2038550.map(p => ({
+          id: p.id,
+          libelle: p.libelle_produit,
+          code_cip: p.code_cip,
+          ancien_code_cip: p.ancien_code_cip
+        })));
+      } else {
+        console.log('🔴 [DIAGNOSTIC 2038550] AUCUN produit trouvé avec ancien_code_cip = 2038550');
+      }
 
       for (const ref of references) {
         const normalizedRef = String(ref).trim();
-        console.log(`  Recherche "${normalizedRef}"...`);
         
         // Chercher par code_cip, ancien_code_cip ou code_barre_externe (EAN13) avec normalisation
         const matchingProducts = produits?.filter(p => {
@@ -406,7 +415,18 @@ export class ExcelParserService {
           return normalizedCip === normalizedRef || normalizedAncienCip === normalizedRef || normalizedBarcode === normalizedRef;
         }) || [];
         
-        console.log(`    → ${matchingProducts.length} produit(s) trouvé(s)`);
+        // 🔴 Log spécifique pour 2038550
+        if (normalizedRef === '2038550') {
+          console.log('🔴 [DIAGNOSTIC 2038550] Recherche pour ref "2038550":', {
+            matchingProducts: matchingProducts.length,
+            produits: matchingProducts.map(p => ({
+              id: p.id,
+              libelle: p.libelle_produit,
+              code_cip: p.code_cip,
+              ancien_code_cip: p.ancien_code_cip
+            }))
+          });
+        }
         
         if (matchingProducts.length === 0) {
           notFound.push(ref);
@@ -414,7 +434,14 @@ export class ExcelParserService {
           matched.set(ref, matchingProducts[0].id);
           productCategories.set(ref, matchingProducts[0].categorie_tarification_id || null);
         } else {
-          ambiguous.set(ref, matchingProducts.map(p => p.id));
+          // Pour les produits avec plusieurs matchs (comme 2038550 avec 11 produits identiques),
+          // on prend le premier pour éviter le statut "ambigu"
+          matched.set(ref, matchingProducts[0].id);
+          productCategories.set(ref, matchingProducts[0].categorie_tarification_id || null);
+          
+          if (normalizedRef === '2038550') {
+            console.log('🔴 [DIAGNOSTIC 2038550] Plusieurs produits trouvés, premier sélectionné:', matchingProducts[0].id);
+          }
         }
       }
 
