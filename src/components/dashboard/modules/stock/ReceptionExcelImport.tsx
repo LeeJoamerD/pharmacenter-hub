@@ -438,9 +438,15 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       return;
     }
 
+    if (!tenantId) {
+      toast.error('Pharmacie active non définie. Reconnectez-vous.');
+      return;
+    }
+
     setValidating(true);
     try {
-      const result = await ExcelParserService.validateReceptionData(lines, selectedSupplierId);
+      // Passer le tenantId de la pharmacie active au service de validation
+      const result = await ExcelParserService.validateReceptionData(lines, selectedSupplierId, tenantId);
       setValidationResult(result);
 
       // Initialiser les catégories de tarification pour chaque ligne validée
