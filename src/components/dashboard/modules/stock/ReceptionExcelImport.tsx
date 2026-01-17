@@ -19,7 +19,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { FileUp, Upload, CheckCircle2, XCircle, AlertTriangle, Loader2, PlusCircle, Settings, Bot, ShieldAlert } from 'lucide-react';
+import { FileUp, Upload, CheckCircle2, XCircle, AlertTriangle, Loader2, PlusCircle, Settings, Bot, ShieldAlert, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -740,12 +741,12 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         const normalizedCip = String(line.reference).trim();
         const normalizedName = String(line.produit).trim();
 
-        // Vérifier si le produit existe déjà dans le catalogue local
+        // Vérifier si le produit existe déjà dans le catalogue local (code_cip OU ancien_code_cip)
         const { data: existing } = await supabase
           .from('produits')
           .select('id')
           .eq('tenant_id', personnel.tenant_id)
-          .eq('code_cip', normalizedCip)
+          .or(`code_cip.eq.${normalizedCip},ancien_code_cip.eq.${normalizedCip}`)
           .maybeSingle();
 
         if (existing) {
@@ -1187,7 +1188,38 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
                   {validationResult.errors.length > 0 && (
                     <Alert variant="destructive">
                       <XCircle className="h-4 w-4" />
-                      <AlertTitle>Erreurs de validation ({validationResult.errors.length})</AlertTitle>
+                      <AlertTitle className="flex items-center justify-between">
+                        <span>Erreurs de validation ({validationResult.errors.length})</span>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            const exportData = validationResult.errors.map(err => ({
+                              'Ligne': err.rowNumber,
+                              'Référence CIP': err.reference,
+                              'Produit': err.produit,
+                              'Erreur': err.message,
+                              'Type': err.type === 'product_not_found' ? 'Produit non trouvé' :
+                                      err.type === 'invalid_quantity' ? 'Quantité invalide' :
+                                      err.type === 'invalid_price' ? 'Prix invalide' :
+                                      err.type === 'invalid_date' ? 'Date invalide' : err.type
+                            }));
+
+                            const ws = XLSX.utils.json_to_sheet(exportData);
+                            const wb = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(wb, ws, 'Erreurs');
+                            
+                            const fileName = `erreurs_validation_${new Date().toISOString().split('T')[0]}.xlsx`;
+                            XLSX.writeFile(wb, fileName);
+                            
+                            toast.success(`${validationResult.errors.length} erreur(s) exportée(s)`);
+                          }}
+                          className="ml-2 h-7 bg-background hover:bg-muted"
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Exporter
+                        </Button>
+                      </AlertTitle>
                       <AlertDescription>
                         <ul className="list-disc list-inside text-sm mt-2">
                           {validationResult.errors.slice(0, 5).map((err, idx) => (

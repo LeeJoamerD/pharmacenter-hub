@@ -322,7 +322,7 @@ export class ExcelParserService {
       // Rechercher les produits par code_cip
       const { data: produitsByCip, error: errorCip } = await (supabase
         .from('produits')
-        .select('id, libelle_produit, code_cip, code_barre_externe, categorie_tarification_id')
+        .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
         .eq('tenant_id', personnel.tenant_id)
         .in('code_cip', normalizedReferences) as any);
 
@@ -331,14 +331,24 @@ export class ExcelParserService {
       // Rechercher les produits par code_barre_externe
       const { data: produitsByBarcode, error: errorBarcode } = await (supabase
         .from('produits')
-        .select('id, libelle_produit, code_cip, code_barre_externe, categorie_tarification_id')
+        .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
         .eq('tenant_id', personnel.tenant_id)
         .in('code_barre_externe', normalizedReferences) as any);
 
       if (errorBarcode) throw errorBarcode;
 
-      // Combiner les résultats
-      const produits = [...(produitsByCip || []), ...(produitsByBarcode || [])];
+      // Rechercher les produits par ancien_code_cip
+      const { data: produitsByAncienCip, error: errorAncienCip } = await (supabase
+        .from('produits')
+        .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
+        .eq('tenant_id', personnel.tenant_id)
+        .in('ancien_code_cip', normalizedReferences) as any);
+
+      if (errorAncienCip) throw errorAncienCip;
+
+      // Combiner les résultats avec dédoublonnage par id
+      const allProduits = [...(produitsByCip || []), ...(produitsByBarcode || []), ...(produitsByAncienCip || [])];
+      const produits = [...new Map(allProduits.map(p => [p.id, p])).values()];
 
       console.log('🔍 Recherche produits pour références:', references);
       console.log('📦 Produits trouvés:', produits);
@@ -347,11 +357,12 @@ export class ExcelParserService {
         const normalizedRef = String(ref).trim();
         console.log(`  Recherche "${normalizedRef}"...`);
         
-        // Chercher par code_cip ou code_barre_externe (EAN13) avec normalisation
+        // Chercher par code_cip, ancien_code_cip ou code_barre_externe (EAN13) avec normalisation
         const matchingProducts = produits?.filter(p => {
           const normalizedCip = String(p.code_cip || '').trim();
+          const normalizedAncienCip = String(p.ancien_code_cip || '').trim();
           const normalizedBarcode = String(p.code_barre_externe || '').trim();
-          return normalizedCip === normalizedRef || normalizedBarcode === normalizedRef;
+          return normalizedCip === normalizedRef || normalizedAncienCip === normalizedRef || normalizedBarcode === normalizedRef;
         }) || [];
         
         console.log(`    → ${matchingProducts.length} produit(s) trouvé(s)`);
