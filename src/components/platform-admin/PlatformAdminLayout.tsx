@@ -7,7 +7,8 @@ import {
   LayoutDashboard, 
   LogOut,
   TestTube,
-  Settings
+  Settings,
+  BookOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,9 +25,14 @@ const menuItems = [
     href: '/platform-admin',
   },
   {
-    title: 'Catalogue Global',
+    title: 'Catalogue Produits',
     icon: Package,
     href: '/platform-admin/catalogue',
+  },
+  {
+    title: 'Plans Comptables',
+    icon: BookOpen,
+    href: '/platform-admin/plans-comptables',
   },
   {
     title: 'Tests & Développement',

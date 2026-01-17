@@ -5028,6 +5028,53 @@ export type Database = {
         }
         Relationships: []
       }
+      classes_comptables_globales: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          nom: string
+          numero: number
+          plan_comptable_id: string
+          type_bilan: string | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          nom: string
+          numero: number
+          plan_comptable_id: string
+          type_bilan?: string | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          nom?: string
+          numero?: number
+          plan_comptable_id?: string
+          type_bilan?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classes_comptables_globales_plan_comptable_id_fkey"
+            columns: ["plan_comptable_id"]
+            isOneToOne: false
+            referencedRelation: "plans_comptables_globaux"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes_therapeutiques: {
         Row: {
           created_at: string
@@ -6344,6 +6391,71 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comptes_globaux: {
+        Row: {
+          classe: number
+          compte_parent_numero: string | null
+          created_at: string
+          description: string | null
+          est_compte_flux_tresorerie: boolean | null
+          est_modifie_syscohada: boolean | null
+          est_nouveau_syscohada: boolean | null
+          id: string
+          is_active: boolean
+          libelle_compte: string
+          niveau: number
+          notes: string | null
+          numero_compte: string
+          plan_comptable_id: string
+          type_compte: string | null
+          updated_at: string
+        }
+        Insert: {
+          classe: number
+          compte_parent_numero?: string | null
+          created_at?: string
+          description?: string | null
+          est_compte_flux_tresorerie?: boolean | null
+          est_modifie_syscohada?: boolean | null
+          est_nouveau_syscohada?: boolean | null
+          id?: string
+          is_active?: boolean
+          libelle_compte: string
+          niveau?: number
+          notes?: string | null
+          numero_compte: string
+          plan_comptable_id: string
+          type_compte?: string | null
+          updated_at?: string
+        }
+        Update: {
+          classe?: number
+          compte_parent_numero?: string | null
+          created_at?: string
+          description?: string | null
+          est_compte_flux_tresorerie?: boolean | null
+          est_modifie_syscohada?: boolean | null
+          est_nouveau_syscohada?: boolean | null
+          id?: string
+          is_active?: boolean
+          libelle_compte?: string
+          niveau?: number
+          notes?: string | null
+          numero_compte?: string
+          plan_comptable_id?: string
+          type_compte?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comptes_globaux_plan_comptable_id_fkey"
+            columns: ["plan_comptable_id"]
+            isOneToOne: false
+            referencedRelation: "plans_comptables_globaux"
             referencedColumns: ["id"]
           },
         ]
@@ -14965,6 +15077,62 @@ export type Database = {
           },
         ]
       }
+      plans_comptables_globaux: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          devise_principale: string | null
+          id: string
+          is_active: boolean
+          nom: string
+          organisme_normalisation: string | null
+          reference_reglementaire: string | null
+          updated_at: string
+          version: string | null
+          zone_geographique: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          devise_principale?: string | null
+          id?: string
+          is_active?: boolean
+          nom: string
+          organisme_normalisation?: string | null
+          reference_reglementaire?: string | null
+          updated_at?: string
+          version?: string | null
+          zone_geographique?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          devise_principale?: string | null
+          id?: string
+          is_active?: boolean
+          nom?: string
+          organisme_normalisation?: string | null
+          reference_reglementaire?: string | null
+          updated_at?: string
+          version?: string | null
+          zone_geographique?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plans_comptables_globaux_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "platform_admins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_admins: {
         Row: {
           auth_user_id: string
@@ -20873,6 +21041,10 @@ export type Database = {
             Args: { p_caisse_id?: string; p_type_session?: string }
             Returns: boolean
           }
+      import_plan_comptable_global: {
+        Args: { p_plan_comptable_code?: string; p_tenant_id: string }
+        Returns: Json
+      }
       init_analytical_params_for_tenant: {
         Args: { p_country_code?: string; p_tenant_id: string }
         Returns: Json
