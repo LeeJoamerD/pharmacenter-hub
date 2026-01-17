@@ -318,6 +318,11 @@ export class ExcelParserService {
 
       // Normaliser les références AVANT la requête
       const normalizedReferences = references.map(ref => String(ref).trim());
+      
+      // 🔍 LOG DIAGNOSTIC: Début de la recherche
+      console.log('🔍 [matchProductsByReference] === DÉBUT RECHERCHE ===');
+      console.log('🔍 [matchProductsByReference] Tenant ID:', personnel.tenant_id);
+      console.log('🔍 [matchProductsByReference] Références normalisées:', normalizedReferences);
 
       // Rechercher les produits par code_cip
       const { data: produitsByCip, error: errorCip } = await (supabase
@@ -327,6 +332,12 @@ export class ExcelParserService {
         .in('code_cip', normalizedReferences) as any);
 
       if (errorCip) throw errorCip;
+      
+      // 🔍 LOG DIAGNOSTIC: Résultats par code_cip
+      console.log('📦 [matchProductsByReference] Résultats par code_cip:', {
+        count: produitsByCip?.length || 0,
+        produits: produitsByCip?.map(p => ({ id: p.id, code_cip: p.code_cip, libelle: p.libelle_produit }))
+      });
 
       // Rechercher les produits par code_barre_externe
       const { data: produitsByBarcode, error: errorBarcode } = await (supabase
@@ -336,6 +347,12 @@ export class ExcelParserService {
         .in('code_barre_externe', normalizedReferences) as any);
 
       if (errorBarcode) throw errorBarcode;
+      
+      // 🔍 LOG DIAGNOSTIC: Résultats par code_barre_externe
+      console.log('📦 [matchProductsByReference] Résultats par code_barre_externe:', {
+        count: produitsByBarcode?.length || 0,
+        produits: produitsByBarcode?.map(p => ({ id: p.id, code_barre_externe: p.code_barre_externe, libelle: p.libelle_produit }))
+      });
 
       // Rechercher les produits par ancien_code_cip
       const { data: produitsByAncienCip, error: errorAncienCip } = await (supabase
@@ -345,13 +362,27 @@ export class ExcelParserService {
         .in('ancien_code_cip', normalizedReferences) as any);
 
       if (errorAncienCip) throw errorAncienCip;
+      
+      // 🔍 LOG DIAGNOSTIC: Résultats par ancien_code_cip
+      console.log('📦 [matchProductsByReference] Résultats par ancien_code_cip:', {
+        count: produitsByAncienCip?.length || 0,
+        produits: produitsByAncienCip?.map(p => ({ id: p.id, ancien_code_cip: p.ancien_code_cip, libelle: p.libelle_produit }))
+      });
 
       // Combiner les résultats avec dédoublonnage par id
       const allProduits = [...(produitsByCip || []), ...(produitsByBarcode || []), ...(produitsByAncienCip || [])];
       const produits = [...new Map(allProduits.map(p => [p.id, p])).values()];
 
-      console.log('🔍 Recherche produits pour références:', references);
-      console.log('📦 Produits trouvés:', produits);
+      // 🔍 LOG DIAGNOSTIC: Résumé final
+      console.log('📦 [matchProductsByReference] === RÉSUMÉ ===');
+      console.log('📦 [matchProductsByReference] Total avant dédoublonnage:', allProduits.length);
+      console.log('📦 [matchProductsByReference] Total après dédoublonnage:', produits.length);
+      console.log('📦 [matchProductsByReference] Produits finaux:', produits.map(p => ({
+        id: p.id,
+        libelle: p.libelle_produit,
+        code_cip: p.code_cip,
+        ancien_code_cip: p.ancien_code_cip
+      })));
 
       for (const ref of references) {
         const normalizedRef = String(ref).trim();
