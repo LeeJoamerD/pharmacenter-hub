@@ -172,7 +172,7 @@ const GlobalCatalogTable = () => {
         .range(page * pageSize, (page + 1) * pageSize - 1);
 
       if (debouncedSearch) {
-        query = query.or(`libelle_produit.ilike.%${debouncedSearch}%,code_cip.ilike.%${debouncedSearch}%`);
+        query = query.or(`libelle_produit.ilike.%${debouncedSearch}%,code_cip.ilike.%${debouncedSearch}%,ancien_code_cip.ilike.%${debouncedSearch}%`);
       }
 
       const { data, error, count } = await query;
@@ -274,7 +274,7 @@ const GlobalCatalogTable = () => {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher par nom ou CIP..."
+                placeholder="Rechercher par nom, CIP ou ancien CIP..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
