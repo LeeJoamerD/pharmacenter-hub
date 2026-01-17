@@ -767,11 +767,11 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
           // Mapper vers les références locales (crée les référentiels manquants)
           const mappedData = await mapToLocalReferences(globalProduct);
 
-          // Insérer le produit avec toutes les données du catalogue global
+          // UPSERT : Insérer ou mettre à jour le produit (évite les doublons)
           // Priorité pour ancien_code_cip : valeur Excel > catalogue global
           const { data: newProduct, error } = await supabase
             .from('produits')
-            .insert({
+            .upsert({
               tenant_id: personnel.tenant_id,
               code_cip: mappedData.code_cip,
               ancien_code_cip: line.ancienCodeCip || mappedData.ancien_code_cip || null,
@@ -785,6 +785,9 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
               prix_achat: line.prixAchatReel || mappedData.prix_achat || null,
               prix_vente_ttc: mappedData.prix_vente_ttc || null,
               is_active: true
+            }, {
+              onConflict: 'tenant_id,code_cip',
+              ignoreDuplicates: false
             })
             .select('id')
             .single();
@@ -804,17 +807,20 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
             created++;
           }
         } else {
-          // Produit non trouvé dans le catalogue global - création minimale
+          // Produit non trouvé dans le catalogue global - création minimale avec UPSERT
           notFoundInGlobal++;
           const { error } = await supabase
             .from('produits')
-            .insert({
+            .upsert({
               tenant_id: personnel.tenant_id,
               libelle_produit: normalizedName,
               code_cip: normalizedCip,
               ancien_code_cip: line.ancienCodeCip || null,
               prix_achat: line.prixAchatReel,
               is_active: true
+            }, {
+              onConflict: 'tenant_id,code_cip',
+              ignoreDuplicates: false
             });
 
           if (error) {
