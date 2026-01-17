@@ -162,7 +162,8 @@ export class ExcelParserService {
    */
   static async validateReceptionData(
     lines: ExcelReceptionLine[], 
-    supplierId: string
+    supplierId: string,
+    tenantId?: string  // Nouveau paramètre pour forcer le tenant actif
   ): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
@@ -172,8 +173,8 @@ export class ExcelParserService {
     // Récupérer toutes les références uniques et les normaliser
     const references = [...new Set(lines.map(l => String(l.reference).trim()))];
     
-    // Matcher les produits
-    const productMatches = await this.matchProductsByReference(references);
+    // Matcher les produits avec le tenantId fourni
+    const productMatches = await this.matchProductsByReference(references, tenantId);
 
     // Valider chaque ligne
     for (const line of lines) {
@@ -296,39 +297,48 @@ export class ExcelParserService {
   /**
    * Trouve les correspondances entre références et produits
    */
-  static async matchProductsByReference(references: string[]): Promise<ProductMatchResult> {
+  static async matchProductsByReference(references: string[], tenantId?: string): Promise<ProductMatchResult> {
     const matched = new Map<string, string>();
     const notFound: string[] = [];
     const ambiguous = new Map<string, string[]>();
     const productCategories = new Map<string, string | null>();
 
     try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user?.user) throw new Error('Utilisateur non authentifié');
-
-      const personnelQuery = (supabase as any)
-        .from('personnel')
-        .select('tenant_id')
-        .eq('auth_user_id', user.user.id)
-        .single();
+      // Résolution du tenant : priorité au tenantId fourni par l'UI
+      let effectiveTenantId = tenantId;
       
-      const { data: personnel } = await personnelQuery;
+      if (!effectiveTenantId) {
+        // Fallback: récupérer via auth.getUser() + personnel
+        const { data: user } = await supabase.auth.getUser();
+        if (user?.user) {
+          const { data: personnel } = await supabase
+            .from('personnel')
+            .select('tenant_id')
+            .eq('auth_user_id', user.user.id)
+            .maybeSingle();
+          
+          effectiveTenantId = personnel?.tenant_id;
+        }
+      }
 
-      if (!personnel) throw new Error('Personnel non trouvé');
+      if (!effectiveTenantId) {
+        throw new Error('Pharmacie active non déterminée. Reconnectez-vous ou sélectionnez une pharmacie.');
+      }
 
       // Normaliser les références AVANT la requête
       const normalizedReferences = references.map(ref => String(ref).trim());
       
       // 🔍 LOG DIAGNOSTIC: Début de la recherche
       console.log('🔍 [matchProductsByReference] === DÉBUT RECHERCHE ===');
-      console.log('🔍 [matchProductsByReference] Tenant ID:', personnel.tenant_id);
+      console.log('🔍 [matchProductsByReference] Tenant ID fourni par UI:', tenantId);
+      console.log('🔍 [matchProductsByReference] Tenant ID effectif:', effectiveTenantId);
       console.log('🔍 [matchProductsByReference] Références normalisées:', normalizedReferences);
 
       // Rechercher les produits par code_cip
       const { data: produitsByCip, error: errorCip } = await (supabase
         .from('produits')
         .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
-        .eq('tenant_id', personnel.tenant_id)
+        .eq('tenant_id', effectiveTenantId)
         .in('code_cip', normalizedReferences) as any);
 
       if (errorCip) throw errorCip;
@@ -343,7 +353,7 @@ export class ExcelParserService {
       const { data: produitsByBarcode, error: errorBarcode } = await (supabase
         .from('produits')
         .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
-        .eq('tenant_id', personnel.tenant_id)
+        .eq('tenant_id', effectiveTenantId)
         .in('code_barre_externe', normalizedReferences) as any);
 
       if (errorBarcode) throw errorBarcode;
@@ -358,7 +368,7 @@ export class ExcelParserService {
       const { data: produitsByAncienCip, error: errorAncienCip } = await (supabase
         .from('produits')
         .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
-        .eq('tenant_id', personnel.tenant_id)
+        .eq('tenant_id', effectiveTenantId)
         .in('ancien_code_cip', normalizedReferences) as any);
 
       if (errorAncienCip) throw errorAncienCip;
