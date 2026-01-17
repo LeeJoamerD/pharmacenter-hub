@@ -3,10 +3,12 @@ import { Navigate, Routes, Route } from 'react-router-dom';
 import { usePlatformAdmin } from '@/hooks/usePlatformAdmin';
 import PlatformAdminLayout from '@/components/platform-admin/PlatformAdminLayout';
 import GlobalCatalogManager from '@/components/platform-admin/GlobalCatalogManager';
+import GlobalAccountingPlanManager from '@/components/platform-admin/GlobalAccountingPlanManager';
 import PlatformOverview from '@/components/platform-admin/PlatformOverview';
 import PlatformTestSuite from '@/components/platform-admin/PlatformTestSuite';
 import { PlatformConfiguration } from '@/components/platform-admin/PlatformConfiguration';
 import { Loader2 } from 'lucide-react';
+
 const PlatformAdmin = () => {
   const { isPlatformAdmin, loading } = usePlatformAdmin();
 
@@ -30,6 +32,7 @@ const PlatformAdmin = () => {
       <Routes>
         <Route index element={<PlatformOverview />} />
         <Route path="catalogue" element={<GlobalCatalogManager />} />
+        <Route path="plans-comptables" element={<GlobalAccountingPlanManager />} />
         <Route path="tests" element={<PlatformTestSuite />} />
         <Route path="configuration" element={<PlatformConfiguration />} />
       </Routes>
