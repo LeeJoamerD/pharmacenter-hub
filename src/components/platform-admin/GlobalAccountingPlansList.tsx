@@ -46,7 +46,8 @@ const GlobalAccountingPlansList: React.FC<GlobalAccountingPlansListProps> = ({ o
     queryFn: async () => {
       const { data, error } = await supabase
         .from('comptes_globaux')
-        .select('plan_comptable_id');
+        .select('plan_comptable_id')
+        .range(0, 9999);
 
       if (error) throw error;
       
@@ -157,7 +158,9 @@ const GlobalAccountingPlansList: React.FC<GlobalAccountingPlansListProps> = ({ o
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Mis à jour le {format(new Date(plan.updated_at), 'dd MMM yyyy', { locale: fr })}
+              Mis à jour le {plan.updated_at && !isNaN(new Date(plan.updated_at).getTime())
+                ? format(new Date(plan.updated_at), 'dd MMM yyyy', { locale: fr })
+                : 'Date inconnue'}
             </p>
           </CardContent>
         </Card>
