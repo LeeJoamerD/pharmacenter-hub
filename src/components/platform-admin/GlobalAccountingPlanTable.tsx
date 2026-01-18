@@ -98,7 +98,8 @@ const GlobalAccountingPlanTable: React.FC<GlobalAccountingPlanTableProps> = ({ s
         .from('comptes_globaux')
         .select('*')
         .eq('plan_comptable_id', planId)
-        .order('numero_compte');
+        .order('numero_compte')
+        .range(0, 9999);
 
       if (error) throw error;
       return data as CompteGlobal[];
