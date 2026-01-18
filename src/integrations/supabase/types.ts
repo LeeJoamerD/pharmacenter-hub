@@ -20857,6 +20857,17 @@ export type Database = {
             }
             Returns: Json
           }
+      get_matching_global_plan: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          classes_count: number
+          comptes_count: number
+          plan_code: string
+          plan_id: string
+          plan_nom: string
+          plan_version: string
+        }[]
+      }
       get_multichannel_metrics: { Args: { p_tenant_id: string }; Returns: Json }
       get_network_activity_distribution: {
         Args: { p_tenant_id: string }
@@ -21041,6 +21052,10 @@ export type Database = {
             Args: { p_caisse_id?: string; p_type_session?: string }
             Returns: boolean
           }
+      import_global_accounting_plan: {
+        Args: { p_plan_global_id: string; p_tenant_id: string }
+        Returns: Json
+      }
       import_plan_comptable_global: {
         Args: { p_plan_comptable_code?: string; p_tenant_id: string }
         Returns: Json

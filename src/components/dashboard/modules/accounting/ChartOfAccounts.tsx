@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useChartOfAccounts, Account } from "@/hooks/useChartOfAccounts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ChartOfAccountsRegionalSettingsDialog } from "@/components/accounting/ChartOfAccountsRegionalSettingsDialog";
+import { ImportGlobalAccountingPlanButton } from "@/components/accounting/ImportGlobalAccountingPlanButton";
 import { Settings } from 'lucide-react';
 
 const ChartOfAccounts = () => {
@@ -242,6 +243,7 @@ const ChartOfAccounts = () => {
           )}
         </div>
         <div className="flex gap-2">
+          <ImportGlobalAccountingPlanButton />
           <Button variant="outline" onClick={() => setRegionalDialog(true)}>
             <Settings className="mr-2 h-4 w-4" />
             Configuration Régionale
