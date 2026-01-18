@@ -295,7 +295,20 @@ export class ExcelParserService {
   }
 
   /**
+   * Découpe un tableau en chunks de taille maximale
+   * Utilisé pour contourner la limite Supabase de 1000 résultats par requête
+   */
+  static chunkArray<T>(array: T[], chunkSize: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+      chunks.push(array.slice(i, i + chunkSize));
+    }
+    return chunks;
+  }
+
+  /**
    * Trouve les correspondances entre références et produits
+   * Utilise le chunking pour contourner la limite Supabase de 1000 résultats
    */
   static async matchProductsByReference(references: string[], tenantId?: string): Promise<ProductMatchResult> {
     const matched = new Map<string, string>();
@@ -325,125 +338,101 @@ export class ExcelParserService {
         throw new Error('Pharmacie active non déterminée. Reconnectez-vous ou sélectionnez une pharmacie.');
       }
 
-      // Normaliser les références AVANT la requête
-      const normalizedReferences = references.map(ref => String(ref).trim());
+      // Normaliser et dédupliquer les références AVANT la requête
+      const normalizedReferences = [...new Set(references.map(ref => String(ref).trim()))];
       
-      // 🔍 LOG DIAGNOSTIC: Début de la recherche
-      console.log('🔍 [matchProductsByReference] === DÉBUT RECHERCHE ===');
-      console.log('🔍 [matchProductsByReference] Tenant ID fourni par UI:', tenantId);
+      // ✅ CHUNKING : Découper en lots de 500 pour contourner la limite Supabase de 1000 résultats
+      const CHUNK_SIZE = 500;
+      const referenceChunks = this.chunkArray(normalizedReferences, CHUNK_SIZE);
+      
+      console.log('🔍 [matchProductsByReference] === DÉBUT RECHERCHE AVEC CHUNKING ===');
       console.log('🔍 [matchProductsByReference] Tenant ID effectif:', effectiveTenantId);
-      console.log('🔍 [matchProductsByReference] Références normalisées:', normalizedReferences);
+      console.log('🔍 [matchProductsByReference] Total références uniques:', normalizedReferences.length);
+      console.log('🔍 [matchProductsByReference] Nombre de chunks:', referenceChunks.length);
+      console.log('🔍 [matchProductsByReference] Taille des chunks:', CHUNK_SIZE);
 
-      // Rechercher les produits par code_cip - AVEC LIMITE ÉTENDUE à 5000
-      const { data: produitsByCip, error: errorCip } = await (supabase
-        .from('produits')
-        .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
-        .eq('tenant_id', effectiveTenantId)
-        .in('code_cip', normalizedReferences)
-        .range(0, 4999) as any);
-
-      if (errorCip) throw errorCip;
+      // ✅ Requêtes parallèles par chunks pour code_cip
+      const cipPromises = referenceChunks.map(chunk =>
+        supabase
+          .from('produits')
+          .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
+          .eq('tenant_id', effectiveTenantId)
+          .in('code_cip', chunk)
+      );
+      const cipResults = await Promise.all(cipPromises);
+      const produitsByCip = cipResults.flatMap(r => r.data || []);
       
-      // 🔍 LOG DIAGNOSTIC: Résultats par code_cip
-      console.log('📦 [matchProductsByReference] Résultats par code_cip:', {
-        count: produitsByCip?.length || 0,
-        limitAtteinte: produitsByCip?.length === 5000
-      });
-
-      // Rechercher les produits par code_barre_externe - AVEC LIMITE ÉTENDUE à 5000
-      const { data: produitsByBarcode, error: errorBarcode } = await (supabase
-        .from('produits')
-        .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
-        .eq('tenant_id', effectiveTenantId)
-        .in('code_barre_externe', normalizedReferences)
-        .range(0, 4999) as any);
-
-      if (errorBarcode) throw errorBarcode;
+      // Vérifier les erreurs
+      const cipError = cipResults.find(r => r.error);
+      if (cipError?.error) throw cipError.error;
       
-      // 🔍 LOG DIAGNOSTIC: Résultats par code_barre_externe
-      console.log('📦 [matchProductsByReference] Résultats par code_barre_externe:', {
-        count: produitsByBarcode?.length || 0,
-        limitAtteinte: produitsByBarcode?.length === 5000
-      });
+      console.log('📦 [matchProductsByReference] Résultats par code_cip:', produitsByCip.length);
 
-      // Rechercher les produits par ancien_code_cip - AVEC LIMITE ÉTENDUE à 5000
-      const { data: produitsByAncienCip, error: errorAncienCip } = await (supabase
-        .from('produits')
-        .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
-        .eq('tenant_id', effectiveTenantId)
-        .in('ancien_code_cip', normalizedReferences)
-        .range(0, 4999) as any);
-
-      if (errorAncienCip) throw errorAncienCip;
+      // ✅ Requêtes parallèles par chunks pour code_barre_externe
+      const barcodePromises = referenceChunks.map(chunk =>
+        supabase
+          .from('produits')
+          .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
+          .eq('tenant_id', effectiveTenantId)
+          .in('code_barre_externe', chunk)
+      );
+      const barcodeResults = await Promise.all(barcodePromises);
+      const produitsByBarcode = barcodeResults.flatMap(r => r.data || []);
       
-      // 🔍 LOG DIAGNOSTIC: Résultats par ancien_code_cip
-      console.log('📦 [matchProductsByReference] Résultats par ancien_code_cip:', {
-        count: produitsByAncienCip?.length || 0,
-        limitAtteinte: produitsByAncienCip?.length === 5000
-      });
+      const barcodeError = barcodeResults.find(r => r.error);
+      if (barcodeError?.error) throw barcodeError.error;
+      
+      console.log('📦 [matchProductsByReference] Résultats par code_barre_externe:', produitsByBarcode.length);
+
+      // ✅ Requêtes parallèles par chunks pour ancien_code_cip
+      const ancienCipPromises = referenceChunks.map(chunk =>
+        supabase
+          .from('produits')
+          .select('id, libelle_produit, code_cip, ancien_code_cip, code_barre_externe, categorie_tarification_id')
+          .eq('tenant_id', effectiveTenantId)
+          .in('ancien_code_cip', chunk)
+      );
+      const ancienCipResults = await Promise.all(ancienCipPromises);
+      const produitsByAncienCip = ancienCipResults.flatMap(r => r.data || []);
+      
+      const ancienCipError = ancienCipResults.find(r => r.error);
+      if (ancienCipError?.error) throw ancienCipError.error;
+      
+      console.log('📦 [matchProductsByReference] Résultats par ancien_code_cip:', produitsByAncienCip.length);
 
       // Combiner les résultats avec dédoublonnage par id
-      const allProduits = [...(produitsByCip || []), ...(produitsByBarcode || []), ...(produitsByAncienCip || [])];
+      const allProduits = [...produitsByCip, ...produitsByBarcode, ...produitsByAncienCip];
       const produits = [...new Map(allProduits.map(p => [p.id, p])).values()];
 
-      // 🔍 LOG DIAGNOSTIC: Résumé final (limité à 50 pour lisibilité)
-      console.log('📦 [matchProductsByReference] === RÉSUMÉ ===');
+      console.log('📦 [matchProductsByReference] === RÉSUMÉ CHUNKING ===');
       console.log('📦 [matchProductsByReference] Total avant dédoublonnage:', allProduits.length);
       console.log('📦 [matchProductsByReference] Total après dédoublonnage:', produits.length);
-      
-      // 🔴 DIAGNOSTIC SPÉCIFIQUE pour 2038550
-      const produits2038550 = produits.filter(p => String(p.ancien_code_cip || '').trim() === '2038550');
-      if (produits2038550.length > 0) {
-        console.log('🔴 [DIAGNOSTIC 2038550] Produits trouvés avec ancien_code_cip = 2038550:', produits2038550.map(p => ({
-          id: p.id,
-          libelle: p.libelle_produit,
-          code_cip: p.code_cip,
-          ancien_code_cip: p.ancien_code_cip
-        })));
-      } else {
-        console.log('🔴 [DIAGNOSTIC 2038550] AUCUN produit trouvé avec ancien_code_cip = 2038550');
-      }
 
+      // Matching des références avec les produits récupérés
       for (const ref of references) {
         const normalizedRef = String(ref).trim();
         
         // Chercher par code_cip, ancien_code_cip ou code_barre_externe (EAN13) avec normalisation
-        const matchingProducts = produits?.filter(p => {
+        const matchingProducts = produits.filter(p => {
           const normalizedCip = String(p.code_cip || '').trim();
           const normalizedAncienCip = String(p.ancien_code_cip || '').trim();
           const normalizedBarcode = String(p.code_barre_externe || '').trim();
           return normalizedCip === normalizedRef || normalizedAncienCip === normalizedRef || normalizedBarcode === normalizedRef;
-        }) || [];
-        
-        // 🔴 Log spécifique pour 2038550
-        if (normalizedRef === '2038550') {
-          console.log('🔴 [DIAGNOSTIC 2038550] Recherche pour ref "2038550":', {
-            matchingProducts: matchingProducts.length,
-            produits: matchingProducts.map(p => ({
-              id: p.id,
-              libelle: p.libelle_produit,
-              code_cip: p.code_cip,
-              ancien_code_cip: p.ancien_code_cip
-            }))
-          });
-        }
+        });
         
         if (matchingProducts.length === 0) {
           notFound.push(ref);
-        } else if (matchingProducts.length === 1) {
-          matched.set(ref, matchingProducts[0].id);
-          productCategories.set(ref, matchingProducts[0].categorie_tarification_id || null);
         } else {
-          // Pour les produits avec plusieurs matchs (comme 2038550 avec 11 produits identiques),
-          // on prend le premier pour éviter le statut "ambigu"
+          // Prendre le premier produit correspondant
           matched.set(ref, matchingProducts[0].id);
           productCategories.set(ref, matchingProducts[0].categorie_tarification_id || null);
-          
-          if (normalizedRef === '2038550') {
-            console.log('🔴 [DIAGNOSTIC 2038550] Plusieurs produits trouvés, premier sélectionné:', matchingProducts[0].id);
-          }
         }
       }
+
+      console.log('✅ [matchProductsByReference] Résultat final:', {
+        matched: matched.size,
+        notFound: notFound.length
+      });
 
       return { matched, notFound, ambiguous, productCategories };
     } catch (error) {
