@@ -42,22 +42,30 @@ const GlobalAccountingPlansList: React.FC<GlobalAccountingPlansListProps> = ({ o
   });
 
   const { data: accountsCounts } = useQuery({
-    queryKey: ['comptes-globaux-counts'],
+    queryKey: ['comptes-globaux-counts', plans?.map(p => p.id)],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('comptes_globaux')
-        .select('plan_comptable_id')
-        .range(0, 9999);
-
-      if (error) throw error;
+      if (!plans || plans.length === 0) return {};
       
-      // Count accounts per plan
+      // Utiliser count: 'exact' pour chaque plan (pas de limite de 1000)
+      const countPromises = plans.map(async (plan) => {
+        const { count, error } = await supabase
+          .from('comptes_globaux')
+          .select('*', { count: 'exact', head: true })
+          .eq('plan_comptable_id', plan.id);
+        
+        if (error) throw error;
+        return { planId: plan.id, count: count || 0 };
+      });
+      
+      const results = await Promise.all(countPromises);
+      
       const counts: Record<string, number> = {};
-      data?.forEach(item => {
-        counts[item.plan_comptable_id] = (counts[item.plan_comptable_id] || 0) + 1;
+      results.forEach(({ planId, count }) => {
+        counts[planId] = count;
       });
       return counts;
     },
+    enabled: !!plans && plans.length > 0,
   });
 
   if (isLoading) {

@@ -94,15 +94,33 @@ const GlobalAccountingPlanTable: React.FC<GlobalAccountingPlanTableProps> = ({ s
     queryKey: ['comptes-globaux', planId],
     queryFn: async () => {
       if (!planId) return [];
-      const { data, error } = await supabase
-        .from('comptes_globaux')
-        .select('*')
-        .eq('plan_comptable_id', planId)
-        .order('numero_compte')
-        .range(0, 9999);
+      
+      const PAGE_SIZE = 1000;
+      let allComptes: CompteGlobal[] = [];
+      let from = 0;
+      
+      // Boucle pour récupérer tous les comptes par lots de 1000 (limite Supabase)
+      while (true) {
+        const { data, error } = await supabase
+          .from('comptes_globaux')
+          .select('*')
+          .eq('plan_comptable_id', planId)
+          .order('numero_compte')
+          .range(from, from + PAGE_SIZE - 1);
 
-      if (error) throw error;
-      return data as CompteGlobal[];
+        if (error) throw error;
+        
+        if (!data || data.length === 0) break;
+        
+        allComptes = [...allComptes, ...data];
+        
+        // Si on a reçu moins que PAGE_SIZE, c'est qu'on a tout récupéré
+        if (data.length < PAGE_SIZE) break;
+        
+        from += PAGE_SIZE;
+      }
+      
+      return allComptes;
     },
     enabled: !!planId,
   });
