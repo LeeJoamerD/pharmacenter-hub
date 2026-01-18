@@ -14954,6 +14954,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           libelle_compte: string
+          nature_compte: string | null
           niveau: number | null
           numero_compte: string
           rapprochement: boolean | null
@@ -14970,6 +14971,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           libelle_compte: string
+          nature_compte?: string | null
           niveau?: number | null
           numero_compte: string
           rapprochement?: boolean | null
@@ -14986,6 +14988,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           libelle_compte?: string
+          nature_compte?: string | null
           niveau?: number | null
           numero_compte?: string
           rapprochement?: boolean | null
