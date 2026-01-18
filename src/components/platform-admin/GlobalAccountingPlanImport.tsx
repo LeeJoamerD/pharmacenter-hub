@@ -112,55 +112,94 @@ const GlobalAccountingPlanImport: React.FC<GlobalAccountingPlanImportProps> = ({
       
       const accounts: ParsedAccount[] = [];
       
-      // Skip header rows and parse accounts
+      // SYSCOHADA format has a hierarchical structure with 4 columns:
+      // | Col1 (2 digits) | Col2 (3 digits) | Col3 (4 digits) | Col4 (label or 4+ digits with label) |
+      // The account number is in the leftmost non-empty column (among first 3-4)
+      // The label is in the rightmost non-empty column or after the account number
+      
       for (let i = 0; i < rawData.length; i++) {
         const row = rawData[i];
         if (!row || row.length === 0) continue;
 
-        // Check each column for account numbers (SYSCOHADA format has multiple columns)
-        for (let j = 0; j < Math.min(row.length, 4); j++) {
-          const cell = row[j];
-          if (!cell) continue;
-
-          const cellStr = String(cell).trim();
-          
-          // Check if this is a valid account number (starts with 1-9, all digits)
-          if (/^[1-9]\d*$/.test(cellStr) && cellStr.length >= 2 && cellStr.length <= 6) {
-            // The label is typically in the next non-empty column
-            let libelle = '';
-            for (let k = j + 1; k < row.length; k++) {
-              if (row[k] && String(row[k]).trim()) {
-                libelle = String(row[k]).trim();
-                break;
-              }
-            }
-
-            if (!libelle) continue;
-
-            const classe = parseInt(cellStr[0]);
-            const niveau = determineAccountLevel(cellStr);
-            
-            // Check for markers (usually color-coded in the source)
-            const rowStr = row.join(' ').toLowerCase();
-            const isNew = rowStr.includes('créés lors') || rowStr.includes('nouveau');
-            const isModified = rowStr.includes('modifié');
-            const isFlux = rowStr.includes('flux de trésorerie');
-
-            accounts.push({
-              numero_compte: cellStr,
-              libelle_compte: libelle.replace(/\s+/g, ' '),
-              classe,
-              niveau,
-              compte_parent_numero: determineParentAccount(cellStr),
-              type_compte: determineAccountType(classe),
-              est_nouveau_syscohada: isNew,
-              est_modifie_syscohada: isModified,
-              est_compte_flux_tresorerie: isFlux,
-            });
-
-            break; // Only process first valid account number per row
+        // Find ALL account numbers in this row (SYSCOHADA may have multiple per row)
+        // Strategy: scan first 4 columns for account numbers, label is in last non-empty column
+        
+        let accountNumber: string | null = null;
+        let accountColumnIndex = -1;
+        let libelle = '';
+        
+        // First, find all non-empty cells in the row
+        const nonEmptyCells: { index: number; value: string }[] = [];
+        for (let j = 0; j < row.length; j++) {
+          if (row[j] !== null && row[j] !== undefined && String(row[j]).trim() !== '') {
+            nonEmptyCells.push({ index: j, value: String(row[j]).trim() });
           }
         }
+        
+        if (nonEmptyCells.length === 0) continue;
+        
+        // SYSCOHADA structure: account number in one of first 4 columns, label is last non-empty cell
+        // Check first 4 columns for valid account numbers
+        for (let j = 0; j < Math.min(nonEmptyCells.length, 4); j++) {
+          const cell = nonEmptyCells[j];
+          // Only consider first 4 actual columns as potential account number columns
+          if (cell.index > 3) break;
+          
+          const cellStr = cell.value;
+          
+          // Valid account number: starts with 1-9, all digits, 2-6 characters
+          if (/^[1-9]\d*$/.test(cellStr) && cellStr.length >= 2 && cellStr.length <= 6) {
+            accountNumber = cellStr;
+            accountColumnIndex = cell.index;
+            break;
+          }
+        }
+        
+        if (!accountNumber) continue;
+        
+        // Find the label: it's the last non-empty cell (if it's not the account number itself)
+        // Or the cell immediately after the account number
+        for (let j = nonEmptyCells.length - 1; j >= 0; j--) {
+          const cell = nonEmptyCells[j];
+          // Label should be after the account number column or be the last text cell
+          if (cell.index > accountColumnIndex && !/^[1-9]\d*$/.test(cell.value)) {
+            libelle = cell.value;
+            break;
+          }
+        }
+        
+        // If no label found after account, check if there's text in later columns
+        if (!libelle) {
+          for (let k = accountColumnIndex + 1; k < row.length; k++) {
+            if (row[k] && String(row[k]).trim() && !/^[1-9]\d*$/.test(String(row[k]).trim())) {
+              libelle = String(row[k]).trim();
+              break;
+            }
+          }
+        }
+
+        if (!libelle) continue;
+
+        const classe = parseInt(accountNumber[0]);
+        const niveau = determineAccountLevel(accountNumber);
+        
+        // Check for markers in the row (usually color-coded in source, but may have text indicators)
+        const rowStr = row.join(' ').toLowerCase();
+        const isNew = rowStr.includes('créés lors') || rowStr.includes('nouveau');
+        const isModified = rowStr.includes('modifié');
+        const isFlux = rowStr.includes('flux de trésorerie');
+
+        accounts.push({
+          numero_compte: accountNumber,
+          libelle_compte: libelle.replace(/\s+/g, ' ').trim(),
+          classe,
+          niveau,
+          compte_parent_numero: determineParentAccount(accountNumber),
+          type_compte: determineAccountType(classe),
+          est_nouveau_syscohada: isNew,
+          est_modifie_syscohada: isModified,
+          est_compte_flux_tresorerie: isFlux,
+        });
       }
 
       // Remove duplicates (keep first occurrence)
@@ -171,13 +210,21 @@ const GlobalAccountingPlanImport: React.FC<GlobalAccountingPlanImportProps> = ({
         return true;
       });
 
-      // Sort by account number
-      uniqueAccounts.sort((a, b) => a.numero_compte.localeCompare(b.numero_compte));
+      // Sort by account number numerically for proper hierarchy display
+      uniqueAccounts.sort((a, b) => {
+        // Sort by length first (to group by level), then numerically
+        if (a.numero_compte.length !== b.numero_compte.length) {
+          return a.numero_compte.length - b.numero_compte.length;
+        }
+        return a.numero_compte.localeCompare(b.numero_compte, undefined, { numeric: true });
+      });
 
       setParsedAccounts(uniqueAccounts);
       
       if (uniqueAccounts.length === 0) {
         setError('Aucun compte valide trouvé dans le fichier. Vérifiez le format.');
+      } else {
+        console.log(`Parsed ${uniqueAccounts.length} accounts from Excel file`);
       }
     } catch (err) {
       console.error('Error parsing Excel:', err);
