@@ -86,8 +86,10 @@ const defaultOhadaClasses = [
   { classe: 3, nom: 'Comptes de stocks', description: 'Stocks de marchandises et produits', icon: 'Package', color: 'text-orange-600' },
   { classe: 4, nom: 'Comptes de tiers', description: 'Créances et dettes d\'exploitation', icon: 'Briefcase', color: 'text-purple-600' },
   { classe: 5, nom: 'Comptes de trésorerie', description: 'Comptes financiers et valeurs mobilières', icon: 'CreditCard', color: 'text-cyan-600' },
-  { classe: 6, nom: 'Comptes de charges', description: 'Charges des activités ordinaires', icon: 'TrendingUp', color: 'text-red-600' },
-  { classe: 7, nom: 'Comptes de produits', description: 'Produits des activités ordinaires', icon: 'DollarSign', color: 'text-emerald-600' }
+  { classe: 6, nom: 'Comptes de charges des activités ordinaires', description: 'Charges liées à l\'exploitation courante', icon: 'TrendingUp', color: 'text-red-600' },
+  { classe: 7, nom: 'Comptes de produits des activités ordinaires', description: 'Produits liés à l\'exploitation courante', icon: 'DollarSign', color: 'text-emerald-600' },
+  { classe: 8, nom: 'Comptes des autres charges et produits', description: 'Charges et produits hors activités ordinaires', icon: 'Calculator', color: 'text-orange-500' },
+  { classe: 9, nom: 'Comptes des engagements hors bilan et CAGE', description: 'Engagements donnés et reçus, comptabilité analytique', icon: 'FileText', color: 'text-slate-600' }
 ];
 
 export const useChartOfAccounts = (): UseChartOfAccountsReturn => {

@@ -19,38 +19,56 @@ const countryConfigs = {
   CG: { 
     name: 'Congo-Brazzaville', 
     flag: '🇨🇬', 
-    system: 'OHADA', 
-    version: 'OHADA 2017',
-    classes: 7,
+    system: 'SYSCOHADA Révisé', 
+    version: 'SYSCOHADA Révisé 2017',
+    classes: 9,
     currency: 'XAF',
-    description: 'Système OHADA - CEMAC'
+    description: 'Système SYSCOHADA Révisé - CEMAC'
   },
   CM: { 
     name: 'Cameroun', 
     flag: '🇨🇲', 
-    system: 'SYSCOHADA', 
+    system: 'SYSCOHADA Révisé', 
     version: 'SYSCOHADA Révisé 2017',
-    classes: 7,
+    classes: 9,
     currency: 'XAF',
-    description: 'Système SYSCOHADA - CEMAC'
+    description: 'Système SYSCOHADA Révisé - CEMAC'
   },
   SN: { 
     name: 'Sénégal', 
     flag: '🇸🇳', 
-    system: 'SYSCOHADA', 
+    system: 'SYSCOHADA Révisé', 
     version: 'SYSCOHADA Révisé 2017',
-    classes: 7,
+    classes: 9,
     currency: 'XOF',
-    description: 'Système SYSCOHADA - UEMOA'
+    description: 'Système SYSCOHADA Révisé - UEMOA'
   },
   CI: { 
     name: 'Côte d\'Ivoire', 
     flag: '🇨🇮', 
-    system: 'SYSCOHADA', 
+    system: 'SYSCOHADA Révisé', 
     version: 'SYSCOHADA Révisé 2017',
-    classes: 7,
+    classes: 9,
     currency: 'XOF',
-    description: 'Système SYSCOHADA - UEMOA'
+    description: 'Système SYSCOHADA Révisé - UEMOA'
+  },
+  GA: { 
+    name: 'Gabon', 
+    flag: '🇬🇦', 
+    system: 'SYSCOHADA Révisé', 
+    version: 'SYSCOHADA Révisé 2017',
+    classes: 9,
+    currency: 'XAF',
+    description: 'Système SYSCOHADA Révisé - CEMAC'
+  },
+  BJ: { 
+    name: 'Bénin', 
+    flag: '🇧🇯', 
+    system: 'SYSCOHADA Révisé', 
+    version: 'SYSCOHADA Révisé 2017',
+    classes: 9,
+    currency: 'XOF',
+    description: 'Système SYSCOHADA Révisé - UEMOA'
   },
   FR: { 
     name: 'France', 
