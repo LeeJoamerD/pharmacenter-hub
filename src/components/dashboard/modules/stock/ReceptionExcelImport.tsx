@@ -783,10 +783,24 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
           // Mapper vers les références locales (crée les référentiels manquants)
           const mappedData: MappedProductData = await mapToLocalReferences(globalProduct);
 
-          // UPSERT : Insérer ou mettre à jour le produit (évite les doublons)
+          // Vérification en temps réel avant insertion (cas de race condition)
+          const { data: existingCheck } = await supabase
+            .from('produits')
+            .select('id')
+            .eq('tenant_id', personnel.tenant_id)
+            .or(`code_cip.eq.${mappedData.code_cip},ancien_code_cip.eq.${mappedData.code_cip}`)
+            .eq('is_active', true)
+            .maybeSingle();
+
+          if (existingCheck) {
+            skipped++;
+            continue;
+          }
+
+          // INSERT direct (pas d'upsert car l'index unique est conditionnel)
           const { data: newProduct, error } = await supabase
             .from('produits')
-            .upsert({
+            .insert({
               tenant_id: personnel.tenant_id,
               code_cip: mappedData.code_cip,
               ancien_code_cip: line.ancienCodeCip || mappedData.ancien_code_cip || null,
@@ -800,9 +814,6 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
               prix_achat: line.prixAchatReel || mappedData.prix_achat || null,
               prix_vente_ttc: mappedData.prix_vente_ttc || null,
               is_active: true
-            }, {
-              onConflict: 'tenant_id,code_cip',
-              ignoreDuplicates: false
             })
             .select('id')
             .single();
@@ -822,20 +833,31 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
             created++;
           }
         } else {
-          // Produit non trouvé dans le catalogue global - création minimale avec UPSERT
+          // Produit non trouvé dans le catalogue global - création minimale
+          // Vérification en temps réel avant insertion
+          const { data: existingCheck } = await supabase
+            .from('produits')
+            .select('id')
+            .eq('tenant_id', personnel.tenant_id)
+            .or(`code_cip.eq.${normalizedCip},ancien_code_cip.eq.${normalizedCip}`)
+            .eq('is_active', true)
+            .maybeSingle();
+
+          if (existingCheck) {
+            skipped++;
+            continue;
+          }
+
           notFoundInGlobal++;
           const { error } = await supabase
             .from('produits')
-            .upsert({
+            .insert({
               tenant_id: personnel.tenant_id,
               libelle_produit: normalizedName,
               code_cip: normalizedCip,
               ancien_code_cip: line.ancienCodeCip || null,
               prix_achat: line.prixAchatReel,
               is_active: true
-            }, {
-              onConflict: 'tenant_id,code_cip',
-              ignoreDuplicates: false
             });
 
           if (error) {
