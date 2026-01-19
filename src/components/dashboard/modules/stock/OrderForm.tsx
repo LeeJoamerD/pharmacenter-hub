@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Plus, 
   Search, 
@@ -17,7 +18,10 @@ import {
   ShoppingCart,
   ClipboardList,
   ShoppingBag,
-  AlertTriangle
+  AlertTriangle,
+  Sparkles,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useSmartOrderSuggestions, SmartOrderSuggestion } from '@/hooks/useSmartOrderSuggestions';
 import SmartOrderPanel from './SmartOrderPanel';
@@ -60,8 +64,30 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
   const [searchProduct, setSearchProduct] = useState('');
   const [notes, setNotes] = useState('');
+  const [showSmartPanel, setShowSmartPanel] = useState(false);
+  const [showSaleDialog, setShowSaleDialog] = useState(false);
   const { toast } = useToast();
   const { t } = useLanguage();
+
+  // IDs des produits déjà dans la commande (pour le hook)
+  const existingProductIdsArray = useMemo(() => 
+    orderLines.map(line => line.produit_id), 
+    [orderLines]
+  );
+  
+  const existingProductIds = useMemo(() => 
+    new Set(existingProductIdsArray), 
+    [existingProductIdsArray]
+  );
+
+  // Hook pour les suggestions intelligentes
+  const { 
+    clientDemandSuggestions, 
+    stockAlertSuggestions, 
+    suggestionCounts,
+    getProductsFromSale,
+    isLoading: smartLoading,
+  } = useSmartOrderSuggestions(existingProductIdsArray);
 
   // Hooks multi-devise et catégories de tarification
   const { formatAmount, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
@@ -189,6 +215,92 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
   const removeOrderLine = (id: string) => {
     setOrderLines(lines => lines.filter(line => line.id !== id));
   };
+
+  // Fonction pour ajouter des produits depuis les suggestions intelligentes
+  const addProductsFromSuggestions = useCallback((suggestions: SmartOrderSuggestion[]) => {
+    const newLines: OrderLine[] = [];
+    let duplicatesCount = 0;
+
+    suggestions.forEach(suggestion => {
+      // Vérifier si le produit est déjà dans la commande
+      if (existingProductIds.has(suggestion.produit_id)) {
+        duplicatesCount++;
+        return;
+      }
+
+      // Récupérer les taux de la catégorie
+      const category = priceCategories?.find(cat => cat.id === suggestion.categorie_tarification_id);
+      const tauxTva = category?.taux_tva || 0;
+      const tauxCentime = category?.taux_centime_additionnel || 0;
+      const prixUnitaire = suggestion.prix_achat || 0;
+      const quantite = suggestion.quantite_suggeree || 1;
+
+      newLines.push({
+        id: `${Date.now()}-${suggestion.produit_id}`,
+        produit_id: suggestion.produit_id,
+        produit: suggestion.libelle_produit,
+        reference: suggestion.code_cip || 'N/A',
+        quantite,
+        prixUnitaire,
+        remise: 0,
+        total: quantite * prixUnitaire,
+        categorieTarificationId: suggestion.categorie_tarification_id,
+        tauxTva,
+        tauxCentime
+      });
+    });
+
+    if (newLines.length > 0) {
+      setOrderLines(prev => [...prev, ...newLines]);
+      toast({
+        title: "Produits ajoutés",
+        description: `${newLines.length} produit(s) ajouté(s) à la commande${duplicatesCount > 0 ? `, ${duplicatesCount} doublon(s) ignoré(s)` : ''}`,
+      });
+    } else if (duplicatesCount > 0) {
+      toast({
+        title: "Doublons détectés",
+        description: `${duplicatesCount} produit(s) déjà présent(s) dans la commande`,
+        variant: "default",
+      });
+    }
+  }, [existingProductIds, priceCategories, toast]);
+
+  // Handler pour l'import depuis une vente
+  const handleImportFromSale = useCallback(async (products: SmartOrderSuggestion[]) => {
+    if (products.length > 0) {
+      addProductsFromSuggestions(products);
+    }
+    setShowSaleDialog(false);
+  }, [addProductsFromSuggestions]);
+
+  // Handler pour l'import des demandes clients
+  const handleImportClientDemands = useCallback(() => {
+    if (clientDemandSuggestions.length === 0) {
+      toast({
+        title: "Aucune demande",
+        description: "Il n'y a pas de demande client en attente",
+        variant: "default",
+      });
+      return;
+    }
+    addProductsFromSuggestions(clientDemandSuggestions);
+  }, [clientDemandSuggestions, addProductsFromSuggestions, toast]);
+
+  // Handler pour l'import des stocks critiques
+  const handleImportCriticalStock = useCallback(() => {
+    const criticalProducts = stockAlertSuggestions.filter(
+      s => s.source === 'rupture' || s.source === 'critique'
+    );
+    if (criticalProducts.length === 0) {
+      toast({
+        title: "Stock OK",
+        description: "Aucun produit en rupture ou stock critique",
+        variant: "default",
+      });
+      return;
+    }
+    addProductsFromSuggestions(criticalProducts);
+  }, [stockAlertSuggestions, addProductsFromSuggestions, toast]);
 
   // Calcul des totaux en respectant les catégories de tarification de chaque produit
   // Utilise le service centralisé pour l'arrondi de précision
@@ -397,9 +509,67 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
       {/* Ajout de produits */}
       <Card>
         <CardHeader>
-          <CardTitle>{t('orderFormAddProducts')}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>{t('orderFormAddProducts')}</CardTitle>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleImportClientDemands}
+                disabled={clientDemandSuggestions.length === 0}
+                title="Importer les demandes clients en attente"
+              >
+                <ClipboardList className="h-4 w-4 mr-1" />
+                Demandes ({clientDemandSuggestions.length})
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSaleDialog(true)}
+                title="Importer depuis une vente"
+              >
+                <ShoppingBag className="h-4 w-4 mr-1" />
+                Depuis Vente
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleImportCriticalStock}
+                disabled={stockAlertSuggestions.filter(s => s.source === 'rupture' || s.source === 'critique').length === 0}
+                title="Importer les produits en rupture/critique"
+              >
+                <AlertTriangle className="h-4 w-4 mr-1" />
+                Stock Critique ({stockAlertSuggestions.filter(s => s.source === 'rupture' || s.source === 'critique').length})
+              </Button>
+              <Button
+                variant={showSmartPanel ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setShowSmartPanel(!showSmartPanel)}
+                title="Panel de suggestions intelligentes"
+              >
+                <Sparkles className="h-4 w-4 mr-1" />
+                Suggestions
+                {showSmartPanel ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
+          {/* Panel de suggestions intelligentes collapsible */}
+          <Collapsible open={showSmartPanel} onOpenChange={setShowSmartPanel}>
+            <CollapsibleContent>
+              <div className="mb-4">
+                <SmartOrderPanel
+                  clientDemandSuggestions={clientDemandSuggestions}
+                  stockAlertSuggestions={stockAlertSuggestions}
+                  suggestionCounts={suggestionCounts}
+                  onAddProducts={addProductsFromSuggestions}
+                  isLoading={smartLoading}
+                />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
           <div className="flex gap-4 mb-4">
             <div className="flex-1">
               <div className="relative">
@@ -639,6 +809,14 @@ const OrderForm: React.FC<OrderFormProps> = ({ suppliers: propSuppliers = [], on
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialog de sélection de vente */}
+      <SaleSelectionDialog
+        open={showSaleDialog}
+        onOpenChange={setShowSaleDialog}
+        onImportProducts={handleImportFromSale}
+        existingProductIds={existingProductIdsArray}
+      />
     </div>
   );
 };
