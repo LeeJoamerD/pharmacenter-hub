@@ -47,7 +47,7 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [progress, setProgress] = useState({ current: 0, total: 0, phase: '' });
   const [result, setResult] = useState<ImportResult | null>(null);
   const [showNotFound, setShowNotFound] = useState(false);
   const [showNoCip, setShowNoCip] = useState(false);
@@ -56,7 +56,12 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
 
   const { personnel } = useAuth();
   const tenantId = personnel?.tenant_id;
-  const { searchGlobalCatalog, mapToLocalReferences, findOrCreatePricingCategoryByLabel } = useGlobalCatalogLookup();
+  const { 
+    searchGlobalCatalogBatch, 
+    checkExistingProductsBatch,
+    mapToLocalReferences, 
+    findOrCreatePricingCategoryByLabel 
+  } = useGlobalCatalogLookup();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -69,7 +74,7 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
   const resetState = () => {
     setFile(null);
     setIsProcessing(false);
-    setProgress({ current: 0, total: 0 });
+    setProgress({ current: 0, total: 0, phase: '' });
     setResult(null);
     setShowNotFound(false);
     setShowNoCip(false);
@@ -86,19 +91,6 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
     }
   };
 
-  const checkProductExists = async (codeCip: string): Promise<boolean> => {
-    if (!tenantId) return false;
-
-    const { data } = await supabase
-      .from('produits')
-      .select('id')
-      .eq('tenant_id', tenantId)
-      .or(`code_cip.eq.${codeCip},ancien_code_cip.eq.${codeCip}`)
-      .maybeSingle();
-
-    return !!data;
-  };
-
   const processFile = async () => {
     if (!file || !tenantId) return;
 
@@ -106,7 +98,7 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
     setResult(null);
 
     try {
-      // Read Excel file
+      // 1. Read Excel file
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
       const sheetName = workbook.SheetNames[0];
@@ -119,8 +111,6 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
         return;
       }
 
-      setProgress({ current: 0, total: rows.length });
-
       const importResult: ImportResult = {
         totalLines: rows.length,
         created: 0,
@@ -130,50 +120,104 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
         errors: [],
       };
 
-      // Process in batches
-      for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-        const batch = rows.slice(i, i + BATCH_SIZE);
+      // 2. Extract all valid CIP codes and identify rows without CIP
+      setProgress({ current: 0, total: rows.length, phase: 'Extraction des codes CIP...' });
+      
+      const rowsWithCip: { row: ExcelRow; codeCip: string; index: number }[] = [];
+      
+      rows.forEach((row, index) => {
+        const rawCip = row.CodeCIP;
+        const categorie = row.Catégorie ? String(row.Catégorie).trim() : null;
+        
+        if (!rawCip || String(rawCip).trim() === '' || String(rawCip).trim() === '0') {
+          importResult.noCipCode.push(categorie || `Ligne ${index + 2}`);
+        } else {
+          rowsWithCip.push({ 
+            row, 
+            codeCip: String(rawCip).trim(), 
+            index 
+          });
+        }
+      });
 
-        for (const row of batch) {
-          const rawCip = row.CodeCIP;
-          const categorie = row.Catégorie ? String(row.Catégorie).trim() : null;
+      if (rowsWithCip.length === 0) {
+        toast.error("Aucun code CIP valide trouvé dans le fichier.");
+        setIsProcessing(false);
+        setResult(importResult);
+        return;
+      }
 
-          // 1. Check if CIP code exists
-          if (!rawCip || String(rawCip).trim() === '' || String(rawCip).trim() === '0') {
-            importResult.noCipCode.push(categorie || 'Ligne sans catégorie');
-            continue;
-          }
+      const allCipCodes = rowsWithCip.map(r => r.codeCip);
 
-          const codeCip = String(rawCip).trim();
+      // 3. Phase 1: Batch check for existing products in local catalog
+      setProgress({ current: 0, total: rows.length, phase: 'Vérification produits existants...' });
+      const existingCodes = await checkExistingProductsBatch(allCipCodes);
 
+      // Filter out already existing products
+      const codesToSearch = allCipCodes.filter(code => !existingCodes.has(code));
+      existingCodes.forEach(code => {
+        importResult.alreadyExists.push(code);
+      });
+
+      if (codesToSearch.length === 0) {
+        toast.info("Tous les produits existent déjà dans le catalogue.");
+        setIsProcessing(false);
+        setResult(importResult);
+        return;
+      }
+
+      // 4. Phase 2: Batch search in global catalog
+      setProgress({ current: 0, total: rows.length, phase: 'Recherche catalogue global...' });
+      const globalProductsMap = await searchGlobalCatalogBatch(codesToSearch);
+
+      // 5. Phase 3: Pre-create all unique categories from Excel
+      setProgress({ current: 0, total: rows.length, phase: 'Préparation des catégories...' });
+      const uniqueCategories = [...new Set(
+        rowsWithCip
+          .map(r => r.row.Catégorie)
+          .filter((c): c is string => !!c && c.trim() !== '')
+          .map(c => c.trim())
+      )];
+      
+      const categoryMap = new Map<string, string>();
+      for (const cat of uniqueCategories) {
+        const id = await findOrCreatePricingCategoryByLabel(cat);
+        if (id) {
+          categoryMap.set(cat.trim().toUpperCase(), id);
+        }
+      }
+
+      // 6. Phase 4: Process insertions (only rows not already existing and found in global catalog)
+      const rowsToInsert = rowsWithCip.filter(
+        r => !existingCodes.has(r.codeCip) && globalProductsMap.has(r.codeCip)
+      );
+
+      // Mark not found
+      rowsWithCip
+        .filter(r => !existingCodes.has(r.codeCip) && !globalProductsMap.has(r.codeCip))
+        .forEach(r => importResult.notFound.push(r.codeCip));
+
+      setProgress({ current: 0, total: rowsToInsert.length, phase: 'Création des produits...' });
+
+      for (let i = 0; i < rowsToInsert.length; i += BATCH_SIZE) {
+        const batch = rowsToInsert.slice(i, i + BATCH_SIZE);
+
+        for (const { row, codeCip } of batch) {
           try {
-            // 2. Check if product already exists in local catalog
-            const exists = await checkProductExists(codeCip);
-            if (exists) {
-              importResult.alreadyExists.push(codeCip);
-              continue;
-            }
+            const globalProduct = globalProductsMap.get(codeCip);
+            if (!globalProduct) continue; // Should not happen, but safeguard
 
-            // 3. Search in global catalog
-            const globalProduct = await searchGlobalCatalog(codeCip);
-            if (!globalProduct) {
-              importResult.notFound.push(codeCip);
-              continue;
-            }
-
-            // 4. Map to local references
+            // Map to local references (creates famille, rayon, forme, DCI, etc. if needed)
             const mappedData = await mapToLocalReferences(globalProduct);
 
-            // 5. Override category with Excel value if provided
+            // Override category with Excel value if provided
             let categorie_tarification_id = mappedData.categorie_tarification_id;
-            if (categorie) {
-              const categoryId = await findOrCreatePricingCategoryByLabel(categorie);
-              if (categoryId) {
-                categorie_tarification_id = categoryId;
-              }
+            const excelCategorie = row.Catégorie ? String(row.Catégorie).trim().toUpperCase() : null;
+            if (excelCategorie && categoryMap.has(excelCategorie)) {
+              categorie_tarification_id = categoryMap.get(excelCategorie);
             }
 
-            // 6. Insert product into produits table
+            // Insert product
             const { data: insertedProduct, error: insertError } = await supabase
               .from('produits')
               .insert({
@@ -203,14 +247,13 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
               continue;
             }
 
-            // 7. Insert DCIs if any
+            // Insert DCIs if any
             if (insertedProduct && mappedData.dci_ids && mappedData.dci_ids.length > 0) {
               const dciInserts = mappedData.dci_ids.map(dci_id => ({
                 tenant_id: tenantId,
                 produit_id: insertedProduct.id,
                 dci_id,
               }));
-
               await supabase.from('produits_dci').insert(dciInserts);
             }
 
@@ -221,7 +264,11 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
           }
         }
 
-        setProgress({ current: Math.min(i + BATCH_SIZE, rows.length), total: rows.length });
+        setProgress({ 
+          current: Math.min(i + BATCH_SIZE, rowsToInsert.length), 
+          total: rowsToInsert.length, 
+          phase: 'Création des produits...' 
+        });
       }
 
       setResult(importResult);
@@ -229,6 +276,8 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
       if (importResult.created > 0) {
         toast.success(`${importResult.created} produit(s) créé(s) avec succès`);
         onSuccess();
+      } else if (importResult.notFound.length > 0) {
+        toast.warning(`Aucun produit créé. ${importResult.notFound.length} code(s) CIP non trouvé(s) dans le catalogue global.`);
       }
     } catch (error) {
       console.error('Erreur lors du traitement:', error);
@@ -298,10 +347,10 @@ const ProductCatalogImportDialog: React.FC<ProductCatalogImportDialogProps> = ({
                   <div className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Traitement en cours...
+                      {progress.phase || 'Traitement en cours...'}
                     </span>
                     <span className="text-muted-foreground">
-                      {progress.current} / {progress.total} lignes
+                      {progress.total > 0 ? `${progress.current} / ${progress.total}` : '...'}
                     </span>
                   </div>
                   <Progress value={progressPercent} className="h-2" />
