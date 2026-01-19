@@ -162,76 +162,76 @@ const SmartOrderPanel: React.FC<SmartOrderPanelProps> = ({
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card className={`${hasAnySuggestions ? 'border-primary/50' : ''}`}>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardTitle className="flex items-center justify-between text-base">
-              <div className="flex items-center gap-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between text-base">
+            <CollapsibleTrigger asChild>
+              <div className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors">
                 {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 <Sparkles className="h-5 w-5 text-primary" />
                 <span>Suggestions Intelligentes</span>
               </div>
-              
-              {hasAnySuggestions && (
-                <div className="flex items-center gap-2">
-                  {suggestionCounts.demandes > 0 && (
-                    <Badge variant="secondary" className="gap-1">
-                      <ClipboardList className="h-3 w-3" />
-                      {suggestionCounts.demandes}
-                    </Badge>
-                  )}
-                  {suggestionCounts.ruptures > 0 && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge variant="destructive" className="gap-1 cursor-help">
-                            <AlertCircle className="h-3 w-3" />
-                            {suggestionCounts.ruptures}
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="font-medium">{suggestionCounts.ruptures} produit(s) en rupture de stock</p>
-                          <p className="text-xs text-muted-foreground">Stock actuel = 0, commande urgente recommandée</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                  {suggestionCounts.critiques > 0 && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge className="gap-1 bg-orange-500 cursor-help">
-                            <AlertTriangle className="h-3 w-3" />
-                            {suggestionCounts.critiques}
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="font-medium">{suggestionCounts.critiques} produit(s) en stock critique</p>
-                          <p className="text-xs text-muted-foreground">Stock en dessous du seuil d'alerte configuré</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                  {suggestionCounts.faibles > 0 && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge className="gap-1 bg-yellow-500 cursor-help">
-                            <TrendingDown className="h-3 w-3" />
-                            {suggestionCounts.faibles}
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="font-medium">{suggestionCounts.faibles} produit(s) en stock faible</p>
-                          <p className="text-xs text-muted-foreground">Stock approchant du seuil minimum</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                </div>
-              )}
-            </CardTitle>
-          </CardHeader>
-        </CollapsibleTrigger>
+            </CollapsibleTrigger>
+            
+            {hasAnySuggestions && (
+              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                {suggestionCounts.demandes > 0 && (
+                  <Badge variant="secondary" className="gap-1">
+                    <ClipboardList className="h-3 w-3" />
+                    {suggestionCounts.demandes}
+                  </Badge>
+                )}
+                {suggestionCounts.ruptures > 0 && (
+                  <TooltipProvider delayDuration={0}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge variant="destructive" className="gap-1 cursor-help">
+                          <AlertCircle className="h-3 w-3" />
+                          {suggestionCounts.ruptures}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs">
+                        <p className="font-medium">{suggestionCounts.ruptures} produit(s) en rupture de stock</p>
+                        <p className="text-xs text-muted-foreground">Stock actuel = 0, commande urgente recommandée</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                {suggestionCounts.critiques > 0 && (
+                  <TooltipProvider delayDuration={0}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge className="gap-1 bg-orange-500 cursor-help">
+                          <AlertTriangle className="h-3 w-3" />
+                          {suggestionCounts.critiques}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs">
+                        <p className="font-medium">{suggestionCounts.critiques} produit(s) en stock critique</p>
+                        <p className="text-xs text-muted-foreground">Stock en dessous du seuil d'alerte configuré</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                {suggestionCounts.faibles > 0 && (
+                  <TooltipProvider delayDuration={0}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge className="gap-1 bg-yellow-500 cursor-help">
+                          <TrendingDown className="h-3 w-3" />
+                          {suggestionCounts.faibles}
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-xs">
+                        <p className="font-medium">{suggestionCounts.faibles} produit(s) en stock faible</p>
+                        <p className="text-xs text-muted-foreground">Stock approchant du seuil minimum</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+            )}
+          </CardTitle>
+        </CardHeader>
         
         <CollapsibleContent>
           <CardContent className="pt-0">
