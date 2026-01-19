@@ -199,7 +199,7 @@ const SaleSelectionDialog: React.FC<SaleSelectionDialogProps> = ({
                             </div>
                           </div>
                           <div className="text-right">
-                            <span className="font-semibold">{formatAmount(sale.montant_ttc)}</span>
+                            <span className="font-semibold">{formatAmount(sale.montant_total_ttc)}</span>
                           </div>
                         </div>
                       </CardContent>
