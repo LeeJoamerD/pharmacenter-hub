@@ -36,7 +36,8 @@ import {
 } from '@/components/ui/select';
 import { Combobox } from '@/components/ui/combobox';
 import { MultiSelect, type Option as MultiSelectOption } from '@/components/ui/multi-select';
-import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download, Loader2, CheckCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, Settings, AlertTriangle, ExternalLink, Layers, Pill, Download, Upload, Loader2, CheckCircle } from 'lucide-react';
+import ProductCatalogImportDialog from './ProductCatalogImportDialog';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
@@ -129,6 +130,7 @@ const ProductCatalogNew = () => {
   const [referencesProduct, setReferencesProduct] = useState<Product | null>(null);
   const [selectedDcis, setSelectedDcis] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
   const [globalSearchResult, setGlobalSearchResult] = useState<'found' | 'not_found' | null>(null);
   const [globalSearchInput, setGlobalSearchInput] = useState('');
@@ -714,6 +716,13 @@ const ProductCatalogNew = () => {
         <CardTitle className="flex items-center justify-between">
           Catalogue des Produits
           <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsImportDialogOpen(true)}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Importer Excel
+            </Button>
             <Button 
               variant="outline" 
               onClick={exportCatalogToExcel}
@@ -1457,6 +1466,16 @@ const ProductCatalogNew = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Import Dialog */}
+        <ProductCatalogImportDialog
+          open={isImportDialogOpen}
+          onOpenChange={setIsImportDialogOpen}
+          onSuccess={() => {
+            invalidateProductQueries();
+            setIsImportDialogOpen(false);
+          }}
+        />
       </CardContent>
     </Card>
   );
