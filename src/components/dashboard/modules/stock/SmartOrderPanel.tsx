@@ -173,62 +173,64 @@ const SmartOrderPanel: React.FC<SmartOrderPanelProps> = ({
             </CollapsibleTrigger>
             
             {hasAnySuggestions && (
-              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                {suggestionCounts.demandes > 0 && (
-                  <Badge variant="secondary" className="gap-1">
-                    <ClipboardList className="h-3 w-3" />
-                    {suggestionCounts.demandes}
-                  </Badge>
-                )}
-                {suggestionCounts.ruptures > 0 && (
-                  <TooltipProvider delayDuration={0}>
+              <TooltipProvider delayDuration={0}>
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  {suggestionCounts.demandes > 0 && (
+                    <Badge variant="secondary" className="gap-1">
+                      <ClipboardList className="h-3 w-3" />
+                      {suggestionCounts.demandes}
+                    </Badge>
+                  )}
+                  {suggestionCounts.ruptures > 0 && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Badge variant="destructive" className="gap-1 cursor-help">
-                          <AlertCircle className="h-3 w-3" />
-                          {suggestionCounts.ruptures}
-                        </Badge>
+                        <button type="button" className="cursor-help" onClick={(e) => e.stopPropagation()}>
+                          <Badge variant="destructive" className="gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            {suggestionCounts.ruptures}
+                          </Badge>
+                        </button>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-xs">
+                      <TooltipContent side="bottom" className="max-w-xs bg-slate-900 text-white border-slate-700 whitespace-normal">
                         <p className="font-medium">{suggestionCounts.ruptures} produit(s) en rupture de stock</p>
-                        <p className="text-xs text-muted-foreground">Stock actuel = 0, commande urgente recommandée</p>
+                        <p className="text-xs text-slate-300">Stock actuel = 0, commande urgente recommandée</p>
                       </TooltipContent>
                     </Tooltip>
-                  </TooltipProvider>
-                )}
-                {suggestionCounts.critiques > 0 && (
-                  <TooltipProvider delayDuration={0}>
+                  )}
+                  {suggestionCounts.critiques > 0 && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Badge className="gap-1 bg-orange-500 cursor-help">
-                          <AlertTriangle className="h-3 w-3" />
-                          {suggestionCounts.critiques}
-                        </Badge>
+                        <button type="button" className="cursor-help" onClick={(e) => e.stopPropagation()}>
+                          <Badge className="gap-1 bg-orange-500">
+                            <AlertTriangle className="h-3 w-3" />
+                            {suggestionCounts.critiques}
+                          </Badge>
+                        </button>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-xs">
+                      <TooltipContent side="bottom" className="max-w-xs bg-slate-900 text-white border-slate-700 whitespace-normal">
                         <p className="font-medium">{suggestionCounts.critiques} produit(s) en stock critique</p>
-                        <p className="text-xs text-muted-foreground">Stock en dessous du seuil d'alerte configuré</p>
+                        <p className="text-xs text-slate-300">Stock en dessous du seuil d'alerte configuré</p>
                       </TooltipContent>
                     </Tooltip>
-                  </TooltipProvider>
-                )}
-                {suggestionCounts.faibles > 0 && (
-                  <TooltipProvider delayDuration={0}>
+                  )}
+                  {suggestionCounts.faibles > 0 && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Badge className="gap-1 bg-yellow-500 cursor-help">
-                          <TrendingDown className="h-3 w-3" />
-                          {suggestionCounts.faibles}
-                        </Badge>
+                        <button type="button" className="cursor-help" onClick={(e) => e.stopPropagation()}>
+                          <Badge className="gap-1 bg-yellow-500">
+                            <TrendingDown className="h-3 w-3" />
+                            {suggestionCounts.faibles}
+                          </Badge>
+                        </button>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-xs">
+                      <TooltipContent side="bottom" className="max-w-xs bg-slate-900 text-white border-slate-700 whitespace-normal">
                         <p className="font-medium">{suggestionCounts.faibles} produit(s) en stock faible</p>
-                        <p className="text-xs text-muted-foreground">Stock approchant du seuil minimum</p>
+                        <p className="text-xs text-slate-300">Stock approchant du seuil minimum</p>
                       </TooltipContent>
                     </Tooltip>
-                  </TooltipProvider>
-                )}
-              </div>
+                  )}
+                </div>
+              </TooltipProvider>
             )}
           </CardTitle>
         </CardHeader>

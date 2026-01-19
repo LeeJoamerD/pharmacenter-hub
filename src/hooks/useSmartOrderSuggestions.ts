@@ -33,7 +33,7 @@ interface SaleForImport {
   id: string;
   numero_vente: string;
   date_vente: string;
-  montant_ttc: number;
+  montant_total_ttc: number;
   client_name?: string;
   products_count: number;
 }
@@ -166,7 +166,7 @@ export const useSmartOrderSuggestions = (
           id,
           numero_vente,
           date_vente,
-          montant_ttc,
+          montant_total_ttc,
           client:clients(nom_complet),
           lignes_ventes(produit_id)
         `)
@@ -184,7 +184,7 @@ export const useSmartOrderSuggestions = (
         id: sale.id,
         numero_vente: sale.numero_vente,
         date_vente: sale.date_vente,
-        montant_ttc: sale.montant_ttc || 0,
+        montant_total_ttc: sale.montant_total_ttc || 0,
         client_name: sale.client?.nom_complet || 'Client anonyme',
         products_count: sale.lignes_ventes?.length || 0,
       })) as SaleForImport[];
@@ -203,7 +203,7 @@ export const useSmartOrderSuggestions = (
         id,
         numero_vente,
         date_vente,
-        montant_ttc,
+        montant_total_ttc,
         client:clients(nom_complet),
         lignes_ventes(produit_id)
       `)
@@ -222,7 +222,7 @@ export const useSmartOrderSuggestions = (
       id: sale.id,
       numero_vente: sale.numero_vente,
       date_vente: sale.date_vente,
-      montant_ttc: sale.montant_ttc || 0,
+      montant_total_ttc: sale.montant_total_ttc || 0,
       client_name: sale.client?.nom_complet || 'Client anonyme',
       products_count: sale.lignes_ventes?.length || 0,
     }));
