@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Plus, 
   Search, 
@@ -16,7 +17,12 @@ import {
   Trash2,
   Edit,
   AlertTriangle,
-  Loader2
+  Loader2,
+  ClipboardList,
+  ShoppingBag,
+  Sparkles,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useProductsForOrders } from '@/hooks/useProductsForOrders';
 import { useDebouncedValue } from '@/hooks/use-debounce';
@@ -31,6 +37,9 @@ import { OrderStatusValidationService } from '@/services/orderStatusValidationSe
 import { unifiedPricingService } from '@/services/UnifiedPricingService';
 import { useStockSettings } from '@/hooks/useStockSettings';
 import { useSalesSettings } from '@/hooks/useSalesSettings';
+import { useSmartOrderSuggestions, SmartOrderSuggestion } from '@/hooks/useSmartOrderSuggestions';
+import SmartOrderPanel from './SmartOrderPanel';
+import SaleSelectionDialog from './SaleSelectionDialog';
 
 interface EditOrderTabProps {
   orders: any[];
@@ -71,6 +80,8 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
   const [canModify, setCanModify] = useState(true);
   const [validationError, setValidationError] = useState('');
   const [lineRemises, setLineRemises] = useState<Record<string, number>>({});
+  const [showSmartPanel, setShowSmartPanel] = useState(false);
+  const [showSaleDialog, setShowSaleDialog] = useState(false);
   
   const { toast } = useToast();
   const debouncedSearch = useDebouncedValue(searchProduct, 300);
@@ -91,12 +102,79 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
   const { settings: stockSettings } = useStockSettings();
   const { settings: salesSettings } = useSalesSettings();
   
+  // IDs des produits déjà dans la commande
+  const existingProductIdsArray = useMemo(() => 
+    orderLines.map(line => line.produit_id), 
+    [orderLines]
+  );
+
+  // Hook pour les suggestions intelligentes
+  const { 
+    clientDemandSuggestions, 
+    stockAlertSuggestions, 
+    suggestionCounts,
+    isLoading: smartLoading,
+  } = useSmartOrderSuggestions(existingProductIdsArray);
+  
   // Paramètres d'arrondi depuis le service centralisé
   const roundingPrecision = stockSettings?.rounding_precision || 25;
   const roundingMethod = (salesSettings?.tax?.taxRoundingMethod as 'ceil' | 'floor' | 'round' | 'none') || 'ceil';
 
   // État local pour les catégories modifiées
   const [lineCategories, setLineCategories] = useState<Record<string, string>>({});
+
+  // Fonction pour ajouter des produits depuis les suggestions
+  const addProductsFromSuggestions = useCallback(async (suggestions: SmartOrderSuggestion[]) => {
+    if (!selectedOrderId || !canModify) return;
+    
+    let addedCount = 0;
+    for (const suggestion of suggestions) {
+      if (existingProductIdsArray.includes(suggestion.produit_id)) continue;
+      
+      try {
+        await createOrderLine({
+          commande_id: selectedOrderId,
+          produit_id: suggestion.produit_id,
+          quantite_commandee: suggestion.quantite_suggeree || 1,
+          prix_achat_unitaire_attendu: suggestion.prix_achat || 0
+        });
+        addedCount++;
+      } catch (error) {
+        console.error('Erreur ajout produit:', error);
+      }
+    }
+    
+    if (addedCount > 0) {
+      toast({
+        title: "Produits ajoutés",
+        description: `${addedCount} produit(s) ajouté(s) à la commande`,
+      });
+      refetch();
+    }
+  }, [selectedOrderId, canModify, existingProductIdsArray, createOrderLine, toast, refetch]);
+
+  // Handlers pour l'import
+  const handleImportClientDemands = useCallback(() => {
+    if (clientDemandSuggestions.length === 0) {
+      toast({ title: "Aucune demande", description: "Pas de demande client en attente" });
+      return;
+    }
+    addProductsFromSuggestions(clientDemandSuggestions);
+  }, [clientDemandSuggestions, addProductsFromSuggestions, toast]);
+
+  const handleImportCriticalStock = useCallback(() => {
+    const critical = stockAlertSuggestions.filter(s => s.source === 'rupture' || s.source === 'critique');
+    if (critical.length === 0) {
+      toast({ title: "Stock OK", description: "Aucun produit en rupture/critique" });
+      return;
+    }
+    addProductsFromSuggestions(critical);
+  }, [stockAlertSuggestions, addProductsFromSuggestions, toast]);
+
+  const handleImportFromSale = useCallback((products: SmartOrderSuggestion[]) => {
+    addProductsFromSuggestions(products);
+    setShowSaleDialog(false);
+  }, [addProductsFromSuggestions]);
 
   // Fonction pour déterminer la classe CSS de la catégorie de tarification
   const getCategoryColorClass = (categoryId: string | undefined): string => {
@@ -534,9 +612,41 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
           {/* Add Products */}
           <Card>
             <CardHeader>
-              <CardTitle>Ajouter des Produits</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Ajouter des Produits</CardTitle>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={handleImportClientDemands} disabled={clientDemandSuggestions.length === 0}>
+                    <ClipboardList className="h-4 w-4 mr-1" />Demandes ({clientDemandSuggestions.length})
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowSaleDialog(true)}>
+                    <ShoppingBag className="h-4 w-4 mr-1" />Depuis Vente
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleImportCriticalStock} 
+                    disabled={stockAlertSuggestions.filter(s => s.source === 'rupture' || s.source === 'critique').length === 0}>
+                    <AlertTriangle className="h-4 w-4 mr-1" />Stock Critique
+                  </Button>
+                  <Button variant={showSmartPanel ? "secondary" : "outline"} size="sm" onClick={() => setShowSmartPanel(!showSmartPanel)}>
+                    <Sparkles className="h-4 w-4 mr-1" />Suggestions
+                    {showSmartPanel ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
+              <Collapsible open={showSmartPanel} onOpenChange={setShowSmartPanel}>
+                <CollapsibleContent>
+                  <div className="mb-4">
+                    <SmartOrderPanel
+                      clientDemandSuggestions={clientDemandSuggestions}
+                      stockAlertSuggestions={stockAlertSuggestions}
+                      suggestionCounts={suggestionCounts}
+                      onAddProducts={addProductsFromSuggestions}
+                      isLoading={smartLoading}
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
               <div className="flex gap-4 mb-4">
                 <div className="flex-1">
                   <div className="relative">
@@ -550,7 +660,6 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
                   </div>
                 </div>
               </div>
-
               {searchProduct && (
                 <div className="border rounded-lg p-4 mb-4 bg-muted/50">
                   {productsLoading ? (
@@ -758,6 +867,14 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
           </Card>
         </>
       )}
+
+      {/* Dialog de sélection de vente */}
+      <SaleSelectionDialog
+        open={showSaleDialog}
+        onOpenChange={setShowSaleDialog}
+        onImportProducts={handleImportFromSale}
+        existingProductIds={existingProductIdsArray}
+      />
     </div>
   );
 };
