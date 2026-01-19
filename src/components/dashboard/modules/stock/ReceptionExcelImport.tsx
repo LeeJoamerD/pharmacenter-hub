@@ -25,6 +25,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useGlobalCatalogLookup } from '@/hooks/useGlobalCatalogLookup';
+import type { MappedProductData } from '@/hooks/useGlobalCatalogLookup';
 import { ExcelParserService } from '@/services/ExcelParserService';
 import { AutoOrderCreationService } from '@/services/AutoOrderCreationService';
 import { ReceptionValidationService } from '@/services/receptionValidationService';
@@ -55,7 +56,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const { categories: priceCategories } = usePriceCategories();
   const { getMappingBySupplier, mappings } = useSupplierExcelMappings();
   const { tenantId } = useTenant();
-  const { searchGlobalCatalog, mapToLocalReferences } = useGlobalCatalogLookup();
+  const { searchGlobalCatalog, mapToLocalReferences, searchGlobalCatalogBatch, checkExistingProductsBatch } = useGlobalCatalogLookup();
   const { settings: stockSettings } = useStockSettings();
   const { settings: salesSettings } = useSalesSettings();
   
@@ -721,6 +722,8 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
     if (selectedForCatalog.size === 0) return;
     
     setAddingToCatalog(true);
+    setProcessingStep('Initialisation...');
+    
     try {
       const { data: user } = await supabase.auth.getUser();
       const { data: personnel } = await supabase
@@ -738,37 +741,49 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         selectedForCatalog.has(l.rowNumber)
       ) || [];
 
+      // Étape 1: Extraire tous les codes CIP
+      const allCodes = linesToAdd.map(l => String(l.reference).trim()).filter(c => c.length > 0);
+      
+      // Étape 2: Vérification groupée des produits existants (~2 requêtes au lieu de N)
+      setProcessingStep(`Vérification des produits existants (${allCodes.length} codes)...`);
+      const existingCodes = await checkExistingProductsBatch(allCodes);
+      
+      // Étape 3: Filtrer les codes non existants pour recherche catalogue global
+      const codesToSearch = allCodes.filter(c => !existingCodes.has(c));
+      
+      // Étape 4: Recherche groupée dans le catalogue global (~4 requêtes au lieu de N)
+      setProcessingStep(`Recherche catalogue global (${codesToSearch.length} codes)...`);
+      const globalProductsMap = await searchGlobalCatalogBatch(codesToSearch);
+      
       let created = 0;
       let skipped = 0;
       let notFoundInGlobal = 0;
       const errors: string[] = [];
 
-      for (const line of linesToAdd) {
+      // Étape 5: Traitement séquentiel des insertions uniquement
+      setProcessingStep(`Ajout des produits au catalogue...`);
+      
+      for (let i = 0; i < linesToAdd.length; i++) {
+        const line = linesToAdd[i];
         const normalizedCip = String(line.reference).trim();
         const normalizedName = String(line.produit).trim();
 
-        // Vérifier si le produit existe déjà dans le catalogue local (code_cip OU ancien_code_cip)
-        const { data: existing } = await supabase
-          .from('produits')
-          .select('id')
-          .eq('tenant_id', personnel.tenant_id)
-          .or(`code_cip.eq.${normalizedCip},ancien_code_cip.eq.${normalizedCip}`)
-          .maybeSingle();
+        setProcessingStep(`Traitement ${i + 1}/${linesToAdd.length}: ${normalizedName.substring(0, 30)}...`);
 
-        if (existing) {
+        // Vérification en mémoire (pas de requête !)
+        if (existingCodes.has(normalizedCip)) {
           skipped++;
           continue;
         }
 
-        // Rechercher dans le catalogue global
-        const globalProduct = await searchGlobalCatalog(normalizedCip);
+        // Lookup en mémoire (pas de requête !)
+        const globalProduct = globalProductsMap.get(normalizedCip);
 
         if (globalProduct) {
           // Mapper vers les références locales (crée les référentiels manquants)
-          const mappedData = await mapToLocalReferences(globalProduct);
+          const mappedData: MappedProductData = await mapToLocalReferences(globalProduct);
 
           // UPSERT : Insérer ou mettre à jour le produit (évite les doublons)
-          // Priorité pour ancien_code_cip : valeur Excel > catalogue global
           const { data: newProduct, error } = await supabase
             .from('produits')
             .upsert({
@@ -831,6 +846,8 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         }
       }
 
+      setProcessingStep('');
+
       // Afficher les résultats
       if (created > 0) {
         toast.success(`${created} produit(s) ajouté(s) au catalogue`);
@@ -857,6 +874,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       toast.error('Erreur lors de l\'ajout des produits au catalogue');
     } finally {
       setAddingToCatalog(false);
+      setProcessingStep('');
     }
   };
 
