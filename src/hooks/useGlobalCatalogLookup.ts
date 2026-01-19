@@ -47,6 +47,17 @@ function parseDCIs(libelleDci: string | null): string[] {
     .filter(dci => dci.length > 0);
 }
 
+/**
+ * Divise un tableau en chunks de taille spécifiée
+ */
+function chunkArray<T>(array: T[], chunkSize: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += chunkSize) {
+    chunks.push(array.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
+
 export const useGlobalCatalogLookup = () => {
   const { toast } = useToast();
   const { personnel } = useAuth();
@@ -86,6 +97,102 @@ export const useGlobalCatalogLookup = () => {
       console.error('Erreur recherche catalogue global:', error);
       return null;
     }
+  };
+
+  /**
+   * Recherche groupée de produits dans le catalogue global
+   * Utilise le chunking pour gérer les gros volumes (évite ERR_QUIC_PROTOCOL_ERROR)
+   */
+  const searchGlobalCatalogBatch = async (codes: string[]): Promise<Map<string, GlobalCatalogProduct>> => {
+    const result = new Map<string, GlobalCatalogProduct>();
+    if (codes.length === 0) return result;
+
+    const CHUNK_SIZE = 200;
+    const normalizedCodes = [...new Set(codes.map(c => String(c).trim()).filter(c => c.length > 0))];
+    const chunks = chunkArray(normalizedCodes, CHUNK_SIZE);
+
+    try {
+      // Recherche par code_cip en parallèle sur tous les chunks
+      const cipPromises = chunks.map(chunk =>
+        supabase
+          .from('catalogue_global_produits')
+          .select('*')
+          .in('code_cip', chunk)
+      );
+      const cipResults = await Promise.all(cipPromises);
+
+      // Collecter les codes trouvés par code_cip
+      const foundByCip = new Set<string>();
+      cipResults.forEach(r => {
+        (r.data || []).forEach((product: GlobalCatalogProduct) => {
+          result.set(product.code_cip, product);
+          foundByCip.add(product.code_cip);
+          if (product.ancien_code_cip) {
+            result.set(product.ancien_code_cip, product);
+          }
+        });
+      });
+
+      // Filtrer les codes non trouvés pour chercher dans ancien_code_cip
+      const notFoundCodes = normalizedCodes.filter(c => !result.has(c));
+      if (notFoundCodes.length > 0) {
+        const ancienChunks = chunkArray(notFoundCodes, CHUNK_SIZE);
+        const ancienCipPromises = ancienChunks.map(chunk =>
+          supabase
+            .from('catalogue_global_produits')
+            .select('*')
+            .in('ancien_code_cip', chunk)
+        );
+        const ancienCipResults = await Promise.all(ancienCipPromises);
+
+        ancienCipResults.forEach(r => {
+          (r.data || []).forEach((product: GlobalCatalogProduct) => {
+            result.set(product.code_cip, product);
+            if (product.ancien_code_cip) {
+              result.set(product.ancien_code_cip, product);
+            }
+          });
+        });
+      }
+    } catch (error) {
+      console.error('Erreur recherche groupée catalogue global:', error);
+    }
+
+    return result;
+  };
+
+  /**
+   * Vérifie en batch quels codes CIP existent déjà dans le catalogue local
+   */
+  const checkExistingProductsBatch = async (codes: string[]): Promise<Set<string>> => {
+    const existingCodes = new Set<string>();
+    if (!tenantId || codes.length === 0) return existingCodes;
+
+    const CHUNK_SIZE = 200;
+    const normalizedCodes = [...new Set(codes.map(c => String(c).trim()).filter(c => c.length > 0))];
+    const chunks = chunkArray(normalizedCodes, CHUNK_SIZE);
+
+    try {
+      const promises = chunks.map(chunk =>
+        supabase
+          .from('produits')
+          .select('code_cip, ancien_code_cip')
+          .eq('tenant_id', tenantId)
+          .or(`code_cip.in.(${chunk.join(',')}),ancien_code_cip.in.(${chunk.join(',')})`)
+      );
+
+      const results = await Promise.all(promises);
+      results.forEach(r => {
+        (r.data || []).forEach(p => {
+          if (p.code_cip) existingCodes.add(p.code_cip);
+          if (p.ancien_code_cip) existingCodes.add(p.ancien_code_cip);
+        });
+      });
+    } catch (error) {
+      console.error('Erreur vérification produits existants batch:', error);
+    }
+
+    return existingCodes;
   };
 
   /**
@@ -429,6 +536,8 @@ export const useGlobalCatalogLookup = () => {
 
   return {
     searchGlobalCatalog,
+    searchGlobalCatalogBatch,
+    checkExistingProductsBatch,
     mapToLocalReferences,
     findOrCreatePricingCategoryByLabel,
     parseDCIs
