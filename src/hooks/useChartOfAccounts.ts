@@ -133,7 +133,7 @@ export const useChartOfAccounts = (): UseChartOfAccountsReturn => {
     enabled: !!tenantId,
   });
 
-  // Charger tous les comptes depuis la vue avec les soldes
+  // Charger tous les comptes depuis la vue avec les soldes (récupération par lots pour contourner la limite de 1000)
   const loadAccounts = useCallback(async () => {
     if (!tenantId) return;
 
@@ -141,12 +141,34 @@ export const useChartOfAccounts = (): UseChartOfAccountsReturn => {
       setLoading(true);
       setError(null);
 
-      const { data, error: queryError } = await supabase
-        .rpc('get_account_hierarchy', { p_tenant_id: tenantId });
+      // Récupération par lots pour contourner la limite de 1000 lignes Supabase
+      const CHUNK_SIZE = 1000;
+      let allData: any[] = [];
+      let offset = 0;
+      let hasMore = true;
 
-      if (queryError) throw queryError;
+      while (hasMore) {
+        const { data: chunk, error: queryError } = await supabase
+          .rpc('get_account_hierarchy_paginated', { 
+            p_tenant_id: tenantId,
+            p_offset: offset,
+            p_limit: CHUNK_SIZE
+          });
 
-      const formattedAccounts: Account[] = (data || []).map((account: any) => ({
+        if (queryError) throw queryError;
+
+        if (chunk && chunk.length > 0) {
+          allData = [...allData, ...chunk];
+          offset += chunk.length;
+          hasMore = chunk.length === CHUNK_SIZE;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      console.log(`Plan comptable: ${allData.length} comptes chargés`);
+
+      const formattedAccounts: Account[] = allData.map((account: any) => ({
         id: account.id,
         code: account.code,
         libelle: account.libelle,

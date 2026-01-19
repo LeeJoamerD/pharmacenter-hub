@@ -20716,6 +20716,25 @@ export type Database = {
           type: string
         }[]
       }
+      get_account_hierarchy_paginated: {
+        Args: { p_limit?: number; p_offset?: number; p_tenant_id: string }
+        Returns: {
+          actif: boolean
+          analytique: boolean
+          classe: number
+          code: string
+          description: string
+          id: string
+          libelle: string
+          niveau: number
+          parent_id: string
+          path: string
+          rapprochement: boolean
+          solde_crediteur: number
+          solde_debiteur: number
+          type: string
+        }[]
+      }
       get_accounting_expert_metrics: {
         Args: { p_tenant_id: string }
         Returns: Json
