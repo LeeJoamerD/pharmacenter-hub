@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   ClipboardList,
   AlertTriangle,
@@ -179,22 +180,52 @@ const SmartOrderPanel: React.FC<SmartOrderPanelProps> = ({
                     </Badge>
                   )}
                   {suggestionCounts.ruptures > 0 && (
-                    <Badge variant="destructive" className="gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {suggestionCounts.ruptures}
-                    </Badge>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="destructive" className="gap-1 cursor-help">
+                            <AlertCircle className="h-3 w-3" />
+                            {suggestionCounts.ruptures}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="font-medium">{suggestionCounts.ruptures} produit(s) en rupture de stock</p>
+                          <p className="text-xs text-muted-foreground">Stock actuel = 0, commande urgente recommandée</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
                   {suggestionCounts.critiques > 0 && (
-                    <Badge className="gap-1 bg-orange-500">
-                      <AlertTriangle className="h-3 w-3" />
-                      {suggestionCounts.critiques}
-                    </Badge>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge className="gap-1 bg-orange-500 cursor-help">
+                            <AlertTriangle className="h-3 w-3" />
+                            {suggestionCounts.critiques}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="font-medium">{suggestionCounts.critiques} produit(s) en stock critique</p>
+                          <p className="text-xs text-muted-foreground">Stock en dessous du seuil d'alerte configuré</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
                   {suggestionCounts.faibles > 0 && (
-                    <Badge className="gap-1 bg-yellow-500">
-                      <TrendingDown className="h-3 w-3" />
-                      {suggestionCounts.faibles}
-                    </Badge>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge className="gap-1 bg-yellow-500 cursor-help">
+                            <TrendingDown className="h-3 w-3" />
+                            {suggestionCounts.faibles}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="font-medium">{suggestionCounts.faibles} produit(s) en stock faible</p>
+                          <p className="text-xs text-muted-foreground">Stock approchant du seuil minimum</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
                 </div>
               )}
