@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +14,14 @@ import {
   Send,
   FileText,
   Trash2,
-  ShoppingCart
+  ShoppingCart,
+  ClipboardList,
+  ShoppingBag,
+  AlertTriangle
 } from 'lucide-react';
+import { useSmartOrderSuggestions, SmartOrderSuggestion } from '@/hooks/useSmartOrderSuggestions';
+import SmartOrderPanel from './SmartOrderPanel';
+import SaleSelectionDialog from './SaleSelectionDialog';
 import { useProductsForOrders } from '@/hooks/useProductsForOrders';
 import { useDebouncedValue } from '@/hooks/use-debounce';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
