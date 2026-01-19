@@ -296,6 +296,56 @@ export const useGlobalCatalogLookup = () => {
   };
 
   /**
+   * Recherche ou crée une catégorie de tarification par libellé
+   * Pattern "Find or Create" comme pour les autres référentiels
+   */
+  const findOrCreatePricingCategoryByLabel = async (libelle: string | null): Promise<string | undefined> => {
+    if (!libelle || !tenantId) return undefined;
+
+    const normalizedLibelle = libelle.trim().toUpperCase();
+
+    // Recherche existante
+    const { data: existing, error: searchError } = await supabase
+      .from('categorie_tarification')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .ilike('libelle_categorie', normalizedLibelle)
+      .maybeSingle();
+
+    if (searchError) {
+      console.error('Erreur recherche catégorie tarification:', searchError);
+    }
+
+    if (existing) return existing.id;
+
+    // Création si non trouvé
+    const { data: created, error: insertError } = await supabase
+      .from('categorie_tarification')
+      .insert({ 
+        tenant_id: tenantId, 
+        libelle_categorie: normalizedLibelle 
+      })
+      .select('id')
+      .single();
+
+    if (insertError) {
+      console.error('Erreur création catégorie tarification:', insertError);
+      
+      // Si l'insert a réussi mais le SELECT a échoué, récupérer l'ID avec un SELECT séparé
+      const { data: refetched } = await supabase
+        .from('categorie_tarification')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .ilike('libelle_categorie', normalizedLibelle)
+        .maybeSingle();
+      
+      return refetched?.id;
+    }
+
+    return created?.id;
+  };
+
+  /**
    * Mappe un produit du catalogue global vers les IDs locaux du tenant
    * Crée automatiquement les référentiels manquants
    */
@@ -380,6 +430,7 @@ export const useGlobalCatalogLookup = () => {
   return {
     searchGlobalCatalog,
     mapToLocalReferences,
+    findOrCreatePricingCategoryByLabel,
     parseDCIs
   };
 };
