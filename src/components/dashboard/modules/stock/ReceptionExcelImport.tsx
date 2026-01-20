@@ -530,8 +530,11 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
         lignes: lignesForValidation
       };
 
-      // Validation via le service
-      const validation = await ReceptionValidationService.validateReception(receptionDataForValidation);
+      // Validation via le service - passer l'option allowMissingLotNumbers si auto-génération activée
+      const validation = await ReceptionValidationService.validateReception(
+        receptionDataForValidation,
+        { allowMissingLotNumbers: stockSettings?.auto_generate_lots === true }
+      );
 
       // Afficher les erreurs bloquantes
       if (!validation.isValid) {

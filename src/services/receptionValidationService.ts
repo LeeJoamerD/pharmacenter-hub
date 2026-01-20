@@ -31,6 +31,11 @@ interface LigneData {
   commentaire?: string;
 }
 
+export interface ValidationOptions {
+  /** Si true, permet les numéros de lot vides (auto-génération activée) */
+  allowMissingLotNumbers?: boolean;
+}
+
 export class ReceptionValidationService {
   /**
    * Valide une réception complète avec requêtes batch optimisées
@@ -40,12 +45,18 @@ export class ReceptionValidationService {
     fournisseur_id: string;
     reference_facture?: string;
     lignes: LigneData[];
-  }): Promise<ReceptionValidationResult> {
+  }, options?: ValidationOptions): Promise<ReceptionValidationResult> {
     const result: ReceptionValidationResult = {
       isValid: true,
       errors: [],
       warnings: [],
       suggestions: []
+    };
+    
+    // Options par défaut
+    const validationOptions: ValidationOptions = {
+      allowMissingLotNumbers: false,
+      ...options
     };
 
     try {
@@ -86,7 +97,7 @@ export class ReceptionValidationService {
 
       // 4. Valider chaque ligne en mémoire (sans requêtes async)
       for (const ligne of receptionData.lignes) {
-        const lineValidation = this.validateReceptionLineSync(ligne, productsMap, lotsMap);
+        const lineValidation = this.validateReceptionLineSync(ligne, productsMap, lotsMap, validationOptions);
         result.errors.push(...lineValidation.errors);
         result.warnings.push(...lineValidation.warnings);
         result.suggestions.push(...lineValidation.suggestions);
@@ -211,7 +222,8 @@ export class ReceptionValidationService {
   private static validateReceptionLineSync(
     ligne: LigneData,
     productsMap: Map<string, any>,
-    lotsMap: Set<string>
+    lotsMap: Set<string>,
+    options?: ValidationOptions
   ): ReceptionLineValidation {
     const result: ReceptionLineValidation = {
       ...ligne,
@@ -241,8 +253,12 @@ export class ReceptionValidationService {
     }
 
     // Validation du numéro de lot
+    // Si allowMissingLotNumbers est true (auto-génération activée), ne pas bloquer sur les lots vides
     if (!ligne.numero_lot || ligne.numero_lot.trim() === '') {
-      result.errors.push('Numéro de lot obligatoire');
+      if (!options?.allowMissingLotNumbers) {
+        result.errors.push('Numéro de lot obligatoire');
+      }
+      // Si auto-génération, pas d'erreur - le lot sera généré lors de la création
     } else {
       // Vérifier si le lot existe déjà (lookup en mémoire)
       const lotKey = `${ligne.produit_id}:${ligne.numero_lot}`;
@@ -356,6 +372,7 @@ export class ReceptionValidationService {
 
   /**
    * Valide les numéros de lot
+   * IMPORTANT: Les lots vides sont ignorés car ils seront auto-générés
    */
   private static validateLotNumbers(lignes: Array<{ numero_lot: string; produit_id: string }>): ReceptionValidationResult {
     const result: ReceptionValidationResult = {
@@ -366,7 +383,11 @@ export class ReceptionValidationService {
     };
 
     // Vérifier les doublons de lots dans la même réception
-    const lotNumbers = lignes.map(l => `${l.produit_id}-${l.numero_lot}`);
+    // IMPORTANT: Ignorer les lots vides - ils seront auto-générés et donc uniques
+    const lotNumbers = lignes
+      .filter(l => l.numero_lot && l.numero_lot.trim() !== '') // Ignorer les lots vides
+      .map(l => `${l.produit_id}-${l.numero_lot}`);
+    
     const duplicates = lotNumbers.filter((lot, index) => lotNumbers.indexOf(lot) !== index);
 
     if (duplicates.length > 0) {
