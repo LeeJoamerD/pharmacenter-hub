@@ -177,217 +177,259 @@ export const useReceptions = () => {
         throw receptionError;
       }
 
-      // Gérer les lots et créer les lignes de réception
-      const dateReception = receptionData.date_reception ? new Date(receptionData.date_reception).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+      // ====== OPTIMISATION BATCH ======
+      // Remplacer les insertions séquentielles par des insertions batch
       
-      for (const ligne of receptionData.lignes) {
-        // Créer la ligne de réception avec toutes les colonnes
-        const { error: ligneError } = await supabase
-          .from('lignes_reception_fournisseur')
-          .insert({
-            tenant_id: personnel.tenant_id,
-            reception_id: reception.id,
-            produit_id: ligne.produit_id,
-            quantite_commandee: ligne.quantite_commandee || 0,
-            quantite_recue: ligne.quantite_recue || ligne.quantite_acceptee,
-            quantite_acceptee: ligne.quantite_acceptee || 0,
-            prix_achat_unitaire_reel: ligne.prix_achat_reel || 0,
-            date_peremption: ligne.date_expiration || null,
-            numero_lot: ligne.numero_lot || null,
-            statut: ligne.statut || 'conforme',
-            commentaire: ligne.commentaire || null,
-            emplacement: ligne.emplacement || null,
-            categorie_tarification_id: ligne.categorie_tarification_id || null,
-            lot_id: null // Sera mis à jour après création du lot
-          });
+      const dateReception = receptionData.date_reception 
+        ? new Date(receptionData.date_reception).toISOString().split('T')[0] 
+        : new Date().toISOString().split('T')[0];
 
-        if (ligneError) throw ligneError;
+      // 1. Préparer toutes les lignes de réception en batch
+      const lignesReceptionData = receptionData.lignes.map(ligne => ({
+        tenant_id: personnel.tenant_id,
+        reception_id: reception.id,
+        produit_id: ligne.produit_id,
+        quantite_commandee: ligne.quantite_commandee || 0,
+        quantite_recue: ligne.quantite_recue || ligne.quantite_acceptee,
+        quantite_acceptee: ligne.quantite_acceptee || 0,
+        prix_achat_unitaire_reel: ligne.prix_achat_reel || 0,
+        date_peremption: ligne.date_expiration || null,
+        numero_lot: ligne.numero_lot || null,
+        statut: ligne.statut || 'conforme',
+        commentaire: ligne.commentaire || null,
+        emplacement: ligne.emplacement || null,
+        categorie_tarification_id: ligne.categorie_tarification_id || null,
+        lot_id: null
+      }));
 
-        // Gérer les lots pour les quantités acceptées
-        if (ligne.quantite_acceptee > 0) {
-          // Générer automatiquement le numéro de lot si paramètre activé et numéro vide
+      // Insérer toutes les lignes en une seule requête
+      const { error: lignesError } = await supabase
+        .from('lignes_reception_fournisseur')
+        .insert(lignesReceptionData);
+
+      if (lignesError) throw lignesError;
+
+      // 2. Préparer les lots - collecter les infos nécessaires
+      const lignesWithLots = receptionData.lignes
+        .filter(l => l.quantite_acceptee > 0)
+        .map(ligne => {
+          // Générer automatiquement le numéro de lot si nécessaire
           let numeroLot = ligne.numero_lot;
           if (!numeroLot && stockSettings.auto_generate_lots) {
             const productCode = ligne.produit_id.slice(0, 8).toUpperCase();
             const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
             const sequence = Date.now().toString().slice(-4);
             numeroLot = `LOT-${productCode}-${dateStr}-${sequence}`;
-            console.log('🔢 Numéro de lot auto-généré dans useReceptions:', numeroLot);
           }
 
-          // Vérifier que le numéro est présent si obligatoire
           if (!numeroLot && stockSettings.requireLotNumbers) {
-            throw new Error(`Numéro de lot requis pour le produit. Activez la génération automatique ou saisissez manuellement.`);
+            throw new Error(`Numéro de lot requis pour le produit.`);
           }
 
-          // Si toujours pas de numéro, utiliser un générique
           if (!numeroLot) {
             numeroLot = `LOT-${ligne.produit_id.slice(0, 4)}-${Date.now()}`;
           }
-          let shouldCreateNewLot = false;
-          let existingLot = null;
 
-          // Utiliser directement les prix pré-calculés transmis depuis le composant
-          // Évite le double calcul et garantit la cohérence avec l'affichage
-          const pricingData = {
-            prix_vente_ht: ligne.prix_vente_ht ?? null,
-            taux_tva: ligne.taux_tva ?? 0,
-            montant_tva: ligne.montant_tva ?? 0,
-            taux_centime_additionnel: ligne.taux_centime_additionnel ?? 0,
-            montant_centime_additionnel: ligne.montant_centime_additionnel ?? 0,
-            prix_vente_ttc: ligne.prix_vente_ttc ?? null,
-            prix_vente_suggere: ligne.prix_vente_suggere ?? null
-          };
+          return { ...ligne, numero_lot: numeroLot };
+        });
 
-          console.log('💰 Prix pré-calculés reçus pour lot:', {
-            produit_id: ligne.produit_id,
-            prix_achat: ligne.prix_achat_reel,
-            ...pricingData
-          });
+      // 3. Pré-charger les lots existants en batch
+      const productIds = [...new Set(lignesWithLots.map(l => l.produit_id))];
+      
+      const existingLotsMap = new Map<string, { id: string; quantite_restante: number }>();
+      
+      if (productIds.length > 0 && !stockSettings.oneLotPerReception) {
+        // Charger les lots existants en chunks
+        const CHUNK_SIZE = 500;
+        for (let i = 0; i < productIds.length; i += CHUNK_SIZE) {
+          const chunk = productIds.slice(i, i + CHUNK_SIZE);
+          const { data: existingLots } = await supabase
+            .from('lots')
+            .select('id, produit_id, numero_lot, quantite_restante')
+            .eq('tenant_id', personnel.tenant_id)
+            .in('produit_id', chunk);
 
-          // Mettre à jour la table produits avec ces prix si disponibles
-          if (pricingData.prix_vente_ttc !== null) {
-            const { error: produitUpdateError } = await supabase
-              .from('produits')
-              .update({
-                prix_vente_ht: pricingData.prix_vente_ht,
-                prix_vente_ttc: pricingData.prix_vente_ttc,
-                taux_tva: pricingData.taux_tva,
-                taux_centime_additionnel: pricingData.taux_centime_additionnel,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', ligne.produit_id);
-
-            if (produitUpdateError) {
-              console.warn('⚠️ Erreur mise à jour prix produit:', produitUpdateError);
-            }
-          }
-
-          if (stockSettings.oneLotPerReception) {
-            // Mode "1 lot par réception" : toujours créer un nouveau lot
-            shouldCreateNewLot = true;
-          } else {
-            // Mode par défaut : vérifier si le lot existe déjà (utiliser numeroLot au lieu de ligne.numero_lot)
-            const { data: lotData } = await supabase
-              .from('lots')
-              .select('id, quantite_restante')
-              .eq('tenant_id', personnel.tenant_id)
-              .eq('produit_id', ligne.produit_id)
-              .eq('numero_lot', numeroLot)
-              .maybeSingle();
-            
-            existingLot = lotData;
-            shouldCreateNewLot = !existingLot;
-          }
-
-          if (!shouldCreateNewLot && existingLot) {
-            // Mettre à jour le lot existant avec emplacement, notes et prix si fournis
-            const updateData: Record<string, any> = {
-              quantite_restante: existingLot.quantite_restante + ligne.quantite_acceptee,
-              updated_at: new Date().toISOString()
-            };
-            
-            if (ligne.emplacement) updateData.emplacement = ligne.emplacement;
-            if (ligne.commentaire) updateData.notes = ligne.commentaire;
-            
-            // Mettre à jour les prix pré-calculés si fournis
-            if (pricingData.prix_vente_ttc !== null) {
-              updateData.prix_vente_ht = pricingData.prix_vente_ht;
-              updateData.taux_tva = pricingData.taux_tva;
-              updateData.montant_tva = pricingData.montant_tva;
-              updateData.taux_centime_additionnel = pricingData.taux_centime_additionnel;
-              updateData.montant_centime_additionnel = pricingData.montant_centime_additionnel;
-              updateData.prix_vente_ttc = pricingData.prix_vente_ttc;
-              updateData.prix_vente_suggere = pricingData.prix_vente_suggere;
-            }
-
-            const { error: updateError } = await supabase
-              .from('lots')
-              .update(updateData)
-              .eq('id', existingLot.id);
-
-            if (updateError) throw updateError;
-
-            // Enregistrer le mouvement d'entrée
-            const { error: mouvementError } = await supabase
-              .from('mouvements_lots')
-              .insert({
-                tenant_id: personnel.tenant_id,
-                lot_id: existingLot.id,
-                produit_id: ligne.produit_id,
-                type_mouvement: 'entree',
-                quantite_avant: existingLot.quantite_restante,
-                quantite_mouvement: ligne.quantite_acceptee,
-                quantite_apres: existingLot.quantite_restante + ligne.quantite_acceptee,
-                reference_id: reception.id,
-                reference_type: 'reception',
-                reference_document: receptionData.reference_facture || `REC-${reception.id.slice(-6)}`,
-                date_mouvement: new Date().toISOString(),
-                motif: 'Réception fournisseur'
+          if (existingLots) {
+            for (const lot of existingLots) {
+              existingLotsMap.set(`${lot.produit_id}:${lot.numero_lot}`, {
+                id: lot.id,
+                quantite_restante: lot.quantite_restante
               });
-
-            if (mouvementError) throw mouvementError;
-          } else {
-            // Créer un nouveau lot avec les prix calculés (utiliser numeroLot au lieu de ligne.numero_lot)
-            const lotInsertData: Record<string, any> = {
-              tenant_id: personnel.tenant_id,
-              produit_id: ligne.produit_id,
-              numero_lot: numeroLot,
-              date_peremption: ligne.date_expiration || null,
-              quantite_initiale: ligne.quantite_acceptee,
-              quantite_restante: ligne.quantite_acceptee,
-              prix_achat_unitaire: ligne.prix_achat_reel || 0,
-              date_reception: dateReception,
-              fournisseur_id: receptionData.fournisseur_id,
-              reception_id: reception.id,
-              emplacement: ligne.emplacement || null,
-              notes: ligne.commentaire || null,
-              categorie_tarification_id: ligne.categorie_tarification_id || null
-            };
-
-            // Ajouter les prix pré-calculés s'ils existent
-            if (pricingData.prix_vente_ttc !== null) {
-              lotInsertData.prix_vente_ht = pricingData.prix_vente_ht;
-              lotInsertData.taux_tva = pricingData.taux_tva;
-              lotInsertData.montant_tva = pricingData.montant_tva;
-              lotInsertData.taux_centime_additionnel = pricingData.taux_centime_additionnel;
-              lotInsertData.montant_centime_additionnel = pricingData.montant_centime_additionnel;
-              lotInsertData.prix_vente_ttc = pricingData.prix_vente_ttc;
-              lotInsertData.prix_vente_suggere = pricingData.prix_vente_suggere;
             }
-
-            // @ts-ignore - Ignorer les erreurs de typage Supabase pour Record<string, any>
-            const { data: newLot, error: lotError } = await supabase
-              .from('lots')
-              .insert(lotInsertData as any)
-              .select()
-              .single();
-
-            if (lotError) throw lotError;
-
-            // Enregistrer le mouvement d'entrée pour le nouveau lot
-            const { error: mouvementError } = await supabase
-              .from('mouvements_lots')
-              .insert({
-                tenant_id: personnel.tenant_id,
-                lot_id: newLot.id,
-                produit_id: ligne.produit_id,
-                type_mouvement: 'entree',
-                quantite_avant: 0,
-                quantite_mouvement: ligne.quantite_acceptee,
-                quantite_apres: ligne.quantite_acceptee,
-                reference_id: reception.id,
-                reference_type: 'reception',
-                reference_document: receptionData.reference_facture || `REC-${reception.id.slice(-6)}`,
-                date_mouvement: new Date().toISOString(),
-                motif: stockSettings.oneLotPerReception ? 
-                  'Réception fournisseur - Lot distinct par réception' : 
-                  'Réception fournisseur - Nouveau lot'
-              });
-
-            if (mouvementError) throw mouvementError;
           }
         }
+      }
+
+      // 4. Séparer les lots à créer vs à mettre à jour
+      const lotsToInsert: any[] = [];
+      const lotsToUpdate: { id: string; quantite_restante: number; updateData: any }[] = [];
+      const mouvementsToInsert: any[] = [];
+      const produitsToUpdate: { id: string; updateData: any }[] = [];
+
+      for (const ligne of lignesWithLots) {
+        const lotKey = `${ligne.produit_id}:${ligne.numero_lot}`;
+        const existingLot = existingLotsMap.get(lotKey);
+
+        const pricingData = {
+          prix_vente_ht: ligne.prix_vente_ht ?? null,
+          taux_tva: ligne.taux_tva ?? 0,
+          montant_tva: ligne.montant_tva ?? 0,
+          taux_centime_additionnel: ligne.taux_centime_additionnel ?? 0,
+          montant_centime_additionnel: ligne.montant_centime_additionnel ?? 0,
+          prix_vente_ttc: ligne.prix_vente_ttc ?? null,
+          prix_vente_suggere: ligne.prix_vente_suggere ?? null
+        };
+
+        // Mise à jour produit si prix disponible
+        if (pricingData.prix_vente_ttc !== null) {
+          produitsToUpdate.push({
+            id: ligne.produit_id,
+            updateData: {
+              prix_vente_ht: pricingData.prix_vente_ht,
+              prix_vente_ttc: pricingData.prix_vente_ttc,
+              taux_tva: pricingData.taux_tva,
+              taux_centime_additionnel: pricingData.taux_centime_additionnel,
+              updated_at: new Date().toISOString()
+            }
+          });
+        }
+
+        if (!stockSettings.oneLotPerReception && existingLot) {
+          // Lot existant à mettre à jour
+          const updateData: Record<string, any> = {
+            quantite_restante: existingLot.quantite_restante + ligne.quantite_acceptee,
+            updated_at: new Date().toISOString()
+          };
+          
+          if (ligne.emplacement) updateData.emplacement = ligne.emplacement;
+          if (ligne.commentaire) updateData.notes = ligne.commentaire;
+          
+          if (pricingData.prix_vente_ttc !== null) {
+            updateData.prix_vente_ht = pricingData.prix_vente_ht;
+            updateData.taux_tva = pricingData.taux_tva;
+            updateData.montant_tva = pricingData.montant_tva;
+            updateData.taux_centime_additionnel = pricingData.taux_centime_additionnel;
+            updateData.montant_centime_additionnel = pricingData.montant_centime_additionnel;
+            updateData.prix_vente_ttc = pricingData.prix_vente_ttc;
+            updateData.prix_vente_suggere = pricingData.prix_vente_suggere;
+          }
+
+          lotsToUpdate.push({
+            id: existingLot.id,
+            quantite_restante: existingLot.quantite_restante,
+            updateData
+          });
+
+          // Mouvement pour lot existant
+          mouvementsToInsert.push({
+            tenant_id: personnel.tenant_id,
+            lot_id: existingLot.id,
+            produit_id: ligne.produit_id,
+            type_mouvement: 'entree',
+            quantite_avant: existingLot.quantite_restante,
+            quantite_mouvement: ligne.quantite_acceptee,
+            quantite_apres: existingLot.quantite_restante + ligne.quantite_acceptee,
+            reference_id: reception.id,
+            reference_type: 'reception',
+            reference_document: receptionData.reference_facture || `REC-${reception.id.slice(-6)}`,
+            date_mouvement: new Date().toISOString(),
+            motif: 'Réception fournisseur'
+          });
+        } else {
+          // Nouveau lot à créer
+          const lotInsertData: Record<string, any> = {
+            tenant_id: personnel.tenant_id,
+            produit_id: ligne.produit_id,
+            numero_lot: ligne.numero_lot,
+            date_peremption: ligne.date_expiration || null,
+            quantite_initiale: ligne.quantite_acceptee,
+            quantite_restante: ligne.quantite_acceptee,
+            prix_achat_unitaire: ligne.prix_achat_reel || 0,
+            date_reception: dateReception,
+            fournisseur_id: receptionData.fournisseur_id,
+            reception_id: reception.id,
+            emplacement: ligne.emplacement || null,
+            notes: ligne.commentaire || null,
+            categorie_tarification_id: ligne.categorie_tarification_id || null
+          };
+
+          if (pricingData.prix_vente_ttc !== null) {
+            lotInsertData.prix_vente_ht = pricingData.prix_vente_ht;
+            lotInsertData.taux_tva = pricingData.taux_tva;
+            lotInsertData.montant_tva = pricingData.montant_tva;
+            lotInsertData.taux_centime_additionnel = pricingData.taux_centime_additionnel;
+            lotInsertData.montant_centime_additionnel = pricingData.montant_centime_additionnel;
+            lotInsertData.prix_vente_ttc = pricingData.prix_vente_ttc;
+            lotInsertData.prix_vente_suggere = pricingData.prix_vente_suggere;
+          }
+
+          lotsToInsert.push({
+            lotData: lotInsertData,
+            ligneInfo: {
+              produit_id: ligne.produit_id,
+              quantite_acceptee: ligne.quantite_acceptee,
+              motif: stockSettings.oneLotPerReception 
+                ? 'Réception fournisseur - Lot distinct par réception' 
+                : 'Réception fournisseur - Nouveau lot'
+            }
+          });
+        }
+      }
+
+      // 5. Exécuter les mises à jour de lots existants en batch
+      for (const lotUpdate of lotsToUpdate) {
+        await supabase
+          .from('lots')
+          .update(lotUpdate.updateData)
+          .eq('id', lotUpdate.id);
+      }
+
+      // 6. Insérer les nouveaux lots un par un (besoin de l'ID pour les mouvements)
+      for (const { lotData, ligneInfo } of lotsToInsert) {
+        const { data: newLot, error: lotError } = await supabase
+          .from('lots')
+          .insert(lotData as any)
+          .select('id')
+          .single();
+
+        if (lotError) throw lotError;
+
+        // Ajouter le mouvement pour le nouveau lot
+        mouvementsToInsert.push({
+          tenant_id: personnel.tenant_id,
+          lot_id: newLot.id,
+          produit_id: ligneInfo.produit_id,
+          type_mouvement: 'entree',
+          quantite_avant: 0,
+          quantite_mouvement: ligneInfo.quantite_acceptee,
+          quantite_apres: ligneInfo.quantite_acceptee,
+          reference_id: reception.id,
+          reference_type: 'reception',
+          reference_document: receptionData.reference_facture || `REC-${reception.id.slice(-6)}`,
+          date_mouvement: new Date().toISOString(),
+          motif: ligneInfo.motif
+        });
+      }
+
+      // 7. Insérer tous les mouvements en batch
+      if (mouvementsToInsert.length > 0) {
+        const CHUNK_SIZE = 500;
+        for (let i = 0; i < mouvementsToInsert.length; i += CHUNK_SIZE) {
+          const chunk = mouvementsToInsert.slice(i, i + CHUNK_SIZE);
+          const { error: mouvementsError } = await supabase
+            .from('mouvements_lots')
+            .insert(chunk);
+          
+          if (mouvementsError) throw mouvementsError;
+        }
+      }
+
+      // 8. Mettre à jour les produits en batch
+      for (const produitUpdate of produitsToUpdate) {
+        await supabase
+          .from('produits')
+          .update(produitUpdate.updateData)
+          .eq('id', produitUpdate.id);
       }
 
       toast({
