@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { ensureValidSession } from '@/utils/sessionRefresh';
 
 export interface ReceptionValidationResult {
   isValid: boolean;
@@ -131,18 +132,16 @@ export class ReceptionValidationService {
         chunks.push(productIds.slice(i, i + CHUNK_SIZE));
       }
 
-      // Exécuter les requêtes en parallèle
-      const results = await Promise.all(
-        chunks.map(chunk => 
-          supabase
-            .from('produits')
-            .select('id, libelle_produit, code_cip')
-            .in('id', chunk)
-        )
-      );
+      // Traiter les chunks avec vérification de session
+      for (const chunk of chunks) {
+        // Vérifier/rafraîchir la session avant chaque chunk
+        await ensureValidSession();
+        
+        const { data, error } = await supabase
+          .from('produits')
+          .select('id, libelle_produit, code_cip')
+          .in('id', chunk);
 
-      // Fusionner les résultats dans la Map
-      for (const { data, error } of results) {
         if (!error && data) {
           for (const product of data) {
             productsMap.set(product.id, product);
@@ -183,18 +182,16 @@ export class ReceptionValidationService {
         chunks.push(productIds.slice(i, i + CHUNK_SIZE));
       }
 
-      // Récupérer tous les lots pour ces produits
-      const results = await Promise.all(
-        chunks.map(chunk =>
-          supabase
-            .from('lots')
-            .select('produit_id, numero_lot')
-            .in('produit_id', chunk)
-        )
-      );
+      // Traiter les chunks avec vérification de session
+      for (const chunk of chunks) {
+        // Vérifier/rafraîchir la session avant chaque chunk
+        await ensureValidSession();
+        
+        const { data, error } = await supabase
+          .from('lots')
+          .select('produit_id, numero_lot')
+          .in('produit_id', chunk);
 
-      // Construire le Set des lots existants
-      for (const { data, error } of results) {
         if (!error && data) {
           for (const lot of data) {
             lotsSet.add(`${lot.produit_id}:${lot.numero_lot}`);

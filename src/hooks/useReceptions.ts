@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useStockSettings } from '@/hooks/useStockSettings';
 import { unifiedPricingService } from '@/services/UnifiedPricingService';
 import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
+import { ensureValidSession } from '@/utils/sessionRefresh';
 
 export interface Reception {
   id: string;
@@ -114,6 +115,12 @@ export const useReceptions = () => {
     }>;
   }) => {
     try {
+      // Vérifier la session dès le début
+      const sessionValid = await ensureValidSession();
+      if (!sessionValid) {
+        throw new Error('Session expirée. Veuillez vous reconnecter.');
+      }
+
       // Get current user's tenant_id
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error('Utilisateur non authentifié');
@@ -143,6 +150,9 @@ export const useReceptions = () => {
         montant_centime_additionnel: receptionData.montant_centime_additionnel,
         montant_ttc: receptionData.montant_ttc
       });
+
+      // Refresh session avant l'insertion principale
+      await ensureValidSession();
 
       const { data: reception, error: receptionError } = await supabase
         .from('receptions_fournisseurs')
@@ -202,6 +212,9 @@ export const useReceptions = () => {
         lot_id: null
       }));
 
+      // Refresh session avant l'insertion des lignes
+      await ensureValidSession();
+
       // Insérer toutes les lignes en une seule requête
       const { error: lignesError } = await supabase
         .from('lignes_reception_fournisseur')
@@ -239,9 +252,12 @@ export const useReceptions = () => {
       const existingLotsMap = new Map<string, { id: string; quantite_restante: number }>();
       
       if (productIds.length > 0 && !stockSettings.oneLotPerReception) {
-        // Charger les lots existants en chunks
+        // Charger les lots existants en chunks avec vérification de session
         const CHUNK_SIZE = 500;
         for (let i = 0; i < productIds.length; i += CHUNK_SIZE) {
+          // Refresh session avant chaque chunk
+          await ensureValidSession();
+          
           const chunk = productIds.slice(i, i + CHUNK_SIZE);
           const { data: existingLots } = await supabase
             .from('lots')
@@ -376,16 +392,24 @@ export const useReceptions = () => {
         }
       }
 
-      // 5. Exécuter les mises à jour de lots existants en batch
-      for (const lotUpdate of lotsToUpdate) {
+      // 5. Exécuter les mises à jour de lots existants en batch avec session check
+      for (let i = 0; i < lotsToUpdate.length; i++) {
+        // Refresh session toutes les 50 opérations
+        if (i % 50 === 0) await ensureValidSession();
+        
+        const lotUpdate = lotsToUpdate[i];
         await supabase
           .from('lots')
           .update(lotUpdate.updateData)
           .eq('id', lotUpdate.id);
       }
 
-      // 6. Insérer les nouveaux lots un par un (besoin de l'ID pour les mouvements)
-      for (const { lotData, ligneInfo } of lotsToInsert) {
+      // 6. Insérer les nouveaux lots un par un (besoin de l'ID pour les mouvements) avec session check
+      for (let i = 0; i < lotsToInsert.length; i++) {
+        // Refresh session toutes les 50 opérations
+        if (i % 50 === 0) await ensureValidSession();
+        
+        const { lotData, ligneInfo } = lotsToInsert[i];
         const { data: newLot, error: lotError } = await supabase
           .from('lots')
           .insert(lotData as any)
@@ -411,10 +435,13 @@ export const useReceptions = () => {
         });
       }
 
-      // 7. Insérer tous les mouvements en batch
+      // 7. Insérer tous les mouvements en batch avec session check
       if (mouvementsToInsert.length > 0) {
         const CHUNK_SIZE = 500;
         for (let i = 0; i < mouvementsToInsert.length; i += CHUNK_SIZE) {
+          // Refresh session avant chaque chunk
+          await ensureValidSession();
+          
           const chunk = mouvementsToInsert.slice(i, i + CHUNK_SIZE);
           const { error: mouvementsError } = await supabase
             .from('mouvements_lots')
@@ -424,8 +451,12 @@ export const useReceptions = () => {
         }
       }
 
-      // 8. Mettre à jour les produits en batch
-      for (const produitUpdate of produitsToUpdate) {
+      // 8. Mettre à jour les produits en batch avec session check
+      for (let i = 0; i < produitsToUpdate.length; i++) {
+        // Refresh session toutes les 50 opérations
+        if (i % 50 === 0) await ensureValidSession();
+        
+        const produitUpdate = produitsToUpdate[i];
         await supabase
           .from('produits')
           .update(produitUpdate.updateData)
