@@ -5,6 +5,7 @@ import { useStockSettings } from '@/hooks/useStockSettings';
 import { unifiedPricingService } from '@/services/UnifiedPricingService';
 import { DEFAULT_SETTINGS } from '@/config/defaultSettings';
 import { ensureValidSession } from '@/utils/sessionRefresh';
+import { LotNumberGenerator, generateFallbackLotNumber } from '@/utils/lotNumber';
 
 export interface Reception {
   id: string;
@@ -223,8 +224,8 @@ export const useReceptions = () => {
       if (lignesError) throw lignesError;
 
       // 2. Préparer les lots - collecter les infos nécessaires
-      // Compteur pour générer des séquences uniques par produit dans cet import
-      const productSequenceCounters = new Map<string, number>();
+      // Utiliser le générateur centralisé pour garantir l'unicité des numéros de lots
+      const lotGenerator = new LotNumberGenerator();
       
       const lignesWithLots = receptionData.lignes
         .filter(l => l.quantite_acceptee > 0)
@@ -232,16 +233,8 @@ export const useReceptions = () => {
           // Générer automatiquement le numéro de lot si nécessaire
           let numeroLot = ligne.numero_lot;
           if (!numeroLot && stockSettings.auto_generate_lots) {
-            const productCode = ligne.produit_id.slice(0, 8).toUpperCase();
-            const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
-            
-            // Incrémenter le compteur pour ce produit spécifique
-            const currentCount = productSequenceCounters.get(ligne.produit_id) || 0;
-            productSequenceCounters.set(ligne.produit_id, currentCount + 1);
-            
-            // Générer une séquence unique : timestamp + index global + compteur produit
-            const uniqueSequence = `${Date.now().toString().slice(-6)}${index.toString().padStart(3, '0')}${currentCount.toString().padStart(2, '0')}`;
-            numeroLot = `LOT-${productCode}-${dateStr}-${uniqueSequence}`;
+            // Utiliser le générateur centralisé pour garantir l'unicité
+            numeroLot = lotGenerator.generate(ligne.produit_id, index);
           }
 
           if (!numeroLot && stockSettings.requireLotNumbers) {
@@ -250,7 +243,7 @@ export const useReceptions = () => {
 
           if (!numeroLot) {
             // Fallback avec index pour garantir l'unicité
-            numeroLot = `LOT-${ligne.produit_id.slice(0, 4)}-${Date.now()}-${index}`;
+            numeroLot = generateFallbackLotNumber(ligne.produit_id, index);
           }
 
           return { ...ligne, numero_lot: numeroLot };
