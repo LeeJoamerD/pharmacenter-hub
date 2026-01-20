@@ -19,24 +19,26 @@ export interface ReceptionLineValidation {
   suggestions: string[];
 }
 
+interface LigneData {
+  produit_id: string;
+  quantite_commandee: number;
+  quantite_recue: number;
+  quantite_acceptee: number;
+  numero_lot: string;
+  date_expiration?: string;
+  statut: 'conforme' | 'non-conforme' | 'partiellement-conforme';
+  commentaire?: string;
+}
+
 export class ReceptionValidationService {
   /**
-   * Valide une réception complète
+   * Valide une réception complète avec requêtes batch optimisées
    */
   static async validateReception(receptionData: {
     commande_id?: string;
     fournisseur_id: string;
     reference_facture?: string;
-    lignes: Array<{
-      produit_id: string;
-      quantite_commandee: number;
-      quantite_recue: number;
-      quantite_acceptee: number;
-      numero_lot: string;
-      date_expiration?: string;
-      statut: 'conforme' | 'non-conforme' | 'partiellement-conforme';
-      commentaire?: string;
-    }>;
+    lignes: LigneData[];
   }): Promise<ReceptionValidationResult> {
     const result: ReceptionValidationResult = {
       isValid: true,
@@ -69,9 +71,21 @@ export class ReceptionValidationService {
         }
       }
 
-      // Valider chaque ligne
+      // ====== OPTIMISATION BATCH ======
+      // Pré-charger toutes les données en 2 requêtes au lieu de N*3 requêtes
+      
+      // 1. Collecter tous les IDs de produits uniques
+      const productIds = [...new Set(receptionData.lignes.map(l => l.produit_id))];
+      
+      // 2. Pré-charger tous les produits en une seule requête
+      const productsMap = await this.loadProductsBatch(productIds);
+      
+      // 3. Pré-charger tous les lots existants en une seule requête
+      const lotsMap = await this.loadExistingLotsBatch(receptionData.lignes);
+
+      // 4. Valider chaque ligne en mémoire (sans requêtes async)
       for (const ligne of receptionData.lignes) {
-        const lineValidation = await this.validateReceptionLine(ligne);
+        const lineValidation = this.validateReceptionLineSync(ligne, productsMap, lotsMap);
         result.errors.push(...lineValidation.errors);
         result.warnings.push(...lineValidation.warnings);
         result.suggestions.push(...lineValidation.suggestions);
@@ -81,19 +95,213 @@ export class ReceptionValidationService {
         }
       }
 
-      // Validation des lots
+      // Validation des lots (synchrone)
       const lotValidation = this.validateLotNumbers(receptionData.lignes);
       result.errors.push(...lotValidation.errors);
       result.warnings.push(...lotValidation.warnings);
 
-      // Validation des écarts de réception
+      // Validation des écarts de réception (synchrone)
       const discrepancyValidation = this.validateReceptionDiscrepancies(receptionData.lignes);
       result.warnings.push(...discrepancyValidation.warnings);
       result.suggestions.push(...discrepancyValidation.suggestions);
 
     } catch (error) {
+      console.error('Erreur validation réception:', error);
       result.errors.push('Erreur lors de la validation de la réception');
       result.isValid = false;
+    }
+
+    return result;
+  }
+
+  /**
+   * Charge tous les produits en une seule requête batch
+   */
+  private static async loadProductsBatch(productIds: string[]): Promise<Map<string, any>> {
+    const productsMap = new Map<string, any>();
+    
+    if (productIds.length === 0) return productsMap;
+
+    try {
+      // Chunking pour éviter les limites URL (max 500 IDs par requête)
+      const CHUNK_SIZE = 500;
+      const chunks: string[][] = [];
+      
+      for (let i = 0; i < productIds.length; i += CHUNK_SIZE) {
+        chunks.push(productIds.slice(i, i + CHUNK_SIZE));
+      }
+
+      // Exécuter les requêtes en parallèle
+      const results = await Promise.all(
+        chunks.map(chunk => 
+          supabase
+            .from('produits')
+            .select('id, libelle_produit, code_cip')
+            .in('id', chunk)
+        )
+      );
+
+      // Fusionner les résultats dans la Map
+      for (const { data, error } of results) {
+        if (!error && data) {
+          for (const product of data) {
+            productsMap.set(product.id, product);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Erreur chargement produits batch:', error);
+    }
+
+    return productsMap;
+  }
+
+  /**
+   * Charge tous les lots existants en une seule requête batch
+   */
+  private static async loadExistingLotsBatch(lignes: LigneData[]): Promise<Set<string>> {
+    const lotsSet = new Set<string>();
+    
+    if (lignes.length === 0) return lotsSet;
+
+    try {
+      // Collecter les paires (produit_id, numero_lot) uniques
+      const pairs = lignes
+        .filter(l => l.numero_lot && l.numero_lot.trim() !== '')
+        .map(l => ({ produit_id: l.produit_id, numero_lot: l.numero_lot }));
+
+      if (pairs.length === 0) return lotsSet;
+
+      // Extraire les IDs de produits uniques
+      const productIds = [...new Set(pairs.map(p => p.produit_id))];
+
+      // Chunking pour éviter les limites
+      const CHUNK_SIZE = 500;
+      const chunks: string[][] = [];
+      
+      for (let i = 0; i < productIds.length; i += CHUNK_SIZE) {
+        chunks.push(productIds.slice(i, i + CHUNK_SIZE));
+      }
+
+      // Récupérer tous les lots pour ces produits
+      const results = await Promise.all(
+        chunks.map(chunk =>
+          supabase
+            .from('lots')
+            .select('produit_id, numero_lot')
+            .in('produit_id', chunk)
+        )
+      );
+
+      // Construire le Set des lots existants
+      for (const { data, error } of results) {
+        if (!error && data) {
+          for (const lot of data) {
+            lotsSet.add(`${lot.produit_id}:${lot.numero_lot}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Erreur chargement lots batch:', error);
+    }
+
+    return lotsSet;
+  }
+
+  /**
+   * Valide une ligne de réception de manière SYNCHRONE (sans requêtes DB)
+   */
+  private static validateReceptionLineSync(
+    ligne: LigneData,
+    productsMap: Map<string, any>,
+    lotsMap: Set<string>
+  ): ReceptionLineValidation {
+    const result: ReceptionLineValidation = {
+      ...ligne,
+      errors: [],
+      warnings: [],
+      suggestions: []
+    };
+
+    // Validation du produit (lookup en mémoire)
+    const product = productsMap.get(ligne.produit_id);
+    if (!product) {
+      result.errors.push(`Produit introuvable (ID: ${ligne.produit_id})`);
+      return result;
+    }
+
+    // Validation des quantités
+    if (ligne.quantite_recue < 0) {
+      result.errors.push('La quantité reçue ne peut pas être négative');
+    }
+
+    if (ligne.quantite_acceptee < 0) {
+      result.errors.push('La quantité acceptée ne peut pas être négative');
+    }
+
+    if (ligne.quantite_acceptee > ligne.quantite_recue) {
+      result.errors.push('La quantité acceptée ne peut pas être supérieure à la quantité reçue');
+    }
+
+    // Validation du numéro de lot
+    if (!ligne.numero_lot || ligne.numero_lot.trim() === '') {
+      result.errors.push('Numéro de lot obligatoire');
+    } else {
+      // Vérifier si le lot existe déjà (lookup en mémoire)
+      const lotKey = `${ligne.produit_id}:${ligne.numero_lot}`;
+      if (lotsMap.has(lotKey)) {
+        result.warnings.push(`Lot ${ligne.numero_lot} existe déjà pour ce produit`);
+        result.suggestions.push('Vérifiez si ce n\'est pas un doublon ou utilisez un numéro de lot différent');
+      }
+    }
+
+    // Validation de la date d'expiration
+    if (ligne.date_expiration) {
+      const expirationDate = new Date(ligne.date_expiration);
+      const today = new Date();
+      const daysToExpiry = Math.ceil((expirationDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+
+      if (expirationDate <= today) {
+        result.errors.push('Produit déjà expiré');
+      } else if (daysToExpiry <= 30) {
+        result.warnings.push(`Produit expire dans ${daysToExpiry} jours`);
+      } else if (daysToExpiry <= 90) {
+        result.warnings.push(`Date d'expiration proche: ${daysToExpiry} jours`);
+      }
+    } else {
+      result.warnings.push('Date d\'expiration manquante - Recommandée pour tous les produits');
+    }
+
+    // Validation des écarts de quantité
+    const quantityDifference = ligne.quantite_recue - ligne.quantite_commandee;
+    const percentageDifference = ligne.quantite_commandee > 0 ? 
+      Math.abs(quantityDifference) / ligne.quantite_commandee * 100 : 0;
+
+    if (quantityDifference !== 0) {
+      if (percentageDifference > 10) {
+        result.warnings.push(
+          `Écart important de quantité: ${quantityDifference > 0 ? '+' : ''}${quantityDifference} unités (${percentageDifference.toFixed(1)}%)`
+        );
+      } else if (percentageDifference > 5) {
+        result.suggestions.push(
+          `Léger écart de quantité: ${quantityDifference > 0 ? '+' : ''}${quantityDifference} unités`
+        );
+      }
+    }
+
+    // Validation du statut de conformité
+    if (ligne.statut === 'non-conforme' && ligne.quantite_acceptee > 0) {
+      result.warnings.push('Quantité acceptée pour un produit non-conforme');
+    }
+
+    if (ligne.statut === 'conforme' && ligne.quantite_acceptee < ligne.quantite_recue) {
+      result.suggestions.push('Produit conforme mais quantité acceptée partielle - Vérifiez le motif');
+    }
+
+    // Validation du commentaire pour les non-conformités
+    if ((ligne.statut === 'non-conforme' || ligne.statut === 'partiellement-conforme') && 
+        (!ligne.commentaire || ligne.commentaire.trim() === '')) {
+      result.warnings.push('Commentaire recommandé pour les produits non-conformes');
     }
 
     return result;
@@ -129,13 +337,12 @@ export class ReceptionValidationService {
         result.isValid = false;
       }
 
-      // Avertissement supprimé : le statut "Livré" est normal pour une réception
-
       // Vérifier s'il y a déjà des réceptions partielles
       const { data: existingReceptions } = await supabase
         .from('receptions_fournisseurs')
-        .select('*')
-        .eq('commande_id', commandeId);
+        .select('id')
+        .eq('commande_id', commandeId)
+        .limit(1);
 
       if (existingReceptions && existingReceptions.length > 0) {
         result.warnings.push('Des réceptions partielles existent déjà pour cette commande');
@@ -145,126 +352,6 @@ export class ReceptionValidationService {
     } catch (error) {
       result.errors.push('Erreur lors de la validation de la commande');
       result.isValid = false;
-    }
-
-    return result;
-  }
-
-  /**
-   * Valide une ligne de réception
-   */
-  private static async validateReceptionLine(ligne: {
-    produit_id: string;
-    quantite_commandee: number;
-    quantite_recue: number;
-    quantite_acceptee: number;
-    numero_lot: string;
-    date_expiration?: string;
-    statut: 'conforme' | 'non-conforme' | 'partiellement-conforme';
-    commentaire?: string;
-  }): Promise<ReceptionLineValidation> {
-    const result: ReceptionLineValidation = {
-      ...ligne,
-      errors: [],
-      warnings: [],
-      suggestions: []
-    };
-
-    try {
-      // Validation du produit
-      const { data: product, error } = await supabase
-        .from('produits_with_stock')
-        .select('*')
-        .eq('id', ligne.produit_id)
-        .single();
-
-      if (error || !product) {
-        result.errors.push(`Produit introuvable (ID: ${ligne.produit_id})`);
-        return result;
-      }
-
-      // Validation des quantités
-      if (ligne.quantite_recue < 0) {
-        result.errors.push('La quantité reçue ne peut pas être négative');
-      }
-
-      if (ligne.quantite_acceptee < 0) {
-        result.errors.push('La quantité acceptée ne peut pas être négative');
-      }
-
-      if (ligne.quantite_acceptee > ligne.quantite_recue) {
-        result.errors.push('La quantité acceptée ne peut pas être supérieure à la quantité reçue');
-      }
-
-      // Validation du numéro de lot
-      if (!ligne.numero_lot || ligne.numero_lot.trim() === '') {
-        result.errors.push('Numéro de lot obligatoire');
-      } else {
-        // Vérifier si le lot existe déjà
-        const existingLot = await this.checkExistingLot(ligne.produit_id, ligne.numero_lot);
-        if (existingLot) {
-          result.warnings.push(`Lot ${ligne.numero_lot} existe déjà pour ce produit`);
-          result.suggestions.push('Vérifiez si ce n\'est pas un doublon ou utilisez un numéro de lot différent');
-        }
-      }
-
-      // Validation de la date d'expiration
-      if (ligne.date_expiration) {
-        const expirationDate = new Date(ligne.date_expiration);
-        const today = new Date();
-        const daysToExpiry = Math.ceil((expirationDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
-
-        if (expirationDate <= today) {
-          result.errors.push('Produit déjà expiré');
-        } else if (daysToExpiry <= 30) {
-          result.warnings.push(`Produit expire dans ${daysToExpiry} jours`);
-        } else if (daysToExpiry <= 90) {
-          result.warnings.push(`Date d'expiration proche: ${daysToExpiry} jours`);
-        }
-
-        // Vérifier la cohérence avec d'autres lots du même produit
-        const avgExpiryDays = await this.getAverageExpiryDays(ligne.produit_id);
-        if (avgExpiryDays > 0 && Math.abs(daysToExpiry - avgExpiryDays) > avgExpiryDays * 0.5) {
-          result.warnings.push('Date d\'expiration inhabituelle pour ce produit');
-        }
-      } else {
-        result.warnings.push('Date d\'expiration manquante - Recommandée pour tous les produits');
-      }
-
-      // Validation des écarts de quantité
-      const quantityDifference = ligne.quantite_recue - ligne.quantite_commandee;
-      const percentageDifference = ligne.quantite_commandee > 0 ? 
-        Math.abs(quantityDifference) / ligne.quantite_commandee * 100 : 0;
-
-      if (quantityDifference !== 0) {
-        if (percentageDifference > 10) {
-          result.warnings.push(
-            `Écart important de quantité: ${quantityDifference > 0 ? '+' : ''}${quantityDifference} unités (${percentageDifference.toFixed(1)}%)`
-          );
-        } else if (percentageDifference > 5) {
-          result.suggestions.push(
-            `Léger écart de quantité: ${quantityDifference > 0 ? '+' : ''}${quantityDifference} unités`
-          );
-        }
-      }
-
-      // Validation du statut de conformité
-      if (ligne.statut === 'non-conforme' && ligne.quantite_acceptee > 0) {
-        result.warnings.push('Quantité acceptée pour un produit non-conforme');
-      }
-
-      if (ligne.statut === 'conforme' && ligne.quantite_acceptee < ligne.quantite_recue) {
-        result.suggestions.push('Produit conforme mais quantité acceptée partielle - Vérifiez le motif');
-      }
-
-      // Validation du commentaire pour les non-conformités
-      if ((ligne.statut === 'non-conforme' || ligne.statut === 'partiellement-conforme') && 
-          (!ligne.commentaire || ligne.commentaire.trim() === '')) {
-        result.warnings.push('Commentaire recommandé pour les produits non-conformes');
-      }
-
-    } catch (error) {
-      result.errors.push(`Erreur lors de la validation de la ligne: ${error}`);
     }
 
     return result;
@@ -334,51 +421,6 @@ export class ReceptionValidationService {
   }
 
   /**
-   * Vérifie si un lot existe déjà
-   */
-  private static async checkExistingLot(produitId: string, numeroLot: string): Promise<boolean> {
-    try {
-      const { data, error } = await supabase
-        .from('lots')
-        .select('id')
-        .eq('produit_id', produitId)
-        .eq('numero_lot', numeroLot)
-        .limit(1);
-
-      return !error && data && data.length > 0;
-    } catch (error) {
-      return false;
-    }
-  }
-
-  /**
-   * Calcule la durée moyenne d'expiration pour un produit
-   */
-  private static async getAverageExpiryDays(produitId: string): Promise<number> {
-    try {
-      const { data: lots } = await supabase
-        .from('lots')
-        .select('date_peremption, created_at')
-        .eq('produit_id', produitId)
-        .not('date_peremption', 'is', null)
-        .limit(10);
-
-      if (!lots || lots.length === 0) return 0;
-
-      const avgDays = lots.reduce((sum, lot) => {
-        const expiry = new Date(lot.date_peremption);
-        const reception = new Date();
-        const days = Math.ceil((expiry.getTime() - reception.getTime()) / (1000 * 3600 * 24));
-        return sum + days;
-      }, 0) / lots.length;
-
-      return avgDays;
-    } catch (error) {
-      return 0;
-    }
-  }
-
-  /**
    * Génère un rapport de réception
    */
   static generateReceptionReport(receptionData: {
@@ -434,8 +476,6 @@ export class ReceptionValidationService {
    */
   static async canModifyReception(receptionId: string): Promise<{ canModify: boolean; reason?: string }> {
     try {
-      // Pour l'instant, on autorise toujours la modification des réceptions
-      // Cette logique peut être étendue selon les besoins métier
       return { canModify: true };
     } catch (error) {
       return { canModify: false, reason: 'Erreur lors de la vérification' };
