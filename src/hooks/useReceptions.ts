@@ -223,16 +223,25 @@ export const useReceptions = () => {
       if (lignesError) throw lignesError;
 
       // 2. Préparer les lots - collecter les infos nécessaires
+      // Compteur pour générer des séquences uniques par produit dans cet import
+      const productSequenceCounters = new Map<string, number>();
+      
       const lignesWithLots = receptionData.lignes
         .filter(l => l.quantite_acceptee > 0)
-        .map(ligne => {
+        .map((ligne, index) => {
           // Générer automatiquement le numéro de lot si nécessaire
           let numeroLot = ligne.numero_lot;
           if (!numeroLot && stockSettings.auto_generate_lots) {
             const productCode = ligne.produit_id.slice(0, 8).toUpperCase();
             const dateStr = new Date().toISOString().slice(2, 10).replace(/-/g, '');
-            const sequence = Date.now().toString().slice(-4);
-            numeroLot = `LOT-${productCode}-${dateStr}-${sequence}`;
+            
+            // Incrémenter le compteur pour ce produit spécifique
+            const currentCount = productSequenceCounters.get(ligne.produit_id) || 0;
+            productSequenceCounters.set(ligne.produit_id, currentCount + 1);
+            
+            // Générer une séquence unique : timestamp + index global + compteur produit
+            const uniqueSequence = `${Date.now().toString().slice(-6)}${index.toString().padStart(3, '0')}${currentCount.toString().padStart(2, '0')}`;
+            numeroLot = `LOT-${productCode}-${dateStr}-${uniqueSequence}`;
           }
 
           if (!numeroLot && stockSettings.requireLotNumbers) {
@@ -240,7 +249,8 @@ export const useReceptions = () => {
           }
 
           if (!numeroLot) {
-            numeroLot = `LOT-${ligne.produit_id.slice(0, 4)}-${Date.now()}`;
+            // Fallback avec index pour garantir l'unicité
+            numeroLot = `LOT-${ligne.produit_id.slice(0, 4)}-${Date.now()}-${index}`;
           }
 
           return { ...ligne, numero_lot: numeroLot };
