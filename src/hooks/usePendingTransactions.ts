@@ -49,6 +49,8 @@ export interface PendingTransaction {
     quantite: number;
     prix_unitaire_ttc: number;
     montant_ligne_ttc: number;
+    numero_lot: string | null;
+    date_peremption_lot: string | null;
     produit: {
       id: string;
       libelle_produit: string;
@@ -96,6 +98,8 @@ export const usePendingTransactions = (sessionId?: string) => {
             quantite,
             prix_unitaire_ttc,
             montant_ligne_ttc,
+            numero_lot,
+            date_peremption_lot,
             produit:produits!lignes_ventes_produit_id_fkey(id, libelle_produit, code_cip)
           )
         `)
@@ -153,6 +157,8 @@ export const usePendingTransactions = (sessionId?: string) => {
           quantite,
           prix_unitaire_ttc,
           montant_ligne_ttc,
+          numero_lot,
+          date_peremption_lot,
           produit:produits!lignes_ventes_produit_id_fkey(id, libelle_produit, code_cip)
         )
       `)
