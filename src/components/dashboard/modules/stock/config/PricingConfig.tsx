@@ -32,6 +32,8 @@ const PricingConfig = () => {
     productsUpdated?: number;
     lotsUpdated?: number;
     success?: boolean;
+    precision?: number;
+    method?: string;
   } | null>(null);
   
   const [pricingConfig, setPricingConfig] = useState({
@@ -173,7 +175,7 @@ const PricingConfig = () => {
     }
   };
 
-  // ÉTAPE 6: Fonction de recalcul des prix
+  // Fonction de recalcul des prix avec arrondis configurés
   const handleRecalculateAll = async () => {
     // Vérifier l'authentification avant l'appel
     const { data: { session } } = await supabase.auth.getSession();
@@ -191,24 +193,28 @@ const PricingConfig = () => {
     setRecalculationResult(null);
     
     try {
-      const result = await pricingCalculationService.recalculateAll();
+      // Utiliser la nouvelle RPC unifiée qui lit les paramètres depuis la BD
+      const result = await pricingCalculationService.recalculateAllWithRounding();
       
       setRecalculationResult({
         success: result.success,
-        productsUpdated: result.productResult.products_updated,
-        lotsUpdated: result.lotResult.lots_updated
+        productsUpdated: result.products_updated,
+        lotsUpdated: result.lots_updated,
+        precision: result.precision,
+        method: result.method
       });
 
       if (result.success) {
+        const methodLabel = result.method === 'ceil' ? 'supérieur' : 
+                           result.method === 'floor' ? 'inférieur' : 'standard';
         toast({
           title: "Recalcul terminé",
-          description: `${result.productResult.products_updated || 0} produits et ${result.lotResult.lots_updated || 0} lots recalculés avec succès`,
+          description: `${result.products_updated || 0} produits et ${result.lots_updated || 0} lots recalculés (arrondi ${methodLabel} × ${result.precision})`,
         });
       } else {
-        const errorMsg = result.productResult.error || result.lotResult.error || "Une erreur s'est produite lors du recalcul";
         toast({
           title: "Erreur lors du recalcul",
-          description: errorMsg,
+          description: result.error || "Une erreur s'est produite lors du recalcul",
           variant: "destructive",
         });
       }
@@ -616,7 +622,14 @@ const PricingConfig = () => {
                 {recalculationResult.success ? (
                   <div className="space-y-1">
                     <p>✓ {recalculationResult.productsUpdated || 0} produits recalculés</p>
-                    <p>✓ {recalculationResult.lotsUpdated || 0} lots mis à jour</p>
+                    <p>✓ {recalculationResult.lotsUpdated || 0} lots mis à jour (prix_vente_suggere = prix_vente_ttc)</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      📐 Précision d'arrondi: {recalculationResult.precision} FCFA
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      ⬆️ Méthode: {recalculationResult.method === 'ceil' ? 'Arrondi supérieur' : 
+                                   recalculationResult.method === 'floor' ? 'Arrondi inférieur' : 'Arrondi standard'}
+                    </p>
                   </div>
                 ) : (
                   <p>Une erreur s'est produite lors du recalcul</p>
