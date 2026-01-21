@@ -27,8 +27,14 @@ import {
   ShieldAlert,
   PackageX,
   CircleDollarSign,
-  ClipboardList
+  ClipboardList,
+  Package,
+  Calendar,
+  AlertTriangle
 } from 'lucide-react';
+import { format, isBefore, addDays } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 import { CashExpenseModal } from '../../sales/cash/CashExpenseModal';
 import { ReturnExchangeModal } from '../../pos/ReturnExchangeModal';
 import ProductDemandModal from '../../pos/ProductDemandModal';
@@ -42,6 +48,17 @@ import { useDynamicPermissions } from '@/hooks/useDynamicPermissions';
 import { setupBarcodeScanner } from '@/utils/barcodeScanner';
 import { printCashReceipt } from '@/utils/salesTicketPrinter';
 import { supabase } from '@/integrations/supabase/client';
+
+// Helper functions for expiration date checks
+const isExpiringSoon = (date: string | null): boolean => {
+  if (!date) return false;
+  return isBefore(new Date(date), addDays(new Date(), 30));
+};
+
+const isExpired = (date: string | null): boolean => {
+  if (!date) return false;
+  return isBefore(new Date(date), new Date());
+};
 
 interface CashierSession {
   id: string;
@@ -568,6 +585,31 @@ const CashRegisterInterface = () => {
                           <p className="text-muted-foreground">
                             {ligne.quantite} x {formatAmount(ligne.prix_unitaire_ttc)}
                           </p>
+                          {/* Affichage Lot et Date de Péremption */}
+                          {ligne.numero_lot && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              <Badge variant="outline" className="text-xs">
+                                <Package className="h-3 w-3 mr-1" />
+                                {ligne.numero_lot}
+                              </Badge>
+                              {ligne.date_peremption_lot && (
+                                <Badge 
+                                  variant={isExpired(ligne.date_peremption_lot) ? "destructive" : "outline"}
+                                  className={cn(
+                                    "text-xs",
+                                    isExpiringSoon(ligne.date_peremption_lot) && !isExpired(ligne.date_peremption_lot) 
+                                      && "border-orange-500 text-orange-600 bg-orange-50"
+                                  )}
+                                >
+                                  <Calendar className="h-3 w-3 mr-1" />
+                                  {format(new Date(ligne.date_peremption_lot), 'dd/MM/yyyy', { locale: fr })}
+                                  {isExpiringSoon(ligne.date_peremption_lot) && !isExpired(ligne.date_peremption_lot) && (
+                                    <AlertTriangle className="h-3 w-3 ml-1" />
+                                  )}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <p className="font-medium">{formatAmount(ligne.montant_ligne_ttc)}</p>
                       </div>
