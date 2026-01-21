@@ -21206,6 +21206,10 @@ export type Database = {
         Returns: string
       }
       recalculer_prix_lots: { Args: never; Returns: Json }
+      recalculer_prix_lots_avec_arrondi: {
+        Args: { p_method?: string; p_precision?: number }
+        Returns: Json
+      }
       recalculer_prix_produits: { Args: never; Returns: Json }
       refresh_network_system_stats: {
         Args: { p_tenant_id: string }
