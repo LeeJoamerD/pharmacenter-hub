@@ -9,10 +9,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Printer, Download, X } from 'lucide-react';
+import { Printer, Download, Package, Calendar, AlertTriangle } from 'lucide-react';
 import { TransactionDetails } from '@/hooks/useEncaissements';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
+import { format, isBefore, addDays } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface TransactionDetailsModalProps {
   open: boolean;
@@ -70,6 +73,17 @@ const TransactionDetailsModal = ({
 
   const { formatAmount } = useCurrencyFormatting();
   const formatCurrency = (amount: number) => formatAmount(amount);
+
+  // Helpers pour les dates de péremption (comme dans ShoppingCartComponent)
+  const isExpiringSoon = (date: string | null): boolean => {
+    if (!date) return false;
+    return isBefore(new Date(date), addDays(new Date(), 30)) && !isExpired(date);
+  };
+
+  const isExpired = (date: string | null): boolean => {
+    if (!date) return false;
+    return isBefore(new Date(date), new Date());
+  };
 
   if (loading) {
     return (
@@ -188,7 +202,7 @@ const TransactionDetailsModal = ({
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="text-left p-3 text-sm font-medium">Produit</th>
-                    <th className="text-left p-3 text-sm font-medium">Code CIP</th>
+                    <th className="text-left p-3 text-sm font-medium">Lot / Péremption</th>
                     <th className="text-right p-3 text-sm font-medium">Quantité</th>
                     <th className="text-right p-3 text-sm font-medium">Prix Unitaire</th>
                     <th className="text-right p-3 text-sm font-medium">Remise</th>
@@ -198,8 +212,39 @@ const TransactionDetailsModal = ({
                 <tbody>
                   {details.lignes_ventes.map((ligne) => (
                     <tr key={ligne.id} className="border-t">
-                      <td className="p-3">{ligne.produit.libelle_produit}</td>
-                      <td className="p-3 text-muted-foreground">{ligne.produit.code_cip || 'N/A'}</td>
+                      <td className="p-3">
+                        <div>
+                          <p className="font-medium">{ligne.produit.libelle_produit}</p>
+                          <p className="text-xs text-muted-foreground">{ligne.produit.code_cip || 'N/A'}</p>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        {ligne.numero_lot ? (
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="outline" className="text-xs w-fit">
+                              <Package className="h-3 w-3 mr-1" />
+                              {ligne.numero_lot}
+                            </Badge>
+                            {ligne.date_peremption_lot && (
+                              <Badge 
+                                variant={isExpired(ligne.date_peremption_lot) ? "destructive" : "outline"}
+                                className={cn(
+                                  "text-xs w-fit",
+                                  isExpiringSoon(ligne.date_peremption_lot) && "border-warning text-warning bg-warning/10"
+                                )}
+                              >
+                                <Calendar className="h-3 w-3 mr-1" />
+                                {format(new Date(ligne.date_peremption_lot), 'dd/MM/yyyy', { locale: fr })}
+                                {isExpiringSoon(ligne.date_peremption_lot) && (
+                                  <AlertTriangle className="h-3 w-3 ml-1" />
+                                )}
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">-</span>
+                        )}
+                      </td>
                       <td className="p-3 text-right">{ligne.quantite}</td>
                       <td className="p-3 text-right">{formatCurrency(ligne.prix_unitaire)}</td>
                       <td className="p-3 text-right text-destructive">
