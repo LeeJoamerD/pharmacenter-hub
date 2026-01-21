@@ -129,6 +129,7 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   const [pendingWarnings, setPendingWarnings] = useState<string[]>([]);
 
   // Fonction pour calculer les prix de vente d'une ligne (pour sauvegarde directe dans lots)
+  // Utilise le service unifié avec les paramètres d'arrondi configurés
   const calculateLinePricing = useCallback((line: ExcelReceptionLine) => {
     const edited = editedLines.get(line.rowNumber);
     const categoryId = edited?.categorieTarificationId ?? line.categorieTarificationId;
@@ -147,40 +148,27 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
       };
     }
 
-    const coefficient = category.coefficient_prix_vente || 1;
-    const tauxTva = category.taux_tva || 0;
-    const tauxCentime = category.taux_centime_additionnel || 0;
-
-    // Prix HT = Prix d'achat × Coefficient
-    let prixVenteHT = prixAchatReel * coefficient;
-    
-    // TVA sur le HT
-    let montantTva = prixVenteHT * (tauxTva / 100);
-    
-    // Centime additionnel sur la TVA
-    let montantCentimeAdditionnel = montantTva * (tauxCentime / 100);
-    
-    // Prix TTC = HT + TVA + Centime
-    let prixVenteTTC = prixVenteHT + montantTva + montantCentimeAdditionnel;
-
-    // Arrondir si devise sans décimales (FCFA)
-    if (isNoDecimalCurrency()) {
-      prixVenteHT = Math.round(prixVenteHT);
-      montantTva = Math.round(montantTva);
-      montantCentimeAdditionnel = Math.round(montantCentimeAdditionnel);
-      prixVenteTTC = Math.round(prixVenteTTC);
-    }
+    // Utiliser le service unifié avec les paramètres d'arrondi configurés
+    const pricingResult = unifiedPricingService.calculateSalePrice({
+      prixAchat: prixAchatReel,
+      coefficientPrixVente: category.coefficient_prix_vente || 1,
+      tauxTVA: category.taux_tva || 0,
+      tauxCentimeAdditionnel: category.taux_centime_additionnel || 0,
+      roundingPrecision: roundingPrecision,
+      roundingMethod: roundingMethod,
+      currencyCode: isNoDecimalCurrency() ? 'XAF' : undefined
+    });
 
     return {
-      prixVenteHT,
-      tauxTva,
-      montantTva,
-      tauxCentimeAdditionnel: tauxCentime,
-      montantCentimeAdditionnel,
-      prixVenteTTC,
-      prixVenteSuggere: prixVenteTTC  // Prix suggéré = TTC
+      prixVenteHT: pricingResult.prixVenteHT,
+      tauxTva: pricingResult.tauxTVA,
+      montantTva: pricingResult.montantTVA,
+      tauxCentimeAdditionnel: pricingResult.tauxCentimeAdditionnel,
+      montantCentimeAdditionnel: pricingResult.montantCentimeAdditionnel,
+      prixVenteTTC: pricingResult.prixVenteTTC,
+      prixVenteSuggere: pricingResult.prixVenteTTC
     };
-  }, [priceCategories, editedLines, isNoDecimalCurrency]);
+  }, [priceCategories, editedLines, isNoDecimalCurrency, roundingPrecision, roundingMethod]);
 
   // Calcul automatique des suggestions TVA/Centime/ASDI basé sur les catégories produit
   const calculateAutoSuggestions = useCallback(() => {

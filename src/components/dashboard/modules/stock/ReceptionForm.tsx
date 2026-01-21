@@ -24,11 +24,13 @@ import {
 import { useOrderLines } from '@/hooks/useOrderLines';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useStockSettings } from '@/hooks/useStockSettings';
+import { useSalesSettings } from '@/hooks/useSalesSettings';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProducts } from '@/hooks/useProducts';
 import { useCurrencyFormatting } from '@/hooks/useCurrencyFormatting';
 import { usePriceCategories } from '@/hooks/usePriceCategories';
+import { unifiedPricingService } from '@/services/UnifiedPricingService';
 import { ReceptionValidationService } from '@/services/receptionValidationService';
 import { OrderStatusValidationService } from '@/services/orderStatusValidationService';
 import { StockUpdateService } from '@/services/stockUpdateService';
@@ -115,10 +117,15 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   const { orderLines, loading: orderLinesLoading } = useOrderLines(selectedOrder);
   const { settings } = useSystemSettings();
   const { settings: stockSettings } = useStockSettings();
+  const { settings: salesSettings } = useSalesSettings();
   const { products } = useProducts();
   const { user } = useAuth();
   const { formatAmount, getInputStep, isNoDecimalCurrency, getCurrencySymbol } = useCurrencyFormatting();
   const { categories: priceCategories } = usePriceCategories();
+  
+  // Paramètres d'arrondi depuis les settings
+  const roundingPrecision = stockSettings?.rounding_precision || 25;
+  const roundingMethod = (salesSettings?.tax?.taxRoundingMethod as 'ceil' | 'floor' | 'round' | 'none') || 'ceil';
 
   // Fonction pour déterminer la classe CSS de la catégorie de tarification
   const getCategoryColorClass = (categoryId: string | undefined): string => {
