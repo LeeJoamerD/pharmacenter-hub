@@ -9949,11 +9949,13 @@ export type Database = {
       lignes_ventes: {
         Row: {
           created_at: string
+          date_peremption_lot: string | null
           id: string
           lot_id: string | null
           montant_centime_ligne: number | null
           montant_ligne_ttc: number
           montant_tva_ligne: number | null
+          numero_lot: string | null
           prix_unitaire_ht: number
           prix_unitaire_ttc: number
           produit_id: string
@@ -9967,11 +9969,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          date_peremption_lot?: string | null
           id?: string
           lot_id?: string | null
           montant_centime_ligne?: number | null
           montant_ligne_ttc: number
           montant_tva_ligne?: number | null
+          numero_lot?: string | null
           prix_unitaire_ht: number
           prix_unitaire_ttc: number
           produit_id: string
@@ -9985,11 +9989,13 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          date_peremption_lot?: string | null
           id?: string
           lot_id?: string | null
           montant_centime_ligne?: number | null
           montant_ligne_ttc?: number
           montant_tva_ligne?: number | null
+          numero_lot?: string | null
           prix_unitaire_ht?: number
           prix_unitaire_ttc?: number
           produit_id?: string
