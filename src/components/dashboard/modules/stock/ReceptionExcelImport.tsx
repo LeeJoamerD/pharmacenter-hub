@@ -242,17 +242,17 @@ const ReceptionExcelImport: React.FC<ReceptionExcelImportProps> = ({
   }, [calculateAutoSuggestions, userEditedTva, userEditedCentime, userEditedAsdi]);
 
   // Calcul des totaux financiers avec ASDI (utilise les valeurs modifiables)
+  // IMPORTANT: Aucun arrondi de précision sur le TTC - uniquement Math.round pour devises sans décimales
+  // Le TTC est la somme EXACTE des composants pour garantir l'équilibre comptable
   const calculateTotals = useMemo(() => {
     const { sousTotal } = calculateAutoSuggestions();
     
-    // Total TTC = Sous-total HT + TVA + Centime + ASDI
-    const rawTotal = sousTotal + montantTva + montantCentimeAdditionnel + montantAsdi;
-    
-    // Arrondi appliqué UNIQUEMENT sur le Total TTC final (selon configuration)
-    const totalGeneral = unifiedPricingService.roundToNearest(rawTotal, roundingPrecision, roundingMethod);
+    // Total TTC = Somme EXACTE des composants (HT + TVA + Centime + ASDI)
+    // Les composants sont déjà arrondis via Math.round() dans calculateAutoSuggestions si XAF
+    const totalGeneral = sousTotal + montantTva + montantCentimeAdditionnel + montantAsdi;
     
     return { sousTotal, totalGeneral };
-  }, [calculateAutoSuggestions, montantTva, montantCentimeAdditionnel, montantAsdi, roundingPrecision, roundingMethod]);
+  }, [calculateAutoSuggestions, montantTva, montantCentimeAdditionnel, montantAsdi]);
 
   // Liste des produits avec erreur "product_not_found"
   const productNotFoundLines = useMemo(() => {
