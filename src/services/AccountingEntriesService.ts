@@ -1,6 +1,9 @@
 /**
  * Service de génération automatique des écritures comptables
  * Génère les écritures lors des ventes et réceptions
+ * 
+ * SYSCOHADA compliant - Utilise accounting_default_accounts pour tous les comptes
+ * Aucun numéro de compte hardcodé
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -37,20 +40,42 @@ interface SessionSalesTotals {
   modePaiementPrincipal: string;
 }
 
-interface CompteComptable {
-  id: string;
-  numero_compte: string;
-  libelle: string;
+interface DefaultAccountConfig {
+  compte_debit_numero: string;
+  compte_credit_numero: string;
+  journal_code: string;
+}
+
+/**
+ * Récupère la configuration de comptes par défaut depuis accounting_default_accounts
+ */
+async function getDefaultAccountConfig(
+  tenantId: string, 
+  eventType: string
+): Promise<DefaultAccountConfig | null> {
+  const { data, error } = await supabase
+    .from('accounting_default_accounts')
+    .select('compte_debit_numero, compte_credit_numero, journal_code')
+    .eq('tenant_id', tenantId)
+    .eq('event_type', eventType)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.log(`⚠️ Pas de configuration comptable pour ${eventType}`);
+    return null;
+  }
+  return data;
 }
 
 /**
  * Génère les écritures comptables pour une vente
  * 
- * Écritures standard:
+ * Écritures standard (pilotées par accounting_default_accounts):
  * - Débit 411 (Client) ou 57 (Caisse) : montant TTC
  * - Crédit 701 (Ventes) : montant HT
- * - Crédit 4457 (TVA Collectée) : montant TVA
- * - Crédit 4458 (Centime Additionnel) : montant centime
+ * - Crédit TVA collectée : montant TVA
+ * - Crédit Centime Additionnel : montant centime
  */
 export async function generateSaleAccountingEntries(data: VenteEcritureData): Promise<boolean> {
   try {
@@ -66,26 +91,22 @@ export async function generateSaleAccountingEntries(data: VenteEcritureData): Pr
     } = data;
 
     // Déterminer le bon event_type selon le mode de paiement
-    // vente_comptant pour paiements immédiats, vente_client pour crédit
     const eventType = modePaiement === 'Espèces' || modePaiement === 'Carte Bancaire' || modePaiement === 'Mobile Money' || modePaiement === 'Carte'
       ? 'vente_comptant'
       : 'vente_client';
 
     // Récupérer les comptes comptables par défaut pour les ventes
-    const { data: defaultAccounts, error: accountsError } = await supabase
-      .from('accounting_default_accounts')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .eq('event_type', eventType)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (accountsError || !defaultAccounts) {
+    const defaultAccounts = await getDefaultAccountConfig(tenantId, eventType);
+    if (!defaultAccounts) {
       console.log(`⚠️ Pas de configuration comptable par défaut pour ${eventType}, écritures non générées`);
       return false;
     }
 
-    // Récupérer le journal des ventes depuis journaux_comptables (table liée à ecritures_comptables)
+    // Récupérer les configs fiscales depuis accounting_default_accounts
+    const tvaConfig = await getDefaultAccountConfig(tenantId, 'tva_collectee');
+    const centimeConfig = await getDefaultAccountConfig(tenantId, 'centime_additionnel');
+
+    // Récupérer le journal des ventes depuis journaux_comptables
     const { data: journal, error: journalError } = await supabase
       .from('journaux_comptables')
       .select('id, code_journal')
@@ -99,7 +120,7 @@ export async function generateSaleAccountingEntries(data: VenteEcritureData): Pr
       return false;
     }
 
-    // Récupérer l'exercice comptable en cours (statut 'En cours' ou 'Ouvert')
+    // Récupérer l'exercice comptable en cours
     const { data: exercice, error: exerciceError } = await supabase
       .from('exercices_comptables')
       .select('id')
@@ -140,19 +161,24 @@ export async function generateSaleAccountingEntries(data: VenteEcritureData): Pr
       return false;
     }
 
-    // Récupérer les comptes comptables nécessaires depuis plan_comptable
+    // Construire la liste des comptes à récupérer
     const compteNumeros = [
       defaultAccounts.compte_debit_numero,
-      defaultAccounts.compte_credit_numero,
-      '4451', // TVA à décaisser (collectée)
-      '4458'  // Centime additionnel
+      defaultAccounts.compte_credit_numero
     ];
+    
+    if (tvaConfig?.compte_credit_numero) {
+      compteNumeros.push(tvaConfig.compte_credit_numero);
+    }
+    if (centimeConfig?.compte_credit_numero) {
+      compteNumeros.push(centimeConfig.compte_credit_numero);
+    }
 
     const { data: comptes, error: comptesError } = await supabase
       .from('plan_comptable')
       .select('id, numero_compte')
       .eq('tenant_id', tenantId)
-      .in('numero_compte', compteNumeros);
+      .in('numero_compte', compteNumeros.filter(Boolean));
 
     if (comptesError || !comptes || comptes.length === 0) {
       console.log('⚠️ Comptes comptables non trouvés, écritures non générées');
@@ -194,30 +220,34 @@ export async function generateSaleAccountingEntries(data: VenteEcritureData): Pr
       });
     }
 
-    // Ligne 3: Crédit TVA Collectée
-    const compteTvaId = comptesMap['4451'];
-    if (montantTVA > 0 && compteTvaId) {
-      lignes.push({
-        tenant_id: tenantId,
-        ecriture_id: ecriture.id,
-        compte_id: compteTvaId,
-        libelle: `Vente ${numeroVente} - TVA`,
-        debit: 0,
-        credit: montantTVA
-      });
+    // Ligne 3: Crédit TVA Collectée (depuis config)
+    if (montantTVA > 0 && tvaConfig?.compte_credit_numero) {
+      const compteTvaId = comptesMap[tvaConfig.compte_credit_numero];
+      if (compteTvaId) {
+        lignes.push({
+          tenant_id: tenantId,
+          ecriture_id: ecriture.id,
+          compte_id: compteTvaId,
+          libelle: `Vente ${numeroVente} - TVA`,
+          debit: 0,
+          credit: montantTVA
+        });
+      }
     }
 
-    // Ligne 4: Crédit Centime Additionnel
-    const compteCentimeId = comptesMap['4458'];
-    if (montantCentimeAdditionnel > 0 && compteCentimeId) {
-      lignes.push({
-        tenant_id: tenantId,
-        ecriture_id: ecriture.id,
-        compte_id: compteCentimeId,
-        libelle: `Vente ${numeroVente} - Centime Add.`,
-        debit: 0,
-        credit: montantCentimeAdditionnel
-      });
+    // Ligne 4: Crédit Centime Additionnel (depuis config)
+    if (montantCentimeAdditionnel > 0 && centimeConfig?.compte_credit_numero) {
+      const compteCentimeId = comptesMap[centimeConfig.compte_credit_numero];
+      if (compteCentimeId) {
+        lignes.push({
+          tenant_id: tenantId,
+          ecriture_id: ecriture.id,
+          compte_id: compteCentimeId,
+          libelle: `Vente ${numeroVente} - Centime Add.`,
+          debit: 0,
+          credit: montantCentimeAdditionnel
+        });
+      }
     }
 
     // Insérer les lignes d'écriture
@@ -328,18 +358,15 @@ export async function generateSessionAccountingEntries(data: SessionEcritureData
       : 'vente_client';
 
     // Récupérer les comptes comptables par défaut pour les ventes
-    const { data: defaultAccounts, error: accountsError } = await supabase
-      .from('accounting_default_accounts')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .eq('event_type', eventType)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (accountsError || !defaultAccounts) {
+    const defaultAccounts = await getDefaultAccountConfig(tenantId, eventType);
+    if (!defaultAccounts) {
       console.log(`⚠️ Pas de configuration comptable par défaut pour ${eventType}, écritures non générées`);
       return false;
     }
+
+    // Récupérer les configs fiscales depuis accounting_default_accounts
+    const tvaConfig = await getDefaultAccountConfig(tenantId, 'tva_collectee');
+    const centimeConfig = await getDefaultAccountConfig(tenantId, 'centime_additionnel');
 
     // Récupérer le journal des ventes
     const { data: journal, error: journalError } = await supabase
@@ -396,19 +423,24 @@ export async function generateSessionAccountingEntries(data: SessionEcritureData
       return false;
     }
 
-    // Récupérer les comptes comptables nécessaires
+    // Construire la liste des comptes à récupérer
     const compteNumeros = [
       defaultAccounts.compte_debit_numero,
-      defaultAccounts.compte_credit_numero,
-      '4451', // TVA à décaisser (collectée)
-      '4458'  // Centime additionnel
+      defaultAccounts.compte_credit_numero
     ];
+    
+    if (tvaConfig?.compte_credit_numero) {
+      compteNumeros.push(tvaConfig.compte_credit_numero);
+    }
+    if (centimeConfig?.compte_credit_numero) {
+      compteNumeros.push(centimeConfig.compte_credit_numero);
+    }
 
     const { data: comptes, error: comptesError } = await supabase
       .from('plan_comptable')
       .select('id, numero_compte')
       .eq('tenant_id', tenantId)
-      .in('numero_compte', compteNumeros);
+      .in('numero_compte', compteNumeros.filter(Boolean));
 
     if (comptesError || !comptes || comptes.length === 0) {
       console.log('⚠️ Comptes comptables non trouvés, écritures non générées');
@@ -450,30 +482,34 @@ export async function generateSessionAccountingEntries(data: SessionEcritureData
       });
     }
 
-    // Ligne 3: Crédit TVA Collectée
-    const compteTvaId = comptesMap['4451'];
-    if (montantTotalTVA > 0 && compteTvaId) {
-      lignes.push({
-        tenant_id: tenantId,
-        ecriture_id: ecriture.id,
-        compte_id: compteTvaId,
-        libelle: `Ventes Session #${numeroSession} - TVA`,
-        debit: 0,
-        credit: montantTotalTVA
-      });
+    // Ligne 3: Crédit TVA Collectée (depuis config)
+    if (montantTotalTVA > 0 && tvaConfig?.compte_credit_numero) {
+      const compteTvaId = comptesMap[tvaConfig.compte_credit_numero];
+      if (compteTvaId) {
+        lignes.push({
+          tenant_id: tenantId,
+          ecriture_id: ecriture.id,
+          compte_id: compteTvaId,
+          libelle: `Ventes Session #${numeroSession} - TVA`,
+          debit: 0,
+          credit: montantTotalTVA
+        });
+      }
     }
 
-    // Ligne 4: Crédit Centime Additionnel
-    const compteCentimeId = comptesMap['4458'];
-    if (montantTotalCentimeAdditionnel > 0 && compteCentimeId) {
-      lignes.push({
-        tenant_id: tenantId,
-        ecriture_id: ecriture.id,
-        compte_id: compteCentimeId,
-        libelle: `Ventes Session #${numeroSession} - Centime Add.`,
-        debit: 0,
-        credit: montantTotalCentimeAdditionnel
-      });
+    // Ligne 4: Crédit Centime Additionnel (depuis config)
+    if (montantTotalCentimeAdditionnel > 0 && centimeConfig?.compte_credit_numero) {
+      const compteCentimeId = comptesMap[centimeConfig.compte_credit_numero];
+      if (compteCentimeId) {
+        lignes.push({
+          tenant_id: tenantId,
+          ecriture_id: ecriture.id,
+          compte_id: compteCentimeId,
+          libelle: `Ventes Session #${numeroSession} - Centime Add.`,
+          debit: 0,
+          credit: montantTotalCentimeAdditionnel
+        });
+      }
     }
 
     // Insérer les lignes d'écriture
