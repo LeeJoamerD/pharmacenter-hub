@@ -159,6 +159,7 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
   }, []);
 
   // Fonction pour calculer les prix de vente d'une ligne (évite le recalcul dans le hook)
+  // Utilise le service unifié avec les paramètres d'arrondi configurés
   const calculateLinePricing = useCallback((line: ReceptionLine): LinePricing => {
     const defaultPricing: LinePricing = {
       prixVenteHT: null,
@@ -175,40 +176,27 @@ const ReceptionForm: React.FC<ReceptionFormProps> = ({
       return defaultPricing;
     }
 
-    const coefficient = category.coefficient_prix_vente || 1;
-    const tauxTva = category.taux_tva || 0;
-    const tauxCentime = category.taux_centime_additionnel || 0;
-
-    // Prix HT = Prix d'achat × Coefficient
-    let prixVenteHT = line.prixAchatReel * coefficient;
-    
-    // TVA
-    let montantTva = prixVenteHT * (tauxTva / 100);
-    
-    // Centime additionnel (sur la TVA)
-    let montantCentimeAdditionnel = montantTva * (tauxCentime / 100);
-    
-    // Prix TTC = HT + TVA + Centime
-    let prixVenteTTC = prixVenteHT + montantTva + montantCentimeAdditionnel;
-
-    // Arrondir si devise sans décimales (FCFA)
-    if (isNoDecimalCurrency()) {
-      prixVenteHT = Math.round(prixVenteHT);
-      montantTva = Math.round(montantTva);
-      montantCentimeAdditionnel = Math.round(montantCentimeAdditionnel);
-      prixVenteTTC = Math.round(prixVenteTTC);
-    }
+    // Utiliser le service unifié avec les paramètres d'arrondi configurés
+    const pricingResult = unifiedPricingService.calculateSalePrice({
+      prixAchat: line.prixAchatReel,
+      coefficientPrixVente: category.coefficient_prix_vente || 1,
+      tauxTVA: category.taux_tva || 0,
+      tauxCentimeAdditionnel: category.taux_centime_additionnel || 0,
+      roundingPrecision: roundingPrecision,
+      roundingMethod: roundingMethod,
+      currencyCode: isNoDecimalCurrency() ? 'XAF' : undefined
+    });
 
     return {
-      prixVenteHT,
-      tauxTva,
-      montantTva,
-      tauxCentimeAdditionnel: tauxCentime,
-      montantCentimeAdditionnel,
-      prixVenteTTC,
-      prixVenteSuggere: prixVenteTTC  // Prix suggéré = TTC
+      prixVenteHT: pricingResult.prixVenteHT,
+      tauxTva: pricingResult.tauxTVA,
+      montantTva: pricingResult.montantTVA,
+      tauxCentimeAdditionnel: pricingResult.tauxCentimeAdditionnel,
+      montantCentimeAdditionnel: pricingResult.montantCentimeAdditionnel,
+      prixVenteTTC: pricingResult.prixVenteTTC,
+      prixVenteSuggere: pricingResult.prixVenteTTC
     };
-  }, [priceCategories, isNoDecimalCurrency]);
+  }, [priceCategories, isNoDecimalCurrency, roundingPrecision, roundingMethod]);
 
   // Load order details from real data - only when data is ready
   const loadOrderDetails = useCallback((orderId: string) => {

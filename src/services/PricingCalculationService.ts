@@ -136,6 +136,39 @@ class PricingCalculationService {
   }
 
   /**
+   * Recalcule les prix TTC des lots avec arrondi configurable
+   * @param precision Multiple d'arrondi (ex: 25 = arrondir au multiple de 25)
+   * @param method Méthode d'arrondi ('ceil', 'floor', 'round')
+   */
+  async recalculateLotPricesWithRounding(
+    precision: number = 25,
+    method: 'ceil' | 'floor' | 'round' = 'ceil'
+  ): Promise<RecalculationResult> {
+    try {
+      const { data, error } = await supabase.rpc('recalculer_prix_lots_avec_arrondi', {
+        p_precision: precision,
+        p_method: method
+      });
+
+      if (error) {
+        console.error('Erreur lors du recalcul des prix des lots avec arrondi:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+
+      return data as unknown as RecalculationResult;
+    } catch (err) {
+      console.error('Exception lors du recalcul des prix des lots avec arrondi:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Erreur inconnue'
+      };
+    }
+  }
+
+  /**
    * Effectue un recalcul complet : produits puis lots
    */
   async recalculateAll(): Promise<{
