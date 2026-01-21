@@ -21211,6 +21211,7 @@ export type Database = {
         Returns: Json
       }
       recalculer_prix_produits: { Args: never; Returns: Json }
+      recalculer_tous_les_prix_v2: { Args: never; Returns: Json }
       refresh_network_system_stats: {
         Args: { p_tenant_id: string }
         Returns: Json

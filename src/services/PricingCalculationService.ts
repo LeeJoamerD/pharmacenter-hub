@@ -169,6 +169,32 @@ class PricingCalculationService {
   }
 
   /**
+   * Recalcule tous les prix (produits + lots) avec les paramètres d'arrondi
+   * lus automatiquement depuis parametres_systeme
+   */
+  async recalculateAllWithRounding(): Promise<RecalculationResult & { 
+    precision?: number; 
+    method?: string 
+  }> {
+    try {
+      const { data, error } = await supabase.rpc('recalculer_tous_les_prix_v2');
+
+      if (error) {
+        console.error('Erreur lors du recalcul complet avec arrondi:', error);
+        return { success: false, error: error.message };
+      }
+
+      return data as unknown as RecalculationResult & { precision: number; method: string };
+    } catch (err) {
+      console.error('Exception lors du recalcul complet avec arrondi:', err);
+      return { 
+        success: false, 
+        error: err instanceof Error ? err.message : 'Erreur inconnue' 
+      };
+    }
+  }
+
+  /**
    * Effectue un recalcul complet : produits puis lots
    */
   async recalculateAll(): Promise<{
