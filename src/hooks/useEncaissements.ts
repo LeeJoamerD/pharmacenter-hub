@@ -92,6 +92,8 @@ export interface TransactionDetails extends Transaction {
     montant_ligne: number;
     taux_remise: number;
     montant_remise: number;
+    numero_lot: string | null;
+    date_peremption_lot: string | null;
   }>;
 }
 
@@ -383,6 +385,8 @@ export const useEncaissements = () => {
           quantite,
           prix_unitaire_ttc,
           montant_ligne_ttc,
+          numero_lot,
+          date_peremption_lot,
           produit:produits!lignes_ventes_produit_id_fkey(libelle_produit, code_cip)
         )
       `
@@ -420,6 +424,8 @@ export const useEncaissements = () => {
         montant_ligne: l.montant_ligne_ttc || 0,
         taux_remise: 0,
         montant_remise: 0,
+        numero_lot: l.numero_lot || null,
+        date_peremption_lot: l.date_peremption_lot || null,
       })),
       montant_part_assurance: data.montant_part_assurance,
       montant_part_patient: data.montant_part_patient,
