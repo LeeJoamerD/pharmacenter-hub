@@ -159,6 +159,13 @@ const SmartOrderPanel: React.FC<SmartOrderPanelProps> = ({
 
   const hasAnySuggestions = suggestionCounts.total > 0;
 
+  // Fonction pour naviguer vers un onglet spécifique depuis les badges du header
+  const handleBadgeClick = (tabName: string) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsOpen(true);
+    setActiveTab(tabName);
+  };
+
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card className={`${hasAnySuggestions ? 'border-primary/50' : ''}`}>
@@ -174,17 +181,27 @@ const SmartOrderPanel: React.FC<SmartOrderPanelProps> = ({
             
             {hasAnySuggestions && (
               <TooltipProvider delayDuration={0}>
-                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-2">
                   {suggestionCounts.demandes > 0 && (
-                    <Badge variant="secondary" className="gap-1">
-                      <ClipboardList className="h-3 w-3" />
-                      {suggestionCounts.demandes}
-                    </Badge>
+                    <button 
+                      type="button" 
+                      className="cursor-pointer hover:scale-105 transition-transform"
+                      onClick={handleBadgeClick('demandes')}
+                    >
+                      <Badge variant="secondary" className="gap-1">
+                        <ClipboardList className="h-3 w-3" />
+                        {suggestionCounts.demandes}
+                      </Badge>
+                    </button>
                   )}
                   {suggestionCounts.ruptures > 0 && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button type="button" className="cursor-help" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          type="button" 
+                          className="cursor-pointer hover:scale-105 transition-transform"
+                          onClick={handleBadgeClick('ruptures')}
+                        >
                           <Badge variant="destructive" className="gap-1">
                             <AlertCircle className="h-3 w-3" />
                             {suggestionCounts.ruptures}
@@ -193,14 +210,18 @@ const SmartOrderPanel: React.FC<SmartOrderPanelProps> = ({
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="max-w-xs bg-slate-900 text-white border-slate-700 whitespace-normal">
                         <p className="font-medium">{suggestionCounts.ruptures} produit(s) en rupture de stock</p>
-                        <p className="text-xs text-slate-300">Stock actuel = 0, commande urgente recommandée</p>
+                        <p className="text-xs text-slate-300">Cliquez pour voir les produits</p>
                       </TooltipContent>
                     </Tooltip>
                   )}
                   {suggestionCounts.critiques > 0 && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button type="button" className="cursor-help" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          type="button" 
+                          className="cursor-pointer hover:scale-105 transition-transform"
+                          onClick={handleBadgeClick('critiques')}
+                        >
                           <Badge className="gap-1 bg-orange-500">
                             <AlertTriangle className="h-3 w-3" />
                             {suggestionCounts.critiques}
@@ -209,14 +230,18 @@ const SmartOrderPanel: React.FC<SmartOrderPanelProps> = ({
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="max-w-xs bg-slate-900 text-white border-slate-700 whitespace-normal">
                         <p className="font-medium">{suggestionCounts.critiques} produit(s) en stock critique</p>
-                        <p className="text-xs text-slate-300">Stock en dessous du seuil d'alerte configuré</p>
+                        <p className="text-xs text-slate-300">Cliquez pour voir les produits</p>
                       </TooltipContent>
                     </Tooltip>
                   )}
                   {suggestionCounts.faibles > 0 && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button type="button" className="cursor-help" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          type="button" 
+                          className="cursor-pointer hover:scale-105 transition-transform"
+                          onClick={handleBadgeClick('faibles')}
+                        >
                           <Badge className="gap-1 bg-yellow-500">
                             <TrendingDown className="h-3 w-3" />
                             {suggestionCounts.faibles}
@@ -225,7 +250,7 @@ const SmartOrderPanel: React.FC<SmartOrderPanelProps> = ({
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="max-w-xs bg-slate-900 text-white border-slate-700 whitespace-normal">
                         <p className="font-medium">{suggestionCounts.faibles} produit(s) en stock faible</p>
-                        <p className="text-xs text-slate-300">Stock approchant du seuil minimum</p>
+                        <p className="text-xs text-slate-300">Cliquez pour voir les produits</p>
                       </TooltipContent>
                     </Tooltip>
                   )}
