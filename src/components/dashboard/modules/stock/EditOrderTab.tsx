@@ -413,26 +413,28 @@ const EditOrderTab: React.FC<EditOrderTabProps> = ({
       const selectedOrder = draftOrders.find(order => order.id === selectedOrderId);
       const currentStatus = selectedOrder?.statut || 'En cours';
 
-      // Validate status transition
-      const statusValidation = OrderStatusValidationService.canTransitionTo(currentStatus, statut);
-      if (!statusValidation.canTransition) {
-        toast({
-          title: "Transition non autorisée",
-          description: statusValidation.errors.join(', '),
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Show warnings if any
-      if (statusValidation.warnings.length > 0) {
-        statusValidation.warnings.forEach(warning => {
+      // Validate status transition ONLY if status is actually changing
+      if (statut !== currentStatus) {
+        const statusValidation = OrderStatusValidationService.canTransitionTo(currentStatus, statut);
+        if (!statusValidation.canTransition) {
           toast({
-            title: "Attention",
-            description: warning,
-            variant: "default",
+            title: "Transition non autorisée",
+            description: statusValidation.errors.join(', '),
+            variant: "destructive",
           });
-        });
+          return;
+        }
+
+        // Show warnings if any
+        if (statusValidation.warnings.length > 0) {
+          statusValidation.warnings.forEach(warning => {
+            toast({
+              title: "Attention",
+              description: warning,
+              variant: "default",
+            });
+          });
+        }
       }
 
       // Validate order data
