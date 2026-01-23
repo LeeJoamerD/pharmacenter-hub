@@ -9227,6 +9227,47 @@ export type Database = {
           },
         ]
       }
+      journaux_comptables_globaux: {
+        Row: {
+          code_journal: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          libelle_journal: string
+          plan_comptable_id: string
+          type_journal: string
+        }
+        Insert: {
+          code_journal: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          libelle_journal: string
+          plan_comptable_id: string
+          type_journal: string
+        }
+        Update: {
+          code_journal?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          libelle_journal?: string
+          plan_comptable_id?: string
+          type_journal?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journaux_comptables_globaux_plan_comptable_id_fkey"
+            columns: ["plan_comptable_id"]
+            isOneToOne: false
+            referencedRelation: "plans_comptables_globaux"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       laboratoires: {
         Row: {
           created_at: string
