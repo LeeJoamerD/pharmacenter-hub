@@ -66,6 +66,39 @@ const UserSettings = () => {
     error
   });
 
+  // Helper function to parse and translate error messages
+  const parseCreateUserError = (error: any): string => {
+    const errorMessage = error?.message || error?.error || '';
+    
+    // Check for known error patterns
+    if (errorMessage.includes('already been registered') || 
+        errorMessage.includes('already exists') ||
+        errorMessage.includes('duplicate key')) {
+      return t('emailAlreadyExists');
+    }
+    
+    if (errorMessage.includes('Missing required fields')) {
+      return t('missingRequiredFields');
+    }
+    
+    if (errorMessage.includes('Password must be at least') ||
+        errorMessage.includes('password')) {
+      return t('passwordMinLength');
+    }
+    
+    if (errorMessage.includes('validate email') ||
+        errorMessage.includes('invalid email')) {
+      return t('invalidEmailFormat');
+    }
+    
+    if (errorMessage.includes('Failed to create personnel')) {
+      return t('personnelCreationError');
+    }
+    
+    // Fallback to generic error
+    return t('genericCreationError');
+  };
+
   // Mutations
   const createPersonnelMutation = useMutation({
     mutationFn: async (data: PersonnelFormData) => {
@@ -95,9 +128,10 @@ const UserSettings = () => {
     },
     onError: (error: any) => {
       console.error('Erreur lors de la création:', error);
+      const translatedMessage = parseCreateUserError(error);
       toast({
         title: t('createUserError'),
-        description: error.message || t('unableToSaveSettings'),
+        description: translatedMessage,
         variant: 'destructive'
       });
     }
