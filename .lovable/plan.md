@@ -1,193 +1,271 @@
 
-# Plan d'implémentation - Comptes et Journaux Globaux SYSCOHADA
 
-## Objectifs
-1. Ajouter les 3 comptes manquants (4461, 4467, 4468) au plan SYSCOHADA Révisé global
-2. Créer une table `journaux_comptables_globaux` pour stocker les journaux de référence par plan
-3. Modifier la fonction RPC `import_global_accounting_plan` pour importer automatiquement les journaux
+# Plan de correction - Faille de sécurité d'isolation des sessions
+
+## Problème identifié
+
+### Résumé de la faille
+Lors de la connexion utilisateur via le bouton dans le Header, le système permet à **n'importe quel utilisateur Supabase Auth valide** de se connecter, même s'il n'appartient pas à la pharmacie (tenant) actuellement active.
+
+### Cas problématique observé
+1. Pharmacie "MAZAYU" est connectée (Hero affiche "Pharmacie MAZAYU")
+2. L'utilisateur se déconnecte
+3. Un utilisateur d'une autre pharmacie (ex: "DJL - Computer Sciences") se connecte via le Header
+4. Le Dashboard affiche les données de "DJL" mais le Hero reste sur "MAZAYU"
+
+### Cause technique
+La fonction `signIn` (AuthContext) et `enhancedSignIn` (useAdvancedAuth) vérifient qu'une pharmacie est connectée, mais **ne vérifient pas si l'utilisateur appartient à cette pharmacie spécifique**.
 
 ---
 
-## Analyse des données
+## Solution proposée
 
-### Comptes manquants identifiés (présents chez MAZAYU mais pas dans le plan global)
-| Numéro | Libellé | Classe | Niveau |
-|--------|---------|--------|--------|
-| 4461 | Centime additionnel sur chiffre d'affaires | 4 | 4 (detail) |
-| 4467 | Centime additionnel déductible sur achats | 4 | 4 (detail) |
-| 4468 | ASDI déductible sur achats | 4 | 4 (detail) |
+### Stratégie simplifiée
 
-### Journaux standards à intégrer (basés sur la pharmacie de référence)
-| Code | Libellé | Type |
-|------|---------|------|
-| VT | Journal des Ventes | Ventes |
-| AC | Journal des Achats | Achats |
-| BQ | Journal de Banque | Banque |
-| CA | Journal de Caisse | Caisse |
-| OD | Journal des Opérations Diverses | Operations_Diverses |
+Après authentification Supabase réussie, vérifier que l'utilisateur existe dans la table `personnel` avec :
+- `personnel.auth_user_id = user.id` (utilisateur authentifié)
+- `personnel.tenant_id = connectedPharmacy.id` (pharmacie active)
+
+Si cette condition n'est pas remplie → déconnexion + erreur explicite.
+
+**Note importante** : Les emails de pharmacie ne sont PAS bloqués car chaque pharmacie a un compte utilisateur Admin avec le même email.
 
 ---
 
 ## Modifications requises
 
-### 1. Migration SQL - Créer la table `journaux_comptables_globaux`
+### 1. Nouvelle fonction RPC : `verify_user_belongs_to_tenant`
 
-Nouvelle table pour stocker les journaux de référence par plan comptable global :
+Fonction serveur pour valider l'appartenance d'un utilisateur authentifié à un tenant spécifique.
 
 ```text
-Table: journaux_comptables_globaux
-+-------------------+--------------+--------------------------------+
-| Colonne           | Type         | Description                    |
-+-------------------+--------------+--------------------------------+
-| id                | UUID (PK)    | Identifiant unique             |
-| plan_comptable_id | UUID (FK)    | Référence au plan global       |
-| code_journal      | VARCHAR(10)  | Code (VT, AC, BQ, etc.)        |
-| libelle_journal   | TEXT         | Nom complet du journal         |
-| type_journal      | TEXT         | Type (Ventes, Achats, etc.)    |
-| description       | TEXT         | Description optionnelle        |
-| is_active         | BOOLEAN      | Statut actif                   |
-| created_at        | TIMESTAMPTZ  | Date de création               |
-+-------------------+--------------+--------------------------------+
+Fonction: public.verify_user_belongs_to_tenant(p_tenant_id UUID)
+
+Logique:
+1. Récupérer auth.uid() (utilisateur connecté)
+2. Chercher dans personnel WHERE auth_user_id = auth.uid() AND tenant_id = p_tenant_id AND is_active = true
+3. Retourner { belongs: boolean, user_name: text, personnel_id: uuid, error: text }
 ```
 
-### 2. Migration SQL - Ajouter les 3 comptes manquants
+### 2. Modification de `src/hooks/useAdvancedAuth.ts`
 
-Insérer les comptes fiscaux spécifiques au Congo dans `comptes_globaux` :
-- 4461 sous le compte parent 446 (État, impôts et taxes)
-- 4467 sous le compte parent 446
-- 4468 sous le compte parent 446
+Modifier la fonction `enhancedSignIn` (lignes 230-248) pour ajouter la vérification après `signInWithPassword` :
 
-### 3. Migration SQL - Ajouter les journaux SYSCOHADA
+```text
+Étapes modifiées:
+1. Authentifier avec Supabase Auth (existant)
+2. NOUVEAU: Appeler verify_user_belongs_to_tenant(pharmacyId)
+3. Si belongs = false → signOut + erreur "Ce compte n'existe pas dans cette pharmacie"
+4. Si belongs = true → continuer le flux normal
+```
 
-Insérer les 5 journaux standards dans `journaux_comptables_globaux` liés au plan SYSCOHADA Révisé.
+### 3. Modification de `src/contexts/AuthContext.tsx`
 
-### 4. Modifier la fonction `import_global_accounting_plan`
-
-Ajouter une section après l'import des comptes pour :
-1. Supprimer les journaux existants du tenant (optionnel - selon stratégie)
-2. Copier les journaux depuis `journaux_comptables_globaux` vers `journaux_comptables`
-3. Retourner le nombre de journaux importés dans la réponse
+Modifier la fonction `signIn` (lignes 265-281) avec la même logique de vérification.
 
 ---
 
 ## Fichiers à créer/modifier
 
-| Fichier | Action |
-|---------|--------|
-| `supabase/migrations/[timestamp]_add_global_journals_and_accounts.sql` | Nouvelle migration SQL |
+| Fichier | Action | Description |
+|---------|--------|-------------|
+| `supabase/migrations/[timestamp]_add_tenant_user_verification.sql` | Créer | Nouvelle fonction RPC |
+| `src/hooks/useAdvancedAuth.ts` | Modifier | Ajouter validation dans `enhancedSignIn` |
+| `src/contexts/AuthContext.tsx` | Modifier | Ajouter validation dans `signIn` |
 
 ---
 
-## Détails techniques de la migration SQL
+## Détails techniques
 
-### Section 1 : Créer la table journaux_comptables_globaux
+### Migration SQL - Fonction RPC
 
 ```sql
-CREATE TABLE IF NOT EXISTS public.journaux_comptables_globaux (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  plan_comptable_id UUID NOT NULL REFERENCES plans_comptables_globaux(id) ON DELETE CASCADE,
-  code_journal VARCHAR(10) NOT NULL,
-  libelle_journal TEXT NOT NULL,
-  type_journal TEXT NOT NULL,
-  description TEXT,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(plan_comptable_id, code_journal)
+CREATE OR REPLACE FUNCTION public.verify_user_belongs_to_tenant(p_tenant_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = public, auth
+AS $$
+DECLARE
+  current_user_id UUID;
+  personnel_record RECORD;
+BEGIN
+  -- Récupérer l'utilisateur actuel
+  current_user_id := auth.uid();
+  
+  IF current_user_id IS NULL THEN
+    RETURN jsonb_build_object('belongs', false, 'error', 'Utilisateur non authentifié');
+  END IF;
+  
+  -- Vérifier si l'utilisateur appartient au tenant spécifié
+  SELECT id, noms, prenoms INTO personnel_record
+  FROM public.personnel
+  WHERE auth_user_id = current_user_id 
+    AND tenant_id = p_tenant_id
+    AND is_active = true
+  LIMIT 1;
+  
+  IF personnel_record IS NULL THEN
+    RETURN jsonb_build_object(
+      'belongs', false,
+      'error', 'Utilisateur non trouvé dans cette pharmacie'
+    );
+  END IF;
+  
+  RETURN jsonb_build_object(
+    'belongs', true,
+    'user_name', personnel_record.noms || ' ' || COALESCE(personnel_record.prenoms, ''),
+    'personnel_id', personnel_record.id
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.verify_user_belongs_to_tenant TO authenticated;
+```
+
+### Modification useAdvancedAuth.ts (lignes 230-248)
+
+**Avant** :
+```typescript
+const { data, error } = await supabase.auth.signInWithPassword({
+  email,
+  password,
+});
+
+if (error) {
+  await logLoginAttempt(email, false, error.message);
+  setLoading(false);
+  return { error };
+}
+
+await logLoginAttempt(email, true);
+```
+
+**Après** :
+```typescript
+const { data, error } = await supabase.auth.signInWithPassword({
+  email,
+  password,
+});
+
+if (error) {
+  await logLoginAttempt(email, false, error.message);
+  setLoading(false);
+  return { error };
+}
+
+// Vérifier que l'utilisateur appartient au tenant actif
+const { data: verification, error: verifyError } = await supabase.rpc(
+  'verify_user_belongs_to_tenant',
+  { p_tenant_id: pharmacyId }
 );
 
--- RLS policies pour platform admin
-ALTER TABLE journaux_comptables_globaux ENABLE ROW LEVEL SECURITY;
+if (verifyError || !verification) {
+  await supabase.auth.signOut();
+  await logLoginAttempt(email, false, 'Verification failed');
+  setLoading(false);
+  return { error: new Error('Erreur de vérification du compte') };
+}
 
-CREATE POLICY "Platform admins can manage global journals"
-  ON journaux_comptables_globaux FOR ALL
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles p
-      WHERE p.id = auth.uid() AND p.is_platform_admin = true
-    )
-  );
+const verificationResult = verification as {
+  belongs: boolean;
+  error?: string;
+};
 
-CREATE POLICY "Authenticated users can view global journals"
-  ON journaux_comptables_globaux FOR SELECT
-  TO authenticated
-  USING (true);
+if (!verificationResult.belongs) {
+  await supabase.auth.signOut();
+  await logLoginAttempt(email, false, 'User not in tenant');
+  setLoading(false);
+  return { 
+    error: new Error('Ce compte utilisateur n\'existe pas dans cette pharmacie. Veuillez vérifier que vous êtes connecté à la bonne pharmacie.') 
+  };
+}
+
+await logLoginAttempt(email, true);
 ```
 
-### Section 2 : Ajouter les comptes manquants
+### Modification AuthContext.tsx (fonction signIn, lignes 265-281)
 
-```sql
-INSERT INTO comptes_globaux (
-  plan_comptable_id, numero_compte, libelle_compte, 
-  classe, niveau, compte_parent_numero, type_compte, is_active
-)
-VALUES 
-  ('8d875fa6-4e4b-4f1d-a3ef-07ebf35743f4', '4461', 'Centime additionnel sur chiffre d''affaires', 4, 4, '446', 'Compte fiscal', true),
-  ('8d875fa6-4e4b-4f1d-a3ef-07ebf35743f4', '4467', 'Centime additionnel déductible sur achats', 4, 4, '446', 'Compte fiscal', true),
-  ('8d875fa6-4e4b-4f1d-a3ef-07ebf35743f4', '4468', 'ASDI déductible sur achats', 4, 4, '446', 'Compte fiscal', true)
-ON CONFLICT (plan_comptable_id, numero_compte) DO NOTHING;
+**Avant** :
+```typescript
+const signIn = async (email: string, password: string) => {
+  try {
+    if (!connectedPharmacy) {
+      return { error: new Error('Aucune pharmacie connectée...') };
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    return { error };
+  } catch (error) {
+    return { error: error as Error };
+  }
+};
 ```
 
-### Section 3 : Ajouter les journaux SYSCOHADA
+**Après** :
+```typescript
+const signIn = async (email: string, password: string) => {
+  try {
+    if (!connectedPharmacy) {
+      return { error: new Error('Aucune pharmacie connectée...') };
+    }
 
-```sql
-INSERT INTO journaux_comptables_globaux (
-  plan_comptable_id, code_journal, libelle_journal, type_journal, is_active
-)
-VALUES 
-  ('8d875fa6-4e4b-4f1d-a3ef-07ebf35743f4', 'VT', 'Journal des Ventes', 'Ventes', true),
-  ('8d875fa6-4e4b-4f1d-a3ef-07ebf35743f4', 'AC', 'Journal des Achats', 'Achats', true),
-  ('8d875fa6-4e4b-4f1d-a3ef-07ebf35743f4', 'BQ', 'Journal de Banque', 'Banque', true),
-  ('8d875fa6-4e4b-4f1d-a3ef-07ebf35743f4', 'CA', 'Journal de Caisse', 'Caisse', true),
-  ('8d875fa6-4e4b-4f1d-a3ef-07ebf35743f4', 'OD', 'Journal des Opérations Diverses', 'Operations_Diverses', true)
-ON CONFLICT (plan_comptable_id, code_journal) DO NOTHING;
-```
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-### Section 4 : Mettre à jour la fonction d'import
+    if (error) {
+      return { error };
+    }
 
-Ajouter après l'insertion des comptes :
+    // Vérifier que l'utilisateur appartient au tenant actif
+    const { data: verification, error: verifyError } = await supabase.rpc(
+      'verify_user_belongs_to_tenant',
+      { p_tenant_id: connectedPharmacy.id }
+    );
 
-```sql
--- Supprimer les journaux existants du tenant (optionnel - conserver les personnalisés)
-DELETE FROM journaux_comptables 
-WHERE tenant_id = p_tenant_id 
-AND code_journal IN (SELECT code_journal FROM journaux_comptables_globaux WHERE plan_comptable_id = p_plan_global_id);
+    if (verifyError || !verification) {
+      await supabase.auth.signOut();
+      return { error: new Error('Erreur de vérification du compte') };
+    }
 
--- Insérer les journaux depuis le référentiel global
-INSERT INTO journaux_comptables (
-  tenant_id, code_journal, libelle_journal, type_journal, 
-  is_active, auto_generation, sequence_courante
-)
-SELECT 
-  p_tenant_id,
-  jcg.code_journal,
-  jcg.libelle_journal,
-  jcg.type_journal,
-  jcg.is_active,
-  false,
-  1
-FROM journaux_comptables_globaux jcg
-WHERE jcg.plan_comptable_id = p_plan_global_id
-ON CONFLICT (tenant_id, code_journal) DO UPDATE SET
-  libelle_journal = EXCLUDED.libelle_journal,
-  type_journal = EXCLUDED.type_journal,
-  is_active = EXCLUDED.is_active;
+    const verificationResult = verification as { belongs: boolean; error?: string };
+
+    if (!verificationResult.belongs) {
+      await supabase.auth.signOut();
+      return { 
+        error: new Error('Ce compte utilisateur n\'existe pas dans cette pharmacie.') 
+      };
+    }
+
+    return { error: null };
+  } catch (error) {
+    return { error: error as Error };
+  }
+};
 ```
 
 ---
 
-## Résultat attendu
+## Comportement attendu après correction
 
-| Action | Avant | Après |
-|--------|-------|-------|
-| Comptes dans SYSCOHADA global | 1421 | 1424 |
-| Journaux globaux SYSCOHADA | 0 | 5 |
-| Import plan pour nouveau tenant | Comptes uniquement | Comptes + Journaux |
+| Scénario | Avant | Après |
+|----------|-------|-------|
+| Utilisateur du bon tenant | Connexion OK | Connexion OK |
+| Admin pharmacie dans sa propre pharmacie | Connexion OK | Connexion OK |
+| Utilisateur d'un autre tenant | Accès à ses propres données (bug) | Erreur "Ce compte n'existe pas dans cette pharmacie" |
 
 ---
 
-## Points d'attention
+## Tests de validation
 
-1. **Contrainte d'unicité** : Vérifier que la table `journaux_comptables` a une contrainte UNIQUE sur `(tenant_id, code_journal)` - sinon l'ajouter
-2. **Rétrocompatibilité** : Les tenants existants ne seront pas impactés - seuls les nouveaux imports recevront les journaux
-3. **Extensibilité** : Cette structure permet d'ajouter des journaux spécifiques à d'autres plans (PCG France, etc.)
+1. **Test positif** : Connexion Admin MAZAYU dans pharmacie MAZAYU → Succès
+2. **Test positif** : Connexion utilisateur lambda dans sa pharmacie → Succès  
+3. **Test négatif** : Connexion Admin DJL dans pharmacie MAZAYU → Erreur explicite + déconnexion
+
