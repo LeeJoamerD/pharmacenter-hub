@@ -19,6 +19,8 @@ export interface ProductForLabel {
   prix_vente_ttc: number | null;
   dci_nom: string | null;
   laboratoire_libelle: string | null;
+  date_peremption: string | null;
+  numero_lot: string | null;
 }
 
 export function useLabelPrinting() {
@@ -46,6 +48,14 @@ export function useLabelPrinting() {
         supabase.from('laboratoires').select('id, libelle')
       ]);
 
+      // Charger les lots séparément (table lots)
+      const { data: lotsData } = await supabase
+        .from('lots')
+        .select('produit_id, numero_lot, date_peremption')
+        .eq('tenant_id', tenantId)
+        .gt('quantite_disponible', 0)
+        .order('date_peremption', { ascending: true });
+
       // Créer des maps de lookup
       const dciMap = new Map<string, string>();
       if (dciResult.data) {
@@ -55,6 +65,19 @@ export function useLabelPrinting() {
       const labMap = new Map<string, string>();
       if (labResult.data) {
         labResult.data.forEach(l => labMap.set(l.id, l.libelle || ''));
+      }
+
+      // Map produit -> premier lot disponible (plus proche de l'expiration)
+      const stockMap = new Map<string, { numero_lot: string | null; date_peremption: string | null }>();
+      if (lotsData) {
+        lotsData.forEach(s => {
+          if (!stockMap.has(s.produit_id)) {
+            stockMap.set(s.produit_id, {
+              numero_lot: s.numero_lot,
+              date_peremption: s.date_peremption
+            });
+          }
+        });
       }
 
       // Requête principale sur les produits avec filtre tenant
@@ -77,16 +100,21 @@ export function useLabelPrinting() {
         throw error;
       }
 
-      // Combiner les données avec les noms DCI/laboratoires
-      const productsWithNames: ProductForLabel[] = (data || []).map(product => ({
-        id: product.id,
-        libelle_produit: product.libelle_produit,
-        code_cip: product.code_cip,
-        code_barre_externe: product.code_barre_externe,
-        prix_vente_ttc: product.prix_vente_ttc,
-        dci_nom: product.dci_id ? dciMap.get(product.dci_id) || null : null,
-        laboratoire_libelle: product.laboratoires_id ? labMap.get(product.laboratoires_id) || null : null
-      }));
+      // Combiner les données avec les noms DCI/laboratoires et infos stock
+      const productsWithNames: ProductForLabel[] = (data || []).map(product => {
+        const stockInfo = stockMap.get(product.id);
+        return {
+          id: product.id,
+          libelle_produit: product.libelle_produit,
+          code_cip: product.code_cip,
+          code_barre_externe: product.code_barre_externe,
+          prix_vente_ttc: product.prix_vente_ttc,
+          dci_nom: product.dci_id ? dciMap.get(product.dci_id) || null : null,
+          laboratoire_libelle: product.laboratoires_id ? labMap.get(product.laboratoires_id) || null : null,
+          date_peremption: stockInfo?.date_peremption || null,
+          numero_lot: stockInfo?.numero_lot || null
+        };
+      });
 
       setProducts(productsWithNames);
     } catch (error) {
@@ -176,6 +204,8 @@ export function useLabelPrinting() {
         code_barre_externe: product.code_barre_externe,
         prix_vente: product.prix_vente_ttc || 0,
         dci: product.dci_nom || null,
+        date_peremption: product.date_peremption || null,
+        numero_lot: product.numero_lot || null,
         pharmacyName,
         supplierPrefix: product.laboratoire_libelle?.substring(0, 3).toUpperCase() || '---'
       }));
