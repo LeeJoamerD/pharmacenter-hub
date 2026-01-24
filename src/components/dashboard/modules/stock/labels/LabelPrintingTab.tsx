@@ -266,11 +266,11 @@ const LabelPrintingTab = () => {
                             />
                           </TableCell>
                           <TableCell className="font-medium">
-                            <div>
+                          <div>
                               {product.libelle_produit}
-                              {product.dci?.nom_dci && (
+                              {product.dci_nom && (
                                 <div className="text-xs text-muted-foreground italic">
-                                  {product.dci.nom_dci}
+                                  {product.dci_nom}
                                 </div>
                               )}
                             </div>
@@ -290,9 +290,9 @@ const LabelPrintingTab = () => {
                             )}
                           </TableCell>
                           <TableCell>
-                            {product.laboratoires?.libelle ? (
+                            {product.laboratoire_libelle ? (
                               <span className="text-sm">
-                                {product.laboratoires.libelle}
+                                {product.laboratoire_libelle}
                               </span>
                             ) : (
                               <span className="text-muted-foreground text-xs">-</span>
