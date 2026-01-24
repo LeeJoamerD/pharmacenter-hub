@@ -20709,6 +20709,10 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: string
       }
+      generate_internal_product_code: {
+        Args: { p_product_id: string }
+        Returns: string
+      }
       generate_inventaire_report: {
         Args: { p_session_id: string; p_tenant_id: string; p_type: string }
         Returns: Json

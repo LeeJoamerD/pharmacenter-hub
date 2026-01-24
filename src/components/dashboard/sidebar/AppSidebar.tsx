@@ -79,6 +79,7 @@ const AppSidebar = ({
       { name: 'Inventaires', icon: Clipboard },
       { name: 'Alertes', icon: RefreshCw },
       { name: 'Analyses', icon: TrendingUp },
+      { name: 'Étiquettes', icon: Tag },
       { name: 'Configuration', icon: Settings }
     ],
     ventes: [
