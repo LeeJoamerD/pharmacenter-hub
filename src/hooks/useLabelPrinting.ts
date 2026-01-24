@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/contexts/TenantContext';
 import { 
   EnhancedLabelData, 
   LabelConfig, 
@@ -16,19 +17,9 @@ export interface ProductForLabel {
   code_cip: string | null;
   code_barre_externe: string | null;
   prix_vente_ttc: number | null;
-  dci?: { nom_dci: string | null } | null;
-  laboratoires?: { libelle: string | null } | null;
+  dci_nom: string | null;
+  laboratoire_libelle: string | null;
 }
-
-type ProductQueryResult = {
-  id: string;
-  libelle_produit: string;
-  code_cip: string | null;
-  code_barre_externe: string | null;
-  prix_vente_ttc: number | null;
-  dci: { nom_dci: string } | null;
-  laboratoires: { libelle: string } | null;
-};
 
 export function useLabelPrinting() {
   const [products, setProducts] = useState<ProductForLabel[]>([]);
@@ -37,23 +28,40 @@ export function useLabelPrinting() {
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [config, setConfig] = useState<LabelConfig>(DEFAULT_LABEL_CONFIG);
   const { toast } = useToast();
+  const { tenantId } = useTenant();
   const { getPharmacyInfo } = useGlobalSystemSettings();
 
   // Récupérer les produits avec leurs relations
   const fetchProducts = useCallback(async (searchTerm?: string) => {
+    if (!tenantId) {
+      console.log('Pas de tenant ID disponible');
+      return;
+    }
+
     setLoading(true);
     try {
+      // Charger les tables de référence en parallèle
+      const [dciResult, labResult] = await Promise.all([
+        supabase.from('dci').select('id, nom_dci'),
+        supabase.from('laboratoires').select('id, libelle')
+      ]);
+
+      // Créer des maps de lookup
+      const dciMap = new Map<string, string>();
+      if (dciResult.data) {
+        dciResult.data.forEach(d => dciMap.set(d.id, d.nom_dci || ''));
+      }
+
+      const labMap = new Map<string, string>();
+      if (labResult.data) {
+        labResult.data.forEach(l => labMap.set(l.id, l.libelle || ''));
+      }
+
+      // Requête principale sur les produits avec filtre tenant
       let query = supabase
         .from('produits')
-        .select(`
-          id,
-          libelle_produit,
-          code_cip,
-          code_barre_externe,
-          prix_vente_ttc,
-          dci(nom_dci),
-          laboratoires(libelle)
-        `)
+        .select('id, libelle_produit, code_cip, code_barre_externe, prix_vente_ttc, dci_id, laboratoires_id')
+        .eq('tenant_id', tenantId)
         .eq('is_active', true)
         .order('libelle_produit', { ascending: true })
         .limit(200);
@@ -69,7 +77,18 @@ export function useLabelPrinting() {
         throw error;
       }
 
-      setProducts((data as unknown as ProductForLabel[]) || []);
+      // Combiner les données avec les noms DCI/laboratoires
+      const productsWithNames: ProductForLabel[] = (data || []).map(product => ({
+        id: product.id,
+        libelle_produit: product.libelle_produit,
+        code_cip: product.code_cip,
+        code_barre_externe: product.code_barre_externe,
+        prix_vente_ttc: product.prix_vente_ttc,
+        dci_nom: product.dci_id ? dciMap.get(product.dci_id) || null : null,
+        laboratoire_libelle: product.laboratoires_id ? labMap.get(product.laboratoires_id) || null : null
+      }));
+
+      setProducts(productsWithNames);
     } catch (error) {
       console.error('Erreur:', error);
       toast({
@@ -80,7 +99,7 @@ export function useLabelPrinting() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [tenantId, toast]);
 
   // Générer un code interne pour un produit
   const generateInternalCode = useCallback(async (productId: string): Promise<string | null> => {
@@ -156,9 +175,9 @@ export function useLabelPrinting() {
         code_cip: product.code_cip,
         code_barre_externe: product.code_barre_externe,
         prix_vente: product.prix_vente_ttc || 0,
-        dci: product.dci?.nom_dci || null,
+        dci: product.dci_nom || null,
         pharmacyName,
-        supplierPrefix: product.laboratoires?.libelle?.substring(0, 3).toUpperCase() || '---'
+        supplierPrefix: product.laboratoire_libelle?.substring(0, 3).toUpperCase() || '---'
       }));
   }, [products, selectedProducts, getPharmacyInfo]);
 
