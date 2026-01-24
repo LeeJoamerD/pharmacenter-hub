@@ -1,271 +1,276 @@
 
 
-# Plan de correction - Faille de sécurité d'isolation des sessions
+# Plan d'amélioration du système d'impression d'étiquettes
 
-## Problème identifié
+## Objectifs
 
-### Résumé de la faille
-Lors de la connexion utilisateur via le bouton dans le Header, le système permet à **n'importe quel utilisateur Supabase Auth valide** de se connecter, même s'il n'appartient pas à la pharmacie (tenant) actuellement active.
-
-### Cas problématique observé
-1. Pharmacie "MAZAYU" est connectée (Hero affiche "Pharmacie MAZAYU")
-2. L'utilisateur se déconnecte
-3. Un utilisateur d'une autre pharmacie (ex: "DJL - Computer Sciences") se connecte via le Header
-4. Le Dashboard affiche les données de "DJL" mais le Hero reste sur "MAZAYU"
-
-### Cause technique
-La fonction `signIn` (AuthContext) et `enhancedSignIn` (useAdvancedAuth) vérifient qu'une pharmacie est connectée, mais **ne vérifient pas si l'utilisateur appartient à cette pharmacie spécifique**.
+1. Générer de vrais codes-barres scannables (Code 128 ou EAN-13) sur les étiquettes
+2. Ajouter une interface accessible depuis le module Stock pour imprimer des étiquettes par lot
+3. Auto-générer des codes internes pour les produits sans code CIP
+4. Inclure le nom de la pharmacie et les 3 premières lettres du fournisseur sur les étiquettes
 
 ---
 
-## Solution proposée
-
-### Stratégie simplifiée
-
-Après authentification Supabase réussie, vérifier que l'utilisateur existe dans la table `personnel` avec :
-- `personnel.auth_user_id = user.id` (utilisateur authentifié)
-- `personnel.tenant_id = connectedPharmacy.id` (pharmacie active)
-
-Si cette condition n'est pas remplie → déconnexion + erreur explicite.
-
-**Note importante** : Les emails de pharmacie ne sont PAS bloqués car chaque pharmacie a un compte utilisateur Admin avec le même email.
-
----
-
-## Modifications requises
-
-### 1. Nouvelle fonction RPC : `verify_user_belongs_to_tenant`
-
-Fonction serveur pour valider l'appartenance d'un utilisateur authentifié à un tenant spécifique.
+## Architecture de la solution
 
 ```text
-Fonction: public.verify_user_belongs_to_tenant(p_tenant_id UUID)
-
-Logique:
-1. Récupérer auth.uid() (utilisateur connecté)
-2. Chercher dans personnel WHERE auth_user_id = auth.uid() AND tenant_id = p_tenant_id AND is_active = true
-3. Retourner { belongs: boolean, user_name: text, personnel_id: uuid, error: text }
+┌─────────────────────────────────────────────────────────────────┐
+│                    Module Stock                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  Nouveau Tab: "Étiquettes"                               │   │
+│  │  ├── Sélection de produits (recherche, filtres)         │   │
+│  │  ├── Configuration étiquettes (taille, contenu)         │   │
+│  │  ├── Prévisualisation                                    │   │
+│  │  └── Impression par lot                                  │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              Utilitaire: labelPrinterEnhanced.ts                │
+│  ├── generateBarcodeImage() - Code 128 / EAN-13 via bwip-js    │
+│  ├── generateInternalCode() - Auto-génération PHR-XXXXX        │
+│  ├── printEnhancedLabel() - PDF avec vrai code-barres          │
+│  └── printBatchLabels() - Impression par lot                    │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Base de données                                │
+│  └── RPC: generate_internal_product_code()                      │
+│      - Génère un code unique PHR-XXXXX pour le tenant           │
+│      - Enregistre dans code_barre_externe si vide               │
+└─────────────────────────────────────────────────────────────────┘
 ```
-
-### 2. Modification de `src/hooks/useAdvancedAuth.ts`
-
-Modifier la fonction `enhancedSignIn` (lignes 230-248) pour ajouter la vérification après `signInWithPassword` :
-
-```text
-Étapes modifiées:
-1. Authentifier avec Supabase Auth (existant)
-2. NOUVEAU: Appeler verify_user_belongs_to_tenant(pharmacyId)
-3. Si belongs = false → signOut + erreur "Ce compte n'existe pas dans cette pharmacie"
-4. Si belongs = true → continuer le flux normal
-```
-
-### 3. Modification de `src/contexts/AuthContext.tsx`
-
-Modifier la fonction `signIn` (lignes 265-281) avec la même logique de vérification.
 
 ---
 
-## Fichiers à créer/modifier
+## Fichiers à créer
 
-| Fichier | Action | Description |
-|---------|--------|-------------|
-| `supabase/migrations/[timestamp]_add_tenant_user_verification.sql` | Créer | Nouvelle fonction RPC |
-| `src/hooks/useAdvancedAuth.ts` | Modifier | Ajouter validation dans `enhancedSignIn` |
-| `src/contexts/AuthContext.tsx` | Modifier | Ajouter validation dans `signIn` |
+### 1. Nouveau composant: Interface d'impression d'étiquettes
+**Fichier:** `src/components/dashboard/modules/stock/labels/LabelPrintingTab.tsx`
+
+Fonctionnalités:
+- Tableau de produits avec recherche et filtres (famille, rayon, laboratoire)
+- Sélection multiple de produits
+- Configuration des étiquettes:
+  - Taille (40x30mm, 50x30mm, 60x40mm)
+  - Type de code-barres (Code 128 ou EAN-13)
+  - Quantité par produit
+- Bouton "Générer code interne" pour les produits sans code
+- Prévisualisation de l'étiquette
+- Export PDF avec impression
+
+### 2. Utilitaire amélioré de génération d'étiquettes
+**Fichier:** `src/utils/labelPrinterEnhanced.ts`
+
+Interface de données d'étiquette enrichie:
+```typescript
+interface EnhancedLabelData {
+  nom: string;
+  code_cip?: string;
+  code_barre_externe?: string;
+  prix_vente: number;
+  dci?: string;
+  date_peremption?: string;
+  numero_lot?: string;
+  pharmacyName: string;           // Nom de la pharmacie
+  supplierPrefix: string;         // 3 premières lettres du laboratoire
+}
+```
+
+Fonctions principales:
+- `generateBarcodeImage(code, type)` - Génère image PNG Code 128 ou EAN-13
+- `generateInternalCode(tenantId)` - Appelle la RPC pour créer un code unique
+- `printEnhancedLabel(product, config)` - Impression unitaire avec vrai code-barres
+- `printBatchLabels(products, config)` - Impression par lot sur A4
+
+### 3. Hook personnalisé pour la gestion des étiquettes
+**Fichier:** `src/hooks/useLabelPrinting.ts`
+
+Fonctionnalités:
+- Récupération des produits avec relations (laboratoire)
+- Génération de codes internes
+- Gestion de la configuration utilisateur
+- Historique des impressions
+
+---
+
+## Fichiers à modifier
+
+### 1. Module Stock - Ajout du nouveau tab
+**Fichier:** `src/components/dashboard/modules/StockModule.tsx`
+
+Ajouter:
+```typescript
+case 'etiquettes':
+  return <LabelPrintingTab />;
+```
+
+### 2. Navigation latérale
+**Fichier à identifier:** Configuration des sous-modules du stock
+
+Ajouter l'entrée "Étiquettes" dans la liste des sous-modules.
+
+---
+
+## Migration SQL
+
+### RPC: Génération de code interne unique
+```sql
+CREATE OR REPLACE FUNCTION public.generate_internal_product_code(p_product_id UUID)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_tenant_id UUID;
+  v_existing_code TEXT;
+  v_new_code TEXT;
+  v_sequence INT;
+BEGIN
+  -- Récupérer le tenant_id du produit
+  SELECT tenant_id, code_barre_externe INTO v_tenant_id, v_existing_code
+  FROM public.produits
+  WHERE id = p_product_id;
+  
+  -- Si un code existe déjà, le retourner
+  IF v_existing_code IS NOT NULL AND v_existing_code != '' THEN
+    RETURN v_existing_code;
+  END IF;
+  
+  -- Trouver le prochain numéro de séquence pour ce tenant
+  SELECT COALESCE(MAX(
+    CASE 
+      WHEN code_barre_externe ~ '^PHR-[0-9]+$' 
+      THEN CAST(SUBSTRING(code_barre_externe FROM 5) AS INTEGER)
+      ELSE 0 
+    END
+  ), 0) + 1 INTO v_sequence
+  FROM public.produits
+  WHERE tenant_id = v_tenant_id;
+  
+  -- Générer le nouveau code (format: PHR-00001)
+  v_new_code := 'PHR-' || LPAD(v_sequence::TEXT, 5, '0');
+  
+  -- Mettre à jour le produit
+  UPDATE public.produits
+  SET code_barre_externe = v_new_code,
+      updated_at = NOW()
+  WHERE id = p_product_id;
+  
+  RETURN v_new_code;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.generate_internal_product_code TO authenticated;
+```
+
+---
+
+## Design de l'étiquette
+
+```text
+┌────────────────────────────────────────────┐
+│  PHARMACIE MAZAYU              [LAB]       │  <- Nom pharmacie + 3 lettres labo
+├────────────────────────────────────────────┤
+│                                            │
+│         DOLIPRANE 1000MG CPR               │  <- Nom produit (gras)
+│              Paracétamol                   │  <- DCI (italique)
+│                                            │
+│           ████████████████                 │  <- Code-barres scannable
+│            3400930000123                   │  <- Code texte
+│                                            │
+│   Prix: 45.00 DH      Lot: A12345         │  <- Prix + Lot
+│   Exp: 12/2025                             │  <- Date péremption
+└────────────────────────────────────────────┘
+```
 
 ---
 
 ## Détails techniques
 
-### Migration SQL - Fonction RPC
+### Génération du code-barres avec bwip-js
 
-```sql
-CREATE OR REPLACE FUNCTION public.verify_user_belongs_to_tenant(p_tenant_id UUID)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-STABLE
-SET search_path = public, auth
-AS $$
-DECLARE
-  current_user_id UUID;
-  personnel_record RECORD;
-BEGIN
-  -- Récupérer l'utilisateur actuel
-  current_user_id := auth.uid();
-  
-  IF current_user_id IS NULL THEN
-    RETURN jsonb_build_object('belongs', false, 'error', 'Utilisateur non authentifié');
-  END IF;
-  
-  -- Vérifier si l'utilisateur appartient au tenant spécifié
-  SELECT id, noms, prenoms INTO personnel_record
-  FROM public.personnel
-  WHERE auth_user_id = current_user_id 
-    AND tenant_id = p_tenant_id
-    AND is_active = true
-  LIMIT 1;
-  
-  IF personnel_record IS NULL THEN
-    RETURN jsonb_build_object(
-      'belongs', false,
-      'error', 'Utilisateur non trouvé dans cette pharmacie'
-    );
-  END IF;
-  
-  RETURN jsonb_build_object(
-    'belongs', true,
-    'user_name', personnel_record.noms || ' ' || COALESCE(personnel_record.prenoms, ''),
-    'personnel_id', personnel_record.id
-  );
-END;
-$$;
+Réutilisation du pattern existant dans `salesTicketPrinter.ts`:
 
-GRANT EXECUTE ON FUNCTION public.verify_user_belongs_to_tenant TO authenticated;
+```typescript
+import bwipjs from 'bwip-js';
+
+async function generateBarcodeImage(
+  code: string, 
+  type: 'code128' | 'ean13' = 'code128'
+): Promise<string> {
+  const canvas = document.createElement('canvas');
+  await bwipjs.toCanvas(canvas, {
+    bcid: type,
+    text: code,
+    scale: 3,
+    height: 12,
+    includetext: true,
+    textxalign: 'center',
+  });
+  return canvas.toDataURL('image/png');
+}
 ```
 
-### Modification useAdvancedAuth.ts (lignes 230-248)
+### Récupération des données du laboratoire
 
-**Avant** :
+La relation produit → laboratoire existe via `laboratoires_id`. Le champ `libelle` contient le nom:
+
 ```typescript
-const { data, error } = await supabase.auth.signInWithPassword({
-  email,
-  password,
-});
+const { data } = await supabase
+  .from('produits')
+  .select(`
+    *,
+    laboratoires(libelle)
+  `)
+  .eq('id', productId);
 
-if (error) {
-  await logLoginAttempt(email, false, error.message);
-  setLoading(false);
-  return { error };
-}
-
-await logLoginAttempt(email, true);
+const supplierPrefix = data.laboratoires?.libelle?.substring(0, 3).toUpperCase() || '---';
 ```
 
-**Après** :
+### Accès au nom de la pharmacie
+
+Via le hook existant `useGlobalSystemSettings`:
+
 ```typescript
-const { data, error } = await supabase.auth.signInWithPassword({
-  email,
-  password,
-});
-
-if (error) {
-  await logLoginAttempt(email, false, error.message);
-  setLoading(false);
-  return { error };
-}
-
-// Vérifier que l'utilisateur appartient au tenant actif
-const { data: verification, error: verifyError } = await supabase.rpc(
-  'verify_user_belongs_to_tenant',
-  { p_tenant_id: pharmacyId }
-);
-
-if (verifyError || !verification) {
-  await supabase.auth.signOut();
-  await logLoginAttempt(email, false, 'Verification failed');
-  setLoading(false);
-  return { error: new Error('Erreur de vérification du compte') };
-}
-
-const verificationResult = verification as {
-  belongs: boolean;
-  error?: string;
-};
-
-if (!verificationResult.belongs) {
-  await supabase.auth.signOut();
-  await logLoginAttempt(email, false, 'User not in tenant');
-  setLoading(false);
-  return { 
-    error: new Error('Ce compte utilisateur n\'existe pas dans cette pharmacie. Veuillez vérifier que vous êtes connecté à la bonne pharmacie.') 
-  };
-}
-
-await logLoginAttempt(email, true);
-```
-
-### Modification AuthContext.tsx (fonction signIn, lignes 265-281)
-
-**Avant** :
-```typescript
-const signIn = async (email: string, password: string) => {
-  try {
-    if (!connectedPharmacy) {
-      return { error: new Error('Aucune pharmacie connectée...') };
-    }
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    return { error };
-  } catch (error) {
-    return { error: error as Error };
-  }
-};
-```
-
-**Après** :
-```typescript
-const signIn = async (email: string, password: string) => {
-  try {
-    if (!connectedPharmacy) {
-      return { error: new Error('Aucune pharmacie connectée...') };
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      return { error };
-    }
-
-    // Vérifier que l'utilisateur appartient au tenant actif
-    const { data: verification, error: verifyError } = await supabase.rpc(
-      'verify_user_belongs_to_tenant',
-      { p_tenant_id: connectedPharmacy.id }
-    );
-
-    if (verifyError || !verification) {
-      await supabase.auth.signOut();
-      return { error: new Error('Erreur de vérification du compte') };
-    }
-
-    const verificationResult = verification as { belongs: boolean; error?: string };
-
-    if (!verificationResult.belongs) {
-      await supabase.auth.signOut();
-      return { 
-        error: new Error('Ce compte utilisateur n\'existe pas dans cette pharmacie.') 
-      };
-    }
-
-    return { error: null };
-  } catch (error) {
-    return { error: error as Error };
-  }
-};
+const { getPharmacyInfo } = useGlobalSystemSettings();
+const pharmacyName = getPharmacyInfo()?.name || 'PHARMACIE';
 ```
 
 ---
 
-## Comportement attendu après correction
+## Interface utilisateur proposée
 
-| Scénario | Avant | Après |
-|----------|-------|-------|
-| Utilisateur du bon tenant | Connexion OK | Connexion OK |
-| Admin pharmacie dans sa propre pharmacie | Connexion OK | Connexion OK |
-| Utilisateur d'un autre tenant | Accès à ses propres données (bug) | Erreur "Ce compte n'existe pas dans cette pharmacie" |
+### Tab "Étiquettes" dans le module Stock
+
+**Section 1: Sélection des produits**
+- Barre de recherche avec filtres (famille, rayon, laboratoire)
+- Tableau avec colonnes: Sélection, Produit, Code CIP, Code Interne, Laboratoire, Prix
+- Bouton "Sélectionner tout" / "Désélectionner tout"
+
+**Section 2: Configuration**
+- Taille d'étiquette: 40x30mm | 50x30mm | 60x40mm
+- Type code-barres: Code 128 (recommandé) | EAN-13
+- Quantité par produit: input numérique
+- Options: [ ] Inclure DCI | [ ] Inclure Lot | [ ] Inclure Date exp.
+
+**Section 3: Actions**
+- Bouton "Générer codes internes" (pour produits sans code)
+- Bouton "Prévisualiser"
+- Bouton "Imprimer" (génère PDF et ouvre dialogue impression)
 
 ---
 
-## Tests de validation
+## Résumé des livrables
 
-1. **Test positif** : Connexion Admin MAZAYU dans pharmacie MAZAYU → Succès
-2. **Test positif** : Connexion utilisateur lambda dans sa pharmacie → Succès  
-3. **Test négatif** : Connexion Admin DJL dans pharmacie MAZAYU → Erreur explicite + déconnexion
+| Fichier | Type | Description |
+|---------|------|-------------|
+| `src/components/dashboard/modules/stock/labels/LabelPrintingTab.tsx` | Créer | Interface principale d'impression |
+| `src/utils/labelPrinterEnhanced.ts` | Créer | Utilitaire de génération d'étiquettes |
+| `src/hooks/useLabelPrinting.ts` | Créer | Hook de gestion des étiquettes |
+| `supabase/migrations/[timestamp]_add_internal_code_generator.sql` | Créer | RPC génération codes |
+| `src/components/dashboard/modules/StockModule.tsx` | Modifier | Ajouter case 'etiquettes' |
+| Navigation latérale | Modifier | Ajouter entrée "Étiquettes" |
 
