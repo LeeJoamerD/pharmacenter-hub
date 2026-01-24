@@ -37,7 +37,7 @@ const StockModule = ({ activeSubModule }: StockModuleProps) => {
         return <StockAnalysesTab />;
       case 'configuration':
         return <StockConfigurationTab />;
-      case 'etiquettes':
+      case 'étiquettes':
         return <LabelPrintingTab />;
       case 'integration-demo':
         return <StockIntegrationDemo />;
