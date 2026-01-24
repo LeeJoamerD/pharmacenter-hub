@@ -238,6 +238,33 @@ export const useAdvancedAuth = () => {
         return { error };
       }
 
+      // Vérifier que l'utilisateur appartient au tenant actif
+      const { data: verification, error: verifyError } = await supabase.rpc(
+        'verify_user_belongs_to_tenant',
+        { p_tenant_id: pharmacyId }
+      );
+
+      if (verifyError || !verification) {
+        await supabase.auth.signOut();
+        await logLoginAttempt(email, false, 'Verification failed');
+        setLoading(false);
+        return { error: new Error('Erreur de vérification du compte') };
+      }
+
+      const verificationResult = verification as {
+        belongs: boolean;
+        error?: string;
+      };
+
+      if (!verificationResult.belongs) {
+        await supabase.auth.signOut();
+        await logLoginAttempt(email, false, 'User not in tenant');
+        setLoading(false);
+        return { 
+          error: new Error('Ce compte utilisateur n\'existe pas dans cette pharmacie. Veuillez vérifier que vous êtes connecté à la bonne pharmacie.') 
+        };
+      }
+
       await logLoginAttempt(email, true);
 
       if (data.session) {

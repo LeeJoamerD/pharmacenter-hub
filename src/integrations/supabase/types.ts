@@ -21421,6 +21421,10 @@ export type Database = {
         Args: { p_session_token: string }
         Returns: Json
       }
+      verify_user_belongs_to_tenant: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       mode_paiement:

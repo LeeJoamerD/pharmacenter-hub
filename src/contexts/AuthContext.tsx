@@ -269,12 +269,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error: new Error('Aucune pharmacie connectée. Veuillez connecter votre pharmacie d\'abord.') };
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      return { error };
+      if (error) {
+        return { error };
+      }
+
+      // Vérifier que l'utilisateur appartient au tenant actif
+      const { data: verification, error: verifyError } = await supabase.rpc(
+        'verify_user_belongs_to_tenant',
+        { p_tenant_id: connectedPharmacy.id }
+      );
+
+      if (verifyError || !verification) {
+        await supabase.auth.signOut();
+        return { error: new Error('Erreur de vérification du compte') };
+      }
+
+      const verificationResult = verification as { belongs: boolean; error?: string };
+
+      if (!verificationResult.belongs) {
+        await supabase.auth.signOut();
+        return { 
+          error: new Error('Ce compte utilisateur n\'existe pas dans cette pharmacie. Veuillez vérifier que vous êtes connecté à la bonne pharmacie.') 
+        };
+      }
+
+      return { error: null };
     } catch (error) {
       return { error: error as Error };
     }
