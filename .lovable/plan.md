@@ -1,78 +1,156 @@
 
-# Plan de correction - Module Stock/Étiquettes
 
-## Diagnostic
+# Plan de correction - Affichage des informations sur les étiquettes
 
-L'erreur "Impossible de charger les produits" est causée par deux problèmes dans le hook `useLabelPrinting.ts` :
+## Problèmes identifiés
 
-1. **Absence de filtrage par tenant** : La requête ne filtre pas par `tenant_id`, contrairement aux autres hooks du projet
-2. **Échec des jointures RLS** : Les jointures sur `dci(nom_dci)` et `laboratoires(libelle)` échouent car ces tables ont des politiques RLS restrictives basées sur `tenant_id = get_current_user_tenant_id()`
+### Problème 1 : DCI, Lot et Date d'expiration absents
+La fonction `getLabelsData()` dans `useLabelPrinting.ts` ne transmet pas les champs `date_peremption` et `numero_lot` aux données d'étiquettes :
 
-## Solution
+```typescript
+// Code actuel (ligne 172-181)
+.map(product => ({
+  id: product.id,
+  nom: product.libelle_produit,
+  ...
+  dci: product.dci_nom || null,
+  pharmacyName,
+  supplierPrefix: ...
+  // date_peremption MANQUANT
+  // numero_lot MANQUANT
+}));
+```
 
-### Fichier à modifier : `src/hooks/useLabelPrinting.ts`
+### Problème 2 : Données de lot/péremption non disponibles
+Les produits du catalogue (`produits`) ne contiennent pas de lot/date d'expiration directement. Ces informations sont dans la table `stock` (lots en stock). Pour le moment, le système ne peut pas afficher ces infos car elles ne sont pas récupérées.
 
-**Changement 1 : Importer et utiliser le contexte Tenant**
+### Problème 3 : Affichage pharmacie/fournisseur incorrect
+Sur la capture, on voit "DJL - Computer Sc..." qui semble être le nom de pharmacie tronqué, mais le formatage n'est pas celui attendu : "PHARMACIE [LAB]".
 
-Ajouter l'import du hook `useTenant` et l'utiliser dans le hook pour récupérer le `tenantId` de la pharmacie connectée.
+---
 
-**Changement 2 : Modifier la requête fetchProducts**
+## Solution proposée
 
-- Remplacer les jointures directes `dci(nom_dci)` et `laboratoires(libelle)` par une récupération des IDs uniquement (`dci_id`, `laboratoires_id`)
-- Ajouter le filtre `.eq('tenant_id', tenantId)` à la requête
-- Charger les tables de référence `dci` et `laboratoires` séparément dans des maps pour la résolution des noms
-- Combiner les données localement
+### Fichier 1 : `src/hooks/useLabelPrinting.ts`
 
-**Changement 3 : Adapter l'interface ProductForLabel**
+**Modification 1 : Étendre l'interface `ProductForLabel`**
+Ajouter les champs `date_peremption` et `numero_lot` à l'interface.
 
-Stocker directement les noms résolus au lieu de sous-objets imbriqués.
+**Modification 2 : Récupérer les infos de stock**
+Faire une jointure avec la table `stock` pour récupérer le premier lot disponible (le plus proche de l'expiration) pour chaque produit.
+
+**Modification 3 : Transmettre les champs manquants dans `getLabelsData()`**
+```typescript
+.map(product => ({
+  ...
+  date_peremption: product.date_peremption || null,
+  numero_lot: product.numero_lot || null,
+}));
+```
+
+### Fichier 2 : `src/utils/labelPrinterEnhanced.ts`
+
+**Vérification** : Le code de dessin des étiquettes (`drawLabel`) gère déjà correctement les conditions `config.includeDci`, `config.includeLot` et `config.includeExpiry`. Pas de modification nécessaire si les données sont correctement transmises.
 
 ---
 
 ## Détail technique des modifications
 
-### Import ajouté (ligne 4)
+### Modification de l'interface ProductForLabel
+
 ```typescript
-import { useTenant } from '@/contexts/TenantContext';
+export interface ProductForLabel {
+  id: string;
+  libelle_produit: string;
+  code_cip: string | null;
+  code_barre_externe: string | null;
+  prix_vente_ttc: number | null;
+  dci_nom: string | null;
+  laboratoire_libelle: string | null;
+  // Nouveaux champs
+  date_peremption: string | null;
+  numero_lot: string | null;
+}
 ```
 
-### Dans la fonction useLabelPrinting (après ligne 40)
+### Modification de fetchProducts
+
+Après avoir récupéré les produits, charger les informations de stock associées :
+
 ```typescript
-const { tenantId } = useTenant();
+// Récupérer les lots en stock pour chaque produit (lot le plus proche de l'expiration)
+const { data: stockData } = await supabase
+  .from('stock')
+  .select('produit_id, numero_lot, date_peremption')
+  .eq('tenant_id', tenantId)
+  .gt('quantite_disponible', 0)
+  .order('date_peremption', { ascending: true });
+
+// Créer une map produit -> premier lot disponible
+const stockMap = new Map<string, { numero_lot: string | null; date_peremption: string | null }>();
+if (stockData) {
+  stockData.forEach(s => {
+    if (!stockMap.has(s.produit_id)) {
+      stockMap.set(s.produit_id, {
+        numero_lot: s.numero_lot,
+        date_peremption: s.date_peremption
+      });
+    }
+  });
+}
 ```
 
-### Nouvelle logique fetchProducts
+### Modification du mapping des produits
 
-1. Vérifier que `tenantId` est disponible avant d'exécuter la requête
-2. Requête principale sur `produits` avec filtre tenant :
-   ```typescript
-   .select('id, libelle_produit, code_cip, code_barre_externe, prix_vente_ttc, dci_id, laboratoires_id')
-   .eq('tenant_id', tenantId)
-   .eq('is_active', true)
-   ```
-3. Charger les DCI et laboratoires du tenant séparément :
-   ```typescript
-   const { data: dciData } = await supabase
-     .from('dci')
-     .select('id, nom_dci');
-   
-   const { data: labData } = await supabase
-     .from('laboratoires')
-     .select('id, libelle');
-   ```
-4. Créer des maps de lookup pour résolution rapide
-5. Combiner les données produits avec les noms DCI/laboratoires
+```typescript
+const productsWithNames: ProductForLabel[] = (data || []).map(product => {
+  const stockInfo = stockMap.get(product.id);
+  return {
+    id: product.id,
+    libelle_produit: product.libelle_produit,
+    code_cip: product.code_cip,
+    code_barre_externe: product.code_barre_externe,
+    prix_vente_ttc: product.prix_vente_ttc,
+    dci_nom: product.dci_id ? dciMap.get(product.dci_id) || null : null,
+    laboratoire_libelle: product.laboratoires_id ? labMap.get(product.laboratoires_id) || null : null,
+    // Ajouter les infos de stock
+    date_peremption: stockInfo?.date_peremption || null,
+    numero_lot: stockInfo?.numero_lot || null
+  };
+});
+```
+
+### Modification de getLabelsData
+
+```typescript
+.map(product => ({
+  id: product.id,
+  nom: product.libelle_produit,
+  code_cip: product.code_cip,
+  code_barre_externe: product.code_barre_externe,
+  prix_vente: product.prix_vente_ttc || 0,
+  dci: product.dci_nom || null,
+  date_peremption: product.date_peremption || null,  // AJOUTÉ
+  numero_lot: product.numero_lot || null,             // AJOUTÉ
+  pharmacyName,
+  supplierPrefix: product.laboratoire_libelle?.substring(0, 3).toUpperCase() || '---'
+}));
+```
 
 ---
 
-## Résumé des fichiers modifiés
+## Fichiers modifiés
 
-| Fichier | Modification |
-|---------|--------------|
-| `src/hooks/useLabelPrinting.ts` | Ajouter filtrage tenant + charger DCI/laboratoires séparément |
+| Fichier | Modifications |
+|---------|---------------|
+| `src/hooks/useLabelPrinting.ts` | Ajouter champs à l'interface, charger données stock, transmettre lot/expiration |
 
 ## Résultat attendu
 
-- Les produits se chargent correctement au montage du composant
-- La recherche fonctionne sans erreur
-- Les noms DCI et laboratoires s'affichent correctement dans le tableau
+Après cette correction :
+- Le DCI s'affichera sous le nom du produit (si coché et disponible)
+- Le numéro de lot s'affichera à droite du prix (si coché et disponible)
+- La date d'expiration s'affichera en bas (si cochée et disponible)
+- Le préfixe fournisseur [LAB] apparaîtra en haut à droite de l'étiquette
+- Le nom de la pharmacie s'affichera en haut à gauche
+
