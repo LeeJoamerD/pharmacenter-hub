@@ -20969,12 +20969,39 @@ export type Database = {
       }
       get_pos_products: {
         Args: {
-          p_page?: number
-          p_page_size?: number
+          p_limit?: number
+          p_offset?: number
           p_search?: string
           p_tenant_id: string
         }
-        Returns: Json
+        Returns: {
+          all_lots_expired: boolean
+          category: string
+          code_cip: string
+          code_ean: string
+          conditionnement: string
+          dci_nom: string
+          description: string
+          dosage: string
+          famille_id: string
+          forme_pharmaceutique: string
+          has_valid_stock: boolean
+          id: string
+          image_url: string
+          is_ordonnance_required: boolean
+          is_stupefiant: boolean
+          libelle_produit: string
+          lots: Json
+          prix_achat: number
+          prix_vente: number
+          rayon_id: string
+          stock_actuel: number
+          stock_alerte: number
+          stock_limite: number
+          tenant_id: string
+          tva: number
+          updated_at: string
+        }[]
       }
       get_product_lots: {
         Args: { p_product_id: string; p_tenant_id: string }
@@ -21390,7 +21417,34 @@ export type Database = {
       }
       search_product_by_barcode: {
         Args: { p_barcode: string; p_tenant_id: string }
-        Returns: Json
+        Returns: {
+          all_lots_expired: boolean
+          category: string
+          code_cip: string
+          code_ean: string
+          conditionnement: string
+          dci_nom: string
+          description: string
+          dosage: string
+          famille_id: string
+          forme_pharmaceutique: string
+          has_valid_stock: boolean
+          id: string
+          image_url: string
+          is_ordonnance_required: boolean
+          is_stupefiant: boolean
+          libelle_produit: string
+          lots: Json
+          prix_achat: number
+          prix_vente: number
+          rayon_id: string
+          stock_actuel: number
+          stock_alerte: number
+          stock_limite: number
+          tenant_id: string
+          tva: number
+          updated_at: string
+        }[]
       }
       start_ai_model_training: {
         Args: {
