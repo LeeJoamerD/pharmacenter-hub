@@ -1,156 +1,132 @@
 
+# Plan de correction - Ignorer les dates de péremption NULL
 
-# Plan de correction - Affichage des informations sur les étiquettes
+## Problème identifié
 
-## Problèmes identifiés
+Actuellement, les produits avec `date_peremption` NULL ou vide sont traités comme expirés à cause de la logique SQL qui vérifie `l.date_peremption > CURRENT_DATE`. Quand la valeur est NULL, cette comparaison retourne NULL (pas TRUE), donc le lot est considéré invalide.
 
-### Problème 1 : DCI, Lot et Date d'expiration absents
-La fonction `getLabelsData()` dans `useLabelPrinting.ts` ne transmet pas les champs `date_peremption` et `numero_lot` aux données d'étiquettes :
+## Solution en 2 parties
 
-```typescript
-// Code actuel (ligne 172-181)
-.map(product => ({
-  id: product.id,
-  nom: product.libelle_produit,
-  ...
-  dci: product.dci_nom || null,
-  pharmacyName,
-  supplierPrefix: ...
-  // date_peremption MANQUANT
-  // numero_lot MANQUANT
-}));
+### Partie 1 : Correction des fonctions RPC SQL
+
+Modifier les fonctions `get_pos_products` et `search_product_by_barcode` pour traiter les dates NULL comme valides.
+
+**Logique actuelle :**
+```sql
+AND l.date_peremption > CURRENT_DATE
 ```
 
-### Problème 2 : Données de lot/péremption non disponibles
-Les produits du catalogue (`produits`) ne contiennent pas de lot/date d'expiration directement. Ces informations sont dans la table `stock` (lots en stock). Pour le moment, le système ne peut pas afficher ces infos car elles ne sont pas récupérées.
+**Nouvelle logique :**
+```sql
+AND (l.date_peremption IS NULL OR l.date_peremption > CURRENT_DATE)
+```
 
-### Problème 3 : Affichage pharmacie/fournisseur incorrect
-Sur la capture, on voit "DJL - Computer Sc..." qui semble être le nom de pharmacie tronqué, mais le formatage n'est pas celui attendu : "PHARMACIE [LAB]".
+Cette modification s'applique à 2 sous-requêtes dans chaque fonction :
+- `has_valid_stock` : EXISTS avec condition date
+- `all_lots_expired` : NOT EXISTS avec condition date
 
 ---
 
-## Solution proposée
+### Partie 2 : Correction des composants frontend
 
-### Fichier 1 : `src/hooks/useLabelPrinting.ts`
+Modifier les fonctions helper `isExpired` et `isExpiringSoon` dans 3 fichiers pour retourner `false` quand la date est NULL.
 
-**Modification 1 : Étendre l'interface `ProductForLabel`**
-Ajouter les champs `date_peremption` et `numero_lot` à l'interface.
+**Fichiers concernés :**
 
-**Modification 2 : Récupérer les infos de stock**
-Faire une jointure avec la table `stock` pour récupérer le premier lot disponible (le plus proche de l'expiration) pour chaque produit.
-
-**Modification 3 : Transmettre les champs manquants dans `getLabelsData()`**
-```typescript
-.map(product => ({
-  ...
-  date_peremption: product.date_peremption || null,
-  numero_lot: product.numero_lot || null,
-}));
-```
-
-### Fichier 2 : `src/utils/labelPrinterEnhanced.ts`
-
-**Vérification** : Le code de dessin des étiquettes (`drawLabel`) gère déjà correctement les conditions `config.includeDci`, `config.includeLot` et `config.includeExpiry`. Pas de modification nécessaire si les données sont correctement transmises.
+| Fichier | Modification |
+|---------|--------------|
+| `src/components/dashboard/modules/sales/pos/ShoppingCartComponent.tsx` | Déjà correct (vérifie `!datePeremption`) |
+| `src/components/dashboard/modules/sales/pos/LotSelectorModal.tsx` | Ajouter vérification NULL |
+| `src/hooks/usePOSProductsPaginated.ts` | Gérer date NULL dans le mapping |
 
 ---
 
-## Détail technique des modifications
+## Détail technique
 
-### Modification de l'interface ProductForLabel
+### Migration SQL
 
-```typescript
-export interface ProductForLabel {
-  id: string;
-  libelle_produit: string;
-  code_cip: string | null;
-  code_barre_externe: string | null;
-  prix_vente_ttc: number | null;
-  dci_nom: string | null;
-  laboratoire_libelle: string | null;
-  // Nouveaux champs
-  date_peremption: string | null;
-  numero_lot: string | null;
-}
+Créer une migration pour recréer les 2 fonctions avec la nouvelle logique :
+
+```sql
+-- get_pos_products : modifier has_valid_stock (ligne 93-99)
+EXISTS(
+  SELECT 1 FROM lots l
+  WHERE l.produit_id = p.id 
+    AND l.tenant_id = p_tenant_id
+    AND l.quantite_restante > 0
+    AND (l.date_peremption IS NULL OR l.date_peremption > CURRENT_DATE)
+) AS has_valid_stock
+
+-- get_pos_products : modifier all_lots_expired (ligne 109-115)
+NOT EXISTS(
+  SELECT 1 FROM lots l
+  WHERE l.produit_id = p.id 
+    AND l.tenant_id = p_tenant_id
+    AND l.quantite_restante > 0
+    AND (l.date_peremption IS NULL OR l.date_peremption > CURRENT_DATE)
+)
 ```
 
-### Modification de fetchProducts
+Même modification pour `search_product_by_barcode`.
 
-Après avoir récupéré les produits, charger les informations de stock associées :
+### LotSelectorModal.tsx
 
 ```typescript
-// Récupérer les lots en stock pour chaque produit (lot le plus proche de l'expiration)
-const { data: stockData } = await supabase
-  .from('stock')
-  .select('produit_id, numero_lot, date_peremption')
-  .eq('tenant_id', tenantId)
-  .gt('quantite_disponible', 0)
-  .order('date_peremption', { ascending: true });
+// Avant
+const isExpiringSoon = (datePeremption: Date | string): boolean => {
+  const expirationDate = new Date(datePeremption);
+  ...
+};
 
-// Créer une map produit -> premier lot disponible
-const stockMap = new Map<string, { numero_lot: string | null; date_peremption: string | null }>();
-if (stockData) {
-  stockData.forEach(s => {
-    if (!stockMap.has(s.produit_id)) {
-      stockMap.set(s.produit_id, {
-        numero_lot: s.numero_lot,
-        date_peremption: s.date_peremption
-      });
-    }
-  });
-}
+const isExpired = (datePeremption: Date | string): boolean => {
+  return isBefore(new Date(datePeremption), new Date());
+};
+
+// Après
+const isExpiringSoon = (datePeremption: Date | string | null | undefined): boolean => {
+  if (!datePeremption) return false; // NULL = pas d'alerte
+  const expirationDate = new Date(datePeremption);
+  if (isNaN(expirationDate.getTime())) return false; // Date invalide = pas d'alerte
+  ...
+};
+
+const isExpired = (datePeremption: Date | string | null | undefined): boolean => {
+  if (!datePeremption) return false; // NULL = pas expiré
+  const expirationDate = new Date(datePeremption);
+  if (isNaN(expirationDate.getTime())) return false;
+  return isBefore(expirationDate, new Date());
+};
 ```
 
-### Modification du mapping des produits
+### usePOSProductsPaginated.ts
 
 ```typescript
-const productsWithNames: ProductForLabel[] = (data || []).map(product => {
-  const stockInfo = stockMap.get(product.id);
-  return {
-    id: product.id,
-    libelle_produit: product.libelle_produit,
-    code_cip: product.code_cip,
-    code_barre_externe: product.code_barre_externe,
-    prix_vente_ttc: product.prix_vente_ttc,
-    dci_nom: product.dci_id ? dciMap.get(product.dci_id) || null : null,
-    laboratoire_libelle: product.laboratoires_id ? labMap.get(product.laboratoires_id) || null : null,
-    // Ajouter les infos de stock
-    date_peremption: stockInfo?.date_peremption || null,
-    numero_lot: stockInfo?.numero_lot || null
-  };
-});
+// Ligne 116 - Gérer date NULL
+date_peremption: lot.date_peremption ? new Date(lot.date_peremption) : null,
 ```
 
-### Modification de getLabelsData
+### Mise à jour du type LotInfo
 
 ```typescript
-.map(product => ({
-  id: product.id,
-  nom: product.libelle_produit,
-  code_cip: product.code_cip,
-  code_barre_externe: product.code_barre_externe,
-  prix_vente: product.prix_vente_ttc || 0,
-  dci: product.dci_nom || null,
-  date_peremption: product.date_peremption || null,  // AJOUTÉ
-  numero_lot: product.numero_lot || null,             // AJOUTÉ
-  pharmacyName,
-  supplierPrefix: product.laboratoire_libelle?.substring(0, 3).toUpperCase() || '---'
-}));
+// src/types/pos.ts ligne 41
+date_peremption: Date | null;  // Permettre null
 ```
 
 ---
 
 ## Fichiers modifiés
 
-| Fichier | Modifications |
-|---------|---------------|
-| `src/hooks/useLabelPrinting.ts` | Ajouter champs à l'interface, charger données stock, transmettre lot/expiration |
+| Fichier | Modification |
+|---------|--------------|
+| Migration SQL | Recréer `get_pos_products` et `search_product_by_barcode` avec `IS NULL OR` |
+| `src/components/dashboard/modules/sales/pos/LotSelectorModal.tsx` | Ajouter guards NULL dans les fonctions helper |
+| `src/hooks/usePOSProductsPaginated.ts` | Gérer mapping date NULL |
+| `src/types/pos.ts` | Type `date_peremption: Date \| null` |
 
 ## Résultat attendu
 
-Après cette correction :
-- Le DCI s'affichera sous le nom du produit (si coché et disponible)
-- Le numéro de lot s'affichera à droite du prix (si coché et disponible)
-- La date d'expiration s'affichera en bas (si cochée et disponible)
-- Le préfixe fournisseur [LAB] apparaîtra en haut à droite de l'étiquette
-- Le nom de la pharmacie s'affichera en haut à gauche
-
+Après correction :
+- Les produits avec `date_peremption` NULL ne seront plus marqués en rouge
+- Ces produits pourront être ajoutés au panier sans blocage
+- Aucun avertissement d'expiration ne s'affichera pour ces lots
+- Le tri FIFO placera les lots sans date en dernier (grâce à `NULLS LAST` existant)
