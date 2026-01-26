@@ -223,7 +223,10 @@ const handler = async (req: Request): Promise<Response> => {
         let userMessage = "Erreur lors de l'envoi du SMS";
         const twilioCode = errorData.code;
         
-        if (twilioCode === 21211 || twilioCode === 21614) {
+        if (twilioCode === 20003) {
+          userMessage = "Erreur d'authentification Twilio. Veuillez vérifier les identifiants API dans platform_settings.";
+          console.error("CRITIQUE: Les identifiants Twilio sont invalides. Vérifiez TWILIO_ACCOUNT_SID et TWILIO_AUTH_TOKEN dans platform_settings.");
+        } else if (twilioCode === 21211 || twilioCode === 21614) {
           userMessage = "Numéro de téléphone invalide. Format attendu: +242XXXXXXXXX";
         } else if (twilioCode === 21608) {
           userMessage = "Ce numéro ne peut pas recevoir de SMS (compte Twilio Trial - numéro non vérifié)";
