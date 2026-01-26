@@ -38,7 +38,7 @@ export interface LotInfo {
   id: string;
   numero_lot: string;
   quantite_restante: number;
-  date_peremption: Date;
+  date_peremption: Date | null;
   prix_achat_unitaire: number;
   // Prix calculés depuis le lot (source de vérité pour la vente)
   prix_vente_ht?: number;
