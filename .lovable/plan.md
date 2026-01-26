@@ -1,132 +1,97 @@
 
-# Plan de correction - Ignorer les dates de péremption NULL
 
-## Problème identifié
+# Plan de correction - Erreur 404 get_pos_products
 
-Actuellement, les produits avec `date_peremption` NULL ou vide sont traités comme expirés à cause de la logique SQL qui vérifie `l.date_peremption > CURRENT_DATE`. Quand la valeur est NULL, cette comparaison retourne NULL (pas TRUE), donc le lot est considéré invalide.
+## Diagnostic confirmé
 
-## Solution en 2 parties
+L'erreur 404 sur `get_pos_products` est causée par une migration SQL qui fait référence à une table inexistante. Les logs Postgres confirment l'erreur : `relation "categories" does not exist`.
 
-### Partie 1 : Correction des fonctions RPC SQL
+### Erreurs dans la migration précédente
 
-Modifier les fonctions `get_pos_products` et `search_product_by_barcode` pour traiter les dates NULL comme valides.
+| Référence incorrecte | Correction nécessaire |
+|---------------------|----------------------|
+| `LEFT JOIN categories c ON c.id = p.categorie_id` | `LEFT JOIN famille_produit f ON f.id = p.famille_id` |
+| `c.libelle_categorie` | `f.libelle_famille` |
 
-**Logique actuelle :**
-```sql
-AND l.date_peremption > CURRENT_DATE
-```
+## Solution
 
-**Nouvelle logique :**
-```sql
-AND (l.date_peremption IS NULL OR l.date_peremption > CURRENT_DATE)
-```
+Recréer les fonctions RPC avec les bons noms de tables et colonnes.
 
-Cette modification s'applique à 2 sous-requêtes dans chaque fonction :
-- `has_valid_stock` : EXISTS avec condition date
-- `all_lots_expired` : NOT EXISTS avec condition date
+### Fichier SQL à exécuter
 
----
-
-### Partie 2 : Correction des composants frontend
-
-Modifier les fonctions helper `isExpired` et `isExpiringSoon` dans 3 fichiers pour retourner `false` quand la date est NULL.
-
-**Fichiers concernés :**
-
-| Fichier | Modification |
-|---------|--------------|
-| `src/components/dashboard/modules/sales/pos/ShoppingCartComponent.tsx` | Déjà correct (vérifie `!datePeremption`) |
-| `src/components/dashboard/modules/sales/pos/LotSelectorModal.tsx` | Ajouter vérification NULL |
-| `src/hooks/usePOSProductsPaginated.ts` | Gérer date NULL dans le mapping |
-
----
-
-## Détail technique
-
-### Migration SQL
-
-Créer une migration pour recréer les 2 fonctions avec la nouvelle logique :
+Une nouvelle migration sera créée pour corriger les fonctions :
 
 ```sql
--- get_pos_products : modifier has_valid_stock (ligne 93-99)
-EXISTS(
-  SELECT 1 FROM lots l
-  WHERE l.produit_id = p.id 
-    AND l.tenant_id = p_tenant_id
-    AND l.quantite_restante > 0
-    AND (l.date_peremption IS NULL OR l.date_peremption > CURRENT_DATE)
-) AS has_valid_stock
+-- Corriger get_pos_products
+DROP FUNCTION IF EXISTS public.get_pos_products(uuid, text, integer, integer);
 
--- get_pos_products : modifier all_lots_expired (ligne 109-115)
-NOT EXISTS(
-  SELECT 1 FROM lots l
-  WHERE l.produit_id = p.id 
-    AND l.tenant_id = p_tenant_id
-    AND l.quantite_restante > 0
-    AND (l.date_peremption IS NULL OR l.date_peremption > CURRENT_DATE)
-)
-```
-
-Même modification pour `search_product_by_barcode`.
-
-### LotSelectorModal.tsx
-
-```typescript
-// Avant
-const isExpiringSoon = (datePeremption: Date | string): boolean => {
-  const expirationDate = new Date(datePeremption);
+CREATE OR REPLACE FUNCTION public.get_pos_products(...)
   ...
-};
-
-const isExpired = (datePeremption: Date | string): boolean => {
-  return isBefore(new Date(datePeremption), new Date());
-};
-
-// Après
-const isExpiringSoon = (datePeremption: Date | string | null | undefined): boolean => {
-  if (!datePeremption) return false; // NULL = pas d'alerte
-  const expirationDate = new Date(datePeremption);
-  if (isNaN(expirationDate.getTime())) return false; // Date invalide = pas d'alerte
+  -- Changement ligne 118 :
+  LEFT JOIN famille_produit f ON f.id = p.famille_id
+  -- Changement ligne 73 :
+  COALESCE(f.libelle_famille, 'Non catégorisé') AS category
   ...
-};
 
-const isExpired = (datePeremption: Date | string | null | undefined): boolean => {
-  if (!datePeremption) return false; // NULL = pas expiré
-  const expirationDate = new Date(datePeremption);
-  if (isNaN(expirationDate.getTime())) return false;
-  return isBefore(expirationDate, new Date());
-};
+-- Corriger search_product_by_barcode
+DROP FUNCTION IF EXISTS public.search_product_by_barcode(uuid, text);
+
+CREATE OR REPLACE FUNCTION public.search_product_by_barcode(...)
+  ...
+  -- Même corrections
+  LEFT JOIN famille_produit f ON f.id = p.famille_id
+  COALESCE(f.libelle_famille, 'Non catégorisé') AS category
+  ...
 ```
 
-### usePOSProductsPaginated.ts
+### Modifications apportées
 
-```typescript
-// Ligne 116 - Gérer date NULL
-date_peremption: lot.date_peremption ? new Date(lot.date_peremption) : null,
+1. `categories` remplacé par `famille_produit`
+2. `p.categorie_id` remplacé par `p.famille_id`
+3. `c.libelle_categorie` remplacé par `f.libelle_famille`
+4. L'alias passe de `c` à `f` pour cohérence
+
+## Changements techniques complets
+
+### get_pos_products - Corrections
+
+**Ligne 73 (colonne catégorie)** :
+```sql
+-- Avant
+COALESCE(c.libelle_categorie, 'Non catégorisé') AS category
+
+-- Après
+COALESCE(f.libelle_famille, 'Non catégorisé') AS category
 ```
 
-### Mise à jour du type LotInfo
+**Ligne 117-118 (jointures)** :
+```sql
+-- Avant
+FROM produits p
+LEFT JOIN dci d ON d.id = p.dci_id
+LEFT JOIN categories c ON c.id = p.categorie_id
 
-```typescript
-// src/types/pos.ts ligne 41
-date_peremption: Date | null;  // Permettre null
+-- Après
+FROM produits p
+LEFT JOIN dci d ON d.id = p.dci_id
+LEFT JOIN famille_produit f ON f.id = p.famille_id
 ```
 
----
+### search_product_by_barcode - Corrections
 
-## Fichiers modifiés
-
-| Fichier | Modification |
-|---------|--------------|
-| Migration SQL | Recréer `get_pos_products` et `search_product_by_barcode` avec `IS NULL OR` |
-| `src/components/dashboard/modules/sales/pos/LotSelectorModal.tsx` | Ajouter guards NULL dans les fonctions helper |
-| `src/hooks/usePOSProductsPaginated.ts` | Gérer mapping date NULL |
-| `src/types/pos.ts` | Type `date_peremption: Date \| null` |
+Même pattern de correction pour la deuxième fonction.
 
 ## Résultat attendu
 
 Après correction :
-- Les produits avec `date_peremption` NULL ne seront plus marqués en rouge
-- Ces produits pourront être ajoutés au panier sans blocage
-- Aucun avertissement d'expiration ne s'affichera pour ces lots
-- Le tri FIFO placera les lots sans date en dernier (grâce à `NULLS LAST` existant)
+- Les fonctions RPC seront créées correctement
+- Les produits s'afficheront à nouveau dans le POS
+- La gestion des dates NULL restera en place comme prévu
+- Les catégories afficheront le libellé de famille produit
+
+## Fichiers concernés
+
+| Type | Fichier |
+|------|---------|
+| Migration SQL | Nouvelle migration pour recréer les 2 fonctions RPC |
+
