@@ -44,14 +44,19 @@ const LotSelectorModal = ({
     new Date(a.date_peremption).getTime() - new Date(b.date_peremption).getTime()
   );
 
-  const isExpiringSoon = (datePeremption: Date | string): boolean => {
+  const isExpiringSoon = (datePeremption: Date | string | null | undefined): boolean => {
+    if (!datePeremption) return false; // NULL = pas d'alerte
     const expirationDate = new Date(datePeremption);
+    if (isNaN(expirationDate.getTime())) return false; // Date invalide = pas d'alerte
     const warningDate = addDays(new Date(), 30);
     return isBefore(expirationDate, warningDate);
   };
 
-  const isExpired = (datePeremption: Date | string): boolean => {
-    return isBefore(new Date(datePeremption), new Date());
+  const isExpired = (datePeremption: Date | string | null | undefined): boolean => {
+    if (!datePeremption) return false; // NULL = pas expiré
+    const expirationDate = new Date(datePeremption);
+    if (isNaN(expirationDate.getTime())) return false;
+    return isBefore(expirationDate, new Date());
   };
 
   const handleSelectLot = (lot: LotInfo) => {
@@ -126,7 +131,9 @@ const LotSelectorModal = ({
                             expired && "text-destructive",
                             expiringSoon && !expired && "text-orange-600"
                           )}>
-                            {format(new Date(lot.date_peremption), 'dd/MM/yyyy', { locale: fr })}
+                            {lot.date_peremption 
+                              ? format(new Date(lot.date_peremption), 'dd/MM/yyyy', { locale: fr })
+                              : 'Non définie'}
                           </span>
                         </div>
                         <div className="flex items-center gap-1 text-muted-foreground">

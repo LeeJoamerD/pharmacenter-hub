@@ -113,7 +113,7 @@ export const usePOSProductsPaginated = (
         id: lot.id,
         numero_lot: lot.numero_lot,
         quantite_restante: lot.quantite_restante,
-        date_peremption: new Date(lot.date_peremption),
+        date_peremption: lot.date_peremption ? new Date(lot.date_peremption) : null,
         prix_achat_unitaire: Number(lot.prix_achat_unitaire),
         // Prix depuis les lots (source de vérité pour la vente)
         prix_vente_ht: Number(lot.prix_vente_ht) || 0,
