@@ -19083,7 +19083,7 @@ export type Database = {
       }
       sessions_caisse: {
         Row: {
-          agent_id: string
+          agent_id: string | null
           caisse_id: string | null
           caissier_id: string | null
           created_at: string
@@ -19106,7 +19106,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          agent_id: string
+          agent_id?: string | null
           caisse_id?: string | null
           caissier_id?: string | null
           created_at?: string
@@ -19129,7 +19129,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          agent_id?: string
+          agent_id?: string | null
           caisse_id?: string | null
           caissier_id?: string | null
           created_at?: string
