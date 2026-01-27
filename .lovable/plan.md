@@ -1,106 +1,102 @@
 
-# Plan de Correction : Amélioration des Messages d'Erreur de Vérification Email
 
-## Problème Identifié
+# Plan : Désactivation Temporaire de l'Envoi SMS Twilio
 
-L'erreur **400 Bad Request** se produit lorsque :
-1. L'utilisateur entre un **code incorrect** (le plus probable)
-2. Le code a **expiré** (10 minutes après l'envoi)
-3. Le **nombre maximum de tentatives** est atteint (3 tentatives)
+## Objectif
 
-L'edge function `verify-code` retourne des messages d'erreur détaillés mais le frontend affiche génériquement "Code invalide" sans distinguer la cause exacte.
+Commenter le code d'envoi SMS via Twilio pour éviter l'erreur 500, tout en conservant :
+- La génération du code de vérification
+- L'enregistrement en base de données
+- Le flux utilisateur intact (le numéro sera "vérifié" avec n'importe quel code à 6 chiffres)
 
-## Analyse des Données
+## Modification
 
-Le code pour `aissiroselyne3@gmail.com` :
-- Code envoyé : `778294`
-- Tentatives : 3 sur 3 (l'utilisateur a probablement mal tapé le code 2 fois)
-- Expiration : 17:37:53 UTC
-- Finalement vérifié : 17:36:25 UTC (test manuel réussi)
+### Fichier : `supabase/functions/send-verification-code/index.ts`
 
-## Solution Proposée
+**Section à commenter** : Lignes 169-250 (bloc `else if (type === "sms")`)
 
-### Modification 1 : Améliorer la gestion des erreurs dans `useVerification.ts`
-
-**Objectif** : Afficher le message d'erreur exact retourné par l'edge function
-
-**Fichier** : `src/hooks/useVerification.ts`
-
-**Changements** :
-- Dans `verifyEmailCode` et `verifyPhoneCode`, extraire le message d'erreur du body de la réponse
-- Afficher le message spécifique : "Code incorrect. X tentative(s) restante(s)" ou "Le code a expiré"
+Le code sera remplacé par :
 
 ```typescript
-// Ligne 179-184 - Extraire l'erreur du contexte
-const { data, error } = await supabase.functions.invoke('verify-code', {
-  body: { email, code, type: 'email' }
-});
+} else if (type === "sms") {
+  // ============================================================
+  // ⚠️ ENVOI SMS TWILIO TEMPORAIREMENT DÉSACTIVÉ ⚠️
+  // Raison: Identifiants Twilio invalides (erreur 20003)
+  // Date: 2026-01-27
+  // Le code est quand même généré et stocké en base.
+  // Le bypass dans verify-code accepte n'importe quel code à 6 chiffres.
+  // Pour réactiver: Décommenter le bloc ci-dessous et supprimer ce commentaire.
+  // ============================================================
+  
+  console.log("⚠️ BYPASS SMS ACTIF: Envoi Twilio désactivé temporairement");
+  console.log("Code généré (non envoyé):", code);
+  console.log("Pour:", phone);
+  
+  /*
+  const twilioSid = settingsMap.get("TWILIO_ACCOUNT_SID");
+  const twilioToken = settingsMap.get("TWILIO_AUTH_TOKEN");
+  const twilioPhone = settingsMap.get("TWILIO_PHONE_NUMBER");
 
-if (error) {
-  // Tenter d'extraire le message d'erreur du contexte
-  const errorContext = (error as any).context;
-  if (errorContext) {
-    try {
-      const errorBody = await errorContext.json();
-      if (errorBody.error) {
-        throw new Error(errorBody.error);
-      }
-    } catch (parseError) {
-      // Si on ne peut pas parser, continuer avec l'erreur originale
-    }
-  }
-  throw error;
+  ... (tout le code Twilio commenté) ...
+  
+  console.log("SMS envoyé à:", normalizedPhone.slice(0, 4) + "****" + normalizedPhone.slice(-2));
+  */
 }
 ```
 
-### Modification 2 : Améliorer le feedback visuel dans `VerificationDialog.tsx`
+## Flux Résultant
 
-**Objectif** : Afficher un message d'alerte quand le code expire ou si les tentatives sont épuisées
-
-**Fichier** : `src/components/verification/VerificationDialog.tsx`
-
-**Changements** :
-- Afficher un message d'avertissement orange quand le countdown arrive à 0
-- Indiquer visuellement quand le bouton "Renvoyer le code" est nécessaire
-
-### Modification 3 : Ajouter du logging côté serveur
-
-**Fichier** : `supabase/functions/verify-code/index.ts`
-
-**Changements** :
-- Ajouter des logs pour chaque type d'erreur retourné
-- Permettre un meilleur débogage futur
-
-```typescript
-// Après ligne 53 - Logger l'expiration
-if (new Date(verificationCode.expires_at) < new Date()) {
-  console.log(`Code expiré pour ${email} (type: ${type}). Expiré à: ${verificationCode.expires_at}`);
-  // ...
-}
-
-// Après ligne 106 - Logger le code incorrect
-if (verificationCode.code !== code) {
-  console.log(`Code incorrect pour ${email}. Attendu: ${verificationCode.code.slice(0,2)}***, Reçu: ${code.slice(0,2)}***`);
-  // ...
-}
+```text
+Utilisateur demande vérification SMS
+           │
+           ▼
+┌─────────────────────────────────┐
+│  Code généré (ex: 847293)       │
+│  Stocké en base de données      │
+└─────────────────────────────────┘
+           │
+           ▼
+┌─────────────────────────────────┐
+│  ⚠️ Envoi Twilio IGNORÉ        │
+│  Log: "BYPASS SMS ACTIF"        │
+│  Retourne succès immédiat       │
+└─────────────────────────────────┘
+           │
+           ▼
+┌─────────────────────────────────┐
+│  UI affiche "Code envoyé"       │
+│  Utilisateur entre 6 chiffres   │
+│  (n'importe lesquels)           │
+└─────────────────────────────────┘
+           │
+           ▼
+┌─────────────────────────────────┐
+│  verify-code (bypass actif)     │
+│  Accepte tout code à 6 chiffres │
+│  Marque comme vérifié ✓         │
+└─────────────────────────────────┘
 ```
 
-## Résumé des Fichiers à Modifier
+## Résumé
 
-| Fichier | Type | Description |
-|---------|------|-------------|
-| `src/hooks/useVerification.ts` | Modification | Extraire et afficher les messages d'erreur détaillés |
-| `src/components/verification/VerificationDialog.tsx` | Modification | Améliorer le feedback visuel (expiration, tentatives) |
-| `supabase/functions/verify-code/index.ts` | Modification | Ajouter des logs de débogage |
+| Élément | État |
+|---------|------|
+| Génération du code | ✅ Active |
+| Stockage en base | ✅ Active |
+| Envoi SMS Twilio | ⏸️ Commenté |
+| Réponse succès | ✅ Retournée |
+| Vérification (verify-code) | ✅ Bypass actif |
 
-## Impact
+## Fichiers Impactés
 
-- **UX améliorée** : Messages d'erreur clairs et actionnables
-- **Débogage facilité** : Logs côté serveur pour identifier les problèmes
-- **Aucun changement de logique** : La fonctionnalité reste identique
+| Fichier | Modification |
+|---------|--------------|
+| `supabase/functions/send-verification-code/index.ts` | Commenter le bloc Twilio (lignes 169-250) |
 
-## Estimation
+## Pour Réactiver Plus Tard
 
-- **Complexité** : Faible
-- **Fichiers impactés** : 3
-- **Risque** : Très faible (amélioration du feedback uniquement)
+1. Mettre à jour le `TWILIO_AUTH_TOKEN` dans `platform_settings`
+2. Décommenter le bloc Twilio dans `send-verification-code`
+3. Supprimer le bypass dans `verify-code` (lignes 75-99)
+4. Redéployer les deux edge functions
+
