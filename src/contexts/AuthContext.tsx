@@ -26,6 +26,7 @@ interface AuthContextType {
   connectPharmacy: (email: string, password: string) => Promise<{ error: Error | null }>;
   createPharmacySession: () => Promise<{ error: Error | null }>;
   disconnectPharmacy: () => Promise<void>;
+  setConnectedPharmacyFromSession: (sessionToken: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -90,8 +91,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (pharmacyData) {
           console.log('AUTH: Pharmacie trouvée:', pharmacyData.name);
           setPharmacy(pharmacyData);
-          // Ne plus créer automatiquement de session pharmacie
-          // La pharmacie sera définie mais pas connectée automatiquement
         }
       } else {
         console.log('AUTH: Personnel sans tenant_id');
@@ -144,6 +143,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.error('Error updating security context:', error);
+    }
+  };
+
+  // Nouvelle fonction pour mettre à jour connectedPharmacy depuis un session token
+  const setConnectedPharmacyFromSession = async (sessionToken: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-pharmacy-session', {
+        body: { session_token: sessionToken }
+      });
+      
+      if (error || !data?.valid) {
+        console.error('AUTH: Session token invalide');
+        return;
+      }
+      
+      setConnectedPharmacy({
+        ...data.pharmacy,
+        sessionToken
+      });
+    } catch (error) {
+      console.error('AUTH: Erreur setConnectedPharmacyFromSession:', error);
     }
   };
 
@@ -389,88 +409,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Fonction connectPharmacy - authentification avec Supabase Auth uniquement
+  // Fonction connectPharmacy - utilise maintenant authenticate_pharmacy RPC
+  // PLUS DE supabase.auth.signInWithPassword !
   const connectPharmacy = async (email: string, password: string) => {
     try {
       console.log('AUTH: Tentative de connexion pharmacie avec email:', email);
       
-      // Vérifier d'abord que l'email existe dans les pharmacies
-      const { data: pharmacyCheck, error: checkError } = await supabase.rpc('check_pharmacy_email_exists', {
-        email_to_check: email
+      // Utiliser la nouvelle RPC authenticate_pharmacy
+      const { data, error } = await supabase.rpc('authenticate_pharmacy', {
+        p_email: email,
+        p_password: password
       });
 
-      if (checkError) {
-        console.error('AUTH: Erreur vérification email pharmacie:', checkError);
-        return { error: new Error('Erreur lors de la vérification de l\'email') };
+      if (error) {
+        console.error('AUTH: Erreur RPC authenticate_pharmacy:', error);
+        return { error: new Error('Erreur lors de la connexion') };
       }
 
-      const result = pharmacyCheck as { exists: boolean; pharmacy_id?: string; has_auth_account?: boolean };
-      
-      if (!result.exists) {
-        return { error: new Error('Aucune pharmacie trouvée avec cet email') };
+      const result = data as { success: boolean; pharmacy?: any; session_token?: string; expires_at?: string; error?: string } | null;
+
+      if (!result?.success) {
+        console.log('AUTH: Échec authentification pharmacie:', result?.error);
+        return { error: new Error(result?.error || 'Email ou mot de passe incorrect') };
       }
 
-      if (!result.has_auth_account) {
-        return { error: new Error('Cette pharmacie n\'a pas encore de compte d\'authentification configuré') };
-      }
+      console.log('AUTH: Connexion pharmacie réussie:', result.pharmacy?.name);
 
-      // Authentifier avec Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Stocker la pharmacie connectée (SANS toucher à supabase.auth)
+      const connectedPharmacyData: ConnectedPharmacy = {
+        ...result.pharmacy,
+        sessionToken: result.session_token!
+      };
 
-      if (authError || !authData.user) {
-        console.error('AUTH: Erreur authentification Supabase:', authError);
-        return { error: new Error('Email ou mot de passe incorrect') };
-      }
+      setConnectedPharmacy(connectedPharmacyData);
+      localStorage.setItem('pharmacy_session', JSON.stringify({
+        sessionToken: result.session_token,
+        expiresAt: result.expires_at
+      }));
 
-      console.log('AUTH: Connexion pharmacie réussie');
-      
-      // Récupérer les données de la pharmacie immédiatement après l'authentification
-      if (result.pharmacy_id) {
-        const { data: pharmacyData, error: pharmacyError } = await supabase
-          .from('pharmacies')
-          .select('*')
-          .eq('id', result.pharmacy_id)
-          .single();
-
-        if (pharmacyData && !pharmacyError) {
-          // Créer immédiatement une session pharmacie
-          const { data: sessionData, error: sessionError } = await supabase.rpc('create_pharmacy_session', {
-            p_pharmacy_id: pharmacyData.id,
-            p_ip_address: null,
-            p_user_agent: navigator.userAgent
-          });
-
-          if (sessionData && !sessionError) {
-            const sessionResult = sessionData as { success: boolean; session_token?: string; expires_at?: string; error?: string };
-            
-            // Vérifier explicitement le succès
-            if (sessionResult.success && sessionResult.session_token) {
-              const connectedPharmacyData: ConnectedPharmacy = {
-                ...pharmacyData,
-                sessionToken: sessionResult.session_token
-              };
-
-              // Stocker la pharmacie connectée immédiatement
-              setConnectedPharmacy(connectedPharmacyData);
-              localStorage.setItem('pharmacy_session', JSON.stringify({
-                sessionToken: sessionResult.session_token,
-                expiresAt: sessionResult.expires_at
-              }));
-
-              console.log('AUTH: Session pharmacie créée avec succès, token:', sessionResult.session_token.substring(0, 8) + '...');
-            } else {
-              console.error('AUTH: Échec création session:', sessionResult.error);
-            }
-          } else {
-            console.error('AUTH: Impossible de créer la session pharmacie:', sessionError);
-          }
-        }
-      }
-      
-      // Les données utilisateur seront récupérées par fetchUserData via le listener onAuthStateChange
+      console.log('AUTH: Session pharmacie stockée avec succès');
       
       return { error: null };
     } catch (error) {
@@ -527,7 +504,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateSecurityContext,
     connectPharmacy,
     createPharmacySession,
-    disconnectPharmacy
+    disconnectPharmacy,
+    setConnectedPharmacyFromSession
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

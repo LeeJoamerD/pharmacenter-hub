@@ -191,6 +191,22 @@ const UserRegister = () => {
 
     const normEmail = email.trim().toLowerCase();
 
+    // NOUVELLE VÉRIFICATION: Empêcher l'inscription avec un email de pharmacie
+    try {
+      const { data: emailCheck, error: emailCheckError } = await supabase.rpc('check_email_available_for_user', {
+        p_email: normEmail
+      });
+      
+      const checkResult = emailCheck as { available: boolean; reason?: string } | null;
+      
+      if (emailCheckError || !checkResult?.available) {
+        toast.error("Cette adresse email est utilisée par une pharmacie et ne peut pas être utilisée pour un compte utilisateur.");
+        return;
+      }
+    } catch (err) {
+      console.error('Erreur vérification email:', err);
+    }
+
     if (password !== confirmPassword) {
       toast.error("Les mots de passe ne correspondent pas");
       return;
