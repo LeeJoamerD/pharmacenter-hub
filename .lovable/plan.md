@@ -1,177 +1,106 @@
 
-# Plan d'Implémentation : Modification du Prix d'Achat avec Recalcul Automatique
+# Plan de Correction : Amélioration des Messages d'Erreur de Vérification Email
 
-## Objectif
-Ajouter la possibilité de modifier le prix d'achat unitaire dans la modal "Détails du Lot" (onglet Stock & Valeurs), avec recalcul automatique et affichage en temps réel des prix HT, TVA, Centime Additionnel et TTC.
+## Problème Identifié
 
-## Architecture Actuelle
+L'erreur **400 Bad Request** se produit lorsque :
+1. L'utilisateur entre un **code incorrect** (le plus probable)
+2. Le code a **expiré** (10 minutes après l'envoi)
+3. Le **nombre maximum de tentatives** est atteint (3 tentatives)
 
-La section "Valorisation" dans `LotDetailsDialog.tsx` affiche actuellement :
-- Prix d'achat unitaire (lecture seule)
-- Prix de vente suggéré (lecture seule)  
-- Valeur stock restant (calculée)
+L'edge function `verify-code` retourne des messages d'erreur détaillés mais le frontend affiche génériquement "Code invalide" sans distinguer la cause exacte.
 
-La base de données dispose déjà d'un **trigger** qui recalcule automatiquement les prix lors de la modification du `prix_achat_unitaire` d'un lot.
+## Analyse des Données
+
+Le code pour `aissiroselyne3@gmail.com` :
+- Code envoyé : `778294`
+- Tentatives : 3 sur 3 (l'utilisateur a probablement mal tapé le code 2 fois)
+- Expiration : 17:37:53 UTC
+- Finalement vérifié : 17:36:25 UTC (test manuel réussi)
 
 ## Solution Proposée
 
-### Composant 1 : Hook de Récupération de la Catégorie de Tarification
+### Modification 1 : Améliorer la gestion des erreurs dans `useVerification.ts`
 
-**Objectif** : Récupérer le coefficient et les taux de la catégorie liée au produit du lot.
+**Objectif** : Afficher le message d'erreur exact retourné par l'edge function
 
-**Fichier** : Modification de `src/hooks/useLots.ts`
+**Fichier** : `src/hooks/useVerification.ts`
 
-- Étendre la requête `useLotQuery` pour inclure la catégorie de tarification :
-```text
-produit:produits!inner(
-  id, libelle_produit, code_cip, famille_id,
-  categorie_tarification:categorie_tarification(
-    id, coefficient_prix_vente, taux_tva, taux_centime_additionnel
-  )
-)
+**Changements** :
+- Dans `verifyEmailCode` et `verifyPhoneCode`, extraire le message d'erreur du body de la réponse
+- Afficher le message spécifique : "Code incorrect. X tentative(s) restante(s)" ou "Le code a expiré"
+
+```typescript
+// Ligne 179-184 - Extraire l'erreur du contexte
+const { data, error } = await supabase.functions.invoke('verify-code', {
+  body: { email, code, type: 'email' }
+});
+
+if (error) {
+  // Tenter d'extraire le message d'erreur du contexte
+  const errorContext = (error as any).context;
+  if (errorContext) {
+    try {
+      const errorBody = await errorContext.json();
+      if (errorBody.error) {
+        throw new Error(errorBody.error);
+      }
+    } catch (parseError) {
+      // Si on ne peut pas parser, continuer avec l'erreur originale
+    }
+  }
+  throw error;
+}
 ```
 
-### Composant 2 : Section de Valorisation Éditable
+### Modification 2 : Améliorer le feedback visuel dans `VerificationDialog.tsx`
 
-**Objectif** : Transformer la section "Valorisation" pour permettre l'édition du prix d'achat.
+**Objectif** : Afficher un message d'alerte quand le code expire ou si les tentatives sont épuisées
 
-**Fichier** : `src/components/dashboard/modules/stock/LotDetailsDialog.tsx`
+**Fichier** : `src/components/verification/VerificationDialog.tsx`
 
-**Modifications** :
-1. Ajouter les imports nécessaires :
-   - `useState` pour gérer le mode édition et les valeurs
-   - `Input` pour le champ de saisie
-   - `usePricingConfig` pour les paramètres d'arrondi
-   - `unifiedPricingService` pour le recalcul des prix
-   - Icônes `Edit`, `Save`, `Loader2`
+**Changements** :
+- Afficher un message d'avertissement orange quand le countdown arrive à 0
+- Indiquer visuellement quand le bouton "Renvoyer le code" est nécessaire
 
-2. Ajouter les états locaux :
-   - `isEditingPrice` : boolean pour le mode édition
-   - `newPrixAchat` : string pour la saisie
-   - `calculatedPrices` : objet avec les prix recalculés (HT, TVA, CA, TTC)
-   - `isSaving` : boolean pour l'état de sauvegarde
+### Modification 3 : Ajouter du logging côté serveur
 
-3. Créer une fonction `handlePrixAchatChange(value: string)` :
-   - Récupérer le coefficient depuis la catégorie de tarification du produit
-   - Appeler `unifiedPricingService.calculateSalePrice()` avec les bons paramètres
-   - Afficher en temps réel les prix recalculés
+**Fichier** : `supabase/functions/verify-code/index.ts`
 
-4. Créer une fonction `handleSavePrixAchat()` :
-   - Appeler `updateLot` avec le nouveau `prix_achat_unitaire`
-   - Le trigger DB recalculera et persistera tous les prix
-   - Invalider le cache React Query pour rafraîchir les données
+**Changements** :
+- Ajouter des logs pour chaque type d'erreur retourné
+- Permettre un meilleur débogage futur
 
-5. Refondre l'interface de la carte "Valorisation" :
-   - Afficher le prix d'achat avec un bouton "Éditer"
-   - En mode édition : input + boutons Annuler/Sauvegarder
-   - Afficher les 4 prix détaillés : HT, TVA, Centime Additionnel, TTC
-   - Prévisualisation en temps réel avant sauvegarde
+```typescript
+// Après ligne 53 - Logger l'expiration
+if (new Date(verificationCode.expires_at) < new Date()) {
+  console.log(`Code expiré pour ${email} (type: ${type}). Expiré à: ${verificationCode.expires_at}`);
+  // ...
+}
 
-### Interface Utilisateur
-
-```text
-┌─────────────────────────────────────────────┐
-│  💶 Valorisation                    [Éditer]│
-├─────────────────────────────────────────────┤
-│  Prix d'achat unitaire                      │
-│  ┌─────────────────────────────────────┐    │
-│  │ 1 390                           FCFA│    │
-│  └─────────────────────────────────────┘    │
-│                                             │
-│  ── Prix de Vente Calculés ──              │
-│                                             │
-│  Prix HT                         1 960 FCFA │
-│  TVA (19.25%)                        0 FCFA │
-│  Centime Additionnel (0.175%)        0 FCFA │
-│  Prix TTC                        1 975 FCFA │
-│                                             │
-│  Valeur stock restant            5 850 FCFA │
-│                                             │
-│         [Annuler]  [💾 Sauvegarder]         │
-└─────────────────────────────────────────────┘
+// Après ligne 106 - Logger le code incorrect
+if (verificationCode.code !== code) {
+  console.log(`Code incorrect pour ${email}. Attendu: ${verificationCode.code.slice(0,2)}***, Reçu: ${code.slice(0,2)}***`);
+  // ...
+}
 ```
 
-## Flux de Données
-
-```text
-Utilisateur modifie prix d'achat
-           │
-           ▼
-┌─────────────────────────────────┐
-│  handlePrixAchatChange(value)   │
-│  - Parse la valeur              │
-│  - Récupère catégorie produit   │
-│  - Récupère params pricing      │
-└─────────────────────────────────┘
-           │
-           ▼
-┌─────────────────────────────────┐
-│  unifiedPricingService          │
-│  .calculateSalePrice()          │
-│  - Applique coefficient         │
-│  - Calcule TVA                  │
-│  - Calcule Centime Additionnel  │
-│  - Applique arrondi configureé  │
-└─────────────────────────────────┘
-           │
-           ▼
-┌─────────────────────────────────┐
-│  Mise à jour UI temps réel      │
-│  - Affiche prévisualisation     │
-│  - HT, TVA, CA, TTC             │
-└─────────────────────────────────┘
-           │
-     (Clic Sauvegarder)
-           │
-           ▼
-┌─────────────────────────────────┐
-│  updateLot({ prix_achat... })   │
-│  - Supabase UPDATE              │
-│  - Trigger DB recalcule tout    │
-└─────────────────────────────────┘
-           │
-           ▼
-┌─────────────────────────────────┐
-│  Invalidation cache + Refresh   │
-│  - Toast succès                 │
-│  - Retour mode lecture          │
-└─────────────────────────────────┘
-```
-
-## Validations
-
-1. **Prix d'achat** : doit être > 0
-2. **Catégorie de tarification** : doit exister pour le produit (sinon afficher message d'erreur)
-3. **Format numérique** : validation de la saisie
-
-## Détails Techniques
-
-### Modifications de Fichiers
+## Résumé des Fichiers à Modifier
 
 | Fichier | Type | Description |
 |---------|------|-------------|
-| `src/hooks/useLots.ts` | Modification | Étendre `useLotQuery` pour inclure `categorie_tarification` |
-| `src/components/dashboard/modules/stock/LotDetailsDialog.tsx` | Modification | Ajouter le mode édition, calcul temps réel, sauvegarde |
+| `src/hooks/useVerification.ts` | Modification | Extraire et afficher les messages d'erreur détaillés |
+| `src/components/verification/VerificationDialog.tsx` | Modification | Améliorer le feedback visuel (expiration, tentatives) |
+| `supabase/functions/verify-code/index.ts` | Modification | Ajouter des logs de débogage |
 
-### Dépendances Utilisées
+## Impact
 
-- `unifiedPricingService.calculateSalePrice()` - Calcul des prix
-- `usePricingConfig()` - Paramètres d'arrondi
-- `useLots().updateLot()` - Mise à jour BD
-- Trigger DB existant - Recalcul automatique côté serveur
-
-### Formules Appliquées (depuis PRICING_RULES.md)
-
-```text
-Prix HT = Prix Achat × Coefficient
-Montant TVA = Prix HT × (Taux TVA / 100)
-Montant Centime = Montant TVA × (Taux Centime / 100)
-Prix TTC = Prix HT + Montant TVA + Montant Centime
-Prix TTC Final = Arrondi(Prix TTC, précision, méthode)
-```
+- **UX améliorée** : Messages d'erreur clairs et actionnables
+- **Débogage facilité** : Logs côté serveur pour identifier les problèmes
+- **Aucun changement de logique** : La fonctionnalité reste identique
 
 ## Estimation
 
-- **Complexité** : Moyenne
-- **Fichiers impactés** : 2
-- **Risque** : Faible (utilise les services existants et le trigger DB)
+- **Complexité** : Faible
+- **Fichiers impactés** : 3
+- **Risque** : Très faible (amélioration du feedback uniquement)
