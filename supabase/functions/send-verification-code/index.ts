@@ -167,6 +167,20 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
     } else if (type === "sms") {
+      // ============================================================
+      // ⚠️ ENVOI SMS TWILIO TEMPORAIREMENT DÉSACTIVÉ ⚠️
+      // Raison: Identifiants Twilio invalides (erreur 20003)
+      // Date: 2026-01-27
+      // Le code est quand même généré et stocké en base.
+      // Le bypass dans verify-code accepte n'importe quel code à 6 chiffres.
+      // Pour réactiver: Décommenter le bloc ci-dessous et supprimer ce commentaire.
+      // ============================================================
+      
+      console.log("⚠️ BYPASS SMS ACTIF: Envoi Twilio désactivé temporairement");
+      console.log("Code généré (non envoyé):", code);
+      console.log("Pour:", phone?.slice(0, 4) + "****" + (phone?.slice(-2) || ""));
+      
+      /*
       const twilioSid = settingsMap.get("TWILIO_ACCOUNT_SID");
       const twilioToken = settingsMap.get("TWILIO_AUTH_TOKEN");
       const twilioPhone = settingsMap.get("TWILIO_PHONE_NUMBER");
@@ -247,6 +261,7 @@ const handler = async (req: Request): Promise<Response> => {
       const smsResult = await smsResponse.json();
       console.log("SMS envoyé avec succès! SID:", smsResult.sid);
       console.log("SMS envoyé à:", normalizedPhone.slice(0, 4) + "****" + normalizedPhone.slice(-2));
+      */
     }
 
     return new Response(
