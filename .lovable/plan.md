@@ -1,69 +1,177 @@
 
+# Plan d'Implémentation : Modification du Prix d'Achat avec Recalcul Automatique
 
-# Plan de Correction : Erreur d'Authentification Twilio (SMS)
+## Objectif
+Ajouter la possibilité de modifier le prix d'achat unitaire dans la modal "Détails du Lot" (onglet Stock & Valeurs), avec recalcul automatique et affichage en temps réel des prix HT, TVA, Centime Additionnel et TTC.
 
-## Problème Identifié
+## Architecture Actuelle
 
-L'envoi de SMS échoue avec l'erreur Twilio **20003 (Authenticate - 401 Unauthorized)**. Les identifiants Twilio stockés dans `platform_settings` sont invalides ou ont été révoqués.
+La section "Valorisation" dans `LotDetailsDialog.tsx` affiche actuellement :
+- Prix d'achat unitaire (lecture seule)
+- Prix de vente suggéré (lecture seule)  
+- Valeur stock restant (calculée)
 
-Les logs montrent :
-- Email fonctionne correctement (Resend OK)
-- SMS échoue systématiquement avec une erreur d'authentification
+La base de données dispose déjà d'un **trigger** qui recalcule automatiquement les prix lors de la modification du `prix_achat_unitaire` d'un lot.
 
-## Solution
+## Solution Proposée
 
-### Étape 1 : Vérification des identifiants Twilio
+### Composant 1 : Hook de Récupération de la Catégorie de Tarification
 
-L'administrateur doit :
-1. Se connecter au [tableau de bord Twilio](https://console.twilio.com)
-2. Aller dans **Account > Keys & Credentials > API Keys**
-3. Vérifier que l'**Account SID** commence bien par `AC5129e7ee...`
-4. Copier le **Auth Token** actuel (il peut avoir été régénéré)
+**Objectif** : Récupérer le coefficient et les taux de la catégorie liée au produit du lot.
 
-### Étape 2 : Mise à jour des identifiants dans la base de données
+**Fichier** : Modification de `src/hooks/useLots.ts`
 
-Mettre à jour les valeurs dans la table `platform_settings` :
-
-```sql
-UPDATE platform_settings 
-SET setting_value = 'NOUVEAU_TWILIO_AUTH_TOKEN' 
-WHERE setting_key = 'TWILIO_AUTH_TOKEN';
+- Étendre la requête `useLotQuery` pour inclure la catégorie de tarification :
+```text
+produit:produits!inner(
+  id, libelle_produit, code_cip, famille_id,
+  categorie_tarification:categorie_tarification(
+    id, coefficient_prix_vente, taux_tva, taux_centime_additionnel
+  )
+)
 ```
 
-### Étape 3 (optionnel) : Améliorer le message d'erreur
+### Composant 2 : Section de Valorisation Éditable
 
-Ajouter une gestion explicite de l'erreur 20003 dans l'edge function :
+**Objectif** : Transformer la section "Valorisation" pour permettre l'édition du prix d'achat.
 
-**Fichier** : `supabase/functions/send-verification-code/index.ts`
+**Fichier** : `src/components/dashboard/modules/stock/LotDetailsDialog.tsx`
 
-Dans la section de gestion des erreurs Twilio (lignes 222-236), ajouter :
+**Modifications** :
+1. Ajouter les imports nécessaires :
+   - `useState` pour gérer le mode édition et les valeurs
+   - `Input` pour le champ de saisie
+   - `usePricingConfig` pour les paramètres d'arrondi
+   - `unifiedPricingService` pour le recalcul des prix
+   - Icônes `Edit`, `Save`, `Loader2`
 
-```typescript
-} else if (twilioCode === 20003) {
-  userMessage = "Erreur d'authentification Twilio. Veuillez vérifier les identifiants API.";
-  console.error("CRITIQUE: Les identifiants Twilio sont invalides. Vérifiez TWILIO_ACCOUNT_SID et TWILIO_AUTH_TOKEN dans platform_settings.");
+2. Ajouter les états locaux :
+   - `isEditingPrice` : boolean pour le mode édition
+   - `newPrixAchat` : string pour la saisie
+   - `calculatedPrices` : objet avec les prix recalculés (HT, TVA, CA, TTC)
+   - `isSaving` : boolean pour l'état de sauvegarde
+
+3. Créer une fonction `handlePrixAchatChange(value: string)` :
+   - Récupérer le coefficient depuis la catégorie de tarification du produit
+   - Appeler `unifiedPricingService.calculateSalePrice()` avec les bons paramètres
+   - Afficher en temps réel les prix recalculés
+
+4. Créer une fonction `handleSavePrixAchat()` :
+   - Appeler `updateLot` avec le nouveau `prix_achat_unitaire`
+   - Le trigger DB recalculera et persistera tous les prix
+   - Invalider le cache React Query pour rafraîchir les données
+
+5. Refondre l'interface de la carte "Valorisation" :
+   - Afficher le prix d'achat avec un bouton "Éditer"
+   - En mode édition : input + boutons Annuler/Sauvegarder
+   - Afficher les 4 prix détaillés : HT, TVA, Centime Additionnel, TTC
+   - Prévisualisation en temps réel avant sauvegarde
+
+### Interface Utilisateur
+
+```text
+┌─────────────────────────────────────────────┐
+│  💶 Valorisation                    [Éditer]│
+├─────────────────────────────────────────────┤
+│  Prix d'achat unitaire                      │
+│  ┌─────────────────────────────────────┐    │
+│  │ 1 390                           FCFA│    │
+│  └─────────────────────────────────────┘    │
+│                                             │
+│  ── Prix de Vente Calculés ──              │
+│                                             │
+│  Prix HT                         1 960 FCFA │
+│  TVA (19.25%)                        0 FCFA │
+│  Centime Additionnel (0.175%)        0 FCFA │
+│  Prix TTC                        1 975 FCFA │
+│                                             │
+│  Valeur stock restant            5 850 FCFA │
+│                                             │
+│         [Annuler]  [💾 Sauvegarder]         │
+└─────────────────────────────────────────────┘
 ```
 
----
+## Flux de Données
+
+```text
+Utilisateur modifie prix d'achat
+           │
+           ▼
+┌─────────────────────────────────┐
+│  handlePrixAchatChange(value)   │
+│  - Parse la valeur              │
+│  - Récupère catégorie produit   │
+│  - Récupère params pricing      │
+└─────────────────────────────────┘
+           │
+           ▼
+┌─────────────────────────────────┐
+│  unifiedPricingService          │
+│  .calculateSalePrice()          │
+│  - Applique coefficient         │
+│  - Calcule TVA                  │
+│  - Calcule Centime Additionnel  │
+│  - Applique arrondi configureé  │
+└─────────────────────────────────┘
+           │
+           ▼
+┌─────────────────────────────────┐
+│  Mise à jour UI temps réel      │
+│  - Affiche prévisualisation     │
+│  - HT, TVA, CA, TTC             │
+└─────────────────────────────────┘
+           │
+     (Clic Sauvegarder)
+           │
+           ▼
+┌─────────────────────────────────┐
+│  updateLot({ prix_achat... })   │
+│  - Supabase UPDATE              │
+│  - Trigger DB recalcule tout    │
+└─────────────────────────────────┘
+           │
+           ▼
+┌─────────────────────────────────┐
+│  Invalidation cache + Refresh   │
+│  - Toast succès                 │
+│  - Retour mode lecture          │
+└─────────────────────────────────┘
+```
+
+## Validations
+
+1. **Prix d'achat** : doit être > 0
+2. **Catégorie de tarification** : doit exister pour le produit (sinon afficher message d'erreur)
+3. **Format numérique** : validation de la saisie
 
 ## Détails Techniques
 
-| Élément | Valeur actuelle | Statut |
-|---------|-----------------|--------|
-| TWILIO_ACCOUNT_SID | AC5129e7ee... | Présent mais peut-être incorrect |
-| TWILIO_AUTH_TOKEN | ebf6e1f3ee... | **Invalide** (cause du 401) |
-| TWILIO_PHONE_NUMBER | +14482210506 | OK |
-| RESEND_API_KEY | re_TWDZoNht... | Fonctionne |
+### Modifications de Fichiers
 
-## Actions Requises
+| Fichier | Type | Description |
+|---------|------|-------------|
+| `src/hooks/useLots.ts` | Modification | Étendre `useLotQuery` pour inclure `categorie_tarification` |
+| `src/components/dashboard/modules/stock/LotDetailsDialog.tsx` | Modification | Ajouter le mode édition, calcul temps réel, sauvegarde |
 
-1. **Immédiate** : Obtenir le nouveau Auth Token depuis le dashboard Twilio
-2. **Mise à jour SQL** : Remplacer la valeur dans `platform_settings`
-3. **Test** : Réessayer l'envoi de SMS
+### Dépendances Utilisées
 
-## Notes Importantes
+- `unifiedPricingService.calculateSalePrice()` - Calcul des prix
+- `usePricingConfig()` - Paramètres d'arrondi
+- `useLots().updateLot()` - Mise à jour BD
+- Trigger DB existant - Recalcul automatique côté serveur
 
-- Les identifiants Twilio ne sont PAS stockés dans les secrets Supabase Edge Functions, mais dans la table `platform_settings`
-- Twilio régénère parfois les Auth Tokens lors de changements de sécurité
-- Vérifier que le compte Twilio n'est pas en mode Trial (limité à certains numéros vérifiés)
+### Formules Appliquées (depuis PRICING_RULES.md)
 
+```text
+Prix HT = Prix Achat × Coefficient
+Montant TVA = Prix HT × (Taux TVA / 100)
+Montant Centime = Montant TVA × (Taux Centime / 100)
+Prix TTC = Prix HT + Montant TVA + Montant Centime
+Prix TTC Final = Arrondi(Prix TTC, précision, méthode)
+```
+
+## Estimation
+
+- **Complexité** : Moyenne
+- **Fichiers impactés** : 2
+- **Risque** : Faible (utilise les services existants et le trigger DB)
