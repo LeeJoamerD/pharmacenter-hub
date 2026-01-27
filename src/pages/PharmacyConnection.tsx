@@ -54,27 +54,25 @@ export default function PharmacyConnection() {
       
       setPharmacyPhone(phone || '');
 
-      // Vérifier que les identifiants sont valides (connexion test)
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password
+      // Vérifier les credentials via la nouvelle RPC authenticate_pharmacy
+      // (sans se connecter effectivement)
+      const { data: authCheck, error: authError } = await supabase.rpc('authenticate_pharmacy', {
+        p_email: email,
+        p_password: password
       });
 
-      if (authError) {
+      const authResult = authCheck as { success: boolean; error?: string } | null;
+
+      if (authError || !authResult?.success) {
         toast({
           title: "Erreur de connexion",
-          description: authError.message === 'Invalid login credentials' 
-            ? "Email ou mot de passe incorrect" 
-            : authError.message,
+          description: authResult?.error || "Email ou mot de passe incorrect",
           variant: "destructive"
         });
         return;
       }
 
-      // Déconnecter temporairement (on reconnectera après vérification)
-      await supabase.auth.signOut();
-
-      // Passer à l'étape de vérification email
+      // Les credentials sont valides, passer à la vérification
       setStep('email-verify');
       
       // Envoyer le code email
@@ -95,6 +93,7 @@ export default function PharmacyConnection() {
   const proceedWithLogin = async () => {
     setIsLoading(true);
     try {
+      // Utiliser connectPharmacy qui n'utilise plus supabase.auth
       const { error } = await connectPharmacy(email, password);
 
       if (error) {
@@ -111,6 +110,7 @@ export default function PharmacyConnection() {
         description: "Bienvenue dans votre pharmacie",
       });
 
+      // Rediriger vers l'accueil (pas le tableau de bord car aucun utilisateur connecté)
       navigate('/');
       
     } catch (error) {

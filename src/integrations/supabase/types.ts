@@ -92,6 +92,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "accounting_default_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       accounting_exchange_rates: {
@@ -349,6 +356,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_accounting_anomalies_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_accounting_consultations: {
@@ -412,6 +426,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_accounting_consultations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_accounting_expert_config: {
@@ -472,6 +493,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_accounting_expert_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -569,6 +597,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_anomalies_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_automation_executions: {
@@ -620,6 +655,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_automation_executions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -686,6 +728,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_automation_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -778,6 +827,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_automation_workflows_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_batch_recognitions: {
@@ -847,6 +903,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_batch_recognitions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_bi_config: {
@@ -895,6 +958,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_bi_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -969,6 +1039,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_bi_patterns_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_bi_predictions: {
@@ -1038,6 +1115,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_bi_predictions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_bi_process_optimizations: {
@@ -1104,6 +1188,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_bi_process_optimizations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_bi_segments: {
@@ -1155,6 +1246,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_bi_segments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1244,6 +1342,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_bottlenecks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1343,10 +1448,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ai_conversation_messages_sender_pharmacy_id_fkey"
+            columns: ["sender_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ai_conversation_messages_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_conversation_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1400,10 +1519,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ai_conversations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ai_conversations_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1485,6 +1618,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_data_sources_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1592,6 +1732,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_diagnostic_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_forecast_models: {
@@ -1649,6 +1796,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_forecast_models_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1711,6 +1865,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_forecasts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_influential_factors: {
@@ -1762,6 +1923,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_influential_factors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1827,10 +1995,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ai_insights_applied_by_fkey"
+            columns: ["applied_by"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ai_insights_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_insights_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1903,6 +2085,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_learning_feedback_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -1999,6 +2188,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_learning_models_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_models: {
@@ -2067,6 +2263,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_models_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_pharma_compliance_checks: {
@@ -2130,6 +2333,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_pharma_compliance_checks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_pharma_consultations: {
@@ -2187,6 +2397,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_pharma_consultations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_pharma_expert_config: {
@@ -2235,6 +2452,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_pharma_expert_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -2315,6 +2539,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_provider_connections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -2415,6 +2646,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_quality_controls_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_sentiment_analyses: {
@@ -2478,6 +2716,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_sentiment_analyses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_sentiment_keywords: {
@@ -2520,6 +2765,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_sentiment_keywords_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -2567,6 +2819,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_sentiment_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -2639,6 +2898,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_shelf_analyses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_stock_optimization_config: {
@@ -2696,6 +2962,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_stock_optimization_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -2814,6 +3087,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_stock_predictions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_strategic_recommendations: {
@@ -2923,6 +3203,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_strategic_recommendations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_tax_optimizations: {
@@ -3010,6 +3297,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_tax_optimizations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_templates: {
@@ -3058,6 +3352,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3127,6 +3428,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_therapeutic_recommendations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3211,6 +3519,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_training_datasets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3304,6 +3619,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ai_training_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ai_vision_config: {
@@ -3352,6 +3674,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_vision_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3451,6 +3780,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ai_vision_detections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ai_vision_detections_verified_by_fkey"
             columns: ["verified_by"]
             isOneToOne: false
@@ -3514,6 +3850,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_webhook_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3729,6 +4072,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alertes_fournisseurs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -4003,6 +4353,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "analytiques_pos_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       api_scheduled_tasks: {
@@ -4057,6 +4414,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_scheduled_tasks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -4155,6 +4519,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assureurs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -4474,6 +4845,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "balances_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       budgets: {
@@ -4784,6 +5162,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "categorie_tarification_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       centres_couts: {
@@ -4984,10 +5369,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "channel_participants_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "channel_participants_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_participants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -5322,6 +5721,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "clients_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       clinical_alerts: {
@@ -5404,6 +5810,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinical_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -5554,6 +5967,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "collaborative_events_organizer_pharmacy_id_fkey"
+            columns: ["organizer_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "collaborative_events_organizer_user_id_fkey"
             columns: ["organizer_user_id"]
             isOneToOne: false
@@ -5565,6 +5985,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborative_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -5642,6 +6069,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "collaborative_tasks_assignee_pharmacy_id_fkey"
+            columns: ["assignee_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "collaborative_tasks_assignee_user_id_fkey"
             columns: ["assignee_user_id"]
             isOneToOne: false
@@ -5663,6 +6097,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "collaborative_tasks_creator_pharmacy_id_fkey"
+            columns: ["creator_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "collaborative_tasks_creator_user_id_fkey"
             columns: ["creator_user_id"]
             isOneToOne: false
@@ -5674,6 +6115,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborative_tasks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -5749,6 +6197,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "collaborative_workspaces_owner_pharmacy_id_fkey"
+            columns: ["owner_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "collaborative_workspaces_owner_user_id_fkey"
             columns: ["owner_user_id"]
             isOneToOne: false
@@ -5760,6 +6215,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collaborative_workspaces_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -5833,6 +6295,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commandes_fournisseurs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -6229,6 +6698,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "compte_depenses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       comptes_bancaires: {
@@ -6391,6 +6867,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comptes_comptables_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -6648,6 +7131,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "conges_employes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       conventionnes: {
@@ -6789,8 +7279,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_cross_tenant_permissions_source"
+            columns: ["source_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_cross_tenant_permissions_target"
             columns: ["target_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_cross_tenant_permissions_target"
+            columns: ["target_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_cross_tenant_permissions_tenant"
+            columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
@@ -6799,7 +7310,7 @@ export type Database = {
             foreignKeyName: "fk_cross_tenant_permissions_tenant"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "pharmacies"
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -6931,6 +7442,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "demandes_produits_clients_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       document_categories: {
@@ -6973,6 +7491,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -7085,6 +7610,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -7226,10 +7758,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "drug_interactions_shared_by_pharmacy_id_fkey"
+            columns: ["shared_by_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "drug_interactions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drug_interactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -7458,6 +8004,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ecritures_comptables_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ecritures_comptables_validated_by_id_fkey"
             columns: ["validated_by_id"]
             isOneToOne: false
@@ -7608,6 +8161,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "encaissements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "encaissements_vente_id_fkey"
             columns: ["vente_id"]
             isOneToOne: false
@@ -7673,6 +8233,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "encryption_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       encryption_keys: {
@@ -7700,6 +8267,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encryption_keys_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -7865,6 +8439,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "exercices_comptables_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       external_integrations: {
@@ -7932,6 +8513,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_integrations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -8155,6 +8743,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "factures_importees_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "factures_importees_validated_by_fkey"
             columns: ["validated_by"]
             isOneToOne: false
@@ -8194,6 +8789,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "famille_produit_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -8281,6 +8883,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fec_exports_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       formations_employes: {
@@ -8338,6 +8947,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formations_employes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -8448,6 +9064,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fournisseurs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -8594,6 +9217,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "help_articles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       help_categories: {
@@ -8651,6 +9281,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "help_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       help_history: {
@@ -8696,6 +9333,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "help_history_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       help_settings: {
@@ -8738,6 +9382,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "help_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -8805,6 +9456,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "immobilisations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -9172,6 +9830,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "inventaire_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       journaux_comptables: {
@@ -9223,6 +9888,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journaux_comptables_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -9313,6 +9985,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "laboratoires_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       lignes_commande_fournisseur: {
@@ -9387,6 +10066,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_commande_fournisseur_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -9544,6 +10230,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lignes_ecriture_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       lignes_facture: {
@@ -9692,6 +10385,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lignes_prescriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       lignes_reception_fournisseur: {
@@ -9810,6 +10510,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lignes_reception_fournisseur_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -9985,6 +10692,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lignes_retours_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       lignes_ventes: {
@@ -10092,6 +10806,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lignes_ventes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lignes_ventes_vente_id_fkey"
             columns: ["vente_id"]
             isOneToOne: false
@@ -10137,6 +10858,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "login_attempts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -10467,6 +11195,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lots_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       low_stock_actions_log: {
@@ -10776,6 +11511,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "module_sync_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       module_sync_logs: {
@@ -10846,6 +11588,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "module_sync_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -10962,6 +11711,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mouvements_caisse_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -11159,6 +11915,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "mouvements_points_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       multichannel_analytics: {
@@ -11228,6 +11991,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "multichannel_analytics_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       multichannel_automation_rules: {
@@ -11288,6 +12058,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "multichannel_automation_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -11358,6 +12135,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "multichannel_connectors_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       network_activity_stats: {
@@ -11426,6 +12210,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "network_activity_stats_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       network_admin_settings: {
@@ -11471,6 +12262,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_admin_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -11559,6 +12357,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_analytics_insights_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -11672,8 +12477,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "network_audit_logs_source_tenant_id_fkey"
+            columns: ["source_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "network_audit_logs_target_tenant_id_fkey"
             columns: ["target_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_audit_logs_target_tenant_id_fkey"
+            columns: ["target_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_audit_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
@@ -11682,7 +12508,7 @@ export type Database = {
             foreignKeyName: "network_audit_logs_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "pharmacies"
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -11759,6 +12585,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "network_backup_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       network_backup_runs: {
@@ -11829,6 +12662,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_backup_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -11927,10 +12767,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "network_channel_invitations_invitee_tenant_id_fkey"
+            columns: ["invitee_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "network_channel_invitations_inviter_tenant_id_fkey"
             columns: ["inviter_tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_channel_invitations_inviter_tenant_id_fkey"
+            columns: ["inviter_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -11945,6 +12799,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_channel_invitations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -12006,6 +12867,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "network_channels_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       network_chat_config: {
@@ -12054,6 +12922,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_chat_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -12130,6 +13005,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "network_chat_permissions_source_tenant_id_fkey"
+            columns: ["source_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "network_chat_permissions_target_partner_id_fkey"
             columns: ["target_partner_id"]
             isOneToOne: false
@@ -12141,6 +13023,13 @@ export type Database = {
             columns: ["target_tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_chat_permissions_target_tenant_id_fkey"
+            columns: ["target_tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -12204,6 +13093,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_compliance_reports_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -12272,6 +13168,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "network_customization_themes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       network_maintenance_task_runs: {
@@ -12323,6 +13226,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_maintenance_task_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -12393,10 +13303,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "network_messages_sender_pharmacy_id_fkey"
+            columns: ["sender_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "network_messages_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -12456,6 +13380,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_notification_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -12552,6 +13483,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "network_partner_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       network_security_assets: {
@@ -12597,6 +13535,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_security_assets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -12664,6 +13609,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "network_system_components_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       network_system_stats: {
@@ -12718,6 +13670,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_system_stats_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -12801,6 +13760,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "network_user_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -12934,6 +13900,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "objectifs_ventes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -13111,6 +14084,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paiements_fournisseurs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -13484,6 +14464,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "parametres_factures_regionaux_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       parametres_fiscaux: {
@@ -13612,6 +14599,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "parametres_integrations_regionaux_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       parametres_journalisation_regionaux: {
@@ -13699,6 +14693,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parametres_journalisation_regionaux_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -13871,6 +14872,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "parametres_plan_comptable_regionaux_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       parametres_rapports_regionaux: {
@@ -13942,6 +14950,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "parametres_rapports_regionaux_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       parametres_regionaux_bancaires: {
@@ -14011,6 +15026,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parametres_regionaux_bancaires_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -14100,6 +15122,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "parametres_regionaux_fiscaux_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -14230,6 +15259,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "parametres_systeme_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       participations_formation: {
@@ -14295,6 +15331,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "participations_formation_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -14383,6 +15426,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "password_policies_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       patient_reminders: {
@@ -14464,6 +15514,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_reminders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -14634,6 +15691,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "personnel_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       pharma_tool_configs: {
@@ -14681,6 +15745,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pharma_tool_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       pharmacies: {
@@ -14696,6 +15767,7 @@ export type Database = {
           logo: string | null
           name: string
           niu: string | null
+          password_hash: string | null
           pays: string | null
           photo_exterieur: string | null
           photo_interieur: string | null
@@ -14721,6 +15793,7 @@ export type Database = {
           logo?: string | null
           name: string
           niu?: string | null
+          password_hash?: string | null
           pays?: string | null
           photo_exterieur?: string | null
           photo_interieur?: string | null
@@ -14746,6 +15819,7 @@ export type Database = {
           logo?: string | null
           name?: string
           niu?: string | null
+          password_hash?: string | null
           pays?: string | null
           photo_exterieur?: string | null
           photo_interieur?: string | null
@@ -14801,10 +15875,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pharmacy_presence_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pharmacy_presence_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_presence_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -14855,6 +15943,13 @@ export type Database = {
             columns: ["pharmacy_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_sessions_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -14917,6 +16012,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_specialties_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -14987,6 +16089,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmaml_transmissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -15065,6 +16174,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "plan_comptable_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       planning_employes: {
@@ -15123,6 +16239,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planning_employes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -15373,6 +16496,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -15761,6 +16891,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "produits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       produits_dci: {
@@ -15954,6 +17091,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "produits_substituts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       programme_fidelite: {
@@ -16030,6 +17174,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "programme_fidelite_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -16156,6 +17307,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rapports_comptables_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -16291,6 +17449,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rayon_produit_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -16442,6 +17607,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "receptions_fournisseurs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "receptions_fournisseurs_valide_par_id_fkey"
             columns: ["valide_par_id"]
             isOneToOne: false
@@ -16542,6 +17714,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recompenses_fidelite_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -16770,6 +17949,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminder_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -17339,6 +18525,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "retours_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "retours_validateur_id_fkey"
             columns: ["validateur_id"]
             isOneToOne: false
@@ -17396,6 +18589,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "roles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       roles_permissions: {
@@ -17446,6 +18646,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roles_permissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -17511,6 +18718,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "security_access_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       security_alerts: {
@@ -17567,6 +18781,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "security_alerts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       security_auth_methods: {
@@ -17612,6 +18833,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_auth_methods_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -17783,6 +19011,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "security_key_rotations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       security_reports: {
@@ -17835,6 +19070,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_reports_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -17929,6 +19171,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_caisse_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -18029,10 +19278,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shared_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "shared_documents_uploaded_by_pharmacy_id_fkey"
             columns: ["uploaded_by_pharmacy_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_documents_uploaded_by_pharmacy_id_fkey"
+            columns: ["uploaded_by_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -18127,6 +19390,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "societes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       sous_compte_depenses: {
@@ -18167,6 +19437,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sous_compte_depenses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -18310,6 +19587,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_mouvements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -18457,6 +19741,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "suggestions_vente_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       suivi_commandes: {
@@ -18559,6 +19850,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "supplier_excel_mappings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       task_comments: {
@@ -18595,6 +19893,13 @@ export type Database = {
             columns: ["author_pharmacy_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comments_author_pharmacy_id_fkey"
+            columns: ["author_pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -18695,6 +20000,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_security_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -18940,6 +20252,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tva_declaration_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       two_factor_auth: {
@@ -19040,6 +20359,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -19291,6 +20617,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ventes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       verification_codes: {
@@ -19405,6 +20738,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "webhooks_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       webhooks_logs: {
@@ -19459,6 +20799,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webhooks_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -19798,6 +21145,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "workspace_members_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "workspace_members_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -19815,6 +21169,84 @@ export type Database = {
       }
     }
     Views: {
+      pharmacies_public: {
+        Row: {
+          address: string | null
+          arrondissement: string | null
+          city: string | null
+          code: string | null
+          created_at: string | null
+          departement: string | null
+          email: string | null
+          id: string | null
+          logo: string | null
+          name: string | null
+          niu: string | null
+          pays: string | null
+          photo_exterieur: string | null
+          photo_interieur: string | null
+          postal_code: string | null
+          quartier: string | null
+          region: string | null
+          status: string | null
+          telephone_appel: string | null
+          telephone_whatsapp: string | null
+          tenant_id: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          arrondissement?: string | null
+          city?: string | null
+          code?: string | null
+          created_at?: string | null
+          departement?: string | null
+          email?: string | null
+          id?: string | null
+          logo?: string | null
+          name?: string | null
+          niu?: string | null
+          pays?: string | null
+          photo_exterieur?: string | null
+          photo_interieur?: string | null
+          postal_code?: string | null
+          quartier?: string | null
+          region?: string | null
+          status?: string | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          arrondissement?: string | null
+          city?: string | null
+          code?: string | null
+          created_at?: string | null
+          departement?: string | null
+          email?: string | null
+          id?: string | null
+          logo?: string | null
+          name?: string | null
+          niu?: string | null
+          pays?: string | null
+          photo_exterieur?: string | null
+          photo_interieur?: string | null
+          postal_code?: string | null
+          quartier?: string | null
+          region?: string | null
+          status?: string | null
+          telephone_appel?: string | null
+          telephone_whatsapp?: string | null
+          tenant_id?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       produits_with_stock: {
         Row: {
           ancien_code_cip: string | null
@@ -19926,6 +21358,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "produits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_comptes_avec_soldes: {
@@ -19967,6 +21406,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_comptable_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -20035,6 +21481,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ecritures_comptables_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
           {
@@ -20272,6 +21725,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "produits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_rapport_par_caisse_type: {
@@ -20290,6 +21750,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_caisse_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -20319,6 +21786,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sessions_caisse_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_rentabilite_produits: {
@@ -20343,6 +21817,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "produits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_resume_journalier: {
@@ -20362,6 +21843,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessions_caisse_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
             referencedColumns: ["id"]
           },
         ]
@@ -20395,6 +21883,13 @@ export type Database = {
             referencedRelation: "pharmacies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sessions_caisse_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -20402,6 +21897,10 @@ export type Database = {
       analyze_process_optimization: {
         Args: { p_tenant_id: string }
         Returns: number
+      }
+      authenticate_pharmacy: {
+        Args: { p_email: string; p_password: string }
+        Returns: Json
       }
       auto_segment_clients: { Args: { p_tenant_id: string }; Returns: number }
       calculate_account_level: {
@@ -20555,6 +22054,10 @@ export type Database = {
           p_drug2_name?: string
           p_tenant_id: string
         }
+        Returns: Json
+      }
+      check_email_available_for_user: {
+        Args: { p_email: string }
         Returns: Json
       }
       check_login_attempts: {
@@ -21267,6 +22770,10 @@ export type Database = {
         Args: { p_tenant_id: string }
         Returns: Json
       }
+      register_pharmacy_simple: {
+        Args: { pharmacy_data: Json; pharmacy_password: string }
+        Returns: Json
+      }
       register_pharmacy_with_admin: {
         Args: {
           admin_data: Json
@@ -21407,6 +22914,10 @@ export type Database = {
       }
       test_ai_provider_connection: {
         Args: { p_provider_id: string; p_tenant_id: string }
+        Returns: Json
+      }
+      update_pharmacy_password: {
+        Args: { p_new_password: string; p_pharmacy_id: string }
         Returns: Json
       }
       update_training_progress: {

@@ -12,12 +12,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useVerification } from '@/hooks/useVerification';
 import { VerificationDialog } from '@/components/verification/VerificationDialog';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function PharmacyCreation() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { setConnectedPharmacyFromSession } = useAuth();
 
-  // États du formulaire complet
+  // États du formulaire - SANS informations administrateur
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -30,10 +32,6 @@ export default function PharmacyCreation() {
     email: '',
     departement: '',
     type: 'standard',
-    noms: '',
-    prenoms: '',
-    reference_agent: '',
-    telephone: '',
     password: '',
     confirmPassword: ''
   });
@@ -70,7 +68,7 @@ export default function PharmacyCreation() {
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Reset verification si l'email ou le téléphone change
-    if (field === 'email' || field === 'telephone') {
+    if (field === 'email' || field === 'telephone_appel') {
       verification.reset();
     }
   };
@@ -92,7 +90,7 @@ export default function PharmacyCreation() {
   };
 
   const handleSendPhoneCode = async () => {
-    if (!formData.telephone) {
+    if (!formData.telephone_appel) {
       toast({
         title: "Erreur",
         description: "Veuillez entrer votre numéro de téléphone",
@@ -101,7 +99,7 @@ export default function PharmacyCreation() {
       return;
     }
 
-    const result = await verification.sendPhoneCode(formData.email, formData.telephone, formData.name);
+    const result = await verification.sendPhoneCode(formData.email, formData.telephone_appel, formData.name);
     if (result.success) {
       setShowPhoneDialog(true);
     }
@@ -154,62 +152,13 @@ export default function PharmacyCreation() {
     setIsLoading(true);
 
     try {
-      console.log('PHARMACY-CREATION: Début de la création de pharmacie:', formData.email);
+      console.log('PHARMACY-CREATION: Création pharmacie SANS utilisateur auth:', formData.email);
 
-      let userId: string;
-
-      // 1. Tenter de créer l'utilisateur
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            first_name: formData.prenoms,
-            last_name: formData.noms,
-            phone: formData.telephone
-          }
-        }
-      });
-
-      // Si l'utilisateur existe déjà, tenter de se connecter
-      if (signUpError?.message?.includes('already registered')) {
-        console.log('PHARMACY-CREATION: Utilisateur existe déjà, tentative de connexion...');
-        
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password
-        });
-
-        if (signInError || !signInData.user) {
-          console.error('PHARMACY-CREATION: Erreur connexion utilisateur existant:', signInError);
-          toast({
-            title: "Erreur",
-            description: "L'utilisateur existe déjà mais le mot de passe est incorrect",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        userId = signInData.user.id;
-        console.log('PHARMACY-CREATION: Connexion réussie avec utilisateur existant:', userId);
-      } else if (signUpError || !signUpData.user) {
-        console.error('PHARMACY-CREATION: Erreur création utilisateur:', signUpError);
-        toast({
-          title: "Erreur",
-          description: signUpError?.message || "Erreur lors de la création du compte utilisateur",
-          variant: "destructive"
-        });
-        return;
-      } else {
-        userId = signUpData.user.id;
-        console.log('PHARMACY-CREATION: Nouvel utilisateur créé avec succès:', userId);
-      }
-
-      // 2. Créer la pharmacie et le personnel admin
-      const { data, error } = await supabase.rpc('register_pharmacy_with_admin', {
+      // Appeler la nouvelle RPC qui crée UNIQUEMENT la pharmacie (pas d'auth.users)
+      const { data, error } = await supabase.rpc('register_pharmacy_simple', {
         pharmacy_data: {
           name: formData.name,
-          licence_number: formData.code || `PH${Date.now()}`,
+          code: formData.code || `PH${Date.now()}`,
           address: formData.address,
           quartier: formData.quartier,
           arrondissement: formData.arrondissement,
@@ -222,17 +171,11 @@ export default function PharmacyCreation() {
           region: 'République du Congo',
           pays: 'République du Congo'
         },
-        admin_data: {
-          noms: formData.noms,
-          prenoms: formData.prenoms,
-          reference_agent: formData.reference_agent || `AG-${Date.now()}`,
-          telephone: formData.telephone
-        },
-        admin_email: formData.email,
-        admin_password: formData.password
+        pharmacy_password: formData.password
       });
 
-      const result = data as any;
+      const result = data as { success: boolean; pharmacy_id?: string; session_token?: string; expires_at?: string; error?: string } | null;
+      
       if (error || !result?.success) {
         console.error('PHARMACY-CREATION: Erreur lors de la création:', error);
         
@@ -244,18 +187,31 @@ export default function PharmacyCreation() {
         return;
       }
 
-      console.log('PHARMACY-CREATION: Pharmacie et admin créés avec succès:', result);
+      console.log('PHARMACY-CREATION: Pharmacie créée avec succès:', result);
+
+      // Stocker la session pharmacie dans localStorage
+      if (result.session_token) {
+        localStorage.setItem('pharmacy_session', JSON.stringify({
+          sessionToken: result.session_token,
+          expiresAt: result.expires_at
+        }));
+        
+        // Mettre à jour le contexte Auth
+        if (setConnectedPharmacyFromSession) {
+          await setConnectedPharmacyFromSession(result.session_token);
+        }
+      }
 
       // Succès complet
       toast({
         title: "Pharmacie créée avec succès",
-        description: `Bienvenue ${formData.name} ! Vous pouvez maintenant accéder à votre tableau de bord.`,
+        description: `Bienvenue ${formData.name} ! Votre pharmacie est maintenant connectée.`,
       });
 
-      console.log('PHARMACY-CREATION: Redirection vers le tableau de bord');
+      console.log('PHARMACY-CREATION: Redirection vers l\'accueil (pas tableau de bord)');
       
-      // Rediriger vers le tableau de bord
-      navigate('/tableau-de-bord');
+      // Rediriger vers l'accueil (PAS le tableau de bord car aucun utilisateur connecté)
+      navigate('/');
       
     } catch (error) {
       console.error('PHARMACY-CREATION: Exception lors de la création:', error);
@@ -356,7 +312,7 @@ export default function PharmacyCreation() {
                         <Input
                           id="name"
                           type="text"
-                          placeholder="DJL - Computer Sciences"
+                          placeholder="Pharmacie Centrale"
                           value={formData.name}
                           onChange={(e) => handleInputChange('name', e.target.value)}
                           className="pl-10 h-11"
@@ -366,8 +322,14 @@ export default function PharmacyCreation() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="telephone_appel" className="text-sm font-medium">
+                      <Label htmlFor="telephone_appel" className="text-sm font-medium flex items-center gap-2">
                         Téléphone *
+                        {verification.phoneVerified && (
+                          <Badge className="bg-green-500 text-white text-xs">
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Vérifié
+                          </Badge>
+                        )}
                       </Label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -379,6 +341,7 @@ export default function PharmacyCreation() {
                           onChange={(e) => handleInputChange('telephone_appel', e.target.value)}
                           className="pl-10 h-11"
                           required
+                          disabled={verification.phoneVerified}
                         />
                       </div>
                     </div>
@@ -479,7 +442,7 @@ export default function PharmacyCreation() {
                         <Input
                           id="email"
                           type="email"
-                          placeholder="djl.computersciences@gmail.com"
+                          placeholder="pharmacie@example.com"
                           value={formData.email}
                           onChange={(e) => handleInputChange('email', e.target.value)}
                           className="pl-10 h-11"
@@ -570,106 +533,6 @@ export default function PharmacyCreation() {
                   </div>
                 </div>
 
-                {/* Informations de l'administrateur */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-foreground">Informations de l'administrateur</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="prenoms" className="text-sm font-medium">
-                        Prénoms *
-                      </Label>
-                      <Input
-                        id="prenoms"
-                        type="text"
-                        placeholder="Lee Joamer"
-                        value={formData.prenoms}
-                        onChange={(e) => handleInputChange('prenoms', e.target.value)}
-                        className="h-11"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="noms" className="text-sm font-medium">
-                        Noms *
-                      </Label>
-                      <Input
-                        id="noms"
-                        type="text"
-                        placeholder="DIAMBOMBA"
-                        value={formData.noms}
-                        onChange={(e) => handleInputChange('noms', e.target.value)}
-                        className="h-11"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="telephone" className="text-sm font-medium flex items-center gap-2">
-                        Téléphone personnel *
-                        {verification.phoneVerified && (
-                          <Badge className="bg-green-500 text-white text-xs">
-                            <CheckCircle2 className="w-3 h-3 mr-1" />
-                            Vérifié
-                          </Badge>
-                        )}
-                      </Label>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                          <Input
-                            id="telephone"
-                            type="tel"
-                            placeholder="+242 XX XXX XX XX"
-                            value={formData.telephone}
-                            onChange={(e) => handleInputChange('telephone', e.target.value)}
-                            className="pl-10 h-11"
-                            required
-                            disabled={verification.phoneVerified}
-                          />
-                        </div>
-                        {verification.emailVerified && !verification.phoneVerified && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleSendPhoneCode}
-                            disabled={!formData.telephone || verification.isSendingPhone}
-                            className="h-11 whitespace-nowrap"
-                          >
-                            {verification.isSendingPhone ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              'Vérifier'
-                            )}
-                          </Button>
-                        )}
-                      </div>
-                      {!verification.emailVerified && formData.telephone && (
-                        <p className="text-xs text-muted-foreground">
-                          Vérifiez d'abord votre email pour activer la vérification téléphone
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="reference_agent" className="text-sm font-medium">
-                        Référence agent
-                      </Label>
-                      <Input
-                        id="reference_agent"
-                        type="text"
-                        placeholder="REF001"
-                        value={formData.reference_agent}
-                        onChange={(e) => handleInputChange('reference_agent', e.target.value)}
-                        className="h-11"
-                      />
-                    </div>
-                  </div>
-                </div>
-
                 <Button
                   type="submit"
                   size="lg"
@@ -730,9 +593,9 @@ export default function PharmacyCreation() {
         open={showPhoneDialog}
         onOpenChange={setShowPhoneDialog}
         type="phone"
-        target={maskPhone(formData.telephone)}
+        target={maskPhone(formData.telephone_appel)}
         onVerify={(code) => verification.verifyPhoneCode(formData.email, code)}
-        onResend={() => verification.sendPhoneCode(formData.email, formData.telephone, formData.name)}
+        onResend={() => verification.sendPhoneCode(formData.email, formData.telephone_appel, formData.name)}
         isVerifying={verification.isVerifyingPhone}
         isSending={verification.isSendingPhone}
         expiresAt={verification.phoneExpiresAt}
