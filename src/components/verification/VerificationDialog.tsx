@@ -179,9 +179,13 @@ export function VerificationDialog({
             </div>
 
             {/* Countdown */}
-            {countdown > 0 && (
+            {countdown > 0 ? (
               <p className="text-center text-sm text-muted-foreground">
                 Le code expire dans <span className="font-medium">{formatCountdown(countdown)}</span>
+              </p>
+            ) : expiresAt && (
+              <p className="text-center text-sm text-warning font-medium">
+                ⚠️ Le code a expiré. Veuillez en demander un nouveau.
               </p>
             )}
 

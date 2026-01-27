@@ -52,6 +52,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Vérifier si le code a expiré
     if (new Date(verificationCode.expires_at) < new Date()) {
+      console.log(`Code expiré pour ${email} (type: ${type}). Expiré à: ${verificationCode.expires_at}`);
       return new Response(
         JSON.stringify({ error: "Le code a expiré. Veuillez en demander un nouveau." }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -60,6 +61,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Vérifier le nombre de tentatives
     if (verificationCode.attempts >= verificationCode.max_attempts) {
+      console.log(`Tentatives max atteintes pour ${email} (type: ${type}). Tentatives: ${verificationCode.attempts}/${verificationCode.max_attempts}`);
       return new Response(
         JSON.stringify({ error: "Nombre maximum de tentatives atteint. Demandez un nouveau code." }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -105,6 +107,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Vérifier le code (VÉRIFICATION NORMALE - actif pour les emails)
     if (verificationCode.code !== code) {
       const remainingAttempts = verificationCode.max_attempts - verificationCode.attempts - 1;
+      console.log(`Code incorrect pour ${email} (type: ${type}). Tentatives restantes: ${remainingAttempts}`);
       return new Response(
         JSON.stringify({ 
           error: `Code incorrect. ${remainingAttempts} tentative(s) restante(s).`,

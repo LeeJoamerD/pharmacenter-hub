@@ -180,8 +180,22 @@ export function useVerification(options: UseVerificationOptions = {}) {
         body: { email, code, type: 'email' }
       });
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      // Extraire le message d'erreur du contexte si disponible
+      if (error) {
+        const errorContext = (error as any).context;
+        if (errorContext) {
+          try {
+            const errorBody = await errorContext.json();
+            if (errorBody.error) {
+              throw new Error(errorBody.error);
+            }
+          } catch (parseError) {
+            // Si on ne peut pas parser, on continue avec l'erreur originale
+          }
+        }
+        throw error;
+      }
+      if (data?.error) throw new Error(data.error);
 
       setState(prev => ({ ...prev, emailVerified: true }));
       
@@ -195,12 +209,13 @@ export function useVerification(options: UseVerificationOptions = {}) {
       return { success: true };
     } catch (error: any) {
       console.error('Erreur vérification email:', error);
+      const errorMessage = error.message || "Code invalide";
       toast({
-        title: "Erreur",
-        description: error.message || "Code invalide",
+        title: "Erreur de vérification",
+        description: errorMessage,
         variant: "destructive",
       });
-      return { success: false, error: error.message };
+      return { success: false, error: errorMessage };
     } finally {
       setState(prev => ({ ...prev, isVerifyingEmail: false }));
     }
@@ -214,8 +229,22 @@ export function useVerification(options: UseVerificationOptions = {}) {
         body: { email, code, type: 'sms' }
       });
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      // Extraire le message d'erreur du contexte si disponible
+      if (error) {
+        const errorContext = (error as any).context;
+        if (errorContext) {
+          try {
+            const errorBody = await errorContext.json();
+            if (errorBody.error) {
+              throw new Error(errorBody.error);
+            }
+          } catch (parseError) {
+            // Si on ne peut pas parser, on continue avec l'erreur originale
+          }
+        }
+        throw error;
+      }
+      if (data?.error) throw new Error(data.error);
 
       setState(prev => ({ ...prev, phoneVerified: true }));
       
@@ -234,12 +263,13 @@ export function useVerification(options: UseVerificationOptions = {}) {
       return { success: true };
     } catch (error: any) {
       console.error('Erreur vérification téléphone:', error);
+      const errorMessage = error.message || "Code invalide";
       toast({
-        title: "Erreur",
-        description: error.message || "Code invalide",
+        title: "Erreur de vérification",
+        description: errorMessage,
         variant: "destructive",
       });
-      return { success: false, error: error.message };
+      return { success: false, error: errorMessage };
     } finally {
       setState(prev => ({ ...prev, isVerifyingPhone: false }));
     }
